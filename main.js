@@ -2846,14 +2846,24 @@ function generateReportContent(type, period) {
                 <div class="space-y-4">
         `;
 
+        // Ensure arrays are present and well-formed to avoid runtime errors
+        appState.bottlenecks = Array.isArray(appState.bottlenecks) ? appState.bottlenecks : [];
+        appState.recommendations = Array.isArray(appState.recommendations) ? appState.recommendations : [];
+
         if (appState.bottlenecks.length > 0) {
             appState.bottlenecks.forEach((bottleneck, index) => {
+                // Defensive defaults
+                const severityRaw = bottleneck && (bottleneck.severity !== undefined) ? String(bottleneck.severity) : 'unknown';
+                const severity = severityRaw ? severityRaw.toLowerCase() : 'unknown';
+                const severityLabel = (severity || 'unknown').toUpperCase();
+                const message = (bottleneck && bottleneck.message) ? bottleneck.message : 'Détails indisponibles';
+                const recommendationText = (bottleneck && bottleneck.recommendation) ? bottleneck.recommendation : 'Aucune recommandation fournie';
                 const severityColor = {
                     'critical': 'border-red-500 bg-red-50 text-red-800',
                     'high': 'border-orange-500 bg-orange-50 text-orange-800',
                     'medium': 'border-yellow-500 bg-yellow-50 text-yellow-800',
                     'low': 'border-blue-500 bg-blue-50 text-blue-800'
-                }[bottleneck.severity] || 'border-gray-500 bg-gray-50 text-gray-800';
+                }[severity] || 'border-gray-500 bg-gray-50 text-gray-800';
 
                 content += `
                     <div class="border-l-4 ${severityColor} p-4 rounded-r-lg">
@@ -2862,9 +2872,9 @@ function generateReportContent(type, period) {
                                 <i class="fas fa-exclamation-triangle text-${bottleneck.severity === 'critical' ? 'red' : bottleneck.severity === 'high' ? 'orange' : 'yellow'}-500"></i>
                             </div>
                             <div class="ml-3">
-                                <h4 class="font-medium">Anomalie #${index + 1} - Niveau ${bottleneck.severity.toUpperCase()}</h4>
-                                <p class="text-sm mt-1">${bottleneck.message}</p>
-                                <p class="text-sm mt-2 font-medium">Recommandation: ${bottleneck.recommendation}</p>
+                                <h4 class="font-medium">Anomalie #${index + 1} - Niveau ${severityLabel}</h4>
+                                <p class="text-sm mt-1">${escapeHTML(message)}</p>
+                                <p class="text-sm mt-2 font-medium">Recommandation: ${escapeHTML(recommendationText)}</p>
                             </div>
                         </div>
                     </div>
@@ -2894,12 +2904,18 @@ function generateReportContent(type, period) {
 
         if (appState.recommendations.length > 0) {
             appState.recommendations.forEach((rec, index) => {
+                const priorityRaw = rec && (rec.priority !== undefined) ? String(rec.priority) : 'low';
+                const priority = priorityRaw ? priorityRaw.toLowerCase() : 'low';
+                const priorityLabel = (priority || 'low').toUpperCase();
+                const recMessage = rec && rec.message ? rec.message : 'Détail indisponible';
+                const recAction = rec && rec.action ? rec.action : 'Aucune action spécifiée';
+
                 const priorityColor = {
                     'critical': 'border-red-500 bg-red-50',
                     'high': 'border-orange-500 bg-orange-50',
                     'medium': 'border-yellow-500 bg-yellow-50',
                     'low': 'border-blue-500 bg-blue-50'
-                }[rec.priority] || 'border-gray-500 bg-gray-50';
+                }[priority] || 'border-gray-500 bg-gray-50';
 
                 content += `
                     <div class="border-l-4 ${priorityColor} p-4 rounded-r-lg">
@@ -2908,9 +2924,9 @@ function generateReportContent(type, period) {
                                 <i class="fas fa-lightbulb text-${rec.priority === 'critical' ? 'red' : rec.priority === 'high' ? 'orange' : rec.priority === 'medium' ? 'yellow' : 'blue'}-500"></i>
                             </div>
                             <div class="ml-3">
-                                <h4 class="font-medium">Recommandation #${index + 1} - Priorité ${rec.priority.toUpperCase()}</h4>
-                                <p class="text-sm mt-1">${rec.message}</p>
-                                <p class="text-sm mt-2">Action: ${rec.action}</p>
+                                <h4 class="font-medium">Recommandation #${index + 1} - Priorité ${priorityLabel}</h4>
+                                <p class="text-sm mt-1">${escapeHTML(recMessage)}</p>
+                                <p class="text-sm mt-2">Action: ${escapeHTML(recAction)}</p>
                             </div>
                         </div>
                     </div>
