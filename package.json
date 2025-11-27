@@ -8,7 +8,7 @@
     "package-win": "electron-builder --win --x64",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
-    "test:smoke": "playwright test tests/playwright/smoke.spec.js",
+    "test:smoke": "playwright test tests/playwright/smoke.spec.js tests/playwright/rapports.spec.js",
     "test:unit": "vitest run tests/unit --reporter dot",
     "test": "npm run test:unit && npm run test:smoke",
     "lint": "echo \"Add eslint later\" && exit 0",
