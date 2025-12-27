@@ -36,21 +36,9 @@
         }
 
         .form-grid {
-            display: grid;
-            grid-template-columns: repeat(1, minmax(0, 1fr));
+            display: flex;
+            flex-direction: column;
             gap: 1.5rem;
-        }
-
-        @media (min-width: 768px) {
-            .form-grid {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-            }
-        }
-
-        @media (min-width: 1024px) {
-            .form-grid {
-                grid-template-columns: repeat(3, minmax(0, 1fr));
-            }
         }
 
         .form-group {
@@ -209,6 +197,379 @@
 
         .requirement-safe .progress-bar {
             background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+        }
+
+        /* === DESIGN PROFESSIONNEL POUR L'ONGLET ÉQUIPES === */
+        .teams-header-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            border-radius: 1rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .teams-header-section h3 {
+            color: white;
+            margin-bottom: 0.5rem;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .teams-header-section p {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 0.95rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .teams-action-buttons {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .teams-action-btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+        }
+
+        .teams-action-btn.primary {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .teams-action-btn.primary:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(255, 255, 255, 0.2);
+        }
+
+        .teams-action-btn.secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .teams-action-btn.secondary:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .teams-filter-section {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        }
+
+        .teams-filter-section .filter-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .teams-filter-section .filter-icon {
+            width: 2rem;
+            height: 2rem;
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            border-radius: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+
+        .teams-filter-section select {
+            padding: 0.75rem 1rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 0.75rem;
+            background: white;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            min-width: 250px;
+        }
+
+        .teams-filter-section select:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+            outline: none;
+        }
+
+        .teams-stats-bar {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .teams-stat-card {
+            background: white;
+            padding: 1rem;
+            border-radius: 0.75rem;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+            flex: 1;
+            min-width: 200px;
+            transition: all 0.3s ease;
+        }
+
+        .teams-stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+        }
+
+        .teams-stat-card .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 0.25rem;
+        }
+
+        .teams-stat-card .stat-label {
+            font-size: 0.85rem;
+            color: #64748b;
+            font-weight: 500;
+        }
+
+        .teams-stat-card .stat-icon {
+            width: 2.5rem;
+            height: 2.5rem;
+            border-radius: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .teams-stat-card.teams .stat-icon {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        }
+
+        .teams-stat-card.equipment .stat-icon {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        }
+
+        .teams-stat-card.budget .stat-icon {
+            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+        }
+
+        .teams-content-section {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 1rem;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        }
+
+        .teams-content-section .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid #f1f5f9;
+        }
+
+        .teams-content-section .section-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #1e293b;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .teams-content-section .section-icon {
+            width: 2.5rem;
+            height: 2.5rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+
+        .teams-global-params {
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            border: 1px solid #e2e8f0;
+            border-radius: 1rem;
+            padding: 2rem;
+            margin-top: 2rem;
+        }
+
+        .teams-global-params .section-title {
+            color: #334155;
+            margin-bottom: 1.5rem;
+        }
+
+        .teams-save-btn {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            padding: 1rem 2rem;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            font-size: 0.95rem;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+
+        .teams-save-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(16, 185, 129, 0.4);
+        }
+
+        .teams-empty-state {
+            text-align: center;
+            padding: 3rem 2rem;
+            color: #64748b;
+        }
+
+        .teams-empty-state .empty-icon {
+            width: 4rem;
+            height: 4rem;
+            background: #f1f5f9;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+            color: #94a3b8;
+        }
+
+        .teams-empty-state h4 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #475569;
+            margin-bottom: 0.5rem;
+        }
+
+        .teams-empty-state p {
+            font-size: 0.9rem;
+            margin-bottom: 1.5rem;
+        }
+
+        /* === ANIMATIONS ET TRANSITIONS AMÉLIORÉES === */
+        .teams-card-enter {
+            animation: slideInUp 0.5s ease-out;
+        }
+
+        .teams-section-enter {
+            animation: fadeInScale 0.4s ease-out;
+        }
+
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeInScale {
+            from {
+                opacity: 0;
+                transform: scale(0.98);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        /* === AMÉLIORATIONS RESPONSIVES === */
+        @media (max-width: 768px) {
+            .teams-header-section {
+                padding: 1.5rem;
+                margin-bottom: 1.5rem;
+            }
+
+            .teams-header-section h3 {
+                font-size: 1.25rem;
+            }
+
+            .teams-action-buttons {
+                flex-direction: column;
+                gap: 0.75rem;
+            }
+
+            .teams-action-btn {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .teams-stats-bar {
+                flex-direction: column;
+                gap: 0.75rem;
+            }
+
+            .teams-stat-card {
+                min-width: unset;
+            }
+
+            .teams-content-section {
+                padding: 1.5rem;
+            }
+
+            .teams-global-params {
+                padding: 1.5rem;
+            }
+        }
+
+        /* === FOCUS ET ACCESSIBILITÉ === */
+        .teams-action-btn:focus,
+        .teams-save-btn:focus,
+        .teams-filter-section select:focus {
+            outline: 2px solid #667eea;
+            outline-offset: 2px;
+        }
+
+        /* === ÉTATS DE CHARGEMENT === */
+        .teams-loading {
+            position: relative;
+            pointer-events: none;
+        }
+
+        .teams-loading::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 20px;
+            height: 20px;
+            margin: -10px 0 0 -10px;
+            border: 2px solid #e2e8f0;
+            border-top: 2px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
         /* === Style pour les onglets === */
@@ -613,7 +974,7 @@
                     <h3 class="section-title">
                         <i class="fas fa-tools"></i> Équipements de Terrain par Équipe
                     </h3>
-                    <div id="equipmentConfig" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div id="equipmentConfig" class="flex flex-col gap-6">
                         <!-- Rempli dynamiquement -->
                     </div>
                 </div>
@@ -621,64 +982,115 @@
 
             <!-- Onglet Configuration des Équipes (Technique & Financier Unifié) -->
             <div id="content-teams">
-                <div class="bg-white rounded-lg card-shadow p-6">
-                    <div class="flex justify-between items-center mb-6">
-                        <h3 class="section-title">
-                            <i class="fas fa-users-cog"></i> Configuration Unifiée des Équipes
-                        </h3>
-                        <div class="flex gap-2">
-                            <button onclick="resetToStandardRoles()" class="action-btn secondary">
-                                <i class="fas fa-undo mr-2"></i> Réinitialiser
-                            </button>
-                            <button id="addNewTeamTypeBtn" class="action-btn primary">
-                                <i class="fas fa-plus-circle mr-2"></i> Ajouter un Type d'Équipe
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Filtre par type d'équipe -->
-                    <div class="mb-6">
-                        <label for="teamTypeFilter" class="block text-sm font-medium text-gray-700 mb-1">Filtrer par
-                            type</label>
-                        <select id="teamTypeFilter" class="w-full md:w-64 px-3 py-2 border border-gray-300 rounded-md">
-                            <option value="all">Tous les types</option>
-                            <!-- Rempli dynamiquement -->
-                        </select>
-                    </div>
-
-                    <!-- Liste des types d'équipes -->
-                    <div id="teamTypesContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-                        <!-- Rempli dynamiquement -->
-                    </div>
-
-                    <!-- Paramètres Globaux du Projet -->
-                    <div class="mt-12 pt-8 border-t border-gray-100">
-                        <h3 class="section-title">
-                            <i class="fas fa-project-diagram"></i> Paramètres Globaux du Projet
-                        </h3>
-                        <div class="form-grid">
-                            <div class="form-group">
-                                <label for="projectDuration">Durée Totale Prévue (jours)</label>
-                                <input type="number" id="projectDuration" class="cost-input" data-field-root="duration">
-                            </div>
-                            <div class="form-group">
-                                <label for="projectTotalHouses">Nombre Total de Ménages (Cible)</label>
-                                <input type="number" id="projectTotalHouses" class="cost-input"
-                                    data-field-root="totalHouses">
-                            </div>
-                            <div class="form-group">
-                                <label for="projectStartDate">Date de Début</label>
-                                <input type="date" id="projectStartDate" class="cost-input" data-field-root="startDate">
-                            </div>
-                        </div>
-                        <div class="flex justify-end mt-4">
-                            <button onclick="saveCosts()"
-                                class="bg-gray-800 text-white px-6 py-2 rounded-lg hover:bg-black transition flex items-center">
-                                <i class="fas fa-check-circle mr-2"></i> Mettre à jour les paramètres
-                            </button>
-                        </div>
+                <!-- Section d'en-tête avec gradient -->
+                <div class="teams-header-section">
+                    <h3>Configuration Unifiée des Équipes</h3>
+                    <p>Gérez les types d'équipes, leurs configurations techniques et financières pour optimiser votre projet d'électrification.</p>
+                    <div class="teams-action-buttons">
+                        <button onclick="resetToStandardRoles()" class="teams-action-btn secondary">
+                            <i class="fas fa-undo"></i>
+                            Réinitialiser
+                        </button>
+                        <button id="addNewTeamTypeBtn" class="teams-action-btn primary">
+                            <i class="fas fa-plus-circle"></i>
+                            Ajouter un Type d'Équipe
+                        </button>
                     </div>
                 </div>
+
+                <!-- Barre de statistiques -->
+                <div class="teams-stats-bar teams-section-enter">
+                    <div class="teams-stat-card teams">
+                        <div class="stat-icon">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="stat-value" id="totalTeamsCount">0</div>
+                        <div class="stat-label">Équipes Totales</div>
+                    </div>
+                    <div class="teams-stat-card equipment">
+                        <div class="stat-icon">
+                            <i class="fas fa-tools"></i>
+                        </div>
+                        <div class="stat-value" id="totalEquipmentCount">0</div>
+                        <div class="stat-label">Équipements</div>
+                    </div>
+                    <div class="teams-stat-card budget">
+                        <div class="stat-icon">
+                            <i class="fas fa-coins"></i>
+                        </div>
+                        <div class="stat-value" id="totalBudget">0 FCFA</div>
+                        <div class="stat-label">Budget Estimé</div>
+                    </div>
+                </div>
+
+                <!-- Section de filtrage -->
+                <div class="teams-filter-section">
+                    <div class="filter-header">
+                        <div class="filter-icon">
+                            <i class="fas fa-filter"></i>
+                        </div>
+                        <div>
+                            <h4 style="font-size: 1rem; font-weight: 600; color: #1e293b; margin: 0;">Filtrage des Équipes</h4>
+                            <p style="font-size: 0.85rem; color: #64748b; margin: 0.25rem 0 0 0;">Affinez votre recherche par type d'équipe</p>
+                        </div>
+                    </div>
+                    <select id="teamTypeFilter">
+                        <option value="all">Tous les types d'équipes</option>
+                        <!-- Rempli dynamiquement -->
+                    </select>
+                </div>
+
+                <!-- Section des équipes -->
+                <div class="teams-content-section">
+                    <div class="section-header">
+                        <div class="section-title">
+                            <div class="section-icon">
+                                <i class="fas fa-users-cog"></i>
+                            </div>
+                            Types d'Équipes Configurés
+                        </div>
+                    </div>
+                    <div id="teamTypesContainer" class="flex flex-col gap-6">
+                        <!-- État vide par défaut -->
+                        <div id="teamsEmptyState" class="teams-empty-state">
+                            <div class="empty-icon">
+                                <i class="fas fa-users" style="font-size: 1.5rem;"></i>
+                            </div>
+                            <h4>Aucune équipe configurée</h4>
+                            <p>Commencez par ajouter votre premier type d'équipe ou utilisez les configurations standard.</p>
+                        </div>
+                        <!-- Rempli dynamiquement -->
+                    </div>
+                </div>
+
+                <!-- Paramètres Globaux du Projet -->
+                <div class="teams-global-params">
+                    <div class="section-title" style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem;">
+                        <div style="width: 2.5rem; height: 2.5rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 0.5rem; display: flex; align-items: center; justify-content: center; color: white;">
+                            <i class="fas fa-project-diagram"></i>
+                        </div>
+                        Paramètres Globaux du Projet
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="projectDuration">Durée Totale Prévue (jours)</label>
+                            <input type="number" id="projectDuration" class="cost-input" data-field-root="duration">
+                        </div>
+                        <div class="form-group">
+                            <label for="projectTotalHouses">Nombre Total de Ménages (Cible)</label>
+                            <input type="number" id="projectTotalHouses" class="cost-input"
+                                data-field-root="totalHouses">
+                        </div>
+                        <div class="form-group">
+                            <label for="projectStartDate">Date de Début</label>
+                            <input type="date" id="projectStartDate" class="cost-input" data-field-root="startDate">
+                        </div>
+                    </div>
+                    <div class="flex justify-end mt-6">
+                        <button onclick="saveCosts()" class="teams-save-btn">
+                            <i class="fas fa-save"></i>
+                            Mettre à jour les paramètres
+                        </button>
             </div>
 
             <!-- Onglet Bilan des Besoins -->
@@ -691,7 +1103,7 @@
                         <div class="text-sm text-gray-500 italic">Basé sur le nombre actuel de ménages et d'équipes
                         </div>
                     </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div class="flex flex-col gap-6">
                         <div class="requirement-card" id="teamsRequirement">
                             <h4 class="font-bold text-gray-900 mb-4 pb-2 border-b">Besoins en Équipes</h4>
                             <div id="teamsRequirementDetails" class="space-y-3"></div>
@@ -1593,11 +2005,85 @@
             }
         }
 
+        // Function to update team statistics
+        async function updateTeamStats() {
+            try {
+                const statsBar = document.querySelector('.teams-stats-bar');
+                if (statsBar) statsBar.classList.add('teams-loading');
+
+                const totalTeamsCount = document.getElementById('totalTeamsCount');
+                const totalEquipmentCount = document.getElementById('totalEquipmentCount');
+                const totalBudget = document.getElementById('totalBudget');
+
+                if (!totalTeamsCount || !totalEquipmentCount || !totalBudget) return;
+
+                // Count total teams
+                const totalTeams = currentTeams ? currentTeams.length : 0;
+                totalTeamsCount.textContent = totalTeams;
+
+                // Count total equipment
+                let totalEquipment = 0;
+                Object.values(teamTemplates).forEach(template => {
+                    if (template.equipmentCategories) {
+                        Object.values(template.equipmentCategories).forEach(category => {
+                            if (category.items) totalEquipment += category.items.length;
+                        });
+                    } else if (template.equipment) {
+                        totalEquipment += template.equipment.length;
+                    }
+                });
+                totalEquipmentCount.textContent = totalEquipment;
+
+                // Calculate estimated budget
+                let estimatedBudget = 0;
+                Object.values(teamTemplates).forEach(template => {
+                    const roleIdMap = { 'Maçon': 'perMasonTeam', 'Réseau': 'perNetworkTeam', 'Intérieur': 'perInteriorTeam', 'Contrôleur': 'perController', 'Préparateur': 'perPreparateur', 'Livreur': 'perLivreur' };
+                    const roleId = roleIdMap[template.type] || `per${template.type?.replace(/\s+/g, '')}Team`;
+                    const config = (currentProject.staffConfig || {})[roleId] || { amount: template.costPerDay || 5000, mode: 'daily' };
+
+                    // Estimate based on current teams of this type
+                    const teamsOfType = currentTeams.filter(t => t.type === template.type);
+                    const dailyCost = config.amount * teamsOfType.length;
+
+                    // Rough estimate for project duration
+                    const duration = currentProject.duration || 180;
+                    estimatedBudget += dailyCost * duration;
+                });
+
+                totalBudget.textContent = new Intl.NumberFormat('fr-FR').format(estimatedBudget) + ' FCFA';
+
+                // Remove loading state
+                setTimeout(() => {
+                    if (statsBar) statsBar.classList.remove('teams-loading');
+                }, 300);
+
+            } catch (error) {
+                console.warn('Error updating team stats:', error);
+                const statsBar = document.querySelector('.teams-stats-bar');
+                if (statsBar) statsBar.classList.remove('teams-loading');
+            }
+        }
+
         async function renderTeamsTab() {
             const container = document.getElementById('teamTypesContainer');
             if (!container) return;
+
+            // Update statistics
+            await updateTeamStats();
+
             // Clear children safely
             while (container.firstChild) container.removeChild(container.firstChild);
+
+            // Check if we have any teams to display
+            const hasTeams = Object.keys(teamTemplates).length > 0;
+            const emptyState = document.getElementById('teamsEmptyState');
+
+            if (!hasTeams) {
+                if (emptyState) emptyState.style.display = 'block';
+                return;
+            } else {
+                if (emptyState) emptyState.style.display = 'none';
+            }
 
             // Update filters
             const typeFilter = document.getElementById('teamTypeFilter');
@@ -1606,7 +2092,7 @@
                 while (typeFilter.firstChild) typeFilter.removeChild(typeFilter.firstChild);
                 const defaultOption = document.createElement('option');
                 defaultOption.value = 'all';
-                defaultOption.textContent = 'Tous les types';
+                defaultOption.textContent = 'Tous les types d\'équipes';
                 typeFilter.appendChild(defaultOption);
                 Object.keys(teamTemplates).forEach(type => {
                     const option = document.createElement('option');
@@ -1623,53 +2109,104 @@
                 if (!template) continue;
                 if (selectedType === 'all' || selectedType === type) {
                     const card = document.createElement('div');
-                    card.className = 'bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300';
+                    card.className = 'team-config-card teams-card-enter';
 
-                    const roleIdMap = { 'Maçon': 'perMasonTeam', 'Réseau': 'perNetworkTeam', 'Intérieur': 'perInteriorTeam', 'Contrôleur': 'perController', 'Préparateur': 'perPreparateur', 'Livreur': 'perLivreur' };
-                    const roleId = roleIdMap[type] || `per${type.replace(/\s+/g, '')}Team`;
-                    const config = (currentProject.staffConfig || {})[roleId] || { amount: template.costPerDay || 5000, mode: 'daily' };
-
-                    const teamsOfType = currentTeams.filter(t => t.type === type);
-                    const currentCount = teamsOfType.length;
-                    const households = await HouseholdRepository.getAll();
-                    const totalHouses = households.length || 80000;
-                    const duration = currentProject.duration || 180;
-                    const requiredTeams = Math.ceil(totalHouses / (template.dailyCapacity * duration));
-                    const progress = requiredTeams > 0 ? Math.min(100, Math.round((currentCount / requiredTeams) * 100)) : 100;
-
-                    // Header
+                    // Enhanced Header with gradient background
                     const header = document.createElement('div');
-                    header.className = 'p-5 border-b border-gray-50 bg-gray-50/50';
+                    header.className = 'relative';
+                    header.style.cssText = 'background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); padding: 1.5rem; border-bottom: 2px solid #e2e8f0;';
+
                     const headerInner = document.createElement('div');
                     headerInner.className = 'flex justify-between items-start';
 
                     const left = document.createElement('div');
-                    left.className = 'flex items-center';
+                    left.className = 'flex items-center gap-4';
+
+                    // Enhanced avatar with better styling
                     const avatar = document.createElement('div');
-                    avatar.className = 'w-12 h-12 rounded-xl bg-white shadow-sm text-indigo-600 flex items-center justify-center mr-4 border border-indigo-50';
+                    avatar.className = 'relative';
+                    avatar.style.cssText = 'width: 3.5rem; height: 3.5rem; border-radius: 1rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);';
+
                     const icon = document.createElement('i');
                     icon.className = `fas ${type === 'Maçon' ? 'fa-hammer' : type === 'Électricien' ? 'fa-bolt' : type === 'Technicien Réseau' ? 'fa-network-wired' : type === 'Superviseur' ? 'fa-clipboard-check' : type === 'Chef de Projet' ? 'fa-project-diagram' : type === 'Préparateur' ? 'fa-boxes' : type === 'Livreur' ? 'fa-truck' : 'fa-users'} text-xl`;
                     avatar.appendChild(icon);
+
+                    // Status indicator
+                    const statusIndicator = document.createElement('div');
+                    statusIndicator.className = 'absolute -top-1 -right-1 w-4 h-4 rounded-full border-2 border-white';
+                    statusIndicator.style.cssText = `background: ${currentCount > 0 ? '#10b981' : '#f59e0b'};`;
+                    statusIndicator.title = currentCount > 0 ? 'Équipe active' : 'Équipe inactive';
+                    avatar.appendChild(statusIndicator);
+
                     const meta = document.createElement('div');
                     const title = document.createElement('h4');
-                    title.className = 'text-lg font-bold text-gray-900';
+                    title.className = 'text-xl font-bold text-gray-900 mb-1';
                     title.textContent = type;
+
                     const desc = document.createElement('p');
-                    desc.className = 'text-xs text-gray-500 line-clamp-1';
+                    desc.className = 'text-sm text-gray-600 mb-2';
                     desc.textContent = template.description || "Paramètres de l'équipe technique";
+
+                    // Stats badges
+                    const statsDiv = document.createElement('div');
+                    statsDiv.className = 'flex gap-2';
+
+                    const capacityBadge = document.createElement('span');
+                    capacityBadge.className = 'px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-semibold border border-blue-200';
+                    capacityBadge.innerHTML = `<i class="fas fa-tachometer-alt mr-1"></i>${template.dailyCapacity}/jour`;
+
+                    const countBadge = document.createElement('span');
+                    countBadge.className = `px-3 py-1 rounded-full text-xs font-semibold border ${currentCount > 0 ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-50 text-gray-600 border-gray-200'}`;
+                    countBadge.innerHTML = `<i class="fas fa-users mr-1"></i>${currentCount} équipe${currentCount > 1 ? 's' : ''}`;
+
+                    statsDiv.appendChild(capacityBadge);
+                    statsDiv.appendChild(countBadge);
+
                     meta.appendChild(title);
                     meta.appendChild(desc);
+                    meta.appendChild(statsDiv);
+
                     left.appendChild(avatar);
                     left.appendChild(meta);
 
                     const right = document.createElement('div');
-                    right.className = 'flex gap-1';
+                    right.className = 'flex gap-2';
+
+                    // Progress indicator
+                    if (requiredTeams > 0) {
+                        const progressContainer = document.createElement('div');
+                        progressContainer.className = 'text-right mr-4';
+
+                        const progressLabel = document.createElement('div');
+                        progressLabel.className = 'text-xs text-gray-500 mb-1';
+                        progressLabel.textContent = 'Progression';
+
+                        const progressBar = document.createElement('div');
+                        progressBar.className = 'w-20 h-2 bg-gray-200 rounded-full overflow-hidden';
+
+                        const progressFill = document.createElement('div');
+                        progressFill.className = `h-full transition-all duration-500 ${progress >= 80 ? 'bg-green-500' : progress >= 50 ? 'bg-yellow-500' : 'bg-red-500'}`;
+                        progressFill.style.cssText = `width: ${progress}%;`;
+
+                        progressBar.appendChild(progressFill);
+
+                        const progressText = document.createElement('div');
+                        progressText.className = 'text-xs font-semibold text-gray-700 mt-1';
+                        progressText.textContent = `${progress}%`;
+
+                        progressContainer.appendChild(progressLabel);
+                        progressContainer.appendChild(progressBar);
+                        progressContainer.appendChild(progressText);
+
+                        right.appendChild(progressContainer);
+                    }
+
                     const deleteBtn = document.createElement('button');
-                    deleteBtn.className = 'p-2 text-gray-400 hover:text-red-500 transition-colors';
+                    deleteBtn.className = 'p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all duration-200';
                     deleteBtn.title = `Supprimer le type ${type}`;
                     deleteBtn.addEventListener('click', () => deleteTeamType(type));
                     const delIcon = document.createElement('i');
-                    delIcon.className = 'fas fa-trash-alt text-xs';
+                    delIcon.className = 'fas fa-trash-alt';
                     deleteBtn.appendChild(delIcon);
                     right.appendChild(deleteBtn);
 
@@ -1677,39 +2214,60 @@
                     headerInner.appendChild(right);
                     header.appendChild(headerInner);
 
-                    // Body
+                    // Enhanced Body with better organization
                     const body = document.createElement('div');
-                    body.className = 'p-5 space-y-5';
+                    body.className = 'p-6';
 
-                    // Technical params
-                    const techBlock = document.createElement('div');
+                    // Technical Parameters Section
+                    const techSection = document.createElement('div');
+                    techSection.className = 'mb-6';
+
+                    const techHeader = document.createElement('div');
+                    techHeader.className = 'flex items-center gap-3 mb-4';
+
+                    const techIcon = document.createElement('div');
+                    techIcon.className = 'w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center';
+                    techIcon.innerHTML = '<i class="fas fa-cog text-blue-600"></i>';
+
                     const techTitle = document.createElement('h5');
-                    techTitle.className = 'text-[10px] font-bold text-indigo-600 uppercase tracking-wider mb-3 flex items-center';
-                    techTitle.innerHTML = '<i class="fas fa-cog mr-2"></i> Paramètres Techniques';
-                    techBlock.appendChild(techTitle);
+                    techTitle.className = 'text-sm font-bold text-gray-900 uppercase tracking-wide';
+                    techTitle.textContent = 'Paramètres Techniques';
+
+                    techHeader.appendChild(techIcon);
+                    techHeader.appendChild(techTitle);
+                    techSection.appendChild(techHeader);
+
                     const techGrid = document.createElement('div');
-                    techGrid.className = 'grid grid-cols-2 gap-4';
-                    const prodGroup = document.createElement('div');
-                    prodGroup.className = 'form-group mb-0';
+                    techGrid.className = 'grid grid-cols-1 md:grid-cols-2 gap-4';
+
+                    // Production capacity
+                    const prodCard = document.createElement('div');
+                    prodCard.className = 'bg-gray-50 rounded-lg p-4 border border-gray-200';
+
                     const prodLabel = document.createElement('label');
-                    prodLabel.className = 'text-[10px] font-semibold text-gray-400 uppercase';
+                    prodLabel.className = 'block text-xs font-semibold text-gray-500 uppercase mb-2';
                     prodLabel.textContent = 'Production / Jour';
+
                     const prodInput = document.createElement('input');
                     prodInput.type = 'number';
-                    prodInput.className = 'w-full p-2 text-sm bg-gray-50 border-gray-200 rounded mt-1';
+                    prodInput.className = 'w-full p-3 text-sm bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all';
                     prodInput.value = template.dailyCapacity;
                     prodInput.addEventListener('change', function () { updateTeamParam(type, 'daily', this.value); });
-                    prodGroup.appendChild(prodLabel);
-                    prodGroup.appendChild(prodInput);
-                    techGrid.appendChild(prodGroup);
 
-                    const vehicleGroup = document.createElement('div');
-                    vehicleGroup.className = 'form-group mb-0';
+                    prodCard.appendChild(prodLabel);
+                    prodCard.appendChild(prodInput);
+                    techGrid.appendChild(prodCard);
+
+                    // Vehicle assignment
+                    const vehicleCard = document.createElement('div');
+                    vehicleCard.className = 'bg-gray-50 rounded-lg p-4 border border-gray-200';
+
                     const vehicleLabel = document.createElement('label');
-                    vehicleLabel.className = 'text-[10px] font-semibold text-gray-400 uppercase';
+                    vehicleLabel.className = 'block text-xs font-semibold text-gray-500 uppercase mb-2';
                     vehicleLabel.textContent = 'Véhicule Assigné';
+
                     const vehicleSelect = document.createElement('select');
-                    vehicleSelect.className = 'w-full p-2 text-sm mt-1 bg-gray-50 border-gray-200 rounded';
+                    vehicleSelect.className = 'w-full p-3 text-sm bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all';
                     ['none', 'motorcycle', 'pickup', 'truck'].forEach(val => {
                         const opt = document.createElement('option');
                         opt.value = val;
@@ -1718,191 +2276,145 @@
                         vehicleSelect.appendChild(opt);
                     });
                     vehicleSelect.addEventListener('change', function () { updateTeamParam(type, 'vehicle', this.value); });
-                    vehicleGroup.appendChild(vehicleLabel);
-                    vehicleGroup.appendChild(vehicleSelect);
-                    techGrid.appendChild(vehicleGroup);
-                    techBlock.appendChild(techGrid);
-                    body.appendChild(techBlock);
 
-                    // Equipment block (categories)
-                    const equipBlock = document.createElement('div');
+                    vehicleCard.appendChild(vehicleLabel);
+                    vehicleCard.appendChild(vehicleSelect);
+                    techGrid.appendChild(vehicleCard);
+
+                    techSection.appendChild(techGrid);
+                    body.appendChild(techSection);
+
+                    // Equipment Section
+                    const equipSection = document.createElement('div');
+
+                    const equipHeader = document.createElement('div');
+                    equipHeader.className = 'flex items-center gap-3 mb-4';
+
+                    const equipIcon = document.createElement('div');
+                    equipIcon.className = 'w-8 h-8 rounded-lg bg-orange-50 flex items-center justify-center';
+                    equipIcon.innerHTML = '<i class="fas fa-tools text-orange-600"></i>';
+
                     const equipTitle = document.createElement('h5');
-                    equipTitle.className = 'text-[10px] font-bold text-orange-600 uppercase tracking-wider mb-3 flex items-center';
-                    equipTitle.innerHTML = '<i class="fas fa-tools mr-2"></i> Équipements par Catégorie';
-                    equipBlock.appendChild(equipTitle);
+                    equipTitle.className = 'text-sm font-bold text-gray-900 uppercase tracking-wide';
+                    equipTitle.textContent = 'Équipements par Catégorie';
+
+                    equipHeader.appendChild(equipIcon);
+                    equipHeader.appendChild(equipTitle);
+                    equipSection.appendChild(equipHeader);
 
                     if (template.equipmentCategories && Object.keys(template.equipmentCategories).length > 0) {
                         Object.entries(template.equipmentCategories).forEach(([category, data]) => {
-                            const categoryWrap = document.createElement('div');
-                            categoryWrap.className = 'mb-3 border border-gray-200 rounded-lg overflow-hidden shadow-sm';
+                            const categoryCard = document.createElement('div');
+                            categoryCard.className = 'mb-4 bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm';
 
                             const categoryHeader = document.createElement('div');
-                            categoryHeader.className = 'category-header bg-gray-50 px-3 py-2 flex items-center justify-between cursor-pointer hover:bg-gray-100 transition-colors';
+                            categoryHeader.className = 'bg-gradient-to-r from-gray-50 to-gray-100 px-4 py-3 flex items-center justify-between cursor-pointer hover:from-gray-100 hover:to-gray-200 transition-all duration-200';
                             categoryHeader.addEventListener('click', function () { toggleCategory(this); });
+
                             const leftHeader = document.createElement('div');
-                            leftHeader.className = 'flex items-center gap-2';
+                            leftHeader.className = 'flex items-center gap-3';
+
                             const iconSpan = document.createElement('span');
-                            iconSpan.className = 'text-base';
+                            iconSpan.className = 'text-lg';
                             iconSpan.textContent = data.icon || '🔧';
+
                             const catLabel = document.createElement('span');
-                            catLabel.className = 'text-[11px] font-bold text-gray-700 uppercase tracking-wide';
+                            catLabel.className = 'font-semibold text-gray-800';
                             catLabel.textContent = category;
+
                             const countBadge = document.createElement('span');
-                            countBadge.className = `text-[10px] px-2 py-0.5 rounded-full ${data.consumable ? 'bg-green-100 text-green-700 border-green-200' : 'bg-blue-100 text-blue-700 border-blue-200'} border font-medium`;
-                            countBadge.textContent = (data.items && data.items.length) || 0;
+                            countBadge.className = `px-2 py-1 rounded-full text-xs font-medium ${data.consumable ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-blue-100 text-blue-700 border border-blue-200'}`;
+                            countBadge.textContent = `${(data.items && data.items.length) || 0} items`;
+
                             leftHeader.appendChild(iconSpan);
                             leftHeader.appendChild(catLabel);
                             leftHeader.appendChild(countBadge);
 
                             const chevron = document.createElement('i');
-                            chevron.className = 'fas fa-chevron-down category-toggle-icon text-[10px] text-gray-400 transition-transform duration-200';
+                            chevron.className = 'fas fa-chevron-down category-toggle-icon text-gray-400 transition-transform duration-200';
 
                             categoryHeader.appendChild(leftHeader);
                             categoryHeader.appendChild(chevron);
 
                             const categoryContent = document.createElement('div');
-                            categoryContent.className = 'category-content bg-white equipment-list-container';
+                            categoryContent.className = 'category-content bg-gray-50 equipment-list-container border-t border-gray-200';
                             categoryContent.style.display = 'none';
 
                             if (data.items && data.items.length > 0) {
-                                const listWrap = document.createElement('div');
-                                listWrap.className = 'flex flex-col';
+                                const itemsGrid = document.createElement('div');
+                                itemsGrid.className = 'p-4 grid grid-cols-1 sm:grid-cols-2 gap-2';
+
                                 data.items.forEach(item => {
-                                    const itemRow = document.createElement('div');
-                                    itemRow.className = 'equipment-list-item group flex items-center justify-between py-1 px-3';
+                                    const itemCard = document.createElement('div');
+                                    itemCard.className = 'bg-white rounded-lg p-3 border border-gray-200 flex items-center justify-between group hover:shadow-md transition-all duration-200';
+
                                     const itemLabel = document.createElement('span');
-                                    itemLabel.className = 'text-[11px] text-gray-600 font-medium';
+                                    itemLabel.className = 'text-sm text-gray-700 font-medium';
                                     itemLabel.textContent = item;
-                                    const btn = document.createElement('button');
-                                    btn.className = 'p-1 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded transition-all';
-                                    btn.title = `Supprimer ${item}`;
-                                    btn.addEventListener('click', () => removeEquipmentFromCategory(type, category, item));
+
+                                    const removeBtn = document.createElement('button');
+                                    removeBtn.className = 'p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-all duration-200 opacity-0 group-hover:opacity-100';
+                                    removeBtn.title = `Supprimer ${item}`;
+                                    removeBtn.addEventListener('click', () => removeEquipmentFromCategory(type, category, item));
+
                                     const btnIcon = document.createElement('i');
-                                    btnIcon.className = 'fas fa-times text-[10px]';
-                                    btn.appendChild(btnIcon);
-                                    itemRow.appendChild(itemLabel);
-                                    itemRow.appendChild(btn);
-                                    listWrap.appendChild(itemRow);
+                                    btnIcon.className = 'fas fa-times text-xs';
+                                    removeBtn.appendChild(btnIcon);
+
+                                    itemCard.appendChild(itemLabel);
+                                    itemCard.appendChild(removeBtn);
+                                    itemsGrid.appendChild(itemCard);
                                 });
-                                categoryContent.appendChild(listWrap);
+
+                                categoryContent.appendChild(itemsGrid);
                             } else {
-                                const empty = document.createElement('div');
-                                empty.className = 'p-3 text-[10px] text-gray-400 italic text-center';
-                                empty.textContent = 'Aucun équipement';
-                                categoryContent.appendChild(empty);
+                                const emptyDiv = document.createElement('div');
+                                emptyDiv.className = 'p-6 text-center text-gray-500';
+                                emptyDiv.innerHTML = '<i class="fas fa-inbox text-2xl mb-2 block text-gray-300"></i><span class="text-sm">Aucun équipement dans cette catégorie</span>';
+                                categoryContent.appendChild(emptyDiv);
                             }
 
                             const footer = document.createElement('div');
-                            footer.className = 'p-2 border-t border-gray-50 bg-gray-50/50';
+                            footer.className = 'p-3 bg-gray-100 border-t border-gray-200';
                             const addBtn = document.createElement('button');
-                            addBtn.className = 'w-full py-1.5 text-[10px] text-indigo-600 font-bold border border-indigo-200 rounded hover:bg-indigo-50 transition-colors flex items-center justify-center gap-1';
+                            addBtn.className = 'w-full py-2 text-sm text-indigo-600 font-semibold border-2 border-indigo-200 rounded-lg hover:bg-indigo-50 hover:border-indigo-300 transition-all duration-200 flex items-center justify-center gap-2';
                             addBtn.innerHTML = '<i class="fas fa-plus"></i> Ajouter un équipement';
                             addBtn.addEventListener('click', () => openAddEquipmentModal(type, category));
                             footer.appendChild(addBtn);
 
-                            categoryWrap.appendChild(categoryHeader);
-                            categoryWrap.appendChild(categoryContent);
-                            categoryWrap.appendChild(footer);
-                            equipBlock.appendChild(categoryWrap);
+                            categoryCard.appendChild(categoryHeader);
+                            categoryCard.appendChild(categoryContent);
+                            categoryCard.appendChild(footer);
+                            equipSection.appendChild(categoryCard);
                         });
                     } else {
-                        // fallback
+                        // Fallback for old equipment structure
                         const oldEquipment = template.equipment || [];
-                        const wrap = document.createElement('div');
-                        wrap.className = 'flex flex-wrap gap-2 mb-3';
                         if (oldEquipment.length > 0) {
+                            const fallbackCard = document.createElement('div');
+                            fallbackCard.className = 'bg-gray-50 rounded-lg p-4 border border-gray-200';
+
+                            const fallbackTitle = document.createElement('h6');
+                            fallbackTitle.className = 'text-sm font-semibold text-gray-700 mb-3';
+                            fallbackTitle.textContent = 'Équipements (structure héritée)';
+
+                            const itemsGrid = document.createElement('div');
+                            itemsGrid.className = 'flex flex-wrap gap-2';
+
                             oldEquipment.forEach(item => {
-                                const span = document.createElement('span');
-                                span.className = 'inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-indigo-50 text-indigo-700 border border-indigo-100 group';
-                                span.textContent = item;
-                                const btn = document.createElement('button');
-                                btn.className = 'ml-1 text-indigo-400 hover:text-red-500';
-                                btn.addEventListener('click', () => removeTeamEquipment(type, item));
-                                span.appendChild(btn);
-                                wrap.appendChild(span);
+                                const itemTag = document.createElement('span');
+                                itemTag.className = 'inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-indigo-100 text-indigo-800 border border-indigo-200';
+                                itemTag.textContent = item;
+                                itemsGrid.appendChild(itemTag);
                             });
-                        } else {
-                            const none = document.createElement('span');
-                            none.className = 'text-[10px] text-gray-400 italic';
-                            none.textContent = 'Aucun équipement';
-                            wrap.appendChild(none);
+
+                            fallbackCard.appendChild(fallbackTitle);
+                            fallbackCard.appendChild(itemsGrid);
+                            equipSection.appendChild(fallbackCard);
                         }
-                        const addRow = document.createElement('div');
-                        addRow.className = 'flex gap-2';
-                        const input = document.createElement('input');
-                        input.type = 'text';
-                        input.id = `newEquip-${type.replace(/\s+/g, '')}`;
-                        input.placeholder = 'Ajouter un outil...';
-                        input.className = 'flex-1 p-1.5 text-[11px] border-gray-200 rounded bg-gray-50';
-                        const addButton = document.createElement('button');
-                        addButton.className = 'px-3 py-1 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded text-[11px] font-bold';
-                        addButton.innerHTML = '<i class="fas fa-plus"></i>';
-                        addButton.addEventListener('click', () => addTeamEquipment(type, input.id));
-                        addRow.appendChild(input);
-                        addRow.appendChild(addButton);
-                        equipBlock.appendChild(wrap);
-                        equipBlock.appendChild(addRow);
                     }
 
-                    body.appendChild(equipBlock);
-
-                    // Financial grid
-                    const financeBlock = document.createElement('div');
-                    const financeTitle = document.createElement('h5');
-                    financeTitle.className = 'text-[10px] font-bold text-green-600 uppercase tracking-wider mb-3 flex items-center';
-                    financeTitle.innerHTML = '<i class="fas fa-coins mr-2"></i> Grille Tarifaire';
-                    financeBlock.appendChild(financeTitle);
-                    const financeGrid = document.createElement('div');
-                    financeGrid.className = 'grid grid-cols-2 gap-4';
-                    const modeGroup = document.createElement('div');
-                    modeGroup.className = 'form-group mb-0';
-                    const modeLabel = document.createElement('label');
-                    modeLabel.className = 'text-[10px] font-semibold text-gray-400 uppercase';
-                    modeLabel.textContent = 'Mode de Paie';
-                    const modeSelect = document.createElement('select');
-                    modeSelect.className = 'w-full p-2 text-sm mt-1 bg-gray-50 border-gray-200 rounded';
-                    ['daily', 'monthly', 'task'].forEach(val => {
-                        const o = document.createElement('option');
-                        o.value = val;
-                        o.textContent = val === 'daily' ? 'Journalier' : val === 'monthly' ? 'Mensuel' : 'Tâche';
-                        if (config.mode === val) o.selected = true;
-                        modeSelect.appendChild(o);
-                    });
-                    modeSelect.addEventListener('change', function () { updateTeamFinancial(type, 'mode', this.value); });
-                    modeGroup.appendChild(modeLabel);
-                    modeGroup.appendChild(modeSelect);
-                    financeGrid.appendChild(modeGroup);
-
-                    const amountGroup = document.createElement('div');
-                    amountGroup.className = 'form-group mb-0';
-                    const amountLabel = document.createElement('label');
-                    amountLabel.className = 'text-[10px] font-semibold text-gray-400 uppercase';
-                    amountLabel.textContent = 'Tarif (FCFA)';
-                    const amountInput = document.createElement('input');
-                    amountInput.type = 'number';
-                    amountInput.className = 'w-full p-2 text-sm mt-1 bg-gray-50 border-gray-200 rounded font-mono font-bold';
-                    amountInput.value = config.amount;
-                    amountInput.addEventListener('change', function () { updateTeamFinancial(type, 'amount', this.value); });
-                    amountGroup.appendChild(amountLabel);
-                    amountGroup.appendChild(amountInput);
-                    financeGrid.appendChild(amountGroup);
-                    financeBlock.appendChild(financeGrid);
-                    body.appendChild(financeBlock);
-
-                    // Footer actions
-                    const footerGrid = document.createElement('div');
-                    footerGrid.className = 'grid grid-cols-2 gap-2 pt-2 border-t border-gray-50';
-                    const instancesBtn = document.createElement('button');
-                    instancesBtn.className = 'flex items-center justify-center py-2 px-3 bg-white border border-gray-200 text-gray-700 rounded-lg text-xs font-bold hover:bg-gray-50 transition-colors';
-                    instancesBtn.innerHTML = '<i class="fas fa-list-ul mr-2 text-gray-400"></i> Instances';
-                    instancesBtn.addEventListener('click', () => manageTeamInstances(type));
-                    const addInstBtn = document.createElement('button');
-                    addInstBtn.className = 'flex items-center justify-center py-2 px-3 bg-indigo-600 text-white rounded-lg text-xs font-bold hover:bg-indigo-700 shadow-sm transition-colors';
-                    addInstBtn.innerHTML = '<i class="fas fa-plus mr-2"></i> Ajouter';
-                    addInstBtn.addEventListener('click', () => addTeamInstance(type));
-                    footerGrid.appendChild(instancesBtn);
-                    footerGrid.appendChild(addInstBtn);
-                    body.appendChild(footerGrid);
+                    body.appendChild(equipSection);
 
                     card.appendChild(header);
                     card.appendChild(body);
@@ -3035,7 +3547,7 @@
                         content.className = 'collapsible-content hidden p-2 bg-white space-y-2';
 
                         const grid = document.createElement('div');
-                        grid.className = 'grid grid-cols-2 gap-2 text-[10px]';
+                        grid.className = 'flex flex-col gap-2 text-[10px]';
                         const rateDiv = document.createElement('div');
                         rateDiv.className = 'text-gray-400';
                         rateDiv.appendChild(document.createTextNode('Rendement: '));
