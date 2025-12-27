@@ -5,8 +5,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Saisie Terrain - Électrification de Masse</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+    <link rel="stylesheet" href="src/output.css">
+    <link rel="stylesheet" href="src/dark.css">
+    <script src="vendor/fontawesome/all.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body {
@@ -58,16 +60,41 @@
             height: 480px;
             border-radius: 8px;
         }
+
+        .progress-bar-width {
+            width: 0%;
+        }
+
+        .map-section-min-height {
+            min-height: 600px;
+        }
+
+        .household-map-min-height {
+            min-height: 500px;
+        }
+
+        .side-panel-height {
+            height: 600px;
+        }
     </style>
     <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="vendor/leaflet/leaflet.css" />
     <!-- Leaflet MarkerCluster CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+    <link rel="stylesheet" href="vendor/leaflet/MarkerCluster.css" />
+    <link rel="stylesheet" href="vendor/leaflet/MarkerCluster.Default.css" />
+
+    <!-- SweetAlert2 CSS -->
+    <link rel="stylesheet" href="vendor/sweetalert2/sweetalert2.min.css">
 
     <!-- Database & Excel Libraries -->
-    <script src="https://unpkg.com/dexie@3.2.4/dist/dexie.js"></script>
-    <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+    <script src="vendor/dexie/dexie.js"></script>
+    <script src="vendor/xlsx/xlsx.full.min.js"></script>
+
+    <!-- Security: DOMPurify for XSS protection -->
+    <script src="vendor/dompurify/purify.min.js"></script>
+
+    <!-- UX: SweetAlert2 for beautiful notifications -->
+    <script src="vendor/sweetalert2/sweetalert2.min.js"></script>
 </head>
 
 <body class="bg-gray-50">
@@ -87,38 +114,19 @@
                 </div>
                 <div class="flex items-center space-x-4">
                     <a href="index.html"
-                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-colors">
-                        <i class="fas fa-tachometer-alt mr-1"></i> Dashboard
-                    </a>
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20">Dashboard</a>
                     <a href="parametres.html"
-                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-colors">
-                        <i class="fas fa-cog mr-1"></i> Paramètres
-                    </a>
-                    <a href="aide.html"
-                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-colors">
-                        <i class="fas fa-question-circle mr-1"></i> Aide
-                    </a>
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20">Paramètres</a>
+                    <a href="terrain.html"
+                        class="px-3 py-2 rounded-md text-sm font-bold bg-white bg-opacity-20">Terrain</a>
                     <a href="charges.html"
-                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-colors">
-                        <i class="fas fa-coins mr-1"></i> Charges
-                    </a>
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20">Charges</a>
                     <a href="simulation.html"
-                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-colors">
-                        <i class="fas fa-calculator mr-1"></i> Simulation
-                    </a>
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20">Simulation</a>
                     <a href="rapports.html"
-                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-colors">
-                        <i class="fas fa-file-alt mr-1"></i> Rapports
-                    </a>
-                    <a href="terrain.html" class="px-3 py-2 rounded-md text-sm font-medium bg-white bg-opacity-20">
-                        <i class="fas fa-map-marker-alt mr-1"></i> Terrain
-                    </a>
-                    <!-- Reset all local data (localStorage + IndexedDB) -->
-                    <button id="clearAllButton" onclick="clearAllData()"
-                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-colors bg-red-600 bg-opacity-10 text-red-600"
-                        title="Supprimer toutes les données locales">
-                        <i class="fas fa-trash-alt mr-1"></i> Réinitialiser données
-                    </button>
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20">Rapports</a>
+                    <a href="aide.html"
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20">Aide</a>
                 </div>
             </div>
         </div>
@@ -145,12 +153,13 @@
                 <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:bg-gray-50 transition-colors"
                     id="dropZone">
                     <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-3"></i>
-                    <p class="text-sm text-gray-600 mb-2">Glissez votre fichier Excel ici ou</p>
-                    <input type="file" id="fileInput" accept=".xlsx, .xls, .csv" class="hidden" />
+                    <p class="text-sm text-gray-600 mb-2">Glissez votre fichier Excel ou Kobo (JSON) ici</p>
+                    <input type="file" id="fileInput" accept=".xlsx, .xls, .csv, .json, .geojson" class="hidden" />
                     <button onclick="document.getElementById('fileInput').click()"
                         class="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700 transition-colors">
                         Parcourir
                     </button>
+                    <p class="text-xs text-gray-400 mt-2">.xlsx, .json, .geojson acceptés</p>
                 </div>
                 <div id="importStatus" class="mt-4 hidden">
                     <div class="flex items-center justify-between text-sm mb-1">
@@ -158,7 +167,7 @@
                         <span class="font-medium text-indigo-600" id="importProgressText">0%</span>
                     </div>
                     <div class="w-full bg-gray-200 rounded-full h-2">
-                        <div class="bg-indigo-600 h-2 rounded-full" id="importProgressBar" style="width: 0%"></div>
+                        <div class="bg-indigo-600 h-2 rounded-full progress-bar-width" id="importProgressBar"></div>
                     </div>
                 </div>
                 <div class="mt-4 flex justify-between items-center text-sm text-gray-500">
@@ -169,126 +178,290 @@
                 </div>
             </div>
 
-            <!-- Sync KoboCollect -->
+            <!-- Synchro KoboCollect API -->
             <div class="bg-white rounded-lg card-shadow p-6">
-                <h3 class="text-lg font-semibold text-gray-800 mb-4">
-                    <i class="fas fa-sync text-blue-600 mr-2"></i>
-                    Synchronisation KoboCollect
+                <h3 class="text-lg font-semibold text-gray-800 mb-4 flex justify-between items-center">
+                    <span><i class="fas fa-sync text-blue-600 mr-2"></i> Synchro En Ligne</span>
+                    <button id="toggleKoboConfig" class="text-gray-400 hover:text-blue-600">
+                        <i class="fas fa-cog"></i>
+                    </button>
                 </h3>
 
                 <div class="space-y-4">
+                    <!-- Configuration (Masquée par défaut si configurée) -->
+                    <div id="koboConfigPanel"
+                        class="hidden bg-blue-50 p-4 rounded-lg border border-blue-100 text-sm space-y-3">
+                        <p class="font-medium text-blue-800 mb-2">Configuration API Kobo</p>
+                        <div>
+                            <label class="block text-xs text-gray-600 mb-1">Token API (Clé Secrète)</label>
+                            <input type="password" id="koboApiToken" value="2e3a09a8bff3fbb3a2510dbcba84486582897f3f"
+                                class="w-full border rounded px-2 py-1 text-sm focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-600 mb-1">ID Formulaire (Asset UID)</label>
+                            <input type="text" id="koboAssetUid" value="aEYZwPujJiFBTNb6mxMGCB"
+                                class="w-full border rounded px-2 py-1 text-sm focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <button id="saveKoboConfigBtn"
+                            class="w-full bg-blue-600 text-white py-1 rounded hover:bg-blue-700 text-xs mt-2">
+                            Enregistrer
+                        </button>
+                    </div>
+
+                    <!-- Status Synchro -->
                     <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                         <div>
-                            <p class="text-sm font-medium text-gray-700">Dernière synchro</p>
-                            <p class="text-xs text-gray-500" id="lastSyncTime">Jamais</p>
+                            <p class="text-sm font-medium text-gray-700">État Connexion</p>
+                            <p class="text-xs text-gray-500" id="koboConnectionStatus">Non configuré</p>
                         </div>
                         <div class="flex items-center">
-                            <span class="w-2 h-2 rounded-full bg-green-500 mr-2"></span>
-                            <span class="text-xs text-green-600 font-medium">Connecté</span>
+                            <span id="koboStatusDot" class="w-3 h-3 rounded-full bg-gray-300 mr-2"></span>
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-3">
-                        <button onclick="syncKoboData()"
-                            class="flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
+                    <!-- Actions -->
+                    <div class="grid grid-cols-1 gap-3">
+                        <button id="triggerKoboSyncBtn" disabled
+                            class="flex items-center justify-center px-4 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed">
                             <i class="fas fa-cloud-download-alt mr-2"></i>
-                            Sync API
+                            Lancer Synchronisation
                         </button>
-                        <button onclick="document.getElementById('koboFileInput').click()"
-                            class="flex items-center justify-center px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors">
-                            <i class="fas fa-file-import mr-2"></i>
-                            Import JSON
-                        </button>
-                        <input type="file" id="koboFileInput" accept=".json" class="hidden" />
                     </div>
 
+                    <div class="border-t pt-3 flex justify-between items-center">
+                        <p class="text-xs text-gray-500">Dernière mise à jour :</p>
+                        <p class="text-xs font-medium text-gray-700" id="lastKoboSyncTime">Jamais</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Backup Management -->
+            <div class="bg-white rounded-lg card-shadow p-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">
+                    <i class="fas fa-save text-green-600 mr-2"></i>
+                    Gestion des Sauvegardes
+                </h3>
+
+                <div class="space-y-4">
+                    <!-- Storage Location (Added V4.6) -->
+                    <div class="p-3 bg-indigo-50 rounded-lg border border-indigo-100">
+                        <p class="text-xs text-indigo-800 font-medium mb-2">Emplacement de sauvegarde</p>
+                        <div class="flex items-center justify-between">
+                            <div class="flex-1 mr-2 opacity-75" id="backupLocationDisplay">
+                                <span class="text-xs text-gray-500 italic"><i class="fas fa-download mr-1"></i>Dossier
+                                    Téléchargements (Par défaut)</span>
+                            </div>
+                            <button id="selectFolderBtn"
+                                class="text-xs bg-white text-indigo-600 border border-indigo-200 px-2 py-1 rounded hover:bg-indigo-50 transition-colors shadow-sm">
+                                <i class="fas fa-folder-open mr-1"></i>Choisir
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Auto-backup toggle -->
+                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div>
+                            <p class="text-sm font-medium text-gray-700">Sauvegarde automatique</p>
+                            <p class="text-xs text-gray-500">Export périodique vers Excel</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="autoBackupToggle" class="sr-only peer">
+                            <div
+                                class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600">
+                            </div>
+                        </label>
+                    </div>
+
+                    <!-- Backup interval -->
+                    <div class="p-3 bg-gray-50 rounded-lg">
+                        <label class="text-sm font-medium text-gray-700 block mb-2">
+                            Intervalle de sauvegarde
+                        </label>
+                        <select id="backupIntervalSelect"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
+                            <option value="1">Toutes les minutes</option>
+                            <option value="5">Toutes les 5 minutes</option>
+                            <option value="10">Toutes les 10 minutes</option>
+                            <option value="15">Toutes les 15 minutes</option>
+                            <option value="30">Toutes les 30 minutes</option>
+                            <option value="60">Toutes les 60 minutes</option>
+                        </select>
+                    </div>
+
+                    <!-- Last backup info -->
+                    <div class="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                        <p class="text-xs text-blue-600 font-medium mb-1">Dernière sauvegarde</p>
+                        <p class="text-sm text-blue-800" id="lastBackupTime">Jamais</p>
+                    </div>
+
+                    <!-- Manual backup buttons -->
+                    <div class="flex flex-wrap gap-2">
+                        <button id="importBtn"
+                            class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors flex items-center text-sm shadow-sm">
+                            <i class="fas fa-file-import mr-2"></i> Importer Excel/JSON
+                        </button>
+                        <button id="generateSampleBtn"
+                            class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center text-sm shadow-sm">
+                            <i class="fas fa-database mr-2"></i> Générer 80k Ménages
+                        </button>
+                        <button id="syncKoboBtn"
+                            class="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors flex items-center text-sm shadow-sm">
+                            <i class="fas fa-sync-alt mr-2 text-indigo-600"></i> Synchro Online
+                        </button>
+                    </div>
+
+                    <!-- Backup history -->
                     <div class="border-t pt-3">
-                        <p class="text-xs text-gray-500 mb-2">Données en attente de traitement</p>
-                        <div class="flex justify-between items-center text-sm">
-                            <span>Activités terrain</span>
-                            <span class="font-bold bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full"
-                                id="pendingActivitiesCount">0</span>
+                        <div class="flex justify-between items-center mb-2">
+                            <p class="text-xs text-gray-500">Historique des sauvegardes</p>
+                            <button id="clearHistoryBtn"
+                                class="text-xs text-red-500 hover:text-red-700 hover:underline">
+                                Effacer
+                            </button>
+                        </div>
+                        <div id="backupHistoryList" class="space-y-1 max-h-32 overflow-y-auto">
+                            <p class="text-xs text-gray-400 italic">Aucune sauvegarde</p>
                         </div>
                     </div>
                 </div>
             </div>
+
+            <input type="file" id="restoreFileInput" accept=".xlsx,.xls" class="hidden">
         </div>
 
-        <!-- Main Layout: Map & Management Panel -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8 h-[calc(100vh-200px)] min-h-[600px]">
+        <!-- Main Grid Layout -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
 
-            <!-- Left Column: Map (2/3 width) -->
-            <div class="lg:col-span-2 bg-white rounded-lg card-shadow flex flex-col h-full">
-                <div class="p-4 border-b flex justify-between items-center">
-                    <h3 class="text-lg font-semibold text-gray-800">
-                        <i class="fas fa-map text-indigo-600 mr-2"></i>
-                        Cartographie
-                    </h3>
-                    <div class="flex items-center gap-2">
-                        <button onclick="window.mapManager.fitDataBounds()"
-                            class="px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded text-sm text-gray-700">
-                            <i class="fas fa-compress-arrows-alt mr-1"></i> Recentrer
+            <!-- Map Section -->
+            <div class="lg:col-span-2 bg-white rounded-lg card-shadow p-4 flex flex-col map-section-min-height">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold text-gray-800 flex items-center">
+                        <i class="fas fa-map-marked-alt text-indigo-600 mr-2"></i> Cartographie
+                    </h2>
+                    <div class="flex items-center space-x-4">
+                        <span id="mapPointsCount"
+                            class="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-1 rounded">0 points</span>
+                        <button id="recenterMapBtn"
+                            class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-2 py-1 rounded transition-colors"
+                            title="Recentrer sur les données">
+                            <i class="fas fa-crosshairs mr-1"></i> Recentrer
                         </button>
-                        <label class="inline-flex items-center text-sm cursor-pointer">
-                            <input id="heatmapToggle" type="checkbox"
-                                class="form-checkbox h-4 w-4 text-indigo-600 mr-1" />
-                            <span>Heatmap</span>
+                        <label class="flex items-center cursor-pointer">
+                            <input type="checkbox" id="toggleHeatmap"
+                                class="form-checkbox h-4 w-4 text-indigo-600 rounded transition duration-150 ease-in-out">
+                            <span class="ml-2 text-sm text-gray-600">Heatmap</span>
                         </label>
                     </div>
                 </div>
-                <div class="flex-grow relative z-0">
-                    <div id="householdMap" class="w-full h-full rounded-b-lg"></div>
-                    <!-- Map status: points count -->
-                    <div class="absolute left-4 bottom-4 z-50 bg-white bg-opacity-90 rounded-full px-3 py-1 text-xs font-medium text-gray-700 shadow-md flex items-center gap-2" style="backdrop-filter: blur(4px);">
-                        <i class="fas fa-map-marker-alt text-indigo-600"></i>
-                        <span id="mapPointsCount">0 points affichés</span>
-                    </div>
+                <p class="text-xs text-gray-500 mb-2 italic px-1 pb-2 border-b border-gray-100">
+                    Cette carte interactive affiche la position géographique de tous les ménages importés.
+                    Cliquez sur un drapeau pour voir les détails ou modifier le statut.
+                </p>
+                <div id="householdMap"
+                    class="flex-grow w-full rounded-lg border border-gray-200 z-0 relative household-map-min-height">
                 </div>
             </div>
 
-            <!-- Right Column: Household Management (1/3 width) -->
-            <div class="bg-white rounded-lg card-shadow flex flex-col h-full overflow-hidden">
-                <!-- Header / Tabs -->
-                <div class="p-4 border-b bg-gray-50">
-                    <h3 class="text-lg font-semibold text-gray-800 mb-3">
-                        <i class="fas fa-users-cog text-blue-600 mr-2"></i>
-                        Gestion Ménages
-                    </h3>
+            <!-- Side Panel: Household Management -->
+            <div class="bg-white rounded-lg card-shadow flex flex-col side-panel-height">
+                <div class="p-4 border-b">
+                    <div class="flex justify-between items-center">
+                        <h2 class="text-lg font-bold text-gray-800 flex items-center">
+                            <i class="fas fa-users-cog text-indigo-600 mr-2"></i> Gestion Ménages
+                        </h2>
+                        <button onclick="exportToExcel()"
+                            class="text-green-600 hover:text-green-800 bg-green-50 hover:bg-green-100 px-3 py-1 rounded-full text-xs font-medium transition-colors border border-green-200"
+                            title="Exporter la liste actuelle">
+                            <i class="fas fa-file-excel mr-1"></i> Export
+                        </button>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1 italic">
+                        Liste complète des ménages. Utilisez la recherche ou les filtres pour trouver un client
+                        spécifique et mettre à jour son avancement.
+                    </p>
 
-                    <!-- Search -->
-                    <div class="relative mb-3">
-                        <input type="text" id="searchHousehold" placeholder="Rechercher (Nom, ID, Tél)..."
-                            class="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
-                        <i class="fas fa-search absolute left-3 top-2.5 text-gray-400"></i>
+                    <!-- Statistics Summary -->
+                    <div class="flex justify-between items-center mt-3 text-xs text-gray-500">
+                        <span id="totalMenagesDb">Chargement...</span>
                     </div>
 
-                    <!-- Filters -->
-                    <div class="flex gap-2 overflow-x-auto pb-2">
+                    <!-- Search Bar -->
+                    <div class="mt-3 relative">
+                        <input type="text" id="searchHousehold" placeholder="Rechercher (Nom, ID, Tél)..."
+                            class="w-full pl-10 pr-4 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <div class="absolute left-3 top-2.5 text-gray-400">
+                            <i class="fas fa-search"></i>
+                        </div>
+                    </div>
+
+                    <!-- Statistics Dashboard (Compact V4.5) -->
+                    <div
+                        class="flex justify-between items-center mt-3 mb-2 bg-indigo-50 px-3 py-2 rounded-lg border border-indigo-100 shadow-sm">
+                        <div class="text-center">
+                            <span class="block text-sm font-bold text-indigo-700 dark:text-indigo-400"
+                                id="statTotal">-</span>
+                            <span class="text-[9px] text-indigo-600 uppercase tracking-wider">Total</span>
+                        </div>
+                        <div class="h-6 w-px bg-indigo-200"></div>
+                        <div class="text-center">
+                            <span class="block text-sm font-bold text-gray-600" id="statAttente">-</span>
+                            <span class="text-[9px] text-gray-500 uppercase tracking-wider">Attente</span>
+                        </div>
+                        <div class="h-6 w-px bg-indigo-200"></div>
+                        <div class="text-center">
+                            <span class="block text-sm font-bold text-blue-600" id="statEnCours">-</span>
+                            <span class="text-[9px] text-blue-500 uppercase tracking-wider">En cours</span>
+                        </div>
+                        <div class="h-6 w-px bg-indigo-200"></div>
+                        <div class="text-center">
+                            <span class="block text-sm font-bold text-green-600" id="statTermine">-</span>
+                            <span class="text-[9px] text-green-500 uppercase tracking-wider">Fini</span>
+                        </div>
+                    </div>
+
+                    <!-- Filters (Caroussel) -->
+                    <div class="mt-3 overflow-x-auto whitespace-nowrap pb-2 scrollbar-hide flex space-x-2"
+                        id="filterContainer">
                         <button
-                            class="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs font-medium whitespace-nowrap filter-btn active"
-                            data-filter="all">Tous</button>
+                            class="filter-btn active bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-xs font-medium transition-colors"
+                            data-filter="all">
+                            <i class="fas fa-th-large mr-1"></i> Tous
+                        </button>
                         <button
-                            class="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-medium whitespace-nowrap filter-btn"
-                            data-filter="todo">À faire</button>
+                            class="filter-btn bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-xs font-medium transition-colors hover:bg-yellow-200"
+                            data-filter="debut">
+                            <i class="fas fa-flag mr-1"></i> Début
+                        </button>
                         <button
-                            class="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-medium whitespace-nowrap filter-btn"
-                            data-filter="done">Terminés</button>
+                            class="filter-btn bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-xs font-medium transition-colors hover:bg-orange-200"
+                            data-filter="travaux">
+                            <i class="fas fa-hard-hat mr-1"></i> Travaux
+                        </button>
                         <button
-                            class="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-medium whitespace-nowrap filter-btn"
-                            data-filter="issue">Problèmes</button>
+                            class="filter-btn bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-medium transition-colors hover:bg-purple-200"
+                            data-filter="controle">
+                            <i class="fas fa-clipboard-check mr-1"></i> Contrôle
+                        </button>
+                        <button
+                            class="filter-btn bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-medium transition-colors hover:bg-green-200"
+                            data-filter="conforme">
+                            <i class="fas fa-check-circle mr-1"></i> Conforme
+                        </button>
+                        <button
+                            class="filter-btn bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-medium transition-colors hover:bg-red-200"
+                            data-filter="bloque">
+                            <i class="fas fa-ban mr-1"></i> Bloqué
+                        </button>
                     </div>
                 </div>
 
-                <!-- Content Area -->
-                <div class="flex-grow overflow-y-auto p-0 relative" id="managementPanelContent">
-
+                <div class="flex-grow overflow-hidden relative">
                     <!-- View 1: List -->
-                    <div id="householdListView" class="block">
+                    <div id="householdListView" class="absolute inset-0 overflow-y-auto">
                         <div id="householdListContainer" class="divide-y divide-gray-100">
-                            <!-- Dynamic List Items -->
-                            <div class="p-8 text-center text-gray-500">
-                                <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
-                                <p>Chargement des données...</p>
+                            <!-- Items inserted by JS -->
+                            <div class="p-8 text-center text-gray-400 text-sm">
+                                <i class="fas fa-spinner fa-spin mr-2"></i> Chargement des données...
                             </div>
                         </div>
                     </div>
@@ -314,21 +487,70 @@
                                         id="detailPhone">77 000 00 00</span></p>
                             </div>
 
+                            <!-- Photos Gallery -->
+                            <div class="bg-gray-50 p-3 rounded-lg">
+                                <h4 class="text-xs font-bold text-gray-500 uppercase mb-2">Photos & Preuves</h4>
+                                <div id="detailPhotos" class="grid grid-cols-2 gap-2">
+                                    <p class="text-xs text-gray-400 italic col-span-2">Aucune photo disponible</p>
+                                </div>
+                            </div>
+
                             <!-- Status Actions -->
                             <div>
                                 <h4 class="text-xs font-bold text-gray-500 uppercase mb-2">Mise à jour Statut</h4>
-                                <div class="grid grid-cols-1 gap-2">
-                                    <button onclick="updateStatus('Terminé')"
-                                        class="w-full py-2 bg-green-100 text-green-700 rounded hover:bg-green-200 font-medium text-sm flex items-center justify-center">
-                                        <i class="fas fa-check-circle mr-2"></i> Marquer Terminé
+                                <div class="grid grid-cols-2 gap-2">
+                                    <!-- Attente démarrage -->
+                                    <button onclick="updateStatus('Attente démarrage')"
+                                        class="py-2 px-3 bg-yellow-200 text-yellow-800 rounded hover:bg-yellow-300 font-medium text-xs flex items-center justify-center">
+                                        <i class="fas fa-hourglass-start mr-1"></i> Attente démarrage
                                     </button>
-                                    <button onclick="updateStatus('En cours')"
-                                        class="w-full py-2 bg-orange-100 text-orange-700 rounded hover:bg-orange-200 font-medium text-sm flex items-center justify-center">
-                                        <i class="fas fa-hard-hat mr-2"></i> Marquer En Cours
+
+                                    <!-- Attente Maçon -->
+                                    <button onclick="updateStatus('Attente Maçon')"
+                                        class="py-2 px-3 bg-orange-200 text-orange-800 rounded hover:bg-orange-300 font-medium text-xs flex items-center justify-center">
+                                        <i class="fas fa-hammer mr-1"></i> Attente Maçon
                                     </button>
-                                    <button onclick="updateStatus('Problème')"
-                                        class="w-full py-2 bg-red-100 text-red-700 rounded hover:bg-red-200 font-medium text-sm flex items-center justify-center">
-                                        <i class="fas fa-exclamation-triangle mr-2"></i> Signaler Problème
+
+                                    <!-- Attente Branchement -->
+                                    <button onclick="updateStatus('Attente Branchement')"
+                                        class="py-2 px-3 bg-amber-200 text-amber-800 rounded hover:bg-amber-300 font-medium text-xs flex items-center justify-center">
+                                        <i class="fas fa-plug mr-1"></i> Attente Branchement
+                                    </button>
+
+                                    <!-- Attente électricien -->
+                                    <button onclick="updateStatus('Attente électricien')"
+                                        class="py-2 px-3 bg-blue-200 text-blue-800 rounded hover:bg-blue-300 font-medium text-xs flex items-center justify-center">
+                                        <i class="fas fa-bolt mr-1"></i> Attente électricien
+                                    </button>
+
+                                    <!-- Attente Controleur -->
+                                    <button onclick="updateStatus('Attente Controleur')"
+                                        class="py-2 px-3 bg-purple-200 text-purple-800 rounded hover:bg-purple-300 font-medium text-xs flex items-center justify-center">
+                                        <i class="fas fa-clipboard-check mr-1"></i> Attente Controleur
+                                    </button>
+
+                                    <!-- Attente électricien(X) -->
+                                    <button onclick="updateStatus('Attente électricien(X)')"
+                                        class="py-2 px-3 bg-pink-200 text-pink-800 rounded hover:bg-pink-300 font-medium text-xs flex items-center justify-center">
+                                        <i class="fas fa-tools mr-1"></i> Attente électricien(X)
+                                    </button>
+
+                                    <!-- Injoignable -->
+                                    <button onclick="updateStatus('Injoignable')"
+                                        class="py-2 px-3 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 font-medium text-xs flex items-center justify-center">
+                                        <i class="fas fa-phone-slash mr-1"></i> Injoignable
+                                    </button>
+
+                                    <!-- Conforme (vert - terminal) -->
+                                    <button onclick="updateStatus('Conforme')"
+                                        class="py-2 px-3 bg-green-200 text-green-800 rounded hover:bg-green-300 font-medium text-xs flex items-center justify-center">
+                                        <i class="fas fa-check-circle mr-1"></i> Conforme
+                                    </button>
+
+                                    <!-- Inéligible (rouge - terminal) -->
+                                    <button onclick="updateStatus('Inéligible')"
+                                        class="py-2 px-3 bg-red-200 text-red-800 rounded hover:bg-red-300 font-medium text-xs flex items-center justify-center">
+                                        <i class="fas fa-times-circle mr-1"></i> Inéligible
                                     </button>
                                 </div>
                             </div>
@@ -349,6 +571,10 @@
                                         <span class="block text-gray-500 text-xs">Date Prévue</span>
                                         <span class="font-medium" id="detailDatePrev">2024-01-01</span>
                                     </div>
+                                    <div class="col-span-2 mt-2 pt-2 border-t border-gray-100">
+                                        <span class="block text-gray-500 text-xs">Infos / Commentaires</span>
+                                        <span class="font-medium text-gray-800" id="detailInfosTech">-</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -358,293 +584,119 @@
             </div>
         </div>
 
-        <!-- Material Requests -->
-        <div class="bg-white rounded-lg card-shadow p-6 mb-8">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">
-                <i class="fas fa-truck text-purple-600 mr-2"></i>
-                Demandes d'Approvisionnement
-            </h3>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Type de matériel</label>
-                    <select id="materialType"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                        <option value="kits">Kits électriques</option>
-                        <option value="bricks">Briques</option>
-                        <option value="poles">Potelets</option>
-                        <option value="cables">Câbles</option>
-                        <option value="accessories">Accessoires</option>
-                        <option value="tools">Outils</option>
-                    </select>
-                </div>
 
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Quantité nécessaire</label>
-                    <input type="number" id="materialQuantity"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        min="1">
-                </div>
 
-                <div class="flex items-end">
-                    <button data-action="add-material-request"
-                        class="w-full bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
-                        <i class="fas fa-plus mr-2"></i>Ajouter Demande
-                    </button>
+
+        <!-- Footer -->
+        <footer class="bg-gray-800 text-white py-8 mt-12">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="text-center">
+                    <p class="text-sm">© 2024 - Système de Pilotage Électrification de Masse</p>
+                    <p class="text-xs text-gray-400 mt-2">Développé pour l'optimisation des projets d'électrification
+                    </p>
                 </div>
             </div>
+        </footer>
 
-            <div id="materialRequestsList" class="space-y-2">
-                <!-- Dynamic material requests will be inserted here -->
-            </div>
-        </div>
+        <!-- Leaflet JS -->
+        <script src="vendor/leaflet/leaflet.js"></script>
+        <!-- Leaflet MarkerCluster JS -->
+        <script src="vendor/leaflet/leaflet.markercluster.js"></script>
+        <!-- Leaflet Heatmap JS -->
+        <script src="vendor/leaflet/leaflet-heat.js"></script>
+        <!-- Configuration defaults (feature flags) -->
+        <script src="src/config/defaults.js"></script>
 
-        <!-- Offline Mode Indicator -->
-        <div class="bg-white rounded-lg card-shadow p-6">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">
-                <i class="fas fa-wifi text-green-600 mr-2"></i>
-                Mode Hors Ligne
-            </h3>
+        <!-- Conditional loader for legacy map implementation (only if APP_CONFIG requests 'legacy') -->
+        <script>
+            (function () {
+                try {
+                    if (window.APP_CONFIG && window.APP_CONFIG.mapImplementation === 'legacy') {
+                        var s = document.createElement('script');
+                        s.src = 'src/legacy/legacy_map.js';
+                        s.defer = true;
+                        document.head.appendChild(s);
+                        console.log('Legacy map implementation requested — loader appended');
+                    }
+                } catch (e) { console.warn('Legacy loader skipped', e); }
+            })();
+        </script>
+        <!-- Simulation Engine Shim -->
+        <script src="src/legacy-shims.js"></script>
 
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-gray-600">Statut de la connexion</p>
-                    <p class="text-sm text-gray-500">Les données sont sauvegardées localement et synchronisées
-                        automatiquement</p>
-                </div>
-                <div class="flex items-center space-x-4">
-                    <div class="flex items-center">
-                        <div class="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
-                        <span class="text-sm font-medium text-gray-700">En ligne</span>
-                    </div>
-                    <button data-action="sync-data"
-                        class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
-                        <i class="fas fa-sync mr-2"></i>Synchroniser
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Footer -->
-    <footer class="bg-gray-800 text-white py-8 mt-12">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="text-center">
-                <p class="text-sm">© 2024 - Système de Pilotage Électrification de Masse</p>
-                <p class="text-xs text-gray-400 mt-2">Développé pour l'optimisation des projets d'électrification</p>
-            </div>
-        </div>
-    </footer>
-
-    <!-- Leaflet JS -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <!-- Leaflet MarkerCluster JS -->
-    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-    <!-- Leaflet Heatmap JS -->
-    <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
-    <!-- Configuration defaults (feature flags) -->
-    <script src="src/config/defaults.js"></script>
-
-    <!-- Conditional loader for legacy map implementation (only if APP_CONFIG requests 'legacy') -->
-    <script>
-        (function(){
-            try {
-                if (window.APP_CONFIG && window.APP_CONFIG.mapImplementation === 'legacy') {
-                    var s = document.createElement('script');
-                    s.src = 'src/legacy/legacy_map.js';
-                    s.defer = true;
-                    document.head.appendChild(s);
-                    console.log('Legacy map implementation requested — loader appended');
-                }
-            } catch (e) { console.warn('Legacy loader skipped', e); }
-        })();
-    </script>
-
-    <!-- Simulation Engine -->
-    <script src="simulation_engine.js"></script>
-    <script src="main.js"></script>
-
-    <!-- Data Hub Modules -->
-    <script src="database.js"></script>
-    <script src="import_manager.js"></script>
-    <script src="sync_manager.js"></script>
-    <script src="dashboard_manager.js"></script>
-    <script src="map_manager.js"></script>
-    <script src="terrain_main.js"></script>
-    <!-- Edit Entry Modal -->
-    <div id="editEntryModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black bg-opacity-40">
-        <div class="bg-white rounded-lg w-full max-w-2xl p-6 shadow-lg mx-4">
-            <div class="flex justify-between items-center mb-4">
-                <h4 class="text-lg font-semibold">Modifier la saisie</h4>
-                <button id="editModalClose" class="text-gray-500 hover:text-gray-800">✕</button>
-            </div>
-
-            <form id="editEntryForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <input type="hidden" id="edit_entryTimestamp" />
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Date</label>
-                    <input type="date" id="edit_inputDate" class="w-full px-3 py-2 border border-gray-300 rounded-md" />
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Équipe</label>
-                    <select id="edit_teamSelect" class="w-full px-3 py-2 border border-gray-300 rounded-md">
-                        <option value="">Sélectionner une équipe</option>
-                        <option value="prep-1">Préparateurs - Équipe 1</option>
-                        <option value="prep-2">Préparateurs - Équipe 2</option>
-                        <option value="delivery-1">Livraison - Équipe 1</option>
-                        <option value="delivery-2">Livraison - Équipe 2</option>
-                        <option value="mason-1">Maçons - Équipe 1</option>
-                        <option value="mason-2">Maçons - Équipe 2</option>
-                        <option value="network-1">Électriciens Réseau - Équipe 1</option>
-                        <option value="network-2">Électriciens Réseau - Équipe 2</option>
-                        <option value="interior-1">Électriciens Intérieur - Équipe 1</option>
-                        <option value="interior-2">Électriciens Intérieur - Équipe 2</option>
-                        <option value="control-1">Contrôleurs - Équipe 1</option>
-                    </select>
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Ménages (unités)</label>
-                    <input type="number" id="edit_unitsCompleted"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md" min="0" />
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Heures travaillées</label>
-                    <input type="number" id="edit_hoursWorked"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md" min="0" step="0.5" />
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Statut</label>
-                    <select id="edit_workStatus" class="w-full px-3 py-2 border border-gray-300 rounded-md">
-                        <option value="completed">Travail terminé</option>
-                        <option value="in-progress">Travail en cours</option>
-                        <option value="pending">En attente</option>
-                        <option value="blocked">Bloqué</option>
-                    </select>
-                </div>
-
-                <div class="md:col-span-2">
-                    <label class="block text-sm font-medium text-gray-700">Remarque</label>
-                    <textarea id="edit_remarkDescription" rows="3"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md"></textarea>
-                </div>
-
-                <div class="md:col-span-2 flex justify-end space-x-3 mt-2">
-                    <button type="button" id="editModalCancel" class="px-4 py-2 rounded border">Annuler</button>
-                    <button type="button" id="editModalSave"
-                        class="px-4 py-2 bg-indigo-600 text-white rounded">Enregistrer</button>
-                </div>
-            </form>
-        </div>
-    </div>
-    <!-- Delete Confirmation Modal -->
-    <div id="deleteConfirmModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black bg-opacity-40">
-        <div class="bg-white rounded-lg w-full max-w-md p-6 shadow-lg mx-4">
-            <div class="flex justify-between items-center mb-4">
-                <h4 class="text-lg font-semibold">Confirmer la suppression</h4>
-                <button id="deleteModalClose" class="text-gray-500 hover:text-gray-800">✕</button>
-            </div>
-
-            <p class="text-gray-700 mb-4">Voulez-vous vraiment supprimer cette saisie ? Cette action est irréversible.
-            </p>
-            <div class="flex justify-end space-x-3">
-                <button id="deleteModalCancel" class="px-4 py-2 rounded border">Annuler</button>
-                <button id="deleteModalConfirm" class="px-4 py-2 bg-red-600 text-white rounded">Supprimer</button>
-            </div>
-        </div>
-    </div>
-    <script>
-        // Safe map initialization wrapper and online/offline handling
-        // Note: Map is now initialized by MapManager in terrain_main.js
-
-        function updateOnlineStatus() {
-            const statusElement = document.querySelector('[data-action="sync-data"]');
-            const indicator = document.querySelector('.w-3.h-3');
-            if (!statusElement || !indicator) return;
-            if (navigator.onLine) {
-                indicator.className = 'w-3 h-3 bg-green-500 rounded-full mr-2';
-                statusElement.textContent = 'Synchroniser';
-                statusElement.disabled = false;
-            } else {
-                indicator.className = 'w-3 h-3 bg-red-500 rounded-full mr-2';
-                statusElement.textContent = 'Hors ligne';
-                statusElement.disabled = true;
-            }
-        }
-
-        window.addEventListener('online', updateOnlineStatus);
-        window.addEventListener('offline', updateOnlineStatus);
-
-        // Initialize terrain page
-        document.addEventListener('DOMContentLoaded', function () {
-            updateOnlineStatus();
-        });
-    </script>
-
-    <!-- ========================================
-         NOUVELLE ARCHITECTURE - Modules
+        <!-- ========================================
+         CORE ARCHITECTURE INITIALIZATION
          ======================================== -->
 
-    <!-- 1. Dexie.js (requis) -->
-    <script src="https://unpkg.com/dexie@3.2.4/dist/dexie.js"></script>
+        <!-- Shared Modules -->
+        <script src="src/shared/errors/DomainErrors.js"></script>
+        <script src="src/shared/constants/enums.js"></script>
 
-    <!-- 2. Shared - Erreurs et constantes -->
-    <script src="src/shared/errors/DomainErrors.js"></script>
-    <script src="src/shared/constants/enums.js"></script>
+        <!-- Domain Objects -->
+        <script src="src/domain/value-objects/Location.js"></script>
+        <script src="src/domain/value-objects/Cost.js"></script>
+        <script src="src/domain/value-objects/ProductivityRate.js"></script>
+        <script src="src/domain/entities/Entity.js"></script>
+        <script src="src/domain/entities/Household.js"></script>
+        <script src="src/domain/entities/Project.js"></script>
+        <script src="src/domain/entities/Team.js"></script>
+        <script src="src/domain/entities/Zone.js"></script>
 
-    <!-- 3. Infrastructure - Base -->
-    <script src="src/infrastructure/events/EventBus.js"></script>
-    <script src="src/infrastructure/logging/Logger.js"></script>
-    <script src="src/infrastructure/errors/ErrorHandler.js"></script>
-    <script src="src/infrastructure/monitoring/MetricsService.js"></script>
+        <!-- Services & Infrastructure -->
+        <script src="src/infrastructure/events/EventBus.js"></script>
+        <script src="src/infrastructure/logging/Logger.js"></script>
+        <script src="src/infrastructure/errors/ErrorHandler.js"></script>
+        <script src="src/infrastructure/monitoring/MetricsService.js"></script>
+        <script src="src/infrastructure/sync/SyncService.js"></script>
+        <script src="src/infrastructure/backup/BackupService.js"></script>
+        <script src="src/infrastructure/backup/RestoreService.js"></script>
+        <script src="src/infrastructure/migrations/DataStructureGenerator.js"></script>
+        <script src="src/infrastructure/migrations/MigrationService.js"></script>
 
-    <!-- 4. Domain - Entité de base -->
-    <script src="src/domain/entities/Entity.js"></script>
+        <!-- Repositories -->
+        <script src="src/infrastructure/repositories/ProjectRepository.js"></script>
+        <script src="src/infrastructure/repositories/HouseholdRepository.js"></script>
+        <script src="src/infrastructure/repositories/TeamRepository.js"></script>
+        <script src="src/infrastructure/repositories/ZoneRepository.js"></script>
 
-    <!-- 5. Domain - Value Objects -->
-    <script src="src/domain/value-objects/Location.js"></script>
-    <script src="src/domain/value-objects/Cost.js"></script>
-    <script src="src/domain/value-objects/ProductivityRate.js"></script>
+        <!-- Application Services -->
+        <script src="src/application/services/HouseholdService.js"></script>
+        <script src="src/application/services/ProjectService.js"></script>
+        <script src="src/application/state/ProjectStore.js"></script>
+        <script src="src/application/state/StoreRegistry.js"></script>
 
-    <!-- 6. Domain - Entités -->
-    <script src="src/domain/entities/Household.js"></script>
-    <script src="src/domain/entities/Team.js"></script>
-    <script src="src/domain/entities/Zone.js"></script>
-    <script src="src/domain/entities/Project.js"></script>
+        <!-- Domain Services (Calculations) -->
+        <script src="src/domain/services/ResourceAllocationService.js"></script>
+        <script src="src/domain/services/CostCalculationService.js"></script>
 
-    <!-- 7. Domain - Services -->
-    <script src="src/domain/services/ResourceAllocationService.js"></script>
-    <script src="src/domain/services/CostCalculationService.js"></script>
-    <script src="src/domain/services/SimulationEngine.js"></script>
-    <script src="src/domain/services/OptimizationStrategies.js"></script>
+        <!-- App Initialization (Wires everything together) -->
+        <script src="src/init.js"></script>
 
-    <!-- 8. Infrastructure - Repositories -->
-    <script src="src/infrastructure/repositories/ProjectRepository.js"></script>
-    <script src="src/infrastructure/repositories/HouseholdRepository.js"></script>
-    <script src="src/infrastructure/repositories/TeamRepository.js"></script>
-    <script src="src/infrastructure/repositories/ZoneRepository.js"></script>
+        <!-- Feature Scripts (depend on init.js) -->
+        <script src="map_manager.js"></script>
+        <script src="import_manager.js"></script>
+        <script src="src/infrastructure/external/KoboApiService.js"></script>
+        <script src="auto-start-backup-watcher.js"></script>
 
-    <!-- 9. Application - Services -->
-    <script src="src/application/services/ProjectService.js"></script>
-    <script src="src/application/services/HouseholdService.js"></script>
+        <!-- Page Controller -->
+        <script src="terrain_main.js"></script>
 
-    <!-- 10. Application - State Management -->
-    <script src="src/application/state/StoreRegistry.js"></script>
-    <script src="src/application/state/ProjectStore.js"></script>
-
-    <!-- 11. Initialisation -->
-    <script src="src/init.js"></script>
-
-    <!-- 12. Adaptateur Terrain -->
-    <script src="src/terrain-adapter.js"></script>
-
-    <!-- Migration helpers (dev) -->
-    <script src="migrations/migrate_menages_to_households.js"></script>
-
+        <!-- Edit Entry Modal (Legacy UI) -->
+        <div id="editEntryModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black bg-opacity-40">
+            <div class="bg-white rounded-lg w-full max-w-2xl p-6 shadow-lg mx-4">
+                <div class="flex justify-between items-center mb-4">
+                    <h4 class="text-lg font-semibold">Modifier la saisie</h4>
+                    <button onclick="document.getElementById('editEntryModal').classList.add('hidden')"
+                        class="text-gray-500 hover:text-gray-800">✕</button>
+                </div>
+                <p class="text-sm text-gray-500 text-center py-4">
+                    Pour modifier un ménage, veuillez utiliser les boutons de mise à jour rapide dans le panneau de
+                    détail.<br>
+                    L'édition complète sera disponible prochainement dans la nouvelle interface.
+                </p>
+            </div>
+        </div>
 </body>
 
 </html>

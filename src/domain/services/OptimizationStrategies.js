@@ -2,6 +2,19 @@
  * Stratégies d'optimisation pour l'allocation de ressources
  */
 
+// Wrap in IIFE to avoid leaking top-level declarations when loaded as <script>
+(function () {
+
+// Module-level TeamType resolution to support node tests without window globals
+let _TeamType;
+try {
+    if (typeof module !== 'undefined' && module.exports) {
+        _TeamType = require('../../shared/constants/enums').TeamType;
+    }
+} catch (e) {}
+
+const TeamTypeLocal = _TeamType;
+
 /**
  * Interface de base pour les stratégies d'optimisation
  */
@@ -271,14 +284,15 @@ class CostMinimizationStrategy extends OptimizationStrategy {
 
     getTeamCost(team) {
         // Coût estimé par équipe (à ajuster selon les données réelles)
+        const TT = TeamTypeLocal || TeamType;
         const baseCosts = {
-            [TeamType.PREPARATEURS]: 50000,
-            [TeamType.LIVRAISON]: 60000,
-            [TeamType.MACONS]: 80000,
-            [TeamType.RESEAU]: 90000,
-            [TeamType.INTERIEUR_TYPE1]: 70000,
-            [TeamType.INTERIEUR_TYPE2]: 75000,
-            [TeamType.CONTROLE]: 65000
+            [TT.PREPARATEURS]: 50000,
+            [TT.LIVRAISON]: 60000,
+            [TT.MACONS]: 80000,
+            [TT.RESEAU]: 90000,
+            [TT.INTERIEUR_TYPE1]: 70000,
+            [TT.INTERIEUR_TYPE2]: 75000,
+            [TT.CONTROLE]: 65000
         };
 
         return baseCosts[team.type] || 70000;
@@ -308,3 +322,5 @@ if (typeof module !== 'undefined' && module.exports) {
         CostMinimizationStrategy
     };
 }
+
+})();

@@ -4,47 +4,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Tableau de bord principal du système de pilotage d'électrification de masse">
-    <title>Pilotage Électrification de Masse - Dashboard Principal</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/3.0.3/plotly.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+    <title>Tableau de Bord - Électrification</title>
+    <link rel="stylesheet" href="src/output.css">
+    <link rel="stylesheet" href="src/dark.css">
+    <script src="vendor/fontawesome/all.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="vendor/dexie/dexie.js"></script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
         }
 
-        .gradient-bg {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        }
-
         .card-shadow {
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
 
-        .metric-card {
-            transition: transform 0.3s ease;
+        .kpi-card {
+            border-left: 4px solid #4f46e5;
+            transition: transform 0.2s;
         }
 
-        .metric-card:hover {
-            transform: translateY(-5px);
+        .kpi-card:hover {
+            transform: translateY(-2px);
         }
 
-        .pulse-animation {
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-
-            0%,
-            100% {
-                opacity: 1;
-            }
-
-            50% {
-                opacity: 0.7;
-            }
+        .gradient-bg {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
         }
     </style>
 </head>
@@ -59,444 +46,390 @@
                     <h1 class="text-xl font-bold">Électrification de Masse</h1>
                 </div>
                 <div class="flex items-center space-x-4">
-                    <a href="index.html" class="px-3 py-2 rounded-md text-sm font-medium bg-white bg-opacity-20">
-                        <i class="fas fa-tachometer-alt mr-1"></i> Dashboard
-                    </a>
+                    <a href="index.html"
+                        class="px-3 py-2 rounded-md text-sm font-bold bg-white bg-opacity-20 border-b-2 border-white">Dashboard</a>
                     <a href="parametres.html"
-                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-colors">
-                        <i class="fas fa-cog mr-1"></i> Paramètres
-                    </a>
-                    <a href="simulation.html"
-                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-colors">
-                        <i class="fas fa-calculator mr-1"></i> Simulation
-                    </a>
-                    <a href="rapports.html"
-                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-colors">
-                        <i class="fas fa-file-alt mr-1"></i> Rapports
-                    </a>
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20">Paramètres</a>
                     <a href="terrain.html"
-                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-colors">
-                        <i class="fas fa-map-marker-alt mr-1"></i> Terrain
-                    </a>
-                    <a href="aide.html"
-                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-colors">
-                        <i class="fas fa-question-circle mr-1"></i> Aide
-                    </a>
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20">Terrain</a>
                     <a href="charges.html"
-                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-colors">
-                        <i class="fas fa-coins mr-1"></i> Charges
-                    </a>
-                    <!-- Reset all local data (localStorage + IndexedDB) -->
-                    <button id="clearAllButton" onclick="clearAllData()"
-                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-colors bg-red-600 bg-opacity-10 text-red-600"
-                        title="Supprimer toutes les données locales">
-                        <i class="fas fa-trash-alt mr-1"></i> Réinitialiser données
-                    </button>
-                    <button data-action="manual-sync"
-                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-colors bg-green-600 bg-opacity-10 text-green-600"
-                        title="Sauvegarder maintenant">
-                        <i class="fas fa-save mr-1"></i> Sauvegarder
-                    </button>
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20">Charges</a>
+                    <a href="simulation.html"
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20">Simulation</a>
+                    <a href="rapports.html"
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20">Rapports</a>
+                    <a href="aide.html"
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20">Aide</a>
                 </div>
             </div>
         </div>
     </nav>
 
-    <!-- Main Content -->
+    <!-- Contenu Principal -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <!-- Alert Section -->
-        <div id="alertSection" class="mb-6">
-            <!-- Dynamic alerts will be inserted here -->
-        </div>
+        <h2 class="text-2xl font-bold text-gray-900 mb-6">
+            <i class="fas fa-tachometer-alt text-indigo-600 mr-3"></i> Tableau de Bord
+        </h2>
 
-        <!-- Filters Bar -->
-        <div class="bg-white rounded-lg card-shadow p-4 mb-6">
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <!-- Filtre Région -->
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                        <i class="fas fa-map-marker-alt text-indigo-600 mr-1"></i> Région
-                    </label>
-                    <select id="filterRegion"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                        <option value="">Toutes les régions</option>
-                        <!-- Dynamically populated -->
-                    </select>
-                </div>
+        <!-- Filtres et Alertes -->
+        <div class="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div class="flex items-center space-x-4">
+                <label for="dashboardPeriod" class="text-sm font-semibold text-gray-700">Période:</label>
+                <select id="dashboardPeriod"
+                    class="px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="all">Tout le projet</option>
+                    <option value="month">Ce mois</option>
+                    <option value="week">Cette semaine</option>
+                </select>
+            </div>
 
-                <!-- Filtre Équipe -->
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                        <i class="fas fa-users text-green-600 mr-1"></i> Type d'équipe
-                    </label>
-                    <select id="filterTeam"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                        <option value="">Tous les métiers</option>
-                        <option value="preparateurs">Préparateurs</option>
-                        <option value="livraison">Livraison</option>
-                        <option value="macons">Maçons</option>
-                        <option value="reseau">Réseau</option>
-                        <option value="interieur">Intérieur</option>
-                        <option value="controle">Contrôle</option>
-                    </select>
-                </div>
-
-                <!-- Filtre Période -->
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                        <i class="fas fa-calendar-alt text-orange-600 mr-1"></i> Période
-                    </label>
-                    <select id="filterPeriod"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                        <option value="all">Depuis le début</option>
-                        <option value="week">7 derniers jours</option>
-                        <option value="month">30 derniers jours</option>
-                    </select>
-                </div>
-
-                <!-- Bouton Appliquer -->
-                <div class="flex items-end">
-                    <button id="applyFilters"
-                        class="w-full px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors">
-                        <i class="fas fa-filter mr-2"></i>Appliquer les filtres
-                    </button>
-                </div>
+            <div id="alertBadge"
+                class="hidden animate-pulse bg-red-100 text-red-700 px-4 py-2 rounded-full text-sm font-bold flex items-center shadow-sm cursor-pointer"
+                onclick="scrollToAlerts()">
+                <i class="fas fa-exclamation-triangle mr-2"></i> <span id="alertCount">0</span> Alertes Critiques
             </div>
         </div>
 
-        <!-- Key Metrics -->
+        <!-- KPIs -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <div class="metric-card bg-white rounded-lg card-shadow p-6">
-                <div class="flex items-center justify-between">
+            <div class="bg-white rounded-lg card-shadow p-6 kpi-card">
+                <div class="flex justify-between items-start">
                     <div>
-                        <p class="text-sm font-medium text-gray-600">Avancement Global</p>
-                        <p class="text-3xl font-bold text-blue-600" id="globalProgress">0%</p>
+                        <p class="text-sm text-gray-500 font-medium">Ménages Totaux</p>
+                        <p class="text-3xl font-bold text-indigo-600" id="totalHouseholds">-</p>
                     </div>
-                    <div class="p-3 rounded-full bg-blue-100">
-                        <i class="fas fa-chart-line text-blue-600 text-xl"></i>
-                    </div>
-                </div>
-                <div class="mt-4">
-                    <div class="w-full bg-gray-200 rounded-full h-2">
-                        <div id="progressBar" class="bg-blue-600 h-2 rounded-full transition-all duration-500"
-                            style="width: 0%"></div>
+                    <div class="bg-indigo-100 p-3 rounded-lg text-indigo-600">
+                        <i class="fas fa-users text-xl"></i>
                     </div>
                 </div>
             </div>
-
-            <div class="metric-card bg-white rounded-lg card-shadow p-6">
-                <div class="flex items-center justify-between">
+            <div class="bg-white rounded-lg card-shadow p-6 kpi-card border-green-500">
+                <div class="flex justify-between items-start">
                     <div>
-                        <p class="text-sm font-medium text-gray-600">Ménages Terminés</p>
-                        <p class="text-3xl font-bold text-green-600" id="completedHouses">0</p>
-                        <p class="text-xs text-gray-500">sur <span id="totalHouses">1000</span> ménages</p>
+                        <p class="text-sm text-gray-500 font-medium">Électrifiés</p>
+                        <p class="text-3xl font-bold text-green-600" id="completedHouseholds">-</p>
                     </div>
-                    <div class="p-3 rounded-full bg-green-100">
-                        <i class="fas fa-home text-green-600 text-xl"></i>
+                    <div class="bg-green-100 p-3 rounded-lg text-green-600">
+                        <i class="fas fa-check-circle text-xl"></i>
                     </div>
                 </div>
             </div>
-
-            <div class="metric-card bg-white rounded-lg card-shadow p-6">
-                <div class="flex items-center justify-between">
+            <div class="bg-white rounded-lg card-shadow p-6 kpi-card border-blue-500">
+                <div class="flex justify-between items-start">
                     <div>
-                        <p class="text-sm font-medium text-gray-600">Équipes Actives</p>
-                        <p class="text-3xl font-bold text-purple-600" id="activeTeams">0</p>
-                        <p class="text-xs text-gray-500">sur <span id="totalTeams">12</span> équipes</p>
+                        <p class="text-sm text-gray-500 font-medium">Avancement</p>
+                        <p class="text-3xl font-bold text-blue-600" id="progressRate">-</p>
                     </div>
-                    <div class="p-3 rounded-full bg-purple-100">
-                        <i class="fas fa-users text-purple-600 text-xl"></i>
+                    <div class="bg-blue-100 p-3 rounded-lg text-blue-600">
+                        <i class="fas fa-chart-line text-xl"></i>
                     </div>
                 </div>
             </div>
-
-            <div class="metric-card bg-white rounded-lg card-shadow p-6">
-                <div class="flex items-center justify-between">
+            <div class="bg-white rounded-lg card-shadow p-6 kpi-card border-yellow-500">
+                <div class="flex justify-between items-start">
                     <div>
-                        <p class="text-sm font-medium text-gray-600">Jours Restants</p>
-                        <p class="text-3xl font-bold text-orange-600" id="daysRemaining">0</p>
-                        <p class="text-xs text-gray-500">Date fin: <span id="endDate">--/--/----</span></p>
+                        <p class="text-sm text-gray-500 font-medium">Budget Restant</p>
+                        <p class="text-2xl font-bold text-yellow-600" id="remainingBudget">-</p>
                     </div>
-                    <div class="p-3 rounded-full bg-orange-100">
-                        <i class="fas fa-calendar-alt text-orange-600 text-xl"></i>
-                    </div>
-                </div>
-            </div>
-
-            <!-- KPI : Région la Plus Rapide -->
-            <div class="metric-card bg-white rounded-lg card-shadow p-6">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-sm font-medium text-gray-600">Région la Plus Rapide</p>
-                        <p class="text-2xl font-bold text-green-600" id="fastestRegion">—</p>
-                        <p class="text-xs text-gray-500" id="fastestRegionDuration">—</p>
-                    </div>
-                    <div class="p-3 rounded-full bg-green-100">
-                        <i class="fas fa-trophy text-green-600 text-xl"></i>
-                    </div>
-                </div>
-            </div>
-
-            <!-- KPI : Productivité Moyenne -->
-            <div class="metric-card bg-white rounded-lg card-shadow p-6">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-sm font-medium text-gray-600">Productivité Moyenne</p>
-                        <p class="text-2xl font-bold text-indigo-600" id="avgProductivity">0</p>
-                        <p class="text-xs text-gray-500">ménages/jour</p>
-                    </div>
-                    <div class="p-3 rounded-full bg-indigo-100">
-                        <i class="fas fa-tachometer-alt text-indigo-600 text-xl"></i>
+                    <div class="bg-yellow-100 p-3 rounded-lg text-yellow-600">
+                        <i class="fas fa-money-bill-wave text-xl"></i>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Charts Grid -->
+        <!-- Graphiques -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
             <div class="bg-white rounded-lg card-shadow p-6">
                 <h3 class="text-lg font-semibold text-gray-800 mb-4">
-                    <i class="fas fa-chart-bar text-blue-600 mr-2"></i>
-                    Avancement par Corps de Métier
+                    <i class="fas fa-chart-bar text-indigo-600 mr-2"></i> Avancement par Zone
                 </h3>
-                <div id="tradeProgressChart" style="height: 300px;"></div>
-            </div>
-
-            <div class="bg-white rounded-lg card-shadow p-6">
-                <h3 class="text-lg font-semibold text-gray-800 mb-4">
-                    <i class="fas fa-tachometer-alt text-green-600 mr-2"></i>
-                    Productivité Quotidienne
-                </h3>
-                <div id="productivityChart" style="height: 300px;"></div>
-            </div>
-        </div>
-
-        <!-- Stocks / WIP Chart -->
-        <div class="bg-white rounded-lg card-shadow p-6 mb-8">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">
-                <i class="fas fa-layer-group text-purple-600 mr-2"></i>
-                Stocks Tampons & Files d'Attente (WIP)
-            </h3>
-            <p class="text-sm text-gray-500 mb-4">Visualisez l'accumulation de travail entre chaque étape. Une courbe
-                qui monte indéfiniment indique un goulot d'étranglement à l'étape suivante.</p>
-            <div id="stocksChart" style="height: 350px;"></div>
-        </div>
-
-        <!-- Bottlenecks and Recommendations -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-            <div class="bg-white rounded-lg card-shadow p-6">
-                <h3 class="text-lg font-semibold text-gray-800 mb-4">
-                    <i class="fas fa-exclamation-triangle text-red-600 mr-2"></i>
-                    Goulots d'Étranglement Détectés
-                </h3>
-                <div id="bottlenecksList" class="space-y-3">
-                    <!-- Dynamic bottlenecks will be inserted here -->
+                <div class="h-64">
+                    <canvas id="zoneProgressChart"></canvas>
                 </div>
             </div>
-
             <div class="bg-white rounded-lg card-shadow p-6">
                 <h3 class="text-lg font-semibold text-gray-800 mb-4">
-                    <i class="fas fa-lightbulb text-yellow-600 mr-2"></i>
-                    Recommandations Automatiques
+                    <i class="fas fa-chart-pie text-indigo-600 mr-2"></i> Performance des Équipes
                 </h3>
-                <div id="recommendationsList" class="space-y-3">
-                    <!-- Dynamic recommendations will be inserted here -->
+                <div class="h-64">
+                    <canvas id="teamPerformanceChart"></canvas>
                 </div>
             </div>
         </div>
 
-        <!-- Resource Allocation -->
-        <div class="bg-white rounded-lg card-shadow p-6 mb-8">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">
-                <i class="fas fa-users-cog text-indigo-600 mr-2"></i>
-                Répartition des Ressources
-            </h3>
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Corps de Métier</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Équipes Actives</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Production Jour</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Progression</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Statut</th>
-                        </tr>
-                    </thead>
-                    <tbody id="resourceTable" class="bg-white divide-y divide-gray-200">
-                        <!-- Dynamic resource data will be inserted here -->
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- Regional Progress Table -->
-        <div class="bg-white rounded-lg card-shadow p-6 mb-8">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">
-                <i class="fas fa-map-marked-alt text-indigo-600 mr-2"></i>
-                Avancement par Région
-            </h3>
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Région</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Ménages</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Terminés</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">%
-                                Avancement</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Équipes</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Durée (jours)</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Statut</th>
-                        </tr>
-                    </thead>
-                    <tbody id="regionProgressTable" class="bg-white divide-y divide-gray-200">
-                        <!-- Dynamic content -->
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- Zone Progress Chart -->
-        <div class="bg-white rounded-lg card-shadow p-6 mb-8">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">
-                <i class="fas fa-chart-line text-indigo-600 mr-2"></i>
-                Courbes de Progression par Région
-            </h3>
-            <div id="zoneProgressChart" style="height: 400px;"></div>
-        </div>
-
-        <!-- Productivity Comparison Chart -->
-        <div class="bg-white rounded-lg card-shadow p-6 mb-8">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">
-                <i class="fas fa-chart-bar text-green-600 mr-2"></i>
-                Comparaison de Productivité par Région
-            </h3>
-            <div id="productivityComparisonChart" style="height: 350px;"></div>
-        </div>
-
-        <!-- Optimization Suggestions Panel -->
-        <div class="bg-white rounded-lg card-shadow p-6 mb-8">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">
-                <i class="fas fa-magic text-purple-600 mr-2"></i>
-                Suggestions d'Optimisation
-            </h3>
-            <div id="optimizationSuggestions" class="space-y-3">
-                <!-- Dynamic suggestions -->
-            </div>
-        </div>
-
-        <!-- Team Details: Subteams -->
-        <div class="bg-white rounded-lg card-shadow p-6 mb-8">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">
-                <i class="fas fa-sitemap text-indigo-600 mr-2"></i>
-                Détails des Équipes et Sous-Équipes
-            </h3>
-            <div id="teamDetailsContainer" class="space-y-6">
-                <!-- JS will render per-type cards with subteam tables -->
-            </div>
-        </div>
-
-        <!-- Project Timeline -->
+        <!-- Activités Récentes -->
         <div class="bg-white rounded-lg card-shadow p-6">
             <h3 class="text-lg font-semibold text-gray-800 mb-4">
-                <i class="fas fa-project-diagram text-purple-600 mr-2"></i>
-                Timeline du Projet
+                <i class="fas fa-history text-indigo-600 mr-2"></i> Activités Récentes
             </h3>
-            <div id="timelineChart" style="height: 400px;"></div>
+            <div id="recentActivities" class="divide-y divide-gray-200">
+                <!-- Rempli dynamiquement -->
+                <p class="text-gray-500 text-sm py-4 italic">Chargement des activités...</p>
+            </div>
+        </div>
+
+        <!-- Alertes Critiques (Détails) -->
+        <div id="alertsSection" class="hidden bg-white rounded-lg card-shadow p-6 mb-8 border-l-4 border-red-500">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center text-red-700">
+                <i class="fas fa-exclamation-circle mr-2"></i> Analyse des Alertes
+            </h3>
+            <div id="alertsList" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Rempli dynamiquement -->
+            </div>
         </div>
     </div>
 
-    <!-- Footer -->
-    <footer class="bg-gray-800 text-white py-8 mt-12">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="text-center">
-                <p class="text-sm">© 2024 - Système de Pilotage Électrification de Masse</p>
-                <p class="text-xs text-gray-400 mt-2">Développé pour l'optimisation des projets d'électrification</p>
-                <p class="text-xs text-gray-500 mt-1">Version 1.0.0 | Dernière mise à jour: <span
-                        id="appVersionDate"></span></p>
-                <p class="text-xs text-gray-400 mt-1">Dernière sauvegarde locale: <span id="lastSaved">—</span></p>
-            </div>
-        </div>
-    </footer>
-
-    <!-- ========================================
-         NOUVELLE ARCHITECTURE - Modules
-         ======================================== -->
-
-    <!-- 1. Dexie.js (requis) -->
-    <script src="https://unpkg.com/dexie@3.2.4/dist/dexie.js"></script>
-
-    <!-- 2. Shared - Erreurs et constantes -->
+    <!-- Shared Modules -->
     <script src="src/shared/errors/DomainErrors.js"></script>
     <script src="src/shared/constants/enums.js"></script>
 
-    <!-- 3. Infrastructure - Base -->
+    <!-- Domain Objects -->
+    <script src="src/domain/value-objects/Location.js"></script>
+    <script src="src/domain/value-objects/Cost.js"></script>
+    <script src="src/domain/value-objects/ProductivityRate.js"></script>
+    <script src="src/domain/entities/Entity.js"></script>
+    <script src="src/domain/entities/Household.js"></script>
+    <script src="src/domain/entities/Project.js"></script>
+    <script src="src/domain/entities/Team.js"></script>
+    <script src="src/domain/entities/Zone.js"></script>
+
+    <!-- Services & Infrastructure -->
     <script src="src/infrastructure/events/EventBus.js"></script>
     <script src="src/infrastructure/logging/Logger.js"></script>
     <script src="src/infrastructure/errors/ErrorHandler.js"></script>
     <script src="src/infrastructure/monitoring/MetricsService.js"></script>
+    <script src="src/infrastructure/sync/SyncService.js"></script>
+    <script src="src/infrastructure/backup/BackupService.js"></script>
+    <script src="src/infrastructure/backup/RestoreService.js"></script>
+    <script src="src/infrastructure/migrations/DataStructureGenerator.js"></script>
+    <script src="src/infrastructure/migrations/MigrationService.js"></script>
 
-    <!-- 4. Domain - Entité de base -->
-    <script src="src/domain/entities/Entity.js"></script>
-
-    <!-- 5. Domain - Value Objects -->
-    <script src="src/domain/value-objects/Location.js"></script>
-    <script src="src/domain/value-objects/Cost.js"></script>
-    <script src="src/domain/value-objects/ProductivityRate.js"></script>
-
-    <!-- 6. Domain - Entités -->
-    <script src="src/domain/entities/Household.js"></script>
-    <script src="src/domain/entities/Team.js"></script>
-    <script src="src/domain/entities/Zone.js"></script>
-    <script src="src/domain/entities/Project.js"></script>
-
-    <!-- 7. Domain - Services -->
-    <script src="src/domain/services/ResourceAllocationService.js"></script>
-    <script src="src/domain/services/CostCalculationService.js"></script>
-    <script src="src/domain/services/SimulationEngine.js"></script>
-    <script src="src/domain/services/OptimizationStrategies.js"></script>
-
-    <!-- 8. Infrastructure - Repositories -->
+    <!-- Repositories -->
     <script src="src/infrastructure/repositories/ProjectRepository.js"></script>
     <script src="src/infrastructure/repositories/HouseholdRepository.js"></script>
     <script src="src/infrastructure/repositories/TeamRepository.js"></script>
     <script src="src/infrastructure/repositories/ZoneRepository.js"></script>
 
-    <!-- 9. Application - Services -->
-    <script src="src/application/services/ProjectService.js"></script>
+    <!-- Application Services -->
     <script src="src/application/services/HouseholdService.js"></script>
-
-    <!-- 10. Application - State Management -->
-    <script src="src/application/state/StoreRegistry.js"></script>
+    <script src="src/application/services/ProjectService.js"></script>
     <script src="src/application/state/ProjectStore.js"></script>
+    <script src="src/application/state/StoreRegistry.js"></script>
 
-    <!-- 11. Initialisation -->
+    <!-- Domain Services (Calculations) -->
+    <script src="src/domain/services/ResourceAllocationService.js"></script>
+    <script src="src/domain/services/CostCalculationService.js"></script>
+
+    <!-- App Initialization (Wires everything together) -->
     <script src="src/init.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                // Attendre que Dexie soit ouvert via init.js
+                if (window.db && !window.db.isOpen()) {
+                    await window.db.open();
+                }
+                console.log('✅ Base de données ouverte pour le Dashboard');
 
-    <!-- 12. Pont de compatibilité -->
-    <script src="src/compatibility-bridge.js"></script>
+                const households = await HouseholdRepository.getAll();
+                const teams = await TeamRepository.getAll();
+                const project = await ProjectRepository.getCurrent();
 
-    <!-- ========================================
-         ANCIENS SCRIPTS (Compatibilité)
-         ======================================== -->
-    <!-- Simulation Engine -->
-    <script src="simulation_engine.js"></script>
-    <script src="resource_calculator.js"></script>
-    <script src="analytics.js"></script>
-    <script src="alerts.js"></script>
-    <script src="main.js"></script>
-    <script src="dashboard_filters.js"></script>
+                updateKPIs(households, project);
+                initCharts(households, teams);
+                loadRecentActivities(households);
+                checkCriticalAlerts(households, teams);
+
+                // Event listener pour le filtre de période
+                document.getElementById('dashboardPeriod').addEventListener('change', async (e) => {
+                    const period = e.target.value;
+                    let filtered = households;
+                    const now = new Date();
+
+                    if (period === 'month') {
+                        const monthAgo = new Date(now.setMonth(now.getMonth() - 1));
+                        filtered = households.filter(h => new Date(h.updatedAt || h.createdAt) >= monthAgo);
+                    } else if (period === 'week') {
+                        const weekAgo = new Date(now.setDate(now.getDate() - 7));
+                        filtered = households.filter(h => new Date(h.updatedAt || h.createdAt) >= weekAgo);
+                    }
+
+                    updateKPIs(filtered, project);
+                    initCharts(filtered, teams);
+                });
+
+            } catch (err) {
+                console.error('Erreur initialisation dashboard:', err);
+                document.getElementById('recentActivities').innerHTML = '<p class="text-red-500">Erreur lors du chargement des données.</p>';
+            }
+        });
+
+        function updateKPIs(households, project) {
+            const total = households.length;
+            const completed = households.filter(h => h.status === 'Conforme').length;
+            const progress = total > 0 ? (completed / total) * 100 : 0;
+            const budget = project.budget || 100000000;
+            const remainingBudget = budget - (budget * progress / 100);
+
+            document.getElementById('totalHouseholds').textContent = total;
+            document.getElementById('completedHouseholds').textContent = completed;
+            document.getElementById('progressRate').textContent = `${progress.toFixed(1)}%`;
+            document.getElementById('remainingBudget').textContent = `${Math.round(remainingBudget).toLocaleString()} F`;
+        }
+
+        let zoneChart = null;
+        let teamChart = null;
+
+        function initCharts(households, teams) {
+            // Zone Progress Chart
+            const zonesData = {};
+            households.forEach(h => {
+                const z = h.zone || h.zoneId || 'Inconnue';
+                if (!zonesData[z]) zonesData[z] = { total: 0, completed: 0 };
+                zonesData[z].total++;
+                if (h.status === 'Conforme') zonesData[z].completed++;
+            });
+
+            const zones = Object.keys(zonesData);
+            const ctx1 = document.getElementById('zoneProgressChart').getContext('2d');
+
+            if (zoneChart) zoneChart.destroy();
+            zoneChart = new Chart(ctx1, {
+                type: 'bar',
+                data: {
+                    labels: zones,
+                    datasets: [{
+                        label: 'Électrifiés',
+                        data: zones.map(z => zonesData[z].completed),
+                        backgroundColor: 'rgba(16, 185, 129, 0.6)',
+                        borderColor: 'rgb(16, 185, 129)',
+                        borderWidth: 1
+                    }, {
+                        label: 'Total',
+                        data: zones.map(z => zonesData[z].total),
+                        backgroundColor: 'rgba(79, 70, 229, 0.2)',
+                        borderColor: 'rgba(79, 70, 229, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+
+            // Team Performance
+            const teamsData = teams.map(t => {
+                const count = households.filter(h => h.teamId === t.id && h.status === 'Conforme').length;
+                return { name: t.name, count };
+            });
+
+            const ctx2 = document.getElementById('teamPerformanceChart').getContext('2d');
+
+            if (teamChart) teamChart.destroy();
+            teamChart = new Chart(ctx2, {
+                type: 'doughnut',
+                data: {
+                    labels: teamsData.map(d => d.name),
+                    datasets: [{
+                        data: teamsData.map(d => d.count),
+                        backgroundColor: ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom' } }
+                }
+            });
+        }
+
+        function loadRecentActivities(households) {
+            const container = document.getElementById('recentActivities');
+            container.innerHTML = '';
+
+            const recent = households
+                .filter(h => h.updatedAt)
+                .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
+                .slice(0, 5);
+
+            if (recent.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-sm py-4 italic">Aucune activité récente enregistrée.</p>';
+                return;
+            }
+
+            recent.forEach(h => {
+                const date = new Date(h.updatedAt).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+                const div = document.createElement('div');
+                div.className = 'py-3 flex items-center';
+                div.innerHTML = `
+                    <div class="bg-green-100 p-2 rounded-full text-green-600 mr-4">
+                        <i class="fas fa-check"></i>
+                    </div>
+                    <div class="flex-1">
+                        <p class="text-sm font-semibold text-gray-800">${h.owner?.name || 'Ménage ' + h.id}</p>
+                        <p class="text-xs text-gray-500">${h.status} • ${h.zone || 'Zone ' + h.zoneId}</p>
+                    </div>
+                    <div class="text-xs text-gray-400 font-medium">${date}</div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        async function checkCriticalAlerts(households, teams) {
+            const alerts = [];
+
+            // 1. Équipes en retard (Ex: plus de 50% de ménages non finis)
+            teams.forEach(team => {
+                const th = households.filter(h => h.teamId === team.id);
+                if (th.length > 0) {
+                    const pending = th.filter(h => h.status !== 'Conforme').length;
+                    if (pending / th.length > 0.8) {
+                        alerts.push({
+                            title: `Saturation Équipe: ${team.name}`,
+                            message: `${Math.round(pending / th.length * 100)}% de charge non traitée.`,
+                            type: 'error'
+                        });
+                    }
+                }
+            });
+
+            // 2. Zones à faible taux
+            const zones = [...new Set(households.map(h => h.zone).filter(Boolean))];
+            zones.forEach(zone => {
+                const zh = households.filter(h => h.zone === zone);
+                const rate = zh.filter(h => h.status === 'Conforme').length / zh.length;
+                if (rate < 0.3 && zh.length > 10) {
+                    alerts.push({
+                        title: `Retard Zone: ${zone}`,
+                        message: `Taux de conformité critique (${Math.round(rate * 100)}%).`,
+                        type: 'warning'
+                    });
+                }
+            });
+
+            if (alerts.length > 0) {
+                document.getElementById('alertBadge').classList.remove('hidden');
+                document.getElementById('alertCount').textContent = alerts.length;
+                document.getElementById('alertsSection').classList.remove('hidden');
+
+                const list = document.getElementById('alertsList');
+                list.innerHTML = alerts.map(a => `
+                    <div class="p-4 rounded-lg ${a.type === 'error' ? 'bg-red-50 text-red-800' : 'bg-orange-50 text-orange-800'} border">
+                        <p class="font-bold text-sm">${a.title}</p>
+                        <p class="text-xs opacity-80">${a.message}</p>
+                    </div>
+                `).join('');
+            }
+        }
+
+        function scrollToAlerts() {
+            document.getElementById('alertsSection').scrollIntoView({ behavior: 'smooth' });
+        }
+    </script>
+    <script src="src/ui/theme-toggle.js"></script>
 </body>
 
 </html>

@@ -60,6 +60,24 @@
         } catch (e) { console.error('Erreur initializeMapLegacy', e); }
     };
 
+    // Backwards-compatible aliases: some legacy code expects `initializeMap`
+    // and other short names. Create thin wrappers so tests and older modules
+    // still find the expected globals.
+    try {
+        if (typeof window.initializeMap === 'undefined') {
+            window.initializeMap = function () { return window.initializeMapLegacy && window.initializeMapLegacy.apply(null, arguments); };
+        }
+        if (typeof window.renderHouseholdsOnMap === 'undefined') {
+            window.renderHouseholdsOnMap = function () { return window.renderHouseholdsOnMapLegacy && window.renderHouseholdsOnMapLegacy.apply(null, arguments); };
+        }
+        if (typeof window.recreateClusterGroup === 'undefined') {
+            window.recreateClusterGroup = function () { return window.recreateClusterGroupLegacy && window.recreateClusterGroupLegacy.apply(null, arguments); };
+        }
+        if (typeof window.updateMapRendering === 'undefined') {
+            window.updateMapRendering = function () { return window.updateMapRenderingLegacy && window.updateMapRenderingLegacy.apply(null, arguments); };
+        }
+    } catch (e) { /* ignore aliasing failures */ }
+
     window.renderHouseholdsOnMapLegacy = function renderHouseholdsOnMapLegacy() {
         try {
             if (!window.__map) return;

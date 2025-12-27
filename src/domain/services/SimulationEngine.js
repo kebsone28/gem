@@ -2,6 +2,19 @@
  * Moteur de simulation avancé avec Monte Carlo
  * Simule l'exécution d'un projet avec prise en compte des aléas
  */
+// Wrap in IIFE to avoid leaking top-level declarations when loaded as <script>
+(function () {
+
+// Resolve ProductivityRate dependency in Node/tests and browser
+let _ProductivityRate;
+try {
+    if (typeof module !== 'undefined' && module.exports) {
+        _ProductivityRate = require('../value-objects/ProductivityRate');
+    }
+} catch (e) {}
+
+const ProductivityRateLocal = _ProductivityRate?.default || _ProductivityRate?.ProductivityRate || _ProductivityRate;
+
 class SimulationEngine {
     constructor(logger) {
         this.logger = logger || window.logger;
@@ -118,7 +131,7 @@ class SimulationEngine {
         for (const [teamType, teams] of zone.teams.entries()) {
             for (const team of teams) {
                 const baseRate = productivityRates[teamType] ||
-                    ProductivityRate.fromDefaults(teamType);
+                    (ProductivityRateLocal || ProductivityRate).fromDefaults(teamType);
 
                 // Appliquer les facteurs d'incertitude
                 const actualRate = this.applyUncertainty(
@@ -356,3 +369,5 @@ if (typeof window !== 'undefined') {
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = SimulationEngine;
 }
+
+})();

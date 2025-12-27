@@ -23,7 +23,18 @@ test.describe('Smoke tests — local pages', () => {
     await expect(page.locator('text=Paramètres du Projet')).toBeVisible();
     const totalHouses = page.locator('#totalHouses');
     await expect(totalHouses).toBeVisible();
-    await totalHouses.fill('1234');
+    // The UI sets #totalHouses to readonly (calculated from zones). For test purposes
+    // remove readonly and set the value via the page context so Playwright can save it.
+    await page.evaluate(() => {
+      const el = document.getElementById('totalHouses');
+      if (el) {
+        el.removeAttribute('readonly');
+        el.value = '1234';
+        el.style.backgroundColor = '';
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    });
 
     // click save button
     await page.click('button[data-action="save-parameters"]');

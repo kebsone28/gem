@@ -4,29 +4,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rapports et Export - Électrification de Masse</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Prefer CDN for performance; when packaging/offline we try local vendor fallback -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/3.0.3/plotly.min.js"></script>
-    <script>if (typeof Plotly === 'undefined') { var s=document.createElement('script'); s.src='vendor/plotly.min.js'; document.head.appendChild(s); }</script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
-    <script>if (typeof FontAwesome === 'undefined' && typeof window.FontAwesome === 'undefined') { var s=document.createElement('script'); s.src='vendor/fontawesome.min.js'; document.head.appendChild(s); }</script>
+    <title>Rapports - Électrification</title>
+    <link rel="stylesheet" href="src/output.css">
+    <link rel="stylesheet" href="src/dark.css">
+    <script src="vendor/fontawesome/all.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="vendor/dexie/dexie.js"></script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
         }
 
-        .gradient-bg {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        }
-
         .card-shadow {
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
 
-        .report-preview {
-            border-left: 4px solid #667eea;
+        .gradient-bg {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+        }
+
+        .font-display {
+            font-family: 'Inter', sans-serif;
+            font-weight: 700;
         }
     </style>
 </head>
@@ -37,43 +41,24 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between h-16">
                 <div class="flex items-center">
-                    <i class="fas fa-bolt text-2xl mr-3" aria-hidden="true"></i>
-                    <h1 class="text-xl font-bold">Électrification de Masse</h1>
+                    <i class="fas fa-bolt text-2xl mr-3"></i>
+                    <h1 class="text-xl font-bold">Électrification</h1>
                 </div>
                 <div class="flex items-center space-x-4">
                     <a href="index.html"
-                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-colors">
-                        <i class="fas fa-tachometer-alt mr-1" aria-hidden="true"></i> Dashboard
-                    </a>
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20">Dashboard</a>
                     <a href="parametres.html"
-                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-colors">
-                        <i class="fas fa-cog mr-1" aria-hidden="true"></i> Paramètres
-                    </a>
-                    <a href="simulation.html"
-                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-colors">
-                        <i class="fas fa-calculator mr-1" aria-hidden="true"></i> Simulation
-                    </a>
-                    <a href="rapports.html" class="px-3 py-2 rounded-md text-sm font-medium bg-white bg-opacity-20">
-                        <i class="fas fa-file-alt mr-1" aria-hidden="true"></i> Rapports
-                    </a>
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20">Paramètres</a>
                     <a href="terrain.html"
-                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-colors">
-                        <i class="fas fa-map-marker-alt mr-1" aria-hidden="true"></i> Terrain
-                    </a>
-                    <a href="aide.html"
-                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-colors">
-                        <i class="fas fa-question-circle mr-1" aria-hidden="true"></i> Aide
-                    </a>
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20">Terrain</a>
                     <a href="charges.html"
-                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-colors">
-                        <i class="fas fa-coins mr-1" aria-hidden="true"></i> Charges
-                    </a>
-                    <!-- Reset all local data (localStorage + IndexedDB) -->
-                    <button id="clearAllButton"
-                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-colors bg-red-600 bg-opacity-10 text-red-600"
-                        title="Supprimer toutes les données locales">
-                        <i class="fas fa-trash-alt mr-1"></i> Réinitialiser données
-                    </button>
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20">Charges</a>
+                    <a href="simulation.html"
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20">Simulation</a>
+                    <a href="rapports.html"
+                        class="px-3 py-2 rounded-md text-sm font-bold bg-white bg-opacity-20 border-b-2 border-white">Rapports</a>
+                    <a href="aide.html"
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20">Aide</a>
                 </div>
             </div>
         </div>
@@ -81,283 +66,313 @@
 
     <!-- Main Content -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div class="mb-8">
-            <h2 class="text-2xl font-bold text-gray-900 mb-2">
-                <i class="fas fa-file-alt text-indigo-600 mr-3"></i>
-                Rapports et Export
-            </h2>
-            <p class="text-gray-600">Générez et téléchargez vos rapports de projet automatiquement</p>
-        </div>
+        <h2 class="text-2xl font-bold text-gray-900 mb-6 font-display text-indigo-900">
+            <i class="fas fa-file-invoice text-indigo-600 mr-3"></i> Rapports de Performance
+        </h2>
 
-        <!-- Quick Report Generation -->
-        <div class="bg-white rounded-lg card-shadow p-6 mb-8">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">
-                <i class="fas fa-bolt text-yellow-600 mr-2"></i>
-                Génération Rapide de Rapport
-            </h3>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                <button data-report-type="complet"
-                    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg font-medium transition-colors text-left">
-                    <i class="fas fa-file-pdf mr-2"></i>
-                    <strong>Rapport Complet</strong><br>
-                    <small>Toutes les données du projet</small>
-                </button>
-
-                <button data-report-type="executif"
-                    class="bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg font-medium transition-colors text-left">
-                    <i class="fas fa-chart-line mr-2"></i>
-                    <strong>Rapport Exécutif</strong><br>
-                    <small>Synthèse pour la direction</small>
-                </button>
-
-                <button data-report-type="performance"
-                    class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-3 rounded-lg font-medium transition-colors text-left">
-                    <i class="fas fa-tachometer-alt mr-2"></i>
-                    <strong>Rapport Performance</strong><br>
-                    <small>Analyse des indicateurs</small>
-                </button>
-
-                <button data-report-type="risques"
-                    class="bg-orange-600 hover:bg-orange-700 text-white px-4 py-3 rounded-lg font-medium transition-colors text-left">
-                    <i class="fas fa-exclamation-triangle mr-2"></i>
-                    <strong>Rapport Risques</strong><br>
-                    <small>Analyse des risques</small>
-                </button>
-            </div>
-
-            <div class="flex space-x-4">
+        <!-- Filters Section -->
+        <div class="bg-white rounded-lg card-shadow p-6 mb-8 border border-gray-100">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Période du rapport</label>
+                    <label class="block text-xs font-bold text-gray-400 uppercase mb-1">Période</label>
                     <select id="reportPeriod"
-                        class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                        <option value="current">Mois en cours</option>
-                        <option value="last">Mois dernier</option>
-                        <option value="quarter">Trimestre</option>
-                        <option value="year">Année</option>
-                        <option value="project">Projet complet</option>
+                        class="w-full bg-gray-50 border border-gray-200 rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
+                        <option value="all">Tout le projet</option>
+                        <option value="month">Ce mois</option>
+                        <option value="week">Cette semaine</option>
                     </select>
                 </div>
-
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Format d'export</label>
-                    <select id="exportFormat"
-                        class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                        <option value="pdf">PDF</option>
-                        <option value="html">HTML</option>
-                        <option value="word">Word</option>
-                        <option value="excel">Excel</option>
+                    <label class="block text-xs font-bold text-gray-400 uppercase mb-1">Zone</label>
+                    <select id="reportZone"
+                        class="w-full bg-gray-50 border border-gray-200 rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
+                        <option value="all">Toutes les zones</option>
                     </select>
                 </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-400 uppercase mb-1">Status</label>
+                    <select id="reportStatus"
+                        class="w-full bg-gray-50 border border-gray-200 rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
+                        <option value="all">Tous les statuts</option>
+                        <option value="Attente démarrage">Attente démarrage</option>
+                        <option value="En cours">En cours</option>
+                        <option value="Conforme">Conforme</option>
+                        <option value="Non conforme">Non conforme</option>
+                    </select>
+                </div>
+                <button id="generateBtn"
+                    class="bg-indigo-600 text-white font-bold py-2 rounded-md hover:bg-indigo-700 transition shadow-md">
+                    Générer Rapport
+                </button>
             </div>
         </div>
 
-        <!-- Report Preview -->
-        <div class="bg-white rounded-lg card-shadow p-6 mb-8">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">
-                <i class="fas fa-eye text-indigo-600 mr-2"></i>
-                Aperçu du Rapport
-            </h3>
-
-            <div id="reportPreview" class="report-preview bg-gray-50 p-6 rounded-lg">
-                <div class="text-center text-gray-500 py-8">
-                    <i class="fas fa-file-alt text-4xl mb-4"></i>
-                    <p>Sélectionnez un type de rapport pour voir l'aperçu</p>
+        <div id="reportUI" class="hidden space-y-8">
+            <!-- Executive Summary -->
+            <div id="summarySection" class="bg-indigo-50 border border-indigo-100 rounded-lg p-6 flex items-start">
+                <div class="bg-indigo-600 p-3 rounded-full text-white mr-6 flex-shrink-0">
+                    <i class="fas fa-lightbulb text-xl"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-indigo-900 mb-2">Points Clés du Rapport</h3>
+                    <ul id="executiveSummaryList" class="space-y-1 text-indigo-800 text-sm list-disc pl-4">
+                        <!-- Filled by ReportService -->
+                    </ul>
                 </div>
             </div>
-        </div>
 
-        <!-- Key Metrics Summary -->
-        <div class="bg-white rounded-lg card-shadow p-6 mb-8">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">
-                <i class="fas fa-chart-bar text-green-600 mr-2"></i>
-                Résumé des Indicateurs Clés
-            </h3>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div class="text-center p-4 bg-blue-50 rounded-lg">
-                    <div class="text-3xl font-bold text-blue-600 mb-2" id="reportProgress">34.7%</div>
-                    <div class="text-sm text-gray-600">Avancement Global</div>
-                    <div class="text-xs text-gray-500 mt-1">Objectif: 100%</div>
-                    <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
-                        <div class="bg-blue-600 h-2 rounded-full" style="width: 34.7%"></div>
-                    </div>
+            <!-- Summary Stats -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div class="bg-white p-6 rounded-lg card-shadow border-b-4 border-indigo-500 text-center">
+                    <p class="text-xs font-bold text-gray-400 uppercase mb-1">Ménages</p>
+                    <p class="text-3xl font-bold text-indigo-600" id="statHouseholds">-</p>
                 </div>
-
-                <div class="text-center p-4 bg-green-50 rounded-lg">
-                    <div class="text-3xl font-bold text-green-600 mb-2" id="reportBudget">1.47M €</div>
-                    <div class="text-sm text-gray-600">Budget Consommé</div>
-                    <div class="text-xs text-gray-500 mt-1">Budget total: 4.25M €</div>
-                    <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
-                        <div class="bg-green-600 h-2 rounded-full" style="width: 34.7%"></div>
-                    </div>
+                <div class="bg-white p-6 rounded-lg card-shadow border-b-4 border-green-500 text-center">
+                    <p class="text-xs font-bold text-gray-400 uppercase mb-1">Électrifiés</p>
+                    <p class="text-3xl font-bold text-green-600" id="statCompleted">-</p>
                 </div>
-
-                <div class="text-center p-4 bg-purple-50 rounded-lg">
-                    <div class="text-3xl font-bold text-purple-600 mb-2" id="reportProductivity">42</div>
-                    <div class="text-sm text-gray-600">Ménages/Jour</div>
-                    <div class="text-xs text-gray-500 mt-1">Objectif: 45/jour</div>
-                    <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
-                        <div class="bg-purple-600 h-2 rounded-full" style="width: 93%"></div>
-                    </div>
+                <div class="bg-white p-6 rounded-lg card-shadow border-b-4 border-blue-500 text-center">
+                    <p class="text-xs font-bold text-gray-400 uppercase mb-1">Avancement</p>
+                    <p class="text-3xl font-bold text-blue-600" id="statProgress">-</p>
                 </div>
-
-                <div class="text-center p-4 bg-orange-50 rounded-lg">
-                    <div class="text-3xl font-bold text-orange-600 mb-2" id="reportRisks">3</div>
-                    <div class="text-sm text-gray-600">Risques Actifs</div>
-                    <div class="text-xs text-gray-500 mt-1">Dont 1 critique</div>
-                    <div class="flex justify-center mt-2 space-x-1">
-                        <div class="w-3 h-3 bg-red-500 rounded-full"></div>
-                        <div class="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                        <div class="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                    </div>
+                <div class="bg-white p-6 rounded-lg card-shadow border-b-4 border-yellow-500 text-center">
+                    <p class="text-xs font-bold text-gray-400 uppercase mb-1">Coût Estimé</p>
+                    <p class="text-2xl font-bold text-yellow-600" id="statCost">-</p>
                 </div>
             </div>
-        </div>
 
-        <!-- Charts Section -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-            <div class="bg-white rounded-lg card-shadow p-6">
-                <h3 class="text-lg font-semibold text-gray-800 mb-4">
-                    <i class="fas fa-chart-line text-blue-600 mr-2"></i>
-                    Évolution de l'Avancement
-                </h3>
-                <div id="progressChart" style="height: 300px;"></div>
-            </div>
-
-            <div class="bg-white rounded-lg card-shadow p-6">
-                <h3 class="text-lg font-semibold text-gray-800 mb-4">
-                    <i class="fas fa-chart-pie text-green-600 mr-2"></i>
-                    Répartition du Budget
-                </h3>
-                <div id="budgetChart" style="height: 300px;"></div>
-            </div>
-        </div>
-
-        <!-- Automated Reports Schedule -->
-        <div class="bg-white rounded-lg card-shadow p-6 mb-8">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">
-                <i class="fas fa-clock text-red-600 mr-2"></i>
-                Rapports Automatisés
-            </h3>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div class="border border-gray-200 rounded-lg p-4">
-                    <div class="flex items-center justify-between mb-3">
-                        <h4 class="font-medium text-gray-800">Rapport Hebdomadaire</h4>
-                        <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" class="sr-only peer" checked>
-                            <div
-                                class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600">
-                            </div>
-                        </label>
+            <!-- Table -->
+            <div class="bg-white rounded-lg card-shadow overflow-hidden border border-gray-100">
+                <div class="p-4 border-b bg-gray-50 flex justify-between items-center">
+                    <h3 class="font-bold text-gray-800">Détails des interventions</h3>
+                    <div class="space-x-2">
+                        <button id="exportPdf"
+                            class="text-xs font-bold bg-red-50 text-red-600 border border-red-200 px-4 py-1.5 rounded hover:bg-red-100 transition">PDF</button>
+                        <button id="exportExcel"
+                            class="text-xs font-bold bg-green-50 text-green-600 border border-green-200 px-4 py-1.5 rounded hover:bg-green-100 transition">EXCEL</button>
                     </div>
-                    <p class="text-sm text-gray-600 mb-2">Envoyé tous les lundis à 9h</p>
-                    <div class="text-xs text-gray-500">Destinataires: Direction, Chef de projet</div>
                 </div>
-
-                <div class="border border-gray-200 rounded-lg p-4">
-                    <div class="flex items-center justify-between mb-3">
-                        <h4 class="font-medium text-gray-800">Alertes Performance</h4>
-                        <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" class="sr-only peer" checked>
-                            <div
-                                class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600">
-                            </div>
-                        </label>
-                    </div>
-                    <p class="text-sm text-gray-600 mb-2">Envoyé en cas d'écarts</p>
-                    <div class="text-xs text-gray-500">Seuil: ±10% des objectifs</div>
-                </div>
-
-                <div class="border border-gray-200 rounded-lg p-4">
-                    <div class="flex items-center justify-between mb-3">
-                        <h4 class="font-medium text-gray-800">Rapport Mensuel</h4>
-                        <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" class="sr-only peer">
-                            <div
-                                class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600">
-                            </div>
-                        </label>
-                    </div>
-                    <p class="text-sm text-gray-600 mb-2">Envoyé le 1er de chaque mois</p>
-                    <div class="text-xs text-gray-500">Format: PDF détaillé</div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200" id="reportTable">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th
+                                    class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+                                    Chef de Ménage</th>
+                                <th
+                                    class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+                                    Zone</th>
+                                <th
+                                    class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+                                    Équipe</th>
+                                <th
+                                    class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+                                    Statut</th>
+                                <th
+                                    class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+                                    Date MàJ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="reportTableBody" class="bg-white divide-y divide-gray-100">
+                            <!-- Dynamically filled -->
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
 
-        <!-- Report History -->
-        <div class="bg-white rounded-lg card-shadow p-6">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">
-                <i class="fas fa-history text-blue-600 mr-2"></i>
-                Historique des Rapports
-            </h3>
-
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Date</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Type</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Période</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Format</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="reportHistory" class="bg-white divide-y divide-gray-200">
-                        <tr>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">23/11/2024</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Rapport Hebdomadaire</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Semaine 47</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">PDF</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                <button class="text-indigo-600 hover:text-indigo-900 mr-3">
-                                    <i class="fas fa-download mr-1"></i>Télécharger
-                                </button>
-                                <button class="text-green-600 hover:text-green-900">
-                                    <i class="fas fa-eye mr-1"></i>Voir
-                                </button>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">16/11/2024</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Rapport Exécutif</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Semaine 46</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">HTML</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                <button class="text-indigo-600 hover:text-indigo-900 mr-3">
-                                    <i class="fas fa-download mr-1"></i>Télécharger
-                                </button>
-                                <button class="text-green-600 hover:text-green-900">
-                                    <i class="fas fa-eye mr-1"></i>Voir
-                                </button>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+        <div id="emptyState"
+            class="py-20 flex flex-col items-center justify-center text-gray-400 bg-white rounded-lg card-shadow border-2 border-dashed border-gray-100">
+            <i class="fas fa-search text-6xl mb-4 text-indigo-100"></i>
+            <p class="text-lg">Utilisez les filtres pour générer un rapport détaillé.</p>
         </div>
     </div>
 
-    <!-- Footer -->
-    <footer class="bg-gray-800 text-white py-8 mt-12">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="text-center">
-                <p class="text-sm">© 2024 - Système de Pilotage Électrification de Masse</p>
-                <p class="text-xs text-gray-400 mt-2">Développé pour l'optimisation des projets d'électrification</p>
-            </div>
-        </div>
-    </footer>
+    <!-- Shared Modules -->
+    <script src="src/shared/errors/DomainErrors.js"></script>
+    <script src="src/shared/constants/enums.js"></script>
 
-    <!-- Simulation Engine -->
-    <script src="simulation_engine.js"></script>
-    <script src="main.js"></script>
-    <script src="reports.js"></script>
+    <!-- Domain Objects -->
+    <script src="src/domain/value-objects/Location.js"></script>
+    <script src="src/domain/value-objects/Cost.js"></script>
+    <script src="src/domain/value-objects/ProductivityRate.js"></script>
+    <script src="src/domain/entities/Entity.js"></script>
+    <script src="src/domain/entities/Household.js"></script>
+    <script src="src/domain/entities/Project.js"></script>
+    <script src="src/domain/entities/Team.js"></script>
+    <script src="src/domain/entities/Zone.js"></script>
+
+    <!-- Services & Infrastructure -->
+    <script src="src/infrastructure/events/EventBus.js"></script>
+    <script src="src/infrastructure/logging/Logger.js"></script>
+    <script src="src/infrastructure/errors/ErrorHandler.js"></script>
+    <script src="src/infrastructure/monitoring/MetricsService.js"></script>
+    <script src="src/infrastructure/sync/SyncService.js"></script>
+    <script src="src/infrastructure/backup/BackupService.js"></script>
+    <script src="src/infrastructure/backup/RestoreService.js"></script>
+    <script src="src/infrastructure/migrations/DataStructureGenerator.js"></script>
+    <script src="src/infrastructure/migrations/MigrationService.js"></script>
+
+    <!-- Repositories -->
+    <script src="src/infrastructure/repositories/ProjectRepository.js"></script>
+    <script src="src/infrastructure/repositories/HouseholdRepository.js"></script>
+    <script src="src/infrastructure/repositories/TeamRepository.js"></script>
+    <script src="src/infrastructure/repositories/ZoneRepository.js"></script>
+
+    <!-- Application Services -->
+    <script src="src/application/services/HouseholdService.js"></script>
+    <script src="src/application/services/ProjectService.js"></script>
+    <script src="src/application/state/ProjectStore.js"></script>
+    <script src="src/application/state/StoreRegistry.js"></script>
+
+    <!-- Domain Services (Calculations) -->
+    <script src="src/domain/services/ResourceAllocationService.js"></script>
+    <script src="src/domain/services/CostCalculationService.js"></script>
+
+    <!-- App Initialization (Wires everything together) -->
+    <script src="src/init.js"></script>
+    <script src="src/application/services/ReportService.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                if (window.db && !window.db.isOpen()) {
+                    await window.db.open();
+                }
+            } catch (e) { }
+
+            // Fill Zone filter
+            const households = await HouseholdRepository.getAll();
+            const zones = [...new Set(households.map(h => h.zone || h.zoneId).filter(Boolean))];
+            const zoneSelect = document.getElementById('reportZone');
+            zones.forEach(z => {
+                const opt = document.createElement('option');
+                opt.value = z;
+                opt.textContent = z;
+                zoneSelect.appendChild(opt);
+            });
+
+            document.getElementById('generateBtn').addEventListener('click', async () => {
+                const filters = {
+                    zone: document.getElementById('reportZone').value,
+                    status: document.getElementById('reportStatus').value
+                };
+
+                const teams = await TeamRepository.getAll();
+                const data = await ReportService.generateReport(filters);
+                const summary = ReportService.generateExecutiveSummary(data.households, teams);
+
+                renderReport(data, summary);
+            });
+        });
+
+        function renderReport(data, summary) {
+            document.getElementById('emptyState').classList.add('hidden');
+            document.getElementById('reportUI').classList.remove('hidden');
+
+            // Fill Summary
+            const summaryList = document.getElementById('executiveSummaryList');
+            summaryList.innerHTML = summary.length > 0 ?
+                summary.map(s => `<li>${s}</li>`).join('') :
+                '<li>Le rapport ne présente pas d\'anomalies majeures.</li>';
+
+            document.getElementById('statHouseholds').textContent = data.stats.totalHouseholds;
+            document.getElementById('statCompleted').textContent = data.stats.completedHouseholds;
+            document.getElementById('statProgress').textContent = data.stats.progressRate + '%';
+            document.getElementById('statCost').textContent = data.stats.totalCost.toLocaleString() + ' F';
+
+            const body = document.getElementById('reportTableBody');
+            body.innerHTML = '';
+
+            if (data.households.length === 0) {
+                body.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center italic text-gray-500">Aucune donnée correspondant aux filtres.</td></tr>';
+                return;
+            }
+
+            data.households.forEach(h => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-indigo-50 transition-colors cursor-default";
+                const date = h.updatedAt ? new Date(h.updatedAt).toLocaleDateString('fr-FR') : '-';
+                const statusClass = h.status === 'Conforme' ? 'bg-green-100 text-green-800' :
+                    h.status === 'En cours' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800';
+
+                tr.innerHTML = `
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-800">${h.owner?.name || 'Ménage ' + h.id}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${h.zoneName || '-'}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${h.teamName || '-'}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-3 py-1 inline-flex text-xs leading-5 font-bold rounded-full ${statusClass}">
+                                ${h.status}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400 font-medium">${date}</td>
+                    `;
+                body.appendChild(tr);
+            });
+        }
+
+        document.getElementById('exportPdf').onclick = async () => {
+            const choice = await Swal.fire({
+                title: 'Option d\'export PDF',
+                text: 'Que souhaitez-vous inclure ?',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Tout le rapport',
+                cancelButtonText: 'Uniquement tableau',
+                showDenyButton: true,
+                denyButtonText: 'Graphiques uniquement'
+            });
+
+            if (choice.isDismissed) return;
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            doc.setFontSize(18);
+            doc.text("Rapport d'Électrification", 14, 22);
+            doc.setFontSize(11);
+            doc.setTextColor(100);
+            doc.text(`Généré le: ${new Date().toLocaleString()}`, 14, 30);
+
+            if (choice.isConfirmed || choice.isDenied === false) { // Tout ou Tableau
+                doc.autoTable({
+                    html: '#reportTable',
+                    startY: 40,
+                    theme: 'striped',
+                    headStyles: { fillColor: [79, 70, 229] }
+                });
+            }
+
+            if (choice.isDenied) { // Graphiques uniquement
+                doc.text("Export des graphiques non implémenté (Canvas nécessaire).", 14, 40);
+            }
+
+            doc.save("rapport_electrification.pdf");
+
+            Swal.fire({
+                icon: 'success',
+                title: 'Export Réussi',
+                showConfirmButton: false,
+                timer: 1500
+            });
+        };
+
+        document.getElementById('exportExcel').onclick = async () => {
+            const choice = await Swal.fire({
+                title: 'Option d\'export Excel',
+                text: 'Souhaitez-vous inclure les statistiques de résumé ?',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Oui, tout',
+                cancelButtonText: 'Tableau uniquement'
+            });
+
+            if (choice.isDismissed) return;
+
+            const wb = XLSX.utils.table_to_book(document.getElementById("reportTable"));
+            XLSX.writeFile(wb, "rapport_electrification.xlsx");
+        };
+    </script>
+    <script src="src/ui/theme-toggle.js"></script>
 </body>
 
 </html>

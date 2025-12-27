@@ -4,359 +4,476 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Évaluation détaillée des charges du projet d'électrification">
-    <title>Évaluation des Charges - Électrification de Masse</title>
-
-    <!-- Tailwind -->
-    <script src="https://cdn.tailwindcss.com"></script>
-
-    <!-- FontAwesome -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
-
-    <!-- Google Font -->
+    <title>Gestion des Charges - Électrification</title>
+    <link rel="stylesheet" href="src/output.css">
+    <link rel="stylesheet" href="src/dark.css">
+    <script src="vendor/fontawesome/all.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
+    <script src="vendor/dexie/dexie.js"></script>
+    <script src="vendor/sweetalert2/sweetalert2.min.js"></script>
+    <link rel="stylesheet" href="vendor/sweetalert2/sweetalert2.min.css">
     <style>
         body {
             font-family: 'Inter', sans-serif;
         }
 
-        .gradient-bg {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        .card-shadow {
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
 
-        .card-shadow {
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+        .gradient-bg {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+        }
+
+        .currency-font {
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-weight: 600;
         }
     </style>
 </head>
 
 <body class="bg-gray-50">
-
     <!-- Navigation -->
-    <nav class="gradient-bg text-white shadow-lg sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto px-4">
-            <div class="flex justify-between h-16 items-center">
-
+    <nav class="gradient-bg text-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
                 <div class="flex items-center">
                     <i class="fas fa-bolt text-2xl mr-3"></i>
-                    <h1 class="text-xl font-bold">Électrification de Masse</h1>
+                    <h1 class="text-xl font-bold">Électrification</h1>
                 </div>
-
-                <div class="flex items-center space-x-4 text-sm font-medium">
-                    <a href="index.html" class="nav-btn"><i class="fas fa-tachometer-alt mr-1"></i>Dashboard</a>
-                    <a href="parametres.html" class="nav-btn"><i class="fas fa-cog mr-1"></i>Paramètres</a>
-                    <a href="simulation.html" class="nav-btn"><i class="fas fa-calculator mr-1"></i>Simulation</a>
-                    <a href="rapports.html" class="nav-btn"><i class="fas fa-file-alt mr-1"></i>Rapports</a>
-                    <a href="terrain.html" class="nav-btn"><i class="fas fa-map-marker-alt mr-1"></i>Terrain</a>
-                    <a href="aide.html" class="nav-btn"><i class="fas fa-question-circle mr-1"></i>Aide</a>
-                    <a href="charges.html" class="px-3 py-2 rounded bg-white bg-opacity-20">
-                        <i class="fas fa-coins mr-1"></i>Charges
-                    </a>
-                    <!-- Reset all local data (localStorage + IndexedDB) -->
-                    <button id="clearAllButton" onclick="clearAllData()"
-                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-colors bg-red-600 bg-opacity-10 text-red-600"
-                        title="Supprimer toutes les données locales">
-                        <i class="fas fa-trash-alt mr-1"></i> Réinitialiser données
-                    </button>
+                <div class="flex items-center space-x-4">
+                    <a href="index.html"
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20">Dashboard</a>
+                    <a href="parametres.html"
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20">Paramètres</a>
+                    <a href="terrain.html"
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20">Terrain</a>
+                    <a href="charges.html"
+                        class="px-3 py-2 rounded-md text-sm font-bold bg-white bg-opacity-20 border-b-2 border-white">Charges</a>
+                    <a href="simulation.html"
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20">Simulation</a>
+                    <a href="rapports.html"
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20">Rapports</a>
+                    <a href="aide.html"
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20">Aide</a>
                 </div>
             </div>
         </div>
     </nav>
 
-    <!-- Main -->
-    <main class="max-w-4xl mx-auto px-4 py-8">
-
-        <div id="loadingState" class="text-center py-8">
-            <i class="fas fa-spinner fa-spin text-2xl text-indigo-600 mb-2"></i>
-            <p class="text-gray-600">Calcul des charges en cours...</p>
-        </div>
-
-        <div id="errorState" class="hidden bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-            <i class="fas fa-exclamation-triangle text-red-500 text-2xl mb-2"></i>
-            <h3 class="text-lg font-semibold text-red-800 mb-2">Erreur de calcul</h3>
-            <p class="text-red-600 mb-4" id="errorMessage"></p>
-            <button onclick="location.reload()"
-                class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded">Réessayer</button>
-        </div>
-
-        <header class="mb-8">
-            <h2 class="text-2xl font-bold text-gray-900 flex items-center">
-                <i class="fas fa-coins text-yellow-600 mr-3"></i>
-                Évaluation des Charges du Projet
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold text-gray-900">
+                <i class="fas fa-file-invoice-dollar text-indigo-600 mr-3"></i> Bilan Financier Prévisionnel
             </h2>
-            <p class="text-gray-600 mt-1">
-                Synthèse détaillée de toutes les charges de main d'œuvre, par catégorie et poste.
-            </p>
-        </header>
-
-        <section id="chargesTableContainer" class="bg-white rounded-lg card-shadow p-6">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                <i class="fas fa-list-alt text-indigo-600 mr-2"></i>
-                Détail des Charges de Main d'Œuvre
-            </h3>
-
-            <div id="chargesTable"></div>
-        </section>
-    </main>
-
-    <!-- Footer -->
-    <footer class="bg-gray-800 text-white py-6 mt-12">
-        <div class="text-center text-sm">
-            © 2024 - Système de Pilotage Électrification de Masse<br>
-            <span class="text-gray-400 text-xs">Développé pour l'optimisation des projets d'électrification</span>
+            <div class="flex space-x-3">
+                <button onclick="refreshData()" class="text-gray-500 hover:text-indigo-600 transition-colors">
+                    <i class="fas fa-sync-alt"></i> Actualiser
+                </button>
+                <div class="text-sm bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full border border-indigo-100">
+                    <i class="fas fa-clock mr-1"></i> Durée estimée: <span id="projectDurationDisplay"
+                        class="font-bold">...</span> jours
+                </div>
+            </div>
         </div>
-    </footer>
 
-    <!-- External Scripts -->
-    <!-- Simulation Engine -->
-    <script src="simulation_engine.js"></script>
-    <script src="main.js"></script>
-    <script src="https://cdn.plot.ly/plotly-2.20.0.min.js"></script>
-    <!-- html2pdf for PDF export -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.3/html2pdf.bundle.min.js"></script>
+        <!-- Financial Overview Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <!-- Total Cost -->
+            <div class="bg-white rounded-lg card-shadow p-6 border-l-4 border-indigo-600">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Coût Total Estimé</p>
+                        <h3 class="text-2xl font-bold text-gray-800 mt-1 currency-font" id="totalCostDisplay">...</h3>
+                    </div>
+                    <div class="bg-indigo-100 p-2 rounded-lg text-indigo-600">
+                        <i class="fas fa-coins text-xl"></i>
+                    </div>
+                </div>
+                <div class="mt-4 flex items-center text-xs text-gray-500">
+                    <span id="costPerHouseDisplay" class="font-bold text-gray-700 mr-1">...</span> par ménage
+                </div>
+            </div>
 
-    <!-- Render Logic (robuste) -->
+            <!-- Labor Cost -->
+            <div class="bg-white rounded-lg card-shadow p-6 border-l-4 border-blue-500">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Main d'Œuvre</p>
+                        <h3 class="text-xl font-bold text-gray-800 mt-1 currency-font" id="laborCostDisplay">...</h3>
+                    </div>
+                    <div class="bg-blue-100 p-2 rounded-lg text-blue-600">
+                        <i class="fas fa-users-cog text-xl"></i>
+                    </div>
+                </div>
+                <div class="mt-4 text-xs text-gray-500">
+                    Technique & Support
+                </div>
+            </div>
+
+            <!-- Logistics Cost -->
+            <div class="bg-white rounded-lg card-shadow p-6 border-l-4 border-amber-500">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Logistique</p>
+                        <h3 class="text-xl font-bold text-gray-800 mt-1 currency-font" id="logisticsCostDisplay">...
+                        </h3>
+                    </div>
+                    <div class="bg-amber-100 p-2 rounded-lg text-amber-600">
+                        <i class="fas fa-truck-moving text-xl"></i>
+                    </div>
+                </div>
+                <div class="mt-4 text-xs text-gray-500">
+                    Véhicules & Carburant
+                </div>
+            </div>
+
+            <!-- Materials Cost -->
+            <div class="bg-white rounded-lg card-shadow p-6 border-l-4 border-emerald-500">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Matériaux</p>
+                        <h3 class="text-xl font-bold text-gray-800 mt-1 currency-font" id="materialsCostDisplay">...
+                        </h3>
+                    </div>
+                    <div class="bg-emerald-100 p-2 rounded-lg text-emerald-600">
+                        <i class="fas fa-boxes text-xl"></i>
+                    </div>
+                </div>
+                <div class="mt-4 text-xs text-gray-500">
+                    Kit de base & Réseau
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Cost Distribution Chart -->
+            <div class="lg:col-span-1 bg-white rounded-lg card-shadow p-6">
+                <h3 class="font-bold text-gray-800 mb-4 text-sm uppercase">Répartition des Coûts</h3>
+                <div class="h-64 relative">
+                    <canvas id="costDistributionChart"></canvas>
+                </div>
+                <div class="mt-4 space-y-2" id="chartLegend">
+                    <!-- Legend items filled by JS -->
+                </div>
+            </div>
+
+            <!-- Detailed Table -->
+            <div class="lg:col-span-2 bg-white rounded-lg card-shadow overflow-hidden">
+                <div class="bg-gray-50 px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                    <h3 class="font-semibold text-gray-800">Détail des Charges</h3>
+                    <button onclick="exportCostsExcel()"
+                        class="text-indigo-600 hover:text-indigo-800 text-sm font-medium">
+                        <i class="fas fa-download mr-1"></i> Exporter
+                    </button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th
+                                    class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                    Poste de Dépense</th>
+                                <th
+                                    class="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                    Quantité</th>
+                                <th
+                                    class="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                    Coût Unitaire / Note</th>
+                                <th
+                                    class="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                    Total (FCFA)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="detailedCostBody" class="bg-white divide-y divide-gray-200 text-sm">
+                            <tr>
+                                <td colspan="4" class="px-6 py-4 text-center text-gray-500">Calcul en cours...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Shared Modules -->
+    <script src="src/shared/errors/DomainErrors.js"></script>
+    <script src="src/shared/constants/enums.js"></script>
+
+    <!-- Domain Objects -->
+    <script src="src/domain/value-objects/Location.js"></script>
+    <script src="src/domain/value-objects/Cost.js"></script>
+    <script src="src/domain/value-objects/ProductivityRate.js"></script>
+    <script src="src/domain/entities/Entity.js"></script>
+    <script src="src/domain/entities/Household.js"></script>
+    <script src="src/domain/entities/Project.js"></script>
+    <script src="src/domain/entities/Team.js"></script>
+    <script src="src/domain/entities/Zone.js"></script>
+
+    <!-- Services & Infrastructure -->
+    <script src="src/infrastructure/events/EventBus.js"></script>
+    <script src="src/infrastructure/logging/Logger.js"></script>
+    <script src="src/infrastructure/errors/ErrorHandler.js"></script>
+    <script src="src/infrastructure/monitoring/MetricsService.js"></script>
+    <script src="src/infrastructure/sync/SyncService.js"></script>
+    <script src="src/infrastructure/backup/BackupService.js"></script>
+    <script src="src/infrastructure/backup/RestoreService.js"></script>
+    <script src="src/infrastructure/migrations/DataStructureGenerator.js"></script>
+    <script src="src/infrastructure/migrations/MigrationService.js"></script>
+
+    <!-- Repositories -->
+    <script src="src/infrastructure/repositories/ProjectRepository.js"></script>
+    <script src="src/infrastructure/repositories/HouseholdRepository.js"></script>
+    <script src="src/infrastructure/repositories/TeamRepository.js"></script>
+    <script src="src/infrastructure/repositories/ZoneRepository.js"></script>
+
+    <!-- Application Services -->
+    <script src="src/application/services/HouseholdService.js"></script>
+    <script src="src/application/services/ProjectService.js"></script>
+    <script src="src/application/state/ProjectStore.js"></script>
+    <script src="src/application/state/StoreRegistry.js"></script>
+
+    <!-- Domain Services (Calculations) -->
+    <script src="src/domain/services/ResourceAllocationService.js"></script>
+    <script src="src/domain/services/CostCalculationService.js"></script>
+
+    <!-- App Initialization -->
+    <script src="src/init.js"></script>
+
     <script>
+        // Formatting utilities
+        const formatMoney = (amount) => {
+            return new Intl.NumberFormat('fr-XR', { style: 'decimal', maximumFractionDigits: 0 }).format(amount) + ' FCFA';
+        };
+
+        const formatNumber = (num) => new Intl.NumberFormat('fr-FR').format(num);
+
+        let costChart = null;
+
         document.addEventListener('DOMContentLoaded', async () => {
-            const loadingState = document.getElementById('loadingState');
-            const errorState = document.getElementById('errorState');
-            const errorMessage = document.getElementById('errorMessage');
-            const chargesTable = document.getElementById('chargesTable');
-
             try {
-                // Attendre que main.js soit chargé
-                if (typeof calculateCosts === 'undefined') {
-                    await new Promise((resolve) => {
-                        const checkFunction = setInterval(() => {
-                            if (typeof calculateCosts !== 'undefined') {
-                                clearInterval(checkFunction);
-                                resolve();
-                            }
-                        }, 100);
-                        // Timeout après 5 secondes
-                        setTimeout(() => {
-                            clearInterval(checkFunction);
-                            throw new Error('Fonction de calcul non disponible');
-                        }, 5000);
-                    });
-                }
-
-                renderCharges();
-
-            } catch (error) {
-                console.error('Erreur lors du chargement:', error);
-                if (loadingState) loadingState.style.display = 'none';
-                if (errorState) errorState.classList.remove('hidden');
-                if (errorMessage) errorMessage.textContent = error.message || 'Une erreur est survenue lors du calcul des charges.';
+                if (window.db && !window.db.isOpen()) await window.db.open();
+                await refreshData();
+            } catch (err) {
+                console.error("Error initializing charges page:", err);
+                Swal.fire('Erreur', 'Impossible de charger les données financières.', 'error');
             }
         });
 
-        function renderCharges() {
-            const loadingState = document.getElementById('loadingState');
-            const errorState = document.getElementById('errorState');
-
+        async function refreshData() {
             try {
-                if (loadingState) loadingState.style.display = 'block';
-                if (errorState) errorState.classList.add('hidden');
+                const project = await ProjectRepository.getCurrent();
+                const teams = await TeamRepository.getAll();
 
-                if (typeof calculateCosts !== 'function') {
-                    throw new Error('Module de calcul des coûts indisponible');
+                if (!project) {
+                    document.getElementById('detailedCostBody').innerHTML = '<tr><td colspan="4" class="text-center py-4">Projet non trouvé.</td></tr>';
+                    return;
                 }
 
-                const params = (window.appState && window.appState.parameters) ? window.appState.parameters : {};
-                const costs = calculateCosts();
+                document.getElementById('projectDurationDisplay').textContent = project.duration || 180;
 
-                if (!costs || !costs.details) {
-                    throw new Error('Données de calcul incomplètes');
-                }
+                // Use the Service to get detailed costs
+                const report = await CostCalculationService.calculateDetailedCosts(project, teams);
 
-                const d = costs.details;
-                const duration = d.duration || 0;
+                updateCards(report, project);
+                updateChart(report);
+                updateTable(report, project);
 
-                // Masquer le loading state
-                if (loadingState) loadingState.style.display = 'none';
+            } catch (error) {
+                console.error("Calculation error:", error);
+                Swal.fire('Erreur de Calcul', error.message, 'error');
+            }
+        }
 
-                // Vehicle summary (acquisition choices & unit costs)
-                const vehicleSummaryHtml = `
-                <div id="vehicleSummary" class="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-100">
-                    <h4 class="font-medium text-gray-800 mb-2">Récapitulatif Véhicules</h4>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-700">
-                        <div>Chef de projet: <strong>${(d.pmVehicles || 0).toLocaleString()}</strong> — ${d.pmAcq === 'acheter' ? 'Achat' : 'Location'} (@ ${((d.pmAcq === 'acheter' ? d.pmPurchaseCost : d.pmRentPerDay) || 0).toLocaleString()} FCFA)</div>
-                        <div>Contrôleur: <strong>${(d.controllerVehicles || 0).toLocaleString()}</strong> — ${d.controllerAcq === 'acheter' ? 'Achat' : 'Location'} (@ ${((d.controllerAcq === 'acheter' ? d.controllerPurchaseCost : d.controllerRentPerDay) || 0).toLocaleString()} FCFA)</div>
-                        <div>Installateur réseau: <strong>${(d.networkInstallerVehicles || 0).toLocaleString()}</strong> — ${d.networkInstallerAcq === 'acheter' ? 'Achat' : 'Location'} (@ ${((d.networkInstallerAcq === 'acheter' ? d.networkInstallerPurchaseCost : d.networkInstallerRentPerDay) || 0).toLocaleString()} FCFA)</div>
-                        <div>Camions livraison: <strong>${(d.deliveryTrucks || 0).toLocaleString()}</strong> — ${d.deliveryTruckAcq === 'acheter' ? 'Achat' : 'Location'} (@ ${((d.deliveryTruckAcq === 'acheter' ? d.deliveryTruckPurchaseCost : d.deliveryTruckRentPerDay) || 0).toLocaleString()} FCFA)</div>
+        function updateCards(report, project) {
+            document.getElementById('totalCostDisplay').textContent = formatMoney(report.total);
+            document.getElementById('laborCostDisplay').textContent = formatMoney(report.breakdown.teams + report.breakdown.supervision);
+            document.getElementById('logisticsCostDisplay').textContent = formatMoney(report.breakdown.logistics);
+            document.getElementById('materialsCostDisplay').textContent = formatMoney(report.breakdown.materials);
+
+            const householdsCount = report.requirements.teams.Maçon?.totalHouseholds || 80000; // Simplified
+            const costPerHouse = report.total / householdsCount;
+            document.getElementById('costPerHouseDisplay').textContent = formatMoney(costPerHouse);
+        }
+
+        function updateChart(report) {
+            const ctx = document.getElementById('costDistributionChart').getContext('2d');
+
+            const data = {
+                labels: ["Main d'Oeuvre", "Logistique", "Matériels", "Supervision"],
+                datasets: [{
+                    data: [
+                        report.breakdown.teams,
+                        report.breakdown.logistics,
+                        report.breakdown.materials,
+                        report.breakdown.supervision
+                    ],
+                    backgroundColor: ['#3b82f6', '#f59e0b', '#10b981', '#6366f1'],
+                    borderWidth: 0
+                }]
+            };
+
+            if (costChart) {
+                costChart.data = data;
+                costChart.update();
+            } else {
+                costChart = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: data,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '70%',
+                        plugins: {
+                            legend: { display: false }
+                        }
+                    }
+                });
+            }
+
+            // Custom Legend
+            const total = report.total;
+            const legendHTML = data.labels.map((label, i) => {
+                const val = data.datasets[0].data[i];
+                const pct = ((val / total) * 100).toFixed(1);
+                const color = data.datasets[0].backgroundColor[i];
+                return `
+                    <div class="flex items-center justify-between text-xs">
+                        <div class="flex items-center">
+                            <span class="w-3 h-3 rounded-full mr-2" style="background-color: ${color}"></span>
+                            <span class="text-gray-600">${label}</span>
+                        </div>
+                        <span class="font-bold text-gray-800">${pct}%</span>
                     </div>
-                </div>
-            `;
+                `;
+            }).join('');
+            document.getElementById('chartLegend').innerHTML = legendHTML;
+        }
 
-                const rows = [
-                    { cat: 'Maçons (murs)', qty: d.wallsBuilt, unit: d.masonUnit, cost: d.masonCost },
-                    { cat: 'Électriciens int. Type 1', qty: d.interiorInstallationsType1, unit: d.interiorUnitType1, cost: d.interiorType1Cost },
-                    { cat: 'Électriciens int. Type 2', qty: d.interiorInstallationsType2, unit: d.interiorUnitType2, cost: d.interiorType2Cost },
-                    { cat: 'Électriciens réseau', qty: d.networkConnections, unit: d.networkUnit, cost: d.networkElectricianCost },
-                    { cat: 'Contrôleurs', qty: (d.controllerDays || 0) * (params.controllerTeams || 0), unit: params.controllerPayPerDay, cost: d.controllerCost },
-                    { cat: 'Superviseurs', qty: duration * (params.supervisorCount || 0), unit: params.supervisorPayPerDay, cost: d.supervisorCost },
-                    { cat: 'Agents de livraison', qty: duration * (params.deliveryAgentCount || 0), unit: params.deliveryAgentPayPerDay, cost: d.deliveryAgentCost },
-                    { cat: 'Chauffeurs', qty: duration * (params.driverCount || 0), unit: params.driverPayPerDay, cost: d.driverCost },
-                    // Véhicules et camions (affectés par acteur)
-                    { cat: 'Véhicules - Chef de projet', qty: d.pmVehicles || 0, unit: d.pmAcq === 'acheter' ? d.pmPurchaseCost : d.pmRentPerDay, cost: d.pmVehicleCost || 0 },
-                    { cat: 'Véhicules - Contrôleur', qty: d.controllerVehicles || 0, unit: d.controllerAcq === 'acheter' ? d.controllerPurchaseCost : d.controllerRentPerDay, cost: d.controllerVehicleCost || 0 },
-                    { cat: 'Véhicules - Installateur réseau', qty: d.networkInstallerVehicles || 0, unit: d.networkInstallerAcq === 'acheter' ? d.networkInstallerPurchaseCost : d.networkInstallerRentPerDay, cost: d.networkInstallerVehicleCost || 0 },
-                    { cat: 'Camions - Livraison', qty: d.deliveryTrucks || 0, unit: d.deliveryTruckAcq === 'acheter' ? d.deliveryTruckPurchaseCost : d.deliveryTruckRentPerDay, cost: d.deliveryTruckCost || 0 },
-                ];
+        function updateTable(report, project) {
+            const tbody = document.getElementById('detailedCostBody');
+            let html = '';
 
-                const generateRow = r => `
-                <tr>
-                    <td class="px-6 py-3">${r.cat}</td>
-                    <td class="px-6 py-3 text-right">${(r.qty || 0).toLocaleString()}</td>
-                    <td class="px-6 py-3 text-right">${(r.unit || 0).toLocaleString()}</td>
-                    <td class="px-6 py-3 text-right font-medium">${(r.cost || 0).toLocaleString()}</td>
+            const createRow = (label, qty, rate, total, isHeader = false) => `
+                <tr class="${isHeader ? 'bg-gray-50 font-bold text-gray-700' : 'hover:bg-gray-50'}">
+                    <td class="px-6 py-2 ${isHeader ? '' : 'pl-8'}">${label}</td>
+                    <td class="px-6 py-2 text-right text-gray-600">${qty || '-'}</td>
+                    <td class="px-6 py-2 text-right text-gray-500">${rate || '-'}</td>
+                    <td class="px-6 py-2 text-right font-medium ${isHeader ? 'text-indigo-600' : 'text-gray-900'}">${formatMoney(total)}</td>
                 </tr>
             `;
 
-                chargesTable.innerHTML = `
-                <div class="flex justify-between items-center mb-4">
-                    <span class="text-sm text-gray-600">Durée estimée : <strong>${duration} jours</strong></span>
-                    <div class="flex gap-2">
-                        <button id="exportCsvBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded">Export CSV</button>
-                        <button id="exportPdfBtn" class="bg-gray-700 hover:bg-gray-800 text-white px-3 py-1 rounded">Export PDF</button>
-                    </div>
-                </div>
-
-                ${vehicleSummaryHtml}
-
-                <div id="chargesChart" class="mb-6" style="height:320px"></div>
-
-                <table class="min-w-full divide-y divide-gray-300">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600">Catégorie</th>
-                            <th class="px-6 py-3 text-right text-xs font-semibold text-gray-600">Quantité</th>
-                            <th class="px-6 py-3 text-right text-xs font-semibold text-gray-600">PU (FCFA)</th>
-                            <th class="px-6 py-3 text-right text-xs font-semibold text-gray-600">Total (FCFA)</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-200">
-                        ${rows.map(generateRow).join('')}
-                        <tr class="bg-gray-100 font-bold">
-                            <td class="px-6 py-3">TOTAL</td>
-                            <td></td><td></td>
-                            <td class="px-6 py-3 text-right">${(costs.totalCost || 0).toLocaleString()}</td>
-                        </tr>
-                    </tbody>
-                </table>
+            const createSectionHeader = (title, total) => `
+                <tr class="bg-gray-100 border-t border-b border-gray-200">
+                    <td colspan="3" class="px-6 py-2 font-bold text-gray-800 uppercase text-xs tracking-wider">${title}</td>
+                    <td class="px-6 py-2 text-right font-bold text-gray-800">${formatMoney(total)}</td>
+                </tr>
             `;
 
-                // Chart
-                Plotly.newPlot('chargesChart', [{
-                    type: 'pie',
-                    labels: rows.map(r => r.cat),
-                    values: rows.map(r => r.cost || 0),
-                    textinfo: 'label+percent',
-                    hoverinfo: 'label+value'
-                }], { margin: { t: 0 } });
+            // 1. Équipes Techniques
+            html += createSectionHeader("Équipes Techniques", report.breakdown.teams);
 
-                // Export CSV
-                document.getElementById('exportCsvBtn').onclick = () => {
-                    const header = ['Catégorie', 'Quantité', 'PU', 'Total'];
-                    const lines = [header.join(',')];
+            // Re-simulation for display purposes (since report.breakdown.teams is a sum)
+            const staffConfig = project.staffConfig || {};
+            const legacyCosts = project.costs || {};
 
-                    rows.forEach(r => {
-                        lines.push([
-                            `"${(r.cat || '').replace(/"/g, '""')}"`,
-                            r.qty || 0, r.unit || 0, r.cost || 0
-                        ].join(','));
-                    });
+            const getCostInfo = (roleId, defaultVal = 0) => {
+                const config = staffConfig[roleId];
+                const amount = config ? config.amount : (legacyCosts[roleId] || defaultVal);
+                const mode = config ? config.mode : 'daily';
+                return { amount, mode };
+            };
 
-                    lines.push(["Total", "", "", costs.totalCost || 0].join(','));
+            // Teams Detail (Core logic already refined in services to only include tech teams)
+            Object.entries(report.requirements.teams).forEach(([type, data]) => {
+                if (data.required > 0) {
+                    const mapToKey = {
+                        'Maçon': 'perMasonTeam',
+                        'Réseau': 'perNetworkTeam',
+                        'Intérieur': 'perInteriorTeam'
+                    };
+                    const costKey = mapToKey[type] || `per${type.replace(/\s+/g, '')}Team`;
+                    const { amount, mode } = getCostInfo(costKey, 100000);
+                    const lineTotal = mode === 'monthly' ?
+                        Math.round(amount * (project.duration / 30)) * data.required :
+                        amount * project.duration * data.required;
 
-                    const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
-                    const link = document.createElement('a');
-                    link.href = URL.createObjectURL(blob);
-                    link.download = 'charges.csv';
-                    link.click();
-                };
-
-                // Export PDF (hook)
-                document.getElementById('exportPdfBtn').onclick = () => {
-                    if (typeof exportToPDF === 'function') exportToPDF();
-                    else {
-                        const link = document.createElement('a');
-                        link.href = 'data:text/plain;charset=utf-8,Export PDF non disponible';
-                        link.download = 'charges.pdf';
-                        link.click();
-                    }
-                };
-
-            } catch (error) {
-                console.error('Erreur dans renderCharges:', error);
-                if (loadingState) loadingState.style.display = 'none';
-                if (errorState) errorState.classList.remove('hidden');
-                document.getElementById('errorMessage').textContent = error.message || 'Erreur interne lors du rendu des charges.';
-            }
-        }
-    </script>
-
-    <script>
-        // Robust PDF export: convert Plotly chart to image then export the container
-        async function exportToPDF() {
-            try {
-                const container = document.querySelector('#chargesTableContainer');
-                if (!container) return alert('Conteneur de charges introuvable');
-
-                const chartDiv = document.getElementById('chargesChart');
-                let originalChartHTML = null;
-
-                // Try to convert Plotly chart to image for reliable PDF capture
-                if (chartDiv && typeof Plotly !== 'undefined' && Plotly.toImage) {
-                    try {
-                        const imgData = await Plotly.toImage(chartDiv, { format: 'png', width: 1200, height: 600, scale: 2 });
-                        originalChartHTML = chartDiv.innerHTML;
-                        chartDiv.innerHTML = '';
-                        const img = document.createElement('img');
-                        img.src = imgData;
-                        img.style.maxWidth = '100%';
-                        chartDiv.appendChild(img);
-                    } catch (e) {
-                        console.warn('Plotly.toImage failed, falling back to html2canvas capture', e);
-                    }
+                    html += createRow(
+                        `Équipe ${type}`,
+                        `${data.required} éq. (${mode === 'monthly' ? 'Mensuel' : 'Journalier'})`,
+                        formatMoney(amount),
+                        lineTotal
+                    );
                 }
+            });
 
-                // Prepare options
-                const opt = {
-                    margin: 10,
-                    filename: 'charges.pdf',
-                    image: { type: 'jpeg', quality: 0.98 },
-                    html2canvas: { scale: 2, useCORS: true, logging: false },
-                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-                };
+            // 2. Logistique
+            html += createSectionHeader("Logistique & Transport", report.breakdown.logistics);
+            Object.entries(report.requirements.vehicles).forEach(([type, data]) => {
+                const rentalRate = project.costs.vehicleRental?.[type] || 50000;
+                const lineTotal = data.required * rentalRate * project.duration;
+                html += createRow(
+                    `Véhicule (${type})`,
+                    `${data.required} vhé. x ${project.duration}j`,
+                    formatMoney(rentalRate) + "/j",
+                    lineTotal
+                );
+            });
+            html += createRow("Carburant", "Estimation Global", "-", report.breakdown.fuel);
 
-                await html2pdf().set(opt).from(container).save();
 
-                // restore original chart HTML if we replaced it
-                if (originalChartHTML !== null && chartDiv) chartDiv.innerHTML = originalChartHTML;
+            // 3. Support & Supervision
+            html += createSectionHeader("Support & Supervision", report.breakdown.supervision);
+            if (report.requirements.support) {
+                Object.entries(report.requirements.support).forEach(([role, data]) => {
+                    let costKey = '';
+                    let roleDefault = 5000;
 
-            } catch (err) {
-                console.error('exportToPDF error', err);
-                alert('Erreur lors de la génération du PDF: ' + (err && err.message ? err.message : 'inconnue'));
+                    if (role === 'Superviseurs' || role === 'Superviseur') costKey = 'perSupervisor';
+                    else if (role === 'Contrôleurs' || role === 'Contrôleur') costKey = 'perController';
+                    else if (role === 'Préparateurs' || role === 'Préparateur') costKey = 'perPreparateur';
+                    else if (role === 'Livreurs' || role === 'Livreur') costKey = 'perLivreur';
+                    else if (role === 'Chef de Projet') {
+                        costKey = 'perProjectManager';
+                        roleDefault = 50000;
+                    }
+                    else if (role === 'Chauffeurs') costKey = 'perDriver';
+
+                    if (costKey) {
+                        const { amount, mode } = getCostInfo(costKey, roleDefault);
+                        let lineTotal = 0;
+                        if (mode === 'monthly') lineTotal = Math.round(amount * (project.duration / 30)) * data.required;
+                        else lineTotal = amount * project.duration * data.required;
+
+                        html += createRow(
+                            role,
+                            `${data.required} pers. (${mode})`,
+                            formatMoney(amount),
+                            lineTotal
+                        );
+                    }
+                });
             }
+            else {
+                html += createRow("Supervision (Estimé)", "-", "-", report.breakdown.supervision);
+            }
+
+            // 4. Matériaux
+            html += createSectionHeader("Matériaux (Estimatif)", report.breakdown.materials);
+            html += createRow("Potelets, Câbles, Coffrets...", `${report.requirements.teams.Maçon?.totalHouseholds || 80000} ménages`, "Forfaitaire", report.breakdown.materials);
+
+            tbody.innerHTML = html;
         }
+
+        window.exportCostsExcel = function () {
+            Swal.fire('Info', 'Fonctionnalité d\'export à venir.', 'info');
+        };
+
     </script>
-
-    <!-- Inline Component -->
-    <style>
-        .nav-btn {
-            padding: .5rem .75rem;
-            border-radius: .375rem;
-            transition: .2s;
-        }
-
-        .nav-btn:hover {
-            background: rgba(255, 255, 255, .2);
-        }
-    </style>
-
+    <script src="src/ui/theme-toggle.js"></script>
 </body>
 
 </html>

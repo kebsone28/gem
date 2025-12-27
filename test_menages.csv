@@ -1,6 +1,0 @@
-ID,Nom,Telephone,Commune,Quartier ou Village,latitude,longitude,zone,Statut_Installation,Equipe_Reseau,Equipe_Interieur
-MEN-000001,Amadou Diallo,771234567,Dakar,Médina,14.7167,-17.4677,Zone Nord,Non débuté,RES-01,INT-01
-MEN-000002,Fatou Sall,779876543,Pikine,Thiaroye,14.7500,-17.3800,Zone Sud,Terminé,RES-02,INT-02
-MEN-000003,Moussa Kane,775551234,Guédiawaye,Golf Sud,14.7700,-17.4000,Zone Nord,En cours,RES-01,INT-01
-MEN-000004,Awa Ndiaye,776667890,Rufisque,Arafat,14.7200,-17.2700,Zone Est,Non débuté,RES-03,INT-03
-MEN-000005,Ibrahima Sarr,778889012,Dakar,Plateau,14.6928,-17.4467,Zone Centre,Terminé,RES-01,INT-02

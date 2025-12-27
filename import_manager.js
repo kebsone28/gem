@@ -4,33 +4,58 @@
 
 class ImportManager {
     // Mapping des statuts pour uniformisation
+    // Mapping des statuts pour uniformisation (Clé = Statut UI, Valeur = Code Interne)
+    // Mapping des statuts pour uniformisation (Clé = Inport/Logique, Valeur = UI StatusColors)
     static STATUS_MAP = {
-        // Statut par défaut
-        'Attente démarrage': 'attente_demarrage',
+        // 0. Initial
+        'Attente démarrage': 'Attente démarrage',
+        'attente_demarrage': 'Attente démarrage',
 
-        // Étape 1
-        'Étape 1: Matériel livré et marqué': 'etape1_termine',
-        'Étape 1: Matériel livré (marquage manquant)': 'etape1_partiel',
-        'Étape 1: Livraison en cours': 'etape1_en_cours',
-        'Non éligible': 'non_eligible',
-        'Injoignable': 'injoignable',
+        'Inéligible': 'Inéligible',
+        'non_eligible': 'Inéligible',
+        'Ménage non éligible': 'Inéligible',
 
-        // Étape 2
-        'Attente Branchement': 'etape2_termine',
-        'Attente Maçon (En cours)': 'etape2_en_cours',
+        'Injoignable': 'Injoignable',
+        'injoignable': 'Injoignable',
+        'Ménage injoignable': 'Injoignable',
 
-        // Étape 3
-        'Attente électricien': 'etape3_termine',
-        'Attente Branchement (En cours)': 'etape3_en_cours',
+        // 1. Kit -> Maçon
+        'Attente Maçon': 'Attente Maçon',
+        'etape1_termine': 'Attente Maçon',
+        'Kit maçon disponible': 'Attente Maçon',
 
-        // Étape 4
-        'Attente Controleur': 'etape4_termine',
-        'Attente électricien (En cours)': 'etape4_en_cours',
+        // 2. Maçon -> Réseau
+        'Attente Branchement': 'Attente Branchement',
+        'etape2_termine': 'Attente Branchement',
 
-        // Étape 5
-        'Conforme': 'conforme',
-        'Attente Controleur (En cours)': 'etape5_en_cours',
-        'Attente électricien(X)': 'non_conforme'
+        // 3. Réseau -> Électricien
+        'Attente Électricien': 'Attente électricien', // Mapping vers minuscule pour match StatusColors
+        'Attente électricien': 'Attente électricien',
+        'etape3_termine': 'Attente électricien',
+        'Branchement terminé': 'Attente électricien',
+
+        'Problème Réseau': 'Attente Branchement', // Fallback visuel ou ajouter dans StatusColors
+        'probleme_reseau': 'Attente Branchement',
+
+        // 4. Électricien -> Contrôleur
+        'Attente Contrôleur': 'Attente Controleur', // Pas de chapeau dans StatusColors
+        'Attente Controleur': 'Attente Controleur',
+        'etape4_termine': 'Attente Controleur',
+
+        'Problème Intérieur': 'Attente électricien', // Fallback visuel
+        'probleme_interieur': 'Attente électricien',
+
+        // 5. Final
+        'Conforme': 'Conforme',
+        'conforme': 'Conforme',
+
+        'Attente Reprise': 'Attente électricien(X)', // Mapping Error State
+        'non_conforme': 'Attente électricien(X)',
+        'Attente électricien(X)': 'Attente électricien(X)',
+
+        // Legacy / Fallbacks
+        'Non éligible': 'Inéligible',
+        'Ménage éligible': 'Attente démarrage'
     };
 
     constructor() {
@@ -250,46 +275,53 @@ class ImportManager {
                         const normalizedStatus = this.normalizeStatus(aggregateState.status);
                         household.updateStatus(normalizedStatus, 'Synchro Kobo (Multi)');
                     } else {
-                        household.status = this.normalizeStatus(aggregateState.status);
+                        // Fallback if updateStatus is missing (unlikely for Household instance)
+                        const normalizedStatus = this.normalizeStatus(aggregateState.status);
+                        // If setter exists or this is a raw object
+                        try { household.status = normalizedStatus; } catch (e) { /* ignore */ }
                     }
-                        // Use ImportNormalizer when available to infer admin fields and coords
-                        let normalizer = null;
-                        try { normalizer = window?.ImportNormalizer || (typeof require !== 'undefined' && require('./src/utils/import_normalizer')); } catch (e) { normalizer = window?.ImportNormalizer || null; }
-                        const firstProps = submissions[0].props || {};
-                        const locInfo = normalizer ? normalizer.normalizeLocation(firstProps, this.getValue.bind(this)) : {
-                            region: this.getValue(firstProps, ['Region', 'C5', 'TYPE_DE_VISITE/region_key']) || 'Non Renseigné',
-                            department: 'Non Renseigné',
-                            commune: 'Non Renseigné',
-                            village: 'Non Renseigné',
-                            coordinates: aggregateState.location ? { latitude: aggregateState.location.latitude, longitude: aggregateState.location.longitude } : null,
-                            warnings: []
-                        };
+                    // Use ImportNormalizer when available to infer admin fields and coords
+                    let normalizer = null;
+                    try { normalizer = window?.ImportNormalizer || (typeof require !== 'undefined' && require('./src/utils/import_normalizer')); } catch (e) { normalizer = window?.ImportNormalizer || null; }
+                    const firstProps = submissions[0].props || {};
+                    const regionVal = this.getValue(firstProps, ['Region', 'region', 'C5', 'TYPE_DE_VISITE/region_key']) || 'Non Renseigné';
 
-                        if (locInfo.warnings && locInfo.warnings.length) console.warn(`ImportNormalizer warnings for ${koboId}:`, locInfo.warnings);
-                        // Build and sanitize location
-                        const rawLoc = {
-                            region: locInfo.region,
-                            department: locInfo.department || 'Non Renseigné',
-                            commune: locInfo.commune || 'Non Renseigné',
-                            village: locInfo.village || 'Non Renseigné',
-                            coordinates: locInfo.coordinates || (aggregateState.location ? { latitude: aggregateState.location.latitude, longitude: aggregateState.location.longitude } : null),
-                            zoneId: 'Non assigné'
-                        };
+                    const locInfo = normalizer ? normalizer.normalizeLocation(firstProps, this.getValue.bind(this)) : {
+                        region: regionVal,
+                        department: this.getValue(firstProps, ['Departement', 'departement', 'C6', 'TYPE_DE_VISITE/departement_key']) || regionVal,
+                        commune: this.getValue(firstProps, ['Commune', 'commune', 'C7', 'TYPE_DE_VISITE/commune_key']) || regionVal,
+                        village: this.getValue(firstProps, ['Village', 'village', 'quartier', 'Quartier', 'C8', 'TYPE_DE_VISITE/village_key']) || regionVal,
+                        coordinates: aggregateState.location ? { latitude: aggregateState.location.latitude, longitude: aggregateState.location.longitude } : null,
+                        warnings: []
+                    };
 
-                        const sanitizedLoc = (typeof sanitizeLocation === 'function') ? sanitizeLocation(rawLoc) : rawLoc;
+                    if (locInfo.warnings && locInfo.warnings.length) console.warn(`ImportNormalizer warnings for ${koboId}:`, locInfo.warnings);
+                    // Build and sanitize location
+                    // FALLBACK: Si Departement/Commune/Village sont vides ou "Non Renseigné", utiliser la Région (Demande Utilisateur)
+                    const effectiveRegion = locInfo.region || 'Non Renseigné';
+                    const rawLoc = {
+                        region: effectiveRegion,
+                        department: (locInfo.department && locInfo.department !== 'Non Renseigné') ? locInfo.department : effectiveRegion,
+                        commune: (locInfo.commune && locInfo.commune !== 'Non Renseigné') ? locInfo.commune : effectiveRegion,
+                        village: (locInfo.village && locInfo.village !== 'Non Renseigné') ? locInfo.village : effectiveRegion,
+                        coordinates: locInfo.coordinates || (aggregateState.location ? { latitude: aggregateState.location.latitude, longitude: aggregateState.location.longitude } : null),
+                        zoneId: 'Non assigné'
+                    };
 
-                        household = window.Household.fromJSON({
-                            id: koboId,
-                            location: sanitizedLoc,
-                            owner: aggregateState.owner,
-                            status: this.normalizeStatus(aggregateState.status),
-                            assignedTeams: aggregateState.teams,
-                            notes: aggregateState.notes,
-                            photos: aggregateState.photos,
-                            createdAt: new Date().toISOString(),
-                            updatedAt: new Date().toISOString()
-                        });
-                        
+                    const sanitizedLoc = this._sanitizeLocation(rawLoc);
+
+                    household = window.Household.fromJSON({
+                        id: koboId,
+                        location: sanitizedLoc,
+                        owner: aggregateState.owner,
+                        status: this.normalizeStatus(aggregateState.status),
+                        assignedTeams: aggregateState.teams,
+                        notes: aggregateState.notes,
+                        photos: aggregateState.photos,
+                        createdAt: new Date().toISOString(),
+                        updatedAt: new Date().toISOString()
+                    });
+
 
                     // Merge Photos
                     if (aggregateState.photos.length > 0 && typeof household.addPhoto === 'function') {
@@ -345,13 +377,22 @@ class ImportManager {
         for (const [koboId, submissions] of householdsMap) {
             const household = await window.householdRepository.findById(koboId);
             if (household) {
-                // Logique de validation de la progression
+                // Logique de validation de la progression (Robust)
+                const getRole = (s) => {
+                    const val = s.props['role'] ||
+                        s.props['TYPE_DE_VISITE/role'] ||
+                        s.props['Votre Role'] ||
+                        s.props['Votre_Role'] ||
+                        '';
+                    return String(val).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[\u{1F300}-\u{1F9FF}]/gu, "").trim();
+                };
+
                 const etapes = {
-                    livreur: submissions.some(s => s.props['role']?.toLowerCase().includes('livreur') || s.props['TYPE_DE_VISITE/role']?.toLowerCase().includes('livreur')),
-                    macon: submissions.some(s => s.props['role']?.toLowerCase().includes('macon') || s.props['TYPE_DE_VISITE/role']?.toLowerCase().includes('macon')),
-                    reseau: submissions.some(s => s.props['role']?.toLowerCase().includes('reseau') || s.props['TYPE_DE_VISITE/role']?.toLowerCase().includes('reseau')),
-                    interieur: submissions.some(s => s.props['role']?.toLowerCase().includes('interieur') || s.props['TYPE_DE_VISITE/role']?.toLowerCase().includes('interieur')),
-                    controleur: submissions.some(s => s.props['role']?.toLowerCase().includes('controleur') || s.props['TYPE_DE_VISITE/role']?.toLowerCase().includes('controleur'))
+                    livreur: submissions.some(s => getRole(s).includes('livreur')),
+                    macon: submissions.some(s => getRole(s).includes('macon')),
+                    reseau: submissions.some(s => getRole(s).includes('reseau')),
+                    interieur: submissions.some(s => getRole(s).includes('interieur') || getRole(s).includes('installateur')),
+                    controleur: submissions.some(s => getRole(s).includes('controleur'))
                 };
 
                 // Calculer le pourcentage d'avancement
@@ -444,9 +485,9 @@ class ImportManager {
                     // count may return a promise
                     const maybe = window.householdRepository.count();
                     if (maybe && typeof maybe.then === 'function') {
-                        maybe.then(c => { el.textContent = `${(c||0).toLocaleString()} ménages en base`; }).catch(() => {});
+                        maybe.then(c => { el.textContent = `${(c || 0).toLocaleString()} ménages en base`; }).catch(() => { });
                     } else {
-                        el.textContent = `${(maybe||0).toLocaleString()} ménages en base`;
+                        el.textContent = `${(maybe || 0).toLocaleString()} ménages en base`;
                     }
                 }
             }
@@ -467,13 +508,26 @@ class ImportManager {
         console.log('✅ Utilisation exclusive de la table "households"');
 
         // Helper pour recherche flexible de colonne (avec cache regex possible)
+        // Helper pour recherche flexible de colonne (avec cache regex possible)
         const findCol = (row, patterns) => {
-            const clean = (k) => k.trim().toLowerCase();
-            const key = Object.keys(row).find(k => {
-                const normalized = clean(k);
-                return patterns.some(p => {
-                    if (p instanceof RegExp) return p.test(normalized);
-                    return normalized === p.toLowerCase();
+            // Normalizer: trim, lowercase, AND strip accents -- Strict string handling
+            // This ensures 'État' matches 'etat' but 'username' does NOT match 'name'
+            const clean = (k) => k.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+            // Clean patterns once if they are strings
+            const cleanPatterns = patterns.map(p => (typeof p === 'string') ? clean(p) : p);
+
+            const key = Object.keys(row).find(originalKey => {
+                const normalizedKey = clean(originalKey);
+                return cleanPatterns.some((pattern) => {
+                    // 1. Regex Match (Explicit Partial/Fuzzy via Regex)
+                    if (pattern instanceof RegExp) return pattern.test(normalizedKey);
+
+                    // 2. Strict String Match (Normalized)
+                    if (normalizedKey === pattern) return true;
+
+                    // Note: REMOVED .includes() fallback to prevent false positives
+                    return false;
                 });
             });
             return key ? row[key] : null;
@@ -481,9 +535,10 @@ class ImportManager {
 
         // ETAPE 1 : Pré-analyse des coordonnées pout diagnostic
         const tempHouseholds = data.map((row, index) => {
-            // ===== COORDONNÉES GPS (Détection Améliorée) =====
-            const lat = this.parseCoordinate(findCol(row, [/^(latitude|lat|gps_lat|gps lat|y)$/]));
-            const lon = this.parseCoordinate(findCol(row, [/^(longitude|lon|gps_lon|gps lon|lng|x)$/]));
+            // ===== COORDONNÉES GPS (Détection Améliorée pour Kobo) =====
+            // On cherche 'latitude' ou 'longitude' n'importe où dans la clé (ex: 'TYPE_DE_VISITE/latitude_key')
+            const lat = this.parseCoordinate(findCol(row, [/latitude/i, /lat/i, /gps_lat/i, /^y$/i]));
+            const lon = this.parseCoordinate(findCol(row, [/longitude/i, /lon/i, /gps_lon/i, /^x$/i]));
 
             // Précision (optionnel)
             const precVal = findCol(row, ['precision', 'prec', 'gps_prec']);
@@ -516,52 +571,56 @@ class ImportManager {
 
         // ETAPE 2 : Création des entités finales
         // Helper: sanitize location object for Household.fromJSON
-        const sanitizeLocation = (loc) => {
-            if (!loc) return { region: 'Non Renseigné', department: 'Non Renseigné', commune: 'Non Renseigné', village: '', coordinates: null, zoneId: 'Non assigné' };
-            const region = (loc.region || loc.region === 0) ? String(loc.region) : 'Non Renseigné';
-            const department = (loc.department || loc.department === 0) ? String(loc.department) : 'Non Renseigné';
-            const commune = (loc.commune || loc.commune === 0) ? String(loc.commune) : 'Non Renseigné';
-            const village = loc.village || '';
-            let coordinates = null;
-            if (loc.coordinates) {
-                try {
-                    const lat = parseFloat(String(loc.coordinates.latitude).replace(',', '.'));
-                    const lon = parseFloat(String(loc.coordinates.longitude).replace(',', '.'));
-                    if (!Number.isNaN(lat) && !Number.isNaN(lon) && lat !== 0 && lon !== 0) {
-                        coordinates = { latitude: lat, longitude: lon, precision: loc.coordinates.precision || 0 };
-                    }
-                } catch (e) {
-                    coordinates = null;
-                }
-            }
-            return { region, department, commune, village, coordinates, zoneId: loc.zoneId || 'Non assigné' };
-        };
+        // This helper is now a class method: this._sanitizeLocation
 
         const households = tempHouseholds.map(({ row, coordinates, findCol }, index) => {
             // ===== IDENTIFIANT =====
-            const idVal = findCol(row, ['id', 'identifiant', 'code', 'ref', 'menage_id']);
-            const id = idVal ? String(idVal).trim() : `MEN-${String(index+1).padStart(3,'0')}`;
+            // On ne prend PAS _id ou uuid car ils changent à chaque modification de la soumission Kobo.
+            const idVal = findCol(row, ['id', 'identifiant', 'code', 'ref', 'menage_id', 'Numero_ordre', 'numero_ordre']);
+
+            // Nettoyage de l'ID : Standardisation MEN-XXX pour correspondre à l'import Kobo
+            let safeId = idVal ? String(idVal).trim() : null;
+
+            // Si l'ID est numérique (ex: "1" ou "1.0"), on le formate en MEN-001
+            if (safeId && !isNaN(parseFloat(safeId)) && isFinite(safeId)) {
+                const num = parseInt(String(safeId).replace(/[^0-9]/g, ''));
+                safeId = `MEN-${String(num).padStart(3, '0')}`;
+            }
+
+            const id = safeId || `MEN-${String(index + 1).padStart(3, '0')}`;
 
             // ===== LOCALISATION =====
             // Use ImportNormalizer when available to infer admin fields and coords
             let normalizer = null;
             try { normalizer = window?.ImportNormalizer || (typeof require !== 'undefined' && require('./src/utils/import_normalizer')); } catch (e) { normalizer = window?.ImportNormalizer || null; }
             const locInfo = normalizer ? normalizer.normalizeLocation(row, findCol) : {
-                region: findCol(row, ['region', 'reg']) || 'Non Renseigné',
-                department: findCol(row, ['departement', 'dept', 'dep']) || 'Non Renseigné',
-                commune: findCol(row, ['commune', 'com']) || 'Non Renseigné',
-                village: findCol(row, ['village', 'quartier', 'quartier ou village', 'village/quartier', 'localite', 'site']) || '',
-                coordinates: coordinates
+                region: findCol(row, ['region', 'reg', 'C5', 'TYPE_DE_VISITE/region_key', 'region_key']) || 'Non Renseigné',
+                department: findCol(row, ['departement', 'dept', 'dep', 'C6', 'TYPE_DE_VISITE/departement_key', 'departement_key']) || 'Non Renseigné',
+                commune: findCol(row, ['commune', 'com', 'C7', 'TYPE_DE_VISITE/commune_key', 'commune_key']) || 'Non Renseigné',
+                village: findCol(row, ['village', 'quartier', 'quartier ou village', 'village/quartier', 'localite', 'site', 'C8', 'TYPE_DE_VISITE/village_key', 'village_key']) || '',
+                coordinates: coordinates,
+                warnings: []
             };
 
             if (locInfo.warnings && locInfo.warnings.length) console.warn('ImportNormalizer warnings for row', index, locInfo.warnings);
 
-            const region = locInfo.region;
-            const department = locInfo.department;
-            const commune = locInfo.commune;
-            const village = locInfo.village;
-            // Prefer coordinates inferred by normalizer when present
-            if (locInfo.coordinates) coordinates = locInfo.coordinates;
+            // FALLBACK: Uniformisation avec la logique Kobo Import
+            // Si Region est dispo mais Dept/Commune/Village manquants, on force la Region (Demande Utilisateur)
+            if (locInfo.region && locInfo.region !== 'Non Renseigné') {
+                if (!locInfo.department || locInfo.department === 'Non Renseigné') locInfo.department = locInfo.region;
+                if (!locInfo.commune || locInfo.commune === 'Non Renseigné') locInfo.commune = locInfo.region;
+                if (!locInfo.village || locInfo.village === 'Non Renseigné' || locInfo.village === '') locInfo.village = locInfo.region;
+            }
+
+            // Build and sanitize location
+            const rawLoc = {
+                region: locInfo.region,
+                department: locInfo.department || 'Non Renseigné',
+                commune: locInfo.commune || 'Non Renseigné',
+                village: locInfo.village || 'Non Renseigné',
+                coordinates: locInfo.coordinates || null,
+                zoneId: findCol(row, ['zone', 'secteur', 'bassin']) || 'Non assigné'
+            };
 
             // ===== ÉQUIPES (V4.2 Spécifique) =====
             const equipeRes = findCol(row, ['equipe_reseau', 'equipe reseau', 'res_team', 'reseau']) ||
@@ -570,7 +629,76 @@ class ImportManager {
             const equipeInt = findCol(row, ['equipe_interieur', 'equipe interieur', 'int_team', 'interieur', 'equipe_int']) || '';
 
             // ===== STATUT =====
-            const statut = findCol(row, ['statut', 'status', 'statut_installation', 'etat', 'avancement', 'situation']) || 'Attente démarrage';
+            // V4.7: Advanced Status Parsing (Kobo Logic - Unified with applySubmissionToState)
+            const determineStatus = (row, findCol) => {
+                // Helper: Normalize values (accents + emojis)
+                const val = (keys) => String(findCol(row, keys) || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[\u{1F300}-\u{1F9FF}]/gu, "").trim();
+
+                // 0. Detect Role (Optional but helps context)
+                const role = val(['TYPE_DE_VISITE/role', 'role', 'Votre Role', 'Votre_Role']);
+
+                // DIAGNOSTIC COMPLET POUR L'UTILISATEUR
+                if (window._debugOneShot === undefined) {
+                    console.log("🔥 --- COMPARAISON DE FORMAT KOBO (PREMIER ENREGISTREMENT) --- 🔥");
+                    console.log("Données brutes reçues de Kobo :", JSON.stringify(row, null, 2));
+                    console.log("----------------------------------------------------------------");
+                    window._debugOneShot = true;
+                }
+
+                console.log(`[SYNC SPY] ID: ${findCol(row, ['numero_ordre', 'id'])} Role: "${role}"`);
+
+                // 1. Situation (Inéligible / Injoignable)
+                const situation = val(['Situation_du_M_nage', 'situation', 'Situaion', 'Situation du Ménage', 'group_wu8kv54/Situation_du_M_nage']);
+                console.log(`[SYNC SPY] Situation: "${situation}"`);
+
+                if (situation.includes('non_eligible') || situation.includes('non eligible') || situation.includes('ineligible')) return 'Inéligible';
+                if (situation.includes('injoignable')) return 'Injoignable';
+
+                // 1b. Livreur Validation (If Eligible)
+                // Si Situation OK, on vérifie si la livraison est validée pour passer à "Attente Maçon"
+                if (role.includes('livreur') || situation.includes('eligible') || situation.includes('ok')) {
+                    const remiseOK = val(['Je confirme la remise du materiel au ménage', 'group_wu8kv54/group_sy9vj14/Je_confirme_la_remis_u_materiel_au_m_nage']);
+                    const marquageOK = val(['Je confirme le marquage de l\'emplacement des coffret électrique', 'Je_confirme_le_marqu_s_coffret_lectrique', 'group_wu8kv54/group_sy9vj14/Je_confirme_le_marqu_s_coffret_lectrique']);
+
+                    if ((remiseOK === 'ok' || remiseOK === 'oui') && (marquageOK === 'ok' || marquageOK === 'oui')) {
+                        return 'Attente Maçon';
+                    }
+                }
+
+                // 2. Control (Final)
+                const etatInstall = val(['ETAT_DE_L_INSTALLATION', 'etat_installation']);
+                if (etatInstall.includes('terminee') || etatInstall.includes('conforme')) return 'Conforme';
+                if (etatInstall.includes('probleme') || etatInstall.includes('non_conforme')) return 'Attente Reprise';
+
+                // 3. Indoor
+                const etatInterieur = val(['etat_installation_interieur', 'Etat_installation_interieur']);
+                if (etatInterieur.includes('termine')) return 'Attente Contrôleur';
+                if (etatInterieur.includes('probleme')) return 'Problème Intérieur';
+
+                // 4. Network
+                const etatReseau = val(['etat_branchement_reseau', 'Etat_branchement_reseau']);
+                if (etatReseau.includes('termine')) return 'Attente Électricien';
+                if (etatReseau.includes('probleme')) return 'Problème Réseau';
+
+                // 5. Wall
+                const typeMur = findCol(row, ['type_mur_realise_macon', 'realisation_mur']); // Check presence often enough
+                // Or check explicit validation
+                const murFini = val(['Je valide que le mur est terminé et conforme', '\u2705 Je valide que le mur est terminé et conforme']);
+                if (murFini === 'ok' || murFini.includes('oui')) return 'Attente Branchement';
+                if (typeMur) return 'Attente Branchement';
+
+                // 6. Kit Availability
+                const kitDispo = val(['kit_disponible_macon', 'kit_disponible']);
+                if (kitDispo.includes('oui')) return 'Attente Maçon';
+
+                // 7. Explicit Status
+                const explicitStatus = findCol(row, ['statut', 'status', 'statut_installation', 'etat', 'avancement']);
+                if (explicitStatus) return explicitStatus;
+
+                return 'Attente démarrage';
+            };
+
+            const statut = determineStatus(row, findCol);
 
             // ===== DATES =====
             const dateMaj = findCol(row, ['date', 'date_installation', 'date_visite', 'maj', 'updated_at']) || '';
@@ -580,10 +708,10 @@ class ImportManager {
             const cin = findCol(row, ['cin', 'niche', 'cni', 'identite']) || '';
 
             // ===== INFOS TECHNIQUES / COMMENTAIRES =====
-            const infos = findCol(row, ['infos', 'info', 'tech', 'technique', 'commentaire', 'obs', 'observation', 'materiel', 'puissance']) || '';
+            const infos = findCol(row, ['infos', 'info', 'tech', 'technique', 'commentaire', 'obs', 'observation', 'materiel', 'puissance', 'C12', 'C13', 'C16', 'REMARQUES', 'NOTES', 'TYPE_DE_VISITE/notes_key', 'notes_key', 'observations']) || '';
 
             // === CRÉATION ENTITÉ HOUSEHOLD ===
-            const locationData = sanitizeLocation({ region, department, commune, village, coordinates, zoneId: findCol(row, ['zone', 'secteur', 'bassin']) || 'Non assigné' });
+            const locationData = this._sanitizeLocation(rawLoc);
 
             const nom = findCol(row, ['Prénom et Nom', 'C1', 'nom', 'name']) || 'Inconnu';
             const telephone = findCol(row, ['Telephone', 'C3', 'tel', 'telephone', 'phone']) || '';
@@ -624,27 +752,60 @@ class ImportManager {
         let updatedCount = 0;
 
         // INSERTION EN BASE (Table Households UNIQUEMENT)
+        // STRICT DEDUPLICATION BY ID ONLY (Simpler, faster, requested by user)
         for (let i = 0; i < households.length; i++) {
             const household = households[i];
 
             try {
-                console.log(`ImportManager: attempting save for household ${household.id}`);
+                // Strict check: only ID matters
                 const existing = await window.householdRepository.findById(household.id);
 
                 if (existing) {
-                    // console.log(`📝 Updating: ${household.id}`);
+                    // Update Existant
+                    // We preserve existing data unless overwritten by non-empty new data
+                    if (household.owner.name) existing.owner.name = household.owner.name;
+                    if (household.owner.phone) existing.owner.phone = household.owner.phone;
+
+                    // STATUS UPDATE VIA METHOD
+                    if (household.status && household.status !== 'Attente démarrage') {
+                        const normalizedStatus = this.normalizeStatus(household.status);
+                        if (typeof existing.updateStatus === 'function') {
+                            existing.updateStatus(normalizedStatus, 'Mise à jour Import Excel');
+                        }
+                    }
+
+                    // Location updates (Respect Immutable Value Object pattern)
+                    // 1. Get current data as plain object
+                    const locData = existing.location.toJSON ? existing.location.toJSON() : { ...existing.location };
+                    let locChanged = false;
+
+                    // 2. Merge new values
+                    if (household.location.region && household.location.region !== 'Non Renseigné') {
+                        locData.region = household.location.region;
+                        locChanged = true;
+                    }
+                    // Handle other fields if needed (department, etc - kept simple for now)
+
+                    if (household.location.coordinates) {
+                        const newCoords = household.location.coordinates.toJSON ? household.location.coordinates.toJSON() : household.location.coordinates;
+                        locData.coordinates = newCoords;
+                        locChanged = true;
+                    }
+
+                    // 3. Apply Update if changed
+                    if (locChanged && window.Location && typeof window.Location.fromJSON === 'function') {
+                        const newLocation = window.Location.fromJSON(locData);
+                        existing.updateLocation(newLocation);
+                    }
+
+                    // Update timestamps
+                    existing.touch(); // Utilise la méthode native de l'entité au lieu de forcer le setter manquant
+
+                    await window.householdRepository.save(existing);
                     updatedCount++;
                 } else {
-                    // console.log(`➕ Adding: ${household.id}`);
-                    insertedCount++;
-                }
-
-                try {
+                    // INSERT
                     await window.householdRepository.save(household);
-                    console.log(`ImportManager: saved household ${household.id}`);
-                } catch (saveErr) {
-                    console.error(`ImportManager: failed to save household ${household.id}`, saveErr);
-                    throw saveErr;
                 }
 
             } catch (error) {
@@ -755,10 +916,24 @@ class ImportManager {
     // LOGIQUE MÉTIER PURE (Machine à états)
     applySubmissionToState(state, submission) {
         const props = submission.props;
-        const role = (this.getValue(props, ['TYPE_DE_VISITE/role', 'role', 'Votre Role']) || '').toLowerCase();
+
+        // Helper normalize pour accents et emojis
+        // Updated to handle strings like "🛠️ Livreur", "👷 Maçon" etc.
+        const simpleClean = (s) => String(s || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[\u{1F300}-\u{1F9FF}]/gu, "").trim();
+
+        // Value might be just "Livreur" or "🛠️ Livreur"
+        // Also check "Équipe Réseau" -> "equipe reseau"
+        let role = simpleClean(this.getValue(props, ['TYPE_DE_VISITE/role', 'role', 'Votre Role', 'Votre_Role']));
+
+        // Map UI roles to internal keys if needed
+        if (role.includes('livreur')) role = 'livreur';
+        else if (role.includes('macon')) role = 'macon';
+        else if (role.includes('reseau')) role = 'reseau';
+        else if (role.includes('installateur') || role.includes('interieur')) role = 'interieur';
+        else if (role.includes('controleur')) role = 'controleur';
 
         // DEBUG ROLE (décommenter pour tester)
-        // console.log('Rôle détecté:', role, 'de props:', props['Votre Role'], props['role']);
+        console.log('Rôle détecté (Clean):', role, ' Brut:', props['Votre Role'] || props['role']);
 
         // Extraction Équipe
         const extractTeam = (roleType) => {
@@ -796,83 +971,94 @@ class ImportManager {
             }
         }
 
-        // --- DÉTERMINATION STATUT SÉQUENTIEL (V5 - GOLD STANDARD) ---
+        // --- DÉTERMINATION STATUT SÉQUENTIEL (V5.1 - ROBUST KOBO IMPORT) ---
 
         // 1. LIVREUR
         if (role.includes('livreur')) {
-            const situation = this.getValue(props, ['Situation du Ménage', 'group_wu8kv54/Situation_du_M_nage']);
+            const situationRaw = this.getValue(props, ['Situation du Ménage', 'group_wu8kv54/Situation_du_M_nage']);
+            const situation = simpleClean(situationRaw);
 
-            if (['menage_eligible', 'Ménage éligible'].includes(situation)) {
-                // Validation Complète
+            console.log(`[LIVREUR CHECK] ${state.owner.name} SituationRaw: "${situationRaw}" Clean: "${situation}"`);
+
+            // Inéligible
+            if (situation.includes('non_eligible') || situation.includes('non eligible') || situation.includes('ineligible')) {
+                state.status = 'Inéligible';
+                const justif = this.getValue(props, ['justificatif', 'pr4rq21', 'group_wu8kv54/pr4rq21']);
+                if (justif) state.notes.push(`❌ Justificatif: ${justif}`);
+            }
+            // Injoignable
+            else if (situation.includes('injoignable')) {
+                state.status = 'Injoignable';
+            }
+            // Éligible -> Vérification Livraison
+            else if (situation.includes('eligible') || situation.includes('ok') || situation.includes('ras')) {
+                // Est-ce que le kit est marqué livré ?
                 const remiseOK = this.getValue(props, ['Je confirme la remise du materiel au ménage', 'group_wu8kv54/group_sy9vj14/Je_confirme_la_remis_u_materiel_au_m_nage']);
                 const marquageOK = this.getValue(props, ['Je confirme le marquage de l\'emplacement des coffret électrique', 'Je_confirme_le_marqu_s_coffret_lectrique', 'group_wu8kv54/group_sy9vj14/Je_confirme_le_marqu_s_coffret_lectrique']);
 
-                if (remiseOK === 'OK' && marquageOK === 'OK') {
-                    state.status = 'Étape 1: Matériel livré et marqué'; // Next: Maçon
-                } else if (remiseOK === 'OK') {
-                    state.status = 'Étape 1: Matériel livré (marquage manquant)';
+                console.log(`[LIVREUR CHECK] Remise: "${remiseOK}" Marquage: "${marquageOK}"`);
+
+                if ((remiseOK === 'OK' || remiseOK === 'Oui') && (marquageOK === 'OK' || marquageOK === 'Oui')) {
+                    state.status = 'Attente Maçon';
                 } else {
-                    state.status = 'Étape 1: Livraison en cours';
+                    state.status = 'Attente démarrage';
                 }
 
-                // Tech Notes (FULL)
-                const c25 = this.getValue(props, ['Longueur Cable 2,5mm² Intérieure', 'Longueur_Cable_2_5mm_Int_rieure', 'group_wu8kv54/group_sy9vj14/Longueur_Cable_2_5mm_Int_rieure']);
-                const c15 = this.getValue(props, ['Longueur Cable 1,5mm² Intérieure', 'Longueur_Cable_1_5mm_Int_rieure', 'group_wu8kv54/group_sy9vj14/Longueur_Cable_1_5mm_Int_rieure']);
-                const t4 = this.getValue(props, ['Longueur Tranchée (Cable armé 4mm²)', 'Longueur_Tranch_e_Cable_arm_4mm', 'group_wu8kv54/group_sy9vj14/Longueur_Tranch_e_Cable_arm_4mm']);
-                const t15 = this.getValue(props, ['Longueur Tranchée Câble armé 1,5mm²)', 'Longueur_Tranch_e_C_ble_arm_1_5mm', 'group_wu8kv54/group_sy9vj14/Longueur_Tranch_e_C_ble_arm_1_5mm']);
-
-                if (c25 || c15 || t4 || t15) {
-                    state.notes.push(`📏 Matériel: Câble 2.5mm²=${c25 || 0}m, 1.5mm²=${c15 || 0}m, Tranchée 4mm²=${t4 || 0}m, 1.5mm²=${t15 || 0}m`);
-                }
-
-            } else if (['menage_non_eligible', 'Ménage non éligible'].includes(situation)) {
-                state.status = 'Non éligible';
-                const justif = this.getValue(props, ['justificatif', 'pr4rq21', 'group_wu8kv54/pr4rq21']);
-                if (justif) state.notes.push(`❌ Justificatif: ${justif}`);
-            } else if (['menage_injoignable', 'Ménage injoignable'].includes(situation)) {
-                state.status = 'Injoignable';
+                // Tech Notes
+                const c25 = this.getValue(props, ['Longueur Cable 2,5mm² Intérieure', 'Longueur_Cable_2_5mm_Int_rieure']);
+                if (c25) state.notes.push({
+                    content: `📏 Matériel noté lors de la livraison`,
+                    date: new Date(submission.submissionTime),
+                    author: 'System'
+                });
             }
         }
 
         // 2. MAÇON
-        else if (role.includes('macon') || role.includes('maçon')) {
+        else if (role.includes('macon')) {
             if (!state.teams.find(t => t.type === 'macon')) state.teams.push({ type: 'macon', name: extractTeam('macon') });
 
-            const kit = this.getValue(props, ['Le kit est-il disponible et complet ?', 'etape_macon/kit_disponible_macon']);
+            const kitRaw = this.getValue(props, ['Le kit est-il disponible et complet ?', 'etape_macon/kit_disponible_macon']);
+            const kit = simpleClean(kitRaw);
 
-            if (kit === 'oui' || kit === '✅ Oui - Kit maçon disponible') {
-                const val = this.getValue(props, ['etape_macon/validation_macon_final']);
+            console.log(`[MACON CHECK] KitRaw: "${kitRaw}" Clean: "${kit}"`);
 
-                if (val === 'OK') {
-                    state.status = 'Attente Branchement'; // Validé, Next: Réseau
+            if (kit.includes('oui') || kit.includes('yes')) {
+                const murFiniRaw = this.getValue(props, ['Je valide que le mur est terminé et conforme', '\u2705 Je valide que le mur est terminé et conforme']);
+                const murFini = simpleClean(murFiniRaw);
+
+                console.log(`[MACON CHECK] MurFiniRaw: "${murFiniRaw}" Clean: "${murFini}"`);
+
+                if (murFini.includes('ok') || murFini.includes('oui')) {
+                    state.status = 'Attente Branchement';
                 } else {
-                    state.status = 'Attente Maçon (En cours)';
+                    state.status = 'Attente Maçon';
                 }
-            } else if (kit === 'non' || kit === '❌ Non - Kit maçon non disponible') {
-                state.notes.push(`[MAÇON] Kit non disponible signalé`);
+            } else if (kit.includes('non')) {
+                state.notes.push({
+                    content: `[MAÇON] Kit non disponible signalé`,
+                    date: new Date(submission.submissionTime),
+                    author: 'System'
+                });
+                // Reste au statut précédent ou erreur
             }
-
-            // Tech Notes
-            const pb = this.getValue(props, ['PROBLEME', 'etape_macon/problemes_travail_macon']);
-            if (pb && pb !== 'RAS') state.notes.push(`[PB MAÇON]: ${pb}`);
         }
 
         // 3. RÉSEAU
         else if (role.includes('reseau')) {
             if (!state.teams.find(t => t.type === 'reseau')) state.teams.push({ type: 'reseau', name: extractTeam('reseau') });
 
-            const murConforme = this.getValue(props, ['Le mur est-il réalisé et conforme ?', 'etape_reseau/verification_mur_reseau']);
+            const branchementFini = simpleClean(this.getValue(props, ['Etat du branchement', '\u00c9tat du branchement', 'etat_branchement_reseau']));
 
-            if (murConforme === 'oui' || murConforme === '✅ Oui - Mur conforme') {
-                const val = this.getValue(props, ['etape_reseau/validation_reseau_final']);
-
+            if (branchementFini.includes('termine') || branchementFini.includes('realise')) {
+                const val = this.getValue(props, ['Je valide que le branchement est terminé et conforme', '\u2705 Je valide que le branchement est terminé et conforme']);
                 if (val === 'OK') {
-                    state.status = 'Attente électricien'; // Validé, Next: Interieur
+                    state.status = 'Attente Électricien'; // Next: Intérieur
                 } else {
-                    state.status = 'Attente Branchement (En cours)';
+                    state.status = 'Attente Branchement';
                 }
-            } else {
-                state.notes.push(`[RESEAU] Mur non conforme signalé`);
+            } else if (branchementFini.includes('probleme')) {
+                state.status = 'Problème Réseau';
             }
         }
 
@@ -880,47 +1066,38 @@ class ImportManager {
         else if (role.includes('interieur') || role.includes('installateur')) {
             if (!state.teams.find(t => t.type === 'interieur')) state.teams.push({ type: 'interieur', name: extractTeam('interieur') });
 
-            const branchConforme = this.getValue(props, ['Le branchement est-il réalisé et conforme ?', 'etape_interieur/verification_branchement_interieur']);
+            const installFini = simpleClean(this.getValue(props, ['etat_installation_interieur', 'Etat installation intérieure']));
 
-            if (branchConforme === 'oui' || branchConforme === '✅ Oui - Branchement conforme') {
-                const val = this.getValue(props, ['etape_interieur/validation_interieur_final']);
-
-                if (val === 'OK') {
-                    state.status = 'Attente Controleur'; // Validé, Next: Controleur
-                } else {
-                    state.status = 'Attente électricien (En cours)';
-                }
-            } else {
-                state.notes.push(`[INTERIEUR] Branchement non conforme signalé`);
+            if (installFini.includes('termine')) {
+                state.status = 'Attente Contrôleur';
+            } else if (installFini.includes('probleme')) {
+                state.status = 'Problème Intérieur';
             }
         }
 
         // 5. CONTRÔLEUR
-        else if (role.includes('controleur') || role.includes('contrôleur')) {
-            const val = this.getValue(props, ['etape_controleur/validation_controleur_final']);
-            if (val === 'OK') {
+        else if (role.includes('controleur')) {
+            const etatInstall = simpleClean(this.getValue(props, ['ETAT_DE_L_INSTALLATION', "Etat de l'installation"]));
+
+            if (etatInstall.includes('terminee') || etatInstall.includes('conforme')) {
                 state.status = 'Conforme';
-            } else {
-                const etat = this.getValue(props, ['Controle préalable', 'etape_controleur/ETAT_DE_L_INSTALLATION']);
-                if (etat && etat.includes('probleme')) state.status = 'Attente électricien(X)'; // Rejet
-                else state.status = 'Attente Controleur (En cours)';
+            } else if (etatInstall.includes('probleme') || etatInstall.includes('non_conforme')) {
+                state.status = 'Attente Reprise';
             }
 
             // Observations Détaillées
             const obsKeys = [
                 'OBSERVATION???', 'OBSERVATIONS ???', 'OBSERVATIONS???',
-                'Observations', 'Observations_001', 'OBSERVATION_001',
-                'OBSERVATION_002', 'OBSERVATION_003'
+                'Observations', 'Observations_001', 'OBSERVATION_001'
             ];
             obsKeys.forEach(k => {
                 const v = this.getValue(props, [k]);
                 if (v && v !== 'RAS' && v !== 'NC') state.notes.push(`🔍 [CONTRÔLE - ${k}]: ${v}`);
             });
+        }      // Resistance Terre
+        const terre = this.getValue(props, ['VALEUR DE LA RESISTANCE DE TERRE OU DE BOUCLE', 'etape_controleur/VALEUR_DE_LA_RESISTANCE_DE_TER']);
+        if (terre) state.notes.push(`⚡ Résistance de terre: ${terre} Ohm`);
 
-            // Resistance Terre
-            const terre = this.getValue(props, ['VALEUR DE LA RESISTANCE DE TERRE OU DE BOUCLE', 'etape_controleur/VALEUR_DE_LA_RESISTANCE_DE_TER']);
-            if (terre) state.notes.push(`⚡ Résistance de terre: ${terre} Ohm`);
-        }
 
         // HISTORIQUE (Avec Dates)
         if (state.history) {
@@ -936,7 +1113,11 @@ class ImportManager {
         // Notes (Accumulation)
         const note = props['notes_generales'] || props['Observations'];
         if (note && note !== 'RAS' && note !== 'NC') {
-            state.notes.push(`${new Date(submission.submissionTime).toLocaleDateString()} [${role.toUpperCase()}]: ${note}`);
+            state.notes.push({
+                content: `${note} [${role.toUpperCase()}]`,
+                date: new Date(submission.submissionTime),
+                author: 'Kobo Import'
+            });
         }
 
         // PHOTOS (Extraction Smart)
@@ -971,6 +1152,48 @@ class ImportManager {
                 author: role.toUpperCase()
             });
         }
+        // 6. GENERIC COMMENTS / NOTES (Pour toutes les étapes)
+        // Demande utilisateur: "Pour l'imp KOBO AUSSI"
+        // 6. GENERIC COMMENTS / NOTES (Pour toutes les étapes)
+        // Demande utilisateur: "Pour l'imp KOBO AUSSI"
+        const genericNotes = this.getValue(props, ['infos', 'info', 'tech', 'technique', 'commentaire', 'obs', 'observation', 'materiel', 'puissance', 'C12', 'C13', 'C16', 'REMARQUES', 'NOTES', 'TYPE_DE_VISITE/notes_key', 'notes_key', 'observations']);
+        if (genericNotes && String(genericNotes).trim() !== '') {
+            state.notes.push({
+                content: `🗒️ ${String(genericNotes).trim()}`,
+                date: new Date(submission.submissionTime),
+                author: 'Kobo Comments'
+            });
+        }
+
+        // Return the updated state
+        return state;
+    }
+
+    /**
+     * Nettoie les données brutes pour éviter les objets vides
+     */
+    _sanitizeLocation(loc) {
+        if (!loc) return { region: 'Non Renseigné', department: 'Non Renseigné', commune: 'Non Renseigné', village: '', coordinates: null, zoneId: 'Non assigné' };
+
+        const cleanStr = (v) => (v === undefined || v === null) ? 'Non Renseigné' : String(v);
+
+        const region = cleanStr(loc.region);
+        const department = cleanStr(loc.department);
+        const commune = cleanStr(loc.commune);
+        const village = loc.village || '';
+        let coordinates = null;
+        if (loc.coordinates) {
+            try {
+                const lat = parseFloat(String(loc.coordinates.latitude).replace(',', '.'));
+                const lon = parseFloat(String(loc.coordinates.longitude).replace(',', '.'));
+                if (!Number.isNaN(lat) && !Number.isNaN(lon) && lat !== 0 && lon !== 0) {
+                    coordinates = { latitude: lat, longitude: lon, precision: loc.coordinates.precision || 0 };
+                }
+            } catch (e) {
+                coordinates = null;
+            }
+        }
+        return { region, department, commune, village, coordinates, zoneId: loc.zoneId || 'Non assigné' };
     }
 }
 

@@ -4,763 +4,287 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Guide complet d'utilisation du système de pilotage d'électrification de masse">
-    <link rel="canonical" href="https://votredomaine.com/aide.html">
-    <title>Aide et Documentation - Électrification de Masse</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+    <title>Centre d'Aide - Électrification</title>
+    <link rel="stylesheet" href="src/output.css">
+    <link rel="stylesheet" href="src/dark.css">
+    <script src="vendor/fontawesome/all.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Inter', sans-serif;
         }
 
-        .gradient-bg {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        }
-
         .card-shadow {
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
 
-        .help-section {
-            border-left: 4px solid #667eea;
-        }
-
-        .toc-link {
-            transition: all 0.3s ease;
-        }
-
-        .toc-link:hover {
-            background-color: #f3f4f6;
-            padding-left: 1rem;
+        .gradient-bg {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
         }
     </style>
 </head>
 
 <body class="bg-gray-50">
     <!-- Navigation -->
-    <nav class="gradient-bg text-white shadow-lg" aria-label="Navigation principale">
+    <nav class="gradient-bg text-white shadow-lg">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between h-16">
                 <div class="flex items-center">
-                    <i class="fas fa-bolt text-2xl mr-3" aria-hidden="true"></i>
-                    <h1 class="text-xl font-bold">Électrification de Masse</h1>
+                    <i class="fas fa-bolt text-2xl mr-3"></i>
+                    <h1 class="text-xl font-bold">Électrification</h1>
                 </div>
-                <button class="lg:hidden p-2 text-white" id="mobileMenuButton" aria-expanded="false"
-                    aria-controls="mobileMenu">
-                    <i class="fas fa-bars text-xl"></i>
-                </button>
-                <div class="hidden lg:flex items-center space-x-4" id="desktopMenu">
+                <div class="flex items-center space-x-4">
                     <a href="index.html"
-                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-colors">
-                        <i class="fas fa-tachometer-alt mr-1"></i> Dashboard
-                    </a>
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20">Dashboard</a>
                     <a href="parametres.html"
-                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-colors">
-                        <i class="fas fa-cog mr-1"></i> Paramètres
-                    </a>
-                    <a href="simulation.html"
-                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-colors">
-                        <i class="fas fa-calculator mr-1"></i> Simulation
-                    </a>
-                    <a href="rapports.html"
-                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-colors">
-                        <i class="fas fa-file-alt mr-1"></i> Rapports
-                    </a>
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20">Paramètres</a>
                     <a href="terrain.html"
-                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-colors">
-                        <i class="fas fa-map-marker-alt mr-1"></i> Terrain
-                    </a>
-                    <a href="aide.html"
-                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-colors">
-                        <i class="fas fa-question-circle mr-1"></i> Aide
-                    </a>
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20">Terrain</a>
                     <a href="charges.html"
-                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-colors">
-                        <i class="fas fa-coins mr-1"></i> Charges
-                    </a>
-                    <!-- Reset all local data (localStorage + IndexedDB) -->
-                    <button id="clearAllButton" onclick="clearAllData()"
-                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-colors bg-red-600 bg-opacity-10 text-red-600"
-                        title="Supprimer toutes les données locales">
-                        <i class="fas fa-trash-alt mr-1"></i> Réinitialiser données
-                    </button>
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20">Charges</a>
+                    <a href="simulation.html"
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20">Simulation</a>
+                    <a href="rapports.html"
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20">Rapports</a>
+                    <a href="aide.html"
+                        class="px-3 py-2 rounded-md text-sm font-bold bg-white bg-opacity-20 border-b-2 border-white">Aide</a>
                 </div>
-            </div>
-        </div>
-        <!-- Menu mobile -->
-        <div class="lg:hidden hidden bg-indigo-800" id="mobileMenu">
-            <div class="px-2 pt-2 pb-3 space-y-1">
-                <a href="index.html"
-                    class="block px-3 py-2 rounded-md text-base font-medium hover:bg-white hover:bg-opacity-20">Dashboard</a>
-                <a href="parametres.html"
-                    class="block px-3 py-2 rounded-md text-base font-medium hover:bg-white hover:bg-opacity-20">Paramètres</a>
-                <a href="simulation.html"
-                    class="block px-3 py-2 rounded-md text-base font-medium hover:bg-white hover:bg-opacity-20">Simulation</a>
-                <a href="rapports.html"
-                    class="block px-3 py-2 rounded-md text-base font-medium hover:bg-white hover:bg-opacity-20">Rapports</a>
-                <a href="terrain.html"
-                    class="block px-3 py-2 rounded-md text-base font-medium hover:bg-white hover:bg-opacity-20">Terrain</a>
-                <a href="aide.html"
-                    class="block px-3 py-2 rounded-md text-base font-medium hover:bg-white hover:bg-opacity-20">Aide</a>
-                <a href="charges.html"
-                    class="block px-3 py-2 rounded-md text-base font-medium hover:bg-white hover:bg-opacity-20">Charges</a>
-                <a href="#"
-                    onclick="if(confirm('Supprimer toutes les données locales (localStorage et IndexedDB) ?')) { clearAllData(); }"
-                    class="block px-3 py-2 rounded-md text-base font-medium hover:bg-white hover:bg-opacity-20 text-red-200">Réinitialiser
-                    données</a>
             </div>
         </div>
     </nav>
 
-    <!-- Loading indicator -->
-    <div id="loadingIndicator"
-        class="fixed inset-0 bg-white bg-opacity-80 flex items-center justify-center z-50 hidden">
-        <div class="text-center">
-            <i class="fas fa-spinner fa-spin text-3xl text-indigo-600 mb-2"></i>
-            <p class="text-gray-600">Chargement...</p>
-        </div>
-    </div>
-
     <!-- Main Content -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div class="mb-8">
-            <h2 class="text-2xl font-bold text-gray-900 mb-2">
-                <i class="fas fa-question-circle text-indigo-600 mr-3"></i>
-                Aide et Documentation
-            </h2>
-            <p class="text-gray-600">Guide complet d'utilisation du système de pilotage d'électrification de masse</p>
+        <div class="text-center mb-10">
+            <h2 class="text-3xl font-extrabold text-gray-900 border-b-4 border-indigo-500 inline-block pb-2">Centre
+                d'Aide & Documentation</h2>
+            <p class="mt-4 text-lg text-gray-600">Tout ce que vous devez savoir pour maîtriser l'application.</p>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            <!-- Table of Contents -->
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            <!-- Tabs Navigation -->
             <div class="lg:col-span-1">
-                <div class="bg-white rounded-lg card-shadow p-6 sticky top-6">
-                    <h3 class="text-lg font-semibold text-gray-800 mb-4">
-                        <i class="fas fa-list text-blue-600 mr-2"></i>
-                        Sommaire
-                    </h3>
-                    <nav class="space-y-2">
-                        <a href="#introduction"
-                            class="toc-link block px-2 py-1 text-sm text-gray-600 rounded">Introduction</a>
-                        <a href="#dashboard"
-                            class="toc-link block px-2 py-1 text-sm text-gray-600 rounded">Dashboard</a>
-                        <a href="#parametres"
-                            class="toc-link block px-2 py-1 text-sm text-gray-600 rounded">Paramètres</a>
-                        <a href="#simulation"
-                            class="toc-link block px-2 py-1 text-sm text-gray-600 rounded">Simulation</a>
-                        <a href="#guide-resultat" class="toc-link block px-2 py-1 text-sm text-gray-600 rounded">Guide :
-                            Obtenir un résultat</a>
-                        <a href="#rapports" class="toc-link block px-2 py-1 text-sm text-gray-600 rounded">Rapports</a>
-                        <a href="#terrain" class="toc-link block px-2 py-1 text-sm text-gray-600 rounded">Saisie
-                            Terrain</a>
-                        <a href="#workflows"
-                            class="toc-link block px-2 py-1 text-sm text-gray-600 rounded">Workflows</a>
-                        <a href="#indicateurs"
-                            class="toc-link block px-2 py-1 text-sm text-gray-600 rounded">Indicateurs</a>
-                        <a href="#faq" class="toc-link block px-2 py-1 text-sm text-gray-600 rounded">FAQ</a>
-                    </nav>
-                </div>
+                <nav class="space-y-2 sticky top-8">
+                    <button onclick="showTab('presentation')"
+                        class="tab-btn w-full flex items-center px-4 py-3 text-sm font-bold rounded-lg bg-white card-shadow text-indigo-600 border-l-4 border-indigo-500 transition-all"
+                        id="btn-presentation">
+                        <i class="fas fa-desktop mr-3"></i> Présentation
+                    </button>
+                    <button onclick="showTab('terrain')"
+                        class="tab-btn w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg bg-gray-50 text-gray-600 hover:bg-white hover:text-indigo-600 transition-all border-l-4 border-transparent"
+                        id="btn-terrain">
+                        <i class="fas fa-map-marked-alt mr-3"></i> Module Terrain
+                    </button>
+                    <button onclick="showTab('charges')"
+                        class="tab-btn w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg bg-gray-50 text-gray-600 hover:bg-white hover:text-indigo-600 transition-all border-l-4 border-transparent"
+                        id="btn-charges">
+                        <i class="fas fa-tasks mr-3"></i> Gestion des Charges
+                    </button>
+                    <button onclick="showTab('rapports')"
+                        class="tab-btn w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg bg-gray-50 text-gray-600 hover:bg-white hover:text-indigo-600 transition-all border-l-4 border-transparent"
+                        id="btn-rapports">
+                        <i class="fas fa-file-alt mr-3"></i> Rapports & Analytics
+                    </button>
+                    <button onclick="showTab('faq')"
+                        class="tab-btn w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg bg-gray-50 text-gray-600 hover:bg-white hover:text-indigo-600 transition-all border-l-4 border-transparent"
+                        id="btn-faq">
+                        <i class="fas fa-question-circle mr-3"></i> FAQ
+                    </button>
+                </nav>
             </div>
 
-            <!-- Content -->
-            <div class="lg:col-span-3 space-y-8">
-                <!-- Introduction -->
-                <section id="introduction" class="bg-white rounded-lg card-shadow p-6 help-section">
-                    <h3 class="text-xl font-semibold text-gray-800 mb-4">
-                        <i class="fas fa-play-circle text-green-600 mr-2"></i>
-                        Introduction au Système
-                    </h3>
+            <!-- Content Area -->
+            <div class="lg:col-span-3">
+                <div class="bg-white rounded-xl card-shadow p-8 min-h-[500px]">
 
-                    <div class="prose max-w-none">
-                        <p class="text-gray-600 mb-4">
-                            Le système de pilotage d'électrification de masse est une solution complète pour gérer,
-                            suivre et optimiser les projets d'installation électrique à grande échelle. Il permet de
-                            coordonner les différents corps de métier, détecter les problèmes en temps réel et optimiser
-                            les ressources.
-                        </p>
-
-                        <div class="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4">
-                            <div class="flex">
-                                <div class="flex-shrink-0">
-                                    <i class="fas fa-info-circle text-blue-400"></i>
-                                </div>
-                                <div class="ml-3">
-                                    <h4 class="text-sm font-medium text-blue-800">Fonctionnalités principales</h4>
-                                    <ul class="mt-2 text-sm text-blue-700 space-y-1">
-                                        <li>• Planification automatisée des ressources</li>
-                                        <li>• Suivi en temps réel de l'avancement</li>
-                                        <li>• Détection automatique des goulots d'étranglement</li>
-                                        <li>• Simulation de scénarios</li>
-                                        <li>• Génération automatique de rapports</li>
-                                        <li>• Saisie terrain avec mode hors ligne</li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- Véhicules et acquisition -->
-                <section id="vehicules" class="bg-white rounded-lg card-shadow p-6 help-section">
-                    <h3 class="text-xl font-semibold text-gray-800 mb-4">
-                        <i class="fas fa-truck-moving text-indigo-600 mr-2"></i>
-                        Véhicules et mode d'acquisition
-                    </h3>
-                    <div class="space-y-3">
-                        <p class="text-gray-600">La page <a href="parametres.html"
-                                class="text-indigo-600 underline">Paramètres</a> permet de préciser le nombre de
-                            véhicules par acteur et le mode d'acquisition (<em>Acheter</em> ou <em>Louer</em>).</p>
-                        <ul class="list-disc list-inside text-sm text-gray-600">
-                            <li><strong>Acheter :</strong> le coût d'achat par unité est pris en compte une seule fois
-                                dans les charges (coût d'investissement).</li>
-                            <li><strong>Louer :</strong> le coût de location journalier est multiplié par la durée
-                                estimée du projet et ajouté aux coûts opérationnels.</li>
-                            <li>Les acteurs concernés : <em>Chef de projet</em>, <em>Contrôleur</em>, <em>Installateur
-                                    réseau</em> et <em>Camions de livraison</em>.</li>
-                        </ul>
-                        <p class="text-xs text-gray-500">Si vous ouvrez un ancien projet sans ces champs, des valeurs
-                            par défaut seront appliquées automatiquement pour maintenir la compatibilité.</p>
-                    </div>
-                </section>
-
-                <!-- Dashboard -->
-                <section id="dashboard" class="bg-white rounded-lg card-shadow p-6 help-section">
-                    <h3 class="text-xl font-semibold text-gray-800 mb-4">
-                        <i class="fas fa-tachometer-alt text-blue-600 mr-2"></i>
-                        Dashboard Principal
-                    </h3>
-
-                    <div class="space-y-4">
-                        <p class="text-gray-600">
-                            Le dashboard est votre vue d'ensemble du projet. Il affiche en temps réel tous les
-                            indicateurs clés nécessaires au pilotage.
-                        </p>
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div class="bg-gray-50 p-4 rounded-lg">
-                                <h4 class="font-medium text-gray-800 mb-2">Indicateurs clés</h4>
-                                <ul class="text-sm text-gray-600 space-y-1">
-                                    <li><strong>Avancement Global :</strong> Pourcentage total de progression</li>
-                                    <li><strong>Ménages Terminés :</strong> Nombre de ménages traités</li>
-                                    <li><strong>Équipes Actives :</strong> Nombre d'équipes en cours de travail</li>
-                                    <li><strong>Jours Restants :</strong> Durée estimée jusqu'à la fin du projet</li>
+                    <!-- Presentation Tab -->
+                    <div id="tab-presentation" class="tab-content transition-opacity duration-300">
+                        <h3 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                            <span class="bg-indigo-100 p-2 rounded-lg mr-4"><i
+                                    class="fas fa-desktop text-indigo-600"></i></span>
+                            Présentation du Système
+                        </h3>
+                        <div class="prose prose-indigo max-w-none text-gray-600 space-y-4">
+                            <p>Bienvenue dans l'interface de gestion de l'électrification de masse. Cet outil a été
+                                conçu pour centraliser et optimiser toutes les étapes du déploiement électrique.</p>
+                            <div class="bg-indigo-50 p-4 rounded-lg border-l-4 border-indigo-400 my-6">
+                                <p class="font-semibold text-indigo-900 mb-1">Objectifs principaux :</p>
+                                <ul class="list-disc list-inside space-y-1">
+                                    <li>Suivi en temps réel des raccordements</li>
+                                    <li>Optimisation de la logistique des équipes</li>
+                                    <li>Contrôle budgétaire et reporting précis</li>
                                 </ul>
                             </div>
-
-                            <div class="bg-gray-50 p-4 rounded-lg">
-                                <h4 class="font-medium text-gray-800 mb-2">Graphiques</h4>
-                                <ul class="text-sm text-gray-600 space-y-1">
-                                    <li><strong>Avancement par métier :</strong> Visualisation de la progression par
-                                        corps de métier</li>
-                                    <li><strong>Productivité quotidienne :</strong> Évolution de la production
-                                        journalière</li>
-                                    <li><strong>Timeline du projet :</strong> Planning et échéancier détaillé</li>
-                                </ul>
-                            </div>
+                            <p>Utilisez le <strong>Dashboard</strong> pour une vue d'ensemble, ou plongez dans les
+                                modules spécifiques pour des actions détaillées.</p>
                         </div>
+                    </div>
 
-                        <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4">
-                            <div class="flex">
-                                <div class="flex-shrink-0">
-                                    <i class="fas fa-lightbulb text-yellow-400"></i>
+                    <!-- Terrain Tab -->
+                    <div id="tab-terrain" class="tab-content hidden transition-opacity duration-300">
+                        <h3 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                            <span class="bg-blue-100 p-2 rounded-lg mr-4"><i
+                                    class="fas fa-map-marked-alt text-blue-600"></i></span>
+                            Module Terrain
+                        </h3>
+                        <div class="space-y-6 text-gray-600">
+                            <p>Le module <strong>Terrain</strong> est le cœur opérationnel du système. Il permet de
+                                visualiser chaque ménage sur une carte interactive.</p>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="border border-gray-100 p-4 rounded-lg bg-gray-50">
+                                    <p class="font-bold text-gray-800 mb-2">Import de Données</p>
+                                    <p class="text-sm">Vous pouvez importer des fichiers Excel (.xlsx) pour mettre à
+                                        jour massivement la liste des ménages.</p>
                                 </div>
-                                <div class="ml-3">
-                                    <p class="text-sm text-yellow-700">
-                                        <strong>Astuce :</strong> Cliquez sur les éléments du tableau de bord pour
-                                        obtenir des détails supplémentaires.
+                                <div class="border border-gray-100 p-4 rounded-lg bg-gray-50">
+                                    <p class="font-bold text-gray-800 mb-2">Statuts & Suivi</p>
+                                    <p class="text-sm">Chaque ménage possède un statut évolutif : <em>"Attente
+                                            démarrage"</em>, <em>"En cours"</em>, <em>"Problème"</em> ou
+                                        <em>"Conforme"</em>.
                                     </p>
                                 </div>
                             </div>
+                            <p class="bg-yellow-50 p-4 rounded-md text-sm border-l-4 border-yellow-400">
+                                <i class="fas fa-exclamation-triangle mr-2 text-yellow-600"></i>
+                                <strong>Astuce :</strong> Cliquez sur un marqueur sur la carte pour voir les détails
+                                d'un ménage et modifier son statut en un clic.
+                            </p>
                         </div>
                     </div>
-                </section>
 
-                <!-- Paramètres -->
-                <section id="parametres" class="bg-white rounded-lg card-shadow p-6 help-section">
-                    <h3 class="text-xl font-semibold text-gray-800 mb-4">
-                        <i class="fas fa-cog text-purple-600 mr-2"></i>
-                        Configuration des Paramètres
-                    </h3>
-
-                    <div class="space-y-4">
-                        <p class="text-gray-600">
-                            La section Paramètres permet de configurer tous les aspects du projet. Les modifications
-                            sont appliquées en temps réel et sauvegardées automatiquement.
-                        </p>
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div class="bg-gray-50 p-4 rounded-lg">
-                                <h4 class="font-medium text-gray-800 mb-2">Paramètres du projet</h4>
-                                <ul class="text-sm text-gray-600 space-y-1">
-                                    <li>• Nombre total de ménages (calculé automatiquement depuis les zones)</li>
-                                    <li>• Date de début du projet</li>
-                                    <li>• Distance moyenne entre ménages</li>
-                                    <li>• Taux d'imprévus</li>
+                    <!-- Charges Tab -->
+                    <div id="tab-charges" class="tab-content hidden transition-opacity duration-300">
+                        <h3 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                            <span class="bg-green-100 p-2 rounded-lg mr-4"><i
+                                    class="fas fa-tasks text-green-600"></i></span>
+                            Gestion des Charges
+                        </h3>
+                        <div class="space-y-4 text-gray-600">
+                            <p>Ce module permet d'équilibrer la charge de travail entre les différentes équipes
+                                opérationnelles.</p>
+                            <h4 class="font-bold text-gray-800 mt-4">Répartition Automatique</h4>
+                            <p>Le bouton <strong>"Répartition Automatique"</strong> utilise un algorithme intelligent
+                                pour assigner les ménages en attente aux équipes disponibles en fonction de leur
+                                capacité journalière.</p>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                                <ul class="list-disc list-inside text-sm space-y-1">
+                                    <li><strong>Maçons :</strong> 2 ménages/jour</li>
+                                    <li><strong>Branchement Réseau :</strong> 10 ménages/jour</li>
                                 </ul>
-                            </div>
-
-                            <div class="bg-gray-50 p-4 rounded-lg">
-                                <h4 class="font-medium text-gray-800 mb-2">Découpage géographique</h4>
-                                <ul class="text-sm text-gray-600 space-y-1">
-                                    <li>• Création de zones avec nombre de ménages</li>
-                                    <li>• Mode de répartition (Auto/Manuel)</li>
-                                    <li>• Allocation automatique des équipes par zone</li>
-                                </ul>
-                            </div>
-                        </div>
-
-                        <!-- Configuration Optimisée -->
-                        <div
-                            class="bg-gradient-to-r from-green-50 to-blue-50 border-l-4 border-green-500 p-4 rounded-lg">
-                            <div class="flex items-start">
-                                <div class="flex-shrink-0">
-                                    <i class="fas fa-magic text-green-600 text-2xl"></i>
-                                </div>
-                                <div class="ml-4 flex-1">
-                                    <h4 class="text-lg font-semibold text-gray-800 mb-2">
-                                        ✨ Configuration Optimisée (Nouveau !)
-                                    </h4>
-                                    <p class="text-sm text-gray-700 mb-3">
-                                        Le bouton <strong>"Configuration Optimisée"</strong> calcule et remplit
-                                        automatiquement
-                                        <strong>tous les champs</strong> de la page Paramètres en fonction de vos zones.
-                                    </p>
-
-                                    <div class="bg-white p-3 rounded-lg mb-3">
-                                        <h5 class="font-medium text-gray-800 mb-2 text-sm">Comment ça marche ?</h5>
-                                        <ol class="text-sm text-gray-600 space-y-1 list-decimal list-inside">
-                                            <li>Créez au moins une zone avec un nombre de ménages</li>
-                                            <li>Le bouton "Configuration Optimisée" s'active automatiquement</li>
-                                            <li>Cliquez sur le bouton</li>
-                                            <li><strong>Tous les champs sont remplis instantanément !</strong></li>
-                                        </ol>
-                                    </div>
-
-                                    <div class="bg-white p-3 rounded-lg">
-                                        <h5 class="font-medium text-gray-800 mb-2 text-sm">Champs remplis
-                                            automatiquement :</h5>
-                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-gray-600">
-                                            <div>
-                                                <strong>✓ Configuration des Équipes</strong>
-                                                <ul class="ml-4 mt-1">
-                                                    <li>• Préparateurs, Livraison, Maçons</li>
-                                                    <li>• Réseau, Intérieur Type 1 & 2</li>
-                                                    <li>• Contrôleurs</li>
-                                                </ul>
-                                            </div>
-                                            <div>
-                                                <strong>✓ Taux de Production</strong>
-                                                <ul class="ml-4 mt-1">
-                                                    <li>• Kits préparés/jour</li>
-                                                    <li>• Murs construits/jour</li>
-                                                    <li>• Installations/jour</li>
-                                                </ul>
-                                            </div>
-                                            <div>
-                                                <strong>✓ Rémunération & Effectifs</strong>
-                                                <ul class="ml-4 mt-1">
-                                                    <li>• Superviseurs</li>
-                                                    <li>• Agents de livraison</li>
-                                                    <li>• Chauffeurs</li>
-                                                </ul>
-                                            </div>
-                                            <div>
-                                                <strong>✓ Coûts & Logistique</strong>
-                                                <ul class="ml-4 mt-1">
-                                                    <li>• Véhicules (Chef, Contrôleur)</li>
-                                                    <li>• Véhicules réseau</li>
-                                                    <li>• Camions livraison</li>
-                                                </ul>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Logique de calcul -->
-                        <div class="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-lg">
-                            <div class="flex">
-                                <div class="flex-shrink-0">
-                                    <i class="fas fa-calculator text-blue-500"></i>
-                                </div>
-                                <div class="ml-3">
-                                    <h5 class="text-sm font-medium text-blue-800 mb-2">Logique de calcul automatique
-                                    </h5>
-                                    <p class="text-xs text-blue-700 mb-2">
-                                        Le système calcule le nombre optimal d'équipes par métier en fonction de :
-                                    </p>
-                                    <ul class="text-xs text-blue-700 space-y-1">
-                                        <li>• <strong>Productivité journalière</strong> : Ex. 3 murs/jour pour les
-                                            maçons</li>
-                                        <li>• <strong>Nombre de ménages</strong> : Total de toutes vos zones</li>
-                                        <li>• <strong>Durée cible</strong> : 180 jours par défaut</li>
-                                        <li>• <strong>Formule</strong> : Équipes = ceil(ménages / (productivité ×
-                                            durée))</li>
-                                    </ul>
-                                    <p class="text-xs text-blue-700 mt-2 italic">
-                                        Exemple : Pour 1000 ménages, le système calcule automatiquement 2 équipes de
-                                        maçons,
-                                        2 équipes réseau, 1 équipe intérieur Type 1, etc.
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- Simulation -->
-                <section id="simulation" class="bg-white rounded-lg card-shadow p-6 help-section">
-                    <h3 class="text-xl font-semibold text-gray-800 mb-4">
-                        <i class="fas fa-calculator text-orange-600 mr-2"></i>
-                        Simulateur de Scénarios
-                    </h3>
-
-                    <div class="space-y-4">
-                        <p class="text-gray-600">
-                            Le simulateur permet de tester différentes configurations et d'analyser leur impact sur le
-                            projet.
-                        </p>
-
-                        <div class="bg-gray-50 p-4 rounded-lg">
-                            <h4 class="font-medium text-gray-800 mb-2">Étapes de simulation</h4>
-                            <ol class="text-sm text-gray-600 space-y-1 list-decimal list-inside">
-                                <li>Modifiez les paramètres du scénario</li>
-                                <li>Cliquez sur "Lancer la simulation"</li>
-                                <li>Analysez les résultats et les impacts</li>
-                                <li>Comparez avec la configuration actuelle</li>
-                                <li>Appliquez les changements si souhaité</li>
-                            </ol>
-                        </div>
-
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div class="bg-blue-50 p-4 rounded-lg">
-                                <h5 class="font-medium text-blue-800 mb-2">Déploiement Rapide</h5>
-                                <p class="text-sm text-blue-600">Priorise la vitesse d'exécution avec plus d'équipes</p>
-                            </div>
-                            <div class="bg-green-50 p-4 rounded-lg">
-                                <h5 class="font-medium text-green-800 mb-2">Version Économique</h5>
-                                <p class="text-sm text-green-600">Optimise les coûts avec une configuration réduite</p>
-                            </div>
-                            <div class="bg-orange-50 p-4 rounded-lg">
-                                <h5 class="font-medium text-orange-800 mb-2">Déploiement Sécurisé</h5>
-                                <p class="text-sm text-orange-600">Minimise les risques avec des marges de sécurité</p>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- Guide : Obtenir un résultat -->
-                <section id="guide-resultat" class="bg-white rounded-lg card-shadow p-6 help-section">
-                    <h3 class="text-xl font-semibold text-gray-800 mb-4">
-                        <i class="fas fa-route text-teal-600 mr-2"></i>
-                        Guide : Obtenir un résultat (Pas à pas)
-                    </h3>
-
-                    <div class="space-y-4">
-                        <p class="text-gray-600">Ce guide rapide vous montre comment paramétrer, simuler et exporter un
-                            résultat exploitable en quelques étapes.</p>
-
-                        <div class="bg-gray-50 p-4 rounded-lg">
-                            <h4 class="font-medium text-gray-800 mb-2">Étapes rapides</h4>
-                            <ol class="text-sm text-gray-600 space-y-2 list-decimal list-inside">
-                                <li><strong>Choisir un projet :</strong> Ouvrez `Paramètres` et vérifiez les données de
-                                    base (nombre de ménages, date de début).</li>
-                                <li><strong>Configurer les équipes :</strong> Définissez le nombre d'équipes et les taux
-                                    de production par métier.</li>
-                                <li><strong>Définir les scénarios :</strong> Dans `Simulation`, ajustez le taux
-                                    d'imprévus, la stratégie de déploiement (rapide, économique, sécurisé).</li>
-                                <li><strong>Lancer la simulation :</strong> Cliquez sur <em>Lancer la simulation</em> et
-                                    attendez la fin du calcul.</li>
-                                <li><strong>Analyser les indicateurs :</strong> Consultez `Dashboard` et `Indicateurs`
-                                    pour voir l'avancement, les risques et les goulots d'étranglement.</li>
-                                <li><strong>Exporter le rapport :</strong> Dans `Rapports`, choisissez le format
-                                    (PDF/Excel) et générez le document.</li>
-                                <li><strong>Appliquer / Synchroniser :</strong> Si le scénario est satisfaisant,
-                                    appliquez la configuration et synchronisez la saisie terrain.</li>
-                            </ol>
-                        </div>
-
-                        <div class="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-lg">
-                            <h4 class="font-medium text-blue-800 mb-2">Exemple concret</h4>
-                            <p class="text-sm text-blue-700">Paramètres choisis : 1 000 ménages, 10 équipes, production
-                                8 ménages/jour, taux d'imprévus 5%.</p>
-                            <p class="text-sm text-blue-700">Résultat attendu après simulation : durée estimée ~13
-                                semaines, coût estimé X, et goulots détectés dans la phase de livraison.</p>
-                        </div>
-
-                        <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-lg">
-                            <h4 class="font-medium text-yellow-800 mb-2">Checklist avant export</h4>
-                            <ul class="text-sm text-yellow-700 space-y-1">
-                                <li>• Vérifier la période choisie pour le rapport</li>
-                                <li>• Confirmer que les équipes et coûts sont à jour</li>
-                                <li>• S'assurer que la simulation a convergé sans erreurs</li>
-                                <li>• Valider les filtres de données (zones, métiers)</li>
-                            </ul>
-                        </div>
-
-                        <div class="bg-red-50 border-l-4 border-red-400 p-4 rounded-lg">
-                            <h4 class="font-medium text-red-800 mb-2">Dépannage rapide</h4>
-                            <ul class="text-sm text-red-700 space-y-1">
-                                <li>• Simulation trop lente : réduisez la complexité du scénario ou activez le mode
-                                    'Déploiement Rapide'.</li>
-                                <li>• Données manquantes : allez dans `Paramètres` et complétez les champs obligatoires.
-                                </li>
-                                <li>• Erreur d'export : réessayez en changeant le format (ex. PDF → HTML) ou vérifiez la
-                                    console du navigateur pour messages d'erreur.</li>
-                                <li>• Mode hors-ligne : vérifiez la synchronisation une fois la connexion rétablie.</li>
-                            </ul>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- Workflows -->
-                <section id="workflows" class="bg-white rounded-lg card-shadow p-6 help-section">
-                    <h3 class="text-xl font-semibold text-gray-800 mb-4">
-                        <i class="fas fa-project-diagram text-indigo-600 mr-2"></i>
-                        Workflows et Processus
-                    </h3>
-
-                    <div class="space-y-6">
-                        <div class="bg-gray-50 p-4 rounded-lg">
-                            <h4 class="font-medium text-gray-800 mb-3">Chaîne logique des interventions</h4>
-                            <div class="space-y-3">
-                                <div class="flex items-center">
-                                    <div
-                                        class="w-8 h-8 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-bold mr-3">
-                                        1</div>
-                                    <div>
-                                        <p class="font-medium text-gray-800">Préparateurs</p>
-                                        <p class="text-sm text-gray-600">Pré-câblage des coffrets et kits</p>
-                                    </div>
-                                </div>
-                                <div class="flex items-center">
-                                    <div
-                                        class="w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center text-sm font-bold mr-3">
-                                        2</div>
-                                    <div>
-                                        <p class="font-medium text-gray-800">Chargeurs / Livraison</p>
-                                        <p class="text-sm text-gray-600">Chargement et livraison des matériaux</p>
-                                    </div>
-                                </div>
-                                <div class="flex items-center">
-                                    <div
-                                        class="w-8 h-8 bg-yellow-500 text-white rounded-full flex items-center justify-center text-sm font-bold mr-3">
-                                        3</div>
-                                    <div>
-                                        <p class="font-medium text-gray-800">Maçons</p>
-                                        <p class="text-sm text-gray-600">Construction des murs et installation potelets
-                                        </p>
-                                    </div>
-                                </div>
-                                <div class="flex items-center">
-                                    <div
-                                        class="w-8 h-8 bg-purple-500 text-white rounded-full flex items-center justify-center text-sm font-bold mr-3">
-                                        4</div>
-                                    <div>
-                                        <p class="font-medium text-gray-800">Électriciens Réseau</p>
-                                        <p class="text-sm text-gray-600">Installation du réseau extérieur</p>
-                                    </div>
-                                </div>
-                                <div class="flex items-center">
-                                    <div
-                                        class="w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center text-sm font-bold mr-3">
-                                        5</div>
-                                    <div>
-                                        <p class="font-medium text-gray-800">Électriciens Intérieur</p>
-                                        <p class="text-sm text-gray-600">Installation intérieure et raccordements</p>
-                                    </div>
-                                </div>
-                                <div class="flex items-center">
-                                    <div
-                                        class="w-8 h-8 bg-gray-500 text-white rounded-full flex items-center justify-center text-sm font-bold mr-3">
-                                        6</div>
-                                    <div>
-                                        <p class="font-medium text-gray-800">Contrôleur Technique</p>
-                                        <p class="text-sm text-gray-600">Vérification et validation finale</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- Indicateurs -->
-                <section id="indicateurs" class="bg-white rounded-lg card-shadow p-6 help-section">
-                    <h3 class="text-xl font-semibold text-gray-800 mb-4">
-                        <i class="fas fa-chart-bar text-green-600 mr-2"></i>
-                        Guide des Indicateurs
-                    </h3>
-
-                    <div class="space-y-4">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div class="bg-gray-50 p-4 rounded-lg">
-                                <h4 class="font-medium text-gray-800 mb-2">Indicateurs de performance</h4>
-                                <ul class="text-sm text-gray-600 space-y-1">
-                                    <li><strong>Avancement global :</strong> Moyenne de progression de tous les métiers
-                                    </li>
-                                    <li><strong>Vitesse réelle vs théorique :</strong> Comparaison performance</li>
-                                    <li><strong>Productivité journalière :</strong> Ménages traités par jour</li>
-                                    <li><strong>Taux de conformité :</strong> Pourcentage de validations</li>
-                                </ul>
-                            </div>
-
-                            <div class="bg-gray-50 p-4 rounded-lg">
-                                <h4 class="font-medium text-gray-800 mb-2">Alertes et recommandations</h4>
-                                <ul class="text-sm text-gray-600 space-y-1">
-                                    <li><strong>Goulots d'étranglement :</strong> Points de blocage identifiés</li>
-                                    <li><strong>Recommandations :</strong> Suggestions d'optimisation</li>
-                                    <li><strong>Risques :</strong> Facteurs de risque évalués</li>
-                                    <li><strong>Anomalies :</strong> Écarts constatés</li>
+                                <ul class="list-disc list-inside text-sm space-y-1">
+                                    <li><strong>Installations Intérieures :</strong> 8 ménages/jour</li>
+                                    <li><strong>Contrôle de conformité :</strong> 15 ménages/jour</li>
                                 </ul>
                             </div>
                         </div>
                     </div>
-                </section>
 
-                <!-- FAQ -->
-                <section id="faq" class="bg-white rounded-lg card-shadow p-6 help-section">
-                    <h3 class="text-xl font-semibold text-gray-800 mb-4">
-                        <i class="fas fa-question-circle text-red-600 mr-2"></i>
-                        Questions Fréquentes
-                    </h3>
-
-                    <div class="space-y-4">
-                        <div class="border-b border-gray-200 pb-4">
-                            <h4 class="font-medium text-gray-800 mb-2">Comment détecter automatiquement les goulots
-                                d'étranglement ?</h4>
-                            <p class="text-sm text-gray-600">Le système analyse en permanence les vitesses d'avancement
-                                de chaque corps de métier. Un goulot d'étranglement est détecté quand un métier avance
-                                significativement plus vite ou plus lentement que les autres, créant un déséquilibre
-                                dans la chaîne de production.</p>
-                        </div>
-
-                        <div class="border-b border-gray-200 pb-4">
-                            <h4 class="font-medium text-gray-800 mb-2">Puis-je utiliser le système sans connexion
-                                internet ?</h4>
-                            <p class="text-sm text-gray-600">Oui, le système fonctionne en mode hors ligne. Les données
-                                sont sauvegardées localement et synchronisées automatiquement dès qu'une connexion est
-                                disponible. La saisie terrain peut se faire sans connexion.</p>
-                        </div>
-
-                        <div class="border-b border-gray-200 pb-4">
-                            <h4 class="font-medium text-gray-800 mb-2">Comment personnaliser les rapports ?</h4>
-                            <p class="text-sm text-gray-600">Vous pouvez choisir la période du rapport (mensuelle,
-                                trimestrielle, annuelle), le format d'export (PDF, HTML, Word, Excel) et le type de
-                                contenu (complet, exécutif, performance, risques).</p>
-                        </div>
-
-                        <div class="border-b border-gray-200 pb-4">
-                            <h4 class="font-medium text-gray-800 mb-2">Le système peut-il suggérer des réaffectations
-                                d'équipes ?</h4>
-                            <p class="text-sm text-gray-600">Oui, l'algorithme d'optimisation analyse les déséquilibres
-                                entre métiers et suggère des réaffectations d'équipes pour optimiser le flux global de
-                                production et réduire les temps d'attente.</p>
-                        </div>
-
-                        <div>
-                            <h4 class="font-medium text-gray-800 mb-2">Comment fonctionne la simulation de scénarios ?
-                            </h4>
-                            <p class="text-sm text-gray-600">Le simulateur permet de tester différentes configurations
-                                (nombre d'équipes, taux d'imprévus, etc.) et calcule automatiquement l'impact sur la
-                                durée du projet, les coûts, la productivité et les risques.</p>
+                    <!-- Rapports Tab -->
+                    <div id="tab-rapports" class="tab-content hidden transition-opacity duration-300">
+                        <h3 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                            <span class="bg-purple-100 p-2 rounded-lg mr-4"><i
+                                    class="fas fa-file-alt text-purple-600"></i></span>
+                            Rapports & Analytics
+                        </h3>
+                        <div class="space-y-4 text-gray-600">
+                            <p>Générez des rapports détaillés pour le suivi d'avancement et la justification des coûts.
+                            </p>
+                            <div class="border-l-4 border-indigo-200 pl-4 py-2 hover:bg-indigo-50 transition">
+                                <p class="font-bold text-gray-800">Export PDF</p>
+                                <p class="text-sm">Génère un document formel incluant les statistiques clés et le
+                                    tableau des interventions filtrées.</p>
+                            </div>
+                            <div class="border-l-4 border-green-200 pl-4 py-2 hover:bg-green-50 transition">
+                                <p class="font-bold text-gray-800">Export Excel</p>
+                                <p class="text-sm">Télécharge les données brutes filtrées pour une analyse personnalisée
+                                    dans Microsoft Excel ou Google Sheets.</p>
+                            </div>
                         </div>
                     </div>
-                </section>
+
+                    <div class="mb-8">
+                        <div class="relative">
+                            <input type="text" id="faqSearch"
+                                placeholder="Rechercher une question (ex: données, équipes...)"
+                                class="w-full pl-12 pr-4 py-3 bg-white border border-gray-200 rounded-xl shadow-sm outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
+                            <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                        </div>
+                    </div>
+
+                    <div class="space-y-6" id="faqList">
+                        <div class="faq-item bg-gray-50 p-5 rounded-xl border border-gray-100 transition-all hover:border-indigo-200"
+                            data-keywords="kobo synchro sync internet tokens">
+                            <p class="font-bold text-indigo-900 mb-2">Comment synchroniser avec KoboCollect ?</p>
+                            <p class="text-sm text-gray-600">Allez dans le module <strong>Terrain</strong>, section
+                                synchronisation. Entrez votre URL Kobo et votre Token API. La synchronisation mettra à
+                                jour vos ménages existants ou en créera de nouveaux.</p>
+                        </div>
+                        <div class="faq-item bg-gray-50 p-5 rounded-xl border border-gray-100 transition-all hover:border-indigo-200"
+                            data-keywords="sauvegarde backup données securité restore">
+                            <p class="font-bold text-indigo-900 mb-2">Comment restaurer une sauvegarde ?</p>
+                            <p class="text-sm text-gray-600">Utilisez le bouton <strong>Restaurer</strong> dans les
+                                paramètres du Module Terrain. Sélectionnez votre fichier JSON de sauvegarde. Attention :
+                                cela écrasera les données actuelles si elles sont plus anciennes.</p>
+                        </div>
+                        <div class="faq-item bg-gray-50 p-5 rounded-xl border border-gray-100 transition-all hover:border-indigo-200"
+                            data-keywords="hors ligne offline mobile terrain">
+                            <p class="font-bold text-indigo-900 mb-2">Puis-je travailler sans internet ?</p>
+                            <p class="text-sm text-gray-600">Oui. Tous les changements sont stockés dans votre
+                                navigateur. Vous ne perdez rien. La synchronisation avec le serveur central pourra être
+                                faite dès que vous retrouverez une connexion.</p>
+                        </div>
+                        <div class="faq-item bg-gray-50 p-5 rounded-xl border border-gray-100 transition-all hover:border-indigo-200"
+                            data-keywords="simulation budget coût équipes planning">
+                            <p class="font-bold text-indigo-900 mb-2">Comment fonctionne le simulateur de coût ?</p>
+                            <p class="text-sm text-gray-600">Le simulateur prend en compte le nombre d'équipes et les
+                                ménages restants. Il calcule automatiquement la date de fin estimée et les coûts
+                                logistiques (véhicules, carburant) basés sur les paramètres projets enregistrés.</p>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
     </div>
+    </div>
 
-    <!-- Footer -->
-    <footer class="bg-gray-800 text-white py-8 mt-12">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="text-center">
-                <p class="text-sm">© 2024 - Système de Pilotage Électrification de Masse</p>
-                <p class="text-xs text-gray-400 mt-2">Développé pour l'optimisation des projets d'électrification</p>
-            </div>
-        </div>
-    </footer>
-
-    <!-- Simulation Engine -->
-    <script src="simulation_engine.js"></script>
-    <script src="main.js"></script>
-
+    <!-- Initialization Scripts -->
     <script>
-        // Smooth scrolling for table of contents links
-        document.querySelectorAll('.toc-link').forEach(link => {
-            link.addEventListener('click', function (e) {
-                e.preventDefault();
-                const targetId = this.getAttribute('href').substring(1);
-                const targetElement = document.getElementById(targetId);
-                if (targetElement) {
-                    targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }
-            });
-        });
+        function showTab(tabId) {
+            // Hide all tab contents
+            const contents = document.querySelectorAll('.tab-content');
+            contents.forEach(c => c.classList.add('hidden'));
 
-        // Highlight current section in TOC
-        window.addEventListener('scroll', function () {
-            const sections = document.querySelectorAll('section[id]');
-            const tocLinks = document.querySelectorAll('.toc-link');
-
-            let currentSection = '';
-            sections.forEach(section => {
-                const rect = section.getBoundingClientRect();
-                if (rect.top <= 100 && rect.bottom >= 100) {
-                    currentSection = section.id;
-                }
+            // Reset all buttons
+            const buttons = document.querySelectorAll('.tab-btn');
+            buttons.forEach(b => {
+                b.classList.remove('bg-white', 'card-shadow', 'text-indigo-600', 'border-indigo-500', 'font-bold');
+                b.classList.add('bg-gray-50', 'text-gray-600', 'border-transparent', 'font-medium');
             });
 
-            tocLinks.forEach(link => {
-                link.classList.remove('bg-indigo-100', 'text-indigo-800', 'font-medium');
-                if (link.getAttribute('href') === '#' + currentSection) {
-                    link.classList.add('bg-indigo-100', 'text-indigo-800', 'font-medium');
-                }
-            });
-        });
+            // Show active tab
+            document.getElementById('tab-' + tabId).classList.remove('hidden');
 
-        // Mobile menu and back-to-top handling
-        document.addEventListener('DOMContentLoaded', function () {
-            const mobileMenuButton = document.getElementById('mobileMenuButton');
-            const mobileMenu = document.getElementById('mobileMenu');
-            if (mobileMenuButton && mobileMenu) {
-                mobileMenuButton.addEventListener('click', function () {
-                    const isExpanded = this.getAttribute('aria-expanded') === 'true';
-                    this.setAttribute('aria-expanded', !isExpanded);
-                    mobileMenu.classList.toggle('hidden');
-                });
-            }
+            // Set active button
+            const activeBtn = document.getElementById('btn-' + tabId);
+            activeBtn.classList.remove('bg-gray-50', 'text-gray-600', 'border-transparent', 'font-medium');
+            activeBtn.classList.add('bg-white', 'card-shadow', 'text-indigo-600', 'border-indigo-500', 'font-bold');
+        }
 
-            // Back to top button
-            const backToTop = document.createElement('button');
-            backToTop.id = 'backToTop';
-            backToTop.className = 'fixed bottom-8 right-8 bg-indigo-600 text-white p-3 rounded-full shadow-lg hover:bg-indigo-700 transition-all opacity-0 invisible';
-            backToTop.innerHTML = '<i class="fas fa-chevron-up"></i>';
-            document.body.appendChild(backToTop);
+        document.getElementById('faqSearch').addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase();
+            const items = document.querySelectorAll('.faq-item');
 
-            window.addEventListener('scroll', function () {
-                if (window.pageYOffset > 300) {
-                    backToTop.classList.remove('opacity-0', 'invisible');
-                    backToTop.classList.add('opacity-100', 'visible');
-                } else {
-                    backToTop.classList.remove('opacity-100', 'visible');
-                    backToTop.classList.add('opacity-0', 'invisible');
-                }
-            });
-
-            backToTop.addEventListener('click', function () {
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-            });
-
-            // Open external links in new tab
-            document.querySelectorAll('a[href^="http"]').forEach(link => {
-                link.setAttribute('target', '_blank');
-                link.setAttribute('rel', 'noopener noreferrer');
+            items.forEach(item => {
+                const keywords = item.getAttribute('data-keywords') || "";
+                const title = item.querySelector('p').textContent.toLowerCase();
+                const visible = title.includes(term) || keywords.includes(term);
+                item.style.display = visible ? 'block' : 'none';
             });
         });
     </script>
+    <script src="src/ui/theme-toggle.js"></script>
 </body>
 
 </html>

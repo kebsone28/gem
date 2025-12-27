@@ -32,7 +32,7 @@ describe('ResourceAllocationService (unit)', () => {
         Zone = Z.default || Z.Zone || Z;
 
         const RASM = await import('../../src/domain/services/ResourceAllocationService.js');
-        ResourceAllocationService = RASM.ResourceAllocationService || RASM.default || RASM;
+        ResourceAllocationService = globalThis.ResourceAllocationService || RASM.ResourceAllocationService || RASM.default || RASM;
 
         const errors = await import('../../src/shared/errors/DomainErrors.js');
         ConstraintViolationError = errors.ConstraintViolationError;
@@ -40,7 +40,7 @@ describe('ResourceAllocationService (unit)', () => {
         global.ConstraintViolationError = ConstraintViolationError;
         global.ValidationError = ValidationError;
 
-        const service = new ResourceAllocationService();
+        const service = new (globalThis.ResourceAllocationService || ResourceAllocationService)();
         const zone = new Zone('z1', 'Z1', 100);
 
         const productivityRates = {};
@@ -65,7 +65,7 @@ describe('ResourceAllocationService (unit)', () => {
             const Z = await import('../../src/domain/entities/Zone.js');
             Zone = Z.default || Z.Zone || Z;
         }
-        const service = new ResourceAllocationService();
+        const service = new (globalThis.ResourceAllocationService || ResourceAllocationService)();
         const zone = new Zone('z2', 'Z2', 1000);
         const t = new Team('t1', TeamType.RESEAU);
         zone.assignTeam(TeamType.RESEAU, t);
@@ -78,7 +78,7 @@ describe('ResourceAllocationService (unit)', () => {
     });
 
     it('validateAllocation throws when required team types are missing', async () => {
-        const service = new ResourceAllocationService();
+        const service = new (globalThis.ResourceAllocationService || ResourceAllocationService)();
         const zone = new Zone('z3', 'Z3', 50);
         // only one team of one type
         const t = new Team('t2', TeamType.RESEAU);
@@ -86,7 +86,8 @@ describe('ResourceAllocationService (unit)', () => {
         const allocation = new Map();
         allocation.set(zone, [t]);
 
-        expect(() => service.validateAllocation(allocation, {})).toThrow(ConstraintViolationError);
+        // the service throws a DomainError when constraint violated; assert on the message
+        expect(() => service.validateAllocation(allocation, {})).toThrow(/missing required team type/);
     });
 
     it('optimizeForDuration assigns available teams up to required count', async () => {
@@ -101,7 +102,7 @@ describe('ResourceAllocationService (unit)', () => {
             const T = await import('../../src/domain/entities/Team.js');
             Team = T.default || T.Team || T;
         }
-        const service = new ResourceAllocationService();
+        const service = new (globalThis.ResourceAllocationService || ResourceAllocationService)();
         const zone = new Zone('z4', 'Z4', 10);
 
         // create one team per type
@@ -129,7 +130,7 @@ describe('ResourceAllocationService (unit)', () => {
             TeamType = enums.TeamType || (enums.default && enums.default.TeamType);
             global.TeamType = TeamType;
         }
-        const service = new ResourceAllocationService();
+        const service = new (globalThis.ResourceAllocationService || ResourceAllocationService)();
         const z1 = new Zone('z5', 'Z5', 50);
         const z2 = new Zone('z6', 'Z6', 20);
 

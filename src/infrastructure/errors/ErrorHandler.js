@@ -138,13 +138,34 @@ class ErrorHandler {
      * Affiche une notification
      */
     showNotification(title, message, type = 'info') {
-        // Utiliser le système de notification de l'app
-        if (window.showNotification) {
-            window.showNotification(title, message, type);
-        } else {
-            // Fallback sur console
-            console[type === 'error' ? 'error' : 'log'](`${title}: ${message}`);
+        // Break the recursion cycle:
+        // legacy-shims.js redirects window.showNotification -> this.showNotification
+        // So we cannot call window.showNotification here if it's the redirector.
+
+        // Use direct DOM manipulation or SweetAlert if available
+        if (typeof Swal !== 'undefined') {
+            const icons = {
+                success: 'success',
+                error: 'error',
+                warning: 'warning',
+                info: 'info'
+            };
+
+            Swal.fire({
+                title: title,
+                text: message,
+                icon: icons[type] || 'info',
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true
+            });
+            return;
         }
+
+        // Fallback console if no UI lib available
+        console[type === 'error' ? 'error' : 'log'](`[${type.toUpperCase()}] ${title}: ${message}`);
     }
 
     /**

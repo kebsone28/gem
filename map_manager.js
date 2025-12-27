@@ -18,28 +18,52 @@ class MapManager {
     constructor() {
         this.map = null;
         this.markers = null;
+        this._eventQueue = [];
         this.heatLayer = null;
         this._markerClusterOptions = { chunkedLoading: true, maxClusterRadius: 60 };
         this.initMap();
-        // Subscribe to EventBus if available so markers react to domain events
-        if (window.eventBus) {
+        // Subscribe to EventBus (if available now or shortly). Some test environments
+        // create the eventBus after MapManager construction, so poll for it.
+        this._subscribeToEventBus = () => {
             try {
+                if (!window.eventBus) return false;
                 window.eventBus.on('household.created', (data) => {
-                    // support both new and legacy shapes
                     const payload = normalizeIncoming(data);
+                    if (!this.markers) { this._eventQueue.push({ type: 'created', data: payload }); return; }
                     this.addMarker(payload);
                 });
                 window.eventBus.on('household.updated', (data) => {
                     const payload = normalizeIncoming(data);
-                    this.updateMarker(payload.id, payload);
+                    // payload.id may be null if data was just an id string
+                    const id = payload.id || (typeof data === 'string' ? data : (data?.id || data?.householdId));
+                    if (!this.markers) { this._eventQueue.push({ type: 'updated', id, data: payload }); return; }
+                    if (id) this.updateMarker(id, payload);
                 });
                 window.eventBus.on('household.deleted', (data) => {
-                    const id = data?.id || data?.householdId;
+                    // Support both object payloads and direct id string
+                    const id = (typeof data === 'string') ? data : (data?.id || data?.householdId || data?.household?.id);
+                    if (!this.markers) { this._eventQueue.push({ type: 'deleted', id }); return; }
                     if (id) this.removeMarker(id);
                 });
+                return true;
             } catch (e) {
                 console.warn('🗺️ [MapManager] Cannot subscribe to EventBus:', e);
+                return false;
             }
+        };
+
+        // Try to subscribe now, otherwise poll until available (max attempts)
+        if (!this._subscribeToEventBus()) {
+            let attempts = 0;
+            const maxAttempts = 20;
+            const poll = setInterval(() => {
+                attempts++;
+                if (this._subscribeToEventBus()) {
+                    clearInterval(poll);
+                } else if (attempts >= maxAttempts) {
+                    clearInterval(poll);
+                }
+            }, 250);
         }
     }
 
@@ -73,8 +97,13 @@ class MapManager {
         // Initialiser la carte une fois le conteneur prêt
         waitForContainer().then(() => {
             // Si le conteneur a déjà une carte, la supprimer d'abord
-            if (container._leaflet_id) {
-                console.log('🗺️ [MapManager] Suppression de l\'ancienne instance de carte');
+            if (this.map) {
+                console.log('🗺️ [MapManager] Suppression de l\'ancienne instance de carte via remove()');
+                this.map.remove();
+                this.map = null;
+            } else if (container._leaflet_id) {
+                // Fallback si this.map est perdu mais le DOM a encore des traces
+                console.log('🗺️ [MapManager] Nettoyage manuel du conteneur Leaflet');
                 container._leaflet_id = undefined;
                 container.innerHTML = '';
             }
@@ -109,9 +138,17 @@ class MapManager {
                 // Charger les données
                 this.loadData();
 
+                // Drain any queued events that occurred before markers were ready
+                try { this._drainEventQueue(); } catch (e) { /* ignore */ }
+
                 // Écouteurs
-                document.getElementById('heatmapToggle')?.addEventListener('change', (e) => {
-                    this.toggleHeatmap(e.target.checked);
+                // Toggle control ids in terrain.html (support both legacy and new ids)
+                const heatToggleIds = ['toggleHeatmap', 'heatmapToggle'];
+                heatToggleIds.forEach(id => {
+                    try {
+                        const el = document.getElementById(id);
+                        if (el) el.addEventListener('change', (e) => { this.toggleHeatmap(e.target.checked); });
+                    } catch (e) { /* ignore */ }
                 });
 
                 document.getElementById('clusterRadiusInput')?.addEventListener('input', (e) => {
@@ -143,43 +180,103 @@ class MapManager {
             if (existingLayers.length > 0) this.markers.addLayers(existingLayers);
             this.map.addLayer(this.markers);
             // update UI counter
-            try { const el = document.getElementById('mapPointsCount'); if (el) el.textContent = `${this.getMarkerCount().toLocaleString()} points affichés`; } catch (e) {}
+            try { const el = document.getElementById('mapPointsCount'); if (el) el.textContent = `${this.getMarkerCount().toLocaleString()} points affichés`; } catch (e) { }
         } catch (e) { console.error('MapManager.recreateClusterGroup error', e); }
     }
 
     async loadData() {
         if (!this.map || !this.markers) {
-            console.warn('🗺️ [MapManager] Carte non initialisée, impossible de charger les données');
+            // Silencieux : chargement différé normal
             return;
         }
 
         // Forcer le redimensionnement pour éviter les problèmes d'affichage
-        this.map.invalidateSize();
+        try {
+            const container = document.getElementById('householdMap');
+            if (container && container.offsetWidth > 0 && container.offsetHeight > 0) {
+                this.map.invalidateSize();
+            }
+        } catch (e) {
+            console.warn('🗺️ [MapManager] invalidateSize failed:', e);
+        }
 
         try {
             // Chargez les deux schémas possibles : legacy menages et nouvelle table households
+            // Chargez UNIQUEMENT depuis la nouvelle table households
             let menages = [];
-            try {
-                if (db.menages) menages = (await db.menages.toArray()) || [];
-            } catch (e) {
-                console.warn('🗺️ [MapManager] impossible de lire db.menages', e);
-            }
 
             try {
                 if (db.households) {
-                    const newHouseholds = (await db.households.toArray()) || [];
-                    // Convertir au format legacy attendu
-                    const normalized = newHouseholds.map(h => ({
-                        id: h.id ?? h._id ?? h.householdId,
-                        gps_lat: h.gpsLat ?? h.gps_lat ?? (h.location?.coordinates ? h.location.coordinates[1] : null),
-                        gps_lon: h.gpsLon ?? h.gps_lon ?? (h.location?.coordinates ? h.location.coordinates[0] : null),
-                        nom_prenom_chef: h.owner?.name ?? h.nom_prenom_chef ?? h.name ?? '',
-                        statut: h.status ?? h.statut ?? ''
-                    }));
-                    menages = menages.concat(normalized);
+                    let newHouseholds = [];
+                    try {
+                        if (typeof db.households.toArray === 'function') {
+                            newHouseholds = (await db.households.toArray()) || [];
+                        }
+                    } catch (e) {
+                        console.warn('🗺️ [MapManager] Error reading households via Dexie:', e);
+                    }
+
+                    // If households table empty, try legacy `menages` table (compatibility)
+                    if ((!newHouseholds || newHouseholds.length === 0) && db.menages && typeof db.menages.toArray === 'function') {
+                        try {
+                            const men = (await db.menages.toArray()) || [];
+                            if (men && men.length > 0) {
+                                // Convert menages shape to household-like objects
+                                newHouseholds = men.map(m => ({
+                                    id: m.id || m._id,
+                                    owner: { name: m.nom_prenom_chef || m.nom || '' },
+                                    status: m.statut || m.Statut_Installation || 'Attente démarrage',
+                                    location: m.location || (m.gps_lat && m.gps_lon ? { coordinates: { latitude: parseFloat(m.gps_lat), longitude: parseFloat(m.gps_lon) } } : null),
+                                    // keep original raw fields for debugging
+                                    _legacy: m
+                                }));
+                            }
+                        } catch (e) {
+                            console.warn('🗺️ [MapManager] Error reading menages via Dexie:', e);
+                        }
+                    }
+
+                    // Fallback to in-memory mirrored data when Dexie returns empty
+                    if ((!newHouseholds || newHouseholds.length === 0) && window.__inMemoryData && Array.isArray(window.__inMemoryData.households) && window.__inMemoryData.households.length > 0) {
+                        try { newHouseholds = window.__inMemoryData.households.slice(); } catch (e) { /* ignore */ }
+                    }
+
+                    // Convertir au format map point
+                    menages = newHouseholds.map(h => {
+                        let lat = null, lon = null;
+
+                        // Support robuste des coordonnées nested
+                        if (h.location?.coordinates) {
+                            const coords = h.location.coordinates;
+                            if (typeof coords.latitude === 'number' && typeof coords.longitude === 'number') {
+                                lat = coords.latitude;
+                                lon = coords.longitude;
+                            } else if (Array.isArray(coords) && coords.length >= 2) {
+                                lon = coords[0];
+                                lat = coords[1];
+                            }
+                        }
+
+                        // Si pas trouvé dans location, vérifier à la racine (cas hybrides)
+                        if (lat === null) lat = h.latitude || h.gps_lat || h.lat;
+                        if (lon === null) lon = h.longitude || h.gps_lon || h.lon;
+
+                        return {
+                            id: h.id,
+                            gps_lat: parseFloat(lat),
+                            gps_lon: parseFloat(lon),
+                            nom_prenom_chef: h.owner?.name ?? h.nom_prenom_chef ?? '',
+                            Statut_Installation: h.status ?? h.Statut_Installation ?? 'Attente démarrage',
+                            // Garder l'objet original pour le clic
+                            original: h
+                        };
+                    }).filter(m => !isNaN(m.gps_lat) && !isNaN(m.gps_lon) && m.gps_lat !== 0 && m.gps_lon !== 0);
+
+                } else {
+                    console.warn('🗺️ [MapManager] Table households introuvable !');
                 }
             } catch (e) {
-                console.warn('🗺️ [MapManager] impossible de lire db.households', e);
+                console.warn('🗺️ [MapManager] Erreur lecture households', e);
             }
             console.log(`🗺️ [MapManager] Chargement de ${menages.length} ménages depuis la DB`);
 
@@ -192,6 +289,8 @@ class MapManager {
             const points = [];
             let validPointsCount = 0;
 
+            const markersList = []; // Batch container
+
             menages.forEach(m => {
                 // Vérification stricte des coordonnées
                 // Normaliser différents noms de champs
@@ -202,7 +301,9 @@ class MapManager {
 
                 if (!isNaN(lat) && !isNaN(lon) && lat !== 0 && lon !== 0) {
                     // Créer une icône de drapeau colorée selon le statut
-                    const color = this.getColor(m.statut);
+                    // IMPORTANT: Utiliser Statut_Installation en priorité (nom colonne Excel)
+                    const statut = m.Statut_Installation || m.statut_installation || m.status || m.statut || '';
+                    const color = this.getColor(statut);
                     const icon = L.divIcon({
                         className: 'custom-flag-marker',
                         html: `
@@ -239,13 +340,18 @@ class MapManager {
                         offset: [0, -5]
                     });
 
-                    this.markers.addLayer(marker);
+                    markersList.push(marker); // Add to batch list
                     points.push([lat, lon]);
                     validPointsCount++;
                 } else {
                     console.warn(`🗺️ [MapManager] Ménage ${m.id} ignoré : coordonnées invalides (${m.gps_lat}, ${m.gps_lon})`);
                 }
             });
+
+            // Batch add to cluster group
+            if (markersList.length > 0) {
+                this.markers.addLayers(markersList);
+            }
 
             console.log(`🗺️ [MapManager] ${validPointsCount} points valides ajoutés à la carte`);
 
@@ -263,7 +369,7 @@ class MapManager {
                 this.map.fitBounds(bounds, { padding: [50, 50] });
                 console.log('🗺️ [MapManager] Vue ajustée aux limites:', bounds);
             } else {
-                console.warn('🗺️ [MapManager] Aucun point à afficher');
+                console.log('🗺️ [MapManager] Aucun point à afficher pour le moment');
             }
 
             // Préparer heatmap
@@ -368,13 +474,12 @@ class MapManager {
      * payload peut contenir id, lat, lon, status, owner, tooltip, popup
      */
     updateMarker(id, payload) {
-                        // update UI count in case id was new or changed
-                        try { const el = document.getElementById('mapPointsCount'); if (el) el.textContent = `${this.getMarkerCount().toLocaleString()} points affichés`; } catch (e) {}
+        // update UI count in case id was new or changed
+        try { const el = document.getElementById('mapPointsCount'); if (el) el.textContent = `${this.getMarkerCount().toLocaleString()} points affichés`; } catch (e) { }
         try {
             if (!this.map || !this.markers || !id) return;
-            // Chercher par _customId
-            const layers = this.markers.getLayers();
-            const found = layers.find(l => l?.options?._customId === id);
+            // Chercher par _customId (robuste via helper)
+            const found = this.getLayerById(id);
             if (found) {
                 // position
                 const lat = parseFloat(payload.lat ?? payload.gps_lat ?? payload.latitude);
@@ -417,13 +522,51 @@ class MapManager {
     }
 
     /**
+     * Retourne la couche/marker correspondant à un id donné en testant
+     * plusieurs chemins possibles (_customId, options._customId, layer._customId)
+     */
+    getLayerById(id) {
+        try {
+            if (!this.markers || !id) return null;
+            const layers = this.markers.getLayers();
+            const strId = String(id);
+            return layers.find(l => {
+                try {
+                    const optId = l?.options?._customId ?? l?._customId ?? l?.feature?.properties?._customId ?? null;
+                    if (optId === undefined || optId === null) return false;
+                    return String(optId) === strId;
+                } catch (e) { return false; }
+            }) || null;
+        } catch (e) { return null; }
+    }
+
+    /** Process queued EventBus events that arrived before markers were initialized */
+    _drainEventQueue() {
+        try {
+            if (!this._eventQueue || this._eventQueue.length === 0) return;
+            const q = this._eventQueue.splice(0, this._eventQueue.length);
+            q.forEach(item => {
+                try {
+                    if (item.type === 'created') {
+                        this.addMarker(item.data);
+                    } else if (item.type === 'updated') {
+                        const id = item.id || item.data?.id;
+                        if (id) this.updateMarker(id, item.data);
+                    } else if (item.type === 'deleted') {
+                        if (item.id) this.removeMarker(item.id);
+                    }
+                } catch (e) { /* continue */ }
+            });
+        } catch (e) { /* ignore */ }
+    }
+
+    /**
      * Supprime un marker par id
      */
     removeMarker(id) {
         try {
             if (!this.markers || !id) return;
-            const layers = this.markers.getLayers();
-            const layer = layers.find(l => l?.options?._customId === id);
+            const layer = this.getLayerById(id);
             if (layer) {
                 this.markers.removeLayer(layer);
                 try {
@@ -443,7 +586,7 @@ class MapManager {
     zoomToMarker(id, zoomLevel = 16) {
         try {
             if (!this.map || !this.markers || !id) return;
-            const layer = this.markers.getLayers().find(l => l?.options?._customId === id);
+            const layer = this.getLayerById(id);
             if (layer) {
                 this.map.setView(layer.getLatLng(), zoomLevel);
             }
@@ -456,7 +599,7 @@ class MapManager {
     highlightMarker(id, ms = 1200) {
         try {
             if (!this.map || !this.markers || !id) return;
-            const layer = this.markers.getLayers().find(l => l?.options?._customId === id);
+            const layer = this.getLayerById(id);
             if (!layer || !layer._icon) return;
 
             layer._icon.classList.add('map-marker-highlight');
@@ -484,6 +627,21 @@ class MapManager {
             if (!this.markers) return 0;
             return this.markers.getLayers().length;
         } catch (e) { return 0; }
+    }
+
+    /**
+     * Recentre la carte pour englober tous les markers
+     */
+    fitBoundsToMarkers() {
+        try {
+            if (!this.map || !this.markers || this.getMarkerCount() === 0) return;
+            const bounds = this.markers.getBounds();
+            if (bounds.isValid()) {
+                this.map.fitBounds(bounds, { padding: [50, 50] });
+            }
+        } catch (e) {
+            console.error('MapManager.fitBoundsToMarkers erreur:', e);
+        }
     }
 
     /** Retourne un objet diagnostique simple */
@@ -542,12 +700,44 @@ class MapManager {
         return 'text-gray-600';
     }
 
+    /**
+     * Retourne la couleur hex d'un statut en utilisant StatusMapColors
+     * Compatible avec les 9 statuts réels + fallback pour anciens statuts
+     */
     getColor(statut) {
+        // Utiliser StatusMapColors si disponible (système 9 statuts)
+        if (window.StatusMapColors && statut) {
+            const color = window.StatusMapColors[statut];
+            if (color) {
+                return color;
+            }
+        }
+
+        // Fallback : anciens statuts pour compatibilité
         switch (statut) {
-            case 'Terminé': return '#10B981'; // Green
-            case 'En cours': return '#F59E0B'; // Orange
-            case 'Problème': return '#EF4444'; // Red
-            default: return '#6B7280'; // Gray
+            case 'Terminé':
+            case 'Conforme':
+                return '#22c55e'; // green-500
+            case 'En cours':
+            case 'Attente démarrage':
+                return '#eab308'; // yellow-500
+            case 'Attente Maçon':
+                return '#f97316'; // orange-500
+            case 'Attente Branchement':
+                return '#f59e0b'; // amber-500
+            case 'Attente électricien':
+                return '#3b82f6'; // blue-500
+            case 'Attente Controleur':
+                return '#a855f7'; // purple-500
+            case 'Attente électricien(X)':
+                return '#ec4899'; // pink-500
+            case 'Injoignable':
+                return '#9ca3af'; // gray-400
+            case 'Inéligible':
+            case 'Problème':
+                return '#ef4444'; // red-500
+            default:
+                return '#6b7280'; // gray-500 (inconnu)
         }
     }
 }

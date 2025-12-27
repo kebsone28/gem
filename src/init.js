@@ -19,24 +19,20 @@
     // Configuration de la base de données améliorée
     const db = new Dexie('ElectrificationDB');
 
-    // Schéma version 3 (nouvelle architecture + compatibilité legacy)
-    db.version(3).stores({
+    // Schéma version 3303 (Ajout index teamId sur households)
+    db.version(3303).stores({
         // Nouvelle architecture
         projects: '++id, name, status, startDate, endDate',
         zones: '++id, projectId, name, [projectId+name]',
-        households: '++id, zoneId, status, [zoneId+status], gpsLat, gpsLon',
+        households: '++id, zoneId, teamId, status, [zoneId+status], gpsLat, gpsLon',
         teams: '++id, type, zoneId, [type+zoneId]',
         activities: '++id, date, teamId, householdId, type, [date+teamId]',
         costs: '++id, projectId, category, date',
         sync_queue: '++id, entity, action, timestamp, synced',
         audit_log: '++id, entity, entityId, action, userId, timestamp',
-        // Tables legacy pour compatibilité avec terrain.html
-        menages: 'id, zone, statut, [zone+statut], gps_lat, gps_lon, nom_prenom_chef, telephone, commune, quartier_village, statut_installation',
-        activites_terrain: '++id, date, form_type, equipe_id, zone, menage_id, [date+zone], [date+equipe_id]',
-        equipes: 'id, role, zone',
-        progression: '++id, zone, metier, date',
-        problemes: '++id, date, zone, equipe_id, statut',
-        sync_logs: '++id, date, type, status, message'
+        settings: 'key', // Table Key-Value pour stockage persistant (ex: FileSystemHandle)
+        // Legacy tables support
+        progression: '++id, date, equipe, statut, timestamp'
     }).upgrade(async tx => {
         console.log('📦 Running database migration to v3...');
 
@@ -67,7 +63,7 @@
                         cin: menage.cin
                     },
                     statusHistory: [],
-                    assignedTeams: [],
+                    assignedTeams: menage.equipe ? [{ type: 'principale', name: menage.equipe }] : [],
                     scheduledDates: {},
                     actualDates: {},
                     notes: [],
@@ -86,6 +82,9 @@
     db.open().then(() => {
         console.log('✅ Database opened successfully');
 
+        // Exposer la base de données globalement
+        window.db = db;
+
         // Initialiser les repositories
         window.projectRepository = new ProjectRepository(db);
         window.householdRepository = new HouseholdRepository(db);
@@ -103,19 +102,36 @@
         window.errorHandler = new ErrorHandler(window.logger, window.eventBus);
 
         // Initialiser le service de métriques
-        window.metricsService = new MetricsService(window.logger, window.eventBus);
-        window.metricsService.startPeriodicCollection();
+        // Initialiser le service de synchronisation
+        window.syncService = new SyncService(db, window.eventBus, window.logger);
 
-        console.log('✅ Monitoring services initialized');
+        // Initialiser le service de migration
+        window.migrationService = new MigrationService(db, window.logger);
 
-        // Initialiser les services de domaine
-        window.resourceAllocationService = new ResourceAllocationService();
-        window.costCalculationService = new CostCalculationService();
+        // Initialiser les services de backup et restauration
+        window.backupService = new BackupService(db, window.eventBus, window.logger);
+        window.backupService.initialize(); // Restore directory handle
+        window.restoreService = new RestoreService(db, window.eventBus, window.logger);
 
-        if (typeof SimulationEngine !== 'undefined') {
-            window.simulationEngine = new SimulationEngine(window.logger);
-        } else {
-            console.error('❌ SimulationEngine class not found. Check script loading order.');
+        console.log('✅ Infrastructure services initialized');
+
+        // Initialiser les services de domaine (pour le calculateur)
+        try {
+            window.resourceAllocationService = (typeof ResourceAllocationService !== 'undefined') ? new ResourceAllocationService() : (window.resourceAllocationService || {
+                calculateAllocation: () => { return new Map(); },
+                calculateRequiredTeams: () => { return {}; },
+                balanceWorkload: () => { return []; }
+            });
+        } catch (e) {
+            console.warn('ResourceAllocationService init failed, using fallback', e);
+            window.resourceAllocationService = window.resourceAllocationService || { calculateAllocation: () => new Map(), calculateRequiredTeams: () => ({}), balanceWorkload: () => [] };
+        }
+
+        try {
+            window.costCalculationService = (typeof CostCalculationService !== 'undefined') ? new CostCalculationService() : (window.costCalculationService || { calculateTotalCost: () => 0 });
+        } catch (e) {
+            console.warn('CostCalculationService init failed, using fallback', e);
+            window.costCalculationService = window.costCalculationService || { calculateTotalCost: () => 0 };
         }
 
         console.log('✅ Domain services initialized');
@@ -176,23 +192,34 @@
     // Fonction utilitaire pour créer un projet de démonstration
     window.createDemoProject = async function () {
         try {
-            // Créer des zones
-            const zone1 = new Zone('zone-1', 'Zone Nord', 500);
-            const zone2 = new Zone('zone-2', 'Zone Sud', 500);
-
             // Créer le projet
-            const project = new Project(
-                'demo-project',
-                'Projet Démonstration',
-                1000,
-                new Date()
-            );
+            const project = new (window.Project || Project)({
+                id: 'demo-project',
+                name: 'Projet Démonstration',
+                totalHouses: 1000,
+                startDate: new Date()
+            });
+
+            // Créer des zones et les ajouter au projet
+            const zone1 = new (window.Zone || Zone)({
+                id: 'zone-1',
+                name: 'Zone Nord',
+                totalHouses: 500,
+                projectId: project.id
+            });
+            const zone2 = new (window.Zone || Zone)({
+                id: 'zone-2',
+                name: 'Zone Sud',
+                totalHouses: 500,
+                projectId: project.id
+            });
 
             project.addZone(zone1);
             project.addZone(zone2);
 
-            // Sauvegarder
+            // Sauvegarder (Repositories should handle the rest)
             await window.projectRepository.save(project);
+            await window.zoneRepository.saveBatch([zone1, zone2]);
 
             console.log('✅ Demo project created:', project.name);
             return project;
