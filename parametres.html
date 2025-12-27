@@ -2881,33 +2881,34 @@
                 const requirementsContainer = document.getElementById('content-requirements');
                 if (!requirementsContainer) return;
 
-                // 1. Reconstruction du Layout en 3 colonnes (DOM safe)
+                // 1. Reconstruction du Layout vertical (une section par ligne)
                 while (requirementsContainer.firstChild) requirementsContainer.removeChild(requirementsContainer.firstChild);
 
-                const grid = document.createElement('div');
-                grid.className = 'grid grid-cols-1 lg:grid-cols-3 gap-6';
+                const container = document.createElement('div');
+                container.className = 'space-y-6';
 
-                // Colonne 1: Équipes Techniques
-                const col1 = document.createElement('div');
-                col1.className = 'space-y-4';
+                // Section 1: Équipes Techniques (pleine largeur)
+                const teamsSection = document.createElement('div');
+                teamsSection.className = 'w-full';
                 const h3_1 = document.createElement('h3');
-                h3_1.className = 'text-sm font-bold text-gray-400 uppercase tracking-wider flex items-center';
+                h3_1.className = 'text-sm font-bold text-gray-400 uppercase tracking-wider flex items-center mb-4';
                 h3_1.innerHTML = '<i class="fas fa-users-cog mr-2"></i> Équipes Techniques';
                 const teamsReqDiv = document.createElement('div');
                 teamsReqDiv.id = 'teamsRequirementDetails';
-                teamsReqDiv.className = 'bg-white rounded-xl shadow-sm border border-gray-100 p-4 space-y-3';
-                col1.appendChild(h3_1);
-                col1.appendChild(teamsReqDiv);
+                teamsReqDiv.className = 'bg-white rounded-xl shadow-sm border border-gray-100 p-6';
+                teamsSection.appendChild(h3_1);
+                teamsSection.appendChild(teamsReqDiv);
+                container.appendChild(teamsSection);
 
-                // Colonne 2: Logistique & Carburant
-                const col2 = document.createElement('div');
-                col2.className = 'space-y-4';
+                // Section 2: Logistique & Carburant (pleine largeur)
+                const logisticsSection = document.createElement('div');
+                logisticsSection.className = 'w-full';
                 const h3_2 = document.createElement('h3');
-                h3_2.className = 'text-sm font-bold text-gray-400 uppercase tracking-wider flex items-center';
+                h3_2.className = 'text-sm font-bold text-gray-400 uppercase tracking-wider flex items-center mb-4';
                 h3_2.innerHTML = '<i class="fas fa-gas-pump mr-2"></i> Logistique & Carburant';
                 const logisticsDiv = document.createElement('div');
                 logisticsDiv.id = 'logisticsRequirementDetails';
-                logisticsDiv.className = 'bg-white rounded-xl shadow-sm border border-gray-100 p-4 space-y-4';
+                logisticsDiv.className = 'bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-4';
                 const vehiclesReqDiv = document.createElement('div');
                 vehiclesReqDiv.id = 'vehiclesRequirementDetails';
                 vehiclesReqDiv.className = 'space-y-2';
@@ -2931,20 +2932,21 @@
                 logisticsDiv.appendChild(vehiclesReqDiv);
                 logisticsDiv.appendChild(hr);
                 logisticsDiv.appendChild(fuelDiv);
-                col2.appendChild(h3_2);
-                col2.appendChild(logisticsDiv);
+                logisticsSection.appendChild(h3_2);
+                logisticsSection.appendChild(logisticsDiv);
+                container.appendChild(logisticsSection);
 
-                // Colonne 3: Support & Matériel
-                const col3 = document.createElement('div');
-                col3.className = 'space-y-4';
+                // Section 3: Support & Matériel (pleine largeur)
+                const supportSection = document.createElement('div');
+                supportSection.className = 'w-full';
                 const h3_3 = document.createElement('h3');
-                h3_3.className = 'text-sm font-bold text-gray-400 uppercase tracking-wider flex items-center';
+                h3_3.className = 'text-sm font-bold text-gray-400 uppercase tracking-wider flex items-center mb-4';
                 h3_3.innerHTML = '<i class="fas fa-toolbox mr-2"></i> Support & Matériel';
                 const supportDiv = document.createElement('div');
                 supportDiv.className = 'space-y-4';
                 const supportReqDiv = document.createElement('div');
                 supportReqDiv.id = 'supportRequirementDetails';
-                supportReqDiv.className = 'bg-white rounded-xl shadow-sm border border-gray-100 p-4 space-y-2';
+                supportReqDiv.className = 'bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-2';
                 const supportTitle = document.createElement('div');
                 supportTitle.className = 'text-[10px] text-gray-400 uppercase font-bold mb-2';
                 supportTitle.textContent = 'Personnel de Support';
@@ -2971,20 +2973,18 @@
                 });
                 const equipmentReqDiv = document.createElement('div');
                 equipmentReqDiv.id = 'equipmentRequirementDetails';
-                equipmentReqDiv.className = 'bg-white rounded-xl shadow-sm border border-gray-100 p-4 space-y-1';
+                equipmentReqDiv.className = 'bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-1';
                 const equipTitle = document.createElement('div');
                 equipTitle.className = 'text-[10px] text-gray-400 uppercase font-bold mb-2';
                 equipTitle.textContent = 'Kits Matériels Globaux';
                 equipmentReqDiv.appendChild(equipTitle);
                 supportDiv.appendChild(supportReqDiv);
                 supportDiv.appendChild(equipmentReqDiv);
-                col3.appendChild(h3_3);
-                col3.appendChild(supportDiv);
+                supportSection.appendChild(h3_3);
+                supportSection.appendChild(supportDiv);
+                container.appendChild(supportSection);
 
-                grid.appendChild(col1);
-                grid.appendChild(col2);
-                grid.appendChild(col3);
-                requirementsContainer.appendChild(grid);
+                requirementsContainer.appendChild(container);
 
                 // 2. Rendu des Équipes Techniques
                 const teamsReq = document.getElementById('teamsRequirementDetails');
