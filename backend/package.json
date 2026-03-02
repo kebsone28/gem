@@ -1,0 +1,42 @@
+{
+  "name": "proquelec-backend",
+  "version": "1.0.0",
+  "description": "PROQUELEC Web API - SaaS Électrification Nationale",
+  "main": "src/server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "migrate": "node src/db/migrate.js",
+    "seed": "node src/db/seed.js",
+    "test": "jest"
+  },
+  "dependencies": {
+    "@prisma/client": "6.4.1",
+    "bcryptjs": "^2.4.3",
+    "compression": "^1.7.4",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "dotenv": "^16.6.1",
+    "express": "^4.22.1",
+    "express-rate-limit": "^6.11.2",
+    "helmet": "^7.2.0",
+    "joi": "^17.11.0",
+    "jsonwebtoken": "^9.0.3",
+    "morgan": "^1.10.1",
+    "pg": "^8.10.0",
+    "prisma": "6.4.1",
+    "winston": "^3.19.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.3.2",
+    "jest": "^29.7.0",
+    "nodemon": "^3.0.2",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

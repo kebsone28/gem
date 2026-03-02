@@ -3,7 +3,7 @@
  * Gère l'export périodique des données vers des fichiers Excel
  */
 
-class BackupService {
+export class BackupService {
     constructor(db, eventBus, logger) {
         this.db = db;
         this.eventBus = eventBus;
@@ -367,7 +367,7 @@ class BackupService {
             Commune: household.location?.commune || household.commune || '',
             'Quartier ou Village': household.location?.village || household.quartier_village || '',
             zone: household.location?.zoneId || household.zone || '',
-            Statut: household.status || household.statut || 'En attente',
+            Statut: household.status || household.statut || (window.HouseholdStatus?.NON_DEBUTE) || 'Non débuté',
             createdAt: household.createdAt || household._createdAt || '',
             updatedAt: household.updatedAt || household._updatedAt || ''
         };

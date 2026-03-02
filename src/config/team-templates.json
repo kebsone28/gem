@@ -1,0 +1,221 @@
+{
+    "Électricien": {
+        "dailyCapacity": 8,
+        "costPerDay": 180000,
+        "vehicleType": "pickup",
+        "acquisitionMode": "location",
+        "description": "Installation électrique complète - branchement, prises, éclairage, tableau",
+        "equipmentCategories": {
+            "Outils manuels": {
+                "icon": "🔧",
+                "items": [
+                    "Tournevis isolés (plat, cruciforme)",
+                    "Pince universelle",
+                    "Pince coupante",
+                    "Pince à dénuder",
+                    "Pince plate / bec long",
+                    "Cutter",
+                    "Marteau",
+                    "Clés plates / clé à molette"
+                ]
+            },
+            "Outils électriques": {
+                "icon": "⚡",
+                "items": [
+                    "Perceuse-visseuse",
+                    "Forets béton / bois / métal",
+                    "Scie cloche (passage de gaines)"
+                ]
+            },
+            "Mesure & contrôle": {
+                "icon": "📏",
+                "items": [
+                    "Testeur de tension (VAT)",
+                    "Multimètre basique",
+                    "Niveau à bulle",
+                    "Mètre ruban"
+                ]
+            },
+            "Consommables": {
+                "icon": "🧰",
+                "consumable": true,
+                "items": [
+                    "Dominos / Wago",
+                    "Gaines ICTA",
+                    "Fils électriques",
+                    "Vis, chevilles",
+                    "Ruban isolant",
+                    "Serre-câbles"
+                ]
+            },
+            "Sécurité": {
+                "icon": "🦺",
+                "items": [
+                    "Gants isolants",
+                    "Lunettes de protection",
+                    "Casque simple",
+                    "Chaussures de sécurité"
+                ]
+            }
+        }
+    },
+    "Technicien Réseau": {
+        "dailyCapacity": 10,
+        "costPerDay": 200000,
+        "vehicleType": "pickup",
+        "acquisitionMode": "location",
+        "description": "Raccordement réseau, coffrets, lignes aériennes ou souterraines",
+        "equipmentCategories": {
+            "Outils spécifiques": {
+                "icon": "🔧",
+                "items": [
+                    "Clé dynamométrique",
+                    "Coupe-câble renforcé",
+                    "Pince à sertir",
+                    "Tire-câble",
+                    "Dérouleur de câble"
+                ]
+            },
+            "Mesure & test": {
+                "icon": "📡",
+                "items": [
+                    "Multimètre",
+                    "Testeur de continuité",
+                    "Testeur de réseau",
+                    "Détecteur de câbles enterrés"
+                ]
+            },
+            "Sécurité chantier": {
+                "icon": "🚧",
+                "items": [
+                    "Harnais (si hauteur)",
+                    "Échelle ou nacelle",
+                    "Gants renforcés",
+                    "Signalisation (cônes, rubalise)"
+                ]
+            }
+        }
+    },
+    "Superviseur": {
+        "dailyCapacity": 15,
+        "costPerDay": 120000,
+        "vehicleType": "motorcycle",
+        "acquisitionMode": "achat_direct",
+        "description": "Contrôle qualité, sécurité et conformité des installations",
+        "equipmentCategories": {
+            "Outils de contrôle": {
+                "icon": "📝",
+                "items": [
+                    "Tablette de saisie",
+                    "Appareil photo numérique",
+                    "Laser de mesure",
+                    "Cahier de chantier"
+                ]
+            },
+            "Sécurité": {
+                "icon": "🦺",
+                "items": [
+                    "Équipements de protection complets",
+                    "Documents de procédures",
+                    "Plan de prévention"
+                ]
+            }
+        }
+    },
+    "Chef de Projet": {
+        "dailyCapacity": 20,
+        "costPerDay": 250000,
+        "vehicleType": "none",
+        "acquisitionMode": "location",
+        "description": "Coordination, suivi, budget, planning du projet",
+        "equipmentCategories": {
+            "Gestion": {
+                "icon": "📊",
+                "items": [
+                    "Ordinateur portable",
+                    "Logiciel de gestion de projet",
+                    "Terminal mobile",
+                    "Modem 4G/5G"
+                ]
+            },
+            "Reporting": {
+                "icon": "📋",
+                "items": [
+                    "Outils de reporting",
+                    "Tableaux de coûts",
+                    "Planning d'équipes",
+                    "Registre de sécurité"
+                ]
+            }
+        }
+    },
+    "Préparateur": {
+        "dailyCapacity": 50,
+        "costPerDay": 100000,
+        "vehicleType": "none",
+        "acquisitionMode": "location",
+        "description": "Préparation et conditionnement des kits matériels, gestion stock",
+        "equipmentCategories": {
+            "Logistique": {
+                "icon": "📦",
+                "items": [
+                    "Scanner de code-barres",
+                    "Étiqueteuse",
+                    "Transpalette",
+                    "Balance industrielle"
+                ]
+            },
+            "Sécurité": {
+                "icon": "🦺",
+                "items": [
+                    "Gants",
+                    "Chaussures de sécurité",
+                    "Chariot de manutention"
+                ]
+            }
+        }
+    },
+    "Livreur": {
+        "dailyCapacity": 30,
+        "costPerDay": 80000,
+        "vehicleType": "truck",
+        "acquisitionMode": "location",
+        "description": "Transport et livraison du matériel vers les chantiers",
+        "equipmentCategories": {
+            "Véhicule": {
+                "icon": "🚚",
+                "items": [
+                    "Camion de livraison",
+                    "GPS de navigation",
+                    "Sangles d'arrimage",
+                    "Bâches de protection"
+                ]
+            },
+            "Sécurité": {
+                "icon": "🦺",
+                "items": [
+                    "Gants de manutention",
+                    "Chaussures de sécurité",
+                    "Gilet réfléchissant"
+                ]
+            }
+        }
+    },
+    "Maçon": {
+        "dailyCapacity": 2,
+        "costPerDay": 150000,
+        "vehicleType": "none",
+        "acquisitionMode": "location",
+        "description": "Construction des supports muraux et implantation des potelets",
+        "equipmentCategories": {
+            "Outils": {
+                "icon": "🔨",
+                "items": [
+                    "Truelle",
+                    "Niveau",
+                    "Équipement de sécurité"
+                ]
+            }
+        }
+    }
+}

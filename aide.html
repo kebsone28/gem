@@ -8,7 +8,11 @@
     <link rel="stylesheet" href="src/output.css">
     <link rel="stylesheet" href="src/dark.css">
     <script src="vendor/fontawesome/all.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link rel="stylesheet" href="src/proquelec-theme.css">
+    <script src="/ApiService.js"></script>
+    <script src="/AuthGuard.js"></script>
+    <link rel="stylesheet" href="vendor/sweetalert2/sweetalert2.min.css">
+    <script src="vendor/sweetalert2/sweetalert2.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body {
@@ -25,7 +29,7 @@
     </style>
 </head>
 
-<body class="bg-gray-50">
+<body class="proquelec-theme">
     <!-- Navigation -->
     <nav class="gradient-bg text-white shadow-lg">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -34,21 +38,24 @@
                     <i class="fas fa-bolt text-2xl mr-3"></i>
                     <h1 class="text-xl font-bold">Électrification</h1>
                 </div>
-                <div class="flex items-center space-x-4">
+                <div class="flex items-center space-x-4" id="authStatusHeader">
                     <a href="index.html"
-                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20">Dashboard</a>
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-all">Dashboard</a>
                     <a href="parametres.html"
-                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20">Paramètres</a>
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-all">Paramètres</a>
                     <a href="terrain.html"
-                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20">Terrain</a>
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-all">Terrain</a>
                     <a href="charges.html"
-                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20">Charges</a>
-                    <a href="simulation.html"
-                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20">Simulation</a>
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-all">Charges</a>
+                    <a href="logistique.html"
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-all">Logistique</a>
                     <a href="rapports.html"
-                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20">Rapports</a>
-                    <a href="aide.html"
-                        class="px-3 py-2 rounded-md text-sm font-bold bg-white bg-opacity-20 border-b-2 border-white">Aide</a>
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-all">Rapports</a>
+                    <a href="bordereau.html"
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-all">Bordereau</a>
+                    <a href="cahier-equipes.html"
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-all">Cahier
+                        des Charges</a>
                 </div>
             </div>
         </div>
@@ -86,10 +93,20 @@
                         id="btn-rapports">
                         <i class="fas fa-file-alt mr-3"></i> Rapports & Analytics
                     </button>
+                    <button onclick="showTab('outils-carte')"
+                        class="tab-btn w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg bg-gray-50 text-gray-600 hover:bg-white hover:text-indigo-600 transition-all border-l-4 border-transparent"
+                        id="btn-outils-carte">
+                        <i class="fas fa-tools mr-3"></i> Outils Carte Avancés
+                    </button>
                     <button onclick="showTab('faq')"
                         class="tab-btn w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg bg-gray-50 text-gray-600 hover:bg-white hover:text-indigo-600 transition-all border-l-4 border-transparent"
                         id="btn-faq">
                         <i class="fas fa-question-circle mr-3"></i> FAQ
+                    </button>
+                    <button onclick="showTab('logistique')"
+                        class="tab-btn w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg bg-gray-50 text-gray-600 hover:bg-white hover:text-indigo-600 transition-all border-l-4 border-transparent"
+                        id="btn-logistique">
+                        <i class="fas fa-robot mr-3"></i> Logistique & IA
                     </button>
                 </nav>
             </div>
@@ -114,6 +131,7 @@
                                     <li>Suivi en temps réel des raccordements</li>
                                     <li>Optimisation de la logistique des équipes</li>
                                     <li>Contrôle budgétaire et reporting précis</li>
+                                    <li><strong>Support 100% Hors-Ligne (PWA)</strong> pour le terrain</li>
                                 </ul>
                             </div>
                             <p>Utilisez le <strong>Dashboard</strong> pour une vue d'ensemble, ou plongez dans les
@@ -139,17 +157,41 @@
                                 </div>
                                 <div class="border border-gray-100 p-4 rounded-lg bg-gray-50">
                                     <p class="font-bold text-gray-800 mb-2">Statuts & Suivi</p>
-                                    <p class="text-sm">Chaque ménage possède un statut évolutif : <em>"Attente
-                                            démarrage"</em>, <em>"En cours"</em>, <em>"Problème"</em> ou
-                                        <em>"Conforme"</em>.
+                                    <p class="text-sm">Chaque ménage suit le workflow : <em>Non débuté</em> →
+                                        <em>Murs</em> → <em>Réseau</em> → <em>Intérieur</em> → <em>Réception
+                                            validée</em>, ou <em>Problème</em> / <em>Inéligible</em>.
                                     </p>
                                 </div>
                             </div>
+                            <p class="bg-blue-50 p-4 rounded-md text-sm border-l-4 border-blue-400">
+                                <i class="fas fa-sync-alt mr-2 text-blue-600"></i>
+                                <strong>Import Intelligent :</strong> Lors d'un import Excel ou Kobo, le système
+                                effectue un <em>Upsert</em>. Il fusionne les nouvelles données (comme les coordonnées
+                                GPS) sans détruire l'historique d'évolution des statuts existants. La carte se met à
+                                jour en temps réel.
+                            </p>
                             <p class="bg-yellow-50 p-4 rounded-md text-sm border-l-4 border-yellow-400">
                                 <i class="fas fa-exclamation-triangle mr-2 text-yellow-600"></i>
                                 <strong>Astuce :</strong> Cliquez sur un marqueur sur la carte pour voir les détails
                                 d'un ménage et modifier son statut en un clic.
                             </p>
+                            <div class="bg-indigo-50 p-4 rounded-lg border-l-4 border-indigo-400 mt-4">
+                                <p class="font-semibold text-indigo-900 mb-1">🗺️ Outils Carte Avancés</p>
+                                <p class="text-sm">La carte dispose de <strong>10 outils avancés</strong> accessibles
+                                    via la barre d'outils latérale gauche : tournée optimisée, photos terrain, mesure,
+                                    annotations, et plus. Consultez l'onglet <em>Outils Carte Avancés</em> pour le
+                                    détail.</p>
+                            </div>
+                            <h4 class="font-bold text-gray-800 mt-4">🚗 Itinéraire Multi-Mode</h4>
+                            <p class="text-sm">Cliquez sur un marqueur → <strong>🗺️ Itinéraire</strong> pour tracer la
+                                route depuis votre position. Dans le panneau d'instructions, basculez entre :</p>
+                            <ul class="list-disc list-inside text-sm space-y-1 ml-2">
+                                <li><strong>🚗 Voiture</strong> — itinéraire routier via OSRM</li>
+                                <li><strong>🚶 À pied</strong> — itinéraire piéton (temps estimé à 5 km/h)</li>
+                            </ul>
+                            <h4 class="font-bold text-gray-800 mt-4">🖥️ Mode Plein Écran</h4>
+                            <p class="text-sm">Cliquez sur <strong>Plein écran</strong> pour étendre la carte sur toute
+                                la fenêtre. Appuyez sur <strong>Échap</strong> pour quitter.</p>
                         </div>
                     </div>
 
@@ -203,6 +245,225 @@
                         </div>
                     </div>
 
+                    <!-- Outils Carte Avancés Tab -->
+                    <div id="tab-outils-carte" class="tab-content hidden transition-opacity duration-300">
+                        <h3 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                            <span class="bg-amber-100 p-2 rounded-lg mr-4"><i
+                                    class="fas fa-tools text-amber-600"></i></span>
+                            Outils Carte Avancés
+                        </h3>
+                        <p class="text-gray-600 mb-6">La barre d'outils latérale gauche de la carte donne accès à
+                            <strong>10 fonctionnalités avancées</strong> spécialement conçues pour le suivi terrain de
+                            l'électrification.
+                        </p>
+
+                        <div class="space-y-4">
+                            <!-- Feature 1 -->
+                            <div class="border border-gray-100 p-4 rounded-lg bg-amber-50 hover:shadow transition">
+                                <p class="font-bold text-gray-800 mb-1">📅 1. Tournée du Jour (Optimisation)</p>
+                                <p class="text-sm text-gray-600">Sélectionnez les ménages à visiter, puis cliquez
+                                    <strong>🚀 Optimiser</strong>. L'algorithme du plus proche voisin (TSP) calcule
+                                    l'ordre optimal de visite pour minimiser les trajets. La route apparaît en
+                                    pointillés orange sur la carte avec les numéros d'ordre.
+                                </p>
+                            </div>
+
+                            <!-- Feature 2 -->
+                            <div class="border border-gray-100 p-4 rounded-lg bg-blue-50 hover:shadow transition">
+                                <p class="font-bold text-gray-800 mb-1">📸 2. Infos Ménage & Photos</p>
+                                <p class="text-sm text-gray-600">Chaque popup de ménage (clic sur un marqueur) vous
+                                    montre désormais <strong>les équipes assignées directemement</strong> (icônes et
+                                    métiers). Vous pouvez modifier le statut d'un ménage en temps réel, ou ajouter des
+                                    photos géolocalisées via la fonction <strong>+ Ajouter</strong>.</p>
+                            </div>
+
+                            <!-- Feature 3 -->
+                            <div class="border border-gray-100 p-4 rounded-lg bg-green-50 hover:shadow transition">
+                                <p class="font-bold text-gray-800 mb-1">📊 3. Heatmap de Progression</p>
+                                <p class="text-sm text-gray-600">Affiche une grille colorée (~5 km) sur la carte :
+                                    <span style="color:#22c55e;">■</span> Vert = zone terminée (>80%),
+                                    <span style="color:#f59e0b;">■</span> Orange = en cours (50-80%),
+                                    <span style="color:#ef4444;">■</span> Rouge = en retard (<20%). Cliquez sur une zone
+                                        pour voir le détail (X/Y terminés). </p>
+                            </div>
+
+                            <!-- Feature 4 -->
+                            <div class="border border-gray-100 p-4 rounded-lg bg-red-50 hover:shadow transition">
+                                <p class="font-bold text-gray-800 mb-1">📏 4. Outil de Mesure</p>
+                                <p class="text-sm text-gray-600">Activez le mode mesure (curseur en croix). Cliquez pour
+                                    ajouter des points de mesure — la distance cumulative s'affiche en temps réel.
+                                    Double-cliquez pour terminer. Idéal pour estimer les longueurs de câblage ou les
+                                    distances entre sites.</p>
+                            </div>
+
+                            <!-- Feature 5 -->
+                            <div class="border border-gray-100 p-4 rounded-lg bg-purple-50 hover:shadow transition">
+                                <p class="font-bold text-gray-800 mb-1">✏️ 5. Annotations / Notes</p>
+                                <p class="text-sm text-gray-600">Cliquez sur la carte pour placer une note textuelle
+                                    (étiquette violette 📝). Les annotations sont <strong>sauvegardées
+                                        automatiquement</strong> dans le navigateur et persistent entre les sessions.
+                                    Utile pour marquer des obstacles, rivières, ou remarques terrain.</p>
+                            </div>
+
+                            <!-- Feature 6 -->
+                            <div class="border border-gray-100 p-4 rounded-lg bg-red-50 hover:shadow transition">
+                                <p class="font-bold text-gray-800 mb-1">🔔 6. Alertes de Proximité</p>
+                                <p class="text-sm text-gray-600">Activez pour recevoir une <strong>notification
+                                        automatique</strong> quand vous êtes à moins de 500m d'un ménage <em>non
+                                        traité</em>. Un cercle rouge de 500m s'affiche autour de votre position. Un
+                                    signal sonore vous prévient. Nécessite la géolocalisation activée.</p>
+                            </div>
+
+                            <!-- Feature 7 -->
+                            <div class="border border-gray-100 p-4 rounded-lg bg-gray-50 hover:shadow transition">
+                                <p class="font-bold text-gray-800 mb-1">📴 7. Application PWA Hors-Ligne</p>
+                                <p class="text-sm text-gray-600">L'application complète ("Service Worker") s'installe
+                                    sur votre appareil et fonctionne <strong>sans connexion internet</strong>. Vos
+                                    modifications se synchronisent automatiquement une fois le réseau retrouvé, grâce à
+                                    la stratégie "Stale-While-Revalidate".</p>
+                            </div>
+
+                            <!-- Feature 8 -->
+                            <div class="border border-gray-100 p-4 rounded-lg bg-blue-50 hover:shadow transition">
+                                <p class="font-bold text-gray-800 mb-1">⏱️ 8. Timeline / Historique</p>
+                                <p class="text-sm text-gray-600">Affiche un <strong>slider temporel</strong> en bas de
+                                    la carte (30 derniers jours). Déplacez le curseur pour visualiser la progression
+                                    dans le temps — les marqueurs s'estompent progressivement pour simuler l'état passé
+                                    du projet.</p>
+                            </div>
+
+                            <!-- Feature 9 -->
+                            <div class="border border-gray-100 p-4 rounded-lg bg-emerald-50 hover:shadow transition">
+                                <p class="font-bold text-gray-800 mb-1">🎯 9. Assignation Intelligente</p>
+                                <p class="text-sm text-gray-600">Répartit automatiquement les ménages en attente entre X
+                                    équipes. L'algorithme <strong>K-Means</strong> regroupe les ménages par proximité
+                                    géographique. Chaque équipe reçoit un nombre défini de ménages avec un code couleur
+                                    distinct sur la carte.</p>
+                            </div>
+
+                            <!-- Feature 10 -->
+                            <div class="border border-gray-100 p-4 rounded-lg bg-indigo-50 hover:shadow transition">
+                                <p class="font-bold text-gray-800 mb-1">📄 10. Rapport PDF Cartographique</p>
+                                <p class="text-sm text-gray-600">Génère un <strong>rapport imprimable</strong> dans un
+                                    nouvel onglet avec : KPIs principaux (total ménages, statuts, terminés), tableau de
+                                    répartition par statut avec pourcentages. Utilisez <strong>Ctrl+P</strong> pour
+                                    sauvegarder en PDF.</p>
+                            </div>
+                        </div>
+
+                        <div class="bg-amber-50 p-4 rounded-lg border-l-4 border-amber-400 mt-6">
+                            <p class="text-sm text-amber-900"><i class="fas fa-lightbulb mr-2"></i><strong>Astuce
+                                    :</strong> Tous ces outils sont accessibles depuis la <strong>barre d'outils
+                                    verticale</strong> à gauche de la carte. Survolez chaque bouton pour voir son nom.
+                                Les boutons actifs changent de couleur.</p>
+                        </div>
+                    </div>
+
+                    <!-- Logistique & IA Tab -->
+                    <div id="tab-logistique" class="tab-content hidden transition-opacity duration-300">
+                        <h3 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                            <span class="bg-violet-100 p-2 rounded-lg mr-4"><i
+                                    class="fas fa-robot text-violet-600"></i></span>
+                            Module Logistique & Analyse Prédictive IA
+                        </h3>
+                        <div class="space-y-6 text-gray-600">
+                            <p>Le module <strong>Logistique</strong> centralise le suivi de l'atelier de précâblage, des
+                                livraisons par agent, du stock de matériel, et intègre désormais une <strong>couche IA
+                                    prédictive</strong> pour estimer la date de fin de chantier.</p>
+
+                            <!-- Tabs inside -->
+                            <h4 class="font-bold text-gray-800 text-lg mt-2 border-b pb-1"><i
+                                    class="fas fa-warehouse mr-2 text-indigo-500"></i>Onglet Atelier & Chargement</h4>
+                            <p class="text-sm">Cet onglet vous permet de saisir chaque jour le nombre de kits précâblés
+                                et de kits chargés par région :</p>
+                            <ol class="list-decimal list-inside text-sm space-y-2 ml-2">
+                                <li>Sélectionnez la <strong>région</strong> concernée dans le menu déroulant.</li>
+                                <li>Saisissez le nombre de <strong>Kits Précâblés</strong> (kits assemblés à l'atelier)
+                                    et de <strong>Kits Chargés</strong> (kits montés sur véhicule pour livraison).</li>
+                                <li>Cliquez sur <strong>Enregistrer le rapport</strong>. Les totaux globaux et régionaux
+                                    sont mis à jour immédiatement.</li>
+                            </ol>
+
+                            <div class="bg-indigo-50 p-4 rounded-lg border-l-4 border-indigo-400">
+                                <p class="font-semibold text-indigo-900 mb-1"><i
+                                        class="fas fa-info-circle mr-2"></i>Historique automatique</p>
+                                <p class="text-sm">À chaque enregistrement, un <strong>snapshot journalier</strong> est
+                                    sauvegardé dans la base de données locale (30 jours retenus). C'est cet historique
+                                    qui alimente le moteur IA prédictif.</p>
+                            </div>
+
+                            <h4 class="font-bold text-gray-800 text-lg mt-4 border-b pb-1"><i
+                                    class="fas fa-brain mr-2 text-violet-500"></i>Analyse Prédictive & IA</h4>
+                            <p class="text-sm">Le panneau <strong>"Analyse Prédictive & IA"</strong> en haut de l'onglet
+                                Atelier affiche 3 indicateurs calculés automatiquement :</p>
+
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
+                                <div class="border border-violet-100 p-4 rounded-lg bg-violet-50">
+                                    <p class="font-bold text-gray-800 mb-1"><i
+                                            class="fas fa-tachometer-alt mr-2 text-violet-600"></i>Cadence / jour</p>
+                                    <p class="text-sm">Moyenne des kits précâblés par jour sur les 7 derniers jours
+                                        d'activité. Affiche <em>-- kits/j</em> si moins de 2 jours d'historique sont
+                                        disponibles.</p>
+                                </div>
+                                <div class="border border-blue-100 p-4 rounded-lg bg-blue-50">
+                                    <p class="font-bold text-gray-800 mb-1"><i
+                                            class="fas fa-calendar-alt mr-2 text-blue-600"></i>Fin Estimée</p>
+                                    <p class="text-sm">Date calculée en divisant les kits restants par la cadence
+                                        moyenne. Se met à jour automatiquement à chaque rapport journalier.</p>
+                                </div>
+                                <div class="border border-emerald-100 p-4 rounded-lg bg-emerald-50">
+                                    <p class="font-bold text-gray-800 mb-1"><i
+                                            class="fas fa-heartbeat mr-2 text-emerald-600"></i>État du projet</p>
+                                    <p class="text-sm">Badge coloré : <span class="font-bold text-emerald-700">En
+                                            avance</span> (dans les délais), <span class="font-bold text-amber-700">À
+                                            surveiller</span> (&lt; 7j de retard), <span
+                                            class="font-bold text-red-700">En retard</span> (plus de 7j de retard).</p>
+                                </div>
+                            </div>
+
+                            <div class="bg-amber-50 p-4 rounded-lg border-l-4 border-amber-400 mt-4">
+                                <p class="text-sm text-amber-900"><i class="fas fa-lightbulb mr-2"></i><strong>Astuce
+                                        :</strong> Pour voir la prédiction fonctionner immédiatement, enregistrez un
+                                    premier rapport aujourd'hui, puis revenez demain et enregistrez un second. Le
+                                    système calculera automatiquement la tendance.</p>
+                            </div>
+
+                            <h4 class="font-bold text-gray-800 text-lg mt-4 border-b pb-1"><i
+                                    class="fas fa-truck mr-2 text-blue-500"></i>Autres onglets Logistique</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="border border-gray-100 p-4 rounded-lg bg-gray-50">
+                                    <p class="font-bold text-gray-800 mb-1">📦 Stock Matériel</p>
+                                    <p class="text-sm">Tableau de tous les ménages avec leur inventaire matériel
+                                        (câbles, coffrets, disjoncteurs...). Filtrable et exportable en CSV.</p>
+                                </div>
+                                <div class="border border-gray-100 p-4 rounded-lg bg-gray-50">
+                                    <p class="font-bold text-gray-800 mb-1">🚚 Livraisons</p>
+                                    <p class="text-sm">Historique des livraisons par agent. Filtrable par date, agent,
+                                        et statut de validation.</p>
+                                </div>
+                                <div class="border border-gray-100 p-4 rounded-lg bg-gray-50">
+                                    <p class="font-bold text-gray-800 mb-1">👷 Agents</p>
+                                    <p class="text-sm">Performance des agents : nombre de visites, temps moyen, date
+                                        d'activité, et indicateur d'activité (Actif / Ralenti / Inactif).</p>
+                                </div>
+                                <div class="border border-gray-100 p-4 rounded-lg bg-gray-50">
+                                    <p class="font-bold text-gray-800 mb-1">⚠️ Anomalies</p>
+                                    <p class="text-sm">Détection automatique des alertes : agents inactifs depuis plus
+                                        de 3 jours, visites de plus de 2h, ménages avancés sans matériel.</p>
+                                </div>
+                                <div class="border border-violet-100 p-4 rounded-lg bg-violet-50 md:col-span-2">
+                                    <p class="font-bold text-gray-800 mb-1"><i
+                                            class="fas fa-sitemap mr-2 text-violet-600"></i>Grappes & Sectorisation</p>
+                                    <p class="text-sm">Regroupement géographique des ménages par proximité GPS
+                                        (K-Means). Une <strong>Grappe</strong> représente une zone large, tandis qu'une
+                                        <strong>Sous-Grappe</strong> correspond au périmètre d'action d'une équipe
+                                        d'installation intérieure spécifique (~100 ménages).
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="mb-8">
                         <div class="relative">
                             <input type="text" id="faqSearch"
@@ -216,9 +477,10 @@
                         <div class="faq-item bg-gray-50 p-5 rounded-xl border border-gray-100 transition-all hover:border-indigo-200"
                             data-keywords="kobo synchro sync internet tokens">
                             <p class="font-bold text-indigo-900 mb-2">Comment synchroniser avec KoboCollect ?</p>
-                            <p class="text-sm text-gray-600">Allez dans le module <strong>Terrain</strong>, section
-                                synchronisation. Entrez votre URL Kobo et votre Token API. La synchronisation mettra à
-                                jour vos ménages existants ou en créera de nouveaux.</p>
+                            <p class="text-sm text-gray-600">Allez dans le module <strong>Terrain</strong> ou utilisez
+                                le gestionnaire. L'importation est désormais "intelligente" et préserve tout votre
+                                historique de statut et d'équipes assignées. La carte sera mise à jour instantanément à
+                                l'écran sans avoir besoin de recharger.</p>
                         </div>
                         <div class="faq-item bg-gray-50 p-5 rounded-xl border border-gray-100 transition-all hover:border-indigo-200"
                             data-keywords="sauvegarde backup données securité restore">
@@ -228,18 +490,48 @@
                                 cela écrasera les données actuelles si elles sont plus anciennes.</p>
                         </div>
                         <div class="faq-item bg-gray-50 p-5 rounded-xl border border-gray-100 transition-all hover:border-indigo-200"
-                            data-keywords="hors ligne offline mobile terrain">
-                            <p class="font-bold text-indigo-900 mb-2">Puis-je travailler sans internet ?</p>
-                            <p class="text-sm text-gray-600">Oui. Tous les changements sont stockés dans votre
-                                navigateur. Vous ne perdez rien. La synchronisation avec le serveur central pourra être
-                                faite dès que vous retrouverez une connexion.</p>
+                            data-keywords="hors ligne offline mobile terrain pWA service worker">
+                            <p class="font-bold text-indigo-900 mb-2">Puis-je travailler sans internet sur le terrain ?
+                            </p>
+                            <p class="text-sm text-gray-600">Oui. L'application est une <strong>PWA Hors-Ligne</strong>.
+                                Vos changements sont stockés localement grâce à la Data Index V2. La synchronisation PWA
+                                mettra tout à jour automatiquement en arrière-plan (Service Worker) dès le retour du
+                                réseau.</p>
                         </div>
                         <div class="faq-item bg-gray-50 p-5 rounded-xl border border-gray-100 transition-all hover:border-indigo-200"
-                            data-keywords="simulation budget coût équipes planning">
-                            <p class="font-bold text-indigo-900 mb-2">Comment fonctionne le simulateur de coût ?</p>
-                            <p class="text-sm text-gray-600">Le simulateur prend en compte le nombre d'équipes et les
-                                ménages restants. Il calcule automatiquement la date de fin estimée et les coûts
-                                logistiques (véhicules, carburant) basés sur les paramètres projets enregistrés.</p>
+                            data-keywords="simulation budget coût équipes planning dashboard intelligence">
+                            <p class="font-bold text-indigo-900 mb-2">Comment suivre l'intelligence opérationnelle
+                                (Coûts & Productivité) ?</p>
+                            <p class="text-sm text-gray-600">Le <strong>Dashboard</strong> analyse vos données pour vous
+                                fournir en temps réel le calcul de productivité et de l'avancement budgétaire estimé
+                                (grâce au CostCalculationService). Vous pouvez identifier les baisses de régime et
+                                anticiper les retards depuis cet écran central.</p>
+                        </div>
+                        <div class="faq-item bg-gray-50 p-5 rounded-xl border border-gray-100 transition-all hover:border-indigo-200"
+                            data-keywords="ia prédictive cadence atelier kits logistique fin estimée robot">
+                            <p class="font-bold text-indigo-900 mb-2">Pourquoi la cadence affiche « -- kits/j » ?</p>
+                            <p class="text-sm text-gray-600">Le moteur IA a besoin d'au moins <strong>2 jours
+                                    d'historique</strong> pour calculer une tendance. Enregistrez un rapport aujourd'hui
+                                dans l'onglet <em>Atelier &amp; Chargement</em>, puis revenez demain pour un second. La
+                                cadence et la date estimée s'afficheront automatiquement.</p>
+                        </div>
+                        <div class="faq-item bg-gray-50 p-5 rounded-xl border border-gray-100 transition-all hover:border-indigo-200"
+                            data-keywords="grappe sous-grappe gps clustering kmeans sectorisation équipe">
+                            <p class="font-bold text-indigo-900 mb-2">Comment sont générées les grappes géographique ?
+                            </p>
+                            <p class="text-sm text-gray-600">Le système utilise un algorithme de <strong>clustering
+                                    K-Means</strong> qui analyse les coordonnées GPS. Il crée des zones denses pour
+                                minimiser les déplacements des équipes. L'admin peut ensuite réaffecter manuellement une
+                                équipe spécifique à une sous-grappe via l'onglet <em>Grappes</em> du module Logistique.
+                            </p>
+                        </div>
+                        <div class="faq-item bg-gray-50 p-5 rounded-xl border border-gray-100 transition-all hover:border-indigo-200"
+                            data-keywords="région atelier dakar thiès kits chargement logistique">
+                            <p class="font-bold text-indigo-900 mb-2">Comment suivre la production par région ?</p>
+                            <p class="text-sm text-gray-600">Dans l'onglet <strong>Atelier &amp; Chargement</strong>,
+                                sélectionnez la région dans le menu déroulant avant de saisir les kits. Le tableau
+                                régional en bas de page se met à jour pour montrer les totaux et le taux de chargement
+                                par région, et les chiffres globaux s'agrègent automatiquement.</p>
                         </div>
                     </div>
                 </div>
@@ -284,7 +576,7 @@
             });
         });
     </script>
-    <script src="src/ui/theme-toggle.js"></script>
+    <script type="module" src="src/ui/theme-toggle.js"></script>
 </body>
 
 </html>

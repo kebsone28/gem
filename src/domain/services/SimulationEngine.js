@@ -3,7 +3,7 @@
  * Simule l'exécution d'un projet avec prise en compte des aléas
  */
 // Wrap in IIFE to avoid leaking top-level declarations when loaded as <script>
-(function () {
+// (function () {
 
 // Resolve ProductivityRate dependency in Node/tests and browser
 let _ProductivityRate;
@@ -15,7 +15,7 @@ try {
 
 const ProductivityRateLocal = _ProductivityRate?.default || _ProductivityRate?.ProductivityRate || _ProductivityRate;
 
-class SimulationEngine {
+export class SimulationEngine {
     constructor(logger) {
         this.logger = logger || window.logger;
     }
@@ -370,4 +370,4 @@ if (typeof module !== 'undefined' && module.exports) {
     module.exports = SimulationEngine;
 }
 
-})();
+// })();

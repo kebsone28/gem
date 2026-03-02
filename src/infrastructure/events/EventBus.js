@@ -2,7 +2,7 @@
  * Bus d'événements pour la communication découplée entre modules
  * Implémente le pattern Observer/Pub-Sub
  */
-class EventBus {
+export class EventBus {
     constructor() {
         this.listeners = new Map();
         this.eventHistory = [];
@@ -257,7 +257,7 @@ class EventBus {
 }
 
 // Créer une instance globale
-const eventBus = new EventBus();
+export const eventBus = new EventBus();
 
 // Export pour utilisation globale
 if (typeof window !== 'undefined') {

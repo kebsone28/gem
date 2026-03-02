@@ -7,29 +7,22 @@
     <title>Simulation - Électrification</title>
     <link rel="stylesheet" href="src/output.css">
     <link rel="stylesheet" href="src/dark.css">
+    <link rel="stylesheet" href="src/nav.css">
+    <script src="/ApiService.js"></script>
+    <script src="/AuthGuard.js"></script>
     <script src="vendor/fontawesome/all.min.js"></script>
+    <link rel="stylesheet" href="src/proquelec-theme.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link rel="stylesheet" href="vendor/sweetalert2/sweetalert2.min.css">
+    <script src="vendor/sweetalert2/sweetalert2.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="vendor/dexie/dexie.js"></script>
     <script src="vendor/sweetalert2/sweetalert2.min.js"></script>
     <link rel="stylesheet" href="vendor/sweetalert2/sweetalert2.min.css">
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-        }
-
-        .card-shadow {
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-
-        .gradient-bg {
-            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
-        }
-    </style>
+    <!-- Styles inline neutralisés, tout est géré par proquelec-theme.css -->
 </head>
 
-<body class="bg-gray-50">
+<body class="proquelec-theme">
     <!-- Navigation -->
     <nav class="gradient-bg text-white shadow-lg">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -38,21 +31,19 @@
                     <i class="fas fa-bolt text-2xl mr-3"></i>
                     <h1 class="text-xl font-bold">Électrification</h1>
                 </div>
-                <div class="flex items-center space-x-4">
+                <div class="flex items-center space-x-4" id="authStatusHeader">
                     <a href="index.html"
-                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20">Dashboard</a>
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-all">Dashboard</a>
                     <a href="parametres.html"
-                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20">Paramètres</a>
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-all">Paramètres</a>
                     <a href="terrain.html"
-                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20">Terrain</a>
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-all">Terrain</a>
                     <a href="charges.html"
-                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20">Charges</a>
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-all">Charges</a>
                     <a href="simulation.html"
-                        class="px-3 py-2 rounded-md text-sm font-bold bg-white bg-opacity-20 border-b-2 border-white">Simulation</a>
+                        class="active px-3 py-2 rounded-md text-sm font-bold bg-white bg-opacity-20 transition-all">Simulation</a>
                     <a href="rapports.html"
-                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20">Rapports</a>
-                    <a href="aide.html"
-                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20">Aide</a>
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-all">Rapports</a>
                 </div>
             </div>
         </div>
@@ -186,50 +177,50 @@
     </div>
 
     <!-- Shared Modules -->
-    <script src="src/shared/errors/DomainErrors.js"></script>
-    <script src="src/shared/constants/enums.js"></script>
+    <script type="module" src="src/shared/errors/DomainErrors.js"></script>
+    <script type="module" src="src/shared/constants/enums.js"></script>
 
     <!-- Domain Objects -->
-    <script src="src/domain/value-objects/Location.js"></script>
-    <script src="src/domain/value-objects/Cost.js"></script>
-    <script src="src/domain/value-objects/ProductivityRate.js"></script>
-    <script src="src/domain/entities/Entity.js"></script>
-    <script src="src/domain/entities/Household.js"></script>
-    <script src="src/domain/entities/Project.js"></script>
-    <script src="src/domain/entities/Team.js"></script>
-    <script src="src/domain/entities/Zone.js"></script>
+    <script type="module" src="src/domain/value-objects/Location.js"></script>
+    <script type="module" src="src/domain/value-objects/Cost.js"></script>
+    <script type="module" src="src/domain/value-objects/ProductivityRate.js"></script>
+    <script type="module" src="src/domain/entities/Entity.js"></script>
+    <script type="module" src="src/domain/entities/Household.js"></script>
+    <script type="module" src="src/domain/entities/Project.js"></script>
+    <script type="module" src="src/domain/entities/Team.js"></script>
+    <script type="module" src="src/domain/entities/Zone.js"></script>
 
     <!-- Services & Infrastructure -->
-    <script src="src/infrastructure/events/EventBus.js"></script>
-    <script src="src/infrastructure/logging/Logger.js"></script>
-    <script src="src/infrastructure/errors/ErrorHandler.js"></script>
-    <script src="src/infrastructure/monitoring/MetricsService.js"></script>
-    <script src="src/infrastructure/sync/SyncService.js"></script>
-    <script src="src/infrastructure/backup/BackupService.js"></script>
-    <script src="src/infrastructure/backup/RestoreService.js"></script>
-    <script src="src/infrastructure/migrations/DataStructureGenerator.js"></script>
-    <script src="src/infrastructure/migrations/MigrationService.js"></script>
+    <script type="module" src="src/infrastructure/events/EventBus.js"></script>
+    <script type="module" src="src/infrastructure/logging/Logger.js"></script>
+    <script type="module" src="src/infrastructure/errors/ErrorHandler.js"></script>
+    <script type="module" src="src/infrastructure/monitoring/MetricsService.js"></script>
+    <script type="module" src="src/infrastructure/sync/SyncService.js"></script>
+    <script type="module" src="src/infrastructure/backup/BackupService.js"></script>
+    <script type="module" src="src/infrastructure/backup/RestoreService.js"></script>
+    <script type="module" src="src/infrastructure/migrations/DataStructureGenerator.js"></script>
+    <script type="module" src="src/infrastructure/migrations/MigrationService.js"></script>
 
     <!-- Repositories -->
-    <script src="src/infrastructure/repositories/ProjectRepository.js"></script>
-    <script src="src/infrastructure/repositories/HouseholdRepository.js"></script>
-    <script src="src/infrastructure/repositories/TeamRepository.js"></script>
-    <script src="src/infrastructure/repositories/ZoneRepository.js"></script>
+    <script type="module" src="src/infrastructure/repositories/ProjectRepository.js"></script>
+    <script type="module" src="src/infrastructure/repositories/HouseholdRepository.js"></script>
+    <script type="module" src="src/infrastructure/repositories/TeamRepository.js"></script>
+    <script type="module" src="src/infrastructure/repositories/ZoneRepository.js"></script>
 
     <!-- Application Services -->
-    <script src="src/application/services/HouseholdService.js"></script>
-    <script src="src/application/services/ProjectService.js"></script>
-    <script src="src/application/state/ProjectStore.js"></script>
-    <script src="src/application/state/StoreRegistry.js"></script>
+    <script type="module" src="src/application/services/HouseholdService.js"></script>
+    <script type="module" src="src/application/services/ProjectService.js"></script>
+    <script type="module" src="src/application/state/ProjectStore.js"></script>
+    <script type="module" src="src/application/state/StoreRegistry.js"></script>
 
     <!-- Domain Services (Calculations) -->
-    <script src="src/domain/services/ResourceAllocationService.js"></script>
-    <script src="src/domain/services/CostCalculationService.js"></script>
+    <script type="module" src="src/domain/services/ResourceAllocationService.js"></script>
+    <script type="module" src="src/domain/services/CostCalculationService.js"></script>
 
     <!-- App Initialization (Wires everything together) -->
-    <script src="src/init.js"></script>
-    <script src="src/domain/services/CostCalculationService.js"></script>
-    <script>
+    <script type="module" src="src/init.js"></script>
+    <script type="module" src="src/domain/services/CostCalculationService.js"></script>
+    <script type="module">
         document.addEventListener('DOMContentLoaded', async () => {
             try {
                 if (window.db && !window.db.isOpen()) {
@@ -479,7 +470,7 @@
             }
         });
     </script>
-    <script src="src/ui/theme-toggle.js"></script>
+    <script type="module" src="src/ui/theme-toggle.js"></script>
 </body>
 
 </html>

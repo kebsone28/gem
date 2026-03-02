@@ -1,0 +1,70 @@
+{
+  "projectName": "PROQUELEC-Web-SaaS",
+  "description": "Gestion électrification massive - Version Web SaaS",
+  
+  "github": {
+    "owner": "kebsone28",
+    "repo": "electron",
+    "branch": "main",
+    "token": "GITHUB_TOKEN_IN_SECRETS"
+  },
+
+  "lovable": {
+    "enabled": true,
+    "apiKey": "LOVABLE_API_KEY_IN_SECRETS",
+    
+    "codeGeneration": {
+      "enabled": true,
+      "providers": ["react", "tailwind"],
+      "outputPath": "src/components/generated"
+    },
+
+    "components": {
+      "autoGenerate": true,
+      "patterns": ["LoginPage", "DashboardPage", "ProjectsPage", "Modal*", "*Form"]
+    }
+  },
+
+  "stack": {
+    "frontend": {
+      "framework": "React 18",
+      "build": "Vite",
+      "styling": "TailwindCSS",
+      "ui": "Custom + Lovable components"
+    },
+    
+    "backend": {
+      "runtime": "Node.js 18",
+      "framework": "Express.js",
+      "database": "PostgreSQL 16",
+      "auth": "JWT + Refresh tokens"
+    },
+    
+    "deployment": {
+      "containerization": "Docker",
+      "hosting": "Wanekoo (shared hosting)",
+      "ssl": "Let's Encrypt",
+      "ci-cd": "GitHub Actions"
+    }
+  },
+
+  "pullRequests": {
+    "autoCreate": true,
+    "template": "PULL_REQUEST_TEMPLATE.md",
+    "requireCodeReview": true,
+    "requireTests": true
+  },
+
+  "codeStyle": {
+    "formatting": "Prettier",
+    "linting": "ESLint",
+    "preCommitHooks": true
+  },
+
+  "documentation": {
+    "autoGenerate": true,
+    "outputPath": "docs/generated",
+    "includeAPI": true,
+    "includeComponents": true
+  }
+}

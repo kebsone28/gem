@@ -2,7 +2,7 @@
  * Repository pour les équipes
  * Gère la persistance des entités Team
  */
-(function () {
+// (function () {
     let _Team, _ValidationError, _TeamType;
 
     try {
@@ -29,7 +29,7 @@
     const ValidationErrorLocal = _ValidationError;
     const TeamTypeLocal = _TeamType;
 
-    class TeamRepository {
+    export class TeamRepository {
         constructor(database) {
             if (!database) {
                 throw new Error('Database is required');
@@ -59,7 +59,7 @@
             for (const household of households) {
                 await window.db.households.update(household.id, {
                     teamId: null,
-                    status: 'Attente démarrage'
+                    status: (window.HouseholdStatus?.NON_DEBUTE) || 'Non débuté'
                 });
             }
             return households.length;
@@ -382,4 +382,4 @@
     if (typeof module !== 'undefined' && module.exports) {
         module.exports = TeamRepository;
     }
-})();
+// })();

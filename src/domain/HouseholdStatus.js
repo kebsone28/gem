@@ -7,45 +7,48 @@
 if (typeof window.HouseholdStatus === 'undefined') {
 
     const HouseholdStatus = Object.freeze({
-        INELIGIBLE: 'Inéligible',
-        INJOIGNABLE: 'Injoignable',
-        ATTENTE_DEMARRAGE: 'Attente démarrage',
-        ATTENTE_MACON: 'Attente Maçon',
-        ATTENTE_BRANCHEMENT: 'Attente Branchement',
-        ATTENTE_ELECTRICIEN: 'Attente électricien',
-        ATTENTE_CONTROLEUR: 'Attente Controleur',
-        ATTENTE_ELECTRICIEN_X: 'Attente électricien(X)',
-        CONFORME: 'Conforme'
+        NON_DEBUTE: 'Non débuté',
+        MURS_EN_COURS: 'Murs: En cours',
+        MURS_TERMINE: 'Murs: Terminé',
+        RESEAU_EN_COURS: 'Réseau: En cours',
+        RESEAU_TERMINE: 'Réseau: Terminé',
+        INTERIEUR_EN_COURS: 'Intérieur: En cours',
+        INTERIEUR_TERMINE: 'Intérieur: Terminé',
+        RECEPTION_VALIDEE: 'Réception: Validée',
+        PROBLEME: 'Problème',
+        INELIGIBLE: 'Inéligible'
     });
 
     /**
      * Labels (identiques aux valeurs dans ce cas)
      */
     const StatusLabels = {
-        [HouseholdStatus.INELIGIBLE]: 'Inéligible',
-        [HouseholdStatus.INJOIGNABLE]: 'Injoignable',
-        [HouseholdStatus.ATTENTE_DEMARRAGE]: 'Attente démarrage',
-        [HouseholdStatus.ATTENTE_MACON]: 'Attente Maçon',
-        [HouseholdStatus.ATTENTE_BRANCHEMENT]: 'Attente Branchement',
-        [HouseholdStatus.ATTENTE_ELECTRICIEN]: 'Attente électricien',
-        [HouseholdStatus.ATTENTE_CONTROLEUR]: 'Attente Controleur',
-        [HouseholdStatus.ATTENTE_ELECTRICIEN_X]: 'Attente électricien(X)',
-        [HouseholdStatus.CONFORME]: 'Conforme'
+        [HouseholdStatus.NON_DEBUTE]: 'Non débuté',
+        [HouseholdStatus.MURS_EN_COURS]: 'Murs: En cours',
+        [HouseholdStatus.MURS_TERMINE]: 'Murs: Terminé',
+        [HouseholdStatus.RESEAU_EN_COURS]: 'Réseau: En cours',
+        [HouseholdStatus.RESEAU_TERMINE]: 'Réseau: Terminé',
+        [HouseholdStatus.INTERIEUR_EN_COURS]: 'Intérieur: En cours',
+        [HouseholdStatus.INTERIEUR_TERMINE]: 'Intérieur: Terminé',
+        [HouseholdStatus.RECEPTION_VALIDEE]: 'Réception: Validée',
+        [HouseholdStatus.PROBLEME]: 'Problème',
+        [HouseholdStatus.INELIGIBLE]: 'Inéligible'
     };
 
     /**
      * Descriptions détaillées
      */
     const StatusDescriptions = {
-        [HouseholdStatus.INELIGIBLE]: 'Ménage non éligible au programme d\'électrification',
-        [HouseholdStatus.INJOIGNABLE]: 'Impossible de joindre le ménage',
-        [HouseholdStatus.ATTENTE_DEMARRAGE]: 'En attente du démarrage des travaux',
-        [HouseholdStatus.ATTENTE_MACON]: 'En attente de l\'intervention des maçons',
-        [HouseholdStatus.ATTENTE_BRANCHEMENT]: 'En attente du branchement au réseau',
-        [HouseholdStatus.ATTENTE_ELECTRICIEN]: 'En attente de l\'électricien pour installation',
-        [HouseholdStatus.ATTENTE_CONTROLEUR]: 'En attente du contrôle qualité',
-        [HouseholdStatus.ATTENTE_ELECTRICIEN_X]: 'En attente de correction par électricien',
-        [HouseholdStatus.CONFORME]: 'Installation terminée et conforme'
+        [HouseholdStatus.NON_DEBUTE]: 'Ménage prêt, aucun chantier démarré',
+        [HouseholdStatus.MURS_EN_COURS]: 'Travaux maçonnerie en cours',
+        [HouseholdStatus.MURS_TERMINE]: 'Travaux maçonnerie terminés',
+        [HouseholdStatus.RESEAU_EN_COURS]: 'Branchement réseau en cours',
+        [HouseholdStatus.RESEAU_TERMINE]: 'Branchement réseau terminé',
+        [HouseholdStatus.INTERIEUR_EN_COURS]: 'Installation intérieure en cours',
+        [HouseholdStatus.INTERIEUR_TERMINE]: 'Installation intérieure terminée, prêt pour contrôle',
+        [HouseholdStatus.RECEPTION_VALIDEE]: 'Réception finale validée',
+        [HouseholdStatus.PROBLEME]: 'Blocage/incident nécessitant reprise',
+        [HouseholdStatus.INELIGIBLE]: 'Ménage non éligible au programme'
     };
 
     // Export pour utilisation dans le code

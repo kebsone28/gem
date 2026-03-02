@@ -2,7 +2,7 @@
  * Repository pour les zones
  * Gère la persistance des entités Zone
  */
-(function () {
+// (function () {
     let _Zone, _ValidationError;
 
     try {
@@ -24,7 +24,7 @@
     const ZoneLocal = _Zone?.default || _Zone?.Zone || _Zone;
     const ValidationErrorLocal = _ValidationError;
 
-    class ZoneRepository {
+    export class ZoneRepository {
         constructor(database) {
             if (!database) {
                 throw new Error('Database is required');
@@ -288,4 +288,4 @@
     if (typeof module !== 'undefined' && module.exports) {
         module.exports = ZoneRepository;
     }
-})();
+// })();

@@ -19,29 +19,28 @@ describe('SimulationEngine (unit)', () => {
         ProductivityRate = PR.default || PR.ProductivityRate || PR;
         global.ProductivityRate = ProductivityRate;
 
-        const enums = await import('../../src/shared/constants/enums.js');
-        TeamType = enums.TeamType || (enums.default && enums.default.TeamType);
+        await import('../../src/shared/constants/enums.js');
+        TeamType = globalThis.TeamType;
         global.TeamType = TeamType;
-        // attach DEFAULT_PRODUCTIVITY and other constants used by value objects
-        global.DEFAULT_PRODUCTIVITY = enums.DEFAULT_PRODUCTIVITY || (enums.default && enums.default.DEFAULT_PRODUCTIVITY);
-        // make ProjectStatus available for Project entity
-        global.ProjectStatus = enums.ProjectStatus || (enums.default && enums.default.ProjectStatus);
-        // attach DEFAULT_PRODUCTIVITY and other constants used by value objects
-        global.DEFAULT_PRODUCTIVITY = enums.DEFAULT_PRODUCTIVITY || (enums.default && enums.default.DEFAULT_PRODUCTIVITY);
+        global.DEFAULT_PRODUCTIVITY = globalThis.DEFAULT_PRODUCTIVITY;
+        global.ProjectStatus = globalThis.ProjectStatus;
 
         const T = await import('../../src/domain/entities/Team.js');
         Team = T.default || T.Team || T;
+        global.Team = Team;
 
         const Z = await import('../../src/domain/entities/Zone.js');
         Zone = Z.default || Z.Zone || Z;
+        global.Zone = Zone;
 
         const P = await import('../../src/domain/entities/Project.js');
         Project = P.default || P.Project || P;
+        global.Project = Project;
 
         const SE = await import('../../src/domain/services/SimulationEngine.js');
         SimulationEngine = SE.default || SE.SimulationEngine || SE;
 
-        engine = new SimulationEngine({ info: () => {} });
+        engine = new SimulationEngine({ info: () => { } });
         // Make randomness deterministic by forcing normalRandom to 0 (no variation)
         engine.normalRandom = () => 0;
     });
@@ -60,8 +59,8 @@ describe('SimulationEngine (unit)', () => {
     it('simulateZoneDay aggregates team completions correctly', () => {
         const zone = new Zone('z1', 'Zone 1', 100);
 
-        const t1 = new Team('team-1', TeamType.RESEAU);
-        const t2 = new Team('team-2', TeamType.MACONS);
+        const t1 = new Team('team-1', 'Team 1', TeamType.RESEAU);
+        const t2 = new Team('team-2', 'Team 2', TeamType.MACONS);
 
         zone.assignTeam(TeamType.RESEAU, t1).assignTeam(TeamType.MACONS, t2);
 
@@ -74,7 +73,6 @@ describe('SimulationEngine (unit)', () => {
             [TeamType.MACONS]: 0
         });
 
-        // 4 + 3 = 7 houses completed when no variation and using floor()
         expect(result.completed).toBe(7);
         expect(result.teams).toHaveLength(2);
         expect(result.teams.map(t => t.actual)).toEqual([4, 3]);
@@ -82,7 +80,7 @@ describe('SimulationEngine (unit)', () => {
 
     it('simulateDay composes zone results into a dayResult', () => {
         const zone = new Zone('z2', 'Zone 2', 50);
-        const t1 = new Team('team-3', TeamType.RESEAU);
+        const t1 = new Team('team-3', 'Team 3', TeamType.RESEAU);
         zone.assignTeam(TeamType.RESEAU, t1);
 
         const productivityRates = {};
@@ -100,10 +98,9 @@ describe('SimulationEngine (unit)', () => {
 
     it('simulate completes project in expected number of days', () => {
         const zone = new Zone('z3', 'Zone 3', 12);
-        const t1 = new Team('team-4', TeamType.RESEAU);
+        const t1 = new Team('team-4', 'Team 4', TeamType.RESEAU);
         zone.assignTeam(TeamType.RESEAU, t1);
 
-        // project has 12 houses, team produces 6 houses/day -> 2 days
         const productivityRates = {};
         productivityRates[TeamType.RESEAU] = new ProductivityRate(6, TeamType.RESEAU);
 
@@ -119,7 +116,7 @@ describe('SimulationEngine (unit)', () => {
 
     it('monteCarlo returns consistent analysis when simulate is deterministic', () => {
         const zone = new Zone('z4', 'Zone 4', 8);
-        const t1 = new Team('team-5', TeamType.RESEAU);
+        const t1 = new Team('team-5', 'Team 5', TeamType.RESEAU);
         zone.assignTeam(TeamType.RESEAU, t1);
 
         const productivityRates = {};
@@ -129,13 +126,11 @@ describe('SimulationEngine (unit)', () => {
 
         const mc = engine.monteCarlo(project, { productivityRates, uncertaintyFactors: { [TeamType.RESEAU]: 0 } }, 3);
 
-        // Since simulate is deterministic in our tests, duration should be same each run
         expect(mc.results).toHaveLength(3);
         expect(mc.analysis.duration.stdDev).toBeCloseTo(0);
         expect(mc.analysis.duration.mean).toBe(1);
 
         const report = engine.generateReport(mc);
-        // Risk should be 'Faible' because stdDev / mean = 0
         expect(report.summary.risk).toBe('Faible');
         expect(report.recommendations).toEqual([]);
     });

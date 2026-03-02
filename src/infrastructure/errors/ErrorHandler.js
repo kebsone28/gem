@@ -2,7 +2,7 @@
  * Gestionnaire d'erreurs global
  * Capture et traite toutes les erreurs de l'application
  */
-class ErrorHandler {
+export class ErrorHandler {
     constructor(logger, eventBus) {
         this.logger = logger;
         this.eventBus = eventBus;

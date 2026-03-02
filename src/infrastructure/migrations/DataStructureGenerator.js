@@ -3,7 +3,7 @@
  * Régénère la structure (Projets, Zones, Équipes) à partir des données ménages existantes
  */
 
-class DataStructureGenerator {
+export class DataStructureGenerator {
     constructor(db, logger) {
         this.db = db;
         this.logger = logger;

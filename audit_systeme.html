@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audit Système - PROQUELEC V3</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+
+        .glass {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+    </style>
+</head>
+
+<body class="p-8">
+    <div class="max-w-4xl mx-auto">
+        <header class="mb-8 flex justify-between items-center">
+            <div>
+                <h1 class="text-3xl font-bold text-slate-900">Audit de Santé Système</h1>
+                <p class="text-slate-500 mt-1">Vérification de l'intégrité architecturale et des services.</p>
+            </div>
+            <button id="runBtn"
+                class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg font-semibold transition-all shadow-lg hover:shadow-indigo-200">
+                Lancer l'audit
+            </button>
+        </header>
+
+        <div id="resultsGrid" class="grid gap-4">
+            <!-- Les résultats s'afficheront ici -->
+            <div class="p-6 rounded-xl glass border-slate-200 text-center text-slate-400">
+                Cliquez sur le bouton pour démarrer l'audit global.
+            </div>
+        </div>
+
+        <footer class="mt-8 pt-8 border-t border-slate-200 text-slate-400 text-sm flex justify-between">
+            <span>PROQUELEC V3 - Diagnostic Engine</span>
+            <span id="timestamp"></span>
+        </footer>
+    </div>
+
+    <!-- Scripts de l'application (pour tester l'environnement réel) -->
+    <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
+    <script type="module" src="src/shared/constants/enums.js"></script>
+    <script type="module" src="src/domain/entities/Entity.js"></script>
+    <script type="module" src="src/domain/entities/Project.js"></script>
+    <script type="module" src="src/domain/entities/Team.js"></script>
+    <script type="module" src="src/domain/registry/TeamRegistry.js"></script>
+    <script type="module" src="src/infrastructure/repositories/ProjectRepository.js"></script>
+    <script type="module" src="src/infrastructure/repositories/TeamRepository.js"></script>
+    <script type="module" src="src/infrastructure/repositories/HouseholdRepository.js"></script>
+    <script type="module" src="src/infrastructure/repositories/ZoneRepository.js"></script>
+
+    <!-- Infrastructure Services required by init.js -->
+    <script type="module" src="src/infrastructure/events/EventBus.js"></script>
+    <script type="module" src="src/infrastructure/logging/Logger.js"></script>
+    <script type="module" src="src/infrastructure/errors/ErrorHandler.js"></script>
+    <script type="module" src="src/infrastructure/monitoring/MetricsService.js"></script>
+    <script type="module" src="src/infrastructure/sync/SyncService.js"></script>
+    <script type="module" src="src/infrastructure/backup/BackupService.js"></script>
+    <script type="module" src="src/infrastructure/backup/RestoreService.js"></script>
+    <script type="module" src="src/infrastructure/migrations/DataStructureGenerator.js"></script>
+    <script type="module" src="src/infrastructure/migrations/MigrationService.js"></script>
+
+    <!-- Domain Value Objects & Services -->
+    <script type="module" src="src/domain/value-objects/ProductivityRate.js"></script>
+    <script type="module" src="src/domain/value-objects/Cost.js"></script>
+    <script type="module" src="src/domain/services/ResourceAllocationService.js"></script>
+    <script type="module" src="src/domain/services/CostCalculationService.js"></script>
+
+    <!-- Application Services & State -->
+    <script type="module" src="src/application/services/ProjectService.js"></script>
+    <script type="module" src="src/application/services/HouseholdService.js"></script>
+    <script type="module" src="src/application/state/ProjectStore.js"></script>
+    <script type="module" src="src/application/state/StoreRegistry.js"></script>
+
+    <script type="module" src="src/init.js"></script> <!-- Initialise Dexie + Repos -->
+
+    <!-- Notre système de diagnostic -->
+    <script type="module" src="src/debug/DiagnosticSystem.js"></script>
+
+    <script>
+        document.getElementById('runBtn').addEventListener('click', async () => {
+            const btn = document.getElementById('runBtn');
+            btn.disabled = true;
+            btn.textContent = 'Audit en cours...';
+
+            const resultsGrid = document.getElementById('resultsGrid');
+            resultsGrid.innerHTML = '<div class="p-12 flex flex-col items-center justify-center"><div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div><div class="mt-4 text-slate-500 text-sm">Initialisation des services...</div></div>';
+
+            // Poll for services
+            let attempts = 0;
+            const maxAttempts = 20;
+            while (!window.projectService && attempts < maxAttempts) {
+                await new Promise(r => setTimeout(r, 250));
+                attempts++;
+            }
+
+            if (!window.projectService) {
+                resultsGrid.innerHTML = `<div class="p-6 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl">⚠️ Erreur: Les services applicatifs n'ont pas pu s'initialiser après ${maxAttempts * 0.25}s.</div>`;
+                btn.disabled = false;
+                btn.textContent = 'Réessayer';
+                return;
+            }
+
+            try {
+                const results = await window.DiagnosticSystem.runAllTests();
+
+                resultsGrid.innerHTML = '';
+                results.forEach(res => {
+                    const card = document.createElement('div');
+                    card.className = 'p-5 rounded-xl glass border flex items-center justify-between transition-all hover:scale-[1.01]';
+
+                    const statusColor = res.status === 'OK' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
+                        res.status === 'WARN' ? 'bg-amber-100 text-amber-700 border-amber-200' :
+                            'bg-rose-100 text-rose-700 border-rose-200';
+
+                    card.innerHTML = `
+                        <div class="flex flex-col">
+                            <span class="font-bold text-slate-800">${res.name}</span>
+                            <span class="text-sm text-slate-500">${res.details}</span>
+                        </div>
+                        <div class="px-4 py-1 rounded-full text-xs font-bold border ${statusColor}">
+                            ${res.status}
+                        </div>
+                    `;
+                    resultsGrid.appendChild(card);
+                });
+
+                document.getElementById('timestamp').textContent = 'Analysé à ' + new Date().toLocaleTimeString();
+
+            } catch (err) {
+                resultsGrid.innerHTML = `<div class="p-6 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl">Une erreur fatale est survenue: ${err.message}</div>`;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Relancer l\'audit';
+            }
+        });
+    </script>
+</body>
+
+</html>

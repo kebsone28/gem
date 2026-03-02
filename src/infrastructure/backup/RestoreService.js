@@ -3,7 +3,7 @@
  * Gère la restauration des données depuis des fichiers Excel de backup
  */
 
-class RestoreService {
+export class RestoreService {
     constructor(db, eventBus, logger) {
         this.db = db;
         this.eventBus = eventBus;
@@ -234,7 +234,7 @@ class RestoreService {
             id: row.ID,
             location,
             owner,
-            status: row.Statut || 'En attente',
+            status: row.Statut || (window.HouseholdStatus?.NON_DEBUTE) || 'Non débuté',
             statusHistory: [],
             assignedTeams: [],
             scheduledDates: {},

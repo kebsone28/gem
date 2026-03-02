@@ -13,6 +13,11 @@ class KoboApiService {
      * @param {string} assetUid - (Optionnel) ID pour vérifier l'accès spécifique
      */
     async testConnection(token, assetUid = null) {
+        // Si proxy Electron dispo, utiliser le canal sécurisé
+        if (typeof window !== 'undefined' && window.koboProxy?.testConnection) {
+            return window.koboProxy.testConnection(token, assetUid);
+        }
+
         const tryFetch = async (url, useProxy = false) => {
             const finalUrl = useProxy ? `https://corsproxy.io/?${encodeURIComponent(url)}` : url;
             try {
@@ -70,6 +75,11 @@ class KoboApiService {
      */
     async fetchData(token, assetUid) {
         if (!token || !assetUid) throw new Error('Token et ID requis');
+
+        // Si on est dans Electron avec proxy, utiliser l'IPC
+        if (typeof window !== 'undefined' && window.koboProxy?.fetchData) {
+            return window.koboProxy.fetchData(token, assetUid);
+        }
 
         const url = `${this.activeUrl}/assets/${assetUid}/data/?format=json`;
 

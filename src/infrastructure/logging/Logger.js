@@ -1,14 +1,9 @@
-/**
- * Système de logging avancé avec transports multiples
- */
-
-// Niveaux de log définis dans enums.js
-// const LogLevel = { ... };
+import { LogLevel } from '../../shared/constants/enums.js';
 
 /**
  * Logger principal
  */
-class Logger {
+export class Logger {
     constructor(name = 'App', level = LogLevel.INFO) {
         this.name = name;
         this.level = level;
@@ -113,7 +108,7 @@ class Logger {
 /**
  * Transport Console
  */
-class ConsoleTransport {
+export class ConsoleTransport {
     constructor(options = {}) {
         this.colorize = options.colorize !== false;
     }
@@ -142,12 +137,17 @@ class ConsoleTransport {
 /**
  * Transport IndexedDB
  */
-class IndexedDBTransport {
+export class IndexedDBTransport {
     constructor(database) {
         this.db = database;
     }
 
     async write(logEntry) {
+        // defensive: database or store may not be ready yet
+        if (!this.db || !this.db.audit_log || typeof this.db.audit_log.add !== 'function') {
+            console.warn('[IndexedDBTransport] database not ready, skipping log');
+            return;
+        }
         try {
             await this.db.audit_log.add({
                 timestamp: logEntry.timestamp,
@@ -167,7 +167,7 @@ class IndexedDBTransport {
 /**
  * Transport Remote (API)
  */
-class RemoteTransport {
+export class RemoteTransport {
     constructor(endpoint, options = {}) {
         this.endpoint = endpoint;
         this.buffer = [];
@@ -220,7 +220,7 @@ class RemoteTransport {
 /**
  * Transport File (pour Electron)
  */
-class FileTransport {
+export class FileTransport {
     constructor(filepath) {
         this.filepath = filepath;
         this.buffer = [];
@@ -243,7 +243,7 @@ class FileTransport {
 }
 
 // Créer un logger global
-const logger = new Logger('App', LogLevel.INFO);
+export const logger = new Logger('App', LogLevel.INFO);
 logger.addTransport(new ConsoleTransport());
 
 // Export pour utilisation globale

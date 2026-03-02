@@ -6,13 +6,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestion des Charges - Électrification</title>
     <link rel="stylesheet" href="src/output.css">
+    <link rel="stylesheet" href="src/nav.css">
     <link rel="stylesheet" href="src/dark.css">
+    <link rel="stylesheet" href="src/proquelec-theme.css">
+    <script src="src/infrastructure/external/ApiService.js"></script>
+    <script src="src/infrastructure/external/AuthGuard.js"></script>
     <script src="vendor/fontawesome/all.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link rel="stylesheet" href="vendor/sweetalert2/sweetalert2.min.css">
+    <script src="vendor/sweetalert2/sweetalert2.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="vendor/dexie/dexie.js"></script>
     <script src="vendor/sweetalert2/sweetalert2.min.js"></script>
+    <script src="vendor/xlsx/xlsx.full.min.js"></script>
     <link rel="stylesheet" href="vendor/sweetalert2/sweetalert2.min.css">
     <style>
         body {
@@ -34,7 +40,7 @@
     </style>
 </head>
 
-<body class="bg-gray-50">
+<body class="proquelec-theme">
     <!-- Navigation -->
     <nav class="gradient-bg text-white shadow-lg">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -43,21 +49,24 @@
                     <i class="fas fa-bolt text-2xl mr-3"></i>
                     <h1 class="text-xl font-bold">Électrification</h1>
                 </div>
-                <div class="flex items-center space-x-4">
+                <div class="flex items-center space-x-4" id="authStatusHeader">
                     <a href="index.html"
-                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20">Dashboard</a>
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-all">Dashboard</a>
                     <a href="parametres.html"
-                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20">Paramètres</a>
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-all">Paramètres</a>
                     <a href="terrain.html"
-                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20">Terrain</a>
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-all">Terrain</a>
                     <a href="charges.html"
-                        class="px-3 py-2 rounded-md text-sm font-bold bg-white bg-opacity-20 border-b-2 border-white">Charges</a>
-                    <a href="simulation.html"
-                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20">Simulation</a>
+                        class="active px-3 py-2 rounded-md text-sm font-bold bg-white bg-opacity-20 transition-all">Charges</a>
+                    <a href="logistique.html"
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-all">Logistique</a>
                     <a href="rapports.html"
-                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20">Rapports</a>
-                    <a href="aide.html"
-                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20">Aide</a>
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-all">Rapports</a>
+                    <a href="bordereau.html"
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-all">Bordereau</a>
+                    <a href="cahier-equipes.html"
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-all">Cahier
+                        des Charges</a>
                 </div>
             </div>
         </div>
@@ -149,6 +158,27 @@
             </div>
         </div>
 
+        <!-- Marge devis PROQUELEC -->
+        <div class="bg-white rounded-lg card-shadow p-6 border-l-4 border-sky-500 mb-8">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Marge prévisionnelle vs
+                        devis PROQUELEC</p>
+                    <h3 class="text-2xl font-bold text-gray-800 mt-1 currency-font" id="devisMarginDisplay">...</h3>
+                    <p class="text-xs text-gray-500 mt-1">Plafond devis HT : <span id="devisPlafondDisplay"
+                            class="font-semibold"></span> | Réel saisi : <span id="devisReelDisplay"
+                            class="font-semibold"></span></p>
+                </div>
+                <div class="bg-sky-100 p-2 rounded-lg text-sky-600">
+                    <i class="fas fa-scale-balanced text-xl"></i>
+                </div>
+            </div>
+            <div class="mt-4 text-xs text-gray-600 flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-sky-500"></span>
+                <span id="devisMarginPct">--%</span> de marge globale (basé sur vos coûts réels saisis)
+            </div>
+        </div>
+
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <!-- Cost Distribution Chart -->
             <div class="lg:col-span-1 bg-white rounded-lg card-shadow p-6">
@@ -197,53 +227,109 @@
                 </div>
             </div>
         </div>
+
+        <!-- Comparatif Devis PROQUELEC vs Coûts réels -->
+        <div class="bg-white rounded-lg card-shadow p-6 mt-10">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h3 class="font-bold text-gray-800 text-lg">Comparatif Devis PROQUELEC / Coûts réels</h3>
+                    <p class="text-sm text-gray-500">Saisissez vos coûts unitaires réels pour chaque poste. Les marges
+                        sont calculées automatiquement et sauvegardées localement.</p>
+                </div>
+                <div class="flex gap-3 text-sm flex-wrap">
+                    <button onclick="exportDevisExcel()"
+                        class="px-3 py-2 bg-emerald-600 text-white rounded shadow hover:bg-emerald-700"><i
+                            class="fas fa-file-excel mr-1"></i>Export Excel</button>
+                    <button onclick="exportDevisWord()"
+                        class="px-3 py-2 bg-indigo-600 text-white rounded shadow hover:bg-indigo-700"><i
+                            class="fas fa-file-word mr-1"></i>Export Word</button>
+                    <button onclick="resetRealCosts()"
+                        class="px-3 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200"><i
+                            class="fas fa-undo mr-1"></i>Réinitialiser</button>
+                    <button onclick="window.print()"
+                        class="px-3 py-2 bg-sky-600 text-white rounded shadow hover:bg-sky-700"><i
+                            class="fas fa-print mr-1"></i>Imprimer</button>
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200 text-sm" id="devisTable">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-3 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Poste</th>
+                            <th class="px-3 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Région</th>
+                            <th class="px-3 py-2 text-right text-xs font-semibold text-gray-500 uppercase">Qté devis
+                            </th>
+                            <th class="px-3 py-2 text-right text-xs font-semibold text-gray-500 uppercase">PU devis</th>
+                            <th class="px-3 py-2 text-right text-xs font-semibold text-gray-500 uppercase">Total devis
+                            </th>
+                            <th class="px-3 py-2 text-right text-xs font-semibold text-gray-500 uppercase">Qté réelle
+                            </th>
+                            <th class="px-3 py-2 text-right text-xs font-semibold text-gray-500 uppercase">PU réel</th>
+                            <th class="px-3 py-2 text-right text-xs font-semibold text-gray-500 uppercase">Total réel
+                            </th>
+                            <th class="px-3 py-2 text-right text-xs font-semibold text-gray-500 uppercase">Marge</th>
+                        </tr>
+                    </thead>
+                    <tbody id="devisBody" class="divide-y divide-gray-100"></tbody>
+                    <tfoot class="bg-gray-50">
+                        <tr class="font-bold">
+                            <td colspan="4" class="px-3 py-2 text-right text-gray-700">Total devis HT</td>
+                            <td class="px-3 py-2 text-right text-indigo-700" id="devisTotalRef">—</td>
+                            <td colspan="2" class="px-3 py-2 text-right text-gray-700">Total réel</td>
+                            <td class="px-3 py-2 text-right text-gray-900" id="devisTotalReal">—</td>
+                            <td class="px-3 py-2 text-right text-sky-700" id="devisTotalMargin">—</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
     </div>
 
     <!-- Shared Modules -->
-    <script src="src/shared/errors/DomainErrors.js"></script>
-    <script src="src/shared/constants/enums.js"></script>
+    <script type="module" src="src/shared/errors/DomainErrors.js"></script>
+    <script type="module" src="src/shared/constants/enums.js"></script>
 
     <!-- Domain Objects -->
-    <script src="src/domain/value-objects/Location.js"></script>
-    <script src="src/domain/value-objects/Cost.js"></script>
-    <script src="src/domain/value-objects/ProductivityRate.js"></script>
-    <script src="src/domain/entities/Entity.js"></script>
-    <script src="src/domain/entities/Household.js"></script>
-    <script src="src/domain/entities/Project.js"></script>
-    <script src="src/domain/entities/Team.js"></script>
-    <script src="src/domain/entities/Zone.js"></script>
+    <script type="module" src="src/domain/value-objects/Location.js"></script>
+    <script type="module" src="src/domain/value-objects/Cost.js"></script>
+    <script type="module" src="src/domain/value-objects/ProductivityRate.js"></script>
+    <script type="module" src="src/domain/entities/Entity.js"></script>
+    <script type="module" src="src/domain/entities/Household.js"></script>
+    <script type="module" src="src/domain/entities/Project.js"></script>
+    <script type="module" src="src/domain/entities/Team.js"></script>
+    <script type="module" src="src/domain/entities/Zone.js"></script>
 
     <!-- Services & Infrastructure -->
-    <script src="src/infrastructure/events/EventBus.js"></script>
-    <script src="src/infrastructure/logging/Logger.js"></script>
-    <script src="src/infrastructure/errors/ErrorHandler.js"></script>
-    <script src="src/infrastructure/monitoring/MetricsService.js"></script>
-    <script src="src/infrastructure/sync/SyncService.js"></script>
-    <script src="src/infrastructure/backup/BackupService.js"></script>
-    <script src="src/infrastructure/backup/RestoreService.js"></script>
-    <script src="src/infrastructure/migrations/DataStructureGenerator.js"></script>
-    <script src="src/infrastructure/migrations/MigrationService.js"></script>
+    <script type="module" src="src/infrastructure/events/EventBus.js"></script>
+    <script type="module" src="src/infrastructure/logging/Logger.js"></script>
+    <script type="module" src="src/infrastructure/errors/ErrorHandler.js"></script>
+    <script type="module" src="src/infrastructure/monitoring/MetricsService.js"></script>
+    <script type="module" src="src/infrastructure/sync/SyncService.js"></script>
+    <script type="module" src="src/infrastructure/backup/BackupService.js"></script>
+    <script type="module" src="src/infrastructure/backup/RestoreService.js"></script>
+    <script type="module" src="src/infrastructure/migrations/DataStructureGenerator.js"></script>
+    <script type="module" src="src/infrastructure/migrations/MigrationService.js"></script>
 
     <!-- Repositories -->
-    <script src="src/infrastructure/repositories/ProjectRepository.js"></script>
-    <script src="src/infrastructure/repositories/HouseholdRepository.js"></script>
-    <script src="src/infrastructure/repositories/TeamRepository.js"></script>
-    <script src="src/infrastructure/repositories/ZoneRepository.js"></script>
+    <script type="module" src="src/infrastructure/repositories/ProjectRepository.js"></script>
+    <script type="module" src="src/infrastructure/repositories/HouseholdRepository.js"></script>
+    <script type="module" src="src/infrastructure/repositories/TeamRepository.js"></script>
+    <script type="module" src="src/infrastructure/repositories/ZoneRepository.js"></script>
 
     <!-- Application Services -->
-    <script src="src/application/services/HouseholdService.js"></script>
-    <script src="src/application/services/ProjectService.js"></script>
-    <script src="src/application/state/ProjectStore.js"></script>
-    <script src="src/application/state/StoreRegistry.js"></script>
+    <script type="module" src="src/application/services/HouseholdService.js"></script>
+    <script type="module" src="src/application/services/ProjectService.js"></script>
+    <script type="module" src="src/application/state/ProjectStore.js"></script>
+    <script type="module" src="src/application/state/StoreRegistry.js"></script>
 
     <!-- Domain Services (Calculations) -->
-    <script src="src/domain/services/ResourceAllocationService.js"></script>
-    <script src="src/domain/services/CostCalculationService.js"></script>
+    <script type="module" src="src/domain/services/ResourceAllocationService.js"></script>
+    <script type="module" src="src/domain/services/CostCalculationService.js"></script>
 
     <!-- App Initialization -->
-    <script src="src/init.js"></script>
+    <script type="module" src="src/init.js"></script>
 
-    <script>
+    <script type="module">
         // Formatting utilities
         const formatMoney = (amount) => {
             return new Intl.NumberFormat('fr-XR', { style: 'decimal', maximumFractionDigits: 0 }).format(amount) + ' FCFA';
@@ -251,12 +337,34 @@
 
         const formatNumber = (num) => new Intl.NumberFormat('fr-FR').format(num);
 
+        const devisItems = [
+            { id: 'formation', label: 'Formation 5 équipes (19 électriciens)', region: 'Global', qty: 5, unit: 1500000 },
+            { id: 'transport', label: 'Transport matériel', region: 'Global', qty: 3750, unit: 3667 },
+            { id: 'controle', label: 'Contrôle conformité / reporting', region: 'Global', qty: 3750, unit: 4000 },
+            { id: 'kaffrine-coffret', label: 'Coffret + potelet + raccordement réseau', region: 'Kaffrine', qty: 2350, unit: 6230 },
+            { id: 'kaffrine-mur', label: 'Mur support coffret (cheminée)', region: 'Kaffrine', qty: 2000, unit: 35000 },
+            { id: 'kaffrine-tranchee', label: 'Tranchées + grillage (30x50, 15m)', region: 'Kaffrine', qty: 10000, unit: 1000 },
+            { id: 'kaffrine-coffret-int', label: 'Coffret modulaire + mise à la terre', region: 'Kaffrine', qty: 2350, unit: 23000 },
+            { id: 'kaffrine-kit2', label: 'Kit secondaire', region: 'Kaffrine', qty: 1000, unit: 6230 },
+            { id: 'tamba-coffret', label: 'Coffret + potelet + raccordement réseau', region: 'Tambacounda', qty: 1400, unit: 6230 },
+            { id: 'tamba-mur', label: 'Mur support coffret (cheminée)', region: 'Tambacounda', qty: 1500, unit: 35000 },
+            { id: 'tamba-tranchee', label: 'Tranchées + grillage (30x50, 15m)', region: 'Tambacounda', qty: 10000, unit: 1000 },
+            { id: 'tamba-coffret-int', label: 'Coffret modulaire + mise à la terre', region: 'Tambacounda', qty: 1400, unit: 23000 },
+            { id: 'tamba-kit2', label: 'Kit secondaire', region: 'Tambacounda', qty: 1000, unit: 6230 }
+        ];
+        const devisPlafond = 300823750;
+
         let costChart = null;
 
         document.addEventListener('DOMContentLoaded', async () => {
             try {
+                for (let i = 0; i < 20; i++) {
+                    if (window.isAppReady && window.db && window.db.isOpen()) break;
+                    await new Promise(r => setTimeout(r, 200));
+                }
                 if (window.db && !window.db.isOpen()) await window.db.open();
                 await refreshData();
+                renderDevisTable();
             } catch (err) {
                 console.error("Error initializing charges page:", err);
                 Swal.fire('Erreur', 'Impossible de charger les données financières.', 'error');
@@ -294,7 +402,7 @@
             document.getElementById('logisticsCostDisplay').textContent = formatMoney(report.breakdown.logistics);
             document.getElementById('materialsCostDisplay').textContent = formatMoney(report.breakdown.materials);
 
-            const householdsCount = report.requirements.teams.Maçon?.totalHouseholds || 80000; // Simplified
+            const householdsCount = report.totalHouseholds || 80000;
             const costPerHouse = report.total / householdsCount;
             document.getElementById('costPerHouseDisplay').textContent = formatMoney(costPerHouse);
         }
@@ -412,12 +520,12 @@
 
             // 2. Logistique
             html += createSectionHeader("Logistique & Transport", report.breakdown.logistics);
-            Object.entries(report.requirements.vehicles).forEach(([type, data]) => {
-                const rentalRate = project.costs.vehicleRental?.[type] || 50000;
-                const lineTotal = data.required * rentalRate * project.duration;
+            Object.entries(report.requirements.vehicles.global || {}).forEach(([type, data]) => {
+                const rentalRate = project.costs?.vehicleRental?.[type] || 50000;
+                const lineTotal = (data.required || 0) * rentalRate * (project.duration || 180);
                 html += createRow(
                     `Véhicule (${type})`,
-                    `${data.required} vhé. x ${project.duration}j`,
+                    `${data.required || 0} vhé. x ${project.duration || 180}j`,
                     formatMoney(rentalRate) + "/j",
                     lineTotal
                 );
@@ -463,7 +571,7 @@
 
             // 4. Matériaux
             html += createSectionHeader("Matériaux (Estimatif)", report.breakdown.materials);
-            html += createRow("Potelets, Câbles, Coffrets...", `${report.requirements.teams.Maçon?.totalHouseholds || 80000} ménages`, "Forfaitaire", report.breakdown.materials);
+            html += createRow("Potelets, Câbles, Coffrets...", `${report.totalHouseholds || 80000} ménages`, "Forfaitaire", report.breakdown.materials);
 
             tbody.innerHTML = html;
         }
@@ -472,8 +580,149 @@
             Swal.fire('Info', 'Fonctionnalité d\'export à venir.', 'info');
         };
 
+        // === Devis vs Réel ===
+        function loadRealCosts() {
+            try {
+                return JSON.parse(localStorage.getItem('realCostsProq') || '{}');
+            } catch { return {}; }
+        }
+
+        function saveRealCosts(data) {
+            localStorage.setItem('realCostsProq', JSON.stringify(data));
+        }
+
+        window.resetRealCosts = function () {
+            localStorage.removeItem('realCostsProq');
+            renderDevisTable();
+        };
+
+        window.exportDevisExcel = function () {
+            const real = loadRealCosts();
+            const rows = devisItems.map(item => {
+                const realLine = real[item.id] || {};
+                const rq = Number(realLine.qty || item.qty);
+                const ru = Number(realLine.unit || item.unit);
+                const planned = item.qty * item.unit;
+                const realTotal = rq * ru;
+                return {
+                    Poste: item.label,
+                    Region: item.region,
+                    Qté_Devis: item.qty,
+                    PU_Devis: item.unit,
+                    Total_Devis: planned,
+                    Qté_Réelle: rq,
+                    PU_Réel: ru,
+                    Total_Réel: realTotal,
+                    Marge: planned - realTotal
+                };
+            });
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.json_to_sheet(rows);
+            XLSX.utils.book_append_sheet(wb, ws, 'Devis_vs_Real');
+            XLSX.writeFile(wb, 'Comparatif_Devis.xlsx');
+        };
+
+        window.exportDevisWord = function () {
+            const real = loadRealCosts();
+            const rows = devisItems.map(item => {
+                const realLine = real[item.id] || {};
+                const rq = Number(realLine.qty || item.qty);
+                const ru = Number(realLine.unit || item.unit);
+                const planned = item.qty * item.unit;
+                const realTotal = rq * ru;
+                const margin = planned - realTotal;
+                return { ...item, rq, ru, planned, realTotal, margin };
+            });
+            const tableRows = rows.map(r => `
+                <tr>
+                    <td>${r.label}</td><td>${r.region}</td>
+                    <td style="text-align:right">${r.qty}</td><td style="text-align:right">${r.unit.toLocaleString('fr-FR')}</td><td style="text-align:right">${r.planned.toLocaleString('fr-FR')}</td>
+                    <td style="text-align:right">${r.rq}</td><td style="text-align:right">${r.ru.toLocaleString('fr-FR')}</td><td style="text-align:right">${r.realTotal.toLocaleString('fr-FR')}</td>
+                    <td style="text-align:right">${r.margin.toLocaleString('fr-FR')}</td>
+                </tr>
+            `).join('');
+            const html = `
+            <html><head><meta charset="utf-8"></head><body>
+            <h1>Comparatif Devis PROQUELEC / Coûts réels</h1>
+            <p>Plafond devis HT : ${formatMoney(devisPlafond)}</p>
+            <table border="1" cellspacing="0" cellpadding="4" style="border-collapse:collapse;width:100%;font-family:Arial;font-size:12px;">
+                <thead style="background:#e5e7eb">
+                    <tr><th>Poste</th><th>Région</th><th>Qté devis</th><th>PU devis</th><th>Total devis</th><th>Qté réelle</th><th>PU réel</th><th>Total réel</th><th>Marge</th></tr>
+                </thead>
+                <tbody>${tableRows}</tbody>
+            </table>
+            </body></html>`;
+            const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'Comparatif_Devis.doc';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        };
+
+        function renderDevisTable() {
+            const real = loadRealCosts();
+            const tbody = document.getElementById('devisBody');
+            let totalRef = 0;
+            let totalReal = 0;
+            tbody.innerHTML = devisItems.map(item => {
+                const planned = item.qty * item.unit;
+                totalRef += planned;
+                const realLine = real[item.id] || {};
+                const rq = Number(realLine.qty || item.qty);
+                const ru = Number(realLine.unit || item.unit);
+                const realTotal = rq * ru;
+                totalReal += realTotal;
+                const margin = planned - realTotal;
+                const marginCls = margin >= 0 ? 'text-emerald-600' : 'text-rose-600';
+                return `
+                <tr class="hover:bg-gray-50">
+                    <td class="px-3 py-2 text-gray-800">${item.label}</td>
+                    <td class="px-3 py-2 text-gray-600">${item.region}</td>
+                    <td class="px-3 py-2 text-right">${item.qty.toLocaleString('fr-FR')}</td>
+                    <td class="px-3 py-2 text-right">${formatMoney(item.unit)}</td>
+                    <td class="px-3 py-2 text-right text-indigo-700">${formatMoney(planned)}</td>
+                    <td class="px-3 py-2 text-right">
+                        <input type="number" step="0.01" class="w-24 border rounded px-2 py-1 text-right text-sm"
+                            value="${rq}" data-id="${item.id}" data-field="qty">
+                    </td>
+                    <td class="px-3 py-2 text-right">
+                        <input type="number" step="0.01" class="w-24 border rounded px-2 py-1 text-right text-sm"
+                            value="${ru}" data-id="${item.id}" data-field="unit">
+                    </td>
+                    <td class="px-3 py-2 text-right font-semibold text-gray-900">${formatMoney(realTotal)}</td>
+                    <td class="px-3 py-2 text-right font-semibold ${marginCls}">${formatMoney(margin)}</td>
+                </tr>`;
+            }).join('');
+
+            document.querySelectorAll('#devisBody input').forEach(inp => {
+                inp.addEventListener('input', () => {
+                    const id = inp.dataset.id;
+                    const field = inp.dataset.field;
+                    const data = loadRealCosts();
+                    data[id] = data[id] || {};
+                    data[id][field] = inp.value;
+                    saveRealCosts(data);
+                    renderDevisTable();
+                });
+            });
+
+            const marginGlobal = totalRef - totalReal;
+            const pct = totalRef ? ((marginGlobal / totalRef) * 100).toFixed(1) : '0.0';
+            document.getElementById('devisTotalRef').textContent = formatMoney(totalRef);
+            document.getElementById('devisTotalReal').textContent = formatMoney(totalReal);
+            document.getElementById('devisTotalMargin').textContent = formatMoney(marginGlobal);
+            document.getElementById('devisMarginDisplay').textContent = formatMoney(marginGlobal);
+            document.getElementById('devisMarginPct').textContent = `${pct}%`;
+            document.getElementById('devisPlafondDisplay').textContent = formatMoney(devisPlafond);
+            document.getElementById('devisReelDisplay').textContent = formatMoney(totalReal);
+        }
+
     </script>
-    <script src="src/ui/theme-toggle.js"></script>
+    <script type="module" src="src/ui/theme-toggle.js"></script>
 </body>
 
 </html>

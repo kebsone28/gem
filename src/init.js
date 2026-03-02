@@ -1,249 +1,278 @@
 /**
- * Fichier d'initialisation principal pour la nouvelle architecture
- * Charge tous les modules dans le bon ordre
- * 
- * À inclure dans les pages HTML AVANT les autres scripts
+ * Architecture de l'application - Initialisation Centrale (ES Module)
+ * Gère le cycle de vie des repositories, services et stores.
+ * Refactorisé en module ES pour garantir un ordre d'initialisation fiable.
  */
 
-(function () {
-    'use strict';
+// 1. Imports des dépendances prioritaires (Infrastructure & Events)
+import { eventBus } from './infrastructure/events/EventBus.js';
+import { Logger, IndexedDBTransport } from './infrastructure/logging/Logger.js';
+import { LogLevel } from './shared/constants/enums.js';
+import { ErrorHandler } from './infrastructure/errors/ErrorHandler.js';
+import { MetricsService } from './infrastructure/monitoring/MetricsService.js';
+import { ValidationError, DomainError } from './shared/errors/DomainErrors.js';
 
-    console.log('🚀 Initializing new architecture...');
+// load grappe assignment module globally so it's included in every build
+// (the module itself exports a controller but also attaches a legacy global)
+import './modules/grappe-assignment/index.js';
 
-    // Vérifier que Dexie est chargé
+// 2. Imports des Repositories
+import { ProjectRepository } from './infrastructure/repositories/ProjectRepository.js';
+import { HouseholdRepository } from './infrastructure/repositories/HouseholdRepository.js';
+import { TeamRepository } from './infrastructure/repositories/TeamRepository.js';
+import { ZoneRepository } from './infrastructure/repositories/ZoneRepository.js';
+
+// 3. Imports des Services Infrastructure
+import { SyncService } from './infrastructure/sync/SyncService.js';
+import { BackupService } from './infrastructure/backup/BackupService.js';
+import { RestoreService } from './infrastructure/backup/RestoreService.js';
+import { MigrationService } from './infrastructure/migrations/MigrationService.js';
+
+// 4. Imports des Services Domaine (Calculations & Simulation)
+import { ResourceAllocationService } from './domain/services/ResourceAllocationService.js';
+import { CostCalculationService } from './domain/services/CostCalculationService.js';
+import { SimulationEngine } from './domain/services/SimulationEngine.js';
+import { OptimizationStrategy, GreedyOptimizationStrategy, GeneticAlgorithmStrategy, CostMinimizationStrategy } from './domain/services/OptimizationStrategies.js';
+
+// 5. Imports des Entités et Value Objects
+import { Entity } from './domain/entities/Entity.js';
+import { Coordinates, Location } from './domain/value-objects/Location.js';
+import { Cost } from './domain/value-objects/Cost.js';
+import { ProductivityRate } from './domain/value-objects/ProductivityRate.js';
+import { Household } from './domain/entities/Household.js';
+import { Team } from './domain/entities/Team.js';
+import { Zone } from './domain/entities/Zone.js';
+import { Project } from './domain/entities/Project.js';
+
+// 6. Imports des Services Application
+import { HouseholdService } from './application/services/HouseholdService.js';
+import { ProjectService } from './application/services/ProjectService.js';
+
+// 6.5. Imports des Services Stratégiques (Dashboard Institutionnel)
+import { KPIService } from './services/KPIService.js';
+import { ScoreEngine } from './services/scoreEngine.js';
+
+// 7. Imports des Stores
+import { ProjectStore } from './application/state/ProjectStore.js';
+import { storeRegistry } from './application/state/StoreRegistry.js';
+
+console.log('🚀 Initializing new architecture module...');
+
+/**
+ * Initialisation de la base de données Dexie
+ */
+async function initDatabase() {
+    // Vérifier que Dexie est chargé (global via vendor/dexie/dexie.js)
     if (typeof Dexie === 'undefined') {
-        console.error('❌ Dexie.js is required but not loaded');
-        return;
+        throw new Error('❌ Dexie.js is required but not loaded. Check vendor/dexie/dexie.js');
     }
 
-    // Configuration de la base de données améliorée
     const db = new Dexie('ElectrificationDB');
 
-    // Schéma version 3303 (Ajout index teamId sur households)
-    db.version(3303).stores({
-        // Nouvelle architecture
-        projects: '++id, name, status, startDate, endDate',
-        zones: '++id, projectId, name, [projectId+name]',
-        households: '++id, zoneId, teamId, status, [zoneId+status], gpsLat, gpsLon',
-        teams: '++id, type, zoneId, [type+zoneId]',
-        activities: '++id, date, teamId, householdId, type, [date+teamId]',
-        costs: '++id, projectId, category, date',
-        sync_queue: '++id, entity, action, timestamp, synced',
-        audit_log: '++id, entity, entityId, action, userId, timestamp',
-        settings: 'key', // Table Key-Value pour stockage persistant (ex: FileSystemHandle)
-        // Legacy tables support
-        progression: '++id, date, equipe, statut, timestamp'
-    }).upgrade(async tx => {
-        console.log('📦 Running database migration to v3...');
-
-        // Migration des anciennes données si elles existent
-        try {
-            const oldMenages = await tx.table('menages').toArray();
-            console.log(`Found ${oldMenages.length} old menages to migrate`);
-
-            for (const menage of oldMenages) {
-                await tx.table('households').add({
-                    id: menage.id,
-                    zoneId: menage.zone || 'default-zone',
-                    status: menage.statut || 'En attente',
-                    location: {
-                        region: menage.region,
-                        department: menage.departement,
-                        commune: menage.commune,
-                        village: menage.quartier_village,
-                        coordinates: menage.gps_lat && menage.gps_lon ? {
-                            latitude: menage.gps_lat,
-                            longitude: menage.gps_lon,
-                            precision: menage.gps_precision
-                        } : null
-                    },
-                    owner: {
-                        name: menage.nom_prenom_chef,
-                        phone: menage.telephone,
-                        cin: menage.cin
-                    },
-                    statusHistory: [],
-                    assignedTeams: menage.equipe ? [{ type: 'principale', name: menage.equipe }] : [],
-                    scheduledDates: {},
-                    actualDates: {},
-                    notes: [],
-                    createdAt: new Date().toISOString(),
-                    updatedAt: new Date().toISOString()
-                });
-            }
-
-            console.log('✅ Migration completed');
-        } catch (error) {
-            console.warn('⚠️ No old data to migrate or migration failed:', error.message);
-        }
+    // Définition des schémas (V4.6 compliant)
+    db.version(40001).stores({
+        projects: '++id, name, status',
+        households: '++id, zoneId, status, owner.name, [location.region+location.department]',
+        teams: '++id, name, type, status',
+        zones: '++id, name, projectId',
+        activities: '++id, date, teamId, zoneId, householdId, [date+teamId]',
+        sync_logs: '++id, date, type, status',
+        audit_log: '++id, timestamp, level, userId',
+        settings: 'key',
+        inventory: '++id, type, status',
+        material_registry: '++id, category, status'
     });
 
-    // Ouvrir la base de données
-    db.open().then(() => {
+    // Gestion des hooks de migration globale si besoin
+    db.on('ready', () => {
+        console.log('✅ Dexie database is ready');
+    });
+
+    return db;
+}
+
+/**
+ * Bootstrap de l'application
+ */
+async function bootstrap() {
+    try {
+        // 1. Initialiser le Bus d'événements et le Logger
+        window.eventBus = eventBus;
+
+        const logger = new Logger('App', LogLevel.DEBUG);
+        window.logger = logger;
+
+        // 2. Ouvrir la base de données
+        const db = await initDatabase();
+        await db.open();
+        window.db = db;
         console.log('✅ Database opened successfully');
 
-        // Exposer la base de données globalement
-        window.db = db;
+        // 3. Initialiser les Repositories
+        // Note: Les repositories utilisent window.db ou reçoivent db en argument
+        const projectRepository = new ProjectRepository(db);
+        const householdRepository = new HouseholdRepository(db);
+        const teamRepository = new TeamRepository(db);
+        const zoneRepository = new ZoneRepository(db);
 
-        // Initialiser les repositories
-        window.projectRepository = new ProjectRepository(db);
-        window.householdRepository = new HouseholdRepository(db);
-        window.teamRepository = new TeamRepository(db);
-        window.zoneRepository = new ZoneRepository(db);
+        // Export global pour compatibilité avec le reste du code
+        window.projectRepository = projectRepository;
+        window.householdRepository = householdRepository;
+        window.teamRepository = teamRepository;
+        window.zoneRepository = zoneRepository;
+
+        // Attacher les constructeurs à window pour les scripts non-modules qui en ont besoin
+        window.ProjectRepository = ProjectRepository;
+        window.HouseholdRepository = HouseholdRepository;
+        window.TeamRepository = TeamRepository;
+        window.ZoneRepository = ZoneRepository;
 
         console.log('✅ Repositories initialized');
 
-        // Initialiser le logger avec transport IndexedDB
-        if (window.logger) {
-            window.logger.addTransport(new IndexedDBTransport(db));
-        }
+        // 4. Configurer les transports persistants
+        logger.addTransport(new IndexedDBTransport(db));
 
-        // Initialiser le gestionnaire d'erreurs
-        window.errorHandler = new ErrorHandler(window.logger, window.eventBus);
+        // 5. Initialiser les services d'infrastructure
+        const errorHandler = new ErrorHandler(logger, eventBus);
+        const metricsService = new MetricsService(logger, eventBus);
+        const syncService = new SyncService(db, eventBus, logger);
+        const backupService = new BackupService(db, eventBus, logger);
+        const restoreService = new RestoreService(db, eventBus, logger);
+        const migrationService = new MigrationService(db, logger);
 
-        // Initialiser le service de métriques
-        // Initialiser le service de synchronisation
-        window.syncService = new SyncService(db, window.eventBus, window.logger);
+        window.errorHandler = errorHandler;
+        window.metricsService = metricsService;
+        window.syncService = syncService;
+        window.backupService = backupService;
+        window.restoreService = restoreService;
+        window.migrationService = migrationService;
 
-        // Initialiser le service de migration
-        window.migrationService = new MigrationService(db, window.logger);
+        // Attacher les classes
+        window.ErrorHandler = ErrorHandler;
+        window.MetricsService = MetricsService;
+        window.SyncService = SyncService;
+        window.BackupService = BackupService;
+        window.RestoreService = RestoreService;
+        window.MigrationService = MigrationService;
 
-        // Initialiser les services de backup et restauration
-        window.backupService = new BackupService(db, window.eventBus, window.logger);
-        window.backupService.initialize(); // Restore directory handle
-        window.restoreService = new RestoreService(db, window.eventBus, window.logger);
-
+        await backupService.initialize();
         console.log('✅ Infrastructure services initialized');
 
-        // Initialiser les services de domaine (pour le calculateur)
-        try {
-            window.resourceAllocationService = (typeof ResourceAllocationService !== 'undefined') ? new ResourceAllocationService() : (window.resourceAllocationService || {
-                calculateAllocation: () => { return new Map(); },
-                calculateRequiredTeams: () => { return {}; },
-                balanceWorkload: () => { return []; }
-            });
-        } catch (e) {
-            console.warn('ResourceAllocationService init failed, using fallback', e);
-            window.resourceAllocationService = window.resourceAllocationService || { calculateAllocation: () => new Map(), calculateRequiredTeams: () => ({}), balanceWorkload: () => [] };
-        }
+        // 6. Initialiser les services de domaine
+        window.resourceAllocationService = new ResourceAllocationService();
+        window.costCalculationService = new CostCalculationService();
 
-        try {
-            window.costCalculationService = (typeof CostCalculationService !== 'undefined') ? new CostCalculationService() : (window.costCalculationService || { calculateTotalCost: () => 0 });
-        } catch (e) {
-            console.warn('CostCalculationService init failed, using fallback', e);
-            window.costCalculationService = window.costCalculationService || { calculateTotalCost: () => 0 };
-        }
+        window.ResourceAllocationService = ResourceAllocationService;
+        window.CostCalculationService = CostCalculationService;
 
         console.log('✅ Domain services initialized');
 
-        // Initialiser les services applicatifs
-        window.projectService = new ProjectService(
-            window.projectRepository,
-            window.zoneRepository,
-            window.teamRepository,
-            window.eventBus
-        );
+        // 7. Initialiser les services applicatifs
+        const projectService = new ProjectService(projectRepository, eventBus);
+        const householdService = new HouseholdService(householdRepository, eventBus);
 
-        window.householdService = new HouseholdService(
-            window.householdRepository,
-            window.eventBus
-        );
+        window.projectService = projectService;
+        window.householdService = householdService;
+
+        window.ProjectService = ProjectService;
+        window.HouseholdService = HouseholdService;
 
         console.log('✅ Application services initialized');
 
-        // Initialiser les stores
-        window.projectStore = new ProjectStore(window.projectService);
-        window.storeRegistry.register('project', window.projectStore);
+        // 8. Gestion de l'état (Stores)
+        const projectStore = new ProjectStore(projectService, eventBus);
+        storeRegistry.register('project', projectStore);
+
+        window.projectStore = projectStore;
+        window.storeRegistry = storeRegistry;
+
+        window.ProjectStore = ProjectStore;
 
         console.log('✅ Stores initialized');
 
-        // Émettre un événement d'initialisation
-        if (window.eventBus) {
-            window.eventBus.emit('app.initialized', {
-                timestamp: new Date()
-            });
+        // 9. Chargement initial des données
+        await loadInitialData(projectRepository);
+
+        const kpiService = new KPIService(
+            projectRepository,
+            householdRepository,
+            teamRepository,
+            logger
+        );
+
+        window.kpiService = kpiService;
+        window.KPIService = KPIService;
+        window.ScoreEngine = ScoreEngine;
+
+        console.log('✅ Strategic KPI services initialized');
+
+        // Charger les KPI initiaux pour le dashboard
+        try {
+            const initialKPIs = await kpiService.getAllKPIs();
+            window.initialKPIs = initialKPIs;
+            const score = ScoreEngine.calculateIGPP(initialKPIs);
+            window.initialIGPP = score;
+            console.log(`📊 Initial IGPP Score: ${score.score}/100 (${score.label})`);
+        } catch (error) {
+            logger.warn('⚠️ KPI initialization warning:', error);
         }
 
         console.log('🎉 Architecture initialization complete!');
-    }).catch(error => {
-        console.error('❌ Failed to open database:', error);
-    });
+        window.isAppReady = true;
 
-    // Exposer la base de données globalement
-    window.db = db;
+        // Publier un événement de succès
+        eventBus.emit('app.initialized', { timestamp: new Date() });
 
-    // Fonction utilitaire pour charger un projet
-    window.loadProject = async function (projectId) {
-        try {
-            const project = await window.projectRepository.findById(projectId);
-            if (!project) {
-                console.warn(`Project ${projectId} not found`);
-                return null;
-            }
-
-            console.log('📂 Project loaded:', project.name);
-            return project;
-        } catch (error) {
-            console.error('Error loading project:', error);
-            throw error;
+    } catch (error) {
+        console.error('❌ Failed to initialize architecture:', error);
+        if (window.logger) {
+            window.logger.error('Critical initialization error', error);
         }
-    };
+    }
+}
 
-    // Fonction utilitaire pour créer un projet de démonstration
-    window.createDemoProject = async function () {
-        try {
-            // Créer le projet
-            const project = new (window.Project || Project)({
-                id: 'demo-project',
-                name: 'Projet Démonstration',
-                totalHouses: 1000,
-                startDate: new Date()
-            });
-
-            // Créer des zones et les ajouter au projet
-            const zone1 = new (window.Zone || Zone)({
-                id: 'zone-1',
-                name: 'Zone Nord',
-                totalHouses: 500,
-                projectId: project.id
-            });
-            const zone2 = new (window.Zone || Zone)({
-                id: 'zone-2',
-                name: 'Zone Sud',
-                totalHouses: 500,
-                projectId: project.id
-            });
-
-            project.addZone(zone1);
-            project.addZone(zone2);
-
-            // Sauvegarder (Repositories should handle the rest)
-            await window.projectRepository.save(project);
-            await window.zoneRepository.saveBatch([zone1, zone2]);
-
-            console.log('✅ Demo project created:', project.name);
-            return project;
-        } catch (error) {
-            console.error('Error creating demo project:', error);
-            throw error;
+/**
+ * Charge les données essentielles au démarrage
+ */
+async function loadInitialData(projectRepo) {
+    try {
+        const project = await projectRepo.getCurrent();
+        if (project) {
+            window.currentProject = project;
+            console.log(`📂 Project loaded: ${project.name}`);
         }
-    };
+    } catch (err) {
+        console.warn('⚠️ No active project found or error loading project', err);
+    }
+}
 
-    // Fonction utilitaire pour obtenir des statistiques
-    window.getAppStats = async function () {
-        try {
-            const stats = {
-                projects: await window.projectRepository.count(),
-                households: await window.householdRepository.count(),
-                householdsByStatus: await window.householdRepository.getStats()
-            };
+/**
+ * Configuration PWA
+ */
+function initPWA() {
+    // Ajouter le manifest.json s'il n'existe pas
+    if (!document.querySelector('link[rel="manifest"]')) {
+        const manifestLink = document.createElement('link');
+        manifestLink.rel = 'manifest';
+        manifestLink.href = './manifest.json';
+        document.head.appendChild(manifestLink);
+        console.log('✅ PWA Manifest injecté');
+    }
 
-            console.table(stats);
-            return stats;
-        } catch (error) {
-            console.error('Error getting stats:', error);
-            throw error;
-        }
-    };
+    // Register Service Worker
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./sw.js')
+                .then(reg => {
+                    console.log('👷 PWA Service Worker registered:', reg.scope);
+                })
+                .catch(err => {
+                    console.log('⚠️ PWA Service Worker registration failed:', err);
+                });
+        });
+    }
+}
 
-})();
+// Lancement automatique
+initPWA();
+bootstrap();

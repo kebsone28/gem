@@ -2,7 +2,7 @@
  * Repository pour les ménages
  * Gère la persistance des entités Household
  */
-(function () {
+// (function () {
     let _Household, _ValidationError, _Location, _HouseholdStatus;
 
     try {
@@ -30,7 +30,7 @@
     const ValidationErrorLocal = _ValidationError;
     const HouseholdStatusLocal = _HouseholdStatus;
 
-    class HouseholdRepository {
+    export class HouseholdRepository {
         constructor(database) {
             if (!database) {
                 throw new Error('Database is required');
@@ -42,6 +42,11 @@
         static async getAll() {
             if (!window.db) throw new Error('Database (db) not initialized');
             return await window.db.households.toArray();
+        }
+
+        static async count() {
+            if (!window.db) throw new Error('Database (db) not initialized');
+            return await window.db.households.count();
         }
 
         static async update(household) {
@@ -73,10 +78,16 @@
 
             for (const region of regions) {
                 const regionHouseholds = Array.from({ length: region.households }, (_, i) => ({
+                    id: `DEMO-${region.name.slice(0, 3).toUpperCase()}-${Date.now()}-${i}`,
                     owner: { name: `Propriétaire ${i + 1} (${region.name})` },
-                    zone: region.name,
-                    region: region.name,
-                    status: 'Attente démarrage',
+                    location: {
+                        region: region.name,
+                        department: region.name,
+                        commune: region.name,
+                        village: `Village ${i + 1}`,
+                        coordinates: null
+                    },
+                    status: (window.HouseholdStatus?.NON_DEBUTE) || 'Non débuté',
                     delay: 0,
                     cost: 0,
                     createdAt: new Date().toISOString(),
@@ -226,17 +237,14 @@
                     throw new Error(`Household not found: ${householdId}`);
                 }
 
-                // Note: household.updateStatus logic should be in the entity
-                // Here we just save the updated entity if we modified it
-                // Assuming the caller modifies the entity or we do it here if the entity has the method
-                // For now, let's assume the entity has a method or we just update the field if simple
-                // But better to let the service handle domain logic.
-                // This repository method might be redundant if we use save(), but useful for quick updates.
+                const normalize = (typeof window !== 'undefined' && window.normalizeStatus) ? window.normalizeStatus : (s => s);
+                const safeStatus = normalize(newStatus);
 
-                // Let's rely on save() for now to keep it simple and consistent
-                // But if we need to implement this:
-                household._status = newStatus; // Direct access or via setter
-                // household.addStatusHistory(...)
+                if (typeof household.updateStatus === 'function') {
+                    household.updateStatus(safeStatus, reason);
+                } else {
+                    household._status = safeStatus;
+                }
 
                 return await this.save(household);
             } catch (error) {
@@ -391,4 +399,4 @@
     if (typeof module !== 'undefined' && module.exports) {
         module.exports = HouseholdRepository;
     }
-})();
+// })();

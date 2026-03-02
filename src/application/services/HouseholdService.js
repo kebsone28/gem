@@ -2,7 +2,7 @@
  * Service applicatif pour la gestion des ménages
  * Orchestre les opérations sur les ménages
  */
-class HouseholdService {
+export class HouseholdService {
     constructor(householdRepository, eventBus) {
         this.householdRepo = householdRepository;
         this.eventBus = eventBus;
@@ -31,7 +31,7 @@ class HouseholdService {
                 data.id || `H-${Date.now()}`,
                 location,
                 data.owner,
-                data.status || HouseholdStatus.PENDING
+                data.status || HouseholdStatus.NON_DEBUTE
             );
 
             // Sauvegarder
@@ -189,6 +189,7 @@ class HouseholdService {
                     coordinates
                 );
 
+                const normalize = (typeof window !== 'undefined' && window.normalizeStatus) ? window.normalizeStatus : (s => s);
                 const household = new Household(
                     data.id || `H-${Date.now()}-${Math.random()}`,
                     location,
@@ -197,7 +198,7 @@ class HouseholdService {
                         phone: data.telephone,
                         cin: data.cin
                     },
-                    data.statut || HouseholdStatus.PENDING
+                    normalize(data.statut || HouseholdStatus.NON_DEBUTE)
                 );
 
                 households.push(household);

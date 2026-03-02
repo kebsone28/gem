@@ -7,44 +7,31 @@
 if (typeof window.StatusTransitions === 'undefined') {
 
     const HS = window.HouseholdStatus || {
-        INELIGIBLE: 'Inéligible',
-        INJOIGNABLE: 'Injoignable',
-        ATTENTE_DEMARRAGE: 'Attente démarrage',
-        ATTENTE_MACON: 'Attente Maçon',
-        ATTENTE_BRANCHEMENT: 'Attente Branchement',
-        ATTENTE_ELECTRICIEN: 'Attente électricien',
-        ATTENTE_CONTROLEUR: 'Attente Controleur',
-        ATTENTE_ELECTRICIEN_X: 'Attente électricien(X)',
-        CONFORME: 'Conforme'
+        NON_DEBUTE: 'Non débuté',
+        MURS_EN_COURS: 'Murs: En cours',
+        MURS_TERMINE: 'Murs: Terminé',
+        RESEAU_EN_COURS: 'Réseau: En cours',
+        RESEAU_TERMINE: 'Réseau: Terminé',
+        INTERIEUR_EN_COURS: 'Intérieur: En cours',
+        INTERIEUR_TERMINE: 'Intérieur: Terminé',
+        RECEPTION_VALIDEE: 'Réception: Validée',
+        PROBLEME: 'Problème',
+        INELIGIBLE: 'Inéligible'
     };
 
     /**
      * Transitions logiques du workflow
      */
     const StatusTransitions = {
-        // Début du processus
-        [HS.ATTENTE_DEMARRAGE]: [HS.ATTENTE_MACON, HS.INJOIGNABLE, HS.INELIGIBLE],
-
-        // Travaux maçonnerie
-        [HS.ATTENTE_MACON]: [HS.ATTENTE_BRANCHEMENT, HS.INJOIGNABLE, HS.INELIGIBLE],
-
-        // Branchement réseau
-        [HS.ATTENTE_BRANCHEMENT]: [HS.ATTENTE_ELECTRICIEN, HS.INJOIGNABLE, HS.INELIGIBLE],
-
-        // Installation électrique
-        [HS.ATTENTE_ELECTRICIEN]: [HS.ATTENTE_CONTROLEUR, HS.INJOIGNABLE, HS.INELIGIBLE],
-
-        // Contrôle qualité
-        [HS.ATTENTE_CONTROLEUR]: [HS.CONFORME, HS.ATTENTE_ELECTRICIEN_X, HS.INJOIGNABLE, HS.INELIGIBLE],
-
-        // Correction après contrôle
-        [HS.ATTENTE_ELECTRICIEN_X]: [HS.ATTENTE_CONTROLEUR, HS.CONFORME, HS.INJOIGNABLE, HS.INELIGIBLE],
-
-        // Injoignable peut revenir dans le flux
-        [HS.INJOIGNABLE]: [HS.ATTENTE_DEMARRAGE, HS.ATTENTE_MACON, HS.ATTENTE_BRANCHEMENT, HS.ATTENTE_ELECTRICIEN, HS.INELIGIBLE],
-
-        // États terminaux
-        [HS.CONFORME]: [],
+        [HS.NON_DEBUTE]: [HS.MURS_EN_COURS, HS.PROBLEME, HS.INELIGIBLE],
+        [HS.MURS_EN_COURS]: [HS.MURS_TERMINE, HS.PROBLEME, HS.INELIGIBLE],
+        [HS.MURS_TERMINE]: [HS.RESEAU_EN_COURS, HS.PROBLEME, HS.INELIGIBLE],
+        [HS.RESEAU_EN_COURS]: [HS.RESEAU_TERMINE, HS.PROBLEME, HS.INELIGIBLE],
+        [HS.RESEAU_TERMINE]: [HS.INTERIEUR_EN_COURS, HS.PROBLEME, HS.INELIGIBLE],
+        [HS.INTERIEUR_EN_COURS]: [HS.INTERIEUR_TERMINE, HS.PROBLEME, HS.INELIGIBLE],
+        [HS.INTERIEUR_TERMINE]: [HS.RECEPTION_VALIDEE, HS.PROBLEME, HS.INELIGIBLE],
+        [HS.PROBLEME]: [HS.INTERIEUR_EN_COURS, HS.RESEAU_EN_COURS, HS.MURS_EN_COURS, HS.INELIGIBLE],
+        [HS.RECEPTION_VALIDEE]: [],
         [HS.INELIGIBLE]: []
     };
 
@@ -80,7 +67,7 @@ if (typeof window.StatusTransitions === 'undefined') {
      */
     function getAvailableTransitions(currentStatus) {
         if (!currentStatus) {
-            return [HS.ATTENTE_DEMARRAGE, HS.INJOIGNABLE];
+            return [HS.NON_DEBUTE];
         }
 
         return StatusTransitions[currentStatus] || [];

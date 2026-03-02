@@ -623,7 +623,7 @@
                             const mapped = (arr || []).map(m => ({
                                 id: m.id,
                                 zoneId: m.zone || 'default-zone',
-                                status: m.statut || m.status || 'En attente',
+                                status: m.statut || m.status || (window.HouseholdStatus?.NON_DEBUTE) || 'Non débuté',
                                 location: m.location || (m.gps_lat && m.gps_lon ? { coordinates: { latitude: Number(m.gps_lat), longitude: Number(m.gps_lon) } } : null),
                                 owner: { name: m.nom_prenom_chef || m.owner || '', phone: m.telephone || m.phone },
                                 createdAt: new Date().toISOString(),

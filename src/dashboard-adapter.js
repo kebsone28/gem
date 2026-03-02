@@ -219,7 +219,9 @@
         if (window.costCalculationService && window.projectStore) {
             try {
                 const project = window.projectStore.getState();
-                const totalCost = window.costCalculationService.calculateProjectCost(project);
+                const duration = project.duration || 180;
+                const costResult = window.costCalculationService.calculateProjectCost(project, duration);
+                const totalCost = costResult.total ? (costResult.total.amount || costResult.total) : 0;
 
                 // Estimer le coût dépensé basé sur l'avancement
                 const stats = await window.householdRepository.getStats();

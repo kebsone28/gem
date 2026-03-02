@@ -1,0 +1,747 @@
+/* --- ACCESSIBILITÉ RENFORCÉE --- */
+body.proquelec-theme button:focus,
+body.proquelec-theme input:focus,
+body.proquelec-theme select:focus,
+body.proquelec-theme textarea:focus,
+body.proquelec-theme [tabindex]:focus {
+  outline: 3px solid #2563eb;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.18);
+  z-index: 2;
+}
+
+body.proquelec-theme .text-gray-500,
+body.proquelec-theme .text-gray-600 {
+  color: #475569 !important;
+}
+
+/* Spinner pour actions longues */
+.loader {
+  border: 4px solid #e5e7eb;
+  border-top: 4px solid #2563eb;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  animation: spin 1s linear infinite;
+  margin: auto;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Badges de statut pour logs */
+.badge-status {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  margin-left: 6px;
+}
+
+.badge-success {
+  background: #22c55e;
+  color: #fff;
+}
+
+.badge-error {
+  background: #ef4444;
+  color: #fff;
+}
+
+.badge-warning {
+  background: #f59e0b;
+  color: #fff;
+}
+
+.badge-info {
+  background: #2563eb;
+  color: #fff;
+}
+
+
+/* Harmonisation boutons principaux pour mode clair/sombre */
+.btn-primary {
+  color: #fff !important;
+  background: var(--accent) !important;
+  border: none !important;
+  box-shadow: 0 2px 8px rgba(37,99,235,0.08);
+  font-weight: 500;
+  transition: background 0.18s, color 0.18s;
+}
+.btn-primary:hover {
+  background: #1e40af !important;
+  color: #fff !important;
+}
+.dark .btn-primary {
+  background: var(--accent) !important;
+  color: #1a1b26 !important;
+}
+.dark .btn-primary:hover {
+  background: #7aa2f7 !important;
+  color: #1a1b26 !important;
+}
+
+/* --- ACCESSIBILITÉ & FOCUS --- */
+body.proquelec-theme button:focus,
+body.proquelec-theme input:focus,
+body.proquelec-theme select:focus,
+body.proquelec-theme textarea:focus,
+body.proquelec-theme [tabindex]:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
+  z-index: 2;
+}
+
+/* --- HOVER & FEEDBACK --- */
+body.proquelec-theme .card:hover,
+body.proquelec-theme .teams-stat-card:hover,
+body.proquelec-theme .bg-white:hover {
+  box-shadow: 0 8px 32px rgba(37, 99, 235, 0.13);
+  transform: translateY(-2px) scale(1.01);
+}
+
+body.proquelec-theme .btn-secondary:hover,
+body.proquelec-theme .teams-action-btn.secondary:hover {
+  background: #f1f5f9 !important;
+  color: var(--accent) !important;
+  border-color: var(--accent) !important;
+}
+
+
+/* --- CONTRASTE TEXTE SECONDAIRE --- */
+body.proquelec-theme .text-gray-500,
+body.proquelec-theme .text-gray-600,
+body.proquelec-theme .text-gray-700 {
+  color: var(--text-muted) !important;
+}
+
+/* --- RESPONSIVE --- */
+@media (max-width: 600px) {
+
+  .teams-header-section,
+  .teams-stat-card,
+  .card,
+  .bg-white {
+    padding: 12px !important;
+    font-size: 15px !important;
+  }
+
+  .teams-action-buttons button,
+  .btn-primary,
+  .btn-secondary {
+    padding: 8px 10px !important;
+    font-size: 15px !important;
+  }
+}
+
+/* --- TRANSITIONS --- */
+body.proquelec-theme .card,
+body.proquelec-theme .teams-stat-card,
+body.proquelec-theme button,
+body.proquelec-theme input,
+body.proquelec-theme select,
+body.proquelec-theme textarea {
+  transition: all .18s cubic-bezier(.4, 0, .2, 1);
+}
+
+
+/* --- BADGES & TAGS --- */
+.badge-status {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  margin-left: 6px;
+  background: var(--bg-soft);
+  color: var(--accent);
+}
+.badge-success {
+  background: #22c55e;
+  color: #fff;
+}
+.badge-warning {
+  background: #f59e0b;
+  color: #fff;
+}
+.badge-error {
+  background: #ef4444;
+  color: #fff;
+}
+.badge-info {
+  background: var(--accent);
+  color: #fff;
+}
+.dark .badge-status {
+  background: #292e42;
+  color: #7aa2f7;
+}
+
+
+/* --- TABLEAUX --- */
+body.proquelec-theme tbody tr:hover {
+  background: var(--bg-soft) !important;
+}
+body.proquelec-theme thead th {
+  background: var(--bg-soft) !important;
+  color: var(--accent) !important;
+  font-weight: 700;
+}
+.dark body.proquelec-theme tbody tr:hover {
+  background: #292e42 !important;
+}
+.dark body.proquelec-theme thead th {
+  background: #292e42 !important;
+  color: #7aa2f7 !important;
+}
+
+
+/* --- ALERTES --- */
+.alert {
+  padding: 14px 18px;
+  border-radius: 10px;
+  margin-bottom: 18px;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-soft);
+  color: var(--text-main);
+  border: 1px solid var(--border-color);
+}
+.alert-success {
+  background: #e7fbe9;
+  color: #15803d;
+  border: 1px solid #22c55e;
+}
+.alert-error {
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #ef4444;
+}
+.alert-warning {
+  background: #fff7ed;
+  color: #b45309;
+  border: 1px solid #f59e0b;
+}
+.alert-info {
+  background: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #2563eb;
+}
+.dark .alert {
+  background: #292e42;
+  color: #c0caf5;
+  border: 1px solid #414868;
+}
+
+/* --- LOADER / PROGRESSION --- */
+.loader {
+  border: 4px solid #e5e7eb;
+  border-top: 4px solid var(--accent);
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  animation: spin 1s linear infinite;
+  margin: auto;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Contraste onglets secondaires sur fond bleu */
+body.proquelec-theme nav.flex button {
+  background: transparent;
+  color: #fff !important;
+  border: none;
+  font-weight: 500;
+  transition: color .2s;
+}
+
+body.proquelec-theme nav.flex button[aria-selected="true"],
+body.proquelec-theme nav.flex button.active,
+body.proquelec-theme nav.flex button:focus {
+  color: #fbbf24 !important;
+  border-bottom: 2px solid #fbbf24 !important;
+}
+
+body.proquelec-theme nav.flex button:hover {
+  color: #e0e7ef !important;
+}
+
+/* Correction contraste barre d'onglets secondaires */
+body.proquelec-theme .teams-tabs-bar,
+body.proquelec-theme .tabs-bar,
+body.proquelec-theme .teams-tabs-bar *,
+body.proquelec-theme .tabs-bar * {
+  color: #fff !important;
+  fill: #fff !important;
+}
+
+/* Contraste automatique pour la lisibilité */
+body.proquelec-theme .bg-white,
+body.proquelec-theme .card,
+body.proquelec-theme .teams-stat-card,
+body.proquelec-theme .modal-dialog,
+body.proquelec-theme .modal {
+  color: var(--text) !important;
+}
+
+body.proquelec-theme .bg-blue,
+body.proquelec-theme nav,
+body.proquelec-theme .gradient-bg {
+  color: #fff !important;
+}
+
+body.proquelec-theme .text-white {
+  color: #fff !important;
+}
+
+body.proquelec-theme .text-black {
+  color: var(--text) !important;
+}
+
+body.proquelec-theme .bg-black,
+body.proquelec-theme .bg-dark {
+  color: #fff !important;
+}
+
+/* Correction des boutons et badges pour éviter texte blanc sur fond blanc */
+body.proquelec-theme .btn-primary,
+body.proquelec-theme .badge-accent {
+  color: #fff !important;
+}
+
+body.proquelec-theme .btn-secondary,
+body.proquelec-theme .badge-electric {
+  color: #111827 !important;
+}
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap');
+
+/* Thème clair PROQUELEC */
+:root {
+  --bg: #f4f7fb;
+  --card: #ffffff;
+  --card-hover: #f1f5f9;
+  --border: #79acef;
+
+  --text: #0f172a;
+  --muted: #64748b;
+
+  /* Couleur principale PROQUELEC */
+  --accent: #2563eb;
+  --accent-soft: rgba(37, 99, 235, 0.10);
+
+  /* Orange énergie */
+  --accent-2: #f97316;
+
+  --success: #16a34a;
+  --danger: #dc2626;
+
+  --radius: 14px;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body.proquelec-theme {
+  background: linear-gradient(180deg, #f6f8fa 0%, #e5eaf2 100%) !important;
+  color: var(--text) !important;
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Cards */
+body.proquelec-theme .bg-white {
+  background: var(--card) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius) !important;
+  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.06);
+}
+
+body.proquelec-theme .bg-white:hover {
+  background: var(--card-hover) !important;
+  border-color: var(--accent) !important;
+}
+
+body.proquelec-theme .text-gray-900,
+body.proquelec-theme .text-gray-800 {
+  color: var(--text) !important;
+}
+
+body.proquelec-theme .text-gray-500,
+body.proquelec-theme .text-gray-600,
+body.proquelec-theme .text-gray-700 {
+  color: var(--muted) !important;
+}
+
+body.proquelec-theme .border-gray-200,
+body.proquelec-theme .divide-gray-200 {
+  border-color: var(--border) !important;
+}
+
+body.proquelec-theme .bg-gray-50 {
+  background: transparent !important;
+}
+
+body.proquelec-theme .bg-blue-50 {
+  background: rgba(59, 130, 246, 0.06) !important;
+  border-left: 4px solid rgba(59, 130, 246, 0.12);
+}
+
+/* Navigation */
+body.proquelec-theme nav,
+body.proquelec-theme .gradient-bg {
+  background: linear-gradient(90deg, #2563eb 0%, #3b82f6 100%) !important;
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.08);
+}
+
+body.proquelec-theme nav a {
+  color: #fff !important;
+  font-weight: 600;
+  text-shadow: 0 1px 4px rgba(37, 99, 235, 0.13);
+  transition: color .2s;
+}
+
+body.proquelec-theme nav a:hover {
+  color: #fbbf24 !important;
+}
+
+/* Shadows & radius */
+body.proquelec-theme .card-shadow {
+  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.08);
+}
+
+body.proquelec-theme .rounded-lg {
+  border-radius: var(--radius) !important;
+}
+
+/* KPI / Stat cards */
+.teams-stats-bar {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.teams-stat-card {
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 1px solid var(--border);
+  padding: 20px;
+  border-radius: var(--radius);
+  min-width: 180px;
+  transition: all .25s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.teams-stat-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--accent);
+  box-shadow: 0 8px 32px rgba(37, 99, 235, 0.10);
+}
+
+.teams-stat-card .stat-value {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  color: var(--text);
+}
+
+.teams-stat-card .stat-label {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 6px;
+}
+
+.teams-stat-card .stat-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 18px;
+}
+
+/* Buttons */
+.btn-primary,
+.teams-action-btn.primary,
+.teams-save-btn {
+  background: linear-gradient(135deg, #3b82f6, #60a5fa) !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-weight: 600;
+  transition: all .2s ease;
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.13);
+}
+
+.teams-action-buttons .secondary {
+  background: transparent !important;
+  border: 1px solid var(--border) !important;
+  color: var(--muted) !important;
+}
+
+/* Inputs */
+.proquelec-theme input,
+.proquelec-theme select,
+.proquelec-theme textarea {
+  background: #fff;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 9px 12px;
+}
+
+.proquelec-theme input:focus,
+.proquelec-theme select:focus,
+.proquelec-theme textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.13);
+}
+
+/* Tables */
+.proquelec-theme table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.proquelec-theme thead {
+  background: #f1f5f9;
+  border-bottom: 1px solid var(--border);
+}
+
+.proquelec-theme thead th {
+  color: var(--muted);
+  font-size: 12px;
+  padding: 12px;
+  font-weight: 600;
+  text-align: left;
+}
+
+.proquelec-theme tbody td {
+  padding: 12px;
+  border-bottom: 1px solid #e5e7eb;
+  color: var(--text);
+}
+
+.proquelec-theme tbody tr:hover {
+  background: #f1f5f9;
+}
+
+/* Modal */
+.proquelec-theme .modal-backdrop {
+  background: rgba(37, 99, 235, 0.08);
+}
+
+.proquelec-theme .modal-dialog,
+.proquelec-theme .modal {
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+/* Micro-interactions */
+.proquelec-theme button {
+  transition: all .2s ease;
+}
+
+.proquelec-theme button:hover {
+  transform: translateY(-1px);
+}
+
+.card:hover {
+  border-color: var(--accent);
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Utility badges */
+.proquelec-theme .badge-accent {
+  background: linear-gradient(90deg, var(--accent), #60a5fa);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+}
+
+.proquelec-theme .badge-electric {
+  background: linear-gradient(90deg, var(--accent-2), #fbbf24);
+  color: #111827;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+}
+
+/* Responsive tweaks */
+@media (max-width:768px) {
+  .teams-stats-bar {
+    flex-direction: column;
+  }
+}
+
+/* Header / Hero subtle accent */
+.teams-header-section {
+  background: linear-gradient(135deg, #f8fafc 0%, #e0e7ef 100%);
+  border: 1px solid #dbeafe;
+  border-radius: 18px;
+  padding: 28px;
+  box-shadow: 0 8px 32px rgba(37, 99, 235, 0.08);
+  color: var(--text) !important;
+}
+
+.teams-header-section h3,
+.teams-header-section p,
+.teams-header-section .teams-action-buttons button {
+  color: var(--text) !important;
+}
+
+.teams-header-section .teams-action-buttons .primary {
+  color: var(--text) !important;
+  background: #e0e7ef !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: none !important;
+}
+
+/* Filters */
+.teams-filter-section,
+.global-params-section,
+.filter-card {
+  background: #f8fafc !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius);
+}
+
+/* Spacing */
+.section,
+.teams-content-section,
+.teams-section-enter,
+.requirement-card {
+  margin-bottom: 28px;
+}
+
+/* Disable inline heavy gradients */
+.teams-action-btn.primary,
+.teams-save-btn,
+.btn-primary.flex {
+  background-image: none !important;
+}
+
+
+/* --- ENTERPRISE PREMIUM UI (PHASE 8) --- */
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.7) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 1) !important;
+  box-shadow: 0 8px 32px rgba(31, 38, 135, 0.07) !important;
+}
+
+.card-gradient-top {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #3b82f6 0%, #60a5fa 50%, #fbbf24 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.card:hover .card-gradient-top {
+  opacity: 1;
+}
+
+.trade-icon-box {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  transition: all 0.2s ease;
+}
+
+.trade-icon-box.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
+}
+
+.trade-icon-box.inactive {
+  background: #f1f5f9;
+  color: #94a3b8;
+}
+
+.progress-container {
+  height: 6px;
+  background: #f1f5f9;
+  border-radius: 999px;
+  overflow: hidden;
+  position: relative;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+  background: linear-gradient(90deg, #3b82f6, #60a5fa);
+}
+
+.progress-fill.success {
+  background: linear-gradient(90deg, #22c55e, #4ade80);
+}
+
+.progress-fill.warning {
+  background: linear-gradient(90deg, #f59e0b, #fbbf24);
+}
+
+.text-dynamic-score {
+  background: linear-gradient(135deg, #0f172a 0%, #334155 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-weight: 800;
+}
+
+.text-dynamic-score.high {
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}

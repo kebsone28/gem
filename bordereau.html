@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bordereau des Ménages par Village</title>
+    <link rel="stylesheet" href="src/output.css">
+    <link rel="stylesheet" href="src/parametres.css">
+    <link rel="stylesheet" href="src/nav.css">
+    <link rel="stylesheet" href="src/proquelec-theme.css">
+    <script src="/ApiService.js"></script>
+    <script src="/AuthGuard.js"></script>
+    <!-- Styles inline neutralisés, tout est géré par proquelec-theme.css -->
+</head>
+
+<body class="proquelec-theme">
+    <nav class="gradient-bg text-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <i class="fas fa-bolt text-2xl mr-3"></i>
+                    <h1 class="text-xl font-bold">Électrification de Masse</h1>
+                </div>
+                <div class="flex items-center space-x-4" id="authStatusHeader">
+                    <a href="index.html"
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-all">Dashboard</a>
+                    <a href="parametres.html"
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-all">Paramètres</a>
+                    <a href="terrain.html"
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-all">Terrain</a>
+                    <a href="charges.html"
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-all">Charges</a>
+                    <a href="logistique.html"
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-all">Logistique</a>
+                    <a href="rapports.html"
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-all">Rapports</a>
+                    <a href="bordereau.html"
+                        class="active px-3 py-2 rounded-md text-sm font-bold bg-white bg-opacity-20 transition-all">Bordereau</a>
+                    <a href="cahier-equipes.html"
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-all">Cahier
+                        des Charges</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <header class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4">
+            <div>
+                <p class="text-indigo-600 font-semibold uppercase text-xs tracking-wide mb-1">Suivi des ménages</p>
+                <h2 class="text-2xl font-bold text-gray-900">Bordereau par village</h2>
+                <p class="text-gray-600 text-sm">Liste dynamique des ménages, regroupés par village avec export CSV
+                    ciblé.</p>
+            </div>
+            <div class="flex items-center gap-2">
+                <button id="downloadExcelBtn"
+                    class="bg-indigo-600 text-white px-4 py-2 rounded-lg shadow hover:bg-indigo-700 transition flex items-center gap-2">
+                    <i class="fas fa-file-excel"></i> Export Excel (filtre actuel)
+                </button>
+                <button id="downloadWordBtn"
+                    class="bg-blue-100 text-blue-700 px-4 py-2 rounded-lg shadow hover:bg-blue-200 transition flex items-center gap-2">
+                    <i class="fas fa-file-word"></i> Export Word (filtre actuel)
+                </button>
+            </div>
+        </header>
+
+        <section class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="card">
+                <div class="text-sm text-gray-500">Total ménages</div>
+                <div class="text-2xl font-bold text-gray-900" id="statTotal">-</div>
+            </div>
+            <div class="card">
+                <div class="text-sm text-gray-500">Villages distincts</div>
+                <div class="text-2xl font-bold text-gray-900" id="statVillages">-</div>
+            </div>
+            <div class="card">
+                <div class="text-sm text-gray-500">Ménages du village sélectionné</div>
+                <div class="text-2xl font-bold text-indigo-600" id="statVillageCount">-</div>
+            </div>
+        </section>
+
+        <section class="card mb-4">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div class="flex items-center gap-3 flex-1">
+                    <label class="text-sm font-semibold text-gray-700">Village</label>
+                    <select id="villageSelect"
+                        class="w-full sm:w-72 border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                        <option value="">Tous les villages</option>
+                    </select>
+                    <span id="selectedBadge" class="pill hidden"></span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <input id="searchInput" type="text" placeholder="Rechercher un ménage ou chef..."
+                        class="border border-gray-300 rounded-lg px-3 py-2 text-sm w-64">
+                </div>
+            </div>
+        </section>
+
+        <section class="card mb-4">
+            <div class="flex items-center justify-between mb-3">
+                <div>
+                    <h3 class="text-lg font-bold text-gray-900">Affectation des équipes par village</h3>
+                    <p class="text-sm text-gray-600">Choisissez, pour chaque type d'équipe, l'équipe affectée au village
+                        sélectionné.</p>
+                </div>
+                <div id="assignSummary" class="text-sm text-gray-500"></div>
+            </div>
+            <div id="assignContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+        </section>
+
+        <section class="card">
+            <div class="flex items-center justify-between mb-3">
+                <div>
+                    <h3 class="text-lg font-bold text-gray-900">Équipes et sous-équipes</h3>
+                    <p class="text-sm text-gray-600">Éditez numéro et entreprise de chaque équipe (persisté en local).
+                    </p>
+                </div>
+                <button id="teamToggleBtn"
+                    class="text-sm px-3 py-1.5 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 transition flex items-center gap-2">
+                    <i class="fas fa-chevron-up"></i> Replier
+                </button>
+            </div>
+            <div id="teamTableContainer" class="overflow-x-auto">
+                <table class="table" id="teamTable">
+                    <thead>
+                        <tr>
+                            <th>Type</th>
+                            <th>Équipe</th>
+                            <th>Numéro</th>
+                            <th>Entreprise</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="card">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="text-lg font-bold text-gray-900">Liste des ménages</h3>
+                <button id="householdToggleBtn"
+                    class="text-sm px-3 py-1.5 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 transition flex items-center gap-2">
+                    <i class="fas fa-chevron-up"></i> Replier
+                </button>
+            </div>
+            <div id="householdTableContainer" class="overflow-x-auto">
+                <table class="table" id="householdTable">
+                    <thead>
+                        <tr>
+                            <th>Ménage ID</th>
+                            <th>Chef de ménage</th>
+                            <th>Téléphone</th>
+                            <th>Région</th>
+                            <th>Commune</th>
+                            <th>Village</th>
+                            <th>Latitude</th>
+                            <th>Longitude</th>
+                            <th>Info</th>
+                            <th>Statut</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <script src="vendor/fontawesome/all.min.js"></script>
+    <script src="vendor/dexie/dexie.js"></script>
+    <script src="vendor/xlsx/xlsx.full.min.js"></script>
+    <script type="module" src="src/shared/errors/DomainErrors.js"></script>
+    <script type="module" src="src/shared/constants/enums.js"></script>
+    <script type="module" src="src/domain/value-objects/Location.js"></script>
+    <script type="module" src="src/domain/entities/Entity.js"></script>
+    <script type="module" src="src/domain/entities/Household.js"></script>
+    <script type="module" src="src/infrastructure/repositories/ProjectRepository.js"></script>
+    <script type="module" src="src/infrastructure/repositories/HouseholdRepository.js"></script>
+    <script type="module" src="src/infrastructure/repositories/TeamRepository.js"></script>
+    <script type="module" src="src/init.js"></script>
+    <script type="module" src="src/bordereau.js"></script>
+</body>
+
+</html>

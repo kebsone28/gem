@@ -2,8 +2,8 @@
  * Service de domaine pour les métriques et l'analyse
  * Remplace l'ancien analytics.js avec une architecture DDD
  */
-(function () {
-    class MetricsService {
+// (function () {
+    export class MetricsService {
         constructor(eventBus = null) {
             this.eventBus = eventBus;
             this.timers = new Map();
@@ -256,6 +256,19 @@
                 slowestZone: slowest
             };
         }
+
+        /**
+         * Récupérer les métriques de productivité pour le Dashboard Adapter
+         */
+        getProductivityMetrics() {
+            // Note: In a real system, this would query historical data or metrics store.
+            // For now, we return a mock object that satisfies the dashboard adapter logic
+            return {
+                averageDaily: 12.5,
+                recentTrend: 'improving',
+                historical: [10, 11, 12.5, 14, 15] // 5 last days
+            };
+        }
     }
 
     // Export pour utilisation globale
@@ -271,4 +284,4 @@
     if (typeof globalThis !== 'undefined') {
         globalThis.MetricsService = MetricsService;
     }
-})();
+// })();

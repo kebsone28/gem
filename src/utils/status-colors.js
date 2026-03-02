@@ -6,15 +6,16 @@
 if (typeof window.StatusColors === 'undefined') {
 
     const HS = window.HouseholdStatus || {
-        INELIGIBLE: 'Inéligible',
-        INJOIGNABLE: 'Injoignable',
-        ATTENTE_DEMARRAGE: 'Attente démarrage',
-        ATTENTE_MACON: 'Attente Maçon',
-        ATTENTE_BRANCHEMENT: 'Attente Branchement',
-        ATTENTE_ELECTRICIEN: 'Attente électricien',
-        ATTENTE_CONTROLEUR: 'Attente Controleur',
-        ATTENTE_ELECTRICIEN_X: 'Attente électricien(X)',
-        CONFORME: 'Conforme'
+        NON_DEBUTE: 'Non débuté',
+        MURS_EN_COURS: 'Murs: En cours',
+        MURS_TERMINE: 'Murs: Terminé',
+        RESEAU_EN_COURS: 'Réseau: En cours',
+        RESEAU_TERMINE: 'Réseau: Terminé',
+        INTERIEUR_EN_COURS: 'Intérieur: En cours',
+        INTERIEUR_TERMINE: 'Intérieur: Terminé',
+        RECEPTION_VALIDEE: 'Réception: Validée',
+        PROBLEME: 'Problème',
+        INELIGIBLE: 'Inéligible'
     };
 
     /**
@@ -22,45 +23,48 @@ if (typeof window.StatusColors === 'undefined') {
      * Couleurs choisies pour différencier visuellement
      */
     const StatusColors = {
-        [HS.INELIGIBLE]: 'bg-red-200 text-red-800',
-        [HS.INJOIGNABLE]: 'bg-gray-200 text-gray-800',
-        [HS.ATTENTE_DEMARRAGE]: 'bg-yellow-200 text-yellow-800',
-        [HS.ATTENTE_MACON]: 'bg-orange-200 text-orange-800',
-        [HS.ATTENTE_BRANCHEMENT]: 'bg-amber-200 text-amber-800',
-        [HS.ATTENTE_ELECTRICIEN]: 'bg-blue-200 text-blue-800',
-        [HS.ATTENTE_CONTROLEUR]: 'bg-purple-200 text-purple-800',
-        [HS.ATTENTE_ELECTRICIEN_X]: 'bg-pink-200 text-pink-800',
-        [HS.CONFORME]: 'bg-green-200 text-green-800'
+        [HS.NON_DEBUTE]: 'bg-gray-200 text-gray-800',
+        [HS.MURS_EN_COURS]: 'bg-orange-200 text-orange-900',
+        [HS.MURS_TERMINE]: 'bg-orange-300 text-orange-900',
+        [HS.RESEAU_EN_COURS]: 'bg-blue-200 text-blue-800',
+        [HS.RESEAU_TERMINE]: 'bg-blue-300 text-blue-900',
+        [HS.INTERIEUR_EN_COURS]: 'bg-purple-200 text-purple-800',
+        [HS.INTERIEUR_TERMINE]: 'bg-purple-300 text-purple-900',
+        [HS.RECEPTION_VALIDEE]: 'bg-green-200 text-green-800',
+        [HS.PROBLEME]: 'bg-red-200 text-red-800',
+        [HS.INELIGIBLE]: 'bg-red-100 text-red-700'
     };
 
     /**
      * Couleurs pour les marqueurs de carte (version map)
      */
     const StatusMapColors = {
-        [HS.INELIGIBLE]: '#ef4444',
-        [HS.INJOIGNABLE]: '#6b7280',
-        [HS.ATTENTE_DEMARRAGE]: '#eab308',
-        [HS.ATTENTE_MACON]: '#f97316',
-        [HS.ATTENTE_BRANCHEMENT]: '#f59e0b',
-        [HS.ATTENTE_ELECTRICIEN]: '#3b82f6',
-        [HS.ATTENTE_CONTROLEUR]: '#a855f7',
-        [HS.ATTENTE_ELECTRICIEN_X]: '#ec4899',
-        [HS.CONFORME]: '#22c55e'
+        [HS.NON_DEBUTE]: '#6b7280',
+        [HS.MURS_EN_COURS]: '#f97316',
+        [HS.MURS_TERMINE]: '#fb923c',
+        [HS.RESEAU_EN_COURS]: '#3b82f6',
+        [HS.RESEAU_TERMINE]: '#1d4ed8',
+        [HS.INTERIEUR_EN_COURS]: '#a855f7',
+        [HS.INTERIEUR_TERMINE]: '#7c3aed',
+        [HS.RECEPTION_VALIDEE]: '#22c55e',
+        [HS.PROBLEME]: '#ef4444',
+        [HS.INELIGIBLE]: '#f87171'
     };
 
     /**
      * Icônes Font Awesome par statut
      */
     const StatusIcons = {
-        [HS.INELIGIBLE]: 'fa-times-circle',
-        [HS.INJOIGNABLE]: 'fa-phone-slash',
-        [HS.ATTENTE_DEMARRAGE]: 'fa-hourglass-start',
-        [HS.ATTENTE_MACON]: 'fa-hammer',
-        [HS.ATTENTE_BRANCHEMENT]: 'fa-plug',
-        [HS.ATTENTE_ELECTRICIEN]: 'fa-bolt',
-        [HS.ATTENTE_CONTROLEUR]: 'fa-clipboard-check',
-        [HS.ATTENTE_ELECTRICIEN_X]: 'fa-tools',
-        [HS.CONFORME]: 'fa-check-circle'
+        [HS.NON_DEBUTE]: 'fa-flag',
+        [HS.MURS_EN_COURS]: 'fa-hammer',
+        [HS.MURS_TERMINE]: 'fa-hammer',
+        [HS.RESEAU_EN_COURS]: 'fa-plug',
+        [HS.RESEAU_TERMINE]: 'fa-plug',
+        [HS.INTERIEUR_EN_COURS]: 'fa-bolt',
+        [HS.INTERIEUR_TERMINE]: 'fa-bolt',
+        [HS.RECEPTION_VALIDEE]: 'fa-check-circle',
+        [HS.PROBLEME]: 'fa-ban',
+        [HS.INELIGIBLE]: 'fa-times-circle'
     };
 
     /**

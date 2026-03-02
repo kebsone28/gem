@@ -2,7 +2,7 @@
  * Service pour la génération de rapports
  * Fournit des statistiques et des données filtrées pour les rapports
  */
-class ReportService {
+export class ReportService {
     static async generateReport(filters) {
         if (typeof HouseholdRepository === 'undefined') {
             console.error('HouseholdRepository is not defined');
@@ -49,7 +49,8 @@ class ReportService {
             };
         }
 
-        const completed = households.filter(h => h.status === 'Conforme').length;
+        const normalize = (typeof window !== 'undefined' && window.normalizeStatus) ? window.normalizeStatus : (s => s);
+        const completed = households.filter(h => normalize(h.status) === (window.HouseholdStatus?.RECEPTION_VALIDEE || 'Réception: Validée')).length;
         const progress = (completed / households.length) * 100;
         const budget = project.budget || 100000000;
         const cost = budget * (progress / 100);
@@ -64,7 +65,8 @@ class ReportService {
 
     static generateExecutiveSummary(households, teams) {
         const insights = [];
-        const completed = households.filter(h => h.status === 'Conforme').length;
+        const normalize = (typeof window !== 'undefined' && window.normalizeStatus) ? window.normalizeStatus : (s => s);
+        const completed = households.filter(h => normalize(h.status) === (window.HouseholdStatus?.RECEPTION_VALIDEE || 'Réception: Validée')).length;
         const progress = households.length > 0 ? (completed / households.length) * 100 : 0;
 
         if (progress < 20) {

@@ -1,58 +1,15 @@
 <!-- 
     Fichier de chargement des scripts de la nouvelle architecture
-    À inclure dans toutes les pages HTML
+    À inclure dans toutes les pages HTML (Version ESM)
 -->
 
-<!-- 1. Dexie.js (requis) -->
+<!-- 1. Dexie.js (requis - Vendor legacy) -->
 <script src="https://unpkg.com/dexie@3.2.4/dist/dexie.js"></script>
 
-<!-- 2. Shared - Erreurs et constantes -->
-<script src="src/shared/errors/DomainErrors.js"></script>
-<script src="src/shared/constants/enums.js"></script>
+<!-- 2. Initialisation Centrale (ES Module) -->
+<script type="module" src="src/init.js"></script>
 
-<!-- 3. Infrastructure - Base -->
-<script src="src/infrastructure/events/EventBus.js"></script>
-<script src="src/infrastructure/logging/Logger.js"></script>
-<script src="src/infrastructure/errors/ErrorHandler.js"></script>
-<script src="src/infrastructure/monitoring/MetricsService.js"></script>
-
-<!-- 4. Domain - Entité de base -->
-<script src="src/domain/entities/Entity.js"></script>
-
-<!-- 5. Domain - Value Objects -->
-<script src="src/domain/value-objects/Location.js"></script>
-<script src="src/domain/value-objects/Cost.js"></script>
-<script src="src/domain/value-objects/ProductivityRate.js"></script>
-
-<!-- 6. Domain - Entités -->
-<script src="src/domain/entities/Household.js"></script>
-<script src="src/domain/entities/Team.js"></script>
-<script src="src/domain/entities/Zone.js"></script>
-<script src="src/domain/entities/Project.js"></script>
-
-<!-- 7. Domain - Services -->
-<script src="src/domain/services/ResourceAllocationService.js"></script>
-<script src="src/domain/services/CostCalculationService.js"></script>
-<script src="src/domain/services/SimulationEngine.js"></script>
-<script src="src/domain/services/OptimizationStrategies.js"></script>
-
-<!-- 8. Infrastructure - Repositories -->
-<script src="src/infrastructure/repositories/ProjectRepository.js"></script>
-<script src="src/infrastructure/repositories/HouseholdRepository.js"></script>
-<script src="src/infrastructure/repositories/TeamRepository.js"></script>
-<script src="src/infrastructure/repositories/ZoneRepository.js"></script>
-
-<!-- 9. Application - Services -->
-<script src="src/application/services/ProjectService.js"></script>
-<script src="src/application/services/HouseholdService.js"></script>
-
-<!-- 10. Application - State Management -->
-<script src="src/application/state/StoreRegistry.js"></script>
-<script src="src/application/state/ProjectStore.js"></script>
-
-<!-- 11. Initialisation -->
-<script src="src/infrastructure/migrations/MigrationService.js"></script>
-<script src="src/infrastructure/backup/BackupService.js"></script>
-<script src="src/infrastructure/backup/RestoreService.js"></script>
-<script src="src/infrastructure/sync/SyncService.js"></script>
-<script src="src/init.js"></script>
+<!-- 
+    Note: Tous les services, repositories et modèles sont maintenant importés 
+    par init.js via ES Modules pour garantir un ordre de chargement cohérent.
+-->

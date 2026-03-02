@@ -60,6 +60,7 @@ class ImportManager {
 
     constructor() {
         this._fileProcessingStarted = false;
+        this.importIssues = [];
         this.setupEventListeners();
     }
 
@@ -250,13 +251,16 @@ class ImportManager {
 
                 // RECONSTRUCTION DE L'ÉTAT DU MÉNAGE
                 let aggregateState = {
-                    status: 'Attente démarrage',
+                    status: 'Non débuté',
                     location: null,
                     owner: { name: 'Inconnu', phone: '' },
                     teams: [],
                     notes: [],
                     photos: [],
-                    history: []
+                    history: [],
+                    material: {},
+                    delivery: {},
+                    workTime: null
                 };
 
                 // MACHINE À ÉTATS
@@ -310,15 +314,21 @@ class ImportManager {
 
                     const sanitizedLoc = this._sanitizeLocation(rawLoc);
 
+                    // UPDATE: Conserver l'historique et les propriétés non-kobo (ex: sub_grappe_id, zoneId)
+                    const existingData = household.toJSON ? household.toJSON() : household;
+
                     household = window.Household.fromJSON({
+                        ...existingData,
                         id: koboId,
-                        location: sanitizedLoc,
+                        location: { ...existingData.location, ...sanitizedLoc }, // Merge location safety
                         owner: aggregateState.owner,
                         status: this.normalizeStatus(aggregateState.status),
                         assignedTeams: aggregateState.teams,
-                        notes: aggregateState.notes,
+                        notes: aggregateState.notes, // Remplacement complet par le Kobo history ? Ou concat.. Kobo est le master
                         photos: aggregateState.photos,
-                        createdAt: new Date().toISOString(),
+                        material: aggregateState.material,
+                        delivery: aggregateState.delivery,
+                        workTime: aggregateState.workTime,
                         updatedAt: new Date().toISOString()
                     });
 
@@ -330,6 +340,7 @@ class ImportManager {
 
                     if (household.touch) household.touch();
                     await window.householdRepository.save(household);
+                    if (window.eventBus) window.eventBus.emit('household.updated', { householdId: household.id, household });
                     updatedCount++;
 
                 } else {
@@ -352,10 +363,14 @@ class ImportManager {
                         assignedTeams: aggregateState.teams,
                         notes: aggregateState.notes,
                         photos: aggregateState.photos,
+                        material: aggregateState.material,
+                        delivery: aggregateState.delivery,
+                        workTime: aggregateState.workTime,
                         createdAt: new Date().toISOString(),
                         updatedAt: new Date().toISOString()
                     });
                     await window.householdRepository.save(household);
+                    if (window.eventBus) window.eventBus.emit('household.created', { householdId: household.id, household });
                     insertedCount++;
                 }
 
@@ -442,6 +457,9 @@ class ImportManager {
 
     // Normaliser les statuts pour la base de données
     normalizeStatus(status) {
+        if (typeof window !== 'undefined' && window.normalizeStatus) {
+            return window.normalizeStatus(status);
+        }
         return ImportManager.STATUS_MAP[status] || status;
     }
 
@@ -460,11 +478,22 @@ class ImportManager {
         if (summary.lastError) msg += `\n\nDernière erreur: ${summary.lastError} `;
 
         if (window.Swal) {
+            const hasIssues = this.importIssues && this.importIssues.length > 0;
             window.Swal.fire({
                 icon: summary.ignored > 0 ? 'warning' : 'success',
                 title: 'Import Terminé',
                 text: msg,
+                showCancelButton: hasIssues,
+                cancelButtonText: hasIssues ? 'Télécharger erreurs' : undefined,
+                confirmButtonText: 'OK',
                 preConfirm: () => { location.reload(); }
+            }).then(result => {
+                if (hasIssues && result.dismiss === window.Swal.DismissReason.cancel) {
+                    this.downloadIssuesCsv();
+                }
+                if (!result.isConfirmed) {
+                    location.reload();
+                }
             });
         } else {
             alert(msg);
@@ -494,6 +523,22 @@ class ImportManager {
         } catch (e) {
             // ignore
         }
+    }
+
+    downloadIssuesCsv() {
+        if (!this.importIssues || this.importIssues.length === 0) return;
+        const header = 'ligne,id,raison\n';
+        const rows = this.importIssues.map(i => `${i.line || ''},${i.id || ''},"${(i.reason || '').replace(/"/g, '""')}"`).join('\n');
+        const csv = header + rows;
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `import-issues-${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
     }
 
     async processMenages(data) {
@@ -722,16 +767,68 @@ class ImportManager {
             if (equipeRes) assignedTeams.push({ type: 'reseau', name: equipeRes });
             if (equipeInt) assignedTeams.push({ type: 'interieur', name: equipeInt });
 
+            // ===== MATÉRIEL (Extraction Kobo) =====
+            const materialData = {};
+            const matFields = [
+                ['Longueur_Cable_2_5mm_Int_rieure', 'Longueur Cable 2,5mm² Intérieure', 'cable_2_5mm'],
+                ['Longueur_Cable_4mm_Ext_rieure', 'Longueur Cable 4mm² Extérieure', 'cable_4mm'],
+                ['Nombre_de_coffret', 'Nombre de coffret', 'coffrets'],
+                ['Nombre_de_disjoncteur', 'Nombre de disjoncteur', 'disjoncteurs'],
+                ['Nombre_ampoule', 'Nombre de lampe', 'Nombre_de_lampe', 'ampoules'],
+                ['Nombre_de_prise', 'Nombre de prise', 'prises'],
+                ['Nombre_interrupteur', 'Nombre interrupteur', 'interrupteurs']
+            ];
+            for (const mf of matFields) {
+                const destKey = mf[mf.length - 1];
+                const searchKeys = mf.slice(0, -1);
+                const val = findCol(row, searchKeys);
+                if (val !== null && val !== '' && val !== undefined) {
+                    materialData[destKey] = parseFloat(String(val).replace(',', '.')) || 0;
+                }
+            }
+
+            // ===== DELIVERY INFO =====
+            const deliveryData = {};
+            const agent = findCol(row, ['_submitted_by', 'username']) || '';
+            if (agent) deliveryData.agent = agent;
+            const deviceId = findCol(row, ['deviceid', 'device_id']) || '';
+            if (deviceId) deliveryData.deviceId = deviceId;
+            const validationStatus = findCol(row, ['_validation_status']) || '';
+            if (validationStatus && typeof validationStatus === 'object') {
+                deliveryData.validationStatus = validationStatus.label || validationStatus.uid || 'unknown';
+            } else if (validationStatus) {
+                deliveryData.validationStatus = String(validationStatus);
+            }
+
+            // ===== WORK TIME =====
+            let workTimeData = null;
+            const startTime = findCol(row, ['start']);
+            const endTime = findCol(row, ['end']);
+            if (startTime && endTime) {
+                const startMs = new Date(startTime).getTime();
+                const endMs = new Date(endTime).getTime();
+                if (!isNaN(startMs) && !isNaN(endMs) && endMs > startMs) {
+                    workTimeData = {
+                        start: startTime,
+                        end: endTime,
+                        durationMinutes: Math.round((endMs - startMs) / 60000)
+                    };
+                }
+            }
+
             const householdData = {
                 id,
                 location: locationData,
                 owner: ownerData,
-                status: statut,
+                status: this.normalizeStatus(statut),
                 statusHistory: [],
                 assignedTeams,
                 scheduledDates: datePrev ? { installation: datePrev } : {},
                 actualDates: dateMaj ? { derniere_maj: dateMaj } : {},
                 notes: infos ? [infos] : [],
+                material: materialData,
+                delivery: deliveryData,
+                workTime: workTimeData,
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString()
             };
@@ -761,16 +858,17 @@ class ImportManager {
                 const existing = await window.householdRepository.findById(household.id);
 
                 if (existing) {
-                    // Update Existant
-                    // We preserve existing data unless overwritten by non-empty new data
+                    // Update Existant : statut du fichier prévaut toujours
                     if (household.owner.name) existing.owner.name = household.owner.name;
                     if (household.owner.phone) existing.owner.phone = household.owner.phone;
 
                     // STATUS UPDATE VIA METHOD
-                    if (household.status && household.status !== 'Attente démarrage') {
+                    if (household.status) {
                         const normalizedStatus = this.normalizeStatus(household.status);
                         if (typeof existing.updateStatus === 'function') {
                             existing.updateStatus(normalizedStatus, 'Mise à jour Import Excel');
+                        } else {
+                            existing.status = normalizedStatus;
                         }
                     }
 
@@ -806,10 +904,12 @@ class ImportManager {
                 } else {
                     // INSERT
                     await window.householdRepository.save(household);
+                    insertedCount++;
                 }
 
             } catch (error) {
                 console.warn(`⚠️ Erreur import ligne ID ${household.id}:`, error.message);
+                this.importIssues.push({ line: i + 1, id: household.id, reason: error.message });
                 ignoredCount++;
             }
 
@@ -1011,6 +1111,39 @@ class ImportManager {
                     date: new Date(submission.submissionTime),
                     author: 'System'
                 });
+
+                // EXTRACTION MATÉRIEL (Livreur uniquement)
+                const matMap = [
+                    [['Longueur_Cable_2_5mm_Int_rieure', 'Longueur Cable 2,5mm² Intérieure'], 'cable_2_5mm'],
+                    [['Longueur_Cable_4mm_Ext_rieure', 'Longueur Cable 4mm² Extérieure'], 'cable_4mm'],
+                    [['Nombre_de_coffret', 'Nombre de coffret'], 'coffrets'],
+                    [['Nombre_de_disjoncteur', 'Nombre de disjoncteur'], 'disjoncteurs'],
+                    [['Nombre_ampoule', 'Nombre de lampe', 'Nombre_de_lampe'], 'ampoules'],
+                    [['Nombre_de_prise', 'Nombre de prise'], 'prises'],
+                    [['Nombre_interrupteur', 'Nombre interrupteur'], 'interrupteurs']
+                ];
+                for (const [keys, dest] of matMap) {
+                    const v = this.getValue(props, keys);
+                    if (v !== null && v !== undefined && v !== '') {
+                        state.material[dest] = parseFloat(String(v).replace(',', '.')) || 0;
+                    }
+                }
+
+                // DELIVERY INFO
+                state.delivery.agent = props['username'] || props['_submitted_by'] || state.delivery.agent || '';
+                state.delivery.deviceId = props['deviceid'] || state.delivery.deviceId || '';
+                state.delivery.date = new Date(submission.submissionTime).toISOString();
+                const vs = props['_validation_status'];
+                if (vs) state.delivery.validationStatus = (typeof vs === 'object') ? (vs.label || vs.uid || '') : String(vs);
+
+                // WORK TIME
+                if (props['start'] && props['end']) {
+                    const s = new Date(props['start']).getTime();
+                    const e = new Date(props['end']).getTime();
+                    if (!isNaN(s) && !isNaN(e) && e > s) {
+                        state.workTime = { start: props['start'], end: props['end'], durationMinutes: Math.round((e - s) / 60000) };
+                    }
+                }
             }
         }
 
@@ -1199,3 +1332,4 @@ class ImportManager {
 
 // Initialisation
 window.importManager = new ImportManager();
+window.ImportManager = ImportManager;

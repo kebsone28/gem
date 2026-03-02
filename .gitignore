@@ -25,3 +25,9 @@ coverage/
 *.log
 .DS_Store
 .env
+
+# Large data files (>50MB)
+*.xlsx
+*.xls
+*.csv
+KOBO/

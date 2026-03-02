@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cahiers des Charges par Équipe</title>
+    <link rel="icon" type="image/svg+xml"
+        href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%9A%A1%3C/text%3E%3C/svg%3E">
+    <link rel="stylesheet" href="src/output.css">
+    <link rel="stylesheet" href="src/parametres.css">
+    <link rel="stylesheet" href="src/nav.css">
+    <link rel="stylesheet" href="src/cahier.css">
+    <!-- Styles inline neutralisés, tout est géré par proquelec-theme.css -->
+    <link rel="stylesheet" href="src/proquelec-theme.css">
+    <link href="src/dark.css" rel="stylesheet">
+    <script src="/ApiService.js"></script>
+    <script src="/AuthGuard.js"></script>
+</head>
+
+<body class="proquelec-theme">
+    <nav class="gradient-bg text-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <i class="fas fa-bolt text-2xl mr-3"></i>
+                    <h1 class="text-xl font-bold">Électrification de Masse</h1>
+                </div>
+                <div class="flex items-center space-x-4" id="authStatusHeader">
+                    <a href="index.html"
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-all">Dashboard</a>
+                    <a href="parametres.html"
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-all">Paramètres</a>
+                    <a href="terrain.html"
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-all">Terrain</a>
+                    <a href="charges.html"
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-all">Charges</a>
+                    <a href="logistique.html"
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-all">Logistique</a>
+                    <a href="rapports.html"
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-all">Rapports</a>
+                    <a href="bordereau.html"
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-all">Bordereau</a>
+                    <a href="cahier-equipes.html"
+                        class="px-3 py-2 rounded-md text-sm font-bold bg-white bg-opacity-20 transition-all">Cahier des
+                        Charges</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <header class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4">
+            <div>
+                <p class="text-indigo-600 font-semibold uppercase text-xs tracking-wide mb-1">Pilotage des équipes</p>
+                <h2 class="text-2xl font-bold text-gray-900">Cahier des charges par équipe</h2>
+                <p class="text-gray-600 text-sm">Génération automatique des tâches, responsabilités, jalons et livrables
+                    pour chaque type d'équipe.</p>
+            </div>
+            <button id="downloadAllBtn"
+                class="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg shadow hover:bg-indigo-700 transition">
+                <i class="fas fa-file-word"></i> Télécharger tout (Word)
+            </button>
+        </header>
+
+        <div id="cahierContainer" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+    </main>
+
+    <!-- Vendors -->
+    <script src="vendor/fontawesome/all.min.js"></script>
+    <script src="vendor/dexie/dexie.js"></script>
+    <script src="vendor/sweetalert2/sweetalert2.min.js"></script>
+    <script src="vendor/xlsx/xlsx.full.min.js"></script>
+
+    <!-- Domain & infra (same stack as autres pages) -->
+    <script type="module" src="src/shared/errors/DomainErrors.js"></script>
+    <script type="module" src="src/shared/constants/enums.js"></script>
+    <script type="module" src="src/domain/value-objects/Cost.js"></script>
+    <script type="module" src="src/domain/value-objects/Location.js"></script>
+    <script type="module" src="src/domain/value-objects/ProductivityRate.js"></script>
+    <script type="module" src="src/domain/entities/Entity.js"></script>
+    <script type="module" src="src/domain/entities/Project.js"></script>
+    <script type="module" src="src/domain/entities/Household.js"></script>
+    <script type="module" src="src/domain/entities/Team.js"></script>
+    <script type="module" src="src/domain/entities/Zone.js"></script>
+
+    <script type="module" src="src/infrastructure/events/EventBus.js"></script>
+    <script type="module" src="src/infrastructure/logging/Logger.js"></script>
+    <script type="module" src="src/infrastructure/errors/ErrorHandler.js"></script>
+    <script type="module" src="src/infrastructure/monitoring/MetricsService.js"></script>
+    <script type="module" src="src/infrastructure/sync/SyncService.js"></script>
+    <script type="module" src="src/infrastructure/backup/BackupService.js"></script>
+    <script type="module" src="src/infrastructure/backup/RestoreService.js"></script>
+    <script type="module" src="src/infrastructure/migrations/DataStructureGenerator.js"></script>
+    <script type="module" src="src/infrastructure/migrations/MigrationService.js"></script>
+
+    <!-- Registry -->
+    <script type="module" src="src/domain/registry/TeamRegistry.js"></script>
+
+    <script type="module" src="src/infrastructure/repositories/ProjectRepository.js"></script>
+    <script type="module" src="src/infrastructure/repositories/HouseholdRepository.js"></script>
+    <script type="module" src="src/infrastructure/repositories/TeamRepository.js"></script>
+    <script type="module" src="src/infrastructure/repositories/ZoneRepository.js"></script>
+
+    <script type="module" src="src/application/services/HouseholdService.js"></script>
+    <script type="module" src="src/application/services/ProjectService.js?v=2.2"></script>
+    <script type="module" src="src/application/state/ProjectStore.js"></script>
+    <script type="module" src="src/application/state/StoreRegistry.js"></script>
+
+    <script type="module" src="src/domain/services/ResourceAllocationService.js"></script>
+    <script type="module" src="src/domain/services/CostCalculationService.js"></script>
+
+    <script type="module" src="src/init.js"></script>
+    <script type="module" src="src/config/grappes-config.js"></script>
+    <script type="module" src="src/cahier.js?v=2.0"></script>
+</body>
+
+</html>

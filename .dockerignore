@@ -1,0 +1,17 @@
+node_modules/
+.git/
+.github/
+.gitignore
+.vscode/
+.idea/
+*.md
+*.log
+*.zip
+tests/
+test-results/
+playwright-report/
+electron/
+.env
+.env.*
+!.env.example
+server/node_modules/

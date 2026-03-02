@@ -6,9 +6,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Saisie Terrain - Électrification de Masse</title>
     <link rel="stylesheet" href="src/output.css">
+    <link rel="stylesheet" href="src/nav.css">
     <link rel="stylesheet" href="src/dark.css">
+    <link rel="stylesheet" href="src/proquelec-theme.css">
+    <script src="/ApiService.js"></script>
+    <script src="/AuthGuard.js"></script>
     <script src="vendor/fontawesome/all.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link rel="stylesheet" href="vendor/sweetalert2/sweetalert2.min.css">
+    <script src="vendor/sweetalert2/sweetalert2.min.js"></script>
+    <!-- Leaflet extras CSS (JS loaded after leaflet.js at bottom) -->
+    <link rel="stylesheet" href="vendor/leaflet-routing-machine/leaflet-routing-machine.css" />
+    <link rel="stylesheet" href="vendor/leaflet-locatecontrol/L.Control.Locate.min.css" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body {
@@ -16,7 +24,7 @@
         }
 
         .gradient-bg {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
         }
 
         .card-shadow {
@@ -57,8 +65,8 @@
 
         #householdMap {
             width: 100%;
-            height: 480px;
-            border-radius: 8px;
+            height: 70vh;
+            border-radius: 12px;
         }
 
         .progress-bar-width {
@@ -66,15 +74,38 @@
         }
 
         .map-section-min-height {
-            min-height: 600px;
+            min-height: 720px;
         }
 
         .household-map-min-height {
-            min-height: 500px;
+            min-height: 640px;
         }
 
         .side-panel-height {
-            height: 600px;
+            min-height: 720px;
+        }
+
+        /* Toolbar carte */
+        .map-toolbar {
+            position: sticky;
+            top: 8px;
+            z-index: 10;
+            background: linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(99, 102, 241, 0.12));
+            border: 1px solid rgba(148, 163, 184, 0.4);
+            backdrop-filter: blur(6px);
+        }
+
+        .map-pill {
+            border: 1px solid rgba(148, 163, 184, 0.4);
+        }
+
+        .leaflet-control-container .leaflet-top.leaflet-right {
+            margin-top: 12px;
+            margin-right: 12px;
+        }
+
+        .household-map-min-height {
+            min-height: 520px;
         }
     </style>
     <!-- Leaflet CSS -->
@@ -112,21 +143,26 @@
                     <i class="fas fa-bolt text-2xl mr-3"></i>
                     <h1 class="text-xl font-bold">Électrification de Masse</h1>
                 </div>
-                <div class="flex items-center space-x-4">
+                <div class="flex items-center space-x-4" id="authStatusHeader">
                     <a href="index.html"
-                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20">Dashboard</a>
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-all">Dashboard</a>
                     <a href="parametres.html"
-                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20">Paramètres</a>
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-all">Paramètres</a>
                     <a href="terrain.html"
-                        class="px-3 py-2 rounded-md text-sm font-bold bg-white bg-opacity-20">Terrain</a>
+                        class="active px-3 py-2 rounded-md text-sm font-bold bg-white bg-opacity-20 border-b-2 border-white transition-all">Terrain</a>
                     <a href="charges.html"
-                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20">Charges</a>
-                    <a href="simulation.html"
-                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20">Simulation</a>
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-all">Charges</a>
+                    <a href="logistique.html"
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-all">Logistique</a>
                     <a href="rapports.html"
-                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20">Rapports</a>
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-all">Rapports</a>
+                    <a href="bordereau.html"
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-all">Bordereau</a>
+                    <a href="cahier-equipes.html"
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-all">Cahier
+                        des Charges</a>
                     <a href="aide.html"
-                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20">Aide</a>
+                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-all">Aide</a>
                 </div>
             </div>
         </div>
@@ -300,14 +336,6 @@
                             class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors flex items-center text-sm shadow-sm">
                             <i class="fas fa-file-import mr-2"></i> Importer Excel/JSON
                         </button>
-                        <button id="generateSampleBtn"
-                            class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center text-sm shadow-sm">
-                            <i class="fas fa-database mr-2"></i> Générer 80k Ménages
-                        </button>
-                        <button id="syncKoboBtn"
-                            class="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors flex items-center text-sm shadow-sm">
-                            <i class="fas fa-sync-alt mr-2 text-indigo-600"></i> Synchro Online
-                        </button>
                     </div>
 
                     <!-- Backup history -->
@@ -326,31 +354,72 @@
                 </div>
             </div>
 
+            <!-- Central Database Sync (PROQUELEC) -->
+            <div class="bg-white rounded-lg card-shadow p-6 border-t-4 border-indigo-500">
+                <h2 class="text-lg font-bold text-gray-800 mb-4 flex justify-between items-center">
+                    <span><i class="fas fa-server text-indigo-600 mr-2"></i> Synchro Serveur Central</span>
+                    <span id="centralStatusDot" class="w-2 h-2 rounded-full bg-gray-400"></span>
+                </h2>
+
+                <div class="space-y-4">
+                    <div class="p-3 bg-indigo-50 rounded-lg border border-indigo-100">
+                        <p class="text-xs text-indigo-800 mb-3 font-medium">Sauvegardez vos données terrain sur le
+                            serveur central pour l'équipe logistique.</p>
+                        <button id="triggerMainSyncBtn"
+                            class="w-full flex items-center justify-center px-4 py-3 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-all shadow-md active:scale-95 group">
+                            <i
+                                class="fas fa-sync-alt mr-2 group-hover:rotate-180 transition-transform duration-500"></i>
+                            <span class="font-bold">S'ARCHIVER SUR LE NUAGE</span>
+                        </button>
+                    </div>
+
+                    <div
+                        class="flex justify-between items-center text-[10px] text-gray-500 bg-gray-50 p-2 rounded border border-gray-100">
+                        <span>Dernière synchro réussie :</span>
+                        <span id="lastMainSyncTime" class="font-bold text-gray-700">Jamais</span>
+                    </div>
+                </div>
+            </div>
+
             <input type="file" id="restoreFileInput" accept=".xlsx,.xls" class="hidden">
         </div>
 
         <!-- Main Grid Layout -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+        <div class="grid grid-cols-1 gap-8 mb-8">
 
-            <!-- Map Section -->
-            <div class="lg:col-span-2 bg-white rounded-lg card-shadow p-4 flex flex-col map-section-min-height">
+            <!-- Map Section (full width) -->
+            <div id="mapPanel" class="bg-white rounded-lg card-shadow p-4 flex flex-col map-section-min-height">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-xl font-bold text-gray-800 flex items-center">
                         <i class="fas fa-map-marked-alt text-indigo-600 mr-2"></i> Cartographie
                     </h2>
-                    <div class="flex items-center space-x-4">
+                    <div class="flex items-center space-x-3 map-toolbar px-3 py-2 rounded-lg">
                         <span id="mapPointsCount"
-                            class="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-1 rounded">0 points</span>
+                            class="text-xs font-medium text-gray-700 dark:text-gray-200 bg-white/70 dark:bg-white/10 px-2 py-1 rounded map-pill">0
+                            points</span>
                         <button id="recenterMapBtn"
-                            class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-2 py-1 rounded transition-colors"
+                            class="text-xs bg-white/80 dark:bg-white/10 text-gray-700 dark:text-gray-100 px-2 py-1 rounded map-pill hover:bg-white transition-colors"
                             title="Recentrer sur les données">
                             <i class="fas fa-crosshairs mr-1"></i> Recentrer
                         </button>
-                        <label class="flex items-center cursor-pointer">
+                        <button id="locateBtn"
+                            class="text-xs bg-white/80 dark:bg-white/10 text-gray-700 dark:text-gray-100 px-2 py-1 rounded map-pill hover:bg-white transition-colors"
+                            title="Aller à ma position">
+                            <i class="fas fa-location-arrow mr-1"></i> Ma position
+                        </button>
+                        <label class="flex items-center cursor-pointer text-gray-700 dark:text-gray-100 text-sm">
                             <input type="checkbox" id="toggleHeatmap"
-                                class="form-checkbox h-4 w-4 text-indigo-600 rounded transition duration-150 ease-in-out">
-                            <span class="ml-2 text-sm text-gray-600">Heatmap</span>
+                                class="form-checkbox h-4 w-4 text-indigo-600 rounded transition duration-150 ease-in-out mr-2">
+                            Heatmap
                         </label>
+                        <button id="toggleFullscreenMapBtn"
+                            class="text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 transition-colors shadow map-pill">
+                            <i class="fas fa-expand mr-1"></i> Plein écran
+                        </button>
+                        <button id="routeModeBtn"
+                            class="text-xs bg-white/80 dark:bg-white/10 text-gray-700 dark:text-gray-100 px-3 py-1 rounded map-pill hover:bg-white transition-colors shadow-sm">
+                            <i class="fas fa-route mr-1"></i> Itinéraire
+                        </button>
                     </div>
                 </div>
                 <p class="text-xs text-gray-500 mb-2 italic px-1 pb-2 border-b border-gray-100">
@@ -605,8 +674,11 @@
         <script src="vendor/leaflet/leaflet.markercluster.js"></script>
         <!-- Leaflet Heatmap JS -->
         <script src="vendor/leaflet/leaflet-heat.js"></script>
+        <!-- Leaflet extras (routing + locate) JS — must load AFTER leaflet.js -->
+        <script src="vendor/leaflet-routing-machine/leaflet-routing-machine.js"></script>
+        <script src="vendor/leaflet-locatecontrol/L.Control.Locate.min.js"></script>
         <!-- Configuration defaults (feature flags) -->
-        <script src="src/config/defaults.js"></script>
+        <script type="module" src="src/config/defaults.js"></script>
 
         <!-- Conditional loader for legacy map implementation (only if APP_CONFIG requests 'legacy') -->
         <script>
@@ -623,64 +695,158 @@
             })();
         </script>
         <!-- Simulation Engine Shim -->
-        <script src="src/legacy-shims.js"></script>
+        <script type="module" src="src/legacy-shims.js"></script>
 
         <!-- ========================================
          CORE ARCHITECTURE INITIALIZATION
          ======================================== -->
 
         <!-- Shared Modules -->
-        <script src="src/shared/errors/DomainErrors.js"></script>
-        <script src="src/shared/constants/enums.js"></script>
+        <script type="module" src="src/shared/errors/DomainErrors.js"></script>
+        <script type="module" src="src/shared/constants/enums.js"></script>
 
         <!-- Domain Objects -->
-        <script src="src/domain/value-objects/Location.js"></script>
-        <script src="src/domain/value-objects/Cost.js"></script>
-        <script src="src/domain/value-objects/ProductivityRate.js"></script>
-        <script src="src/domain/entities/Entity.js"></script>
-        <script src="src/domain/entities/Household.js"></script>
-        <script src="src/domain/entities/Project.js"></script>
-        <script src="src/domain/entities/Team.js"></script>
-        <script src="src/domain/entities/Zone.js"></script>
+        <script type="module" src="src/domain/value-objects/Location.js"></script>
+        <script type="module" src="src/domain/value-objects/Cost.js"></script>
+        <script type="module" src="src/domain/value-objects/ProductivityRate.js"></script>
+        <script type="module" src="src/domain/entities/Entity.js"></script>
+        <script type="module" src="src/domain/entities/Household.js"></script>
+        <script type="module" src="src/domain/entities/Project.js"></script>
+        <script type="module" src="src/domain/entities/Team.js"></script>
+        <script type="module" src="src/domain/entities/Zone.js"></script>
 
         <!-- Services & Infrastructure -->
-        <script src="src/infrastructure/events/EventBus.js"></script>
-        <script src="src/infrastructure/logging/Logger.js"></script>
-        <script src="src/infrastructure/errors/ErrorHandler.js"></script>
-        <script src="src/infrastructure/monitoring/MetricsService.js"></script>
-        <script src="src/infrastructure/sync/SyncService.js"></script>
-        <script src="src/infrastructure/backup/BackupService.js"></script>
-        <script src="src/infrastructure/backup/RestoreService.js"></script>
-        <script src="src/infrastructure/migrations/DataStructureGenerator.js"></script>
-        <script src="src/infrastructure/migrations/MigrationService.js"></script>
+        <script type="module" src="src/infrastructure/events/EventBus.js"></script>
+        <script type="module" src="src/infrastructure/logging/Logger.js"></script>
+        <script type="module" src="src/infrastructure/errors/ErrorHandler.js"></script>
+        <script type="module" src="src/infrastructure/monitoring/MetricsService.js"></script>
+        <script type="module" src="src/infrastructure/sync/SyncService.js"></script>
+        <script type="module" src="src/infrastructure/backup/BackupService.js"></script>
+        <script type="module" src="src/infrastructure/backup/RestoreService.js"></script>
+        <script type="module" src="src/infrastructure/migrations/DataStructureGenerator.js"></script>
+        <script type="module" src="src/infrastructure/migrations/MigrationService.js"></script>
 
         <!-- Repositories -->
-        <script src="src/infrastructure/repositories/ProjectRepository.js"></script>
-        <script src="src/infrastructure/repositories/HouseholdRepository.js"></script>
-        <script src="src/infrastructure/repositories/TeamRepository.js"></script>
-        <script src="src/infrastructure/repositories/ZoneRepository.js"></script>
+        <script type="module" src="src/infrastructure/repositories/ProjectRepository.js"></script>
+        <script type="module" src="src/infrastructure/repositories/HouseholdRepository.js"></script>
+        <script type="module" src="src/infrastructure/repositories/TeamRepository.js"></script>
+        <script type="module" src="src/infrastructure/repositories/ZoneRepository.js"></script>
 
         <!-- Application Services -->
-        <script src="src/application/services/HouseholdService.js"></script>
-        <script src="src/application/services/ProjectService.js"></script>
-        <script src="src/application/state/ProjectStore.js"></script>
-        <script src="src/application/state/StoreRegistry.js"></script>
+        <script type="module" src="src/application/services/HouseholdService.js"></script>
+        <script type="module" src="src/application/services/ProjectService.js"></script>
+        <script type="module" src="src/application/state/ProjectStore.js"></script>
+        <script type="module" src="src/application/state/StoreRegistry.js"></script>
 
         <!-- Domain Services (Calculations) -->
-        <script src="src/domain/services/ResourceAllocationService.js"></script>
-        <script src="src/domain/services/CostCalculationService.js"></script>
+        <script type="module" src="src/domain/services/ResourceAllocationService.js"></script>
+        <script type="module" src="src/domain/services/CostCalculationService.js"></script>
 
         <!-- App Initialization (Wires everything together) -->
-        <script src="src/init.js"></script>
+        <script type="module" src="src/init.js"></script>
 
         <!-- Feature Scripts (depend on init.js) -->
         <script src="map_manager.js"></script>
         <script src="import_manager.js"></script>
-        <script src="src/infrastructure/external/KoboApiService.js"></script>
+        <!-- KoboApiService loaded via init.js -->
         <script src="auto-start-backup-watcher.js"></script>
 
         <!-- Page Controller -->
         <script src="terrain_main.js"></script>
+
+        <script type="module">
+            // Toolbar carte : géoloc et plein écran côté MapManager
+            document.addEventListener('DOMContentLoaded', () => {
+                const mapPanel = document.getElementById('mapPanel');
+                const mapDiv = document.getElementById('householdMap');
+                const fsBtn = document.getElementById('toggleFullscreenMapBtn');
+                const locBtn = document.getElementById('locateBtn');
+
+                // Plein écran amélioré
+                let isFull = false;
+                if (fsBtn && mapPanel && mapDiv) {
+                    const descText = mapPanel.querySelector('p.text-xs.italic');
+                    const titleRow = mapPanel.querySelector('.flex.justify-between.items-center.mb-4');
+
+                    const enterFull = () => {
+                        isFull = true;
+                        mapPanel.style.position = 'fixed';
+                        mapPanel.style.inset = '0';
+                        mapPanel.style.width = '100vw';
+                        mapPanel.style.height = '100vh';
+                        mapPanel.style.zIndex = '9999';
+                        mapPanel.style.borderRadius = '0';
+                        mapPanel.style.margin = '0';
+                        mapPanel.style.padding = '0';
+                        mapPanel.style.background = '#fff';
+                        mapDiv.style.height = 'calc(100vh - 52px)';
+                        mapDiv.style.borderRadius = '0';
+                        if (descText) descText.style.display = 'none';
+                        if (titleRow) {
+                            titleRow.style.padding = '8px 16px';
+                            titleRow.style.margin = '0';
+                            titleRow.style.borderBottom = '1px solid #e5e7eb';
+                        }
+                        document.body.style.overflow = 'hidden';
+                        fsBtn.innerHTML = '<i class="fas fa-compress mr-1"></i> Quitter';
+                        fsBtn.classList.add('bg-red-500');
+                        fsBtn.classList.remove('bg-blue-600');
+                        if (window.mapManager?.map) setTimeout(() => window.mapManager.map.invalidateSize(), 100);
+                    };
+
+                    const exitFull = () => {
+                        isFull = false;
+                        mapPanel.removeAttribute('style');
+                        mapDiv.style.height = '';
+                        mapDiv.style.borderRadius = '';
+                        if (descText) descText.style.display = '';
+                        if (titleRow) {
+                            titleRow.style.padding = '';
+                            titleRow.style.margin = '';
+                            titleRow.style.borderBottom = '';
+                        }
+                        document.body.style.overflow = '';
+                        fsBtn.innerHTML = '<i class="fas fa-expand mr-1"></i> Plein écran';
+                        fsBtn.classList.remove('bg-red-500');
+                        fsBtn.classList.add('bg-blue-600');
+                        if (window.mapManager?.map) setTimeout(() => window.mapManager.map.invalidateSize(), 100);
+                    };
+
+                    fsBtn.addEventListener('click', () => {
+                        if (isFull) exitFull(); else enterFull();
+                    });
+
+                    // Touche Échap pour quitter le plein écran
+                    document.addEventListener('keydown', (e) => {
+                        if (e.key === 'Escape' && isFull) exitFull();
+                    });
+                }
+
+                // Géolocalisation
+                if (locBtn && navigator.geolocation) {
+                    locBtn.addEventListener('click', () => {
+                        locBtn.disabled = true;
+                        locBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Localisation...';
+                        navigator.geolocation.getCurrentPosition(
+                            (pos) => {
+                                const { latitude, longitude } = pos.coords;
+                                if (window.mapManager?.map) {
+                                    window.mapManager.map.setView([latitude, longitude], 15);
+                                    L.circleMarker([latitude, longitude], { radius: 6, color: '#2563eb', fillColor: '#93c5fd', fillOpacity: 0.6 }).addTo(window.mapManager.map);
+                                }
+                                locBtn.innerHTML = '<i class="fas fa-location-arrow mr-1"></i> Ma position';
+                                locBtn.disabled = false;
+                            },
+                            () => {
+                                locBtn.innerHTML = '<i class="fas fa-location-arrow mr-1"></i> Ma position';
+                                locBtn.disabled = false;
+                            },
+                            { enableHighAccuracy: true, timeout: 8000, maximumAge: 300000 }
+                        );
+                    });
+                }
+            });
+        </script>
 
         <!-- Edit Entry Modal (Legacy UI) -->
         <div id="editEntryModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black bg-opacity-40">

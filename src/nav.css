@@ -1,0 +1,36 @@
+:root {
+    --nav-grad-start: #4361ee;
+    --nav-grad-end: #7c3aed;
+    --nav-link-hover: rgba(255, 255, 255, 0.14);
+    --nav-link-active: rgba(255, 255, 255, 0.22);
+    --nav-border: rgba(255, 255, 255, 0.28);
+}
+
+nav.gradient-bg {
+    background: linear-gradient(135deg, var(--nav-grad-start) 0%, var(--nav-grad-end) 100%) !important;
+    color: #f8fafc;
+    box-shadow: 0 10px 25px rgba(67, 97, 238, 0.35);
+    backdrop-filter: blur(6px);
+}
+
+nav.gradient-bg a {
+    color: #f8fafc !important;
+    padding: 0.5rem 0.75rem !important;
+    border-radius: 0.65rem;
+    transition: background-color 0.2s, transform 0.1s;
+}
+
+nav.gradient-bg a:hover {
+    background-color: var(--nav-link-hover) !important;
+}
+
+nav.gradient-bg a.active,
+nav.gradient-bg a[aria-current="page"] {
+    background-color: var(--nav-link-active) !important;
+    border: 1px solid var(--nav-border);
+}
+
+nav.gradient-bg a:focus-visible {
+    outline: 2px solid rgba(255, 255, 255, 0.6);
+    outline-offset: 2px;
+}

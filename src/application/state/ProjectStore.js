@@ -2,7 +2,7 @@
  * Store pour la gestion de l'état des projets
  * Implémente le pattern Observer pour les mises à jour réactives
  */
-class ProjectStore {
+export class ProjectStore {
     constructor(projectService) {
         this.projectService = projectService;
         this._state = {

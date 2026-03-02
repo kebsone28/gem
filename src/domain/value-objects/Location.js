@@ -2,7 +2,7 @@
  * Value Object pour les coordonnées GPS
  * Immutable
  */
-class Coordinates {
+export class Coordinates {
     constructor(latitude, longitude, precision = null) {
         // Validation
         if (typeof latitude !== 'number' || latitude < -90 || latitude > 90) {
@@ -109,7 +109,7 @@ class Coordinates {
  * Value Object pour la localisation
  * Immutable
  */
-class Location {
+export class Location {
     constructor(region, department, commune, village, coordinates) {
         if (!region || !department || !commune) {
             throw new ValidationError('Region, department, and commune are required');
@@ -229,6 +229,7 @@ class Location {
      * Désérialisation JSON
      */
     static fromJSON(data) {
+        if (!data) return null;
         const coordinates = data.coordinates
             ? Coordinates.fromJSON(data.coordinates)
             : null;

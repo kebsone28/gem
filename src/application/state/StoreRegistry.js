@@ -2,7 +2,7 @@
  * Registre central pour tous les stores
  * Singleton pattern
  */
-class StoreRegistry {
+export class StoreRegistry {
     constructor() {
         if (StoreRegistry.instance) {
             return StoreRegistry.instance;
@@ -77,7 +77,7 @@ class StoreRegistry {
 }
 
 // Créer l'instance globale
-const storeRegistry = StoreRegistry.getInstance();
+export const storeRegistry = StoreRegistry.getInstance();
 
 // Export pour utilisation globale
 if (typeof window !== 'undefined') {

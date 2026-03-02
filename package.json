@@ -4,8 +4,10 @@
   "description": "Application bureau pour pilotage d'électrification de masse",
   "main": "electron/main.js",
   "scripts": {
-    "start": "electron .",
-    "package-win": "electron-builder --win --x64",
+    "start": "vite",
+    "electron:dev": "electron .",
+    "build:electron": "vite build && electron-builder --win --x64",
+    "package-win": "npm run build:electron",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
     "test:smoke": "playwright test tests/playwright/smoke.spec.js tests/playwright/rapports.spec.js",
@@ -14,25 +16,32 @@
     "lint": "echo \"Add eslint later\" && exit 0",
     "format": "echo \"Add prettier later\" && exit 0",
     "build:css": "tailwindcss -i src/styles.css -o src/output.css --watch",
-    "build:css:prod": "tailwindcss -i src/styles.css -o src/output.css --minify"
+    "build:css:prod": "tailwindcss -i src/styles.css -o src/output.css --minify",
+    "dev": "vite",
+    "dev:saas": "powershell -Command \"Start-Process powershell -ArgumentList '-NoExit', '-Command', 'cd backend; `$env:PRISMA_CLIENT_ENGINE_TYPE=\\\"binary\\\"; npm run dev'; Start-Process powershell -ArgumentList '-NoExit', '-Command', 'cd frontend; npm run dev'\"",
+    "build": "vite build && node scripts/copy-static-assets.js"
   },
   "devDependencies": {
     "@playwright/test": "^1.43.0",
     "electron": "^39.2.3",
     "electron-builder": "^26.0.12",
     "tailwindcss": "^3.4.0",
+    "vite": "^7.3.1",
     "vitest": "^4.0.13"
   },
   "build": {
     "appId": "com.proquelec.electrification",
     "files": [
-      "**/*"
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
     ],
     "directories": {
       "buildResources": "build"
     }
   },
   "dependencies": {
-    "dompurify": "^3.3.1"
+    "dompurify": "^3.3.1",
+    "keytar": "^7.9.0"
   }
 }

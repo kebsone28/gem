@@ -3,22 +3,22 @@
  */
 
 // Wrap in IIFE to avoid leaking top-level declarations when loaded as <script>
-(function () {
+// (function () {
 
 // Module-level TeamType resolution to support node tests without window globals
 let _TeamType;
 try {
-    if (typeof module !== 'undefined' && module.exports) {
+    if (false && typeof module !== 'undefined' && module.exports) {
         _TeamType = require('../../shared/constants/enums').TeamType;
     }
-} catch (e) {}
+} catch (e) { }
 
 const TeamTypeLocal = _TeamType;
 
 /**
  * Interface de base pour les stratégies d'optimisation
  */
-class OptimizationStrategy {
+export class OptimizationStrategy {
     optimize(zones, teams, constraints) {
         throw new Error('optimize() must be implemented by subclass');
     }
@@ -32,7 +32,7 @@ class OptimizationStrategy {
  * Stratégie Greedy (gloutonne)
  * Alloue les équipes en priorisant les zones avec le plus de ménages
  */
-class GreedyOptimizationStrategy extends OptimizationStrategy {
+export class GreedyOptimizationStrategy extends OptimizationStrategy {
     optimize(zones, teams, constraints = {}) {
         const allocation = new Map();
 
@@ -72,7 +72,7 @@ class GreedyOptimizationStrategy extends OptimizationStrategy {
  * Stratégie d'algorithme génétique
  * Utilise l'évolution pour trouver une allocation optimale
  */
-class GeneticAlgorithmStrategy extends OptimizationStrategy {
+export class GeneticAlgorithmStrategy extends OptimizationStrategy {
     constructor(options = {}) {
         super();
         this.populationSize = options.populationSize || 50;
@@ -244,7 +244,7 @@ class GeneticAlgorithmStrategy extends OptimizationStrategy {
  * Stratégie d'optimisation par coût
  * Minimise le coût total en utilisant le minimum d'équipes
  */
-class CostMinimizationStrategy extends OptimizationStrategy {
+export class CostMinimizationStrategy extends OptimizationStrategy {
     optimize(zones, teams, constraints = {}) {
         const allocation = new Map();
         const { maxBudget } = constraints;
@@ -323,4 +323,4 @@ if (typeof module !== 'undefined' && module.exports) {
     };
 }
 
-})();
+// })();

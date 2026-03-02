@@ -31,6 +31,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     await waitForServices();
 
+    const normalizeStatus = (window.normalizeStatus) ? window.normalizeStatus : (s => s);
+    const getStatusCategory = (window.getStatusCategory) ? window.getStatusCategory : (_ => 'in_progress');
+
     // 1. Initialiser le MapManager s'il est chargé mais pas encore instancié
     if (!window.mapManager && window.MapManager) {
         console.log('🗺️ Instantiation manuelle de MapManager...');
@@ -45,21 +48,83 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.importManager = new window.ImportManager();
     }
 
-    // 3. Activer le bouton de synchro Kobo s'il existe
+    // 3. Préparer le bouton de synchro Kobo (l'activation dépendra de la config chargée)
     const syncBtnInit = document.getElementById('triggerKoboSyncBtn');
-    if (syncBtnInit && window.householdService) {
-        syncBtnInit.disabled = false;
-
-        // Mise à jour visuelle du statut
-        const statusDot = document.getElementById('koboStatusDot');
-        if (statusDot) {
-            statusDot.className = "w-3 h-3 rounded-full bg-green-500 mr-2";
-        }
-        const statusText = document.getElementById('koboConnectionStatus');
-        if (statusText) {
-            statusText.textContent = "Service Prêt";
-        }
+    if (syncBtnInit) {
+        syncBtnInit.disabled = true;
     }
+
+    const zoneSelect = document.getElementById('zoneFilterSelect');
+    const teamSelect = document.getElementById('teamFilterSelect');
+
+    const renderFilterOptions = () => {
+        if (!zoneSelect && !teamSelect) return;
+        const zones = new Set();
+        const teams = new Set();
+        allHouseholds.forEach(h => {
+            if (h.commune) zones.add(h.commune);
+            if (h.quartier_village) zones.add(h.quartier_village);
+            if (h.equipe_reseau && h.equipe_reseau !== '-') teams.add(h.equipe_reseau);
+            if (h.equipe_interieur && h.equipe_interieur !== '-') teams.add(h.equipe_interieur);
+        });
+
+        if (zoneSelect) {
+            const current = zoneSelect.value || 'all';
+            zoneSelect.innerHTML = '<option value="all">Toutes</option>' + Array.from(zones).sort().map(z => `<option value="${z}">${z}</option>`).join('');
+            if (Array.from(zones).includes(current)) zoneSelect.value = current;
+        }
+        if (teamSelect) {
+            const currentT = teamSelect.value || 'all';
+            teamSelect.innerHTML = '<option value="all">Toutes</option>' + Array.from(teams).sort().map(t => `<option value="${t}">${t}</option>`).join('');
+            if (Array.from(teams).includes(currentT)) teamSelect.value = currentT;
+        }
+    };
+
+    const getFilteredData = () => {
+        const searchInput = document.getElementById('searchHousehold');
+        const term = searchInput ? searchInput.value.toLowerCase() : '';
+        const activeBtn = document.querySelector('.filter-btn.active');
+        const statusFilter = activeBtn ? activeBtn.dataset.filter : 'all';
+        const zoneVal = zoneSelect ? zoneSelect.value : 'all';
+        const teamVal = teamSelect ? teamSelect.value : 'all';
+
+        const HS = window.HouseholdStatus || {};
+        const statusMap = {
+            'debut': [HS.NON_DEBUTE],
+            'travaux': [HS.MURS_EN_COURS, HS.MURS_TERMINE, HS.RESEAU_EN_COURS, HS.RESEAU_TERMINE, HS.INTERIEUR_EN_COURS],
+            'controle': [HS.INTERIEUR_TERMINE],
+            'conforme': [HS.RECEPTION_VALIDEE],
+            'bloque': [HS.PROBLEME, HS.INELIGIBLE]
+        };
+
+        let data = allHouseholds;
+        if (statusFilter !== 'all') {
+            const targetStatuses = statusMap[statusFilter] || [];
+            data = data.filter(h => targetStatuses.includes(h.status));
+        }
+        if (zoneVal && zoneVal !== 'all') {
+            data = data.filter(h => h.commune === zoneVal || h.quartier_village === zoneVal);
+        }
+        if (teamVal && teamVal !== 'all') {
+            data = data.filter(h => h.equipe_reseau === teamVal || h.equipe_interieur === teamVal);
+        }
+        if (term) {
+            data = data.filter(h =>
+                (h.nom_prenom_chef && h.nom_prenom_chef.toLowerCase().includes(term)) ||
+                (h.id && h.id.toLowerCase().includes(term)) ||
+                (h.telephone && String(h.telephone).includes(term)) ||
+                (h.commune && h.commune.toLowerCase().includes(term)) ||
+                (h.quartier_village && h.quartier_village.toLowerCase().includes(term))
+            );
+        }
+        return data;
+    };
+
+    const updateFilteredList = () => {
+        renderFilterOptions();
+        const filtered = getFilteredData();
+        renderHouseholdList(filtered);
+    };
 
     // 4. Fonction de chargement centralisée
     const loadHouseholds = async () => {
@@ -78,10 +143,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const coords = loc.coordinates || {};
                 const owner = h.owner || {};
 
+                const normalizedStatus = normalizeStatus(h.status);
+
                 return {
                     id: h.id,
                     nom_prenom_chef: owner.name || 'Nom Inconnu',
-                    status: h.status || 'En attente',
+                    status: normalizedStatus,
                     quartier_village: loc.village || '',
                     commune: loc.commune || '',
                     telephone: owner.phone || '',
@@ -110,15 +177,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             };
 
             allHouseholds.forEach(h => {
-                const s = (h.status || '').toLowerCase();
-                if (s.includes('conforme') || s.includes('terminé')) {
-                    stats.termine++;
-                } else if (s.includes('attente démarrage') || s === 'en attente') {
-                    stats.attente++;
-                } else {
-                    // Tout le reste est considéré comme "En cours" ou "Bloqué"
-                    stats.enCours++;
-                }
+                const category = getStatusCategory(h.status);
+                if (category === 'done') stats.termine++;
+                else if (category === 'todo') stats.attente++;
+                else stats.enCours++;
             });
 
             const setTxt = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val.toLocaleString(); };
@@ -127,8 +189,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             setTxt('statEnCours', stats.enCours);
             setTxt('statTermine', stats.termine);
 
-            // Rendu de la liste
-            renderHouseholdList(allHouseholds);
+            // Rendu de la liste + filtres
+            updateFilteredList();
 
             // Rendu de la carte
             if (window.mapManager) {
@@ -160,6 +222,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 Toast.fire({ icon: 'success', title: 'Import terminé', text: `${data.count} ménages importés` });
             }
             loadHouseholds();
+        });
+
+        window.eventBus.on('sync.completed', async (data) => {
+            await refreshLastSyncUi();
+            loadHouseholds();
+        });
+
+        window.eventBus.on('sync.failed', async () => {
+            await refreshLastSyncUi();
         });
     };
 
@@ -340,14 +411,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // -- Gestion de l'UI --
 
     // Recherche
-    document.getElementById('searchHousehold')?.addEventListener('input', (e) => {
-        const term = e.target.value.toLowerCase();
-        const filtered = allHouseholds.filter(h =>
-            (h.nom_prenom_chef && h.nom_prenom_chef.toLowerCase().includes(term)) ||
-            (h.id && h.id.toLowerCase().includes(term)) ||
-            (h.telephone && String(h.telephone).includes(term))
-        );
-        renderHouseholdList(filtered);
+    document.getElementById('searchHousehold')?.addEventListener('input', () => {
+        updateFilteredList();
     });
 
     // Filtres
@@ -361,24 +426,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             e.target.classList.add('active');
             e.target.style.opacity = "1";
 
-            // Filtrage
-            const filter = e.target.dataset.filter;
-            if (filter === 'all') {
-                renderHouseholdList(allHouseholds);
-            } else {
-                const statusMap = {
-                    'debut': ['Attente démarrage'],
-                    'travaux': ['Attente Maçon', 'Attente Branchement', 'Attente électricien'],
-                    'controle': ['Attente Controleur', 'Attente électricien(X)'],
-                    'conforme': ['Conforme'],
-                    'bloque': ['Injoignable', 'Inéligible']
-                };
-                const targetStatuses = statusMap[filter] || [];
-                const filtered = allHouseholds.filter(h => targetStatuses.includes(h.status));
-                renderHouseholdList(filtered);
-            }
+            updateFilteredList();
         });
     });
+
+    // Filtres zone / équipe
+    zoneSelect?.addEventListener('change', updateFilteredList);
+    teamSelect?.addEventListener('change', updateFilteredList);
 
     // Fonction de rendu liste
     const renderHouseholdList = (households) => {
@@ -452,24 +506,30 @@ document.addEventListener('DOMContentLoaded', async () => {
         safelySetText('detailInfosTech', household.infos_techniques);
 
         // Afficher panneau
-        document.getElementById('householdListView').classList.add('hidden');
-        document.getElementById('householdDetailView').classList.remove('hidden');
+        const listView = document.getElementById('householdListView');
+        const detailView = document.getElementById('householdDetailView');
+        if (listView && detailView) {
+            listView.classList.add('hidden');
+            detailView.classList.remove('hidden');
+        }
 
         // Recentrer carte
-        if (window.mapManager?.map) {
+        if (window.mapManager?.map && household.gps_lat && household.gps_lon) {
             const lat = household.gps_lat;
             const lon = household.gps_lon;
-            if (lat && lon && lat !== 0 && lon !== 0) {
-                window.mapManager.map.invalidateSize();
-                window.mapManager.map.setView([lat, lon], 18);
-            }
+            window.mapManager.map.invalidateSize();
+            window.mapManager.map.setView([lat, lon], 18);
         }
     };
 
     // Bouton retour
     document.getElementById('backToListBtn')?.addEventListener('click', () => {
-        document.getElementById('householdDetailView').classList.add('hidden');
-        document.getElementById('householdListView').classList.remove('hidden');
+        const detailView = document.getElementById('householdDetailView');
+        const listView = document.getElementById('householdListView');
+        if (detailView && listView) {
+            detailView.classList.add('hidden');
+            listView.classList.remove('hidden');
+        }
     });
 
     // Bouton Recentrer Carte
@@ -480,6 +540,90 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     // === KOBO CONFIGURATION UI ===
+    const updateKoboStatus = (configured, lastLog = null) => {
+        const statusDot = document.getElementById('koboStatusDot');
+        const statusText = document.getElementById('koboConnectionStatus');
+        if (statusDot) statusDot.className = `w-3 h-3 rounded-full mr-2 ${configured ? 'bg-green-500' : 'bg-gray-300'}`;
+        if (statusText) {
+            const base = configured ? 'Config OK (stockée localement)' : 'Non configuré';
+            const last = lastLog ? ` – Dernière sync: ${new Date(lastLog.date).toLocaleString()} (${lastLog.status})` : '';
+            statusText.textContent = `${base}${last}`;
+        }
+        const syncBtn = document.getElementById('triggerKoboSyncBtn');
+        if (syncBtn) syncBtn.disabled = !configured;
+        return configured;
+    };
+
+    const loadKoboConfig = async () => {
+        try {
+            if (window.db?.settings) {
+                const stored = await window.db.settings.get('kobo_config');
+                if (stored) {
+                    const tokenEl = document.getElementById('koboApiToken');
+                    const uidEl = document.getElementById('koboAssetUid');
+                    if (tokenEl) tokenEl.value = stored.token || '';
+                    if (uidEl) uidEl.value = stored.assetUid || '';
+                    updateKoboStatus(!!stored.token && !!stored.assetUid);
+                }
+            }
+        } catch (e) {
+            console.warn('Impossible de charger la config Kobo stockée', e);
+        }
+        const tokenEl = document.getElementById('koboApiToken');
+        const uidEl = document.getElementById('koboAssetUid');
+        updateKoboStatus(!!(tokenEl?.value && uidEl?.value));
+    };
+
+    const refreshLastSyncUi = async () => {
+        try {
+            if (window.syncService?.getLastSyncLog) {
+                const log = await window.syncService.getLastSyncLog();
+                const el = document.getElementById('lastKoboSyncTime');
+                if (el) {
+                    if (log) {
+                        el.textContent = new Date(log.date).toLocaleString();
+                        updateKoboStatus(true, log);
+                    } else {
+                        el.textContent = 'Jamais';
+                    }
+                }
+                await renderSyncHistory();
+            }
+        } catch (e) {
+            console.warn('Impossible de rafraîchir le dernier log de sync', e);
+        }
+    };
+
+    const renderSyncHistory = async () => {
+        const container = document.getElementById('syncHistoryList');
+        if (!container) return;
+
+        if (!window.db?.sync_logs) {
+            container.innerHTML = '<div class="text-gray-400 italic">Logs non disponibles</div>';
+            return;
+        }
+
+        const logs = await window.db.sync_logs.orderBy('date').reverse().limit(10).toArray();
+        if (!logs || logs.length === 0) {
+            container.innerHTML = '<div class="text-gray-400 italic">Aucun log</div>';
+            return;
+        }
+
+        container.innerHTML = logs.map(log => {
+            const color = log.status === 'success' ? 'text-green-600' : 'text-red-600';
+            return `<div class="flex justify-between items-center border-b border-gray-100 pb-1 last:border-0 last:pb-0">
+                        <div>
+                            <div class="font-semibold text-gray-700">${log.type}</div>
+                            <div class="text-[11px] text-gray-500">${new Date(log.date).toLocaleString()}</div>
+                        </div>
+                        <div class="${color} font-semibold text-xs">${log.status}</div>
+                    </div>`;
+        }).join('');
+    };
+
+    await loadKoboConfig();
+    await refreshLastSyncUi();
+
     const configToggle = document.getElementById('toggleKoboConfig');
     const configPanel = document.getElementById('koboConfigPanel');
     const saveConfigBtn = document.getElementById('saveKoboConfigBtn');
@@ -498,19 +642,34 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     if (saveConfigBtn) {
-        saveConfigBtn.addEventListener('click', () => {
-            const token = document.getElementById('koboApiToken').value;
-            const assetUid = document.getElementById('koboAssetUid').value;
-            // Here we could save to localStorage or update the service directly
-            if (window.syncService && window.syncService.apiService) {
-                window.syncService.apiService.token = token;
-                window.syncService.apiService.assetUid = assetUid;
+        saveConfigBtn.addEventListener('click', async () => {
+            const token = document.getElementById('koboApiToken').value.trim();
+            const assetUid = document.getElementById('koboAssetUid').value.trim();
+
+            if (!token || !assetUid) {
+                if (window.Swal) return Swal.fire('Configuration incomplète', 'Token et Asset UID sont requis', 'warning');
+                alert('Token et Asset UID sont requis');
+                return;
             }
 
-            // Visual Feedback
-            configPanel.classList.add('hidden');
-            if (window.Swal) Swal.fire({ icon: 'success', title: 'Configuration enregistrée', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
-            else alert("Configuration enregistrée");
+            try {
+                if (window.koboProxy?.saveToken) {
+                    await window.koboProxy.saveToken(token);
+                }
+                if (window.db?.settings) {
+                    await window.db.settings.put({ key: 'kobo_config', token: null, assetUid }); // token non stocké en clair
+                }
+                if (window.syncService && window.syncService.apiService) {
+                    window.syncService.apiService.token = null; // forcé à récupérer via proxy
+                    window.syncService.apiService.assetUid = assetUid;
+                }
+                updateKoboStatus(true);
+                configPanel.classList.add('hidden');
+                if (window.Swal) Swal.fire({ icon: 'success', title: 'Configuration enregistrée', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
+            } catch (e) {
+                console.error('Erreur sauvegarde config Kobo', e);
+                if (window.Swal) Swal.fire('Erreur', e.message, 'error');
+            }
         });
     }
 
@@ -627,30 +786,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
 
-            // Réappliquer les filtres actuels
-            const searchInput = document.getElementById('searchHousehold');
-            const term = searchInput ? searchInput.value.toLowerCase() : '';
-
-            const activeBtn = document.querySelector('.filter-btn.active');
-            const statusFilter = activeBtn ? activeBtn.dataset.filter : 'all';
-
-            let dataToExport = allHouseholds.filter(h =>
-                (h.nom_prenom_chef && h.nom_prenom_chef.toLowerCase().includes(term)) ||
-                (h.id && h.id.toLowerCase().includes(term)) ||
-                (h.telephone && String(h.telephone).includes(term))
-            );
-
-            if (statusFilter !== 'all') {
-                const statusMap = {
-                    'debut': ['Attente démarrage'],
-                    'travaux': ['Attente Maçon', 'Attente Branchement', 'Attente électricien'],
-                    'controle': ['Attente Controleur', 'Attente électricien(X)'],
-                    'conforme': ['Conforme'],
-                    'bloque': ['Injoignable', 'Inéligible']
-                };
-                const targetStatuses = statusMap[statusFilter] || [];
-                dataToExport = dataToExport.filter(h => targetStatuses.includes(h.status));
-            }
+            // Réappliquer tous les filtres actifs (statut, recherche, zone, équipe)
+            let dataToExport = getFilteredData();
 
             // Mappage
             const rows = dataToExport.map(h => ({

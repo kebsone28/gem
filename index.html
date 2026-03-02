@@ -7,59 +7,42 @@
     <title>Tableau de Bord - Électrification</title>
     <link rel="stylesheet" href="src/output.css">
     <link rel="stylesheet" href="src/dark.css">
+    <link rel="stylesheet" href="src/nav.css">
+    <link rel="stylesheet" href="src/proquelec-theme.css">
+    <script src="src/infrastructure/external/ApiService.js"></script>
+    <script src="src/infrastructure/external/AuthGuard.js"></script>
     <script src="vendor/fontawesome/all.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link rel="stylesheet" href="vendor/sweetalert2/sweetalert2.min.css">
+    <script src="vendor/sweetalert2/sweetalert2.min.js"></script>
+    <script src="vendor/xlsx/xlsx.full.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="vendor/dexie/dexie.js"></script>
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-        }
-
-        .card-shadow {
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-
-        .kpi-card {
-            border-left: 4px solid #4f46e5;
-            transition: transform 0.2s;
-        }
-
-        .kpi-card:hover {
-            transform: translateY(-2px);
-        }
-
-        .gradient-bg {
-            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
-        }
-    </style>
+    <!-- Styles inline neutralisés, tout est géré par proquelec-theme.css -->
 </head>
 
-<body class="bg-gray-50">
+<body class="proquelec-theme">
     <!-- Navigation -->
-    <nav class="gradient-bg text-white shadow-lg">
+    <nav class="sticky top-0 z-40 gradient-bg text-white shadow-lg">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-16">
-                <div class="flex items-center">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center shrink-0">
                     <i class="fas fa-bolt text-2xl mr-3"></i>
-                    <h1 class="text-xl font-bold">Électrification de Masse</h1>
+                    <h1 class="text-xl font-bold hidden sm:block">Électrification de Masse</h1>
                 </div>
-                <div class="flex items-center space-x-4">
+                <div class="flex items-center space-x-1 lg:space-x-4 overflow-x-auto scrollbar-hide"
+                    id="authStatusHeader">
                     <a href="index.html"
-                        class="px-3 py-2 rounded-md text-sm font-bold bg-white bg-opacity-20 border-b-2 border-white">Dashboard</a>
+                        class="active px-2 lg:px-3 py-2 rounded-md text-sm font-bold bg-white bg-opacity-20 transition-all whitespace-nowrap">Dashboard</a>
                     <a href="parametres.html"
-                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20">Paramètres</a>
+                        class="px-2 lg:px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-all whitespace-nowrap">Paramètres</a>
                     <a href="terrain.html"
-                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20">Terrain</a>
+                        class="px-2 lg:px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-all whitespace-nowrap">Terrain</a>
                     <a href="charges.html"
-                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20">Charges</a>
-                    <a href="simulation.html"
-                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20">Simulation</a>
+                        class="px-2 lg:px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-all whitespace-nowrap">Charges</a>
                     <a href="rapports.html"
-                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20">Rapports</a>
-                    <a href="aide.html"
-                        class="px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20">Aide</a>
+                        class="px-2 lg:px-3 py-2 rounded-md text-sm font-medium hover:bg-white hover:bg-opacity-20 transition-all whitespace-nowrap">Rapports</a>
+                    <div id="syncContainer" class="flex items-center gap-2 ml-auto lg:ml-0 flex-shrink-0"></div>
                 </div>
             </div>
         </div>
@@ -67,16 +50,99 @@
 
     <!-- Contenu Principal -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h2 class="text-2xl font-bold text-gray-900 mb-6">
-            <i class="fas fa-tachometer-alt text-indigo-600 mr-3"></i> Tableau de Bord
-        </h2>
+
+        <!-- SECTION 1 : HEADER INSTITUTIONNEL NIVEAU NATIONAL -->
+        <div
+            class="mb-8 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-900 rounded-xl border-l-4 border-indigo-600 shadow-sm">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-start">
+                <!-- Infos Projet -->
+                <div>
+                    <p class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase">Projet</p>
+                    <p id="projectName" class="text-lg font-bold text-gray-900 dark:text-gray-100 mt-1">Électrification
+                        Rurale</p>
+                </div>
+                <!-- Zone -->
+                <div>
+                    <p class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase">Zone</p>
+                    <p id="projectZone" class="text-lg font-bold text-gray-900 dark:text-gray-100 mt-1">Tambacounda</p>
+                </div>
+                <!-- Période -->
+                <div>
+                    <p class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase">Période</p>
+                    <p id="projectPeriod" class="text-lg font-bold text-gray-900 dark:text-gray-100 mt-1">Jan - Déc 2026
+                    </p>
+                </div>
+                <!-- Statut -->
+                <div>
+                    <p class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase">Statut</p>
+                    <div class="flex items-center gap-2 mt-1">
+                        <span id="projectStatusBadge"
+                            class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-bold bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
+                            <i class="fas fa-check-circle text-xs"></i> En cours
+                        </span>
+                    </div>
+                </div>
+                <!-- Avancement -->
+                <div class="text-right">
+                    <p class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase">Avancement</p>
+                    <p id="projectProgress" class="text-2xl font-bold text-indigo-600 dark:text-indigo-400 mt-1">75%</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 2 : SCORE GLOBAL IGPP (Indice Global de Performance) -->
+        <div class="mb-8 p-6 bg-white dark:bg-gray-800 rounded-xl shadow-md border-b-4 border-indigo-600">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
+                <!-- Score Principal -->
+                <div
+                    class="flex flex-col items-center justify-center p-6 bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-900/20 dark:to-indigo-900/30 rounded-lg">
+                    <p class="text-sm font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">Score
+                        Global IGPP</p>
+                    <p id="igppScore" class="text-5xl font-bold text-indigo-700 dark:text-indigo-300 mt-2">/100</p>
+                    <p id="igppLabel" class="text-lg font-semibold text-indigo-600 dark:text-indigo-400 mt-2">
+                        Performance Solide</p>
+                </div>
+
+                <!-- Détail Scores -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
+                        <p class="text-xs text-gray-600 dark:text-gray-400 font-semibold">Avancement</p>
+                        <p id="scoreProgress" class="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">75%</p>
+                    </div>
+                    <div class="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
+                        <p class="text-xs text-gray-600 dark:text-gray-400 font-semibold">Budget</p>
+                        <p id="scoreBudget" class="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">100%</p>
+                    </div>
+                    <div class="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
+                        <p class="text-xs text-gray-600 dark:text-gray-400 font-semibold">Délais</p>
+                        <p id="scoreTimeline" class="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">85%</p>
+                    </div>
+                    <div class="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
+                        <p class="text-xs text-gray-600 dark:text-gray-400 font-semibold">Qualité</p>
+                        <p id="scoreQuality" class="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">90%</p>
+                    </div>
+                </div>
+
+                <!-- Recommandations -->
+                <div class="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border-l-4 border-blue-500">
+                    <p class="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase mb-3">Recommandations</p>
+                    <ul id="recommendationsList" class="space-y-2 text-sm text-gray-700 dark:text-gray-300">
+                        <li class="flex items-start gap-2">
+                            <i class="fas fa-check-circle text-green-600 dark:text-green-400 text-xs mt-1"></i>
+                            <span>Performance en ligne avec les objectifs</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
 
         <!-- Filtres et Alertes -->
         <div class="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div class="flex items-center space-x-4">
-                <label for="dashboardPeriod" class="text-sm font-semibold text-gray-700">Période:</label>
+                <label for="dashboardPeriod"
+                    class="text-sm font-semibold text-gray-700 dark:text-gray-300">Période:</label>
                 <select id="dashboardPeriod"
-                    class="px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm outline-none focus:ring-2 focus:ring-indigo-500">
+                    class="px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-indigo-500">
                     <option value="all">Tout le projet</option>
                     <option value="month">Ce mois</option>
                     <option value="week">Cette semaine</option>
@@ -84,94 +150,304 @@
             </div>
 
             <div id="alertBadge"
-                class="hidden animate-pulse bg-red-100 text-red-700 px-4 py-2 rounded-full text-sm font-bold flex items-center shadow-sm cursor-pointer"
+                class="hidden bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-4 py-2 rounded-full text-sm font-bold flex items-center shadow-sm cursor-pointer transition-all duration-300 hover:scale-105"
                 onclick="scrollToAlerts()">
                 <i class="fas fa-exclamation-triangle mr-2"></i> <span id="alertCount">0</span> Alertes Critiques
             </div>
         </div>
 
-        <!-- KPIs -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <div class="bg-white rounded-lg card-shadow p-6 kpi-card">
-                <div class="flex justify-between items-start">
-                    <div>
-                        <p class="text-sm text-gray-500 font-medium">Ménages Totaux</p>
-                        <p class="text-3xl font-bold text-indigo-600" id="totalHouseholds">-</p>
+        <!-- SECTION 3 : KPI STRATÉGIQUES (VISIBILITÉ MAXIMUM) -->
+        <div class="mb-8">
+            <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+                <i class="fas fa-chart-line text-indigo-600"></i> Indicateurs Stratégiques
+            </h3>
+
+            <!-- 4 KPI Majeurs -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+                <!-- KPI 1 : Ménages Totaux -->
+                <div
+                    class="bg-white dark:bg-gray-800 rounded-xl card-shadow p-6 border-t-4 border-indigo-600 transition-all duration-300 hover:shadow-lg hover:translate-y-[-4px]">
+                    <div class="flex items-start justify-between mb-4">
+                        <div>
+                            <p class="text-sm font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
+                                Ménages Totaux</p>
+                            <p class="text-4xl font-bold text-indigo-700 dark:text-indigo-400 mt-2"
+                                id="kpiTotalHouseholds">3 750</p>
+                        </div>
+                        <div class="text-3xl text-indigo-600/30"><i class="fas fa-home"></i></div>
                     </div>
-                    <div class="bg-indigo-100 p-3 rounded-lg text-indigo-600">
-                        <i class="fas fa-users text-xl"></i>
+                    <div class="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                        <div class="h-full w-full bg-indigo-600 rounded-full transition-all duration-500"></div>
+                    </div>
+                </div>
+
+                <!-- KPI 2 : Ménages Électrifiés -->
+                <div
+                    class="bg-white dark:bg-gray-800 rounded-xl card-shadow p-6 border-t-4 border-emerald-600 transition-all duration-300 hover:shadow-lg hover:translate-y-[-4px]">
+                    <div class="flex items-start justify-between mb-4">
+                        <div>
+                            <p class="text-sm font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
+                                Électrifiés</p>
+                            <p class="text-4xl font-bold text-emerald-700 dark:text-emerald-400 mt-2"
+                                id="kpiElectrifiedHouseholds">2 840</p>
+                        </div>
+                        <div class="text-3xl text-emerald-600/30"><i class="fas fa-bolt"></i></div>
+                    </div>
+                    <div class="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                        <div class="h-full bg-emerald-600 rounded-full transition-all duration-500" style="width: 75%">
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-600 dark:text-gray-400 mt-2">75% d'avancement</p>
+                </div>
+
+                <!-- KPI 3 : Budget Utilisé % -->
+                <div
+                    class="bg-white dark:bg-gray-800 rounded-xl card-shadow p-6 border-t-4 border-blue-600 transition-all duration-300 hover:shadow-lg hover:translate-y-[-4px]">
+                    <div class="flex items-start justify-between mb-4">
+                        <div>
+                            <p class="text-sm font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
+                                Budget Utilisé</p>
+                            <p class="text-4xl font-bold text-blue-700 dark:text-blue-400 mt-2" id="kpiBudgetPercent">
+                                72%</p>
+                        </div>
+                        <div class="text-3xl text-blue-600/30"><i class="fas fa-wallet"></i></div>
+                    </div>
+                    <div class="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                        <div class="h-full bg-blue-600 rounded-full transition-all duration-500" style="width: 72%">
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-2" id="budgetDetails">360 M / 500 M FCFA</p>
+                </div>
+
+                <!-- KPI 4 : Délai Moyen -->
+                <div
+                    class="bg-white dark:bg-gray-800 rounded-xl card-shadow p-6 border-t-4 border-rose-600 transition-all duration-300 hover:shadow-lg hover:translate-y-[-4px]">
+                    <div class="flex items-start justify-between mb-4">
+                        <div>
+                            <p class="text-sm font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
+                                Retard Estimé</p>
+                            <p class="text-4xl font-bold text-rose-700 dark:text-rose-400 mt-2" id="kpiDelayDays">2 j
+                            </p>
+                        </div>
+                        <div class="text-3xl text-rose-600/30"><i class="fas fa-clock"></i></div>
+                    </div>
+                    <div class="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                        <div class="h-full bg-rose-600 rounded-full transition-all duration-500" style="width: 20%">
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">Sur 180 jours</p>
+                </div>
+
+                <!-- KPI 5 : Marge Devis (Ajouté pour éviter erreur JS) -->
+                <div class="hidden">
+                    <span id="kpiDevisMargin">0</span>
+                    <span id="kpiDevisPlafond">0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 4 : KPI SECONDAIRES (OPÉRATIONNEL) -->
+        <div class="mb-8">
+            <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+                <i class="fas fa-cogs text-indigo-600"></i> Indicateurs Opérationnels
+            </h3>
+
+            <!-- 6 KPI Secondaires en grille 3 colonnes -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+                <!-- Livraisons -->
+                <div class="bg-white dark:bg-gray-800 rounded-lg card-shadow p-5 border-l-4 border-blue-500">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">Livraisons Réalisées
+                            </p>
+                            <p class="text-2xl font-bold text-blue-600 dark:text-blue-400 mt-1" id="kpiDeliveries">3 100
+                            </p>
+                        </div>
+                        <div class="text-2xl text-blue-600/40"><i class="fas fa-truck-loading"></i></div>
+                    </div>
+                </div>
+
+                <!-- Alertes Stock -->
+                <div class="bg-white dark:bg-gray-800 rounded-lg card-shadow p-5 border-l-4 border-amber-500">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">Alertes Stock</p>
+                            <p class="text-2xl font-bold text-amber-600 dark:text-amber-400 mt-1" id="kpiStockAlerts">3
+                            </p>
+                        </div>
+                        <div class="text-2xl text-amber-600/40"><i class="fas fa-triangle-exclamation"></i></div>
+                    </div>
+                </div>
+
+                <!-- Équipes Actives -->
+                <div class="bg-white dark:bg-gray-800 rounded-lg card-shadow p-5 border-l-4 border-indigo-500">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">Équipes Actives</p>
+                            <p class="text-2xl font-bold text-indigo-600 dark:text-indigo-400 mt-1"
+                                id="kpiActiveTeamsCount">20 / 24</p>
+                        </div>
+                        <div class="text-2xl text-indigo-600/40"><i class="fas fa-users"></i></div>
+                    </div>
+                </div>
+
+                <!-- Conformité -->
+                <div class="bg-white dark:bg-gray-800 rounded-lg card-shadow p-5 border-l-4 border-green-500">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">Conformité</p>
+                            <p class="text-2xl font-bold text-green-600 dark:text-green-400 mt-1" id="kpiConformity">92%
+                            </p>
+                        </div>
+                        <div class="text-2xl text-green-600/40"><i class="fas fa-check-circle"></i></div>
+                    </div>
+                </div>
+
+                <!-- Saturation Équipes -->
+                <div class="bg-white dark:bg-gray-800 rounded-lg card-shadow p-5 border-l-4 border-orange-500">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">Saturation</p>
+                            <p class="text-2xl font-bold text-orange-600 dark:text-orange-400 mt-1" id="kpiSaturation">
+                                65%</p>
+                        </div>
+                        <div class="text-2xl text-orange-600/40"><i class="fas fa-hourglass-end"></i></div>
+                    </div>
+                </div>
+
+                <!-- Disponibilité Stock -->
+                <div class="bg-white dark:bg-gray-800 rounded-lg card-shadow p-5 border-l-4 border-purple-500">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">Stock Disponible</p>
+                            <p class="text-2xl font-bold text-purple-600 dark:text-purple-400 mt-1" id="kpiStockAvail">
+                                85%</p>
+                        </div>
+                        <div class="text-2xl text-purple-600/40"><i class="fas fa-boxes"></i></div>
                     </div>
                 </div>
             </div>
-            <div class="bg-white rounded-lg card-shadow p-6 kpi-card border-green-500">
-                <div class="flex justify-between items-start">
-                    <div>
-                        <p class="text-sm text-gray-500 font-medium">Électrifiés</p>
-                        <p class="text-3xl font-bold text-green-600" id="completedHouseholds">-</p>
-                    </div>
-                    <div class="bg-green-100 p-3 rounded-lg text-green-600">
-                        <i class="fas fa-check-circle text-xl"></i>
-                    </div>
+        </div>
+
+        <!-- Suivi équipes et villages -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            <div class="bg-white dark:bg-gray-800 rounded-lg card-shadow p-6">
+                <div class="flex items-center justify-between mb-2">
+                    <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100">Top équipes (maisons assignées)
+                    </h3>
+                    <span
+                        class="text-xs bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 px-2 py-1 rounded">Live</span>
                 </div>
+                <div id="topTeams" class="space-y-2 text-sm text-gray-800 dark:text-gray-300">-</div>
             </div>
-            <div class="bg-white rounded-lg card-shadow p-6 kpi-card border-blue-500">
-                <div class="flex justify-between items-start">
-                    <div>
-                        <p class="text-sm text-gray-500 font-medium">Avancement</p>
-                        <p class="text-3xl font-bold text-blue-600" id="progressRate">-</p>
-                    </div>
-                    <div class="bg-blue-100 p-3 rounded-lg text-blue-600">
-                        <i class="fas fa-chart-line text-xl"></i>
-                    </div>
+            <div class="bg-white dark:bg-gray-800 rounded-lg card-shadow p-6">
+                <div class="flex items-center justify-between mb-2">
+                    <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100">Saturation équipes</h3>
+                    <span
+                        class="text-xs bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-2 py-1 rounded">Capacité
+                        estimée</span>
                 </div>
+                <div id="teamSaturation" class="space-y-2 text-sm text-gray-800 dark:text-gray-300">-</div>
             </div>
-            <div class="bg-white rounded-lg card-shadow p-6 kpi-card border-yellow-500">
-                <div class="flex justify-between items-start">
-                    <div>
-                        <p class="text-sm text-gray-500 font-medium">Budget Restant</p>
-                        <p class="text-2xl font-bold text-yellow-600" id="remainingBudget">-</p>
-                    </div>
-                    <div class="bg-yellow-100 p-3 rounded-lg text-yellow-600">
-                        <i class="fas fa-money-bill-wave text-xl"></i>
-                    </div>
+            <div class="bg-white dark:bg-gray-800 rounded-lg card-shadow p-6">
+                <div class="flex items-center justify-between mb-2">
+                    <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100">Risque retard villages</h3>
+                    <span
+                        class="text-xs bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 px-2 py-1 rounded">Estimation
+                        jours</span>
+                </div>
+                <div id="villageRisk" class="space-y-2 text-sm text-gray-800 dark:text-gray-300">-</div>
+            </div>
+        </div>
+
+        <!-- Qualité / Historique / Actions -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            <div class="bg-white dark:bg-gray-800 rounded-lg card-shadow p-6">
+                <div class="flex items-center justify-between mb-2">
+                    <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100">Qualité (réserves)</h3>
+                    <span
+                        class="text-xs bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-1 rounded">Conformité</span>
+                </div>
+                <div id="qualityStats" class="space-y-2 text-sm text-gray-800 dark:text-gray-300">-</div>
+            </div>
+            <div class="bg-white dark:bg-gray-800 rounded-lg card-shadow p-6">
+                <div class="flex items-center justify-between mb-2">
+                    <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100">Historique 7j</h3>
+                    <span
+                        class="text-xs bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 px-2 py-1 rounded">Sparklines</span>
+                </div>
+                <div id="historyStats" class="space-y-2 text-sm text-gray-800 dark:text-gray-300">-</div>
+            </div>
+            <div class="bg-white dark:bg-gray-800 rounded-lg card-shadow p-6">
+                <div class="flex items-center justify-between mb-2">
+                    <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100">Actions</h3>
+                </div>
+                <div class="space-y-2">
+                    <button id="rebalanceBtn"
+                        class="w-full bg-indigo-600 dark:bg-indigo-700 text-white px-3 py-2 rounded-lg shadow hover:bg-indigo-700 dark:hover:bg-indigo-600 text-sm flex items-center justify-center gap-2">
+                        <i class="fas fa-random"></i> Suggestion rééquilibrage
+                    </button>
+                    <button id="pdfBtn"
+                        class="w-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 px-3 py-2 rounded-lg shadow hover:bg-gray-200 dark:hover:bg-gray-600 text-sm flex items-center justify-center gap-2">
+                        <i class="fas fa-file-pdf"></i> Export PDF Dashboard
+                    </button>
+                    <div id="rebalanceResult" class="text-sm text-gray-700 dark:text-gray-400"></div>
                 </div>
             </div>
         </div>
 
         <!-- Graphiques -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-            <div class="bg-white rounded-lg card-shadow p-6">
-                <h3 class="text-lg font-semibold text-gray-800 mb-4">
-                    <i class="fas fa-chart-bar text-indigo-600 mr-2"></i> Avancement par Zone
+            <div class="bg-white dark:bg-gray-800 rounded-lg card-shadow p-6">
+                <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">
+                    <i class="fas fa-chart-bar text-indigo-600 dark:text-indigo-400 mr-2"></i> Avancement par Zone
                 </h3>
                 <div class="h-64">
                     <canvas id="zoneProgressChart"></canvas>
                 </div>
             </div>
-            <div class="bg-white rounded-lg card-shadow p-6">
-                <h3 class="text-lg font-semibold text-gray-800 mb-4">
-                    <i class="fas fa-chart-pie text-indigo-600 mr-2"></i> Performance des Équipes
+            <div class="bg-white dark:bg-gray-800 rounded-lg card-shadow p-6">
+                <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">
+                    <i class="fas fa-chart-pie text-indigo-600 dark:text-indigo-400 mr-2"></i> Performance des Équipes
                 </h3>
                 <div class="h-64">
                     <canvas id="teamPerformanceChart"></canvas>
                 </div>
             </div>
+            <div class="bg-white dark:bg-gray-800 rounded-lg card-shadow p-6">
+                <h3
+                    class="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4 flex items-center justify-between">
+                    <span><i class="fas fa-cloud-download-alt text-blue-600 dark:text-blue-400 mr-2"></i> Historique des
+                        Synchros</span>
+                    <div class="flex items-center gap-2">
+                        <button id="clearSyncBtn"
+                            class="text-xs bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 px-2 py-1 rounded hover:bg-rose-100 dark:hover:bg-rose-900/50 border border-rose-200 dark:border-rose-900/50">Vider</button>
+                        <span class="text-xs text-gray-500 dark:text-gray-400" id="dashboardLastSync">Jamais</span>
+                    </div>
+                </h3>
+                <div id="dashboardSyncHistory"
+                    class="space-y-2 max-h-64 overflow-y-auto text-sm text-gray-700 dark:text-gray-300">
+                    <div class="text-gray-400 dark:text-gray-500 italic">Aucun log</div>
+                </div>
+            </div>
         </div>
 
         <!-- Activités Récentes -->
-        <div class="bg-white rounded-lg card-shadow p-6">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">
-                <i class="fas fa-history text-indigo-600 mr-2"></i> Activités Récentes
+        <div class="bg-white dark:bg-gray-800 rounded-lg card-shadow p-6">
+            <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">
+                <i class="fas fa-history text-indigo-600 dark:text-indigo-400 mr-2"></i> Activités Récentes
             </h3>
-            <div id="recentActivities" class="divide-y divide-gray-200">
+            <div id="recentActivities" class="divide-y divide-gray-200 dark:divide-gray-700">
                 <!-- Rempli dynamiquement -->
-                <p class="text-gray-500 text-sm py-4 italic">Chargement des activités...</p>
+                <p class="text-gray-500 dark:text-gray-400 text-sm py-4 italic">Chargement des activités...</p>
             </div>
         </div>
 
         <!-- Alertes Critiques (Détails) -->
-        <div id="alertsSection" class="hidden bg-white rounded-lg card-shadow p-6 mb-8 border-l-4 border-red-500">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center text-red-700">
+        <div id="alertsSection"
+            class="hidden bg-white dark:bg-gray-800 rounded-lg card-shadow p-6 mb-8 border-l-4 border-red-500">
+            <h3
+                class="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4 flex items-center text-red-700 dark:text-red-400">
                 <i class="fas fa-exclamation-circle mr-2"></i> Analyse des Alertes
             </h3>
             <div id="alertsList" class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -181,53 +457,105 @@
     </div>
 
     <!-- Shared Modules -->
-    <script src="src/shared/errors/DomainErrors.js"></script>
-    <script src="src/shared/constants/enums.js"></script>
+    <script type="module" src="src/shared/errors/DomainErrors.js"></script>
+    <script type="module" src="src/shared/constants/enums.js"></script>
 
     <!-- Domain Objects -->
-    <script src="src/domain/value-objects/Location.js"></script>
-    <script src="src/domain/value-objects/Cost.js"></script>
-    <script src="src/domain/value-objects/ProductivityRate.js"></script>
-    <script src="src/domain/entities/Entity.js"></script>
-    <script src="src/domain/entities/Household.js"></script>
-    <script src="src/domain/entities/Project.js"></script>
-    <script src="src/domain/entities/Team.js"></script>
-    <script src="src/domain/entities/Zone.js"></script>
+    <script type="module" src="src/domain/value-objects/Location.js"></script>
+    <script type="module" src="src/domain/value-objects/Cost.js"></script>
+    <script type="module" src="src/domain/value-objects/ProductivityRate.js"></script>
+    <script type="module" src="src/domain/entities/Entity.js"></script>
+    <script type="module" src="src/domain/entities/Household.js"></script>
+    <script type="module" src="src/domain/entities/Project.js"></script>
+    <script type="module" src="src/domain/entities/Team.js"></script>
+    <script type="module" src="src/domain/entities/Zone.js"></script>
 
     <!-- Services & Infrastructure -->
-    <script src="src/infrastructure/events/EventBus.js"></script>
-    <script src="src/infrastructure/logging/Logger.js"></script>
-    <script src="src/infrastructure/errors/ErrorHandler.js"></script>
-    <script src="src/infrastructure/monitoring/MetricsService.js"></script>
-    <script src="src/infrastructure/sync/SyncService.js"></script>
-    <script src="src/infrastructure/backup/BackupService.js"></script>
-    <script src="src/infrastructure/backup/RestoreService.js"></script>
-    <script src="src/infrastructure/migrations/DataStructureGenerator.js"></script>
-    <script src="src/infrastructure/migrations/MigrationService.js"></script>
+    <script type="module" src="src/infrastructure/events/EventBus.js"></script>
+    <script type="module" src="src/infrastructure/logging/Logger.js"></script>
+    <script type="module" src="src/infrastructure/errors/ErrorHandler.js"></script>
+    <script type="module" src="src/infrastructure/monitoring/MetricsService.js"></script>
+    <script type="module" src="src/infrastructure/sync/SyncService.js"></script>
+    <script type="module" src="src/infrastructure/backup/BackupService.js"></script>
+    <script type="module" src="src/infrastructure/backup/RestoreService.js"></script>
+    <script type="module" src="src/infrastructure/migrations/DataStructureGenerator.js"></script>
+    <script type="module" src="src/infrastructure/migrations/MigrationService.js"></script>
+
+    <!-- Registry -->
+    <script type="module" src="src/domain/registry/TeamRegistry.js"></script>
 
     <!-- Repositories -->
-    <script src="src/infrastructure/repositories/ProjectRepository.js"></script>
-    <script src="src/infrastructure/repositories/HouseholdRepository.js"></script>
-    <script src="src/infrastructure/repositories/TeamRepository.js"></script>
-    <script src="src/infrastructure/repositories/ZoneRepository.js"></script>
+    <script type="module" src="src/infrastructure/repositories/ProjectRepository.js"></script>
+    <script type="module" src="src/infrastructure/repositories/HouseholdRepository.js"></script>
+    <script type="module" src="src/infrastructure/repositories/TeamRepository.js"></script>
+    <script type="module" src="src/infrastructure/repositories/ZoneRepository.js"></script>
 
     <!-- Application Services -->
-    <script src="src/application/services/HouseholdService.js"></script>
-    <script src="src/application/services/ProjectService.js"></script>
-    <script src="src/application/state/ProjectStore.js"></script>
-    <script src="src/application/state/StoreRegistry.js"></script>
+    <script type="module" src="src/application/services/HouseholdService.js"></script>
+    <script type="module" src="src/application/services/ProjectService.js"></script>
+    <script type="module" src="src/application/state/ProjectStore.js"></script>
+    <script type="module" src="src/application/state/StoreRegistry.js"></script>
 
     <!-- Domain Services (Calculations) -->
-    <script src="src/domain/services/ResourceAllocationService.js"></script>
-    <script src="src/domain/services/CostCalculationService.js"></script>
+    <script type="module" src="src/domain/services/ResourceAllocationService.js"></script>
+    <script type="module" src="src/domain/services/CostCalculationService.js"></script>
 
     <!-- App Initialization (Wires everything together) -->
-    <script src="src/init.js"></script>
-    <script>
+    <script type="module" src="src/init.js"></script>
+    <script type="module">
+        const formatMoney = (amount) => new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(amount || 0) + ' FCFA';
+        const formatNumber = (num) => new Intl.NumberFormat('fr-FR').format(num || 0);
+
+        const devisItems = [
+            { id: 'formation', label: 'Formation 5 équipes (19 électriciens)', region: 'Global', qty: 5, unit: 1500000 },
+            { id: 'transport', label: 'Transport matériel', region: 'Global', qty: 3750, unit: 3667 },
+            { id: 'controle', label: 'Contrôle conformité / reporting', region: 'Global', qty: 3750, unit: 4000 },
+            { id: 'kaffrine-coffret', label: 'Coffret + potelet + raccordement réseau', region: 'Kaffrine', qty: 2350, unit: 6230 },
+            { id: 'kaffrine-mur', label: 'Mur support coffret (cheminée)', region: 'Kaffrine', qty: 2000, unit: 35000 },
+            { id: 'kaffrine-tranchee', label: 'Tranchées + grillage (30x50, 15m)', region: 'Kaffrine', qty: 10000, unit: 1000 },
+            { id: 'kaffrine-coffret-int', label: 'Coffret modulaire + mise à la terre', region: 'Kaffrine', qty: 2350, unit: 23000 },
+            { id: 'kaffrine-kit2', label: 'Kit secondaire', region: 'Kaffrine', qty: 1000, unit: 6230 },
+            { id: 'tamba-coffret', label: 'Coffret + potelet + raccordement réseau', region: 'Tambacounda', qty: 1400, unit: 6230 },
+            { id: 'tamba-mur', label: 'Mur support coffret (cheminée)', region: 'Tambacounda', qty: 1500, unit: 35000 },
+            { id: 'tamba-tranchee', label: 'Tranchées + grillage (30x50, 15m)', region: 'Tambacounda', qty: 10000, unit: 1000 },
+            { id: 'tamba-coffret-int', label: 'Coffret modulaire + mise à la terre', region: 'Tambacounda', qty: 1400, unit: 23000 },
+            { id: 'tamba-kit2', label: 'Kit secondaire', region: 'Tambacounda', qty: 1000, unit: 6230 }
+        ];
+        const devisPlafond = 300823750;
+
+        function loadRealCosts() {
+            try { return JSON.parse(localStorage.getItem('realCostsProq') || '{}'); } catch { return {}; }
+        }
+
+        function computeDevisMargin() {
+            const real = loadRealCosts();
+            let totalRef = 0, totalReal = 0;
+            devisItems.forEach(item => {
+                const planned = item.qty * item.unit;
+                totalRef += planned;
+                const realLine = real[item.id] || {};
+                const rq = Number(realLine.qty || item.qty);
+                const ru = Number(realLine.unit || item.unit);
+                totalReal += rq * ru;
+            });
+            const margin = totalRef - totalReal;
+            const pct = totalRef ? (margin / totalRef) * 100 : 0;
+            return { totalRef, totalReal, margin, pct };
+        }
+
         document.addEventListener('DOMContentLoaded', async () => {
             try {
                 // Attendre que Dexie soit ouvert via init.js
-                if (window.db && !window.db.isOpen()) {
+                for (let i = 0; i < 10; i++) {
+                    if (window.db && window.db.isOpen()) break;
+                    await new Promise(r => setTimeout(r, 200));
+                }
+
+                if (!window.db) {
+                    throw new Error("Database initialization timed out");
+                }
+
+                if (!window.db.isOpen()) {
                     await window.db.open();
                 }
                 console.log('✅ Base de données ouverte pour le Dashboard');
@@ -235,29 +563,40 @@
                 const households = await HouseholdRepository.getAll();
                 const teams = await TeamRepository.getAll();
                 const project = await ProjectRepository.getCurrent();
+                await renderSyncHistoryDashboard();
 
                 updateKPIs(households, project);
+                updateDevisCard();
+                const villageMetrics = renderVillageRisk(households, teams, project) || [];
                 initCharts(households, teams);
+                renderTopTeams(households, teams);
+                renderTeamSaturation(households, teams, project);
                 loadRecentActivities(households);
-                checkCriticalAlerts(households, teams);
+                checkCriticalAlerts(households, teams, villageMetrics);
 
                 // Event listener pour le filtre de période
-                document.getElementById('dashboardPeriod').addEventListener('change', async (e) => {
-                    const period = e.target.value;
-                    let filtered = households;
-                    const now = new Date();
-
-                    if (period === 'month') {
-                        const monthAgo = new Date(now.setMonth(now.getMonth() - 1));
-                        filtered = households.filter(h => new Date(h.updatedAt || h.createdAt) >= monthAgo);
-                    } else if (period === 'week') {
-                        const weekAgo = new Date(now.setDate(now.getDate() - 7));
-                        filtered = households.filter(h => new Date(h.updatedAt || h.createdAt) >= weekAgo);
-                    }
-
+                const periodSel = document.getElementById('dashboardPeriod');
+                const applyPeriod = () => {
+                    const filtered = filterByPeriod(households, periodSel.value);
                     updateKPIs(filtered, project);
                     initCharts(filtered, teams);
-                });
+                    renderTopTeams(filtered, teams);
+                    renderTeamSaturation(filtered, teams, project);
+                    const villageMetrics = renderVillageRisk(filtered, teams, project);
+                    renderQuality(filtered, teams);
+                    renderHistory(filtered, teams);
+                    attachRebalance(villageMetrics, teams, project);
+                    loadRecentActivities(filtered);
+                    checkCriticalAlerts(filtered, teams, villageMetrics);
+                    updateDevisCard();
+                };
+                periodSel.addEventListener('change', applyPeriod);
+                applyPeriod();
+
+                const pdfBtn = document.getElementById('pdfBtn');
+                if (pdfBtn) pdfBtn.addEventListener('click', exportPdf);
+                const clearSyncBtn = document.getElementById('clearSyncBtn');
+                if (clearSyncBtn) clearSyncBtn.addEventListener('click', clearSyncHistory);
 
             } catch (err) {
                 console.error('Erreur initialisation dashboard:', err);
@@ -267,15 +606,58 @@
 
         function updateKPIs(households, project) {
             const total = households.length;
-            const completed = households.filter(h => h.status === 'Conforme').length;
+            const completed = households.filter(h => (h.status || '').toLowerCase() === 'conforme').length;
             const progress = total > 0 ? (completed / total) * 100 : 0;
             const budget = project.budget || 100000000;
-            const remainingBudget = budget - (budget * progress / 100);
+            const remainingBudget = budget - (budget * (completed / (total || 1)));
 
-            document.getElementById('totalHouseholds').textContent = total;
-            document.getElementById('completedHouseholds').textContent = completed;
-            document.getElementById('progressRate').textContent = `${progress.toFixed(1)}%`;
-            document.getElementById('remainingBudget').textContent = `${Math.round(remainingBudget).toLocaleString()} F`;
+            // Logistics metrics
+            const delivered = households.filter(h => h.delivery && (h.delivery.agent || h.delivery.date)).length;
+            const alerts = households.filter(h => {
+                const s = h.status || '';
+                const m = h.material || {};
+                const past = ['Attente Branchement', 'Attente électricien', 'Attente Controleur', 'Conforme'];
+                return past.includes(s) && (!m || Object.keys(m).length === 0);
+            }).length;
+
+            const agentSet = new Set();
+            households.forEach(h => {
+                const a = h.delivery?.agent || h.delivery;
+                if (typeof a === 'string' && a) agentSet.add(a);
+                else if (a?.agent) agentSet.add(a.agent);
+            });
+
+            // Update UI
+            if (document.getElementById('kpiTotalHouseholds')) document.getElementById('kpiTotalHouseholds').textContent = formatNumber(total);
+            if (document.getElementById('kpiElectrifiedHouseholds')) document.getElementById('kpiElectrifiedHouseholds').textContent = formatNumber(completed);
+            if (document.getElementById('kpiBudgetPercent')) {
+                const bPct = budget > 0 ? Math.round(((budget - remainingBudget) / budget) * 100) : 0;
+                document.getElementById('kpiBudgetPercent').textContent = bPct + '%';
+            }
+            if (document.getElementById('remainingBudget')) document.getElementById('remainingBudget').textContent = formatMoney(remainingBudget);
+
+            // Operational KPIs
+            if (document.getElementById('kpiDeliveries')) document.getElementById('kpiDeliveries').textContent = formatNumber(delivered);
+            if (document.getElementById('kpiStockAlerts')) document.getElementById('kpiStockAlerts').textContent = formatNumber(alerts);
+            if (document.getElementById('kpiActiveTeamsCount')) document.getElementById('kpiActiveTeamsCount').textContent = formatNumber(agentSet.size) + ' / 24';
+            if (document.getElementById('kpiConformity')) document.getElementById('kpiConformity').textContent = total > 0 ? Math.round(completed / total * 100) + '%' : '0%';
+
+            // Workshop
+            const workshop = project.config?.logistics_workshop || { kitsPrepared: 0 };
+            if (document.getElementById('kpiWorkshopKits')) document.getElementById('kpiWorkshopKits').textContent = formatNumber(workshop.kitsPrepared);
+        }
+
+        function updateDevisCard() {
+            const card = document.getElementById('kpiDevisMargin');
+            if (!card) return;
+            const res = computeDevisMargin();
+            card.textContent = formatMoney(res.margin);
+            document.getElementById('kpiDevisPlafond').textContent = formatMoney(devisPlafond);
+            const badge = document.getElementById('alertBadge');
+            if (res.margin < 0 && badge) {
+                badge.classList.remove('hidden');
+                document.getElementById('alertCount').textContent = Number(document.getElementById('alertCount').textContent || 0) + 1;
+            }
         }
 
         let zoneChart = null;
@@ -378,7 +760,7 @@
             });
         }
 
-        async function checkCriticalAlerts(households, teams) {
+        async function checkCriticalAlerts(households, teams, villageMetrics = []) {
             const alerts = [];
 
             // 1. Équipes en retard (Ex: plus de 50% de ménages non finis)
@@ -396,19 +778,24 @@
                 }
             });
 
-            // 2. Zones à faible taux
-            const zones = [...new Set(households.map(h => h.zone).filter(Boolean))];
-            zones.forEach(zone => {
-                const zh = households.filter(h => h.zone === zone);
-                const rate = zh.filter(h => h.status === 'Conforme').length / zh.length;
-                if (rate < 0.3 && zh.length > 10) {
-                    alerts.push({
-                        title: `Retard Zone: ${zone}`,
-                        message: `Taux de conformité critique (${Math.round(rate * 100)}%).`,
-                        type: 'warning'
-                    });
-                }
+            // 2. Villages à risque (si fourni)
+            villageMetrics.filter(v => v.days > 10).forEach(v => {
+                alerts.push({
+                    title: `Risque retard: ${v.village}`,
+                    message: `${v.remaining} ménages restants, ${v.days} j estimés.`,
+                    type: 'warning'
+                });
             });
+
+            // 3. Marge devis négative
+            const margin = computeDevisMargin();
+            if (margin.margin < 0) {
+                alerts.push({
+                    title: 'Marge devis négative',
+                    message: `Dérapage de ${formatMoney(Math.abs(margin.margin))} (${margin.pct.toFixed(1)}%).`,
+                    type: 'error'
+                });
+            }
 
             if (alerts.length > 0) {
                 document.getElementById('alertBadge').classList.remove('hidden');
@@ -428,8 +815,465 @@
         function scrollToAlerts() {
             document.getElementById('alertsSection').scrollIntoView({ behavior: 'smooth' });
         }
+
+        async function renderSyncHistoryDashboard() {
+            try {
+                if (!window.db?.sync_logs) return;
+                const container = document.getElementById('dashboardSyncHistory');
+                const lastEl = document.getElementById('dashboardLastSync');
+                if (!container) return;
+                const logs = await window.db.sync_logs.orderBy('date').reverse().limit(8).toArray();
+                if (!logs || logs.length === 0) {
+                    container.innerHTML = '<div class="text-gray-400 italic">Aucun log</div>';
+                    if (lastEl) lastEl.textContent = 'Jamais';
+                    return;
+                }
+                container.innerHTML = logs.map(log => {
+                    const color = log.status === 'success' ? 'text-green-600' : 'text-red-600';
+                    return `<div class="flex justify-between items-center border-b border-gray-100 pb-2 last:border-0 last:pb-0">
+                                <div>
+                                    <div class="font-semibold text-gray-800">${log.type}</div>
+                                    <div class="text-xs text-gray-500">${new Date(log.date).toLocaleString()}</div>
+                                </div>
+                                <span class="${color} text-xs font-bold uppercase">${log.status}</span>
+                            </div>`;
+                }).join('');
+                if (lastEl) lastEl.textContent = new Date(logs[0].date).toLocaleString();
+            } catch (e) {
+                console.warn('Impossible de charger l’historique des synchros (dashboard)', e);
+            }
+        }
+
+        async function clearSyncHistory() {
+            try {
+                if (!window.db?.sync_logs) return;
+                await window.db.sync_logs.clear();
+                await renderSyncHistoryDashboard();
+            } catch (e) {
+                console.warn('Impossible de vider les synchros', e);
+            }
+        }
+
+        // --- Nouveau suivi équipes & villages ---
+        function defaultCapForType(type, project) {
+            const caps = project?.teamCapabilities || {};
+            const key = Object.keys(caps).find(k => k.toLowerCase() === (type || '').toLowerCase());
+            if (key) return caps[key].daily || caps[key].dailyCapacity || 5;
+            return 5;
+        }
+
+        function filterByPeriod(households, period) {
+            if (period === 'all') return households;
+            const now = new Date();
+            let start = new Date();
+            if (period === 'month') start.setMonth(start.getMonth() - 1);
+            else if (period === 'week') start.setDate(start.getDate() - 7);
+            return households.filter(h => {
+                const d = h.updatedAt || h.createdAt;
+                if (!d) return true;
+                return new Date(d) >= start && new Date(d) <= now;
+            });
+        }
+
+        function renderTopTeams(households, teams) {
+            const container = document.getElementById('topTeams');
+            if (!container) return;
+            const counts = teams.map(t => ({
+                team: t,
+                count: households.filter(h => h.teamId === t.id).length
+            })).sort((a, b) => b.count - a.count).slice(0, 3);
+            if (!counts.length) {
+                container.textContent = 'Aucune équipe affectée.';
+                return;
+            }
+            container.innerHTML = counts.map(c => `
+                <div class="flex items-center justify-between">
+                    <span class="font-semibold">${c.team.name || c.team.type || c.team.id}</span>
+                    <span class="text-indigo-600 font-bold">${c.count} ménages</span>
+                </div>
+            `).join('');
+        }
+
+        function renderTeamSaturation(households, teams, project) {
+            const container = document.getElementById('teamSaturation');
+            if (!container) return;
+            const rows = teams.map(t => {
+                const assigned = households.filter(h => h.teamId === t.id).length;
+                const cap = defaultCapForType(t.type, project);
+                const sat = Math.round((assigned / (cap || 1)) * 100);
+                return { name: t.name || t.type || t.id, sat, assigned, cap };
+            }).sort((a, b) => b.sat - a.sat);
+            if (!rows.length) {
+                container.textContent = 'Aucune équipe.';
+                return;
+            }
+            container.innerHTML = rows.slice(0, 5).map(r => `
+                <div class="flex items-center justify-between">
+                    <div>
+                        <div class="font-semibold">${r.name}</div>
+                        <div class="text-xs text-gray-500">${r.assigned} ménages / cap ${r.cap}/j</div>
+                    </div>
+                    <span class="${r.sat > 120 ? 'text-red-600' : r.sat > 100 ? 'text-amber-600' : 'text-green-600'} font-bold">${r.sat}%</span>
+                </div>
+            `).join('');
+        }
+
+        function loadVillageAssignments() {
+            try {
+                return JSON.parse(localStorage.getItem('village_team_assignments')) || {};
+            } catch { return {}; }
+        }
+
+        function renderVillageRisk(households, teams, project) {
+            const container = document.getElementById('villageRisk');
+            if (!container) return;
+            const assign = loadVillageAssignments();
+            const grouped = households.reduce((acc, h) => {
+                const v = (h.location?.village || h.location?.commune || 'Non renseigné').trim();
+                if (!acc[v]) acc[v] = [];
+                acc[v].push(h);
+                return acc;
+            }, {});
+
+            const rows = Object.entries(grouped).map(([v, list]) => {
+                const remaining = list.filter(h => (h.status || '').toLowerCase() !== 'conforme').length;
+                const aff = assign[v] || {};
+                const cap = Object.entries(aff).reduce((sum, [, id]) => {
+                    if (!id) return sum;
+                    const team = teams.find(t => t.id === id);
+                    if (!team) return sum + 5;
+                    return sum + defaultCapForType(team.type, project);
+                }, 0) || 5; // fallback
+                const days = Math.ceil(remaining / cap);
+                return { village: v, remaining, cap, days };
+            }).sort((a, b) => b.days - a.days).slice(0, 5);
+
+            if (!rows.length) {
+                container.textContent = 'Aucun village à risque.';
+                return;
+            }
+
+            container.innerHTML = rows.map(r => `
+                <div class="flex items-center justify-between">
+                    <div>
+                        <div class="font-semibold">${r.village}</div>
+                        <div class="text-xs text-gray-500">${r.remaining} ménages restants • Cap ${r.cap}/j</div>
+                    </div>
+                    <span class="${r.days > 10 ? 'text-rose-600' : 'text-amber-600'} font-bold">${r.days} j</span>
+                </div>
+            `).join('');
+            return rows;
+        }
+
+        function renderQuality(households, teams) {
+            const container = document.getElementById('qualityStats');
+            if (!container) return;
+            const rows = teams.map(t => {
+                const th = households.filter(h => h.teamId === t.id);
+                const total = th.length;
+                const nonConf = th.filter(h => (h.status || '').toLowerCase() !== 'conforme').length;
+                const rate = total ? Math.round((1 - nonConf / total) * 100) : 100;
+                return { name: t.name || t.type || t.id, rate, total, nonConf };
+            }).sort((a, b) => b.rate - a.rate).slice(0, 5);
+            if (!rows.length) {
+                container.textContent = 'Pas de données.';
+                return;
+            }
+            container.innerHTML = rows.map(r => `
+                <div class="flex items-center justify-between">
+                    <div>
+                        <div class="font-semibold">${r.name}</div>
+                        <div class="text-xs text-gray-500">${r.total} ménages • ${r.nonConf} non conformes</div>
+                    </div>
+                    <span class="${r.rate < 80 ? 'text-rose-600' : r.rate < 95 ? 'text-amber-600' : 'text-green-600'} font-bold">${r.rate}%</span>
+                </div>
+            `).join('');
+        }
+
+        function renderHistory(households, teams) {
+            const container = document.getElementById('historyStats');
+            if (!container) return;
+            const now = new Date();
+            const weekAgo = new Date();
+            weekAgo.setDate(now.getDate() - 7);
+            const rows = teams.map(t => {
+                const th = households.filter(h => h.teamId === t.id && h.updatedAt);
+                const points = [];
+                for (let i = 6; i >= 0; i--) {
+                    const day = new Date();
+                    day.setDate(now.getDate() - i);
+                    const dayStr = day.toISOString().slice(0, 10);
+                    const count = th.filter(h => (h.updatedAt || '').startsWith(dayStr)).length;
+                    points.push(count);
+                }
+                const sum = points.reduce((a, b) => a + b, 0);
+                return { name: t.name || t.type || t.id, points, sum };
+            }).sort((a, b) => b.sum - a.sum).slice(0, 3);
+
+            if (!rows.length) {
+                container.textContent = 'Pas d’historique.';
+                return;
+            }
+            container.innerHTML = rows.map(r => `
+                <div class="flex items-center justify-between">
+                    <div class="font-semibold">${r.name}</div>
+                    <div class="text-xs text-gray-500">7j: ${r.points.join(' / ')}</div>
+                </div>
+            `).join('');
+        }
+
+        function attachRebalance(villageMetrics, teams, project) {
+            const btn = document.getElementById('rebalanceBtn');
+            const out = document.getElementById('rebalanceResult');
+            if (!btn || !out) return;
+            btn.onclick = () => {
+                const suggestions = villageMetrics.map(v => {
+                    if (v.cap === 0) {
+                        // proposer d’ajouter la première équipe dispo
+                        const candidate = teams[0];
+                        return `${v.village}: affecter ${candidate?.name || candidate?.type || 'une équipe'} (cap ${defaultCapForType(candidate?.type, project)})`;
+                    }
+                    return `${v.village}: OK (${v.days} j restants)`;
+                }).join('<br>');
+                out.innerHTML = suggestions || 'Rien à rééquilibrer.';
+            };
+        }
+
+        function exportPdf() {
+            window.print(); // simple fallback sans dépendance
+        }
     </script>
-    <script src="src/ui/theme-toggle.js"></script>
+    <script type="module">
+        document.addEventListener('DOMContentLoaded', () => {
+            const syncContainer = document.getElementById('syncContainer');
+            if (syncContainer && window.apiService) {
+                const statusDot = document.createElement('span');
+                statusDot.id = 'syncStatusDot';
+                statusDot.className = 'w-2 h-2 rounded-full bg-gray-400 inline-block';
+                statusDot.title = 'Vérification...';
+
+                const syncBtn = document.createElement('button');
+                syncBtn.id = 'syncServerBtn';
+                syncBtn.className = 'bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg transition-all text-xs font-semibold shadow-md flex items-center gap-2 border border-emerald-500/30 active:scale-95';
+                syncBtn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> <span>Sync</span>';
+                syncBtn.style.display = 'none';
+
+                syncContainer.appendChild(statusDot);
+                syncContainer.appendChild(syncBtn);
+
+                const updateAuthUI = () => {
+                    const isAuth = window.apiService.isAuthenticated;
+                    const isOnline = window.apiService.isOnline;
+                    syncBtn.style.display = (isAuth && isOnline) ? 'flex' : 'none';
+                    if (isAuth && window.apiService.currentUser) {
+                        statusDot.title = `Connecté: ${window.apiService.currentUser.username}`;
+                    }
+                };
+
+                if (window.apiService.onStatusChange) {
+                    window.apiService.onStatusChange((online) => {
+                        statusDot.className = 'w-2 h-2 rounded-full inline-block ' + (online ? 'bg-emerald-400' : 'bg-rose-400');
+                        updateAuthUI();
+                    });
+                }
+
+                if (window.apiService.fullSync) {
+                    syncBtn.addEventListener('click', async () => {
+                        try {
+                            syncBtn.disabled = true;
+                            await window.apiService.fullSync();
+                            Swal.fire('Synchronisation réussie', '', 'success');
+                        } catch (err) { Swal.fire('Erreur sync', err.message, 'error'); }
+                        finally { syncBtn.disabled = false; }
+                    });
+                }
+
+                updateAuthUI();
+
+                // Handle redirection parameter
+                if (new URLSearchParams(window.location.search).get('auth_required')) {
+                    setTimeout(() => loginBtn?.click(), 1000);
+                }
+            }
+        });
+    </script>
+    <script type="module" src="src/ui/theme-toggle.js"></script>
+    <!-- API Service & AuthGuard already loaded at top of page -->
+
+    <!-- Dashboard Institutionnel — Niveau 3 National -->
+    <script type="module">
+        /**
+         * Initialise le Dashboard Institutionnel avec KPI et IGPP
+         * Attend que KPIService + ScoreEngine soient disponibles (init.js)
+         */
+
+        async function initializeDashboardInstitutional() {
+            try {
+                // Attendre que KPIService soit dispo (max 10 secondes)
+                let retries = 0;
+                while (!window.kpiService && retries < 100) {
+                    await new Promise(r => setTimeout(r, 100));
+                    retries++;
+                }
+
+                if (!window.kpiService) {
+                    console.warn('⚠️ KPIService not available, using defaults');
+                    return updateDashboardWithDefaults();
+                }
+
+                // Charger les KPI
+                console.log('📊 Loading KPI and IGPP Score...');
+                const kpis = await window.kpiService.getAllKPIs();
+                const igpp = window.ScoreEngine.calculateIGPP(kpis);
+                const recommendations = window.ScoreEngine.generateRecommendations(kpis, igpp);
+
+                // Remplir le header institutionnel
+                updateHeaderInstitutional(kpis);
+
+                // Remplir le score global IGPP
+                updateIGPPSection(igpp, recommendations);
+
+                // Remplir les KPI stratégiques (gros chiffres)
+                updateStrategicKPIs(kpis);
+
+                // Remplir les KPI opérationnels
+                updateOperationalKPIs(kpis);
+
+                console.log('✅ Dashboard Institutionnel initialized');
+            } catch (error) {
+                console.error('❌ Dashboard initialization error:', error);
+                updateDashboardWithDefaults();
+            }
+        }
+
+        function updateHeaderInstitutional(kpis) {
+            // Projet
+            const projectName = document.getElementById('projectName');
+            if (projectName) projectName.textContent = kpis.project.name || 'Électrification Rurale';
+
+            // Zone
+            const projectZone = document.getElementById('projectZone');
+            if (projectZone) projectZone.textContent = kpis.project.zone || 'Tambacounda';
+
+            // Période
+            const projectPeriod = document.getElementById('projectPeriod');
+            if (projectPeriod) {
+                const start = new Date(kpis.project.startDate).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' });
+                const end = new Date(kpis.project.endDate).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' });
+                projectPeriod.textContent = `${start} - ${end}`;
+            }
+
+            // Statut + Badge
+            const statusBadge = document.getElementById('projectStatusBadge');
+            if (statusBadge) {
+                const status = kpis.timeline.onTime ? 'En cours' : 'À risque';
+                const icon = kpis.timeline.onTime ? 'check-circle' : 'exclamation-circle';
+                statusBadge.innerHTML = `<i class="fas fa-${icon} text-xs"></i> ${status}`;
+                statusBadge.className = kpis.timeline.onTime
+                    ? 'inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-bold bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                    : 'inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-bold bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400';
+            }
+
+            // Avancement
+            const progress = document.getElementById('projectProgress');
+            if (progress) progress.textContent = `${kpis.households.electricityAccessPercent}%`;
+        }
+
+        function updateIGPPSection(igpp, recommendations) {
+            // Score
+            const scoreEl = document.getElementById('igppScore');
+            if (scoreEl) scoreEl.textContent = `${igpp.score}/100`;
+
+            // Label
+            const labelEl = document.getElementById('igppLabel');
+            if (labelEl) labelEl.textContent = igpp.label;
+
+            // Detailed scores
+            ['scoreProgress', 'scoreBudget', 'scoreTimeline', 'scoreQuality'].forEach((id, idx) => {
+                const keys = ['progress', 'budget', 'timeline', 'quality'];
+                const el = document.getElementById(id);
+                if (el) el.textContent = `${igpp.detailedScores[keys[idx]]}%`;
+            });
+
+            // Recommandations
+            const recList = document.getElementById('recommendationsList');
+            if (recList && recommendations.length) {
+                recList.innerHTML = recommendations.slice(0, 3).map(r => `
+                    <li class="flex items-start gap-2">
+                        <i class="fas fa-${r.priority === 'CRITIQUE' ? 'exclamation-triangle text-red-600 dark:text-red-400' : r.priority === 'HAUTE' ? 'alert-circle text-amber-600 dark:text-amber-400' : 'info-circle text-blue-600 dark:text-blue-400'} text-xs mt-1"></i>
+                        <span>${r.text}</span>
+                    </li>
+                `).join('');
+            }
+        }
+
+        function updateStrategicKPIs(kpis) {
+            // Ménages Totaux
+            const totalHouseholds = document.getElementById('kpiTotalHouseholds');
+            if (totalHouseholds) totalHouseholds.textContent = kpis.households.totalHouseholds.toLocaleString('fr-FR');
+
+            // Électrifiés
+            const electrified = document.getElementById('kpiElectrifiedHouseholds');
+            if (electrified) electrified.textContent = kpis.households.electrifiedHouseholds.toLocaleString('fr-FR');
+
+            // Budget %
+            const budgetPercent = document.getElementById('kpiBudgetPercent');
+            if (budgetPercent) budgetPercent.textContent = `${kpis.budget.percentUsed}%`;
+
+            // Détail budget
+            const budgetDetails = document.getElementById('budgetDetails');
+            if (budgetDetails) {
+                const used = Math.round(kpis.budget.usedBudget / 1000000);
+                const total = Math.round(kpis.budget.totalBudget / 1000000);
+                budgetDetails.textContent = `${used} M / ${total} M FCFA`;
+            }
+
+            // Délai
+            const delayDays = document.getElementById('kpiDelayDays');
+            if (delayDays) delayDays.textContent = `${kpis.timeline.estimatedDelayDays} j`;
+        }
+
+        function updateOperationalKPIs(kpis) {
+            // Livraisons
+            const deliveries = document.getElementById('kpiDeliveries');
+            if (deliveries) deliveries.textContent = kpis.operational.deliveriesCompleted.toLocaleString('fr-FR');
+
+            // Stock Alerts
+            const alerts = document.getElementById('kpiStockAlerts');
+            if (alerts) alerts.textContent = kpis.risk.criticalStockAlerts;
+
+            // Équipes
+            const teams = document.getElementById('kpiActiveTeamsCount');
+            if (teams) teams.textContent = `${kpis.teams.activeTeams} / ${kpis.teams.totalTeams}`;
+
+            // Conformité
+            const conformity = document.getElementById('kpiConformity');
+            if (conformity) conformity.textContent = `${kpis.quality.complianceRate}%`;
+
+            // Saturation
+            const saturation = document.getElementById('kpiSaturation');
+            if (saturation) saturation.textContent = `${kpis.operational.teamSaturationPercent}%`;
+
+            // Stock disponible
+            const stockAvail = document.getElementById('kpiStockAvail');
+            if (stockAvail) stockAvail.textContent = `${kpis.operational.materialAvailabilityPercent}%`;
+        }
+
+        function updateDashboardWithDefaults() {
+            console.log('📊 Using default KPI values (demo mode)');
+            // Les valeurs par défaut sont déjà dans le HTML
+        }
+
+        // Lancer l'initialisation au chargement
+        document.addEventListener('DOMContentLoaded', initializeDashboardInstitutional);
+
+        // Ou si document est déjà chargé
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeDashboardInstitutional);
+        } else {
+            initializeDashboardInstitutional();
+        }
+    </script>
 </body>
 
 </html>

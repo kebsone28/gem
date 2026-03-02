@@ -2,7 +2,7 @@
  * Service de métriques et monitoring
  * Collecte et analyse les métriques de performance
  */
-class MetricsService {
+export class MetricsService {
     constructor(logger, eventBus) {
         this.logger = logger;
         this.eventBus = eventBus;

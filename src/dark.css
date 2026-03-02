@@ -1,62 +1,301 @@
-/* Dark Mode Support for Antigravity */
+/* ======================================================
+   ANTIGRAVITY — DARK MODE SYSTEM (FULL CLEAN PRO)
+   Compatible sans casser l’existant
+   ====================================================== */
+
 :root {
-    --bg-main: #f9fafb;
+
+    /* Colors */
+    --bg-main: #f8fafc;
     --bg-card: #ffffff;
-    --text-main: #111827;
-    --text-muted: #4b5563;
-    --border-color: #e5e7eb;
+    --bg-soft: #f1f5f9;
+
+    --text-main: #0f172a;
+    --text-muted: #64748b;
+
+    --border-color: #e2e8f0;
+
+    --accent: #2563eb;
+    --accent-soft: rgba(37, 99, 235, 0.12);
+
+    --shadow-sm: 0 2px 12px rgba(0, 0, 0, 0.03);
+    --shadow-md: 0 4px 24px rgba(0, 0, 0, 0.05);
 }
 
 .dark {
-    --bg-main: #0f172a;
-    --bg-card: #1e293b;
-    --text-main: #f1f5f9;
+
+    --bg-main: #020617;
+    --bg-card: #0f172a;
+    --bg-soft: #020617;
+
+    --text-main: #e2e8f0;
     --text-muted: #94a3b8;
-    --border-color: #334155;
+
+    --border-color: #1e293b;
+
+    --accent: #3b82f6;
+    --accent-soft: rgba(59, 130, 246, 0.15);
+
+    --shadow-sm: 0 2px 12px rgba(0, 0, 0, 0.25);
+    --shadow-md: 0 8px 28px rgba(0, 0, 0, 0.35);
 }
+
+
+/* ======================================================
+   GLOBAL BASE
+   ====================================================== */
 
 body {
-    background-color: var(--bg-main) !important;
+    background: var(--bg-main) !important;
     color: var(--text-main) !important;
-    transition: background-color 0.3s, color 0.3s;
 }
 
+
+/* Smooth theme transition */
+* {
+    transition:
+        background-color 0.25s ease,
+        border-color 0.25s ease,
+        color 0.25s ease,
+        box-shadow 0.25s ease;
+}
+
+
+/* ======================================================
+   BACKGROUND HELPERS
+   ====================================================== */
+
 .bg-white {
-    background-color: var(--bg-card) !important;
+    background: var(--bg-card) !important;
 }
 
 .bg-gray-50 {
-    background-color: var(--bg-main) !important;
+    background: var(--bg-soft) !important;
 }
 
-.text-gray-900, .text-gray-800 {
+
+/* ======================================================
+   TYPOGRAPHY
+   ====================================================== */
+
+.text-gray-900,
+.text-gray-800 {
     color: var(--text-main) !important;
 }
 
-.text-gray-600, .text-gray-500 {
+.text-gray-700,
+.text-gray-600,
+.text-gray-500,
+.text-gray-400 {
     color: var(--text-muted) !important;
 }
 
-.card-shadow, .bg-white.rounded-lg {
-    background-color: var(--bg-card) !important;
+.dark .text-white {
+    color: var(--accent) !important;
+}
+
+
+/* ======================================================
+   CARDS / CONTAINERS
+   ====================================================== */
+
+.card-shadow,
+.bg-white.rounded-lg {
+    background: var(--bg-card) !important;
     border: 1px solid var(--border-color) !important;
+    box-shadow: var(--shadow-sm);
+    border-radius: 12px;
 }
 
-.border-gray-100, .border-gray-200, .divide-gray-200 {
+.card-shadow:hover {
+    box-shadow: var(--shadow-md);
+}
+
+
+/* ======================================================
+   BORDERS
+   ====================================================== */
+
+.border-gray-100,
+.border-gray-200,
+.divide-gray-200 {
     border-color: var(--border-color) !important;
 }
 
-.divide-gray-200 > * + * {
+.divide-gray-200>*+* {
     border-color: var(--border-color) !important;
 }
 
-/* Specific component fixes */
-.dark input, .dark select {
-    background-color: #1e293b !important;
-    color: white !important;
-    border-color: #334155 !important;
+
+/* ======================================================
+   NAVIGATION
+   ====================================================== */
+
+.dark nav.gradient-bg {
+    background: linear-gradient(135deg, #020617 0%, #0f172a 100%) !important;
+    border-bottom: 1px solid var(--border-color);
 }
+
+.dark nav.gradient-bg a {
+    color: #cbd5e1 !important;
+    padding: 6px 10px;
+    border-radius: 6px;
+}
+
+.dark nav.gradient-bg a:hover {
+    background: rgba(255, 255, 255, 0.06) !important;
+}
+
+
+/* ======================================================
+   FORMS
+   ====================================================== */
+
+.dark input,
+.dark select,
+.dark textarea {
+    background: #020617 !important;
+    color: #e2e8f0 !important;
+    border: 1px solid #1e293b !important;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+    color: #64748b !important;
+}
+
+
+/* Focus UX amélioré */
+
+input:focus,
+select:focus,
+textarea:focus {
+    outline: none;
+    border-color: var(--accent) !important;
+    box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+
+/* ======================================================
+   TABLES
+   ====================================================== */
+
+.dark table thead {
+    background: #020617 !important;
+    color: #e2e8f0 !important;
+}
+
+.dark table tbody tr {
+    color: #cbd5e1 !important;
+    border-color: var(--border-color);
+}
+
+
+/* ======================================================
+   TEXT VISIBILITY SAFETY
+   ====================================================== */
+
+.dark .bg-white .text-white,
+.dark .bg-gray-50 .text-white,
+.dark .card-shadow .text-white {
+    color: var(--text-main) !important;
+}
+
+
+/* ======================================================
+   TITLES INSIDE CARDS
+   ====================================================== */
+
+.dark .bg-white .text-gray-800,
+.dark .bg-white .text-gray-900,
+.dark .bg-gray-50 .text-gray-800,
+.dark .bg-gray-50 .text-gray-900 {
+    color: #f1f5f9 !important;
+}
+
+
+/* ======================================================
+   LINKS / ACCENTS
+   ====================================================== */
+
+.dark .bg-white .text-indigo-600,
+.dark .bg-gray-50 .text-indigo-600 {
+    color: var(--accent) !important;
+}
+
+
+/* ======================================================
+   PROSE CONTENT
+   ====================================================== */
 
 .dark .prose {
-    color: #cbd5e1 !important;
+    color: #a7f3d0 !important;
+}
+
+
+/* ======================================================
+   BUTTON IMPROVEMENT (SAFE)
+   ====================================================== */
+
+button,
+.btn {
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+button:hover,
+.btn:hover {
+    transform: translateY(-1px);
+}
+
+
+/* ======================================================
+   SCROLLBAR MODERNE
+   ====================================================== */
+
+::-webkit-scrollbar {
+    width: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bg-soft);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
+}
+
+/* ======================================================
+   FIX CELLULES BLANCHES EN MODE SOMBRE
+   ====================================================== */
+
+/* Si une cellule reste blanche en dark mode (inline style ou classe) */
+.dark td[style*="background"],
+.dark td.bg-white,
+.dark th.bg-white,
+.dark .bg-white td,
+.dark .bg-white th {
+    color: #0f172a !important;
+}
+
+/* Lignes avec fond gris clair */
+.dark tr[style*="background"],
+.dark .bg-gray-100,
+.dark .bg-gray-200 {
+    color: #0f172a !important;
+}
+
+/* Option premium : aligner les fonds blancs sur la palette dark */
+.dark .bg-white {
+    background: #0f172a !important;
+}
+
+/* Totaux importants */
+.dark td strong,
+.dark td b {
+    color: #020617 !important;
 }
