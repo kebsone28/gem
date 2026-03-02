@@ -7,7 +7,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     const { isDarkMode } = useTheme();
 
     return (
-        <div className={`min-h-screen flex flex-col md:flex-row transition-colors duration-500 ${isDarkMode ? 'bg-slate-950 text-slate-200' : 'bg-[#f8fafc] text-slate-900'}`}>
+        <div className={`min-h-screen flex flex-col md:flex-row transition-colors duration-300 ${isDarkMode ? 'bg-dark-bg text-dark-text' : 'bg-surface text-text'}`}>
             <Sidebar />
             <main className="flex-1 overflow-auto h-screen relative flex flex-col">
                 <SyncAlertBanner />
