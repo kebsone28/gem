@@ -17,7 +17,8 @@ import {
     X,
     Calculator,
     ClipboardList,
-    Target
+    Target,
+    CloudSync
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -139,11 +140,11 @@ export default function Aide() {
             bg: 'bg-indigo-500/10 text-indigo-500',
             zap: 'text-indigo-400',
             content: [
-                "KPIs en temps réel : total ménages, % avancement, zones actives, alertes terrain — tous calculés depuis Dexie.",
-                "Graphique d'avancement régional (barres animées) : vert ≥ 70%, bleu ≥ 40%, ambre < 40%.",
-                "Journal des 5 dernières synchronisations Kobo avec horodatage exact.",
+                "KPIs en temps réel : total ménages, % avancement, zones actives, alertes terrain — source de vérité PostgreSQL.",
+                "SaaS Multi-Tenant : Isolation stricte des données par organisation.",
+                "Journal d'audit : Tracabilité complète de chaque action critique sur le serveur.",
                 "Accès rapide : Rapports / Gestion Utilisateurs / Carte Terrain.",
-                "Bouton SYNCHRONISER : pull complet des données Kobo en un clic.",
+                "Backend Haute Performance : Node.js avec moteur Prisma et accélération Redis.",
             ]
         },
         {
@@ -155,9 +156,9 @@ export default function Aide() {
             zap: 'text-blue-400',
             content: [
                 "Identifie automatiquement votre équipe via votre compte (Maçons, Réseau, Électricien, Livreur).",
-                "Pipeline des 4 sous-équipes : % calculé depuis statuts Kobo réels (Non débuté → Murs → Réseau → Intérieur → Terminé).",
+                "Pipeline des 4 sous-équipes : % calculé depuis statuts réels synchronisés.",
                 "Alerte dépendance : avertissement si l'équipe précédente est < 80%.",
-                "Panneau Répartition des Statuts et Top Régions calculés depuis Dexie.",
+                "Performance : Cache Redis pour un chargement instantané des KPIs d'équipe.",
             ]
         },
         {
@@ -248,9 +249,9 @@ export default function Aide() {
             bg: 'bg-slate-500/10 text-slate-400',
             zap: 'text-slate-400',
             content: [
-                "7 comptes prédéfinis avec leurs rôles et teamId.",
-                "Imports/Exports JSON pour dupliquer ou restaurer la configuration.",
-                "Mode 2FA pour le compte admingem.",
+                "Gestion multi-utilisateurs avec Rôles & Permissions (RBAC/ABAC).",
+                "Sécurité Avancée : Mots de passe et 2FA hachés via Bcrypt sur le serveur.",
+                "Migration : Outils pour basculer les données locales vers le SaaS Cloud.",
             ]
         },
         {
@@ -306,6 +307,21 @@ export default function Aide() {
                 "Recherche instantanée et exécution d'actions systèmes directes à la volée.",
             ]
         },
+        {
+            id: 'synchronisation',
+            title: 'Synchronisation Cloud & Master Local',
+            icon: CloudSync,
+            color: 'indigo',
+            bg: 'bg-indigo-500/10 text-indigo-500',
+            zap: 'text-indigo-400',
+            content: [
+                "Stratégie Master Local : Votre PC est la source de vérité pour les imports massifs (Excel).",
+                "Commande PUSH (PC -> Cloud) : 'npm run sync-up' pour envoyer vos ménages vers Railway.",
+                "Commande PULL (Cloud -> PC) : 'npm run sync-down' pour récupérer les validations du terrain.",
+                "Protection Intelligente : Le système compare les dates (updatedAt) et ne remplace jamais une donnée plus récente.",
+                "Auto-Sync : L'interface synchronise les petites modifications en temps réel sans action de votre part.",
+            ]
+        },
     ];
 
     return (
@@ -319,7 +335,7 @@ export default function Aide() {
                     AIDE & TOUR D'HORIZON
                 </h1>
                 <p className={`text-[14px] font-medium mt-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                    Guide complet de GEM SaaS v2 — captures d'écran interactives et explications par module.
+                    Guide complet de GEM SaaS v3 PRO — architecture cloud avec backend PostgreSQL & performance temps réel.
                 </p>
             </header>
 
@@ -381,7 +397,7 @@ export default function Aide() {
 
             <div className={`p-6 rounded-2xl border text-center ${isDarkMode ? 'bg-indigo-900/20 border-indigo-500/20' : 'bg-indigo-50 border-indigo-100'}`}>
                 <p className={`text-sm font-bold ${isDarkMode ? 'text-indigo-300' : 'text-indigo-700'}`}>
-                    GEM SaaS v2 — Glassmorphisme premium · Données Dexie temps réel · PDF multi-pages · RBAC complet
+                    GEM SaaS v3 PRO — Backend PostgreSQL · PostGIS · Sécurité Bcrypt · BullMQ Workers · Multi-Tenancy
                 </p>
             </div>
         </div>

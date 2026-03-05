@@ -1,11 +1,13 @@
 generator client {
-  provider = "prisma-client-js"
-  output   = "./client"
+  provider        = "prisma-client-js"
+  output          = "./client"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [postgis]
 }
 
 model Organization {
@@ -26,11 +28,14 @@ model User {
   passwordHash   String
   role           String       @default("user")
   lastLogin      DateTime?
-  requires2FA    Boolean      @default(false)
-  secret2FAQuestion String?
-  secret2FAAnswer   String?
+  requires2FA       Boolean      @default(false)
+  securityQuestion  String?
+  securityAnswerHash String?
+  recoveryCodeHash  String?
   projectsUpdated Project[]   @relation("UpdatedBy")
   syncLogs       SyncLog[]
+  auditLogs      AuditLog[]
+  ledTeam        Team?        @relation("TeamLeader")
   createdAt      DateTime     @default(now())
 }
 
@@ -50,6 +55,7 @@ model Project {
   updatedBy      User?        @relation("UpdatedBy", fields: [updatedById], references: [id])
   deletedAt      DateTime?
   zones          Zone[]
+  teams          Team[]
 }
 
 model Zone {
@@ -72,6 +78,7 @@ model Household {
   organizationId String
   status         String
   location       Json
+  location_gis   Unsupported("geometry(Point, 4326)")?
   owner          Json
   koboData       Json?        @default("{}")
   version        Int          @default(1)
@@ -83,6 +90,10 @@ model Team {
   id             String       @id @default(uuid())
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id])
+  projectId      String?
+  project        Project?     @relation(fields: [projectId], references: [id])
+  leaderId       String?      @unique
+  leader         User?        @relation("TeamLeader", fields: [leaderId], references: [id])
   name           String
   type           String
   status         String
@@ -99,4 +110,22 @@ model SyncLog {
   timestamp DateTime @default(now())
   action    String
   details   Json
+}
+
+model AuditLog {
+  id             String   @id @default(uuid())
+  organizationId String
+  userId         String
+  user           User     @relation(fields: [userId], references: [id])
+  action         String
+  resource       String
+  resourceId     String?
+  details        Json?
+  ipAddress      String?
+  userAgent      String?
+  timestamp      DateTime @default(now())
+
+  @@index([organizationId])
+  @@index([userId])
+  @@index([timestamp])
 }

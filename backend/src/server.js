@@ -3,6 +3,7 @@ import app from './app.js';
 import { config } from './core/config/config.js';
 import prisma from './core/utils/prisma.js';
 import { socketService } from './services/socket.service.js';
+import { initSimulationWorker } from './modules/simulation/simulation.worker.js';
 
 async function startServer() {
   try {
@@ -13,9 +14,12 @@ async function startServer() {
     const server = http.createServer(app);
     socketService.init(server);
 
+    // Phase 2 : Initialisation des Workers de tâche de fond
+    initSimulationWorker();
+
     server.listen(config.port, () => {
-      console.log(`🚀 Server running in ${config.env} mode on port ${config.port}`);
-      console.log(`📡 API Health: http://localhost:${config.port}/health`);
+      console.log(`🚀 Serveur PROQUELEC démarré en mode ${config.env} sur le port ${config.port}`);
+      console.log(`📡 Santé API : http://localhost:${config.port}/health`);
     });
   } catch (error) {
     console.error('❌ Error starting server:', error);

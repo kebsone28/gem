@@ -12,6 +12,8 @@ import { useNavigate } from 'react-router-dom';
 import { fmtNum } from '../../utils/format';
 import { useProject } from '../../hooks/useProject';
 import { useSync } from '../../hooks/useSync';
+import LiveActivityFeed from '../../components/dashboards/LiveActivityFeed';
+import PerformanceCompare from '../../components/dashboards/PerformanceCompare';
 import './AdminDashboard.css';
 
 export default function AdminDashboard() {
@@ -19,6 +21,10 @@ export default function AdminDashboard() {
     const navigate = useNavigate();
     const { project } = useProject();
     const { sync, isSyncing, syncStatus } = useSync();
+
+    // Live Intelligence Data
+    const [activities, setActivities] = useState<any[]>([]);
+    const [perfData, setPerfData] = useState<any>(null);
 
     const households = useLiveQuery(() => db.households.toArray()) || [];
     const zones = useLiveQuery(() => db.zones.toArray()) || [];
@@ -50,7 +56,21 @@ export default function AdminDashboard() {
                 }
             }
         };
+        const fetchMonitoringData = async () => {
+            try {
+                const [actRes, perfRes] = await Promise.all([
+                    apiClient.get('/monitoring/activity'),
+                    apiClient.get('/monitoring/performance')
+                ]);
+                setActivities(actRes.data.activities);
+                setPerfData(perfRes.data);
+            } catch (err) {
+                console.error('Failed to fetch monitoring data', err);
+            }
+        };
+
         fetchRemoteMetrics();
+        fetchMonitoringData();
     }, [project?.id]);
 
     useEffect(() => {
@@ -95,11 +115,11 @@ export default function AdminDashboard() {
                         <Activity className="text-white" size={32} />
                     </div>
                     <div>
-                        <h2 className="text-4xl font-black uppercase tracking-tighter italic text-slate-800 dark:text-white leading-none">Command Console</h2>
+                        <h2 className="text-4xl font-black uppercase tracking-tighter italic text-slate-800 dark:text-white leading-none">Console de Commande</h2>
                         <div className="flex items-center gap-3 mt-2">
-                            <span className="px-2 py-0.5 bg-indigo-500/10 text-indigo-500 text-[10px] font-black rounded-md border border-indigo-500/20 uppercase tracking-widest">Enterprise</span>
+                            <span className="px-2 py-0.5 bg-indigo-500/10 text-indigo-500 text-[10px] font-black rounded-md border border-indigo-500/20 uppercase tracking-widest">Expert</span>
                             <p className="text-slate-500 text-[11px] font-bold uppercase tracking-widest opacity-60">
-                                {project?.name || 'Proquelec GEM'} • {syncStatus === 'success' ? 'Synchronized' : 'Live Analytics'}
+                                {project?.name || 'Proquelec GEM'} • {syncStatus === 'success' ? 'Synchronisé' : 'Analyses en Direct'}
                             </p>
                         </div>
                     </div>
@@ -111,12 +131,12 @@ export default function AdminDashboard() {
                         className="flex items-center gap-2 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-800 px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:border-indigo-500 hover:text-indigo-500 shadow-sm active:scale-95 disabled:opacity-50"
                     >
                         <RefreshCw size={14} className={isSyncing ? 'animate-spin' : ''} />
-                        {isSyncing ? 'Syncing...' : 'Force Sync'}
+                        {isSyncing ? 'Synchronisation...' : 'Forcer la Sync'}
                     </button>
                     <button
                         className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-8 py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all shadow-[0_15px_30px_rgba(79,70,229,0.3)] hover:shadow-indigo-500/50 active:scale-95"
                     >
-                        Action Center
+                        Centre d'Actions
                     </button>
                 </div>
             </header>
@@ -126,7 +146,7 @@ export default function AdminDashboard() {
                     <div className="glass-card !p-8 relative overflow-hidden group">
                         <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 blur-3xl rounded-full group-hover:bg-indigo-500/10 transition-colors" />
                         <div className="relative z-10 text-center">
-                            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-8">Performance Score (IGPP)</h3>
+                            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-8">Score de Performance (IGPP)</h3>
                             <div className="relative w-52 h-52 mx-auto">
                                 <svg className="w-full h-full transform -rotate-90">
                                     <circle cx="104" cy="104" r="88" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-slate-100 dark:text-white/5" />
@@ -148,28 +168,28 @@ export default function AdminDashboard() {
                                     >
                                         {displayStats.igppScore}%
                                     </motion.span>
-                                    <span className="text-[9px] font-black uppercase text-indigo-500 tracking-[0.3em] mt-1">Network Accuracy</span>
+                                    <span className="text-[9px] font-black uppercase text-indigo-500 tracking-[0.3em] mt-1">Précision du Réseau</span>
                                 </div>
                             </div>
                             <p className="text-slate-400 text-[9px] mt-10 leading-relaxed font-bold tracking-widest opacity-60 uppercase italic">
-                                GEM Project Management Index
+                                Indice de Gestion de Projet GEM
                             </p>
                         </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-6">
                         <div className="glass-card !p-6 !rounded-[2rem]">
-                            <p className="text-[9px] font-black uppercase text-slate-500 tracking-widest mb-3">Sync Health</p>
+                            <p className="text-[9px] font-black uppercase text-slate-500 tracking-widest mb-3">Santé de la Sync</p>
                             <div className="flex items-center gap-3">
                                 <div className="relative flex">
                                     <div className={`w-3 h-3 rounded-full ${displayStats.syncHealth === 'healthy' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
                                     <div className={`absolute inset-0 w-3 h-3 rounded-full ${displayStats.syncHealth === 'healthy' ? 'bg-emerald-500' : 'bg-amber-500'} animate-ping opacity-75`} />
                                 </div>
-                                <span className="font-black text-[11px] uppercase tracking-tighter text-slate-700 dark:text-slate-200">{displayStats.syncHealth === 'healthy' ? 'OPTIMIZED' : 'WARNING'}</span>
+                                <span className="font-black text-[11px] uppercase tracking-tighter text-slate-700 dark:text-slate-200">{displayStats.syncHealth === 'healthy' ? 'OPTIMISÉ' : 'ALERTE'}</span>
                             </div>
                         </div>
                         <div className="glass-card !p-6 !rounded-[2rem] border-l-4 border-l-indigo-500">
-                            <p className="text-[9px] font-black uppercase text-slate-500 tracking-widest mb-3">Active Zones</p>
+                            <p className="text-[9px] font-black uppercase text-slate-500 tracking-widest mb-3">Zones Actives</p>
                             <div className="text-3xl font-black text-indigo-500 tracking-tighter">{zones.length}</div>
                         </div>
                     </div>
@@ -227,7 +247,7 @@ export default function AdminDashboard() {
                     <div className="glass-card !p-10 !rounded-[3rem]">
                         <div className="flex items-center justify-between mb-10">
                             <h3 className="text-sm font-black uppercase tracking-[0.2em] flex items-center gap-3 italic text-indigo-600 dark:text-indigo-400">
-                                <HardHat size={20} strokeWidth={3} /> Pipeline Tech Terrain
+                                <HardHat size={20} strokeWidth={3} /> Flux Technique Terrain (PostgreSQL)
                             </h3>
                         </div>
                         <div className="space-y-8">
@@ -243,7 +263,7 @@ export default function AdminDashboard() {
                                             <div className="text-[12px] font-black opacity-30">0{i + 1}</div>
                                             <span className="text-[11px] font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest group-hover:text-indigo-500 transition-colors">{step.label}</span>
                                         </div>
-                                        <span className={`text-[12px] font-black uppercase ${step.color}`}>{step.count} Units</span>
+                                        <span className={`text-[12px] font-black uppercase ${step.color}`}>{step.count} Unités</span>
                                     </div>
                                     <div className="h-2 w-full bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden p-0.5">
                                         <motion.div
@@ -259,20 +279,45 @@ export default function AdminDashboard() {
                 </div>
             </div>
 
+            {/* LIVE INTELLIGENCE ROW - NEW PREMIUM SECTION */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 relative z-10">
+                <div className="lg:col-span-12 py-4 border-y border-slate-100 dark:border-white/5 bg-slate-500/5 -mx-10 px-10">
+                    <h3 className="text-xs font-black uppercase tracking-[0.3em] text-indigo-500 flex items-center gap-3">
+                        <Activity size={16} className="animate-pulse" /> Live Intelligence & Opérations Temps Réel
+                    </h3>
+                </div>
+
+                <div className="lg:col-span-7">
+                    <div className="glass-card !p-8 !rounded-[2.5rem] h-full">
+                        <div className="flex items-center justify-between mb-8">
+                            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Flux d'Activité de l'Organisation</h3>
+                            <span className="px-2 py-1 bg-indigo-500 text-white text-[8px] font-black rounded-lg animate-pulse">LIVE</span>
+                        </div>
+                        <LiveActivityFeed activities={activities} />
+                    </div>
+                </div>
+
+                <div className="lg:col-span-5">
+                    <div className="glass-card !p-8 !rounded-[2.5rem] h-full border-r-4 border-r-emerald-500/30">
+                        <PerformanceCompare data={perfData} />
+                    </div>
+                </div>
+            </div>
+
             {/* Drill-down Module - NEW: DÉTAILS GRANULAIRES */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-10">
                 {/* 📍 Performance Par Zone */}
                 <div className="glass-card !p-8 !rounded-[2.5rem]">
                     <h3 className="text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-3 mb-8 text-slate-500">
-                        <MapIcon size={18} className="text-emerald-500" /> Geographic Performance (Zones)
+                        <MapIcon size={18} className="text-emerald-500" /> Performance Géographique (Zones)
                     </h3>
                     <div className="overflow-x-auto">
                         <table className="w-full text-left">
                             <thead>
                                 <tr className="border-b border-slate-100 dark:border-white/5">
                                     <th className="pb-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Zone</th>
-                                    <th className="pb-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-center">Efficiency</th>
-                                    <th className="pb-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-right">Progress</th>
+                                    <th className="pb-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-center">Efficacité</th>
+                                    <th className="pb-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-right">Progression</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-50 dark:divide-white/5">
@@ -281,7 +326,7 @@ export default function AdminDashboard() {
                                         <td className="py-5">
                                             <div className="flex flex-col">
                                                 <span className="text-[12px] font-black text-slate-700 dark:text-slate-200">{z.name}</span>
-                                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">{z.done} / {z.total} Households</span>
+                                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">{z.done} / {z.total} Ménages</span>
                                             </div>
                                         </td>
                                         <td className="py-5 text-center">
@@ -305,15 +350,15 @@ export default function AdminDashboard() {
                 {/* 👷 Performance Par Équipe (Utilisateur) */}
                 <div className="glass-card !p-8 !rounded-[2.5rem]">
                     <h3 className="text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-3 mb-8 text-slate-500">
-                        <Activity size={18} className="text-indigo-500" /> Human Capital Yield (Teams)
+                        <Activity size={18} className="text-indigo-500" /> Rendement des Équipes
                     </h3>
                     <div className="overflow-x-auto">
                         <table className="w-full text-left">
                             <thead>
                                 <tr className="border-b border-slate-100 dark:border-white/5">
-                                    <th className="pb-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Technician / Lead</th>
-                                    <th className="pb-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Output</th>
-                                    <th className="pb-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-right">Yield/Day</th>
+                                    <th className="pb-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Technicien / Resp.</th>
+                                    <th className="pb-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Performance</th>
+                                    <th className="pb-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-right">Rendement/J</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-50 dark:divide-white/5">
@@ -326,17 +371,17 @@ export default function AdminDashboard() {
                                                 </div>
                                                 <div className="flex flex-col">
                                                     <span className="text-[12px] font-black text-slate-700 dark:text-slate-200">{t.worker}</span>
-                                                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">Field Operative</span>
+                                                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">Opérateur Terrain</span>
                                                 </div>
                                             </div>
                                         </td>
                                         <td className="py-5">
-                                            <span className="text-[11px] font-black text-slate-600 dark:text-slate-400">{t.done} <span className="opacity-40 font-normal">Units</span></span>
+                                            <span className="text-[11px] font-black text-slate-600 dark:text-slate-400">{t.done} <span className="opacity-40 font-normal">Unités</span></span>
                                         </td>
                                         <td className="py-5 text-right">
                                             <div className="flex flex-col items-end">
                                                 <span className="text-[12px] font-black text-indigo-500">{t.yield} <span className="text-[9px] opacity-60 font-normal text-slate-400">e/j</span></span>
-                                                <span className="text-[7px] text-slate-400 uppercase font-black">{t.days} Days Active</span>
+                                                <span className="text-[7px] text-slate-400 uppercase font-black">{t.days} Jours Actifs</span>
                                             </div>
                                         </td>
                                     </tr>
@@ -353,18 +398,18 @@ export default function AdminDashboard() {
                 <div className="flex items-center justify-between mb-12 relative z-10">
                     <div>
                         <h3 className="text-xl font-black uppercase tracking-tighter flex items-center gap-3 italic text-slate-800 dark:text-white">
-                            <Activity size={20} className="text-indigo-500 animate-pulse" /> Deployment Gantt Control
+                            <Activity size={20} className="text-indigo-500 animate-pulse" /> Contrôle Gantt Déploiement
                         </h3>
-                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-2 ml-8">Mission Lifecycle Management</p>
+                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-2 ml-8">Gestion du Cycle de Vie des Missions</p>
                     </div>
                     <div className="flex gap-4">
                         <div className="flex items-center gap-2">
                             <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-                            <span className="text-[9px] font-black text-slate-400 uppercase">Certified</span>
+                            <span className="text-[9px] font-black text-slate-400 uppercase">Certifié</span>
                         </div>
                         <div className="flex items-center gap-2">
                             <div className="w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]" />
-                            <span className="text-[9px] font-black text-slate-400 uppercase">Active</span>
+                            <span className="text-[9px] font-black text-slate-400 uppercase">Actif</span>
                         </div>
                     </div>
                 </div>
@@ -373,8 +418,8 @@ export default function AdminDashboard() {
                     {missions.length === 0 ? (
                         <div className="py-20 flex flex-col items-center justify-center border-2 border-dashed border-slate-100 dark:border-white/5 rounded-[2.5rem] bg-slate-50/50 dark:bg-white/1">
                             <MapPin size={48} className="text-slate-200 dark:text-white/5 mb-6" />
-                            <p className="text-[11px] font-black uppercase text-slate-400 tracking-[0.2em]">Zero Active Deployments Detected</p>
-                            <button onClick={() => navigate('/admin/mission')} className="mt-6 px-6 py-3 bg-indigo-600/10 text-indigo-500 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-indigo-600 hover:text-white transition-all">Create Launch Protocol</button>
+                            <p className="text-[11px] font-black uppercase text-slate-400 tracking-[0.2em]">Aucun Déploiement Actif Détecté</p>
+                            <button onClick={() => navigate('/admin/mission')} className="mt-6 px-6 py-3 bg-indigo-600/10 text-indigo-500 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-indigo-600 hover:text-white transition-all">Lancer une Mission</button>
                         </div>
                     ) : (
                         <div className="space-y-8">
@@ -400,7 +445,7 @@ export default function AdminDashboard() {
                                             </div>
                                             <div className="text-right">
                                                 <div className={`text-[10px] font-black px-4 py-2 rounded-xl inline-block border ${m.isCertified ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20'} tracking-widest`}>
-                                                    {m.isCertified ? 'MISSION CERTIFIED' : 'IN PROGRESS'}
+                                                    {m.isCertified ? 'MISSION CERTIFIÉE' : 'EN COURS'}
                                                 </div>
                                             </div>
                                         </div>

@@ -1,4 +1,6 @@
 import express from 'express';
+import prisma from './core/utils/prisma.js';
+import { redisConnection } from './core/utils/queueManager.js';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
@@ -19,21 +21,19 @@ const corsOriginResolver = (origin, callback) => {
     const allowed = config.cors.origin;
     console.log(`🔍 CORS Check: Request from [${origin}], Allowed: [${allowed}]`);
 
-    // 2. Ultra-permissive mode or Railway environment
-    const isRailway = origin.endsWith('.up.railway.app');
-    if (allowed === '*' || allowed === 'dev_dynamic' || isRailway) {
-        if (isRailway) console.log(`✅ CORS Auto-Allowed Railway origin: ${origin}`);
+    // 2. Ultra-permissive mode
+    if (allowed === '*' || allowed === 'dev_dynamic') {
         return callback(null, true);
     }
 
     // 3. Explicit check
     if (Array.isArray(allowed)) {
-        if (allowed.includes(origin) || allowed.includes(origin.replace('https://', ''))) {
+        if (allowed.includes(origin) || allowed.includes('*')) {
             return callback(null, true);
         }
     }
 
-    // 4. Default to allow but log for debug
+    // 4. Default to allow but log if it's not in our list (helpful for debug)
     console.warn(`⚠️ CORS Unknown origin: ${origin} - Allowing anyway for debug`);
     callback(null, true);
 };
@@ -69,6 +69,8 @@ import householdRoutes from './api/routes/household.routes.js';
 import zoneRoutes from './api/routes/zone.routes.js';
 import kpiRoutes from './api/routes/kpi.routes.js';
 import teamRoutes from './api/routes/team.routes.js';
+import simulationRoutes from './api/routes/simulation.routes.js';
+import monitoringRoutes from './api/routes/monitoring.routes.js';
 
 app.use('/api/auth', authRoutes);
 app.use('/api/sync', syncRoutes);
@@ -77,13 +79,36 @@ app.use('/api/households', householdRoutes);
 app.use('/api/zones', zoneRoutes);
 app.use('/api/kpi', kpiRoutes);
 app.use('/api/teams', teamRoutes);
+app.use('/api/simulation', simulationRoutes);
+app.use('/api/monitoring', monitoringRoutes);
 
-app.get('/health', (req, res) => {
-    res.json({
+app.get('/health', async (req, res) => {
+    const health = {
         status: 'UP',
+        services: {
+            database: 'DOWN',
+            redis: 'DOWN'
+        },
         time: new Date(),
         version: '1.0.0-PRO'
-    });
+    };
+
+    try {
+        await prisma.$queryRaw`SELECT 1`;
+        health.services.database = 'UP';
+    } catch (e) {
+        health.status = 'PARTIAL';
+    }
+
+    try {
+        const ping = await redisConnection.ping();
+        if (ping === 'PONG') health.services.redis = 'UP';
+    } catch (e) {
+        health.status = 'PARTIAL';
+    }
+
+    const statusCode = health.status === 'UP' ? 200 : 503;
+    res.status(statusCode).json(health);
 });
 
 // 6. Global Error Handler (Coming soon)

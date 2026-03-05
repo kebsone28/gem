@@ -3,13 +3,15 @@ import {
     getTeams,
     createTeam
 } from '../../modules/team/team.controller.js';
-import { authProtect, authorize } from '../middlewares/auth.js';
+import { authProtect } from '../middlewares/auth.js';
+import { verifierPermission } from '../../middleware/verifierPermission.js';
+import { PERMISSIONS } from '../../core/config/permissions.js';
 
 const router = express.Router();
 
 router.use(authProtect);
 
 router.get('/', getTeams);
-router.post('/', authorize('admin', 'ADMIN_PROQUELEC', 'SUPERVISEUR'), createTeam);
+router.post('/', verifierPermission(PERMISSIONS.GERER_UTILISATEURS), createTeam);
 
 export default router;

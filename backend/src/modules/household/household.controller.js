@@ -1,4 +1,5 @@
 import prisma from '../../core/utils/prisma.js';
+import { tracerAction } from '../../services/audit.service.js';
 
 // @desc    Get all households for an organization
 // @route   GET /api/households
@@ -79,6 +80,17 @@ export const createHousehold = async (req, res) => {
             }
         });
 
+        // Audit Log
+        await tracerAction({
+            userId: req.user.id,
+            organizationId,
+            action: 'CREATION_MENAGE',
+            resource: 'Ménage',
+            resourceId: household.id,
+            details: { zoneId, status: household.status },
+            req
+        });
+
         res.status(201).json(household);
     } catch (error) {
         console.error('Create household error:', error);
@@ -110,6 +122,20 @@ export const updateHousehold = async (req, res) => {
                 owner,
                 version: household.version + 1
             }
+        });
+
+        // Audit Log
+        await tracerAction({
+            userId: req.user.id,
+            organizationId,
+            action: 'MODIFICATION_MENAGE',
+            resource: 'Ménage',
+            resourceId: id,
+            details: {
+                oldStatus: household.status,
+                newStatus: status
+            },
+            req
         });
 
         res.json(updated);

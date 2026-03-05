@@ -29,6 +29,7 @@ import { DataHubModal } from '../components/terrain/DataHubModal';
 import { useProject } from '../hooks/useProject';
 import { useSync } from '../hooks/useSync';
 import { useLogistique } from '../hooks/useLogistique';
+import { usePermissions } from '../hooks/usePermissions';
 import { appSecurity } from '../services/appSecurity';
 
 type SearchResult = {
@@ -57,6 +58,7 @@ const Terrain: React.FC = () => {
     const { grappesConfig } = useLogistique();
 
     const { user } = useAuth();
+    const { peut, PERMISSIONS } = usePermissions();
     const [isSyncing, setIsSyncing] = useState(false);
 
     const [selectedHousehold, setSelectedHousehold] = useState<Household | null>(null);
@@ -114,7 +116,14 @@ const Terrain: React.FC = () => {
     };
 
 
+    // ── Contrôles de Permission ──
+    const peutModifierCarte = peut(PERMISSIONS.MODIFIER_CARTE);
+    const peutGererProjets = peut(PERMISSIONS.CREER_PROJET);
+    const peutSupprimerProjet = peut(PERMISSIONS.SUPPRIMER_PROJET);
+    const peutVoirDataHub = peut(PERMISSIONS.GERER_UTILISATEURS) || user?.role === 'ADMIN_PROQUELEC';
+
     const handleCreateProject = async () => {
+        if (!peutGererProjets) return;
         const name = prompt("Nom du nouveau projet :");
         if (name) {
             await createProject(name);
@@ -126,6 +135,7 @@ const Terrain: React.FC = () => {
     const [deletePassword, setDeletePassword] = useState('');
     const [deleteError, setDeleteError] = useState('');
     const handleDeleteProject = async () => {
+        if (!peutSupprimerProjet) return;
         const ok = await appSecurity.check('projectDeletePassword', deletePassword);
         if (!ok) {
             setDeleteError('Mot de passe incorrect');
@@ -342,14 +352,16 @@ const Terrain: React.FC = () => {
                                         ))}
                                         {projects.length === 0 && <option value="">Aucun Projet</option>}
                                     </select>
-                                    <button
-                                        onClick={handleCreateProject}
-                                        title="Nouveau Projet"
-                                        className={`p-1 rounded-md transition-colors flex items-center justify-center ${isDarkMode ? 'hover:bg-slate-800 text-slate-500 hover:text-white' : 'hover:bg-slate-100 text-slate-400 hover:text-slate-900'}`}
-                                    >
-                                        <Plus size={14} />
-                                    </button>
-                                    {project && (
+                                    {peutGererProjets && (
+                                        <button
+                                            onClick={handleCreateProject}
+                                            title="Nouveau Projet"
+                                            className={`p-1 rounded-md transition-colors flex items-center justify-center ${isDarkMode ? 'hover:bg-slate-800 text-slate-500 hover:text-white' : 'hover:bg-slate-100 text-slate-400 hover:text-slate-900'}`}
+                                        >
+                                            <Plus size={14} />
+                                        </button>
+                                    )}
+                                    {project && peutSupprimerProjet && (
                                         <button
                                             onClick={() => { setDeletePassword(''); setDeleteError(''); setShowDeleteModal(true); }}
                                             title="Supprimer ce projet"
@@ -374,14 +386,14 @@ const Terrain: React.FC = () => {
                             {isSyncing ? 'Sync...' : 'Synchroniser'}
                         </button>
 
-                        {user?.role === 'ADMIN_PROQUELEC' && (
+                        {peutVoirDataHub && (
                             <button
                                 onClick={() => setIsDataHubOpen(true)}
                                 title="Ouvrir le centre de gestion des données"
                                 className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition-colors shadow-lg shadow-indigo-500/20 hidden md:flex items-center gap-2"
                             >
                                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                                Data Hub
+                                Hub Données
                             </button>
                         )}
 
@@ -428,14 +440,14 @@ const Terrain: React.FC = () => {
                                 title="Recentrer la carte sur le Sénégal"
                                 className={`flex items-center gap-1 lg:gap-2 px-2 lg:px-4 py-1.5 lg:py-2 rounded-xl text-[9px] lg:text-[10px] font-black uppercase tracking-widest transition-all ${isDarkMode ? 'text-slate-400 hover:text-white hover:bg-slate-700' : 'text-slate-500 hover:text-slate-900 hover:bg-white hover:shadow-sm'}`}
                             >
-                                <Focus size={13} /> Recenter
+                                <Focus size={13} /> Recentrer
                             </button>
                             <button
                                 onClick={handleLocate}
                                 title="Me géolocaliser sur la carte"
                                 className={`flex items-center gap-1 lg:gap-2 px-2 lg:px-4 py-1.5 lg:py-2 rounded-xl text-[9px] lg:text-[10px] font-black uppercase tracking-widest transition-all ${isDarkMode ? 'text-slate-400 hover:text-white hover:bg-slate-700' : 'text-slate-500 hover:text-slate-900 hover:bg-white hover:shadow-sm'}`}
                             >
-                                <Navigation size={13} /> Pos
+                                <Navigation size={13} /> Ma Position
                             </button>
                             <div className={`flex items-center gap-3 px-4 border-l transition-colors ${isDarkMode ? 'border-slate-700' : 'border-slate-200'}`}>
                                 <button
@@ -445,7 +457,7 @@ const Terrain: React.FC = () => {
                                 >
                                     <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all duration-300 ${showHeatmap ? 'left-6' : 'left-1'}`} />
                                 </button>
-                                <span className={`text-[9px] lg:text-[10px] font-black uppercase tracking-widest ${isDarkMode ? (showHeatmap ? 'text-white' : 'text-slate-500') : (showHeatmap ? 'text-slate-900' : 'text-slate-400')}`}>Heat</span>
+                                <span className={`text-[9px] lg:text-[10px] font-black uppercase tracking-widest ${isDarkMode ? (showHeatmap ? 'text-white' : 'text-slate-500') : (showHeatmap ? 'text-slate-900' : 'text-slate-400')}`}>Chaleur</span>
                             </div>
                             <div className={`flex items-center gap-3 px-4 border-l transition-colors ${isDarkMode ? 'border-slate-700' : 'border-slate-200'}`}>
                                 <button
@@ -462,14 +474,14 @@ const Terrain: React.FC = () => {
                                 title="Passer en plein écran"
                                 className="bg-indigo-600 text-white px-3 lg:px-5 py-1.5 lg:py-2 rounded-xl text-[9px] lg:text-[10px] font-black uppercase tracking-widest shadow-lg shadow-indigo-500/20 flex items-center gap-1 lg:gap-2 hover:bg-indigo-700 transition-all active:scale-95"
                             >
-                                <Maximize size={13} /> Full
+                                <Maximize size={13} /> plein écran
                             </button>
                             <button
                                 onClick={() => setRoutingEnabled(!routingEnabled)}
                                 title="Tracer un itinéraire"
                                 className={`flex items-center gap-1 lg:gap-2 px-2 lg:px-4 py-1.5 lg:py-2 text-[9px] lg:text-[10px] font-black uppercase tracking-widest border-l transition-all ${isDarkMode ? 'border-slate-700 hover:text-white' : 'border-slate-200 hover:text-slate-900'} ${routingEnabled ? 'bg-indigo-600 text-white border-none rounded-xl mx-2' : (isDarkMode ? 'text-slate-400' : 'text-slate-500')}`}
                             >
-                                <Undo2 size={13} className={routingEnabled ? 'rotate-90' : ''} /> Route
+                                <Undo2 size={13} className={routingEnabled ? 'rotate-90' : ''} /> Itinéraire
                             </button>
 
                             {/* Clear Filters Button */}
@@ -584,6 +596,7 @@ const Terrain: React.FC = () => {
                                     selectedPhases={selectedPhases}
                                     userLocation={userLocation}
                                     grappesConfig={grappesConfig}
+                                    readOnly={!peutModifierCarte}
                                 />
                             </motion.div>
                         ) : (

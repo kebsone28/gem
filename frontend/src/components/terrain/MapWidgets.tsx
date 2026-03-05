@@ -37,7 +37,7 @@ export const WidgetBar: React.FC<WidgetBarProps> = ({ activeWidgets, onToggleWid
                         }`}
                 >
                     <Activity size={12} />
-                    Dashboard
+                    Tableau de Bord
                 </button>
                 <button
                     onClick={() => onToggleWidget('tools')}

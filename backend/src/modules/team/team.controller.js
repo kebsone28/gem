@@ -1,4 +1,5 @@
 import prisma from '../../core/utils/prisma.js';
+import { tracerAction } from '../../services/audit.service.js';
 
 // @desc    Get all teams for an organization
 // @route   GET /api/teams
@@ -60,6 +61,17 @@ export const createTeam = async (req, res) => {
                 status: 'active',
                 organizationId
             }
+        });
+
+        // Audit Log
+        await tracerAction({
+            userId: req.user.id,
+            organizationId,
+            action: 'CREATION_EQUIPE',
+            resource: 'Équipe',
+            resourceId: team.id,
+            details: { name, type: team.type },
+            req
         });
 
         res.status(201).json(team);

@@ -36,12 +36,14 @@ export function useFinances() {
     const project = projects?.find(p => p.id === activeProjectId) || projects?.[0];
 
     const teams = useLiveQuery(() => db.teams.toArray()) as Team[] | undefined;
-    const households = useLiveQuery(() => db.households.toArray()) as Household[] | undefined;
+    const allHouseholds = useLiveQuery(() => db.households.toArray()) as Household[] | undefined;
     const inventory = useLiveQuery(() =>
         project?.id ? (db as any).inventory.where('projectId').equals(project.id).toArray() : Promise.resolve([])
         , [project?.id]);
 
-    const householdsCount = households?.length || 80000;
+    // Filtrer les ménages par projet pour que les simulations soient précises
+    const households = allHouseholds?.filter(h => !project?.id || h.projectId === project.id);
+    const householdsCount = households?.length || 0;
     const duration = project?.duration || 180;
     const staffConfig = project?.config?.staffConfig || {};
     const legacyCosts = (project?.config as any)?.costs || {};

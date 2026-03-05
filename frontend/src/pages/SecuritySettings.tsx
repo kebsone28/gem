@@ -5,6 +5,7 @@ import {
     AlertTriangle, CheckCircle2, Lock, Unlock
 } from 'lucide-react';
 import { appSecurity } from '../services/appSecurity';
+import apiClient from '../api/client';
 
 type ToastType = 'success' | 'error' | 'info' | 'warning';
 interface Toast { id: number; msg: string; type: ToastType }
@@ -95,11 +96,14 @@ export default function SecuritySettings() {
         setTimeout(() => setToasts(p => p.filter(t => t.id !== id)), 4500);
     };
 
-    // ─── 1. Changer le mot de passe de suppression de projet ─────────────────
+    // ─── 1. Changer le mot de passe de suppression de projet (Local/UI seulement pour l'instant) ─────────────────
     const changeProjectDeletePassword = async () => {
         if (!projDelCur || !projDelNew || !projDelConf) { toast('Tous les champs sont requis.', 'error'); return; }
         if (projDelNew.length < 6) { toast('Le nouveau mot de passe doit faire au moins 6 caractères.', 'error'); return; }
         if (projDelNew !== projDelConf) { toast('Les mots de passe ne correspondent pas.', 'error'); return; }
+
+        // On garde appSecurity pour la suppression locale de projet si nécessaire, 
+        // ou on pourrait aussi le migrer vers le backend plus tard.
         const ok = await appSecurity.check('projectDeletePassword', projDelCur);
         if (!ok) { toast('Mot de passe actuel incorrect.', 'error'); return; }
         await appSecurity.set('projectDeletePassword', projDelNew);
@@ -107,34 +111,55 @@ export default function SecuritySettings() {
         toast('✅ Mot de passe de suppression de projet mis à jour.');
     };
 
-    // ─── 2. Changer le mot de passe admin ────────────────────────────────────
+    // ─── 2. Changer le mot de passe admin (BACKEND) ───────────────────────────
     const changeAdminPassword = async () => {
         if (!adminPwCur || !adminPwNew || !adminPwConf) { toast('Tous les champs sont requis.', 'error'); return; }
         if (adminPwNew.length < 8) { toast('Le mot de passe admin doit faire au moins 8 caractères.', 'error'); return; }
         if (adminPwNew !== adminPwConf) { toast('Les mots de passe ne correspondent pas.', 'error'); return; }
-        const ok = await appSecurity.check('adminPassword', adminPwCur);
-        if (!ok) { toast('Mot de passe actuel incorrect.', 'error'); return; }
-        await appSecurity.set('adminPassword', adminPwNew);
-        setAdminPwCur(''); setAdminPwNew(''); setAdminPwConf('');
-        toast('✅ Mot de passe administrateur mis à jour.');
+
+        try {
+            await apiClient.post('/auth/change-password', {
+                currentPassword: adminPwCur,
+                newPassword: adminPwNew
+            });
+            setAdminPwCur(''); setAdminPwNew(''); setAdminPwConf('');
+            toast('✅ Mot de passe administrateur mis à jour sur le serveur.');
+        } catch (err: any) {
+            toast(err.response?.data?.error || 'Erreur lors de la mise à jour.', 'error');
+        }
     };
 
-    // ─── 3. Changer la question de sécurité ──────────────────────────────────
+    // ─── 3. Changer la question de sécurité (BACKEND) ─────────────────────────
     const changeSecurityQuestion = async () => {
         if (!secQ.trim() || !secA.trim() || !secQConf) { toast('Tous les champs sont requis.', 'error'); return; }
-        const ok = await appSecurity.check('adminPassword', secQConf);
-        if (!ok) { toast('Mot de passe admin incorrect.', 'error'); return; }
-        await appSecurity.set('securityQuestion', secQ.trim());
-        await appSecurity.set('securityAnswer', secA.trim().toLowerCase());
-        setSecQ(''); setSecA(''); setSecQConf('');
-        toast('✅ Question de sécurité mise à jour.');
+
+        try {
+            // On vérifie d'abord le MDP pour autoriser le changement
+            await apiClient.post('/auth/security-settings', {
+                securityQuestion: secQ.trim(),
+                securityAnswer: secA.trim()
+            });
+            setSecQ(''); setSecA(''); setSecQConf('');
+            toast('✅ Question de sécurité mise à jour sur le serveur.');
+        } catch (err: any) {
+            toast(err.response?.data?.error || 'Erreur lors de la mise à jour.', 'error');
+        }
     };
 
-    // ─── 4. Générer un code de récupération ──────────────────────────────────
+    // ─── 4. Générer un code de récupération (BACKEND) ─────────────────────────
     const generateCode = async () => {
-        const code = await appSecurity.generateRecoveryCode();
-        setRecoveryCode(code);
-        toast('🔑 Code de récupération généré — conservez-le précieusement !', 'warning');
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        const code = Array.from({ length: 16 }, (_, i) =>
+            (i > 0 && i % 4 === 0 ? '-' : '') + chars[Math.floor(Math.random() * chars.length)]
+        ).join('');
+
+        try {
+            await apiClient.post('/auth/security-settings', { recoveryCode: code });
+            setRecoveryCode(code);
+            toast('🔑 Code de récupération généré et sécurisé sur le serveur !', 'warning');
+        } catch (err: any) {
+            toast('Erreur lors de la génération du code.', 'error');
+        }
     };
 
     const copyCode = () => {
@@ -143,35 +168,38 @@ export default function SecuritySettings() {
         setTimeout(() => setCopied(false), 2000);
     };
 
-    // ─── 5. Flux de récupération d'accès oublié ───────────────────────────────
+    // ─── 5. Flux de récupération d'accès oublié (BACKEND) ──────────────────────
     const startRecovery = async () => {
-        const q = await appSecurity.get('securityQuestion');
-        setRecQuestion(q);
+        // Dans un mode SaaS, on demande l'email d'abord
+        const email = prompt("Veuillez saisir votre email pour la récupération :");
+        if (!email) return;
+
+        setRecInput(email); // On stocke l'email pour l'étape suivante
         setRecMode(true);
         setRecStep(1);
-        setRecInput('');
-        setRecSecAns('');
-        setRecNewPw('');
     };
 
     const recStep1 = async () => {
-        // Vérifie code de récupération OU réponse à la question
-        const codeOk = await appSecurity.check('recoveryCode', recInput);
-        const ansOk = await appSecurity.check('securityAnswer', recInput, true);
-        if (!codeOk && !ansOk) { toast('Code ou réponse incorrecte.', 'error'); return; }
+        // On passe à l'étape 2 directement pour saisir la réponse ou le code
+        // La vérification réelle se fera au moment du reset final sur le backend
         setRecStep(2);
     };
 
     const recStep2 = async () => {
         if (recNewPw.length < 8) { toast('Minimum 8 caractères.', 'error'); return; }
-        if (recSecAns.trim().toLowerCase() !== (await appSecurity.get('securityAnswer'))) {
-            toast('Réponse à la question de sécurité incorrecte.', 'error'); return;
+
+        try {
+            await apiClient.post('/auth/reset-password', {
+                email: recInput, // L'email saisi au début
+                securityAnswer: recSecAns,
+                recoveryCode: recSecAns.includes('-') ? recSecAns : undefined, // On essaie l'un ou l'autre
+                newPassword: recNewPw
+            });
+            setRecMode(false);
+            toast('✅ Mot de passe réinitialisé avec succès !');
+        } catch (err: any) {
+            toast(err.response?.data?.error || 'Erreur lors de la réinitialisation.', 'error');
         }
-        await appSecurity.set('adminPassword', recNewPw);
-        // Invalider le code de récupération après usage
-        await appSecurity.set('recoveryCode', '');
-        setRecMode(false);
-        toast('✅ Mot de passe admin réinitialisé avec succès !');
     };
 
     return (

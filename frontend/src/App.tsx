@@ -17,8 +17,12 @@ import AdminUsers from './pages/AdminUsers';
 import DiagnosticSante from './pages/DiagnosticSante';
 import SecuritySettings from './pages/SecuritySettings';
 import MissionOrder from './pages/MissionOrder';
+import KoboTerminal from './pages/Dashboard/KoboTerminal';
 import Layout from './layouts/Layout';
 import SessionWarningToast from './components/SessionWarningToast';
+import OfflineBanner from './components/OfflineBanner';
+import PWAPrompt from './components/PWAPrompt';
+import { useOfflineSync } from './hooks/useOfflineSync';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user } = useAuth();
@@ -35,6 +39,8 @@ const RoleRoute = ({ children, allowedRoles }: { children: React.ReactNode, allo
 };
 
 function App() {
+  useOfflineSync();
+
   return (
     <Router>
       <Routes>
@@ -173,9 +179,21 @@ function App() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/admin/kobo-terminal"
+          element={
+            <ProtectedRoute>
+              <RoleRoute allowedRoles={['ADMIN_PROQUELEC', 'DG_PROQUELEC']}>
+                <KoboTerminal />
+              </RoleRoute>
+            </ProtectedRoute>
+          }
+        />
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
       </Routes>
       <SessionWarningToast />
+      <OfflineBanner />
+      <PWAPrompt />
     </Router>
   );
 }

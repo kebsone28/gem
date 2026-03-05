@@ -1,6 +1,7 @@
 import prisma from '../../core/utils/prisma.js';
 import { pushSchema } from './sync.validation.js';
 import { socketService } from '../../services/socket.service.js';
+import { tracerAction } from '../../services/audit.service.js';
 
 // @desc    Pull changes from server
 // @route   GET /api/sync/pull
@@ -246,6 +247,31 @@ export const pushChanges = async (req, res) => {
             type: 'SYNC',
             message: `${results.success.length} changements enregistrés par ${req.user.firstName || 'un utilisateur'}`,
             data: { user: req.user.id, results: results.success.length }
+        });
+
+        // Déterminer l'action spécifique basée sur le rôle/username
+        let specificAction = 'SYNCHRONISATION_TERRAIN';
+        const username = req.user.username?.toLowerCase() || '';
+
+        if (username.includes('maçon')) specificAction = 'VALIDATION_MAÇONNERIE';
+        else if (username.includes('reseau')) specificAction = 'VALIDATION_RÉSEAU';
+        else if (username.includes('elec')) specificAction = 'VALIDATION_ÉLECTRICITÉ';
+        else if (username.includes('livreur')) specificAction = 'VALIDATION_LOGISTIQUE';
+
+        // Audit Log détaillé
+        await tracerAction({
+            userId: req.user.id,
+            organizationId: req.user.organizationId,
+            action: specificAction,
+            resource: 'Terrain',
+            resourceId: null,
+            details: {
+                successCount: results.success.length,
+                householdsUpdated: changes.households?.length || 0,
+                zonesUpdated: changes.zones?.length || 0,
+                team: req.user.specialty || req.user.role
+            },
+            req
         });
     }
 

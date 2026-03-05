@@ -29,6 +29,7 @@ interface MapComponentProps {
     routingStart?: [number, number] | null;
     routingDest?: [number, number] | null;
     userLocation?: [number, number] | null;
+    readOnly?: boolean;
 }
 
 const MapComponent: React.FC<MapComponentProps> = ({
@@ -42,7 +43,8 @@ const MapComponent: React.FC<MapComponentProps> = ({
     showLegend = true,
     showZones = false,
     onZoneClick,
-    grappesConfig
+    grappesConfig,
+    readOnly = false
 }) => {
     return (
         <div className="h-full w-full relative bg-slate-100 dark:bg-slate-900 overflow-hidden rounded-[2rem]">
@@ -57,6 +59,7 @@ const MapComponent: React.FC<MapComponentProps> = ({
                 onZoneClick={onZoneClick}
                 grappesConfig={grappesConfig}
                 className="w-full h-full"
+                readOnly={readOnly}
             />
 
             {/* Légende en overlay DOM simple */}

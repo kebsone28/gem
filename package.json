@@ -20,7 +20,7 @@
     "dev": "vite",
     "dev:backend": "cd backend && npm run dev",
     "dev:frontend": "cd frontend && npm run dev",
-    "dev:saas": "powershell -Command \"$p = (Get-NetTCPConnection -LocalPort 5000 -ErrorAction SilentlyContinue).OwningProcess; if($p){$p | ForEach-Object {Stop-Process -Id $_ -Force}}; Start-Process powershell -ArgumentList '-NoExit', '-Command', 'cd backend; npm run dev'; Start-Sleep -s 2; Start-Process powershell -ArgumentList '-NoExit', '-Command', 'cd frontend; npm run dev'\"",
+    "dev:saas": "powershell -Command \"$p5005 = (Get-NetTCPConnection -LocalPort 5005 -ErrorAction SilentlyContinue).OwningProcess; if($p5005){$p5005 | ForEach-Object {Stop-Process -Id $_ -Force}}; $p5173 = (Get-NetTCPConnection -LocalPort 5173 -ErrorAction SilentlyContinue).OwningProcess; if($p5173){$p5173 | ForEach-Object {Stop-Process -Id $_ -Force}}; Start-Process powershell -ArgumentList '-NoExit', '-Command', 'cd backend; npm run dev'; Start-Sleep -s 3; Start-Process powershell -ArgumentList '-NoExit', '-Command', 'cd frontend; npm run dev'\"",
     "build": "vite build && node scripts/copy-static-assets.js",
     "preview": "vite preview"
   },

@@ -1,12 +1,75 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
+    VitePWA({
+      registerType: 'autoUpdate',
+      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
+      manifest: {
+        name: 'PROQUELEC — GEM SaaS',
+        short_name: 'PROQUELEC',
+        description: 'Plateforme d\'Électrification de Masse — Mobile & Offline Ready',
+        theme_color: '#0f172a',
+        background_color: '#0f172a',
+        display: 'standalone',
+        orientation: 'portrait',
+        icons: [
+          {
+            src: 'logo-proquelec.png',
+            sizes: '192x192',
+            type: 'image/png'
+          },
+          {
+            src: 'logo-proquelec.png',
+            sizes: '512x512',
+            type: 'image/png'
+          },
+          {
+            src: 'logo-proquelec.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'any maskable'
+          }
+        ]
+      },
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/kf\.kobotoolbox\.org\/api\/v2\/.*/i,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'kobo-api-cache',
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 60 * 60 * 24 // 24 hours
+              }
+            }
+          },
+          {
+            urlPattern: /\/api\/.*/i,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'api-cache',
+              expiration: {
+                maxEntries: 100,
+                maxAgeSeconds: 60 * 60 * 24 // 24 hours
+              }
+            }
+          }
+        ]
+      },
+      devOptions: {
+        enabled: true,
+        type: 'module'
+      }
+    })
   ],
   server: {
     port: 3000,
@@ -15,13 +78,13 @@ export default defineConfig({
     proxy: {
       // Proxy all /api calls to the backend → eliminates CORS
       '/api': {
-        target: 'http://localhost:5000',
+        target: 'http://localhost:5005',
         changeOrigin: true,
         secure: false,
       },
       // Proxy WebSocket connections for Socket.io
       '/socket.io': {
-        target: 'http://localhost:5000',
+        target: 'http://localhost:5005',
         changeOrigin: true,
         secure: false,
         ws: true, // Enable WebSocket proxying
@@ -40,12 +103,12 @@ export default defineConfig({
     allowedHosts: true,
     proxy: {
       '/api': {
-        target: 'http://localhost:5000',
+        target: 'http://localhost:5005',
         changeOrigin: true,
         secure: false,
       },
       '/socket.io': {
-        target: 'http://localhost:5000',
+        target: 'http://localhost:5005',
         changeOrigin: true,
         secure: false,
         ws: true,

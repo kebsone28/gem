@@ -5,12 +5,12 @@ import './index.css'
 
 import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider } from './contexts/AuthContext';
-import { seedDatabase } from './store/seed';
+// import { seedDatabase } from './store/seed';
 
 // Initialize database with mock data if needed (only in development or if explicitly enabled)
-if (import.meta.env.VITE_ENABLE_MOCKS === 'true') {
-  seedDatabase();
-}
+// if (import.meta.env.VITE_ENABLE_MOCKS === 'true') {
+//   seedDatabase();
+// }
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

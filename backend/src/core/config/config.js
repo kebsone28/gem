@@ -8,7 +8,7 @@ console.log('🔍 Current Working Directory:', process.cwd());
 
 export const config = {
     env: process.env.NODE_ENV || 'development',
-    port: process.env.PORT || 5000,
+    port: parseInt(process.env.PORT || '5005', 10),
     dbUrl: process.env.DATABASE_URL,
     jwt: {
         secret: process.env.JWT_SECRET || 'secret',
@@ -18,16 +18,25 @@ export const config = {
     },
     cors: {
         origin: process.env.CORS_ORIGIN
-            ? process.env.CORS_ORIGIN.split(',').map(o => {
-                const trimmed = o.trim();
-                if (trimmed.includes('.') && !trimmed.startsWith('http')) {
-                    return `https://${trimmed}`;
-                }
-                return trimmed;
-            })
+            ? process.env.CORS_ORIGIN.split(',')
+                .map(o => o.trim())
+                .map(o => (o !== '*' && !o.startsWith('http')) ? `https://${o}` : o)
             : '*'
     },
     sentry: {
         dsn: process.env.SENTRY_DSN
+    },
+    redis: {
+        host: process.env.REDIS_HOST || 'localhost',
+        port: parseInt(process.env.REDIS_PORT || '6379', 10),
+        password: process.env.REDIS_PASSWORD || null,
+        tls: process.env.REDIS_TLS === 'true'
+    },
+    storage: {
+        endpoint: process.env.S3_ENDPOINT,
+        region: process.env.S3_REGION || 'us-east-1',
+        accessKeyId: process.env.S3_ACCESS_KEY,
+        secretAccessKey: process.env.S3_SECRET_KEY,
+        bucketName: process.env.S3_BUCKET || 'proquelec-assets'
     }
 };

@@ -18,25 +18,55 @@ async function main() {
 
     console.log('✅ Organization PROQUELEC ready');
 
+    const adminPassword = process.env.INITIAL_ADMIN_PASSWORD || 'CHANGE_ME_IMMEDIATELY';
+    const admin2FAAnswer = process.env.INITIAL_ADMIN_2FA_ANSWER || 'CHANGE_ME';
+
     const users = [
         {
             email: 'admingem',
-            password: '1995@PROQUELEC@2026',
+            password: adminPassword,
             name: 'Admin PROQUELEC',
             role: 'ADMIN_PROQUELEC',
             requires2FA: true,
             secret2FAQuestion: 'Question de sécurité',
-            secret2FAAnswer: 'CORAN'
+            secret2FAAnswer: admin2FAAnswer
         },
-        { email: 'maçongem', password: 'GEMMA2026', name: 'Chef Maçons', role: 'CHEF_EQUIPE' },
-        { email: 'reseaugem', password: 'GEMRE2026', name: 'Chef Réseau', role: 'CHEF_EQUIPE' },
-        { email: 'electriciengem', password: 'GEMELEC2026', name: 'Chef Électricien', role: 'CHEF_EQUIPE' },
-        { email: 'livreurgem', password: 'gemliv2026', name: 'Chef Livreur', role: 'CHEF_EQUIPE' },
-        { email: 'dggem', password: 'GEMDG2026', name: 'DG PROQUELEC', role: 'DG_PROQUELEC' }
+        {
+            email: 'maçongem',
+            password: process.env.INITIAL_MAÇON_PASSWORD || 'CHANGE_ME',
+            name: 'Chef Maçons',
+            role: 'CHEF_EQUIPE'
+        },
+        {
+            email: 'reseaugem',
+            password: process.env.INITIAL_RESEAU_PASSWORD || 'CHANGE_ME',
+            name: 'Chef Réseau',
+            role: 'CHEF_EQUIPE'
+        },
+        {
+            email: 'electriciengem',
+            password: process.env.INITIAL_ELEC_PASSWORD || 'CHANGE_ME',
+            name: 'Chef Électricien',
+            role: 'CHEF_EQUIPE'
+        },
+        {
+            email: 'livreurgem',
+            password: process.env.INITIAL_LIVREUR_PASSWORD || 'CHANGE_ME',
+            name: 'Chef Livreur',
+            role: 'CHEF_EQUIPE'
+        },
+        {
+            email: 'dggem',
+            password: adminPassword,
+            name: 'DG PROQUELEC',
+            role: 'DG_PROQUELEC'
+        }
     ];
 
     for (const u of users) {
         const hashedPassword = await bcrypt.hash(u.password, 10);
+        const hashed2FAAnswer = u.secret2FAAnswer ? await bcrypt.hash(u.secret2FAAnswer.trim().toLowerCase(), 10) : null;
+
         await prisma.user.upsert({
             where: { email: u.email },
             update: {
@@ -44,8 +74,8 @@ async function main() {
                 role: u.role,
                 name: u.name,
                 requires2FA: u.requires2FA || false,
-                secret2FAQuestion: u.secret2FAQuestion || null,
-                secret2FAAnswer: u.secret2FAAnswer || null
+                securityQuestion: u.secret2FAQuestion || null,
+                securityAnswerHash: hashed2FAAnswer
             },
             create: {
                 email: u.email,
@@ -54,8 +84,8 @@ async function main() {
                 role: u.role,
                 organizationId: org.id,
                 requires2FA: u.requires2FA || false,
-                secret2FAQuestion: u.secret2FAQuestion || null,
-                secret2FAAnswer: u.secret2FAAnswer || null
+                securityQuestion: u.secret2FAQuestion || null,
+                securityAnswerHash: hashed2FAAnswer
             }
         });
         console.log(`👤 User ${u.email} created/updated`);

@@ -11,8 +11,8 @@ export interface User {
     active?: boolean;
     createdAt?: string;
     requires2FA?: boolean;
-    secret2FAQuestion?: string;
-    secret2FAAnswer?: string;
+    securityQuestion?: string;
+    securityAnswerHash?: string;
 }
 
 export interface Household {

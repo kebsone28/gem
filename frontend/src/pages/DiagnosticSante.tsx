@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
     Activity,
-    ShieldAlert,
     RefreshCw,
     Database,
     Server,
@@ -17,26 +16,24 @@ import { fmtNum } from '../utils/format';
 
 export default function DiagnosticSante() {
     const { isDarkMode } = useTheme();
-    const [serverLogs, setServerLogs] = useState<any[]>([]);
+    const [serverData, setServerData] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [activeTab, setActiveTab] = useState<'local' | 'server'>('local');
 
     // Local Data
     const localLogs = useLiveQuery(() => db.sync_logs.orderBy('id').reverse().limit(50).toArray()) || [];
-    const localHouseholds = useLiveQuery(() => db.households.toArray()) || [];
+    const patients = useLiveQuery(() => db.households.toArray()) || [];
+    const activeProjectId = localStorage.getItem('active_project_id');
+
+    // Filtrer les ménages par projet actif pour éviter les doublons (7072 -> 3536)
+    const localHouseholds = patients.filter(h => !activeProjectId || h.projectId === activeProjectId);
     const localZones = useLiveQuery(() => db.zones.toArray()) || [];
 
     const fetchServerHealth = async () => {
         setIsLoading(true);
         try {
-            // Simulated call - in real app, we would have a specific diagnostic endpoint
-            await apiClient.get('/sync/pull?since=2026-01-01');
-            // Here we would ideally fetch real system logs from a secure endpoint
-            setServerLogs([
-                { id: 1, type: 'INFO', action: 'Payload Limit check', details: 'Status: OK (50MB)', timestamp: new Date() },
-                { id: 2, type: 'SUCCESS', action: 'Sync Processor', details: 'Transactions atomiques actives', timestamp: new Date() },
-                { id: 3, type: 'INFO', action: 'Prisma Version', details: 'v6.4.1 connected', timestamp: new Date() }
-            ]);
+            const { data } = await apiClient.get('/monitoring/system-health');
+            setServerData(data);
         } catch (err) {
             console.error('Failed to fetch diagnostics', err);
         } finally {
@@ -54,7 +51,13 @@ export default function DiagnosticSante() {
             zones: localZones.length,
             errors: localLogs.filter(l => l.action.toLowerCase().includes('error')).length,
             orphans: localHouseholds.filter(h => !h.zoneId || !h.projectId).length
-        }
+        },
+        server: serverData ? {
+            dbStatus: serverData.services.database.status,
+            redisStatus: serverData.services.redis.status,
+            memoryUsage: serverData.system.memory.usage,
+            status: serverData.status
+        } : null
     };
 
     return (
@@ -88,31 +91,45 @@ export default function DiagnosticSante() {
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div className={`p-6 rounded-3xl border ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'} shadow-sm`}>
-                    <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest mb-1">Ménages Locaux</p>
+                    <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest mb-1">
+                        {activeTab === 'local' ? 'Ménages Locaux' : 'Mémoire Système'}
+                    </p>
                     <div className="flex items-end gap-2">
-                        <span className="text-3xl font-black text-indigo-500 font-mono italic">{fmtNum(stats.local.households)}</span>
+                        <span className="text-3xl font-black text-indigo-500 font-mono italic">
+                            {activeTab === 'local' ? fmtNum(stats.local.households) : stats.server?.memoryUsage || '---'}
+                        </span>
                         <Database className="mb-2 text-slate-300" size={16} />
                     </div>
                 </div>
                 <div className={`p-6 rounded-3xl border ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'} shadow-sm`}>
-                    <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest mb-1">Anomalies Liaisons</p>
-                    <div className="flex items-end gap-2">
-                        <span className={`text-3xl font-black font-mono italic ${stats.local.orphans > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>{stats.local.orphans}</span>
-                        <ShieldAlert className="mb-2 text-slate-300" size={16} />
-                    </div>
-                </div>
-                <div className={`p-6 rounded-3xl border ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'} shadow-sm`}>
-                    <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest mb-1">Status API</p>
+                    <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest mb-1">
+                        {activeTab === 'local' ? 'Anomalies Liaisons' : 'État Base de Données'}
+                    </p>
                     <div className="flex items-center gap-2 mt-2">
-                        <div className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse" />
-                        <span className="text-xs font-black uppercase tracking-widest text-emerald-500">Connecté</span>
+                        <div className={`w-3 h-3 rounded-full ${activeTab === 'local' ? (stats.local.orphans > 0 ? 'bg-rose-500 animate-pulse' : 'bg-emerald-500') : (stats.server?.dbStatus === 'UP' ? 'bg-emerald-500' : 'bg-rose-500 animate-pulse')}`} />
+                        <span className={`text-xs font-black uppercase tracking-widest ${activeTab === 'local' ? (stats.local.orphans > 0 ? 'text-rose-500' : 'text-emerald-500') : (stats.server?.dbStatus === 'UP' ? 'text-emerald-500' : 'text-rose-500')}`}>
+                            {activeTab === 'local' ? (stats.local.orphans > 0 ? `${stats.local.orphans} Orphelins` : 'OK') : (stats.server?.dbStatus || 'OFFLINE')}
+                        </span>
                     </div>
                 </div>
                 <div className={`p-6 rounded-3xl border ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'} shadow-sm`}>
-                    <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest mb-1">Dernière Sync</p>
+                    <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest mb-1">
+                        {activeTab === 'local' ? 'Status API' : 'État File Redis (Workers)'}
+                    </p>
+                    <div className="flex items-center gap-2 mt-2">
+                        <div className={`w-3 h-3 rounded-full ${activeTab === 'local' ? 'bg-emerald-500 animate-pulse' : (stats.server?.redisStatus === 'UP' ? 'bg-emerald-500' : 'bg-rose-500 animate-pulse')}`} />
+                        <span className={`text-xs font-black uppercase tracking-widest ${activeTab === 'local' ? 'text-emerald-500' : (stats.server?.redisStatus === 'UP' ? 'text-emerald-500' : 'text-rose-500')}`}>
+                            {activeTab === 'local' ? 'Connecté' : (stats.server?.redisStatus || 'OFFLINE')}
+                        </span>
+                    </div>
+                </div>
+                <div className={`p-6 rounded-3xl border ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'} shadow-sm`}>
+                    <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest mb-1">Version Logicielle</p>
                     <div className="flex items-center gap-2 mt-1">
                         <Clock size={16} className="text-slate-400" />
-                        <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-tighter">Il y a 2 minutes</span>
+                        <span className="text-xs font-black text-slate-600 dark:text-slate-400 uppercase tracking-widest">
+                            {serverData?.version || 'SaaS v3.0'}
+                        </span>
                     </div>
                 </div>
             </div>
@@ -123,13 +140,32 @@ export default function DiagnosticSante() {
                         {activeTab === 'local' ? <Database className="text-indigo-500" size={20} /> : <Server className="text-emerald-500" size={20} />}
                         {activeTab === 'local' ? 'Historique Global des Synchronisations' : 'Journaux d\'Audit Serveur (Diagnostic)'}
                     </h3>
-                    <button
-                        onClick={activeTab === 'local' ? () => { } : fetchServerHealth}
-                        className="p-2 text-slate-400 hover:text-indigo-500 transition-colors"
-                        title="Rafraîchir les journaux"
-                    >
-                        <RefreshCw size={18} className={isLoading ? 'animate-spin' : ''} />
-                    </button>
+                    <div className="flex gap-2">
+                        {activeTab === 'local' && (
+                            <button
+                                onClick={async () => {
+                                    if (confirm('Voulez-vous supprimer toutes les données locales et forcer une resynchronisation ?')) {
+                                        await db.households.clear();
+                                        await db.zones.clear();
+                                        await db.sync_logs.clear();
+                                        localStorage.removeItem('last_sync_timestamp');
+                                        window.location.reload();
+                                    }
+                                }}
+                                className="px-4 py-2 bg-rose-500/10 text-rose-500 rounded-xl text-xs font-bold hover:bg-rose-500/20 transition-all"
+                            >
+                                Purge Locale
+                            </button>
+                        )}
+                        <button
+                            onClick={activeTab === 'local' ? () => { } : fetchServerHealth}
+                            disabled={isLoading}
+                            title="Rafraîchir les données"
+                            className={`p-2 rounded-xl text-xs font-bold transition-all ${activeTab === 'local' ? 'text-slate-400 hover:text-slate-500' : 'bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500/20'} disabled:opacity-50`}
+                        >
+                            <RefreshCw className={isLoading ? 'animate-spin' : ''} size={18} />
+                        </button>
+                    </div>
                 </div>
 
                 <div className="overflow-x-auto">
@@ -161,29 +197,28 @@ export default function DiagnosticSante() {
                                         <td className="px-8 py-5 text-right">
                                             <span className={`px-2 py-1 rounded text-[8px] font-black uppercase tracking-widest ${log.action.toLowerCase().includes('error')
                                                 ? 'bg-rose-500/10 text-rose-500'
-                                                : 'bg-emerald-500/10 text-emerald-500'
+                                                : 'bg-emerald-500/10 text-emerald-400'
                                                 }`}>
-                                                {log.action.toLowerCase().includes('error') ? 'Fail' : 'Success'}
+                                                {log.action.toLowerCase().includes('error') ? 'Échec' : 'Succès'}
                                             </span>
                                         </td>
                                     </tr>
                                 ))
                             ) : (
-                                serverLogs.map((log, i) => (
+                                serverData && Object.entries(serverData.services).map(([key, service]: [string, any], i) => (
                                     <tr key={i} className="hover:bg-slate-50/50 dark:hover:bg-slate-950/50 transition-colors">
-                                        <td className="px-8 py-5 text-[10px] font-mono text-slate-400 tabular-nums">
-                                            {log.timestamp.toLocaleTimeString()}
+                                        <td className="px-8 py-5 text-[10px] font-mono text-slate-400 tabular-nums uppercase">
+                                            {key}
                                         </td>
                                         <td className="px-8 py-5">
-                                            <p className="text-[11px] font-bold text-slate-700 dark:text-slate-200 uppercase tracking-tight">{log.action}</p>
+                                            <p className="text-[11px] font-bold text-slate-700 dark:text-slate-200 uppercase tracking-tight">Vérification du service {key}</p>
                                         </td>
                                         <td className="px-8 py-5 text-[10px] text-slate-500 italic">
-                                            {log.details}
+                                            {service.details}
                                         </td>
                                         <td className="px-8 py-5 text-right">
-                                            <span className={`px-2 py-1 rounded text-[8px] font-black uppercase tracking-widest ${log.type === 'ERROR' ? 'bg-rose-500/10 text-rose-500' : 'bg-emerald-500/10 text-emerald-500'
-                                                }`}>
-                                                {log.type}
+                                            <span className={`px-2 py-1 rounded text-[8px] font-black uppercase tracking-widest ${service.status === 'UP' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-500'}`}>
+                                                {service.status === 'UP' ? 'ACTIF' : 'DEFAILLANT'}
                                             </span>
                                         </td>
                                     </tr>
@@ -203,10 +238,17 @@ export default function DiagnosticSante() {
                     <ul className="space-y-3">
                         <li className="text-[11px] text-slate-600 font-bold flex items-start gap-2">
                             <span className="text-amber-500">•</span>
-                            {stats.local.orphans > 0
-                                ? "Action Recommandée: Certains ménages ne sont liés à aucune zone. Vérifiez vos fichiers d'import Excel."
-                                : "Intégrité structurelle parfaite: Tous les ménages sont rattachés à des zones valides."}
+                            {activeTab === 'local'
+                                ? (stats.local.orphans > 0 ? "Action Recommandée: Certains ménages ne sont liés à aucune zone. Vérifiez vos fichiers d'import Excel." : "Intégrité structurelle parfaite: Tous les ménages sont rattachés à des zones valides.")
+                                : (stats.server?.status === 'DEGRADED' ? "Attention: Un service serveur est dégradé. Vérifiez les logs Redis/DB." : "Serveur Optimal: Tous les services cloud répondent normalement.")
+                            }
                         </li>
+                        {activeTab === 'server' && serverData?.system.load[0] > 1.5 && (
+                            <li className="text-[11px] text-rose-500 font-bold flex items-start gap-2">
+                                <span className="text-rose-500">•</span>
+                                Alerte Charge: Le CPU du serveur montre des signes de fatigue. Envisagez une augmentation d'instance.
+                            </li>
+                        )}
                     </ul>
                 </div>
 

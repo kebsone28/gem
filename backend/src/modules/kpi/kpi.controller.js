@@ -1,4 +1,5 @@
 import prisma from '../../core/utils/prisma.js';
+import { redisConnection } from '../../core/utils/queueManager.js';
 
 // @desc    Get project KPIs (Snapshot current state)
 // @route   GET /api/kpi/:projectId
@@ -6,6 +7,20 @@ export const getProjectKPIs = async (req, res) => {
     try {
         const { projectId } = req.params;
         const { organizationId } = req.user;
+
+        // 0. Tentative de récupération depuis le cache Redis
+        const cacheKey = `kpi:${organizationId}:${projectId}`;
+        try {
+            const cachedData = await redisConnection.get(cacheKey);
+            if (cachedData) {
+                console.log(`[CACHE HIT] KPI pour le projet ${projectId}`);
+                return res.json(JSON.parse(cachedData));
+            }
+        } catch (cacheError) {
+            console.error('[REDIS CACHE ERROR]', cacheError);
+        }
+
+        console.log(`[CACHE MISS] Calcul des KPI pour le projet ${projectId}`);
 
         const project = await prisma.project.findFirst({
             where: { id: projectId, organizationId }
@@ -87,7 +102,7 @@ export const getProjectKPIs = async (req, res) => {
             (totalValidated * 1.0) + (interieurCount * 0.75) + (reseauCount * 0.45) + (murCount * 0.2)
         ) / (totalHouseholds - problemCount || 1) * 100 : 0;
 
-        res.json({
+        const result = {
             projectId,
             projectName: project.name,
             timestamp: new Date().toISOString(),
@@ -113,7 +128,6 @@ export const getProjectKPIs = async (req, res) => {
                     kitLoaded: Number(aggr.kit_loaded || 0),
                     gap: Number(aggr.kit_prepared || 0) - Number(aggr.kit_loaded || 0)
                 },
-                // Drill-down data
                 breakdown: {
                     byZone: zoneStats.map((z) => {
                         const total = Number(z.total);
@@ -138,7 +152,16 @@ export const getProjectKPIs = async (req, res) => {
                     })
                 }
             }
-        });
+        };
+
+        // Enregistrement dans le cache pour 5 minutes (300 secondes)
+        try {
+            await redisConnection.setex(cacheKey, 300, JSON.stringify(result));
+        } catch (cacheError) {
+            console.error('[REDIS CACHE SET ERROR]', cacheError);
+        }
+
+        res.json(result);
     } catch (error) {
         console.error('KPI calculation error:', error);
         res.status(500).json({ error: 'Server error while calculating KPIs' });

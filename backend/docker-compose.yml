@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  # Base de données PostgreSQL avec extension PostGIS
+  db:
+    image: postgis/postgis:15-3.3
+    environment:
+      POSTGRES_USER: ${DB_USER:-proquelec}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-proquelec_secure_2024}
+      POSTGRES_DB: ${DB_NAME:-electrification}
+    ports:
+      - "5435:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # File d'attente et Cache Redis
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "5006:6379"
+    command: redis-server --save 60 1 --loglevel warning
+    volumes:
+      - redisdata:/data
+
+  # Backend PROQUELEC (Node.js)
+  app:
+    build: .
+    ports:
+      - "5005:5005"
+    environment:
+      - DATABASE_URL=postgresql://${DB_USER:-proquelec}:${DB_PASSWORD:-proquelec_secure_2024}@db:5432/${DB_NAME:-electrification}?schema=public
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - NODE_ENV=production
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+volumes:
+  pgdata:
+  redisdata:

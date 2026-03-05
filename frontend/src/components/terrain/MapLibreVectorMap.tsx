@@ -44,7 +44,8 @@ export default function MapLibreVectorMap({
     showHeatmap = false,
     showZones = false,
     onZoneClick,
-    grappesConfig
+    grappesConfig,
+    readOnly = false
 }: any) {
     const containerRef = useRef<HTMLDivElement>(null);
     const mapRef = useRef<maplibregl.Map | null>(null);
@@ -226,7 +227,11 @@ export default function MapLibreVectorMap({
 
         // --- INTERACTIONS ---
         const setupInteraction = (layerId: string) => {
-            map.on('mouseenter', layerId, () => map.getCanvas().style.cursor = 'pointer');
+            map.on('mouseenter', layerId, () => {
+                if (!readOnly || layerId === 'clusters' || layerId === 'grappes-layer') {
+                    map.getCanvas().style.cursor = 'pointer';
+                }
+            });
             map.on('mouseleave', layerId, () => map.getCanvas().style.cursor = '');
         };
 

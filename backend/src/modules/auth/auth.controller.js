@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import prisma from '../../core/utils/prisma.js';
 import { generateTokens, verifyRefreshToken } from '../../core/utils/jwt.js';
+import { tracerAction } from '../../services/audit.service.js';
 
 // @desc    Register a new organization and its first admin user
 // @route   POST /api/auth/register-org
@@ -26,15 +27,27 @@ export const registerOrganization = async (req, res) => {
 
             const user = await tx.user.create({
                 data: {
-                    email,
+                    email: email.toLowerCase(), // Changed to lowercase
                     passwordHash: hashedPassword,
                     name,
                     role: 'admin',
                     organizationId: organization.id
-                }
+                },
+                include: { organization: true } // Added include for organization
             });
 
             return { user, organization };
+        });
+
+        // Audit Log
+        await tracerAction({
+            userId: result.user.id,
+            organizationId: result.user.organizationId,
+            action: 'INSCRIPTION_UTILISATEUR',
+            resource: 'Authentification',
+            resourceId: result.user.id,
+            details: { email: result.user.email, role: result.user.role },
+            req
         });
 
         // 4. Generate tokens
@@ -91,20 +104,41 @@ export const login = async (req, res) => {
         }
 
         if (user && (await bcrypt.compare(password, user.passwordHash))) {
-            const { accessToken, refreshToken } = generateTokens(user);
+            // Audit Log - Tentative réussie
+            await tracerAction({
+                userId: user.id,
+                organizationId: user.organizationId,
+                action: 'CONNEXION_REUSSIE',
+                resource: 'Authentification',
+                resourceId: user.id,
+                req
+            });
 
+            if (user.requires2FA) {
+                return res.json({
+                    user: {
+                        id: user.id,
+                        email: user.email,
+                        name: user.name,
+                        role: user.role,
+                        requires2FA: true,
+                        securityQuestion: user.securityQuestion
+                    }
+                });
+            }
+
+            console.log('✅ Passing 2FA check...');
+            const { accessToken, refreshToken } = generateTokens(user);
+            console.log('✅ Tokens generated');
+
+            // Set refresh token in cookie
             res.cookie('refreshToken', refreshToken, {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === 'production',
                 sameSite: 'strict',
-                maxAge: 7 * 24 * 60 * 60 * 1000
+                maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
             });
-
-            // Update last login
-            await prisma.user.update({
-                where: { id: user.id },
-                data: { lastLogin: new Date() }
-            });
+            console.log('✅ Cookie set');
 
             res.json({
                 user: {
@@ -112,14 +146,25 @@ export const login = async (req, res) => {
                     email: user.email,
                     role: user.role,
                     name: user.name,
-                    organization: user.organization.name,
-                    requires2FA: user.requires2FA,
-                    secret2FAQuestion: user.secret2FAQuestion,
-                    secret2FAAnswer: user.secret2FAAnswer
+                    organization: user.organization ? user.organization.name : 'N/A'
                 },
                 accessToken
             });
-        } else {
+            console.log('✅ Response sent successfully');
+        }
+        else {
+            // Audit Log - Échec de connexion (si l'utilisateur existe)
+            if (user) {
+                await tracerAction({
+                    userId: user.id,
+                    organizationId: user.organizationId,
+                    action: 'CONNEXION_ECHEC',
+                    resource: 'Authentification',
+                    resourceId: user.id,
+                    details: { motif: 'Mot de passe incorrect' },
+                    req
+                });
+            }
             res.status(401).json({ error: 'Invalid email or password' });
         }
     } catch (error) {
@@ -156,4 +201,218 @@ export const refreshToken = async (req, res) => {
 export const logout = (req, res) => {
     res.clearCookie('refreshToken');
     res.json({ message: 'Logged out successfully' });
+};
+// @desc    Change user password
+// @route   POST /api/auth/change-password
+export const changePassword = async (req, res) => {
+    try {
+        const { currentPassword, newPassword } = req.body;
+        const userId = req.user.id;
+
+        const user = await prisma.user.findUnique({ where: { id: userId } });
+        if (!user) return res.status(404).json({ error: 'Utilisateur non trouvé' });
+
+        const isMatch = await bcrypt.compare(currentPassword, user.passwordHash);
+        if (!isMatch) return res.status(400).json({ error: 'Mot de passe actuel incorrect' });
+
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+        await prisma.user.update({
+            where: { id: userId },
+            data: { passwordHash: hashedPassword }
+        });
+
+        await tracerAction({
+            userId,
+            organizationId: user.organizationId,
+            action: 'CHANGEMENT_MOT_DE_PASSE',
+            resource: 'Utilisateur',
+            resourceId: userId,
+            req
+        });
+
+        res.json({ message: 'Mot de passe mis à jour avec succès' });
+    } catch (error) {
+        console.error('Change password error:', error);
+        res.status(500).json({ error: 'Erreur lors du changement de mot de passe' });
+    }
+};
+
+// @desc    Update security question and recovery code
+// @route   POST /api/auth/security-settings
+export const updateSecuritySettings = async (req, res) => {
+    try {
+        const { securityQuestion, securityAnswer, recoveryCode } = req.body;
+        const userId = req.user.id;
+
+        const data = {};
+        if (securityQuestion) data.securityQuestion = securityQuestion;
+        if (securityAnswer) {
+            const salt = await bcrypt.genSalt(10);
+            data.securityAnswerHash = await bcrypt.hash(securityAnswer.trim().toLowerCase(), salt);
+        }
+        if (recoveryCode) {
+            const salt = await bcrypt.genSalt(10);
+            data.recoveryCodeHash = await bcrypt.hash(recoveryCode.trim(), salt);
+        }
+
+        const user = await prisma.user.update({
+            where: { id: userId },
+            data
+        });
+
+        await tracerAction({
+            userId,
+            organizationId: user.organizationId,
+            action: 'MISE_A_JOUR_SECURITE',
+            resource: 'Utilisateur',
+            resourceId: userId,
+            req
+        });
+
+        res.json({ message: 'Paramètres de sécurité mis à jour' });
+    } catch (error) {
+        console.error('Security update error:', error);
+        res.status(500).json({ error: 'Erreur lors de la mise à jour de la sécurité' });
+    }
+};
+
+// @desc    Reset password (Forgot Password flow)
+// @route   POST /api/auth/reset-password
+export const resetPassword = async (req, res) => {
+    try {
+        const { email, securityAnswer, recoveryCode, newPassword } = req.body;
+
+        const user = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+        if (!user) return res.status(404).json({ error: 'Utilisateur non trouvé' });
+
+        let verified = false;
+
+        if (recoveryCode && user.recoveryCodeHash) {
+            verified = await bcrypt.compare(recoveryCode.trim(), user.recoveryCodeHash);
+            if (verified) {
+                // Invalider le code après usage
+                await prisma.user.update({
+                    where: { id: user.id },
+                    data: { recoveryCodeHash: null }
+                });
+            }
+        } else if (securityAnswer && user.securityAnswerHash) {
+            verified = await bcrypt.compare(securityAnswer.trim().toLowerCase(), user.securityAnswerHash);
+        }
+
+        if (!verified) {
+            return res.status(400).json({ error: 'Code de récupération ou réponse de sécurité incorrecte' });
+        }
+
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+        await prisma.user.update({
+            where: { id: user.id },
+            data: { passwordHash: hashedPassword }
+        });
+
+        await tracerAction({
+            userId: user.id,
+            organizationId: user.organizationId,
+            action: 'REINITIALISATION_MOT_DE_PASSE',
+            resource: 'Utilisateur',
+            resourceId: user.id,
+            req
+        });
+
+        res.json({ message: 'Mot de passe réinitialisé avec succès' });
+    } catch (error) {
+        console.error('Reset password error:', error);
+        res.status(500).json({ error: 'Erreur lors de la réinitialisation' });
+    }
+};
+
+// @desc    Verify 2FA (Security Question)
+// @route   POST /api/auth/verify-2fa
+export const verify2FA = async (req, res) => {
+    try {
+        const { id, email, answer } = req.body;
+        console.log(`🔍 [2FA] Tentative de vérification pour ID/Email: ${id || email}`);
+
+        if (!(id || email) || !answer) {
+            return res.status(400).json({ error: 'Identifiant et réponse requis' });
+        }
+
+        const user = await prisma.user.findUnique({
+            where: id ? { id } : { email: email.toLowerCase() },
+            include: { organization: true }
+        });
+
+        if (!user) {
+            console.log(`❌ [2FA] Utilisateur non trouvé pour ID: ${id}`);
+            return res.status(404).json({ error: 'Utilisateur non trouvé' });
+        }
+
+        if (!user.securityAnswerHash) {
+            console.log(`❌ [2FA] Pas de réponse de sécurité configurée pour ${user.email}`);
+            return res.status(400).json({ error: 'Sécurité non configurée pour ce compte' });
+        }
+
+        const isMatch = await bcrypt.compare(answer.trim().toLowerCase(), user.securityAnswerHash);
+
+        if (!isMatch) {
+            console.log(`❌ [2FA] Réponse incorrecte pour ${user.email}`);
+            await tracerAction({
+                userId: user.id,
+                organizationId: user.organizationId,
+                action: 'CONNEXION_ECHEC_2FA',
+                resource: 'Authentification',
+                resourceId: user.id,
+                details: { motif: 'Réponse 2FA incorrecte' },
+                req
+            });
+            return res.status(401).json({ error: 'Réponse de sécurité incorrecte' });
+        }
+
+        console.log(`✅ [2FA] Réponse correcte pour ${user.email}`);
+
+        // Audit Log - Succès 2FA
+        await tracerAction({
+            userId: user.id,
+            organizationId: user.organizationId,
+            action: 'CONNEXION_REUSSIE',
+            resource: 'Authentification',
+            resourceId: user.id,
+            details: { type: '2FA_QUESTION' },
+            req
+        });
+
+        const tokens = generateTokens(user);
+        console.log('✅ [2FA] Tokens générés');
+
+        // Set refresh token in cookie
+        res.cookie('refreshToken', tokens.refreshToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict',
+            maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+        });
+        console.log('✅ [2FA] Cookie refresh configuré');
+
+        res.json({
+            user: {
+                id: user.id,
+                email: user.email,
+                role: user.role,
+                name: user.name,
+                organization: user.organization ? user.organization.name : 'N/A'
+            },
+            accessToken: tokens.accessToken
+        });
+        console.log('✅ [2FA] Réponse envoyée avec succès');
+    } catch (error) {
+        console.error('❌ [2FA ERROR]:', error);
+        res.status(500).json({
+            error: 'Erreur lors de la vérification 2FA',
+            message: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
 };

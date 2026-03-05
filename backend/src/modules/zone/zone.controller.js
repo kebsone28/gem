@@ -1,4 +1,5 @@
 import prisma from '../../core/utils/prisma.js';
+import { tracerAction } from '../../services/audit.service.js';
 
 // @desc    Get all zones for a project
 // @route   GET /api/zones
@@ -48,6 +49,17 @@ export const createZone = async (req, res) => {
             }
         });
 
+        // Audit Log
+        await tracerAction({
+            userId: req.user.id,
+            organizationId,
+            action: 'CREATION_ZONE',
+            resource: 'Zone',
+            resourceId: zone.id,
+            details: { name, projectId },
+            req
+        });
+
         res.status(201).json(zone);
     } catch (error) {
         console.error('Create zone error:', error);
@@ -61,9 +73,26 @@ export const deleteZone = async (req, res) => {
         const { id } = req.params;
         const { organizationId } = req.user;
 
+        const zone = await prisma.zone.findFirst({
+            where: { id, organizationId }
+        });
+
+        if (!zone) return res.status(404).json({ error: 'Zone not found' });
+
         await prisma.zone.update({
-            where: { id, organizationId },
+            where: { id },
             data: { deletedAt: new Date() }
+        });
+
+        // Audit Log
+        await tracerAction({
+            userId: req.user.id,
+            organizationId,
+            action: 'SUPPRESSION_ZONE',
+            resource: 'Zone',
+            resourceId: id,
+            details: { name: zone.name, projectId: zone.projectId },
+            req
         });
 
         res.json({ message: 'Zone deleted successfully' });

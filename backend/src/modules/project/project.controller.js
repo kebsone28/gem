@@ -1,4 +1,5 @@
 import prisma from '../../core/utils/prisma.js';
+import { tracerAction } from '../../services/audit.service.js';
 
 // @desc    Get all projects for an organization
 // @route   GET /api/projects
@@ -87,6 +88,17 @@ export const createProject = async (req, res) => {
             }
         });
 
+        // Audit Log
+        await tracerAction({
+            userId,
+            organizationId,
+            action: 'CREATION_PROJET',
+            resource: 'Projet',
+            resourceId: project.id,
+            details: { name: project.name },
+            req
+        });
+
         res.status(201).json(project);
     } catch (error) {
         console.error('Create project error:', error);
@@ -124,6 +136,20 @@ export const updateProject = async (req, res) => {
             }
         });
 
+        // Audit Log
+        await tracerAction({
+            userId,
+            organizationId,
+            action: 'MODIFICATION_PROJET',
+            resource: 'Projet',
+            resourceId: id,
+            details: {
+                old: { name: project.name, status: project.status },
+                new: { name, status }
+            },
+            req
+        });
+
         res.json(updatedProject);
     } catch (error) {
         console.error('Update project error:', error);
@@ -149,6 +175,17 @@ export const deleteProject = async (req, res) => {
         await prisma.project.update({
             where: { id },
             data: { deletedAt: new Date() }
+        });
+
+        // Audit Log
+        await tracerAction({
+            userId: req.user.id,
+            organizationId,
+            action: 'SUPPRESSION_PROJET',
+            resource: 'Projet',
+            resourceId: id,
+            details: { name: project.name },
+            req
         });
 
         res.json({ message: 'Project deleted successfully' });

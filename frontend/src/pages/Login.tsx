@@ -5,7 +5,6 @@ import { useAuth } from '../contexts/AuthContext';
 import apiClient from '../api/client';
 import type { User as DBUser } from '../utils/types';
 
-import { appSecurity } from '../services/appSecurity';
 
 type LoginStep = 'credentials' | '2fa' | 'recovery';
 
@@ -65,26 +64,25 @@ export default function Login() {
 
     const handle2FA = async (e: FormEvent) => {
         e.preventDefault();
+        if (!pendingUser) return;
+
         setLoading(true);
         setError('');
 
-        if (!pendingUser || (pendingUser.secret2FAAnswer?.toLowerCase() !== twoFAAnswer.trim().toLowerCase())) {
-            setError('Réponse secrète incorrecte. Accès refusé.');
-            setLoading(false);
-            return;
-        }
+        try {
+            const { data } = await apiClient.post('/auth/verify-2fa', {
+                email: pendingUser.email,
+                answer: twoFAAnswer
+            });
 
-        // Use organization instead of teamId for login parameter
-        login(
-            pendingUser.email,
-            pendingUser.role,
-            pendingUser.name,
-            pendingUser.organization,
-            pendingUser.id,
-            (pendingUser as any).accessToken
-        );
-        navigate('/dashboard');
-        setLoading(false);
+            const { user, accessToken } = data;
+            login(user.email, user.role, user.name, user.organization, user.id, accessToken);
+            navigate('/dashboard');
+        } catch (err: any) {
+            setError(err.response?.data?.error || 'Réponse secrète incorrecte. Accès refusé.');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const resetToCredentials = () => {
@@ -96,42 +94,51 @@ export default function Login() {
     };
 
     const startRecovery = async () => {
-        const q = await appSecurity.get('securityQuestion');
-        setRecQuestion(q);
+        // En mode SaaS, on a besoin de l'email pour savoir quelle question poser
+        const email = username.trim() || prompt("Veuillez saisir votre email :");
+        if (!email) return;
+
+        setRecInput(email);
         setStep('recovery');
         setRecStep(1);
-        setRecInput('');
+        setRecQuestion("Veuillez saisir votre réponse de sécurité ou votre code d'urgence ci-dessous.");
         setError('');
     };
 
     const handleRecStep1 = async (e: FormEvent) => {
         e.preventDefault();
-        setError('');
-        const codeOk = await appSecurity.check('recoveryCode', recInput);
-        const ansOk = await appSecurity.check('securityAnswer', recInput, true);
-        if (!codeOk && !ansOk) {
-            setError('Code ou réponse de sécurité incorrecte.');
-            return;
-        }
+        // Dans ce flux simplifié, on passe à la saisie du nouveau MDP
+        // La validation réelle se fera au moment du clic final via l'API
         setRecStep(2);
     };
 
     const handleRecStep2 = async (e: FormEvent) => {
         e.preventDefault();
+        setLoading(true);
         setError('');
+
         if (recNewPw.length < 8) {
             setError('Le mot de passe doit faire au moins 8 caractères.');
+            setLoading(false);
             return;
         }
-        const ok = await appSecurity.check('securityAnswer', recSecAns, true);
-        if (!ok) {
-            setError('Réponse de confirmation incorrecte.');
-            return;
+
+        try {
+            await apiClient.post('/auth/reset-password', {
+                email: recInput, // L'identifiant/email
+                securityAnswer: recSecAns,
+                recoveryCode: recSecAns.includes('-') ? recSecAns : undefined,
+                newPassword: recNewPw
+            });
+
+            setRecoveryInfo('✅ Mot de passe réinitialisé. Connectez-vous avec vos nouveaux identifiants.');
+            setStep('credentials');
+            setPassword(''); // On vide l'ancien MDP
+        } catch (err: any) {
+            setError(err.response?.data?.error || 'Erreur lors de la réinitialisation.');
+        } finally {
+            setLoading(false);
         }
-        await appSecurity.set('adminPassword', recNewPw);
-        await appSecurity.set('recoveryCode', ''); // Invalidate code
-        setRecoveryInfo('✅ Mot de passe réinitialisé. Connectez-vous avec vos nouveaux identifiants.');
-        setStep('credentials');
     };
 
     return (
@@ -257,7 +264,7 @@ export default function Login() {
 
                             <div className="space-y-2">
                                 <label className="text-xs font-semibold text-dark-text-secondary uppercase tracking-wider">
-                                    {pendingUser.secret2FAQuestion}
+                                    {pendingUser.securityQuestion}
                                 </label>
                                 <input
                                     type="password"

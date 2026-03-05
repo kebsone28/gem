@@ -25,6 +25,17 @@ export interface SyncLog {
     details?: any;
 }
 
+export interface SyncQueueItem {
+    id?: number;
+    action: string;
+    endpoint: string;
+    method: 'POST' | 'PUT' | 'DELETE' | 'PATCH';
+    payload: any;
+    timestamp: number;
+    status: 'pending' | 'failed';
+    retryCount: number;
+}
+
 // Paramètres de sécurité applicatifs (persistés localement)
 export interface AppSecurity {
     key: string;   // identifier: 'projectDeletePassword' | 'adminPassword' | 'securityQuestion' | 'securityAnswer' | 'recoveryCode'
@@ -42,6 +53,7 @@ export class ProquelecDatabase extends Dexie {
     missions!: Table<any>;
     sync_logs!: Table<SyncLog>;
     app_security!: Table<AppSecurity>;
+    syncOutbox!: Table<SyncQueueItem>;
 
     constructor() {
         super('ProquelecDB');
@@ -93,6 +105,22 @@ export class ProquelecDatabase extends Dexie {
             teams: 'id, organizationId, name, type, specialty',
             sync_logs: '++id, timestamp, action',
             app_security: 'key, updatedAt'
+        });
+
+        // Version 7 — File d'attente de synchronisation hors-ligne
+        this.version(7).stores({
+            missions: 'id, projectId, orderNumber, startDate, endDate',
+            inventory: 'id, projectId, category, name',
+            expenses: 'id, projectId, category, date',
+            organizations: 'id, name',
+            users: 'id, organizationId, email, role',
+            projects: 'id, organizationId, name, status, version',
+            zones: 'id, projectId, organizationId, name, version',
+            households: 'id, projectId, zoneId, organizationId, status, version',
+            teams: 'id, organizationId, name, type, specialty',
+            sync_logs: '++id, timestamp, action',
+            app_security: 'key, updatedAt',
+            syncOutbox: '++id, status, timestamp'
         });
     }
 }

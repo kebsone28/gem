@@ -6,8 +6,7 @@ dist/
 build/
 release/
 
-# Electron build artifacts
-electron/dist/
+# Binary artifacts (Legacy/Builds)
 *.exe
 *.dll
 *.pdb
@@ -17,17 +16,33 @@ playwright-report/
 test-results/
 coverage/
 
-# VSCode
+# IDEs and Editors
 .vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
 
 # Misc
 *.zip
 *.log
 .DS_Store
 .env
+tmp/
 
 # Large data files (>50MB)
 *.xlsx
 *.xls
 *.csv
+*.png
+*.jpg
+*.jpeg
 KOBO/
+
+# Archiving legacy
+archive/
+
+# Cursor context
+context_application.md
