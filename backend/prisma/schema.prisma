@@ -22,6 +22,7 @@ model User {
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id])
   email          String       @unique
+  name           String?
   passwordHash   String
   role           String       @default("user")
   lastLogin      DateTime?

@@ -1,4 +1,3 @@
-import fs from 'fs/promises';
 import bcrypt from 'bcryptjs';
 import prisma from '../../core/utils/prisma.js';
 import { generateTokens, verifyRefreshToken } from '../../core/utils/jwt.js';
@@ -85,12 +84,10 @@ export const login = async (req, res) => {
 
         if (!user) {
             console.log('❌ User not found for email:', email);
-            await fs.appendFile('auth.log', `[${new Date().toISOString()}] Login failed: User not found for email: ${email}\n`);
         } else {
             console.log('✅ User found in DB. Role:', user.role);
             const isMatch = await bcrypt.compare(password, user.passwordHash);
             console.log('🔑 Password match result:', isMatch);
-            await fs.appendFile('auth.log', `[${new Date().toISOString()}] Login attempt for ${email}: Password match: ${isMatch}\n`);
         }
 
         if (user && (await bcrypt.compare(password, user.passwordHash))) {
