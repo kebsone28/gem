@@ -87,7 +87,7 @@ export default function SecuritySettings() {
     const [recSecAns, setRecSecAns] = useState('');
     const [recStep, setRecStep] = useState<1 | 2>(1);
     const [recNewPw, setRecNewPw] = useState('');
-    const [recQuestion, setRecQuestion] = useState('');
+    const [recQuestion] = useState('');
 
     // ── Toast helpers ──────────────────────────────────────────────────────────
     const toast = (msg: string, type: ToastType = 'success') => {
