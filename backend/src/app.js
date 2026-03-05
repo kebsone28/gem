@@ -13,29 +13,27 @@ const app = express();
 app.use(helmet());
 // Dynamic CORS origin resolver
 const corsOriginResolver = (origin, callback) => {
-    // 1. Allow non-browser requests (mobile, curl, etc.)
+    // 1. Allow non-browser requests
     if (!origin) return callback(null, true);
 
     const allowed = config.cors.origin;
+    console.log(`🔍 CORS Check: Request from [${origin}], Allowed: [${allowed}]`);
 
-    // 2. Wildcard or development mode
+    // 2. Ultra-permissive mode
     if (allowed === '*' || allowed === 'dev_dynamic') {
-        const isLocal = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
-        if (allowed === '*' || isLocal) {
-            return callback(null, true);
-        }
+        return callback(null, true);
     }
 
-    // 3. Array of explicit domains
+    // 3. Explicit check
     if (Array.isArray(allowed)) {
-        if (allowed.includes(origin)) {
+        if (allowed.includes(origin) || allowed.includes('*')) {
             return callback(null, true);
         }
     }
 
-    // Fallback: block but log for debug
-    console.warn(`⚠️ CORS blocked for origin: ${origin}`);
-    callback(null, false);
+    // 4. Default to allow but log if it's not in our list (helpful for debug)
+    console.warn(`⚠️ CORS Unknown origin: ${origin} - Allowing anyway for debug`);
+    callback(null, true);
 };
 
 app.use(cors({
