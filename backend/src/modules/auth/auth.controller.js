@@ -111,7 +111,11 @@ export const login = async (req, res) => {
                     id: user.id,
                     email: user.email,
                     role: user.role,
-                    organization: user.organization.name
+                    name: user.name,
+                    organization: user.organization.name,
+                    requires2FA: user.requires2FA,
+                    secret2FAQuestion: user.secret2FAQuestion,
+                    secret2FAAnswer: user.secret2FAAnswer
                 },
                 accessToken
             });

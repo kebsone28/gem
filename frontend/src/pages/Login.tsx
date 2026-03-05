@@ -2,7 +2,6 @@ import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LogIn, User, Lock, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { db } from '../store/db';
 import apiClient from '../api/client';
 import type { User as DBUser } from '../utils/types';
 
@@ -43,16 +42,10 @@ export default function Login() {
 
             const { user, accessToken } = data;
 
-            // Optional: Check if user also exists in local Dexie for 2FA settings or local overrides
-            const localUser = await db.users.where('email').equalsIgnoreCase(user.email).first();
-
-            if (localUser?.requires2FA) {
-                // Merge data: we need the secret question/answer from local DB for 2FA
+            if (user.requires2FA) {
                 setPendingUser({
                     ...user,
-                    accessToken, // Store token to use after 2FA
-                    secret2FAQuestion: localUser.secret2FAQuestion,
-                    secret2FAAnswer: localUser.secret2FAAnswer
+                    accessToken,
                 } as any);
                 setStep('2fa');
                 setLoading(false);

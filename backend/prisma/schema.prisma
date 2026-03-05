@@ -26,6 +26,9 @@ model User {
   passwordHash   String
   role           String       @default("user")
   lastLogin      DateTime?
+  requires2FA    Boolean      @default(false)
+  secret2FAQuestion String?
+  secret2FAAnswer   String?
   projectsUpdated Project[]   @relation("UpdatedBy")
   syncLogs       SyncLog[]
   createdAt      DateTime     @default(now())
