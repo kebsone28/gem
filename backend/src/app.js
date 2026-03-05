@@ -13,27 +13,29 @@ const app = express();
 app.use(helmet());
 // Dynamic CORS origin resolver
 const corsOriginResolver = (origin, callback) => {
-    // Allow requests with no origin (mobile apps, curl, Postman, server-to-server)
+    // 1. Allow non-browser requests (mobile, curl, etc.)
     if (!origin) return callback(null, true);
 
-    const allowedOrigins = config.cors.origin;
+    const allowed = config.cors.origin;
 
-    // Production: explicit whitelist only
-    if (Array.isArray(allowedOrigins)) {
-        if (allowedOrigins.includes(origin)) {
+    // 2. Wildcard or development mode
+    if (allowed === '*' || allowed === 'dev_dynamic') {
+        const isLocal = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+        if (allowed === '*' || isLocal) {
             return callback(null, true);
         }
-        return callback(new Error(`CORS blocked: ${origin}`));
     }
 
-    // Development: allow any localhost or 127.0.0.1 port
-    if (allowedOrigins === 'dev_dynamic') {
-        const isLocalhost = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
-        if (isLocalhost) return callback(null, true);
-        return callback(new Error(`CORS blocked: ${origin}`));
+    // 3. Array of explicit domains
+    if (Array.isArray(allowed)) {
+        if (allowed.includes(origin)) {
+            return callback(null, true);
+        }
     }
 
-    callback(new Error('CORS: origin not configured'));
+    // Fallback: block but log for debug
+    console.warn(`⚠️ CORS blocked for origin: ${origin}`);
+    callback(null, false);
 };
 
 app.use(cors({
