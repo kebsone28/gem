@@ -11,8 +11,33 @@ const app = express();
 
 // 1. Security Middlewares
 app.use(helmet());
+// Dynamic CORS origin resolver
+const corsOriginResolver = (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, Postman, server-to-server)
+    if (!origin) return callback(null, true);
+
+    const allowedOrigins = config.cors.origin;
+
+    // Production: explicit whitelist only
+    if (Array.isArray(allowedOrigins)) {
+        if (allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+        return callback(new Error(`CORS blocked: ${origin}`));
+    }
+
+    // Development: allow any localhost or 127.0.0.1 port
+    if (allowedOrigins === 'dev_dynamic') {
+        const isLocalhost = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+        if (isLocalhost) return callback(null, true);
+        return callback(new Error(`CORS blocked: ${origin}`));
+    }
+
+    callback(new Error('CORS: origin not configured'));
+};
+
 app.use(cors({
-    origin: config.cors.origin,
+    origin: corsOriginResolver,
     credentials: true
 }));
 

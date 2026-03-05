@@ -112,8 +112,6 @@ export default function MapLibreVectorMap({
     const setupLayers = useCallback((map: maplibregl.Map) => {
         if (!map || map.getSource('households')) return;
 
-        console.log('[MapLibre] Injection des sources et layers haute interaction...');
-
         // --- SOURCES ---
         map.addSource('households', {
             type: 'geojson',
@@ -247,7 +245,6 @@ export default function MapLibreVectorMap({
         map.on('click', 'unclustered-points', (e) => {
             const feature = e.features?.[0];
             if (feature) {
-                console.log('[MapLibre] Point cliqué:', feature.properties.id);
                 const h = householdsRef.current.find((item: any) => item.id === feature.properties.id);
                 if (h) onSelectRef.current(h);
             }
@@ -258,7 +255,6 @@ export default function MapLibreVectorMap({
             const feature = e.features?.[0];
             if (feature && onZoneClickRef.current) {
                 const coords = (feature.geometry as any).coordinates;
-                console.log('[MapLibre] Zone cliquée:', feature.properties.nom);
                 onZoneClickRef.current([coords[1], coords[0]], 14);
             }
         });

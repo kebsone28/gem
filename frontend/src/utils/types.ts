@@ -23,6 +23,7 @@ export interface Household {
     status: string;
     owner?: string;
     photo?: string;
+    compteurPhoto?: string;
     version?: number;
     delivery?: {
         agent?: string;

@@ -18,7 +18,9 @@
     "build:css": "tailwindcss -i src/styles.css -o src/output.css --watch",
     "build:css:prod": "tailwindcss -i src/styles.css -o src/output.css --minify",
     "dev": "vite",
-    "dev:saas": "powershell -Command \"Start-Process powershell -ArgumentList '-NoExit', '-Command', 'cd backend; `$env:PRISMA_CLIENT_ENGINE_TYPE=\\\"binary\\\"; npm run dev'; Start-Process powershell -ArgumentList '-NoExit', '-Command', 'cd frontend; npm run dev'\"",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:saas": "powershell -Command \"$p = (Get-NetTCPConnection -LocalPort 5000 -ErrorAction SilentlyContinue).OwningProcess; if($p){$p | ForEach-Object {Stop-Process -Id $_ -Force}}; Start-Process powershell -ArgumentList '-NoExit', '-Command', 'cd backend; npm run dev'; Start-Sleep -s 2; Start-Process powershell -ArgumentList '-NoExit', '-Command', 'cd frontend; npm run dev'\"",
     "build": "vite build && node scripts/copy-static-assets.js",
     "preview": "vite preview"
   },

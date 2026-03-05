@@ -9,7 +9,9 @@ import {
     Undo2,
     Search,
     RefreshCw,
-    Plus
+    Plus,
+    LayoutList,
+    FileDown
 } from 'lucide-react';
 import { useTerrainData } from '../hooks/useTerrainData';
 import { useAuth } from '../contexts/AuthContext';
@@ -58,7 +60,7 @@ const Terrain: React.FC = () => {
     const [isSyncing, setIsSyncing] = useState(false);
 
     const [selectedHousehold, setSelectedHousehold] = useState<Household | null>(null);
-    const [viewMode] = useState<'map' | 'list'>('map');
+    const [viewMode, setViewMode] = useState<'map' | 'list'>('map');
     const [showHeatmap, setShowHeatmap] = useState(false);
     const { isDarkMode } = useTheme();
     const [mapCenter, setMapCenter] = useState<[number, number]>([14.7167, -17.4677]);
@@ -383,6 +385,15 @@ const Terrain: React.FC = () => {
                             </button>
                         )}
 
+                        <button
+                            onClick={() => setViewMode(viewMode === 'map' ? 'list' : 'map')}
+                            title="Basculer la vue"
+                            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${isDarkMode ? 'bg-slate-800 text-slate-300 hover:text-white border border-slate-700' : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200 shadow-sm'}`}
+                        >
+                            {viewMode === 'map' ? <LayoutList size={14} /> : <MapPin size={14} />}
+                            <span className="hidden md:inline">{viewMode === 'map' ? 'Vue Liste' : 'Vue Carte'}</span>
+                        </button>
+
                         <div className={`flex items-center flex-wrap gap-1 lg:gap-2 p-1 rounded-2xl border shadow-sm transition-all ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
                             {/* Team Filter */}
                             <select
@@ -576,9 +587,78 @@ const Terrain: React.FC = () => {
                                 />
                             </motion.div>
                         ) : (
-                            <div className="h-full w-full flex items-center justify-center">
-                                <p className="text-slate-400 font-black uppercase tracking-[0.3em] text-[10px]">Vue Liste en maintenance</p>
-                            </div>
+                            <motion.div
+                                key="list"
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className={`h-full w-full overflow-hidden flex flex-col rounded-3xl border shadow-lg ${isDarkMode ? 'bg-transparent border-none' : 'bg-white border-slate-200'}`}
+                            >
+                                <div className={`p-4 border-b flex items-center justify-between ${isDarkMode ? 'border-slate-800' : 'border-slate-100'}`}>
+                                    <h3 className="text-sm font-black uppercase tracking-widest text-indigo-500">Ménages ({filteredHouseholds.length})</h3>
+                                    <button
+                                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${isDarkMode ? 'bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20' : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100'}`}
+                                    >
+                                        <FileDown size={14} /> Exporter CSV
+                                    </button>
+                                </div>
+                                <div className="flex-1 overflow-auto">
+                                    <table className="w-full text-left text-sm whitespace-nowrap">
+                                        <thead className={`sticky top-0 z-10 text-[10px] font-black uppercase tracking-widest ${isDarkMode ? 'bg-slate-900 text-slate-500' : 'bg-slate-50 text-slate-500'}`}>
+                                            <tr>
+                                                <th className="px-6 py-4">ID / Propriétaire</th>
+                                                <th className="px-6 py-4">Région</th>
+                                                <th className="px-6 py-4">Statut</th>
+                                                <th className="px-6 py-4 flex justify-end">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className={`divide-y ${isDarkMode ? 'divide-slate-800/50' : 'divide-slate-100'}`}>
+                                            {filteredHouseholds.slice(0, 100).map(h => (
+                                                <tr key={h.id} className={`transition-colors hover:${isDarkMode ? 'bg-slate-800/50' : 'bg-slate-50'}`}>
+                                                    <td className="px-6 py-4">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center border ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-slate-100 border-slate-200'}`}>
+                                                                <MapPin size={14} className={isDarkMode ? 'text-slate-400' : 'text-slate-500'} />
+                                                            </div>
+                                                            <div className="flex flex-col">
+                                                                <span className={`font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{h.id}</span>
+                                                                <span className={`text-[10px] ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>{h.owner || '—'}</span>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <span className={`px-2 py-1 rounded-md text-[10px] font-bold ${isDarkMode ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
+                                                            {h.region || '—'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <span className={`px-2 py-1 rounded-md text-[10px] font-bold ${h.status === 'Terminé' || h.status === 'Réception: Validée' ? 'bg-emerald-500/10 text-emerald-500' :
+                                                            h.status === 'Problème' ? 'bg-rose-500/10 text-rose-500' :
+                                                                h.status === 'Non débuté' ? 'bg-slate-500/10 text-slate-500' :
+                                                                    'bg-indigo-500/10 text-indigo-500'
+                                                            }`}>
+                                                            {h.status || 'Inconnu'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-right">
+                                                        <button
+                                                            onClick={() => setSelectedHousehold(h)}
+                                                            className="text-indigo-500 hover:text-indigo-600 font-bold text-xs"
+                                                        >
+                                                            Détails
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                    {filteredHouseholds.length > 100 && (
+                                        <div className="p-4 text-center text-xs text-slate-500 italic">
+                                            Seuls les 100 premiers résultats sont affichés. Utilisez les filtres ou la recherche.
+                                        </div>
+                                    )}
+                                </div>
+                            </motion.div>
                         )}
                     </AnimatePresence>
                 </div>
@@ -617,12 +697,46 @@ const Terrain: React.FC = () => {
                                         <Maximize size={12} /> Galerie de Photos
                                     </h4>
                                     <div className="grid grid-cols-2 gap-2">
-                                        <div className={`aspect-video rounded-2xl overflow-hidden border ${isDarkMode ? 'bg-slate-900 border-slate-800 text-slate-700' : 'bg-slate-50 border-slate-100 text-slate-300'} flex items-center justify-center italic text-[8px]`}>
-                                            {selectedHousehold.photo ? <img src={selectedHousehold.photo} alt={`Installation du ménage ${selectedHousehold.id}`} className="w-full h-full object-cover" /> : 'Photo Installation'}
-                                        </div>
-                                        <div className={`aspect-video rounded-2xl overflow-hidden border border-dashed ${isDarkMode ? 'bg-slate-900/50 border-slate-800 text-slate-700' : 'bg-slate-50 border-slate-100 text-slate-300'} flex items-center justify-center italic text-[8px]`}>
-                                            Photo Compteur
-                                        </div>
+                                        {selectedHousehold.photo ? (
+                                            <a
+                                                href={selectedHousehold.photo}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className={`aspect-square sm:aspect-video rounded-2xl overflow-hidden border cursor-pointer hover:opacity-80 transition-opacity ${isDarkMode ? 'border-slate-800' : 'border-slate-200'}`}
+                                            >
+                                                <img
+                                                    src={selectedHousehold.photo}
+                                                    alt={`Ménage ${selectedHousehold.id}`}
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            </a>
+                                        ) : (
+                                            <div className={`aspect-square sm:aspect-video rounded-2xl overflow-hidden border flex items-center justify-center p-4 text-center ${isDarkMode ? 'bg-slate-900 border-slate-800 text-slate-600' : 'bg-slate-50 border-slate-200 text-slate-400'}`}>
+                                                <div className="flex flex-col items-center gap-2">
+                                                    <MapPin size={16} />
+                                                    <span className="text-[9px] font-bold uppercase">Aucune photo principale</span>
+                                                </div>
+                                            </div>
+                                        )}
+                                        {/* Placeholder or Compteur photo */}
+                                        {selectedHousehold.compteurPhoto ? (
+                                            <a
+                                                href={selectedHousehold.compteurPhoto}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className={`aspect-square sm:aspect-video rounded-2xl overflow-hidden border cursor-pointer hover:opacity-80 transition-opacity ${isDarkMode ? 'border-slate-800' : 'border-slate-200'}`}
+                                            >
+                                                <img
+                                                    src={selectedHousehold.compteurPhoto}
+                                                    alt={`Compteur ${selectedHousehold.id}`}
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            </a>
+                                        ) : (
+                                            <div className={`aspect-square sm:aspect-video rounded-2xl overflow-hidden border border-dashed flex items-center justify-center p-4 text-center ${isDarkMode ? 'bg-slate-900/50 border-slate-800 text-slate-700' : 'bg-slate-50 border-slate-200 text-slate-300'}`}>
+                                                <span className="text-[9px] font-bold uppercase">En attente<br />(Compteur)</span>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
 
@@ -724,70 +838,72 @@ const Terrain: React.FC = () => {
             />
 
             {/* Delete Project Modal */}
-            {showDeleteModal && (
-                <div className="fixed inset-0 z-[4000] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-                    <div className={`w-full max-w-md rounded-3xl shadow-2xl border p-8 ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
-                        <div className="flex items-center gap-4 mb-6">
-                            <div className="w-12 h-12 rounded-xl bg-rose-500/10 flex items-center justify-center shrink-0">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-rose-500"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
-                            </div>
-                            <div>
-                                <h2 className={`text-xl font-black ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Supprimer le Projet</h2>
-                                <p className={`text-sm font-medium ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Cette action est irréversible</p>
-                            </div>
-                        </div>
-
-                        <div className={`p-4 rounded-2xl mb-6 ${isDarkMode ? 'bg-rose-500/10 border border-rose-500/20' : 'bg-rose-50 border border-rose-100'}`}>
-                            <p className={`text-sm font-bold ${isDarkMode ? 'text-rose-400' : 'text-rose-700'}`}>
-                                Vous allez supprimer le projet <span className="italic">"{project?.name}"</span> et tous ses ménages de la base locale.
-                            </p>
-                        </div>
-
-                        <div className="space-y-4">
-                            <div>
-                                <label className={`text-xs font-black uppercase tracking-widest block mb-2 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-                                    Mot de passe administrateur
-                                </label>
-                                <input
-                                    type="password"
-                                    value={deletePassword}
-                                    onChange={(e) => { setDeletePassword(e.target.value); setDeleteError(''); }}
-                                    placeholder="Entrez le mot de passe admin"
-                                    title="Mot de passe administrateur"
-                                    onKeyDown={(e) => e.key === 'Enter' && handleDeleteProject()}
-                                    autoFocus
-                                    className={`w-full px-4 py-3 rounded-xl border text-sm font-bold outline-none transition-all ${deleteError
-                                        ? 'border-rose-500 bg-rose-500/5'
-                                        : isDarkMode ? 'bg-slate-800 border-slate-700 text-white placeholder:text-slate-600 focus:border-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-indigo-500'
-                                        }`}
-                                />
-                                {deleteError && (
-                                    <p className="text-rose-500 text-xs font-bold mt-2">{deleteError}</p>
-                                )}
+            {
+                showDeleteModal && (
+                    <div className="fixed inset-0 z-[4000] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+                        <div className={`w-full max-w-md rounded-3xl shadow-2xl border p-8 ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+                            <div className="flex items-center gap-4 mb-6">
+                                <div className="w-12 h-12 rounded-xl bg-rose-500/10 flex items-center justify-center shrink-0">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-rose-500"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
+                                </div>
+                                <div>
+                                    <h2 className={`text-xl font-black ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Supprimer le Projet</h2>
+                                    <p className={`text-sm font-medium ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Cette action est irréversible</p>
+                                </div>
                             </div>
 
-                            <div className="flex gap-3 pt-2">
-                                <button
-                                    onClick={() => setShowDeleteModal(false)}
-                                    title="Annuler"
-                                    className={`flex-1 py-3 rounded-xl border font-black text-sm transition-all ${isDarkMode ? 'border-slate-700 text-slate-400 hover:text-white hover:bg-slate-800' : 'border-slate-200 text-slate-500 hover:text-slate-900 hover:bg-slate-100'
-                                        }`}
-                                >
-                                    Annuler
-                                </button>
-                                <button
-                                    onClick={handleDeleteProject}
-                                    title="Confirmer la suppression"
-                                    className="flex-1 py-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-black text-sm transition-all shadow-lg shadow-rose-600/20 active:scale-95"
-                                >
-                                    Supprimer définitivement
-                                </button>
+                            <div className={`p-4 rounded-2xl mb-6 ${isDarkMode ? 'bg-rose-500/10 border border-rose-500/20' : 'bg-rose-50 border border-rose-100'}`}>
+                                <p className={`text-sm font-bold ${isDarkMode ? 'text-rose-400' : 'text-rose-700'}`}>
+                                    Vous allez supprimer le projet <span className="italic">"{project?.name}"</span> et tous ses ménages de la base locale.
+                                </p>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div>
+                                    <label className={`text-xs font-black uppercase tracking-widest block mb-2 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+                                        Mot de passe administrateur
+                                    </label>
+                                    <input
+                                        type="password"
+                                        value={deletePassword}
+                                        onChange={(e) => { setDeletePassword(e.target.value); setDeleteError(''); }}
+                                        placeholder="Entrez le mot de passe admin"
+                                        title="Mot de passe administrateur"
+                                        onKeyDown={(e) => e.key === 'Enter' && handleDeleteProject()}
+                                        autoFocus
+                                        className={`w-full px-4 py-3 rounded-xl border text-sm font-bold outline-none transition-all ${deleteError
+                                            ? 'border-rose-500 bg-rose-500/5'
+                                            : isDarkMode ? 'bg-slate-800 border-slate-700 text-white placeholder:text-slate-600 focus:border-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-indigo-500'
+                                            }`}
+                                    />
+                                    {deleteError && (
+                                        <p className="text-rose-500 text-xs font-bold mt-2">{deleteError}</p>
+                                    )}
+                                </div>
+
+                                <div className="flex gap-3 pt-2">
+                                    <button
+                                        onClick={() => setShowDeleteModal(false)}
+                                        title="Annuler"
+                                        className={`flex-1 py-3 rounded-xl border font-black text-sm transition-all ${isDarkMode ? 'border-slate-700 text-slate-400 hover:text-white hover:bg-slate-800' : 'border-slate-200 text-slate-500 hover:text-slate-900 hover:bg-slate-100'
+                                            }`}
+                                    >
+                                        Annuler
+                                    </button>
+                                    <button
+                                        onClick={handleDeleteProject}
+                                        title="Confirmer la suppression"
+                                        className="flex-1 py-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-black text-sm transition-all shadow-lg shadow-rose-600/20 active:scale-95"
+                                    >
+                                        Supprimer définitivement
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 };
 

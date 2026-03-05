@@ -144,7 +144,7 @@ export default function AdminDashboard() {
                                     <motion.span
                                         initial={{ scale: 0.5, opacity: 0 }}
                                         animate={{ scale: 1, opacity: 1 }}
-                                        className="text-6xl font-black text-slate-900 dark:text-white tracking-tighter"
+                                        className="text-5xl font-black text-slate-900 dark:text-white tracking-tighter"
                                     >
                                         {displayStats.igppScore}%
                                     </motion.span>
@@ -181,21 +181,21 @@ export default function AdminDashboard() {
                             <div className="w-16 h-16 bg-blue-500/10 rounded-3xl flex items-center justify-center text-blue-500 group-hover:scale-110 transition-transform"><Users size={28} strokeWidth={2.5} /></div>
                             <div>
                                 <p className="text-[11px] font-black uppercase text-slate-500 tracking-widest mb-1">Ménages</p>
-                                <h4 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter">{fmtNum(displayStats.totalHouseholds)}</h4>
+                                <h4 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter whitespace-nowrap">{fmtNum(displayStats.totalHouseholds)}</h4>
                             </div>
                         </div>
                         <div className="glass-card !p-8 flex items-center gap-6 border-b-4 border-b-emerald-500 group">
                             <div className="w-16 h-16 bg-emerald-500/10 rounded-3xl flex items-center justify-center text-emerald-500 group-hover:scale-110 transition-transform"><ShieldCheck size={28} strokeWidth={2.5} /></div>
                             <div>
                                 <p className="text-[11px] font-black uppercase text-slate-500 tracking-widest mb-1">Ciblés</p>
-                                <h4 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter">{fmtNum(displayStats.electrifiedHouseholds)}</h4>
+                                <h4 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter whitespace-nowrap">{fmtNum(displayStats.electrifiedHouseholds)}</h4>
                             </div>
                         </div>
                         <div className="glass-card !p-8 flex items-center gap-6 border-b-4 border-b-rose-500 group">
                             <div className="w-16 h-16 bg-rose-500/10 rounded-3xl flex items-center justify-center text-rose-500 group-hover:scale-110 transition-transform"><AlertCircle size={28} strokeWidth={2.5} /></div>
                             <div>
                                 <p className="text-[11px] font-black uppercase text-slate-500 tracking-widest mb-1">Alertes</p>
-                                <h4 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter">{displayStats.problemHouseholds}</h4>
+                                <h4 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter whitespace-nowrap">{displayStats.problemHouseholds}</h4>
                             </div>
                         </div>
                     </div>

@@ -17,9 +17,11 @@ export const config = {
         refreshExpiry: process.env.REFRESH_TOKEN_EXPIRY || '7d'
     },
     cors: {
+        // In production, restrict to the explicit CORS_ORIGIN env var.
+        // In development, allow any localhost/127.0.0.1 port dynamically.
         origin: process.env.CORS_ORIGIN
             ? process.env.CORS_ORIGIN.split(',')
-            : ['http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5173']
+            : 'dev_dynamic'
     },
     sentry: {
         dsn: process.env.SENTRY_DSN
