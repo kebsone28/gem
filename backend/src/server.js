@@ -11,14 +11,16 @@ async function startServer() {
     // await prisma.$connect();
     // console.log('✅ Connected to PostgreSQL database');
 
+    const port = config.port;
     const server = http.createServer(app);
-    socketService.init(server);
 
-    // server.listen(config.port, '0.0.0.0', () => { // Force binding to all interfaces
-    server.listen(config.port, () => {
-      console.log(`🚀 Serveur PROQUELEC démarré en mode ${config.env} sur le port ${config.port}`);
-      console.log(`📡 Santé API : http://localhost:${config.port}/health`);
+    // Listen first to satisfy Railway's health check
+    server.listen(port, '0.0.0.0', () => {
+      console.log(`🚀 Serveur PROQUELEC en ligne sur le port ${port}`);
     });
+
+    socketService.init(server);
+    initSimulationWorker();
   } catch (error) {
     console.error('❌ Error starting server:', error);
     process.exit(1);
