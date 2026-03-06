@@ -3,7 +3,8 @@ import path from 'path';
 
 dotenv.config();
 
-console.log('🔍 Loaded DB_URL from env:', process.env.DATABASE_URL);
+console.log('🔍 Loaded DB_URL from env:', process.env.DATABASE_URL ? 'PRESENT' : 'MISSING');
+console.log('🔍 Loaded REDIS_URL from env:', process.env.REDIS_URL ? 'PRESENT' : 'MISSING (Defaults to localhost)');
 console.log('🔍 Current Working Directory:', process.cwd());
 
 export const config = {

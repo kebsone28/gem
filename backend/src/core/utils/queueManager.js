@@ -7,21 +7,36 @@ import { config } from '../config/config.js';
  * Centralise les connexions Redis pour BullMQ.
  */
 
+const redisOptions = {
+    maxRetriesPerRequest: null,
+    enableReadyCheck: false,
+    retryStrategy: (times) => {
+        const delay = Math.min(times * 100, 15000); // Max 15s avoid flood
+        return delay;
+    }
+};
+
 export const redisConnection = config.redis.url
     ? new IORedis(config.redis.url, {
-        maxRetriesPerRequest: null,
+        ...redisOptions,
         tls: config.redis.tls ? {} : undefined
     })
     : new IORedis({
         host: config.redis.host,
         port: config.redis.port,
         password: config.redis.password,
-        tls: config.redis.tls ? {} : undefined,
-        maxRetriesPerRequest: null,
+        ...redisOptions,
+        tls: config.redis.tls ? {} : undefined
     });
 
+let lastErrorTime = 0;
 redisConnection.on('error', (err) => {
-    console.error('[REDIS ERROR] Erreur de connexion Redis :', err);
+    const now = Date.now();
+    // Log only once per 10 seconds to avoid flooding
+    if (now - lastErrorTime > 10000) {
+        console.error('[REDIS ERROR] Erreur de connexion Redis (Throttled) :', err.message);
+        lastErrorTime = now;
+    }
 });
 
 redisConnection.on('connect', () => {
