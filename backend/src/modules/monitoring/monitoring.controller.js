@@ -72,7 +72,7 @@ export const getSystemHealth = async (req, res) => {
                 memory: {
                     free: os.freemem(),
                     total: os.totalmem(),
-                    usage: ((1 - os.freemem() / os.totalmem()) * 100).toFixed(2) + '%'
+                    usage: os.totalmem() > 0 ? ((1 - os.freemem() / os.totalmem()) * 100).toFixed(2) + '%' : '0%'
                 },
                 load: os.loadavg(),
                 platform: os.platform()
