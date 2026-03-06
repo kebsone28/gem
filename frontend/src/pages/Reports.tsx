@@ -166,7 +166,7 @@ export default function Reports() {
             <div className="max-w-7xl mx-auto space-y-8">
 
                 {/* Header */}
-                <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <header className="flex flex-col gap-4">
                     <div className="flex items-center gap-4">
                         <div className="w-12 h-12 bg-emerald-600 rounded-2xl flex items-center justify-center shadow-[0_0_20px_rgba(16,185,129,0.4)]">
                             <FileText className="text-slate-900 dark:text-white w-6 h-6" />
@@ -177,27 +177,27 @@ export default function Reports() {
                         </div>
                     </div>
                     <div className="flex items-center gap-3">
-                        <div className="relative">
-                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 w-4 h-4" />
+                        <div className="relative flex-1">
+                            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 w-4 h-4" />
                             <input
                                 type="text"
-                                placeholder="Rechercher un rapport..."
+                                placeholder="Rechercher..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl pl-12 pr-6 py-3 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-emerald-500 outline-none w-64 transition-all"
+                                className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
                             />
                         </div>
                         <button
                             title="Filtrer les rapports"
-                            className="p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:text-white transition-colors"
+                            className="p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:text-white transition-colors shrink-0"
                         >
-                            <Filter size={20} />
+                            <Filter size={18} />
                         </button>
                     </div>
                 </header>
 
                 {/* Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
                     {stats.map((stat, i) => (
                         <div key={i} className="glass-card bg-white/50 dark:bg-slate-900/50 p-6 border-slate-200 dark:border-slate-800/50 hover:border-emerald-500/30 transition-all">
                             <div className="flex items-center gap-4 mb-4">
@@ -212,7 +212,7 @@ export default function Reports() {
                 </div>
 
                 {/* Report Cards */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 md:gap-8">
                     <div className="lg:col-span-2 space-y-6">
                         <div className="glass-card bg-white/30 dark:bg-slate-900/30 border-slate-200 dark:border-slate-800/50 p-8">
                             <h3 className="text-xl font-black text-slate-900 dark:text-white mb-8 flex items-center gap-3">
@@ -267,8 +267,8 @@ export default function Reports() {
                     </div>
 
                     {/* Right column: Custom export */}
-                    <aside className="lg:col-span-1">
-                        <div className="glass-card bg-white/50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800/50 p-8 space-y-8 sticky top-8">
+                    <aside className="xl:col-span-1">
+                        <div className="glass-card bg-white/50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800/50 p-5 md:p-8 space-y-6 md:space-y-8 xl:sticky xl:top-8">
                             <div>
                                 <h3 className="text-xl font-black text-slate-900 dark:text-white mb-2">Export Personnalisé</h3>
                                 <p className="text-slate-500 dark:text-slate-400 text-sm">Configurez un export sur mesure.</p>

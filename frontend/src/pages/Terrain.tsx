@@ -334,7 +334,7 @@ const Terrain: React.FC = () => {
     return (
         <div className={`flex flex-col h-screen overflow-hidden transition-colors duration-500 ${isDarkMode ? 'bg-slate-950 text-slate-200' : 'bg-[#f8fafc] text-slate-900'}`}>
             {/* Header */}
-            <div className={`flex flex-col px-8 py-4 border-b z-50 transition-colors ${isDarkMode ? 'bg-slate-900/50 border-slate-800/50' : 'bg-white border-slate-200'} backdrop-blur-xl`}>
+            <div className={`flex flex-col px-3 md:px-8 py-3 md:py-4 border-b z-50 transition-colors ${isDarkMode ? 'bg-slate-900/50 border-slate-800/50' : 'bg-white border-slate-200'} backdrop-blur-xl`}>
                 <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2 lg:gap-4 shrink-0">
                         <div className="w-8 h-8 lg:w-10 lg:h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20">
@@ -379,15 +379,15 @@ const Terrain: React.FC = () => {
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2 md:gap-4">
                         <button
                             onClick={handleManualSync}
                             disabled={isSyncing}
                             title="Lancer une synchronisation manuelle des données"
-                            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${isSyncing ? 'opacity-50 cursor-not-allowed' : ''} ${isDarkMode ? 'bg-slate-800 text-slate-300 hover:text-white border border-slate-700' : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200 shadow-sm'}`}
+                            className={`flex items-center gap-1 md:gap-2 px-2 md:px-4 py-2 rounded-xl text-xs font-bold transition-all ${isSyncing ? 'opacity-50 cursor-not-allowed' : ''} ${isDarkMode ? 'bg-slate-800 text-slate-300 hover:text-white border border-slate-700' : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200 shadow-sm'}`}
                         >
                             <RefreshCw size={14} className={isSyncing ? 'animate-spin' : ''} />
-                            {isSyncing ? 'Sync...' : 'Synchroniser'}
+                            <span className="hidden sm:inline">{isSyncing ? 'Sync...' : 'Synchroniser'}</span>
                         </button>
 
                         {peutVoirDataHub && (
@@ -410,7 +410,7 @@ const Terrain: React.FC = () => {
                             <span className="hidden md:inline">{viewMode === 'map' ? 'Vue Liste' : 'Vue Carte'}</span>
                         </button>
 
-                        <div className={`flex items-center flex-wrap gap-1 lg:gap-2 p-1 rounded-2xl border shadow-sm transition-all ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
+                        <div className={`hidden lg:flex items-center flex-wrap gap-1 lg:gap-2 p-1 rounded-2xl border shadow-sm transition-all ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
                             {/* Team Filter */}
                             <select
                                 value={selectedTeam}
@@ -504,7 +504,36 @@ const Terrain: React.FC = () => {
                         </div>
                     </div>
                 </div>
-                <p className={`text-[10px] font-bold italic tracking-wide transition-colors ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
+                {/* Mobile filter row */}
+                <div className={`flex lg:hidden items-center gap-2 px-3 py-2 border-t overflow-x-auto scrollbar-none ${isDarkMode ? 'border-slate-800 bg-slate-900/30' : 'border-slate-100 bg-slate-50/50'}`}>
+                    <select
+                        value={selectedTeam}
+                        onChange={(e) => setSelectedTeam(e.target.value)}
+                        title="Équipe"
+                        className={`shrink-0 bg-transparent border border-slate-300 dark:border-slate-700 rounded-lg text-[10px] font-black uppercase outline-none px-2 py-1 cursor-pointer ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}
+                    >
+                        <option value="all">Toutes Équipes</option>
+                        <option value="Équipe A">Éq. A</option>
+                        <option value="Équipe B">Éq. B</option>
+                        <option value="Équipe C">Éq. C</option>
+                    </select>
+                    <select
+                        value={dateRange}
+                        onChange={(e) => setDateRange(e.target.value as any)}
+                        title="Période"
+                        className={`shrink-0 bg-transparent border border-slate-300 dark:border-slate-700 rounded-lg text-[10px] font-black uppercase outline-none px-2 py-1 cursor-pointer ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}
+                    >
+                        <option value="all">Tout</option>
+                        <option value="7d">7j</option>
+                        <option value="30d">30j</option>
+                    </select>
+                    <span className={`shrink-0 text-[10px] font-black uppercase tracking-widest ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>{filteredHouseholds.length}/{householdList.length}</span>
+                    <button onClick={handleRecenter} className={`shrink-0 flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-black uppercase ${isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-500'}`}><Focus size={12} />Centrer</button>
+                    <button onClick={() => setShowHeatmap(!showHeatmap)} className={`shrink-0 px-2 py-1 rounded-lg text-[10px] font-black uppercase border ${showHeatmap ? 'bg-indigo-600/20 text-indigo-400 border-indigo-500/30' : (isDarkMode ? 'border-slate-700 text-slate-500' : 'border-slate-200 text-slate-400')}`}>Chaleur</button>
+                    <button onClick={() => setShowZones(!showZones)} className={`shrink-0 px-2 py-1 rounded-lg text-[10px] font-black uppercase border ${showZones ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : (isDarkMode ? 'border-slate-700 text-slate-500' : 'border-slate-200 text-slate-400')}`}>Zones</button>
+                    <button onClick={() => { setSelectedPhases(['Non débuté', 'Livraison (Terminé)', 'Murs (Terminé)', 'Réseau (Terminé)', 'Intérieur (Terminé)', 'Réception: Validée', 'Problème']); setSelectedTeamFilters(['livraison', 'maconnerie', 'reseau', 'installation', 'controle']); setSelectedTeam('all'); setDateRange('all'); }} className={`shrink-0 flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-black uppercase ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}><X size={11} />Reset</button>
+                </div>
+                <p className={`text-[10px] font-bold italic tracking-wide transition-colors px-3 md:px-0 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
                     Visualisation géospatiale des points de raccordement et suivi opérationnel temps réel.
                 </p>
             </div>
