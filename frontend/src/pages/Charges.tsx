@@ -40,29 +40,30 @@ export default function Charges() {
     }
 
     return (
-        <div className="p-8 space-y-10 pb-20">
+        <div className="p-4 md:p-8 space-y-6 md:space-y-10 pb-20">
             {/* Header Section */}
-            <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <header className="flex flex-col gap-4">
                 <div>
-                    <h1 className={`text-4xl font-black italic tracking-tighter flex items-center gap-3 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                        <div className="p-3 bg-indigo-600 rounded-2xl text-white shadow-xl shadow-indigo-500/20">
-                            <DollarSign size={24} />
+                    <h1 className={`text-2xl md:text-4xl font-black italic tracking-tighter flex items-center gap-3 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                        <div className="p-2 md:p-3 bg-indigo-600 rounded-xl md:rounded-2xl text-white shadow-xl shadow-indigo-500/20 shrink-0">
+                            <DollarSign size={20} />
                         </div>
                         CHARGES & FINANCES
                     </h1>
-                    <p className={`text-[13px] font-medium mt-1 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Bilan financier prévisionnel et suivi des marges réelles.</p>
+                    <p className={`text-[12px] font-medium mt-1 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Bilan financier prévisionnel et suivi des marges réelles.</p>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
                     <button
                         onClick={toggleClientProvidesMaterials}
-                        className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all border ${isClientProvided ? 'bg-amber-500 border-amber-400 text-white shadow-lg shadow-amber-500/20' : isDarkMode ? 'bg-slate-900 border-slate-800 text-slate-500 hover:text-white' : 'bg-white border-slate-200 text-slate-400 hover:text-slate-900 shadow-sm'}`}
+                        className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all border whitespace-nowrap ${isClientProvided ? 'bg-amber-500 border-amber-400 text-white shadow-lg shadow-amber-500/20' : isDarkMode ? 'bg-slate-900 border-slate-800 text-slate-500 hover:text-white' : 'bg-white border-slate-200 text-slate-400 hover:text-slate-900 shadow-sm'}`}
                     >
-                        <Package size={14} />
-                        {isClientProvided ? 'Matériaux Fournis par Client' : 'Fourniture Entrepreneur'}
+                        <Package size={13} />
+                        <span className="hidden sm:inline">{isClientProvided ? 'Matériaux Fournis par Client' : 'Fourniture Entrepreneur'}</span>
+                        <span className="sm:hidden">{isClientProvided ? 'Client fournit' : 'Entrepreneur'}</span>
                     </button>
 
-                    <div className={`backdrop-blur-md border p-1 rounded-2xl flex transition-all ${isDarkMode ? 'bg-slate-900/50 border-slate-800' : 'bg-white border-slate-200 shadow-sm'}`}>
+                    <div className={`backdrop-blur-md border p-1 rounded-2xl flex overflow-x-auto scrollbar-none transition-all w-full sm:w-auto ${isDarkMode ? 'bg-slate-900/50 border-slate-800' : 'bg-white border-slate-200 shadow-sm'}`}>
                         <button
                             onClick={() => setActiveTab('overview')}
                             className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-black text-xs transition-all ${activeTab === 'overview' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : isDarkMode ? 'text-slate-500 hover:text-white' : 'text-slate-400 hover:text-slate-900'}`}
@@ -87,9 +88,9 @@ export default function Charges() {
                     </div>
                     <button
                         title="Actualiser les données"
-                        className={`p-3 border rounded-2xl transition-all ${isDarkMode ? 'bg-slate-900 border-slate-800 text-slate-500 hover:text-white' : 'bg-white border-slate-200 text-slate-400 hover:text-slate-900 shadow-sm'}`}
+                        className={`p-2.5 border rounded-2xl transition-all shrink-0 ${isDarkMode ? 'bg-slate-900 border-slate-800 text-slate-500 hover:text-white' : 'bg-white border-slate-200 text-slate-400 hover:text-slate-900 shadow-sm'}`}
                     >
-                        <RefreshCcw size={18} />
+                        <RefreshCcw size={16} />
                     </button>
                 </div>
             </header>
@@ -141,15 +142,15 @@ export default function Charges() {
             </AnimatePresence>
 
             {/* Global Summary Footer Card */}
-            <div className={`rounded-[3rem] p-12 overflow-hidden relative shadow-2xl transition-all ${isDarkMode ? 'bg-indigo-600' : 'bg-slate-900'}`}>
+            <div className={`rounded-[2rem] md:rounded-[3rem] p-6 md:p-12 overflow-hidden relative shadow-2xl transition-all ${isDarkMode ? 'bg-indigo-600' : 'bg-slate-900'}`}>
                 <div className="absolute top-0 right-0 p-10 opacity-10 blur-xl">
                     <Zap size={240} className="text-white" />
                 </div>
 
-                <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
+                <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5 md:gap-8">
                     <div>
-                        <h3 className="text-3xl font-black text-white mb-2 italic tracking-tighter uppercase">Besoin d'un rapport complet ?</h3>
-                        <p className="text-indigo-100/70 font-medium text-sm max-w-xl">Générez une analyse financière détaillée incluant tous les postes de dépense et les projections de marge.</p>
+                        <h3 className="text-xl md:text-3xl font-black text-white mb-1 md:mb-2 italic tracking-tighter uppercase">Besoin d'un rapport complet ?</h3>
+                        <p className="text-indigo-100/70 font-medium text-xs md:text-sm max-w-xl">Générez une analyse financière détaillée incluant tous les postes de dépense et les projections de marge.</p>
                     </div>
                     <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
                         <button

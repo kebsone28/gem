@@ -169,12 +169,12 @@ export default function TeamDashboard() {
         : 'bg-white border-slate-100 shadow-sm';
 
     return (
-        <div className="p-6 space-y-8">
+        <div className="p-4 md:p-6 space-y-5 md:space-y-8">
 
             {/* Header */}
             <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
-                    <h2 className={`text-3xl font-black italic tracking-tighter ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                    <h2 className={`text-2xl md:text-3xl font-black italic tracking-tighter ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                         Mon Équipe{myTrade ? ` — ${myTrade.icon} ${myTrade.label}` : ' — Chef d\'Équipe'}
                     </h2>
                     <p className={`text-[13px] font-medium mt-1 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
@@ -185,7 +185,7 @@ export default function TeamDashboard() {
                 </div>
                 <button
                     onClick={() => navigate('/terrain')}
-                    className="flex items-center gap-2 px-5 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs rounded-xl shadow-lg shadow-indigo-500/20 transition-all"
+                    className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs rounded-xl shadow-lg shadow-indigo-500/20 transition-all shrink-0"
                 >
                     <MapPin size={16} /> Voir la Carte Terrain
                 </button>

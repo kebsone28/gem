@@ -319,7 +319,7 @@ export default function AdminDashboard() {
                                         <td className="py-3 text-right">
                                             <div className="flex items-center justify-end gap-2">
                                                 <div className="w-10 md:w-16 h-1.5 bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden">
-                                                    <div className="h-full bg-emerald-500" style={{ width: `${z.progress}%` }} />
+                                                    <div className="h-full bg-emerald-500 progress-bar-dynamic" data-progress={z.progress} style={{ width: `${Math.min(Math.max(z.progress, 0), 100)}%` }} />
                                                 </div>
                                                 <span className="text-[11px] font-black text-emerald-500">{z.progress}%</span>
                                             </div>
