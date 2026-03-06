@@ -29,6 +29,17 @@ async function startServer() {
 
 startServer();
 
+// Handle global errors
+process.on('uncaughtException', (err) => {
+  console.error('🔥 UNCAUGHT EXCEPTION:', err);
+  // Give time for logs to flush
+  setTimeout(() => process.exit(1), 1000);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('☄️ UNHANDLED REJECTION:', reason);
+});
+
 // Handle cleanup
 process.on('SIGTERM', async () => {
   await prisma.$disconnect();
