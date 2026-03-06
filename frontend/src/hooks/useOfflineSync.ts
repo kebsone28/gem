@@ -8,7 +8,8 @@ export function useOfflineSync() {
 
     useEffect(() => {
         const syncData = async () => {
-            if (!navigator.onLine || !pendingItems || pendingItems.length === 0) return;
+            const token = localStorage.getItem('access_token');
+            if (!navigator.onLine || !pendingItems || pendingItems.length === 0 || !token) return;
 
             console.log(`🔄 [SYNC] Tentative de synchronisation de ${pendingItems.length} éléments...`);
 

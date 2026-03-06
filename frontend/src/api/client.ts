@@ -30,16 +30,25 @@ apiClient.interceptors.response.use(
 
         // 1. Handle Token Refresh (401)
         const isRefreshRequest = originalRequest.url?.includes('/auth/refresh');
+        const isAlreadyAtLogin = window.location.pathname === '/login';
 
         if (error.response?.status === 401 && !originalRequest._retry && !isRefreshRequest) {
             originalRequest._retry = true;
             try {
+                // Only try refresh if we have a token (or at least we think we do)
+                const hasToken = !!localStorage.getItem('access_token');
+                if (!hasToken) throw new Error('No token to refresh');
+
                 const { data } = await apiClient.post('/auth/refresh');
                 localStorage.setItem('access_token', data.accessToken);
                 return apiClient(originalRequest);
             } catch (refreshError) {
                 localStorage.removeItem('access_token');
-                window.location.href = '/login';
+
+                // CRITICAL: Avoid redirection loop if already at login
+                if (!isAlreadyAtLogin) {
+                    window.location.href = '/login';
+                }
                 return Promise.reject(refreshError);
             }
         }
