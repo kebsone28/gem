@@ -1,5 +1,7 @@
 ﻿# Node modules
 node_modules/
+backend/prisma/client/
+backend/tmp_prisma/
 
 # Build artifacts
 dist/
