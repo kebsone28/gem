@@ -30,7 +30,6 @@ import { useProject } from '../hooks/useProject';
 import { useSync } from '../hooks/useSync';
 import { useLogistique } from '../hooks/useLogistique';
 import { usePermissions } from '../hooks/usePermissions';
-import { appSecurity } from '../services/appSecurity';
 
 type SearchResult = {
     type: 'household';
@@ -134,15 +133,20 @@ const Terrain: React.FC = () => {
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [deletePassword, setDeletePassword] = useState('');
     const [deleteError, setDeleteError] = useState('');
+    const [deleteLoading, setDeleteLoading] = useState(false);
     const handleDeleteProject = async () => {
-        if (!peutSupprimerProjet) return;
-        const ok = await appSecurity.check('projectDeletePassword', deletePassword);
-        if (!ok) {
-            setDeleteError('Mot de passe incorrect');
+        if (!peutSupprimerProjet || !project?.id) return;
+        if (!deletePassword) {
+            setDeleteError('Veuillez entrer votre mot de passe de connexion.');
             return;
         }
-        if (!project?.id) return;
-        await deleteProject(project.id);
+        setDeleteLoading(true);
+        const result = await deleteProject(project.id, deletePassword);
+        setDeleteLoading(false);
+        if (!result.success) {
+            setDeleteError(result.error || 'Mot de passe incorrect.');
+            return;
+        }
         setShowDeleteModal(false);
         setDeletePassword('');
         setDeleteError('');
@@ -908,7 +912,7 @@ const Terrain: React.FC = () => {
                                         title="Confirmer la suppression"
                                         className="flex-1 py-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-black text-sm transition-all shadow-lg shadow-rose-600/20 active:scale-95"
                                     >
-                                        Supprimer définitivement
+                                        {deleteLoading ? 'Vérification...' : 'Supprimer définitivement'}
                                     </button>
                                 </div>
                             </div>

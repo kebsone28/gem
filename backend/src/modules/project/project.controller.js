@@ -1,3 +1,4 @@
+import bcrypt from 'bcryptjs';
 import prisma from '../../core/utils/prisma.js';
 import { tracerAction } from '../../services/audit.service.js';
 
@@ -157,13 +158,35 @@ export const updateProject = async (req, res) => {
     }
 };
 
-// @desc    Delete project (Soft delete)
+// @desc    Delete project (Soft delete) — requires admin password confirmation
 // @route   DELETE /api/projects/:id
 export const deleteProject = async (req, res) => {
     try {
         const { id } = req.params;
+        const { password } = req.body;
         const { organizationId } = req.user;
 
+        // 1. Require password in request body
+        if (!password) {
+            return res.status(400).json({ error: 'Mot de passe requis pour supprimer un projet.' });
+        }
+
+        // 2. Fetch current user with their passwordHash
+        const currentUser = await prisma.user.findUnique({
+            where: { id: req.user.id }
+        });
+
+        if (!currentUser) {
+            return res.status(403).json({ error: 'Utilisateur introuvable.' });
+        }
+
+        // 3. Verify password against DB hash
+        const isPasswordValid = await bcrypt.compare(password, currentUser.passwordHash);
+        if (!isPasswordValid) {
+            return res.status(403).json({ error: 'Mot de passe incorrect. Suppression refusée.' });
+        }
+
+        // 4. Find project
         const project = await prisma.project.findFirst({
             where: { id, organizationId }
         });
@@ -172,12 +195,13 @@ export const deleteProject = async (req, res) => {
             return res.status(404).json({ error: 'Project not found' });
         }
 
+        // 5. Soft delete
         await prisma.project.update({
             where: { id },
             data: { deletedAt: new Date() }
         });
 
-        // Audit Log
+        // 6. Audit Log
         await tracerAction({
             userId: req.user.id,
             organizationId,

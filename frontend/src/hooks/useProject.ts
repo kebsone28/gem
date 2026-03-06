@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../store/db';
 import type { Project } from '../utils/types';
+import apiClient from '../api/client';
 
 import { useState, useEffect } from 'react';
 
@@ -58,11 +59,19 @@ export function useProject() {
         }
     };
 
-    const deleteProject = async (projectId: string) => {
-        // Delete all households linked to this project
+    const deleteProject = async (projectId: string, password: string): Promise<{ success: boolean; error?: string }> => {
+        try {
+            // Call backend — password verified server-side against DB hash
+            await apiClient.delete(`/projects/${projectId}`, { data: { password } });
+        } catch (err: any) {
+            const msg = err?.response?.data?.error || 'Erreur lors de la suppression.';
+            return { success: false, error: msg };
+        }
+
+        // Remove from local IndexedDB cache
         await db.households.where('projectId').equals(projectId).delete();
-        // Delete the project itself
         await db.projects.delete(projectId);
+
         // Switch to another project if the deleted one was active
         if (activeProjectId === projectId) {
             const remaining = await db.projects.toArray();
@@ -73,6 +82,7 @@ export function useProject() {
                 localStorage.removeItem('active_project_id');
             }
         }
+        return { success: true };
     };
 
     return {
