@@ -72,6 +72,8 @@ import teamRoutes from './api/routes/team.routes.js';
 import simulationRoutes from './api/routes/simulation.routes.js';
 import monitoringRoutes from './api/routes/monitoring.routes.js';
 
+app.get('/api/ping', (req, res) => res.json({ status: 'ok', msg: 'Core API is alive' }));
+
 app.use('/api/auth', authRoutes);
 app.use('/api/sync', syncRoutes);
 app.use('/api/projects', projectRoutes);
