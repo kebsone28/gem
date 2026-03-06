@@ -11,6 +11,8 @@ import { config } from './core/config/config.js';
 
 const app = express();
 
+app.get('/api/ping', (req, res) => res.json({ status: 'ok', msg: 'Core API is alive' }));
+
 // 1. Security Middlewares
 app.use(helmet());
 // Dynamic CORS origin resolver
@@ -72,7 +74,7 @@ import teamRoutes from './api/routes/team.routes.js';
 import simulationRoutes from './api/routes/simulation.routes.js';
 import monitoringRoutes from './api/routes/monitoring.routes.js';
 
-app.get('/api/ping', (req, res) => res.json({ status: 'ok', msg: 'Core API is alive' }));
+import monitoringRoutes from './api/routes/monitoring.routes.js';
 
 app.use('/api/auth', authRoutes);
 app.use('/api/sync', syncRoutes);
