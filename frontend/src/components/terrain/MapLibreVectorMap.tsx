@@ -34,6 +34,7 @@ const getStatusColor = (status?: string): string => {
 
 const MAP_STYLE_DARK = 'https://tiles.openfreemap.org/styles/dark';
 const MAP_STYLE_LIGHT = 'https://tiles.openfreemap.org/styles/positron';
+const MAP_STYLE_SATELLITE = 'https://tiles.openfreemap.org/styles/bright'; // Simulation for now
 
 export default function MapLibreVectorMap({
     households,
@@ -45,11 +46,16 @@ export default function MapLibreVectorMap({
     showZones = false,
     onZoneClick,
     grappesConfig,
-    readOnly = false
+    readOnly = false,
+    isMeasuring = false,
+    mapStyle = 'streets'
 }: any) {
     const containerRef = useRef<HTMLDivElement>(null);
     const mapRef = useRef<maplibregl.Map | null>(null);
     const [styleIsReady, setStyleIsReady] = useState(false);
+
+    // Ruler state
+    const measureRef = useRef<[number, number][]>([]);
 
     // Refs pour éviter les closures périmées (stale closures) dans les event listeners de MapLibre
     const householdsRef = useRef(households);
@@ -298,13 +304,80 @@ export default function MapLibreVectorMap({
         (map.getSource('sous-grappes') as any)?.setData(sousGrappesGeoJSON);
     }, [householdGeoJSON, grappesGeoJSON, sousGrappesGeoJSON, styleIsReady]);
 
-    // Thème
+    // Ruler Logic
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map || !styleIsReady) return;
+
+        const handleMeasureClick = (e: maplibregl.MapMouseEvent) => {
+            if (!isMeasuring) return;
+            const pt: [number, number] = [e.lngLat.lng, e.lngLat.lat];
+            measureRef.current = [...measureRef.current, pt];
+
+            updateMeasureLayer();
+        };
+
+        const updateMeasureLayer = () => {
+            const geojson: any = {
+                type: 'FeatureCollection',
+                features: []
+            };
+
+            if (measureRef.current.length > 0) {
+                geojson.features.push({
+                    type: 'Feature',
+                    geometry: { type: 'MultiPoint', coordinates: measureRef.current },
+                    properties: {}
+                });
+            }
+            if (measureRef.current.length > 1) {
+                geojson.features.push({
+                    type: 'Feature',
+                    geometry: { type: 'LineString', coordinates: measureRef.current },
+                    properties: {}
+                });
+            }
+
+            (map.getSource('measure') as any)?.setData(geojson);
+        };
+
+        if (isMeasuring) {
+            if (!map.getSource('measure')) {
+                map.addSource('measure', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+                map.addLayer({
+                    id: 'measure-line',
+                    type: 'line',
+                    source: 'measure',
+                    paint: { 'line-color': '#3b82f6', 'line-width': 3, 'line-dasharray': [2, 1] }
+                });
+                map.addLayer({
+                    id: 'measure-points',
+                    type: 'circle',
+                    source: 'measure',
+                    paint: { 'circle-radius': 5, 'circle-color': '#fff', 'circle-stroke-width': 2, 'circle-stroke-color': '#3b82f6' }
+                });
+            }
+            map.on('click', handleMeasureClick);
+            map.getCanvas().style.cursor = 'crosshair';
+        } else {
+            map.off('click', handleMeasureClick);
+            map.getCanvas().style.cursor = '';
+            measureRef.current = [];
+            (map.getSource('measure') as any)?.setData({ type: 'FeatureCollection', features: [] });
+        }
+
+        return () => { map.off('click', handleMeasureClick); };
+    }, [isMeasuring, styleIsReady]);
+
+    // Map Style Switching
     useEffect(() => {
         if (mapRef.current) {
             setStyleIsReady(false);
-            mapRef.current.setStyle(isDarkMode ? MAP_STYLE_DARK : MAP_STYLE_LIGHT);
+            let style = isDarkMode ? MAP_STYLE_DARK : MAP_STYLE_LIGHT;
+            if (mapStyle === 'satellite') style = MAP_STYLE_SATELLITE;
+            mapRef.current.setStyle(style);
         }
-    }, [isDarkMode]);
+    }, [isDarkMode, mapStyle]);
 
     // Visibilité
     useEffect(() => {
@@ -326,6 +399,6 @@ export default function MapLibreVectorMap({
     }, [center, zoom, styleIsReady]);
 
     return (
-        <div ref={containerRef} className="w-full h-full rounded-[2rem] overflow-hidden bg-black" />
+        <div ref={containerRef} className="w-full h-full overflow-hidden bg-black" />
     );
 }

@@ -22,6 +22,7 @@ import Layout from './layouts/Layout';
 import SessionWarningToast from './components/SessionWarningToast';
 import OfflineBanner from './components/OfflineBanner';
 import PWAPrompt from './components/PWAPrompt';
+import { Toaster } from 'react-hot-toast';
 import { useOfflineSync } from './hooks/useOfflineSync';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -194,6 +195,7 @@ function App() {
       <SessionWarningToast />
       <OfflineBanner />
       <PWAPrompt />
+      <Toaster position="bottom-right" reverseOrder={false} />
     </Router>
   );
 }

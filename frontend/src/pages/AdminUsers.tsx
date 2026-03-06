@@ -1,14 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { motion, AnimatePresence } from 'framer-motion';
 import { db } from '../store/db';
 import type { UserRole, User as ManagedUser } from '../utils/types';
 import {
     Users, Plus, Edit3, Trash2, ShieldCheck, Shield, User,
     Eye, EyeOff, Save, X, Search, Lock, CheckCircle2,
-    AlertTriangle, UserCheck, UserX, RefreshCw
+    AlertTriangle, RefreshCw
 } from 'lucide-react';
 import { appSecurity } from '../services/appSecurity';
-import { useEffect } from 'react';
 
 // Les constantes statiques de sécurité sont gérées par appSecurity
 
@@ -17,10 +17,10 @@ const ROLE_CONFIG: Record<UserRole, {
     label: string; color: string; textColor: string;
     icon: typeof Shield; description: string
 }> = {
-    ADMIN_PROQUELEC: { label: 'Admin', color: 'bg-indigo-500/15 border-indigo-500/40', textColor: 'text-indigo-400', icon: ShieldCheck, description: 'Accès complet + 2FA' },
-    DG_PROQUELEC: { label: 'DG', color: 'bg-emerald-500/15 border-emerald-500/40', textColor: 'text-emerald-400', icon: Shield, description: 'Finances + Rapports' },
-    CLIENT_LSE: { label: 'Client LSE', color: 'bg-amber-500/15 border-amber-500/40', textColor: 'text-amber-400', icon: User, description: 'Carte + Avancement' },
-    CHEF_EQUIPE: { label: 'Chef Équipe', color: 'bg-blue-500/15 border-blue-500/40', textColor: 'text-blue-400', icon: Users, description: 'Dashboard Équipe' },
+    ADMIN_PROQUELEC: { label: 'Administrateur', color: 'bg-indigo-500/10 border-indigo-500/20 shadow-indigo-500/5', textColor: 'text-indigo-400', icon: ShieldCheck, description: 'Accès complet & 2FA' },
+    DG_PROQUELEC: { label: 'Direction Générale', color: 'bg-emerald-500/10 border-emerald-500/20 shadow-emerald-500/5', textColor: 'text-emerald-400', icon: Shield, description: 'Finances & Stratégie' },
+    CLIENT_LSE: { label: 'Client LSE', color: 'bg-amber-500/10 border-amber-500/20 shadow-amber-500/5', textColor: 'text-amber-400', icon: User, description: 'Interventions & Suivi' },
+    CHEF_EQUIPE: { label: 'Chef de Chantier', color: 'bg-blue-500/10 border-blue-500/20 shadow-blue-500/5', textColor: 'text-blue-400', icon: Users, description: 'Équipes & Terrain' },
 };
 
 const emptyForm = (): Omit<ManagedUser, 'id' | 'createdAt'> => ({
@@ -210,199 +210,232 @@ export default function AdminUsers() {
                 ))}
             </div>
 
-            {/* ── Delete Modal ── */}
-            {deleteTarget && (
-                <div className="fixed inset-0 z-[4000] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-                    <div className="bg-slate-900 border border-slate-700 rounded-3xl p-8 max-w-md w-full shadow-2xl">
-                        {/* Header */}
-                        <div className="flex items-center gap-4 mb-6">
-                            <div className="w-12 h-12 bg-red-500/10 border border-red-500/30 rounded-2xl flex items-center justify-center shrink-0">
-                                <Trash2 className="text-red-400" size={22} />
-                            </div>
-                            <div>
-                                <h3 className="text-white font-black text-xl">
-                                    {isAdminDelete ? 'Suppression compte Admin' : 'Supprimer ce compte ?'}
-                                </h3>
-                                <p className="text-slate-400 text-sm">
-                                    {isAdminDelete
-                                        ? `Étape ${delStep}/2 — Vérification requise`
-                                        : 'Cette action est irréversible.'}
-                                </p>
-                            </div>
-                        </div>
-
-                        <form onSubmit={(e) => { e.preventDefault(); if (isAdminDelete) { if (delStep === 1) confirmDelStep1(); else confirmDelStep2(); } else executeDelete(); }}>
-                            {/* Warning banner */}
-                            <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/20 mb-6">
-                                <p className="text-red-300 text-sm font-bold">
-                                    Vous allez supprimer le compte de{' '}
-                                    <span className="italic">"{deleteTarget.name}"</span>
-                                    {isAdminDelete && ' (Administrateur)'}
-                                    . Cette action est définitive.
-                                </p>
-                            </div>
-
-                            {/* Step progress for admin */}
-                            {isAdminDelete && (
-                                <div className="flex items-center gap-2 mb-6">
-                                    {[1, 2].map(s => (
-                                        <div key={s} className={`flex-1 h-1.5 rounded-full transition-all ${s < delStep ? 'bg-emerald-500' : s === delStep ? 'bg-indigo-500' : 'bg-slate-700'
-                                            }`} />
-                                    ))}
-                                    <span className="text-xs text-slate-500 font-bold ml-1">{delStep}/2</span>
-                                </div>
-                            )}
-
-                            {/* Step 1: Password (admin) OR direct (non-admin) */}
-                            {(!isAdminDelete || delStep === 1) && (
-                                <div className="space-y-4">
-                                    {isAdminDelete && (
-                                        <>
-                                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block">
-                                                Étape 1 — Mot de passe administrateur
-                                            </label>
-                                            <div className="relative">
-                                                <input
-                                                    type={showDelPass ? 'text' : 'password'}
-                                                    value={delPass}
-                                                    onChange={e => { setDelPass(e.target.value); setDelError(''); }}
-                                                    placeholder="Votre mot de passe admin"
-                                                    title="Mot de passe administrateur"
-                                                    autoComplete="current-password"
-                                                    autoFocus
-                                                    className={`w-full bg-slate-950 border rounded-xl px-4 py-3 pr-12 text-white font-mono font-medium placeholder:text-slate-600 outline-none transition-all focus:ring-2 ${delError ? 'border-red-500 focus:ring-red-500/30' : 'border-slate-800 focus:ring-indigo-500/30'}`}
-                                                />
-                                                <button type="button" title="Afficher/masquer" onClick={() => setShowDelPass(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-200">
-                                                    {showDelPass ? <EyeOff size={16} /> : <Eye size={16} />}
-                                                </button>
-                                            </div>
-                                        </>
-                                    )}
-                                    {delError && <p className="text-red-400 text-xs font-bold">{delError}</p>}
-                                    <div className="flex gap-3 pt-2">
-                                        <button type="button" onClick={() => setDeleteTarget(null)} className="flex-1 py-3 bg-slate-800 text-slate-300 rounded-xl font-bold hover:bg-slate-700 transition-all">
-                                            Annuler
-                                        </button>
-                                        <button
-                                            type="submit"
-                                            className="flex-1 py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl font-black transition-all active:scale-95 shadow-lg shadow-red-600/20"
-                                        >
-                                            {isAdminDelete ? 'Vérifier →' : 'Supprimer'}
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Step 2: Security question (admin only) */}
-                            {isAdminDelete && delStep === 2 && (
-                                <div className="space-y-4">
-                                    <div className="p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/20">
-                                        <p className="text-indigo-300 text-xs font-black uppercase tracking-widest mb-1">Question de sécurité</p>
-                                        <p className="text-white font-bold text-sm">{activeSecurityQuestion}</p>
-                                    </div>
-                                    <input
-                                        type="text"
-                                        value={delAnswer}
-                                        onChange={e => { setDelAnswer(e.target.value); setDelError(''); }}
-                                        placeholder="Votre réponse..."
-                                        title="Réponse à la question de sécurité"
-                                        autoComplete="off"
-                                        autoFocus
-                                        className={`w-full bg-slate-950 border rounded-xl px-4 py-3 text-white font-medium placeholder:text-slate-600 outline-none transition-all focus:ring-2 ${delError ? 'border-red-500 focus:ring-red-500/30' : 'border-slate-800 focus:ring-indigo-500/30'}`}
-                                    />
-                                    {delError && <p className="text-red-400 text-xs font-bold">{delError}</p>}
-                                    <div className="flex gap-3 pt-2">
-                                        <button type="button" onClick={() => { setDelStep(1); setDelError(''); setDelAnswer(''); }} className="flex-1 py-3 bg-slate-800 text-slate-300 rounded-xl font-bold hover:bg-slate-700 transition-all">
-                                            ← Retour
-                                        </button>
-                                        <button
-                                            type="submit"
-                                            className="flex-1 py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl font-black transition-all active:scale-95 shadow-lg shadow-red-600/20"
-                                        >
-                                            Supprimer définitivement
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-                        </form>
-                    </div>
-                </div>
-            )}
-
-            {/* ── Reset Password Modal ── */}
-            {resetTarget && (
-                <div className="fixed inset-0 z-[4000] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-                    <div className="bg-slate-900 border border-slate-700 rounded-3xl p-8 max-w-sm w-full shadow-2xl">
-                        <div className="flex items-center gap-3 mb-6">
-                            <div className="w-10 h-10 bg-indigo-500/15 rounded-xl flex items-center justify-center">
-                                <RefreshCw size={18} className="text-indigo-400" />
-                            </div>
-                            <div>
-                                <h3 className="text-white font-black">Réinitialiser le mot de passe</h3>
-                                <p className="text-slate-400 text-xs">{resetTarget.name}</p>
-                            </div>
-                        </div>
-                        <form onSubmit={(e) => { e.preventDefault(); saveReset(); }}>
-                            <div className="relative mb-4">
-                                <input
-                                    type={showNewPass ? 'text' : 'password'}
-                                    value={newPassword}
-                                    onChange={e => setNewPassword(e.target.value)}
-                                    placeholder="Nouveau mot de passe (min. 6 car.)"
-                                    title="Nouveau mot de passe"
-                                    autoComplete="new-password"
-                                    autoFocus
-                                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 pr-12 text-white font-mono font-medium placeholder:text-slate-600 focus:ring-2 focus:ring-indigo-500 outline-none"
+            {/* Delete Confirmation Modal */}
+            <AnimatePresence>
+                {deleteTarget && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[4000] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4"
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, y: 30 }}
+                            animate={{ scale: 1, y: 0 }}
+                            exit={{ scale: 0.9, y: 30 }}
+                            className="bg-slate-900 border border-slate-800/80 rounded-[2.5rem] p-8 max-w-md w-full shadow-2xl overflow-hidden relative"
+                        >
+                            <div className="absolute top-0 left-0 w-full h-1.5 bg-rose-500/20">
+                                <motion.div
+                                    className="h-full bg-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.6)]"
+                                    initial={{ width: 0 }}
+                                    animate={{ width: '100%' }}
+                                    transition={{ duration: 0.5 }}
                                 />
-                                <button type="button" title="Afficher/masquer" onClick={() => setShowNewPass(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-200">
-                                    {showNewPass ? <EyeOff size={16} /> : <Eye size={16} />}
-                                </button>
                             </div>
-                            <div className="flex gap-3">
-                                <button type="button" onClick={() => setResetTarget(null)} className="flex-1 py-3 bg-slate-800 text-slate-300 rounded-xl font-bold hover:bg-slate-700 transition-all">Annuler</button>
-                                <button type="submit" className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-black transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20">
-                                    <Save size={14} /> Enregistrer
-                                </button>
+
+                            <div className="flex items-center gap-5 mb-8">
+                                <div className="w-14 h-14 bg-rose-500/10 border border-rose-500/20 rounded-2xl flex items-center justify-center shrink-0 shadow-lg shadow-rose-500/10">
+                                    <Trash2 className="text-rose-500" size={24} />
+                                </div>
+                                <div className="flex-1">
+                                    <h3 className="text-white font-black text-xl leading-snug">
+                                        {isAdminDelete ? 'Action Haute Sécurité' : 'Supprimer le compte'}
+                                    </h3>
+                                    <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-0.5">
+                                        {isAdminDelete ? `Vérification ${delStep}/2` : 'Validation Requise'}
+                                    </p>
+                                </div>
                             </div>
-                        </form>
-                    </div>
-                </div>
-            )}
+
+                            <div className="p-5 rounded-[2rem] bg-rose-500/5 border border-rose-500/10 mb-8 space-y-2">
+                                <p className="text-rose-200/80 text-sm font-medium">
+                                    Vous êtes sur le point de supprimer :
+                                </p>
+                                <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-full bg-rose-500 flex items-center justify-center text-white font-black text-xs">
+                                        {deleteTarget.name.charAt(0)}
+                                    </div>
+                                    <span className="text-white font-black">{deleteTarget.name}</span>
+                                </div>
+                                <p className="text-rose-400/60 text-[10px] uppercase font-black pt-1">Action Irréversible</p>
+                            </div>
+
+                            <form onSubmit={(e) => { e.preventDefault(); if (isAdminDelete) { if (delStep === 1) confirmDelStep1(); else confirmDelStep2(); } else executeDelete(); }} className="space-y-6">
+                                {isAdminDelete && (
+                                    <div className="space-y-4">
+                                        {delStep === 1 ? (
+                                            <div className="space-y-3">
+                                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block ml-1">Confirmation Administrateur</label>
+                                                <div className="relative">
+                                                    <input
+                                                        type={showDelPass ? 'text' : 'password'}
+                                                        value={delPass}
+                                                        onChange={e => { setDelPass(e.target.value); setDelError(''); }}
+                                                        placeholder="Saisissez votre mot de passe"
+                                                        title="Mot de passe administrateur"
+                                                        autoComplete="current-password"
+                                                        autoFocus
+                                                        className={`w-full bg-slate-950 border rounded-2xl px-5 py-4 text-white font-mono text-sm placeholder:text-slate-700 outline-none transition-all ${delError ? 'border-rose-500 ring-4 ring-rose-500/10' : 'border-slate-800 focus:border-rose-500/50 focus:ring-4 focus:ring-rose-500/5'}`}
+                                                    />
+                                                    <button type="button" title="Afficher/masquer" onClick={() => setShowDelPass(v => !v)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors">
+                                                        {showDelPass ? <EyeOff size={18} /> : <Eye size={18} />}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-4">
+                                                <div className="p-5 rounded-2xl bg-indigo-500/10 border border-indigo-500/20">
+                                                    <p className="text-indigo-400 text-[10px] font-black uppercase tracking-widest mb-1.5">Question de sécurité</p>
+                                                    <p className="text-white font-bold leading-relaxed">{activeSecurityQuestion}</p>
+                                                </div>
+                                                <div className="space-y-3">
+                                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block ml-1">Votre Réponse</label>
+                                                    <input
+                                                        type="text"
+                                                        value={delAnswer}
+                                                        onChange={e => { setDelAnswer(e.target.value); setDelError(''); }}
+                                                        placeholder="Répondre ici..."
+                                                        title="Réponse à la question de sécurité"
+                                                        autoComplete="off"
+                                                        autoFocus
+                                                        className={`w-full bg-slate-950 border rounded-2xl px-5 py-4 text-white font-bold text-sm outline-none transition-all ${delError ? 'border-rose-500 ring-4 ring-rose-500/10' : 'border-slate-800 focus:border-rose-500/50'}`}
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
+                                        {delError && <motion.p initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="text-rose-400 text-xs font-bold text-center">{delError}</motion.p>}
+                                    </div>
+                                )}
+
+                                <div className="flex gap-4">
+                                    <button
+                                        type="button"
+                                        onClick={() => setDeleteTarget(null)}
+                                        className="flex-1 py-4 bg-slate-800/50 text-slate-400 rounded-2xl font-black text-sm hover:bg-slate-800 hover:text-white transition-all"
+                                    >
+                                        Annuler
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="flex-[1.5] py-4 bg-rose-600 hover:bg-rose-500 text-white rounded-2xl font-black text-sm transition-all shadow-xl shadow-rose-600/25 active:scale-95"
+                                    >
+                                        {isAdminDelete ? (delStep === 1 ? 'Vérifier →' : 'Confirmer la suppression') : 'Oui, Supprimer'}
+                                    </button>
+                                </div>
+                            </form>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Reset Password Modal */}
+            <AnimatePresence>
+                {resetTarget && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[4000] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4"
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, y: 20 }}
+                            animate={{ scale: 1, y: 0 }}
+                            exit={{ scale: 0.9, y: 20 }}
+                            className="bg-slate-900 border border-slate-800 rounded-[2rem] p-8 max-w-sm w-full shadow-2xl"
+                        >
+                            <div className="flex items-center gap-4 mb-8">
+                                <div className="w-12 h-12 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl flex items-center justify-center">
+                                    <RefreshCw size={22} className="text-indigo-400" />
+                                </div>
+                                <div>
+                                    <h3 className="text-white font-black text-lg">Réinitialiser</h3>
+                                    <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">{resetTarget.name}</p>
+                                </div>
+                            </div>
+                            <form onSubmit={(e) => { e.preventDefault(); saveReset(); }} className="space-y-6">
+                                <div className="relative">
+                                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"><Lock size={16} /></div>
+                                    <input
+                                        type={showNewPass ? 'text' : 'password'}
+                                        value={newPassword}
+                                        onChange={e => setNewPassword(e.target.value)}
+                                        placeholder="Nouveau mot de passe"
+                                        title="Nouveau mot de passe (min. 6 car.)"
+                                        autoComplete="new-password"
+                                        autoFocus
+                                        className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-11 pr-12 py-3.5 text-white font-mono text-sm focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all"
+                                    />
+                                    <button type="button" title="Afficher/masquer" onClick={() => setShowNewPass(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-200">
+                                        {showNewPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                                    </button>
+                                </div>
+                                <div className="flex gap-3">
+                                    <button type="button" onClick={() => setResetTarget(null)} className="flex-1 py-3.5 bg-slate-800/50 text-slate-400 rounded-xl font-bold hover:bg-slate-800 transition-all">Annuler</button>
+                                    <button type="submit" className="flex-1 py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-black transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20 active:scale-95">
+                                        <Save size={16} /> Enregistrer
+                                    </button>
+                                </div>
+                            </form>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {/* ── Main ── */}
             <div className="max-w-7xl mx-auto space-y-8">
 
-                {/* Header */}
-                <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-[0_0_20px_rgba(99,102,241,0.4)]">
-                            <Users className="text-white w-6 h-6" />
+                {/* Header Section */}
+                <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-2">
+                    <div className="space-y-1">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-indigo-500 inline-flex items-center justify-center rounded-2xl shadow-[0_0_30px_rgba(99,102,241,0.4)]">
+                                <Users className="text-white w-5 h-5" />
+                            </div>
+                            <h1 className="text-4xl font-black text-white tracking-tight">Utilisateurs</h1>
                         </div>
-                        <div>
-                            <h1 className="text-3xl font-black text-white tracking-tight">Gestion des Utilisateurs</h1>
-                            <p className="text-slate-500 font-medium">{users.length} compte(s) — {users.filter((u: ManagedUser) => u.active).length} actif(s) — Réservé Admin</p>
-                        </div>
+                        <p className="text-slate-500 font-bold text-sm ml-13">
+                            {users.length} comptes enregistrés — <span className="text-emerald-500">{users.filter((u: ManagedUser) => u.active).length} actifs</span>
+                        </p>
                     </div>
-                    <button
-                        onClick={openAdd}
-                        className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white font-black px-6 py-3.5 rounded-2xl transition-all shadow-lg shadow-indigo-600/25 active:scale-95"
-                    >
-                        <Plus size={20} /> Nouveau Compte
-                    </button>
+
+                    <div className="flex items-center gap-4">
+                        <div className="relative group">
+                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-400 w-4 h-4 transition-colors" />
+                            <input
+                                type="text"
+                                placeholder="Filtrer..."
+                                title="Filtrer par nom, login ou rôle"
+                                value={search}
+                                onChange={e => setSearch(e.target.value)}
+                                className="w-64 bg-slate-900 border border-slate-800/50 rounded-2xl pl-11 pr-4 py-3.5 text-white font-bold text-sm placeholder:text-slate-600 focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all"
+                            />
+                        </div>
+                        <button
+                            onClick={openAdd}
+                            title="Créer un nouvel utilisateur"
+                            className="bg-indigo-600 hover:bg-slate-50 hover:text-indigo-600 text-white font-black px-6 py-3.5 rounded-2xl transition-all shadow-xl shadow-indigo-600/20 active:scale-95 flex items-center gap-2"
+                        >
+                            <Plus size={20} strokeWidth={3} />
+                            Nouveau
+                        </button>
+                    </div>
                 </header>
 
-                {/* Role Stats */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* KPI Section with Glassmorphism */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
                     {roleStats.map(s => {
                         const Icon = s.icon;
                         return (
-                            <div key={s.role} className={`p-5 rounded-2xl border ${s.color}`}>
-                                <div className="flex items-center justify-between mb-3">
-                                    <Icon size={18} className={s.textColor} />
-                                    <span className={`text-2xl font-black ${s.textColor}`}>{s.count}</span>
+                            <div key={s.role} className={`backdrop-blur-xl group hover:scale-[1.02] transition-all p-6 rounded-[2.5rem] border ${s.color}`}>
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className={`p-3 rounded-2xl ${s.color.replace(' border-', ' ')} border border-transparent group-hover:border-current transition-colors`}>
+                                        <Icon size={20} className={s.textColor} />
+                                    </div>
+                                    <span className={`text-3xl font-black ${s.textColor}`}>{s.count}</span>
                                 </div>
-                                <p className="text-white font-bold text-sm">{s.label}</p>
-                                <p className="text-slate-500 text-[11px] mt-0.5">{s.description}</p>
+                                <h3 className="text-white font-black text-sm tracking-wide uppercase mb-1">{s.label}</h3>
+                                <p className="text-slate-500 text-[10px] font-bold leading-tight">{s.description}</p>
                             </div>
                         );
                     })}
@@ -421,85 +454,115 @@ export default function AdminUsers() {
                     />
                 </div>
 
-                {/* User table */}
-                <div className="card overflow-x-auto">
-                    <table className="data-table">
-                        <thead>
-                            <tr>
-                                <th>Statut</th>
-                                <th>Utilisateur</th>
-                                <th>Identifiant (Login)</th>
-                                <th>Rôle</th>
-                                <th>Équipe / Accès</th>
-                                <th>Mot de passe</th>
-                                <th>Création</th>
-                                <th className="text-right">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filtered.map(u => {
-                                const rc = ROLE_CONFIG[u.role as UserRole] || ROLE_CONFIG.CHEF_EQUIPE;
-                                const RoleIcon = rc.icon;
-                                return (
-                                    <tr key={u.id} className={!u.active ? 'opacity-50' : ''}>
-                                        <td className="w-12 text-center">
-                                            <div
-                                                className={`status-dot ${u.active ? 'online' : 'offline'} cursor-pointer hover:scale-125 transition-transform`}
-                                                title={u.active ? 'Actif — cliquer pour désactiver' : 'Désactivé — cliquer pour activer'}
-                                                onClick={() => toggleActive(u)}
-                                            />
-                                        </td>
-                                        <td className="font-bold">
-                                            <div className="flex items-center gap-2">
-                                                <div className={`w-6 h-6 rounded border flex items-center justify-center ${rc.color}`}>
-                                                    <RoleIcon size={12} className={rc.textColor} />
+                {/* User List Section */}
+                <div className="bg-slate-900/40 backdrop-blur-md border border-slate-800/50 rounded-[2.5rem] overflow-hidden shadow-2xl">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="border-b border-slate-800/50">
+                                    <th className="px-8 py-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Statut</th>
+                                    <th className="px-6 py-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Utilisateur</th>
+                                    <th className="px-6 py-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Identifiant</th>
+                                    <th className="px-6 py-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Rôle</th>
+                                    <th className="px-6 py-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Accès</th>
+                                    <th className="px-6 py-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Sécurité</th>
+                                    <th className="px-8 py-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-800/30">
+                                {filtered.map(u => {
+                                    const rc = ROLE_CONFIG[u.role as UserRole] || ROLE_CONFIG.CHEF_EQUIPE;
+                                    const RoleIcon = rc.icon;
+                                    return (
+                                        <tr key={u.id} className={`group hover:bg-slate-800/20 transition-colors ${!u.active ? 'opacity-50' : ''}`}>
+                                            <td className="px-8 py-5">
+                                                <button
+                                                    onClick={() => toggleActive(u)}
+                                                    title={u.active ? 'Désactiver le compte' : 'Activer le compte'}
+                                                    className={`w-3 h-3 rounded-full transition-all duration-500 ${u.active ? 'bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.5)]' : 'bg-slate-700'}`}
+                                                />
+                                            </td>
+                                            <td className="px-6 py-5">
+                                                <div className="flex items-center gap-3">
+                                                    <div className={`w-9 h-9 flex items-center justify-center rounded-xl border ${rc.color}`}>
+                                                        <RoleIcon size={16} className={rc.textColor} />
+                                                    </div>
+                                                    <div>
+                                                        <div className="text-white font-black text-sm">{u.name}</div>
+                                                        <div className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">{u.createdAt}</div>
+                                                    </div>
                                                 </div>
-                                                {u.name}
-                                                {u.requires2FA && <span className="text-[9px] font-black bg-indigo-500/20 text-indigo-400 px-1.5 py-0.5 rounded-md">2FA</span>}
-                                            </div>
-                                        </td>
-                                        <td className="font-mono text-slate-500">@{u.email}</td>
-                                        <td>
-                                            <span className={`badge ${u.role.includes('ADMIN') ? 'badge-primary' : u.role.includes('CHEF') ? 'badge-success' : 'badge-warning'}`}>
-                                                {rc.label}
-                                            </span>
-                                        </td>
-                                        <td className="text-slate-500">
-                                            {u.teamId ? teams.find((t: any) => t.id === u.teamId)?.name : 'Accès global'}
-                                        </td>
-                                        <td>
-                                            <button
-                                                onClick={() => openReset(u)}
-                                                title="Réinitialiser le mot de passe"
-                                                className="flex items-center gap-2 text-slate-400 hover:text-indigo-400 transition-colors group"
-                                            >
-                                                <Lock size={12} />
-                                                <span className="font-mono">{'•'.repeat(Math.min(u.password?.length || 0, 8))}</span>
-                                                <RefreshCw size={10} className="opacity-0 group-hover:opacity-100 transition-opacity" />
-                                            </button>
-                                        </td>
-                                        <td className="text-slate-500">{u.createdAt}</td>
-                                        <td>
-                                            <div className="flex justify-end gap-1">
-                                                <button onClick={() => openEdit(u)} title="Modifier" className="p-1.5 text-slate-400 hover:text-primary transition-colors rounded-lg hover:bg-slate-100/5">
-                                                    <Edit3 size={15} />
-                                                </button>
-                                                <button onClick={() => toggleActive(u)} title={u.active ? 'Désactiver le compte' : 'Activer le compte'} className="p-1.5 text-slate-400 hover:text-amber-400 transition-colors rounded-lg hover:bg-amber-500/5">
-                                                    {u.active ? <UserX size={15} /> : <UserCheck size={15} />}
-                                                </button>
-                                                <button onClick={() => openDelete(u)} title="Supprimer le compte" className="p-1.5 text-slate-400 hover:text-danger transition-colors rounded-lg hover:bg-red-500/5">
-                                                    <Trash2 size={15} />
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
+                                            </td>
+                                            <td className="px-6 py-5">
+                                                <span className="font-mono text-slate-400 text-xs">@{u.email}</span>
+                                            </td>
+                                            <td className="px-6 py-5">
+                                                <span className={`inline-flex items-center px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${rc.color} ${rc.textColor}`}>
+                                                    {rc.label}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-5">
+                                                <div className="flex flex-col">
+                                                    <span className="text-slate-300 font-bold text-xs">
+                                                        {u.teamId ? teams.find((t: any) => t.id === u.teamId)?.name : 'Accès Global'}
+                                                    </span>
+                                                    <span className="text-slate-600 text-[10px] font-medium">
+                                                        {u.teamId ? 'Équipe de terrain' : 'Administration centrale'}
+                                                    </span>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-5">
+                                                <div className="flex items-center gap-3">
+                                                    <button
+                                                        onClick={() => openReset(u)}
+                                                        title="Réinitialiser le mot de passe"
+                                                        className="flex items-center gap-2 px-3 py-1.5 bg-slate-950/50 border border-slate-800 rounded-lg hover:border-indigo-500/50 transition-all group/pass"
+                                                    >
+                                                        <Lock size={12} className="text-slate-500 group-hover/pass:text-indigo-400 transition-colors" />
+                                                        <span className="text-slate-600 font-mono text-[10px]">••••••</span>
+                                                    </button>
+                                                    {u.requires2FA && (
+                                                        <div className="w-5 h-5 bg-indigo-500/10 border border-indigo-500/20 rounded flex items-center justify-center" title="2FA Activé">
+                                                            <ShieldCheck size={10} className="text-indigo-400" />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td className="px-8 py-5">
+                                                <div className="flex justify-end gap-2">
+                                                    <button
+                                                        onClick={() => openEdit(u)}
+                                                        title="Modifier les détails"
+                                                        className="p-2.5 bg-slate-950/50 border border-slate-800 text-slate-400 hover:text-white hover:border-indigo-500/50 transition-all rounded-xl"
+                                                    >
+                                                        <Edit3 size={16} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => openDelete(u)}
+                                                        title="Supprimer définitivement"
+                                                        className="p-2.5 bg-slate-950/50 border border-slate-800 text-slate-400 hover:text-rose-400 hover:border-rose-500/50 transition-all rounded-xl"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
                     {filtered.length === 0 && (
-                        <div className="p-8 text-center text-slate-500 font-medium">
-                            {search ? `Aucun résultat pour "${search}"` : 'Aucun compte enregistré.'}
+                        <div className="p-20 text-center space-y-4">
+                            <div className="w-16 h-16 bg-slate-800/50 border border-slate-700/50 rounded-3xl inline-flex items-center justify-center mb-2">
+                                <Search size={24} className="text-slate-600" />
+                            </div>
+                            <div>
+                                <h3 className="text-white font-black">Aucun utilisateur trouvé</h3>
+                                <p className="text-slate-500 text-sm mt-1">
+                                    {search ? `Votre recherche "${search}" n'a donné aucun résultat.` : 'Commencez par créer votre premier compte utilisateur.'}
+                                </p>
+                            </div>
                         </div>
                     )}
                 </div>

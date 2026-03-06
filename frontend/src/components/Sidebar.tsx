@@ -7,19 +7,16 @@ import {
     Users,
     Settings,
     LogOut,
-    DollarSign,
     Calculator,
     BarChart3,
     Sun,
     Moon,
-    HelpCircle,
     ShieldCheck,
     Menu,
     X,
     RefreshCw,
     Activity,
-    ClipboardList,
-    MonitorCheck
+    ClipboardList
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -42,28 +39,21 @@ export default function Sidebar() {
     type NavItem = { to: string; icon: any; label: string; permission?: string; category: 'PILOTAGE' | 'OPÉRATIONS' | 'GESTION' | 'SYSTÈME' };
 
     const navItems: NavItem[] = [
-        // PILOTAGE
+        // STRATÉGIE
         { to: '/dashboard', icon: LayoutDashboard, label: 'Tableau de Bord', category: 'PILOTAGE' },
         { to: '/rapports', icon: BarChart3, label: 'Rapports', permission: PERMISSIONS.VOIR_RAPPORTS, category: 'PILOTAGE' },
         { to: '/simulation', icon: Calculator, label: 'Simulation', permission: PERMISSIONS.VOIR_SIMULATION, category: 'PILOTAGE' },
 
-        // OPÉRATIONS
+        // OPÉRATIONS TERRAIN
         { to: '/terrain', icon: MapIcon, label: 'Terrain', permission: PERMISSIONS.VOIR_CARTE, category: 'OPÉRATIONS' },
         { to: '/admin/mission', icon: ClipboardList, label: 'Missions OM', category: 'OPÉRATIONS' },
         { to: '/bordereau', icon: Users, label: 'Bordereau', permission: PERMISSIONS.GERER_LOGISTIQUE, category: 'OPÉRATIONS' },
         { to: '/cahier', icon: FileText, label: 'Cahier de Charge', permission: PERMISSIONS.VOIR_RAPPORTS, category: 'OPÉRATIONS' },
-        { to: '/admin/kobo-terminal', icon: MonitorCheck, label: 'Saisie Kobo', permission: PERMISSIONS.ACCES_TERMINAL_KOBO, category: 'OPÉRATIONS' },
 
-        // GESTION
-        { to: '/logistique', icon: Users, label: 'Logistique', permission: PERMISSIONS.GERER_LOGISTIQUE, category: 'GESTION' },
-        { to: '/finances', icon: DollarSign, label: 'Finances', permission: PERMISSIONS.VOIR_FINANCES, category: 'GESTION' },
-
-        // SYSTÈME
-        { to: '/settings', icon: Settings, label: 'Paramètres', permission: PERMISSIONS.GERER_PARAMETRES, category: 'SYSTÈME' },
+        // ADMIN
         { to: '/admin/users', icon: Users, label: 'Utilisateurs', permission: PERMISSIONS.GERER_UTILISATEURS, category: 'SYSTÈME' },
+        { to: '/settings', icon: Settings, label: 'Paramètres', permission: PERMISSIONS.GERER_PARAMETRES, category: 'SYSTÈME' },
         { to: '/admin/security', icon: ShieldCheck, label: 'Sécurité', permission: PERMISSIONS.GERER_PARAMETRES, category: 'SYSTÈME' },
-        { to: '/admin/diagnostic', icon: Activity, label: 'Diagnostic', permission: PERMISSIONS.VOIR_DIAGNOSTIC, category: 'SYSTÈME' },
-        { to: '/aide', icon: HelpCircle, label: 'Aide', category: 'SYSTÈME' },
     ];
 
     const groupedItems = navItems.reduce((acc, item) => {
@@ -75,10 +65,9 @@ export default function Sidebar() {
     }, {} as Record<string, NavItem[]>);
 
     const categoryConfig = {
-        PILOTAGE: { color: 'indigo', label: 'PILOTAGE & STRATÉGIE', glow: 'shadow-indigo-500/20' },
-        OPÉRATIONS: { color: 'emerald', label: 'OPÉRATIONS TERRAIN', glow: 'shadow-emerald-500/20' },
-        GESTION: { color: 'amber', label: 'GESTION & LOGISTIQUE', glow: 'shadow-amber-500/20' },
-        SYSTÈME: { color: 'slate', label: 'SYSTÈME & CONFIG', glow: 'shadow-slate-500/20' }
+        PILOTAGE: { color: 'blue', label: 'STRATÉGIE', glow: 'shadow-blue-500/10' },
+        OPÉRATIONS: { color: 'blue', label: 'OPÉRATIONS TERRAIN', glow: 'shadow-blue-500/10' },
+        SYSTÈME: { color: 'blue', label: 'ADMINISTRATION', glow: 'shadow-blue-500/10' }
     };
 
     const RoleLabel = () => {
@@ -91,9 +80,9 @@ export default function Sidebar() {
         }[user.role] ?? user.role;
         return (
             <div className="space-y-4">
-                <div className={`p-4 rounded-3xl flex flex-col gap-3 border transition-all glass-premium ${isDarkMode ? 'border-indigo-500/20 shadow-indigo-500/10' : 'border-indigo-200 shadow-indigo-200/50'}`}>
+                <div className={`p-4 rounded-3xl flex flex-col gap-3 border transition-all glass-premium ${isDarkMode ? 'border-primary/20 shadow-primary/10' : 'border-primary/20 shadow-primary/10'}`}>
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-2xl bg-indigo-600 flex items-center justify-center text-xs font-black text-white shadow-[0_0_20px_rgba(99,102,241,0.4)]">
+                        <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-xs font-black text-white shadow-electric-sm" style={{ background: 'var(--gradient-electric)' }}>
                             {user.name?.charAt(0).toUpperCase()}
                         </div>
                         <div className="flex-1 min-w-0">
@@ -168,10 +157,10 @@ export default function Sidebar() {
                         />
                     </div>
                     <div>
-                        <div className={`text-2xl font-black tracking-tighter italic leading-none bg-gradient-to-r ${isDarkMode ? 'from-white to-slate-400' : 'from-slate-900 to-indigo-600'} bg-clip-text text-transparent`}>
+                        <div className={`text-2xl font-black tracking-tighter italic leading-none bg-gradient-to-r ${isDarkMode ? 'from-white via-primary-light to-primary' : 'from-primary-deep via-primary to-primary-glow'} bg-clip-text text-transparent`}>
                             PROQUELEC
                         </div>
-                        <div className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-500/80 mt-1.5">
+                        <div className="text-[10px] font-black uppercase tracking-[0.3em] text-primary/80 mt-1.5 font-inter">
                             PLATEFORME GEM
                         </div>
                     </div>
@@ -187,19 +176,8 @@ export default function Sidebar() {
             <nav className="flex-1 overflow-y-auto px-1 custom-scrollbar scroll-smooth space-y-8 pb-10">
                 {Object.entries(groupedItems).map(([category, items]) => {
                     const config = categoryConfig[category as keyof typeof categoryConfig];
-                    const colorClass = {
-                        indigo: 'text-indigo-500 border-indigo-500/20 from-indigo-500/5',
-                        emerald: 'text-emerald-500 border-emerald-500/20 from-emerald-500/5',
-                        amber: 'text-amber-500 border-amber-500/20 from-amber-500/5',
-                        slate: 'text-slate-400 border-slate-500/10 from-slate-500/5'
-                    }[config.color as 'indigo' | 'emerald' | 'amber' | 'slate'];
-
-                    const activeIconColor = {
-                        indigo: 'bg-indigo-600',
-                        emerald: 'bg-emerald-600',
-                        amber: 'bg-amber-600',
-                        slate: 'bg-slate-700'
-                    }[config.color as 'indigo' | 'emerald' | 'amber' | 'slate'];
+                    const colorClass = 'text-primary border-primary/10 from-primary/5';
+                    const activeBgStyle = 'linear-gradient(90deg, #0066FF 0%, #00B3FF 100%)';
 
                     return (
                         <div key={category} className="space-y-3">
@@ -219,11 +197,14 @@ export default function Sidebar() {
                                         className={({ isActive }) => `
                                             w-full flex items-center gap-4 px-5 py-3 rounded-2xl transition-all duration-300 relative group font-bold
                                             ${isActive
-                                                ? `${activeIconColor} text-white shadow-lg ${config.glow} scale-[1.02] z-10`
+                                                ? `text-white shadow-lg ${config.glow} scale-[1.02] z-10`
                                                 : isDarkMode
                                                     ? 'text-slate-400 hover:bg-white/5 hover:text-white'
-                                                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}
+                                                    : 'text-slate-600 hover:bg-primary/5 hover:text-primary-dark'}
                                         `}
+                                        style={({ isActive }) => ({
+                                            background: isActive ? activeBgStyle : undefined
+                                        })}
                                     >
                                         {({ isActive }) => (
                                             <>

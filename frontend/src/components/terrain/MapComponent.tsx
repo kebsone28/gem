@@ -8,6 +8,7 @@
 import React from 'react';
 import type { Household } from '../../utils/types';
 import MapLibreVectorMap from './MapLibreVectorMap';
+import { MapStatsWidget } from './MapStatsWidget';
 import './MapComponent.css';
 
 interface MapComponentProps {
@@ -30,6 +31,9 @@ interface MapComponentProps {
     routingDest?: [number, number] | null;
     userLocation?: [number, number] | null;
     readOnly?: boolean;
+    isMeasuring?: boolean;
+    showDatabaseStats?: boolean;
+    mapStyle?: 'streets' | 'satellite';
 }
 
 const MapComponent: React.FC<MapComponentProps> = ({
@@ -44,10 +48,13 @@ const MapComponent: React.FC<MapComponentProps> = ({
     showZones = false,
     onZoneClick,
     grappesConfig,
-    readOnly = false
+    readOnly = false,
+    isMeasuring = false,
+    showDatabaseStats = false,
+    mapStyle = 'streets'
 }) => {
     return (
-        <div className="h-full w-full relative bg-slate-100 dark:bg-slate-900 overflow-hidden rounded-[2rem]">
+        <div className="h-full w-full relative bg-slate-100 dark:bg-slate-900 overflow-hidden">
             {/* Seul et unique layer de carte pour éviter les superpositions grises */}
             <MapLibreVectorMap
                 households={households}
@@ -60,13 +67,22 @@ const MapComponent: React.FC<MapComponentProps> = ({
                 grappesConfig={grappesConfig}
                 className="w-full h-full"
                 readOnly={readOnly}
+                isMeasuring={isMeasuring}
+                mapStyle={mapStyle}
             />
+
+            {showDatabaseStats && <MapStatsWidget stats={{
+                visible: households.length,
+                completed: households.filter(h => h.status === 'Terminé' || h.status === 'Réception: Validée').length,
+                problems: households.filter(h => h.status === 'Problème').length,
+                pending: households.filter(h => h.status === 'Non débuté').length
+            }} />}
 
             {/* Légende en overlay DOM simple */}
             {showLegend && (
-                <div className="absolute bottom-8 left-8 z-[100] p-6 rounded-3xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-white/20 shadow-2xl">
-                    <h4 className="text-[10px] font-black uppercase tracking-widest mb-4 opacity-70">Légende</h4>
-                    <div className="grid grid-cols-1 gap-3">
+                <div className="absolute bottom-8 left-8 z-[100] p-6 rounded-3xl bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border border-slate-200 dark:border-white/10 shadow-2xl">
+                    <h4 className="text-[10px] font-black uppercase tracking-widest mb-4 opacity-70 text-slate-800 dark:text-white">Légende</h4>
+                    <div className="flex flex-col gap-3">
                         {[
                             { label: 'Terminé', color: 'bg-emerald-500', status: 'Terminé' },
                             { label: 'Problème', color: 'bg-rose-500', status: 'Problème' },
@@ -76,10 +92,10 @@ const MapComponent: React.FC<MapComponentProps> = ({
                             <div
                                 key={item.status}
                                 onClick={() => onToggleStatus?.(item.status)}
-                                className={`flex items-center gap-3 cursor-pointer transition-all hover:translate-x-1 ${selectedPhases.includes(item.status) ? 'opacity-100' : 'opacity-40'}`}
+                                className={`flex items-center gap-3 cursor-pointer transition-all hover:translate-x-1 ${selectedPhases.includes(item.status) ? 'opacity-100' : 'opacity-40 grayscale-[50%]'}`}
                             >
-                                <div className={`w-3 h-3 rounded-full ${item.color} shadow-lg shadow-${item.color}/20`} />
-                                <span className="text-[10px] font-bold">{item.label}</span>
+                                <div className={`w-3.5 h-3.5 rounded-full ${item.color} shadow-lg dark:shadow-none border border-black/10 dark:border-white/20`} />
+                                <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200">{item.label}</span>
                             </div>
                         ))}
                     </div>

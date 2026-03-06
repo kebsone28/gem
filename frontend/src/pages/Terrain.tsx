@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import toast from 'react-hot-toast';
 import {
     MapPin,
     X,
@@ -11,17 +12,13 @@ import {
     RefreshCw,
     Plus,
     LayoutList,
+    LayoutGrid,
     FileDown
 } from 'lucide-react';
 import { useTerrainData } from '../hooks/useTerrainData';
 import { useAuth } from '../contexts/AuthContext';
 import MapComponent from '../components/terrain/MapComponent';
-import {
-    UnifiedStatusWidget,
-    WidgetBar
-} from '../components/terrain/MapWidgets';
 import { getHouseholdDerivedStatus } from '../utils/statusUtils';
-import { MapToolbar } from '../components/terrain/MapToolbar';
 import type { Household } from '../utils/types';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '../context/ThemeContext';
@@ -30,6 +27,11 @@ import { useProject } from '../hooks/useProject';
 import { useSync } from '../hooks/useSync';
 import { useLogistique } from '../hooks/useLogistique';
 import { usePermissions } from '../hooks/usePermissions';
+
+import {
+    StatusBadge,
+    ActionBar
+} from '../components/dashboards/DashboardComponents';
 
 type SearchResult = {
     type: 'household';
@@ -47,13 +49,12 @@ type SearchResult = {
 const Terrain: React.FC = () => {
     const {
         households,
-        stats,
         updateHouseholdStatus,
         getHouseholdLogs
     } = useTerrainData();
 
     const { project, projects, setActiveProjectId, createProject, deleteProject } = useProject();
-    const { sync } = useSync();
+    const { sync, syncStatus } = useSync();
     const { grappesConfig } = useLogistique();
 
     const { user } = useAuth();
@@ -67,31 +68,23 @@ const Terrain: React.FC = () => {
     const [mapCenter, setMapCenter] = useState<[number, number]>([14.7167, -17.4677]);
     const [mapZoom, setMapZoom] = useState(12);
 
-    const [selectedPhases, setSelectedPhases] = useState<string[]>(['Non débuté', 'Livraison (Terminé)', 'Murs (Terminé)', 'Réseau (Terminé)', 'Intérieur (Terminé)', 'Réception: Validée', 'Problème']);
+    const [selectedPhases, setSelectedPhases] = useState<string[]>(['Non débuté', 'En cours', 'Terminé', 'Problème']);
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
     const [isSearching, setIsSearching] = useState(false);
     const [routingEnabled, setRoutingEnabled] = useState(false);
     const [showZones, setShowZones] = useState(false);
     const [isDataHubOpen, setIsDataHubOpen] = useState(false);
-    const [selectedTeamFilters, setSelectedTeamFilters] = useState<string[]>(['livraison', 'maconnerie', 'reseau', 'installation', 'controle']);
+    const [selectedTeamFilters] = useState<string[]>(['livraison', 'maconnerie', 'reseau', 'installation', 'controle']);
 
     const [routingStart, setRoutingStart] = useState<[number, number] | null>(null);
     const [routingDest, setRoutingDest] = useState<[number, number] | null>(null);
     const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
 
     const [auditLogs, setAuditLogs] = useState<any[]>([]);
-
-    // Auto-sync interval removed to prevent unexpected simulated data
-    /*
-    React.useEffect(() => {
-        const interval = setInterval(() => {
-            console.log('Auto-syncing data...');
-            simulateKoboSync();
-        }, 10 * 60 * 1000);
-        return () => clearInterval(interval);
-    }, [simulateKoboSync]);
-    */
+    const [isMeasuring, setIsMeasuring] = useState(false);
+    const [showDatabaseStats, setShowDatabaseStats] = useState(false);
+    const [mapStyle, setMapStyle] = useState<'streets' | 'satellite'>('streets');
 
     React.useEffect(() => {
         const fetchLogs = async () => {
@@ -114,8 +107,6 @@ const Terrain: React.FC = () => {
         }
     };
 
-
-    // ── Contrôles de Permission ──
     const peutModifierCarte = peut(PERMISSIONS.MODIFIER_CARTE);
     const peutGererProjets = peut(PERMISSIONS.CREER_PROJET);
     const peutSupprimerProjet = peut(PERMISSIONS.SUPPRIMER_PROJET);
@@ -129,20 +120,17 @@ const Terrain: React.FC = () => {
         }
     };
 
-    // ── Delete Project Modal ──
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [deletePassword, setDeletePassword] = useState('');
     const [deleteError, setDeleteError] = useState('');
-    const [deleteLoading, setDeleteLoading] = useState(false);
+
     const handleDeleteProject = async () => {
         if (!peutSupprimerProjet || !project?.id) return;
         if (!deletePassword) {
             setDeleteError('Veuillez entrer votre mot de passe de connexion.');
             return;
         }
-        setDeleteLoading(true);
         const result = await deleteProject(project.id, deletePassword);
-        setDeleteLoading(false);
         if (!result.success) {
             setDeleteError(result.error || 'Mot de passe incorrect.');
             return;
@@ -152,16 +140,13 @@ const Terrain: React.FC = () => {
         setDeleteError('');
     };
 
-    const [visibleWidgets, setVisibleWidgets] = useState({
-        unified: true,
-        tools: true,
-        search: true,
+    const [visibleWidgets] = useState({
         legend: true
     });
 
     const handleTogglePhase = (phase: string) => {
         if (phase === 'all') {
-            const allPhases = ['Non débuté', 'Livraison (Terminé)', 'Murs (Terminé)', 'Réseau (Terminé)', 'Intérieur (Terminé)', 'Réception: Validée', 'Problème'];
+            const allPhases = ['Non débuté', 'En cours', 'Terminé', 'Problème'];
             setSelectedPhases(selectedPhases.length === allPhases.length ? [] : allPhases);
             return;
         }
@@ -172,14 +157,6 @@ const Terrain: React.FC = () => {
         );
     };
 
-    const handleToggleTeamFilter = (teamId: string) => {
-        setSelectedTeamFilters(prev =>
-            prev.includes(teamId)
-                ? prev.filter(t => t !== teamId)
-                : [...prev, teamId]
-        );
-    };
-
     const [selectedTeam, setSelectedTeam] = useState<string>('all');
     const [dateRange, setDateRange] = useState<'all' | '7d' | '30d'>('all');
 
@@ -187,13 +164,14 @@ const Terrain: React.FC = () => {
 
     const filteredHouseholds = useMemo(() => {
         return householdList.filter(h => {
-            // Phase Filter (Using derived status if available, fallback to status)
             const hStatus = getHouseholdDerivedStatus(h);
-            const matchesPhase = selectedPhases.includes(hStatus) ||
-                selectedPhases.some(p => hStatus.startsWith(p));
+            const mappedStatus = (hStatus === 'Réception: Validée' || h.status === 'Terminé') ? 'Terminé' :
+                hStatus === 'Problème' ? 'Problème' :
+                    (hStatus === 'Non débuté' || hStatus === 'Non Raccordable') ? 'Non débuté' :
+                        'En cours';
+            const matchesPhase = selectedPhases.includes(mappedStatus);
             if (!matchesPhase) return false;
 
-            // Team Progress Logic (Markers hidable by team criteria)
             const fulfillsTeamCriteria =
                 (!!h.koboSync?.livreurDate && selectedTeamFilters.includes('livraison')) ||
                 (!!h.koboSync?.maconOk && selectedTeamFilters.includes('maconnerie')) ||
@@ -202,17 +180,13 @@ const Terrain: React.FC = () => {
                 (!!h.koboSync?.controleOk && selectedTeamFilters.includes('controle'));
 
             const hasAnyKoboProgress = !!h.koboSync?.livreurDate || !!h.koboSync?.maconOk || !!h.koboSync?.reseauOk || !!h.koboSync?.interieurOk || !!h.koboSync?.controleOk;
-
-            // If it has progress but the corresponding teams are unchecked, hide it.
             if (hasAnyKoboProgress && !fulfillsTeamCriteria) return false;
 
-            // Old Team Filter (Assigned Teams)
             if (selectedTeam !== 'all') {
                 const assignedTeams = Array.isArray(h.assignedTeams) ? h.assignedTeams : [];
                 if (!assignedTeams.includes(selectedTeam)) return false;
             }
 
-            // Date Filter
             if (dateRange !== 'all') {
                 const now = new Date();
                 const householdDate = h.delivery?.date ? new Date(h.delivery.date) : new Date();
@@ -234,8 +208,6 @@ const Terrain: React.FC = () => {
 
         setIsSearching(true);
         const results: SearchResult[] = [];
-
-        // 1. Local Search
         const qLower = query.toLowerCase();
         householdList.forEach(h => {
             const owner = h.owner || '';
@@ -249,7 +221,6 @@ const Terrain: React.FC = () => {
             }
         });
 
-        // 2. Nominatim Search
         try {
             const resp = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=5&q=${encodeURIComponent(query)}`);
             const geoData = await resp.json();
@@ -332,215 +303,186 @@ const Terrain: React.FC = () => {
     };
 
     return (
-        <div className={`flex flex-col h-screen overflow-hidden transition-colors duration-500 ${isDarkMode ? 'bg-slate-950 text-slate-200' : 'bg-[#f8fafc] text-slate-900'}`}>
-            {/* Header */}
-            <div className={`flex flex-col px-3 md:px-8 py-3 md:py-4 border-b z-50 transition-colors ${isDarkMode ? 'bg-slate-900/50 border-slate-800/50' : 'bg-white border-slate-200'} backdrop-blur-xl`}>
-                <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2 lg:gap-4 shrink-0">
-                        <div className="w-8 h-8 lg:w-10 lg:h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20">
+        <div className={`flex flex-col h-screen overflow-hidden transition-colors duration-500 ${isDarkMode ? 'bg-slate-950 text-slate-200' : 'bg-[#F8FAFC] text-slate-900'}`}>
+
+            {/* ── CONSOLIDATED HEADER (Google Maps Style) ── */}
+            <div className={`z-50 border-b shadow-sm transition-colors ${isDarkMode ? 'bg-slate-900/90 border-white/5' : 'bg-white border-gray-100'} backdrop-blur-2xl`}>
+                <div className="px-6 py-3 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex items-center gap-4 shrink-0">
+                        <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
                             <MapPin size={18} className="text-white" />
                         </div>
-                        <div className="flex flex-col">
-                            <h1 className="text-lg lg:text-2xl font-black tracking-tighter uppercase italic truncate leading-none">Cartographie</h1>
-                            <div className="hidden sm:flex items-center gap-2 mt-1">
-                                <span className={`text-[10px] font-bold uppercase tracking-widest ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Projet:</span>
-                                <div className="flex items-center gap-1">
-                                    <select
-                                        value={project?.id || ''}
-                                        onChange={(e) => setActiveProjectId(e.target.value)}
-                                        title="Sélectionner un projet"
-                                        className={`bg-transparent border-none text-[11px] font-black uppercase tracking-tight outline-none cursor-pointer p-0 pr-6 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`}
-                                    >
-                                        {projects.map(p => (
-                                            <option key={p.id} value={p.id}>{p.name}</option>
-                                        ))}
-                                        {projects.length === 0 && <option value="">Aucun Projet</option>}
-                                    </select>
-                                    {peutGererProjets && (
-                                        <button
-                                            onClick={handleCreateProject}
-                                            title="Nouveau Projet"
-                                            className={`p-1 rounded-md transition-colors flex items-center justify-center ${isDarkMode ? 'hover:bg-slate-800 text-slate-500 hover:text-white' : 'hover:bg-slate-100 text-slate-400 hover:text-slate-900'}`}
-                                        >
-                                            <Plus size={14} />
-                                        </button>
-                                    )}
-                                    {project && peutSupprimerProjet && (
-                                        <button
-                                            onClick={() => { setDeletePassword(''); setDeleteError(''); setShowDeleteModal(true); }}
-                                            title="Supprimer ce projet"
-                                            className="p-1 rounded-md transition-colors flex items-center justify-center text-rose-500/50 hover:text-rose-500 hover:bg-rose-500/10"
-                                        >
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6" /><path d="M14 11v6" /><path d="M9 6V4h6v2" /></svg>
-                                        </button>
-                                    )}
-                                </div>
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <h1 className="text-lg font-black tracking-tight uppercase italic leading-none">Map Explorer</h1>
+                                <StatusBadge status={syncStatus === 'success' ? 'success' : 'info'} label={syncStatus === 'success' ? 'Live' : 'Sync'} />
                             </div>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2 md:gap-4">
-                        <button
-                            onClick={handleManualSync}
-                            disabled={isSyncing}
-                            title="Lancer une synchronisation manuelle des données"
-                            className={`flex items-center gap-1 md:gap-2 px-2 md:px-4 py-2 rounded-xl text-xs font-bold transition-all ${isSyncing ? 'opacity-50 cursor-not-allowed' : ''} ${isDarkMode ? 'bg-slate-800 text-slate-300 hover:text-white border border-slate-700' : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200 shadow-sm'}`}
-                        >
-                            <RefreshCw size={14} className={isSyncing ? 'animate-spin' : ''} />
-                            <span className="hidden sm:inline">{isSyncing ? 'Sync...' : 'Synchroniser'}</span>
-                        </button>
-
-                        {peutVoirDataHub && (
-                            <button
-                                onClick={() => setIsDataHubOpen(true)}
-                                title="Ouvrir le centre de gestion des données"
-                                className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition-colors shadow-lg shadow-indigo-500/20 hidden md:flex items-center gap-2"
-                            >
-                                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                                Hub Données
-                            </button>
-                        )}
-
-                        <button
-                            onClick={() => setViewMode(viewMode === 'map' ? 'list' : 'map')}
-                            title="Basculer la vue"
-                            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${isDarkMode ? 'bg-slate-800 text-slate-300 hover:text-white border border-slate-700' : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200 shadow-sm'}`}
-                        >
-                            {viewMode === 'map' ? <LayoutList size={14} /> : <MapPin size={14} />}
-                            <span className="hidden md:inline">{viewMode === 'map' ? 'Vue Liste' : 'Vue Carte'}</span>
-                        </button>
-
-                        <div className={`hidden lg:flex items-center flex-wrap gap-1 lg:gap-2 p-1 rounded-2xl border shadow-sm transition-all ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
-                            {/* Team Filter */}
-                            <select
-                                value={selectedTeam}
-                                onChange={(e) => setSelectedTeam(e.target.value)}
-                                title="Filtrer par équipe"
-                                className={`bg-transparent border-none text-[9px] lg:text-[10px] font-black uppercase tracking-widest outline-none px-2 lg:px-4 cursor-pointer ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}
-                            >
-                                <option value="all">Toutes Équipes</option>
-                                <option value="Équipe A">Équipe A (Maçons)</option>
-                                <option value="Équipe B">Équipe B (Réseau)</option>
-                                <option value="Équipe C">Équipe C (Interieur)</option>
-                            </select>
-
-                            {/* Date Filter */}
-                            <select
-                                value={dateRange}
-                                onChange={(e) => setDateRange(e.target.value as any)}
-                                title="Filtrer par période"
-                                className={`bg-transparent border-none text-[9px] lg:text-[10px] font-black uppercase tracking-widest outline-none px-2 lg:px-4 border-l cursor-pointer ${isDarkMode ? 'text-slate-400 border-slate-700' : 'text-slate-500 border-slate-200'}`}
-                            >
-                                <option value="all">Toute période</option>
-                                <option value="7d">7 derniers jours</option>
-                                <option value="30d">30 derniers jours</option>
-                            </select>
-
-                            <div className={`flex items-center px-2 lg:px-4 border-l transition-colors ${isDarkMode ? 'border-slate-700' : 'border-slate-200'}`}>
-                                <span className={`text-[9px] lg:text-[10px] font-black uppercase tracking-widest ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>{filteredHouseholds.length} / {householdList.length} pts</span>
+                    {/* Integrated Tools in Top Bar */}
+                    <div className="flex flex-1 items-center justify-center max-w-2xl px-4">
+                        <div className={`w-full max-w-[400px] flex items-center p-0.5 rounded-xl border transition-all ${isDarkMode ? 'bg-slate-950/50 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
+                            <div className="flex-1 flex items-center gap-2 px-3">
+                                {isSearching ? <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-primary"></div> : <Search size={14} className="text-slate-400" />}
+                                <input
+                                    type="text"
+                                    value={searchQuery}
+                                    onChange={(e) => handleSearch(e.target.value)}
+                                    placeholder="Rechercher une borne, un village ou un client..."
+                                    className={`w-full bg-transparent border-none outline-none text-[11px] font-bold py-2 ${isDarkMode ? 'text-white placeholder:text-slate-600' : 'text-slate-700 placeholder:text-slate-400'}`}
+                                />
                             </div>
-                            <button
-                                onClick={handleRecenter}
-                                title="Recentrer la carte sur le Sénégal"
-                                className={`flex items-center gap-1 lg:gap-2 px-2 lg:px-4 py-1.5 lg:py-2 rounded-xl text-[9px] lg:text-[10px] font-black uppercase tracking-widest transition-all ${isDarkMode ? 'text-slate-400 hover:text-white hover:bg-slate-700' : 'text-slate-500 hover:text-slate-900 hover:bg-white hover:shadow-sm'}`}
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 shrink-0">
+                        <div className="hidden lg:flex items-center gap-1 bg-gray-50 dark:bg-white/5 p-1 rounded-xl border border-gray-100 dark:border-white/5">
+                            <select
+                                value={project?.id || ''}
+                                onChange={(e) => setActiveProjectId(e.target.value)}
+                                className="bg-transparent border-none text-[11px] font-bold uppercase tracking-tight outline-none cursor-pointer px-3 py-1 text-blue-600"
                             >
-                                <Focus size={13} /> Recentrer
-                            </button>
+                                {projects.map(p => (
+                                    <option key={p.id} value={p.id}>{p.name}</option>
+                                ))}
+                            </select>
+                            {peutGererProjets && (
+                                <button onClick={handleCreateProject} className="p-1.5 hover:bg-white dark:hover:bg-white/10 rounded-lg text-gray-400 hover:text-blue-600 transition-all">
+                                    <Plus size={14} />
+                                </button>
+                            )}
+                        </div>
+
+                        <ActionBar>
                             <button
-                                onClick={handleLocate}
-                                title="Me géolocaliser sur la carte"
-                                className={`flex items-center gap-1 lg:gap-2 px-2 lg:px-4 py-1.5 lg:py-2 rounded-xl text-[9px] lg:text-[10px] font-black uppercase tracking-widest transition-all ${isDarkMode ? 'text-slate-400 hover:text-white hover:bg-slate-700' : 'text-slate-500 hover:text-slate-900 hover:bg-white hover:shadow-sm'}`}
+                                onClick={handleManualSync}
+                                disabled={isSyncing}
+                                className="p-2 bg-white dark:bg-white/5 rounded-lg border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-300 hover:border-blue-500 hover:text-blue-600 transition-all disabled:opacity-50"
+                                title="Synchroniser"
                             >
-                                <Navigation size={13} /> Ma Position
+                                <RefreshCw size={14} className={isSyncing ? 'animate-spin' : ''} />
                             </button>
-                            <div className={`flex items-center gap-3 px-4 border-l transition-colors ${isDarkMode ? 'border-slate-700' : 'border-slate-200'}`}>
+
+                            {peutVoirDataHub && (
+                                <button
+                                    onClick={() => setIsDataHubOpen(true)}
+                                    className="hidden md:flex items-center gap-2 px-4 py-2 bg-slate-900 dark:bg-blue-600 rounded-lg text-[10px] font-black uppercase tracking-widest text-white hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/10"
+                                >
+                                    Données
+                                </button>
+                            )}
+
+                            <button
+                                onClick={() => setViewMode(viewMode === 'map' ? 'list' : 'map')}
+                                className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-white/5 rounded-lg border border-gray-200 dark:border-white/10 text-[10px] font-black uppercase tracking-widest text-indigo-600 transition-all shadow-sm"
+                            >
+                                {viewMode === 'map' ? <LayoutList size={14} /> : <MapPin size={14} />}
+                                <span className="hidden md:inline">{viewMode === 'map' ? 'Liste' : 'Carte'}</span>
+                            </button>
+                        </ActionBar>
+                    </div>
+                </div>
+
+                {/* Sub-Header: Toolbar & Status Controls */}
+                <div className="px-6 py-2 border-t border-gray-50 dark:border-white/5 flex items-center justify-between overflow-x-auto scrollbar-none gap-8">
+                    <div className="flex items-center gap-4 border-r dark:border-white/5 pr-4">
+                        <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest shrink-0">Calques:</span>
+                            <div className="flex items-center gap-1">
                                 <button
                                     onClick={() => setShowHeatmap(!showHeatmap)}
-                                    title={showHeatmap ? "Désactiver la carte de chaleur" : "Activer la carte de chaleur"}
-                                    className={`relative w-10 h-5 rounded-full transition-all duration-300 ${showHeatmap ? 'bg-indigo-600 shadow-[0_0_15px_rgba(79,70,229,0.4)]' : (isDarkMode ? 'bg-slate-700' : 'bg-slate-200')}`}
+                                    className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all flex items-center gap-2 ${showHeatmap ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20' : 'bg-gray-100 dark:bg-white/5 text-slate-500 hover:bg-gray-200'}`}
                                 >
-                                    <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all duration-300 ${showHeatmap ? 'left-6' : 'left-1'}`} />
+                                    <div className={`w-1.5 h-1.5 rounded-full ${showHeatmap ? 'bg-white' : 'bg-orange-500'}`} />
+                                    Chaleur
                                 </button>
-                                <span className={`text-[9px] lg:text-[10px] font-black uppercase tracking-widest ${isDarkMode ? (showHeatmap ? 'text-white' : 'text-slate-500') : (showHeatmap ? 'text-slate-900' : 'text-slate-400')}`}>Chaleur</span>
-                            </div>
-                            <div className={`flex items-center gap-3 px-4 border-l transition-colors ${isDarkMode ? 'border-slate-700' : 'border-slate-200'}`}>
                                 <button
                                     onClick={() => setShowZones(!showZones)}
-                                    title={showZones ? "Masquer les zones" : "Afficher les zones (Grappes)"}
-                                    className={`relative w-10 h-5 rounded-full transition-all duration-300 ${showZones ? 'bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.4)]' : (isDarkMode ? 'bg-slate-700' : 'bg-slate-200')}`}
+                                    className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all flex items-center gap-2 ${showZones ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-gray-100 dark:bg-white/5 text-slate-500 hover:bg-gray-200'}`}
                                 >
-                                    <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all duration-300 ${showZones ? 'left-6' : 'left-1'}`} />
+                                    <div className={`w-1.5 h-1.5 rounded-full ${showZones ? 'bg-white' : 'bg-emerald-500'}`} />
+                                    Zones
                                 </button>
-                                <span className={`text-[9px] lg:text-[10px] font-black uppercase tracking-widest ${isDarkMode ? (showZones ? 'text-white' : 'text-slate-500') : (showZones ? 'text-slate-900' : 'text-slate-400')}`}>Zones</span>
                             </div>
-                            <button
-                                onClick={() => document.documentElement.requestFullscreen()}
-                                title="Passer en plein écran"
-                                className="bg-indigo-600 text-white px-3 lg:px-5 py-1.5 lg:py-2 rounded-xl text-[9px] lg:text-[10px] font-black uppercase tracking-widest shadow-lg shadow-indigo-500/20 flex items-center gap-1 lg:gap-2 hover:bg-indigo-700 transition-all active:scale-95"
-                            >
-                                <Maximize size={13} /> plein écran
-                            </button>
-                            <button
-                                onClick={() => setRoutingEnabled(!routingEnabled)}
-                                title="Tracer un itinéraire"
-                                className={`flex items-center gap-1 lg:gap-2 px-2 lg:px-4 py-1.5 lg:py-2 text-[9px] lg:text-[10px] font-black uppercase tracking-widest border-l transition-all ${isDarkMode ? 'border-slate-700 hover:text-white' : 'border-slate-200 hover:text-slate-900'} ${routingEnabled ? 'bg-indigo-600 text-white border-none rounded-xl mx-2' : (isDarkMode ? 'text-slate-400' : 'text-slate-500')}`}
-                            >
-                                <Undo2 size={13} className={routingEnabled ? 'rotate-90' : ''} /> Itinéraire
-                            </button>
+                        </div>
+                    </div>
 
-                            {/* Clear Filters Button */}
-                            <button
-                                onClick={() => {
-                                    setSelectedPhases(['Non débuté', 'Livraison (Terminé)', 'Murs (Terminé)', 'Réseau (Terminé)', 'Intérieur (Terminé)', 'Réception: Validée', 'Problème']);
-                                    setSelectedTeamFilters(['livraison', 'maconnerie', 'reseau', 'installation', 'controle']);
-                                    setSelectedTeam('all');
-                                    setDateRange('all');
-                                }}
-                                title="Réinitialiser tous les filtres"
-                                className={`flex items-center gap-2 px-3 py-1.5 border-l transition-all ${isDarkMode ? 'border-slate-700 text-slate-500 hover:text-white hover:bg-slate-700' : 'border-slate-200 text-slate-400 hover:text-slate-900 hover:bg-white'}`}
-                            >
-                                <X size={12} />
+                    <div className="flex items-center gap-6">
+                        <div className="flex items-center gap-4">
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest shrink-0">Outils:</span>
+                            <div className="flex items-center gap-1.5">
+                                <button onClick={() => setMapZoom(prev => Math.min(prev + 1, 20))} className="p-2 rounded-lg bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 text-slate-500 hover:text-blue-600 transition-all" title="Zoom +"><Plus size={14} /></button>
+                                <button onClick={() => setMapZoom(prev => Math.max(prev - 1, 1))} className="p-2 rounded-lg bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 text-slate-500 hover:text-blue-600 transition-all" title="Zoom -"><Search size={14} className="scale-75 translate-y-0.5" /></button>
+                                <div className="w-px h-4 bg-gray-100 dark:bg-white/5 mx-1" />
+                                <button onClick={handleRecenter} className="p-2 rounded-lg bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 text-slate-500 hover:text-blue-600 transition-all" title="Recentrer"><Focus size={14} /></button>
+                                <button onClick={handleLocate} className="p-2 rounded-lg bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 text-slate-500 hover:text-blue-600 transition-all" title="Ma position"><Navigation size={14} /></button>
+                                <div className="w-px h-4 bg-gray-100 dark:bg-white/5 mx-1" />
+                                <button
+                                    onClick={() => setIsMeasuring(!isMeasuring)}
+                                    className={`p-2 rounded-lg border transition-all ${isMeasuring ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg' : 'bg-gray-50 dark:bg-white/5 border-gray-100 dark:border-white/5 text-slate-500 hover:text-blue-600'}`}
+                                    title="Mesurer la distance"
+                                >
+                                    <Undo2 size={14} className={isMeasuring ? 'rotate-90' : ''} />
+                                </button>
+                                <button
+                                    onClick={() => setShowDatabaseStats(!showDatabaseStats)}
+                                    className={`p-2 rounded-lg border transition-all ${showDatabaseStats ? 'bg-blue-600 border-blue-600 text-white shadow-lg' : 'bg-gray-50 dark:bg-white/5 border-gray-100 dark:border-white/5 text-slate-500 hover:text-blue-600'}`}
+                                    title="Statistiques de zone"
+                                >
+                                    <LayoutGrid size={14} />
+                                </button>
+                                <button
+                                    onClick={() => setMapStyle(prev => prev === 'streets' ? 'satellite' : 'streets')}
+                                    className={`px-3 py-1.5 rounded-lg border text-[9px] font-black uppercase tracking-widest transition-all ${mapStyle === 'satellite' ? 'bg-slate-900 border-slate-800 text-white' : 'bg-gray-50 dark:bg-white/5 border-gray-100 dark:border-white/5 text-slate-500 hover:text-blue-600'}`}
+                                >
+                                    {mapStyle === 'streets' ? 'Satellite' : 'Rues'}
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-4 border-l dark:border-white/5 pl-6">
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest shrink-0">Filtres:</span>
+                            <div className="flex items-center gap-1.5">
+                                <select
+                                    value={selectedTeam}
+                                    onChange={(e) => setSelectedTeam(e.target.value)}
+                                    className="bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 text-[9px] font-black uppercase tracking-widest rounded-lg px-3 py-1.5 outline-none cursor-pointer text-gray-700 dark:text-gray-200"
+                                >
+                                    <option value="all">Équipes: Toutes</option>
+                                    <option value="Équipe A">Équipe A</option>
+                                    <option value="Équipe B">Équipe B</option>
+                                    <option value="Équipe C">Équipe C</option>
+                                </select>
+                                <select
+                                    value={dateRange}
+                                    onChange={(e) => setDateRange(e.target.value as any)}
+                                    className="bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 text-[9px] font-black uppercase tracking-widest rounded-lg px-3 py-1.5 outline-none cursor-pointer text-gray-700 dark:text-gray-200"
+                                >
+                                    <option value="all">Période: Max</option>
+                                    <option value="7d">7 derniers jours</option>
+                                    <option value="30d">30 derniers jours</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-4 shrink-0">
+                        <span className="text-[9px] font-black text-blue-600 bg-blue-50 dark:bg-blue-500/10 px-2 py-1 rounded-md">
+                            {filteredHouseholds.length} POINTS VISIBLES
+                        </span>
+                        <div className="flex items-center gap-1">
+                            <button onClick={() => setViewMode(viewMode === 'map' ? 'list' : 'map')} className="p-2 text-slate-400 hover:text-blue-600 transition-colors" title="Plein Écran">
+                                <Maximize size={16} />
                             </button>
                         </div>
                     </div>
                 </div>
-                {/* Mobile filter row */}
-                <div className={`flex lg:hidden items-center gap-2 px-3 py-2 border-t overflow-x-auto scrollbar-none ${isDarkMode ? 'border-slate-800 bg-slate-900/30' : 'border-slate-100 bg-slate-50/50'}`}>
-                    <select
-                        value={selectedTeam}
-                        onChange={(e) => setSelectedTeam(e.target.value)}
-                        title="Équipe"
-                        className={`shrink-0 bg-transparent border border-slate-300 dark:border-slate-700 rounded-lg text-[10px] font-black uppercase outline-none px-2 py-1 cursor-pointer ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}
-                    >
-                        <option value="all">Toutes Équipes</option>
-                        <option value="Équipe A">Éq. A</option>
-                        <option value="Équipe B">Éq. B</option>
-                        <option value="Équipe C">Éq. C</option>
-                    </select>
-                    <select
-                        value={dateRange}
-                        onChange={(e) => setDateRange(e.target.value as any)}
-                        title="Période"
-                        className={`shrink-0 bg-transparent border border-slate-300 dark:border-slate-700 rounded-lg text-[10px] font-black uppercase outline-none px-2 py-1 cursor-pointer ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}
-                    >
-                        <option value="all">Tout</option>
-                        <option value="7d">7j</option>
-                        <option value="30d">30j</option>
-                    </select>
-                    <span className={`shrink-0 text-[10px] font-black uppercase tracking-widest ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>{filteredHouseholds.length}/{householdList.length}</span>
-                    <button onClick={handleRecenter} className={`shrink-0 flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-black uppercase ${isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-500'}`}><Focus size={12} />Centrer</button>
-                    <button onClick={() => setShowHeatmap(!showHeatmap)} className={`shrink-0 px-2 py-1 rounded-lg text-[10px] font-black uppercase border ${showHeatmap ? 'bg-indigo-600/20 text-indigo-400 border-indigo-500/30' : (isDarkMode ? 'border-slate-700 text-slate-500' : 'border-slate-200 text-slate-400')}`}>Chaleur</button>
-                    <button onClick={() => setShowZones(!showZones)} className={`shrink-0 px-2 py-1 rounded-lg text-[10px] font-black uppercase border ${showZones ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : (isDarkMode ? 'border-slate-700 text-slate-500' : 'border-slate-200 text-slate-400')}`}>Zones</button>
-                    <button onClick={() => { setSelectedPhases(['Non débuté', 'Livraison (Terminé)', 'Murs (Terminé)', 'Réseau (Terminé)', 'Intérieur (Terminé)', 'Réception: Validée', 'Problème']); setSelectedTeamFilters(['livraison', 'maconnerie', 'reseau', 'installation', 'controle']); setSelectedTeam('all'); setDateRange('all'); }} className={`shrink-0 flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-black uppercase ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}><X size={11} />Reset</button>
-                </div>
-                <p className={`text-[10px] font-bold italic tracking-wide transition-colors px-3 md:px-0 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
-                    Visualisation géospatiale des points de raccordement et suivi opérationnel temps réel.
-                </p>
             </div>
 
             {/* Main Area */}
             <div className="flex-1 flex overflow-hidden relative">
-                <div className="flex-1 relative p-4 lg:p-6 transition-all">
+                <div className="flex-1 relative p-0 transition-all">
                     <AnimatePresence mode="wait">
                         {viewMode === 'map' ? (
                             <motion.div
@@ -550,67 +492,6 @@ const Terrain: React.FC = () => {
                                 exit={{ opacity: 0 }}
                                 className={`h-full w-full map-container relative`}
                             >
-                                <WidgetBar
-                                    activeWidgets={visibleWidgets}
-                                    onToggleWidget={(id) => setVisibleWidgets(prev => ({ ...prev, [id]: !prev[id as keyof typeof prev] }))}
-                                />
-                                {visibleWidgets.tools && <MapToolbar />}
-                                {visibleWidgets.unified && (
-                                    <UnifiedStatusWidget
-                                        selectedPhases={selectedPhases}
-                                        onTogglePhase={handleTogglePhase}
-                                        selectedTeamFilters={selectedTeamFilters}
-                                        onToggleTeamFilter={handleToggleTeamFilter}
-                                        stats={stats}
-                                    />
-                                )}
-
-                                {visibleWidgets.search && (
-                                    <div className="absolute top-8 left-6 z-[1000] w-full max-w-[280px]">
-                                        <div className={`flex items-center p-0.5 rounded-xl border shadow-2xl backdrop-blur-xl transition-all ${isDarkMode ? 'bg-slate-900/90 border-slate-800' : 'bg-white/90 border-slate-200'}`}>
-                                            <div className="flex-1 flex items-center gap-2 px-3">
-                                                {isSearching ? <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-indigo-600"></div> : <Search size={14} className="text-slate-400" />}
-                                                <input
-                                                    type="text"
-                                                    value={searchQuery}
-                                                    onChange={(e) => handleSearch(e.target.value)}
-                                                    placeholder="Rechercher..."
-                                                    title="Rechercher un ménage ou un lieu"
-                                                    className={`w-full bg-transparent border-none outline-none text-[10px] font-bold ${isDarkMode ? 'text-white placeholder:text-slate-600' : 'text-slate-700 placeholder:text-slate-400'}`}
-                                                />
-                                            </div>
-                                            <button title="Rechercher" className="bg-indigo-600 text-white w-8 h-8 rounded-lg flex items-center justify-center shadow-lg shadow-indigo-500/20 hover:bg-indigo-700 transition-all active:scale-95">
-                                                <Search size={14} />
-                                            </button>
-                                        </div>
-
-                                        {/* Search Results Dropdown */}
-                                        {searchResults.length > 0 && (
-                                            <div className={`absolute top-full left-0 right-0 mt-2 rounded-xl border shadow-2xl backdrop-blur-xl overflow-hidden z-[1001] ${isDarkMode ? 'bg-slate-900/95 border-slate-800' : 'bg-white/95 border-slate-200'}`}>
-                                                <div className="max-h-60 overflow-y-auto">
-                                                    {searchResults.map((res, i) => (
-                                                        <button
-                                                            key={i}
-                                                            onClick={() => handleSelectResult(res)}
-                                                            className={`w-full text-left px-4 py-2 text-[10px] font-bold border-b last:border-0 transition-colors ${isDarkMode ? 'border-slate-800 text-slate-300 hover:bg-slate-800' : 'border-slate-100 text-slate-700 hover:bg-slate-50'}`}
-                                                        >
-                                                            <div className="flex items-center gap-2">
-                                                                <span className={`px-1 rounded ${res.type === 'household' ? 'bg-indigo-500 text-white' : 'bg-emerald-500 text-white'} text-[8px] uppercase`}>
-                                                                    {res.type === 'household' ? 'Ménage' : 'Lieu'}
-                                                                </span>
-                                                                {res.type === 'household' && (
-                                                                    <div className={`w-1.5 h-1.5 rounded-full ${res.data.status === 'Terminé' ? 'bg-emerald-500' : res.data.status === 'Problème' ? 'bg-red-500' : 'bg-amber-500'}`} />
-                                                                )}
-                                                                <span className="truncate">{res.label}</span>
-                                                            </div>
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-
                                 <MapComponent
                                     households={filteredHouseholds}
                                     onSelect={setSelectedHousehold}
@@ -630,7 +511,30 @@ const Terrain: React.FC = () => {
                                     userLocation={userLocation}
                                     grappesConfig={grappesConfig}
                                     readOnly={!peutModifierCarte}
+                                    isMeasuring={isMeasuring}
+                                    showDatabaseStats={showDatabaseStats}
+                                    mapStyle={mapStyle}
                                 />
+                                {searchResults.length > 0 && searchQuery && (
+                                    <div className={`absolute top-4 left-1/2 -translate-x-1/2 w-full max-w-md mx-auto rounded-xl border shadow-2xl backdrop-blur-xl overflow-hidden z-[4000] ${isDarkMode ? 'bg-slate-900/95 border-slate-800' : 'bg-white/95 border-slate-200'}`}>
+                                        <div className="max-h-60 overflow-y-auto">
+                                            {searchResults.map((res, i) => (
+                                                <button
+                                                    key={i}
+                                                    onClick={() => handleSelectResult(res)}
+                                                    className={`w-full text-left px-4 py-3 text-[10px] font-black border-b last:border-0 transition-colors uppercase tracking-widest ${isDarkMode ? 'border-slate-800 text-slate-400 hover:bg-slate-800 hover:text-white' : 'border-slate-100 text-slate-500 hover:bg-slate-50 hover:text-slate-950'}`}
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        <span className={`px-1.5 py-0.5 rounded text-[8px] font-black italic ${res.type === 'household' ? 'bg-indigo-500 text-white' : 'bg-emerald-500 text-white'}`}>
+                                                            {res.type === 'household' ? 'MÉNERGE' : 'LIEU'}
+                                                        </span>
+                                                        <span className="truncate">{res.label}</span>
+                                                    </div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                             </motion.div>
                         ) : (
                             <motion.div
@@ -698,46 +602,42 @@ const Terrain: React.FC = () => {
                                             ))}
                                         </tbody>
                                     </table>
-                                    {filteredHouseholds.length > 100 && (
-                                        <div className="p-4 text-center text-xs text-slate-500 italic">
-                                            Seuls les 100 premiers résultats sont affichés. Utilisez les filtres ou la recherche.
-                                        </div>
-                                    )}
                                 </div>
                             </motion.div>
                         )}
                     </AnimatePresence>
                 </div>
 
-                {/* Overlaid Detail Panel */}
                 <AnimatePresence>
                     {selectedHousehold && (
                         <motion.div
-                            initial={{ x: 450 }}
-                            animate={{ x: 0 }}
-                            exit={{ x: 450 }}
-                            className={`fixed top-0 right-0 h-full w-[400px] z-[2000] shadow-[-20px_0_50px_rgba(0,0,0,0.1)] p-8 border-l overflow-y-auto transition-colors ${isDarkMode ? 'bg-slate-950 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
+                            initial={{ y: '100%' }}
+                            animate={{ y: 0 }}
+                            exit={{ y: '100%' }}
+                            className={`fixed bottom-0 md:top-0 md:right-0 h-[85vh] md:h-full w-full md:w-[450px] z-[2000] shadow-[-20px_0_50px_rgba(0,0,0,0.2)] p-6 md:p-8 border-t md:border-l rounded-t-[2.5rem] md:rounded-none overflow-y-auto transition-colors ${isDarkMode ? 'bg-slate-950 border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
                         >
+                            <div className="md:hidden w-12 h-1.5 bg-slate-300 dark:bg-slate-800 rounded-full mx-auto mb-6" />
                             <div className="flex justify-between items-center mb-6">
                                 <div className="flex flex-col">
-                                    <h2 className="text-xl font-black italic uppercase tracking-tighter leading-none">Ménage {selectedHousehold.id}</h2>
+                                    <h2 className="text-xl font-black italic uppercase tracking-tighter leading-none">Ménage {selectedHousehold.id.slice(-6)}</h2>
                                     <button
                                         onClick={() => {
-                                            navigator.clipboard.writeText(selectedHousehold.id);
-                                            alert("ID copié !");
+                                            if (selectedHousehold) {
+                                                navigator.clipboard.writeText(selectedHousehold.id);
+                                                toast.success("ID copié !");
+                                            }
                                         }}
-                                        className="text-[9px] font-black text-indigo-500 uppercase tracking-widest mt-1 hover:underline text-left"
+                                        className="text-[9px] font-black text-primary uppercase tracking-widest mt-1 hover:underline text-left"
                                     >
-                                        Copier l'identifiant
+                                        Copier l'identifiant complet
                                     </button>
                                 </div>
-                                <button title="Fermer" onClick={() => setSelectedHousehold(null)} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${isDarkMode ? 'bg-slate-900 text-slate-500 hover:text-white' : 'bg-slate-100 text-slate-400 hover:text-slate-900'}`}>
+                                <button onClick={() => setSelectedHousehold(null)} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${isDarkMode ? 'bg-white/5 text-slate-400 hover:text-white' : 'bg-slate-100 text-slate-400 hover:text-slate-900'}`}>
                                     <X size={20} />
                                 </button>
                             </div>
 
                             <div className="space-y-6">
-                                {/* Photo Gallery Structure */}
                                 <div className="space-y-2">
                                     <h4 className={`text-[9px] font-black uppercase tracking-[0.2em] flex items-center gap-2 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
                                         <Maximize size={12} /> Galerie de Photos
@@ -760,11 +660,10 @@ const Terrain: React.FC = () => {
                                             <div className={`aspect-square sm:aspect-video rounded-2xl overflow-hidden border flex items-center justify-center p-4 text-center ${isDarkMode ? 'bg-slate-900 border-slate-800 text-slate-600' : 'bg-slate-50 border-slate-200 text-slate-400'}`}>
                                                 <div className="flex flex-col items-center gap-2">
                                                     <MapPin size={16} />
-                                                    <span className="text-[9px] font-bold uppercase">Aucune photo principale</span>
+                                                    <span className="text-[9px] font-bold uppercase">Aucune photo</span>
                                                 </div>
                                             </div>
                                         )}
-                                        {/* Placeholder or Compteur photo */}
                                         {selectedHousehold.compteurPhoto ? (
                                             <a
                                                 href={selectedHousehold.compteurPhoto}
@@ -780,23 +679,23 @@ const Terrain: React.FC = () => {
                                             </a>
                                         ) : (
                                             <div className={`aspect-square sm:aspect-video rounded-2xl overflow-hidden border border-dashed flex items-center justify-center p-4 text-center ${isDarkMode ? 'bg-slate-900/50 border-slate-800 text-slate-700' : 'bg-slate-50 border-slate-200 text-slate-300'}`}>
-                                                <span className="text-[9px] font-bold uppercase">En attente<br />(Compteur)</span>
+                                                <span className="text-[9px] font-bold uppercase">Compteur<br />En attente</span>
                                             </div>
                                         )}
                                     </div>
                                 </div>
 
-                                <div className={`p-6 rounded-3xl border transition-all ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-slate-50 border-slate-100'}`}>
+                                <div className={`p-6 rounded-3xl border transition-all ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-100'}`}>
                                     <div className="flex items-center gap-4">
-                                        <div className="w-12 h-12 bg-indigo-600/10 text-indigo-500 rounded-2xl flex items-center justify-center border border-indigo-600/20">
+                                        <div className="w-12 h-12 bg-primary/10 text-primary rounded-2xl flex items-center justify-center border border-primary/20">
                                             <MapPin size={24} />
                                         </div>
                                         <div>
                                             <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Propriétaire / Chef</p>
-                                            <p className="text-indigo-600 font-black text-xs uppercase tracking-tight">{selectedHousehold.owner || '—'}</p>
+                                            <p className="text-primary font-black text-xs uppercase tracking-tight">{selectedHousehold.owner || '—'}</p>
                                         </div>
                                     </div>
-                                    <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 grid grid-cols-2 gap-4">
+                                    <div className="mt-4 pt-4 border-t border-slate-100 dark:border-white/5 grid grid-cols-2 gap-4">
                                         <div>
                                             <p className={`text-[8px] font-black uppercase tracking-widest mb-1 ${isDarkMode ? 'text-slate-600' : 'text-slate-400'}`}>Région</p>
                                             <p className="text-[10px] font-bold">{selectedHousehold.region}</p>
@@ -805,7 +704,7 @@ const Terrain: React.FC = () => {
                                             <p className={`text-[8px] font-black uppercase tracking-widest mb-1 ${isDarkMode ? 'text-slate-600' : 'text-slate-400'}`}>Statut Actuel</p>
                                             <p className={`text-[10px] font-black uppercase tracking-wider ${selectedHousehold.status === 'Réception: Validée' || selectedHousehold.status === 'Terminé' ? 'text-emerald-500' :
                                                 selectedHousehold.status === 'Problème' ? 'text-rose-500' :
-                                                    selectedHousehold.status === 'Non débuté' ? 'text-rose-600' : 'text-indigo-500'
+                                                    selectedHousehold.status === 'Non débuté' ? 'text-rose-600' : 'text-primary'
                                                 }`}>
                                                 {selectedHousehold.status}
                                             </p>
@@ -816,32 +715,21 @@ const Terrain: React.FC = () => {
                                 <div className="space-y-4">
                                     <h4 className={`text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
                                         <Calendar size={12} />
-                                        Journal d'Audit & Historique
+                                        Journal d'Audit
                                     </h4>
                                     <div className="space-y-3 relative before:absolute before:left-4 before:top-2 before:bottom-2 before:w-px before:bg-slate-200 dark:before:bg-slate-800">
                                         {auditLogs.length > 0 ? (
                                             auditLogs.slice(0, 5).map((log, i) => (
                                                 <div key={i} className="pl-10 relative">
-                                                    <div className={`absolute left-2.5 top-1.5 w-3 h-3 rounded-full border-2 border-white dark:border-slate-950 bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.5)]`} />
-                                                    <div className={`p-4 rounded-2xl border transition-all ${isDarkMode ? 'bg-indigo-600/5 border-slate-800' : 'bg-white border-slate-50'}`}>
-                                                        <div className="flex justify-between items-start mb-1">
-                                                            <p className={`text-[10px] font-bold ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>{log.action}</p>
-                                                            <span className={`text-[7px] font-black px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-500`}>LOG</span>
-                                                        </div>
-                                                        <div className="flex justify-between items-center">
-                                                            <p className="text-[9px] text-slate-500 italic">Auto Sync</p>
-                                                            <p className="text-[9px] text-slate-400 font-bold uppercase">{new Date(log.timestamp).toLocaleString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</p>
-                                                        </div>
+                                                    <div className="absolute left-2.5 top-1.5 w-3 h-3 rounded-full border-2 border-white dark:border-slate-950 bg-primary" />
+                                                    <div className={`p-4 rounded-2xl border transition-all ${isDarkMode ? 'bg-white/5 border-white/5' : 'bg-white border-slate-50'}`}>
+                                                        <p className={`text-[10px] font-bold ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>{log.action}</p>
+                                                        <p className="text-[9px] text-slate-400 font-bold uppercase">{new Date(log.timestamp).toLocaleString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</p>
                                                     </div>
                                                 </div>
                                             ))
                                         ) : (
-                                            <div className="pl-10 relative">
-                                                <div className="absolute left-2.5 top-1.5 w-3 h-3 rounded-full border-2 border-white dark:border-slate-950 bg-slate-400" />
-                                                <div className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-slate-50 border-slate-100'}`}>
-                                                    <p className="text-[9px] text-slate-500 italic">Aucun log récent</p>
-                                                </div>
-                                            </div>
+                                            <p className="text-[10px] text-slate-500 italic pl-10">Aucun log récent</p>
                                         )}
                                     </div>
                                 </div>
@@ -849,7 +737,6 @@ const Terrain: React.FC = () => {
                                 <div className="pt-6 flex flex-col gap-3">
                                     <button
                                         onClick={handleTraceItinerary}
-                                        title="Calculer l'itinéraire vers ce ménage"
                                         className="w-full bg-emerald-500 hover:bg-emerald-600 text-white py-4 rounded-2xl font-black text-xs transition-all shadow-lg shadow-emerald-500/20 active:scale-95 flex items-center justify-center gap-2"
                                     >
                                         <Navigation size={16} />
@@ -858,13 +745,11 @@ const Terrain: React.FC = () => {
                                     <div className="flex gap-3">
                                         <button
                                             onClick={() => handleStatusUpdate('Terminé')}
-                                            title="Valider le raccordement de ce ménage"
-                                            className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-4 rounded-2xl font-black text-xs transition-all shadow-lg shadow-indigo-500/20 active:scale-95"
+                                            className="flex-1 bg-primary hover:brightness-110 text-white py-4 rounded-2xl font-black text-xs transition-all shadow-lg shadow-primary/20 active:scale-95"
                                         >
                                             VALIDER RACCORDEMENT
                                         </button>
                                         <button
-                                            title="Signaler un report pour ce ménage"
                                             className={`flex-1 py-4 rounded-2xl border font-black text-xs transition-all active:scale-95 ${isDarkMode ? 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white' : 'bg-white border-slate-200 text-slate-400 hover:text-slate-900'}`}
                                         >
                                             REPORTÉ
@@ -877,79 +762,28 @@ const Terrain: React.FC = () => {
                 </AnimatePresence>
             </div>
 
-            {/* Data Hub Modal */}
-            <DataHubModal
-                isOpen={isDataHubOpen}
-                onClose={() => setIsDataHubOpen(false)}
-            />
+            <DataHubModal isOpen={isDataHubOpen} onClose={() => setIsDataHubOpen(false)} />
 
-            {/* Delete Project Modal */}
-            {
-                showDeleteModal && (
-                    <div className="fixed inset-0 z-[4000] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-                        <div className={`w-full max-w-md rounded-3xl shadow-2xl border p-8 ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
-                            <div className="flex items-center gap-4 mb-6">
-                                <div className="w-12 h-12 rounded-xl bg-rose-500/10 flex items-center justify-center shrink-0">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-rose-500"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
-                                </div>
-                                <div>
-                                    <h2 className={`text-xl font-black ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Supprimer le Projet</h2>
-                                    <p className={`text-sm font-medium ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Cette action est irréversible</p>
-                                </div>
-                            </div>
-
-                            <div className={`p-4 rounded-2xl mb-6 ${isDarkMode ? 'bg-rose-500/10 border border-rose-500/20' : 'bg-rose-50 border border-rose-100'}`}>
-                                <p className={`text-sm font-bold ${isDarkMode ? 'text-rose-400' : 'text-rose-700'}`}>
-                                    Vous allez supprimer le projet <span className="italic">"{project?.name}"</span> et tous ses ménages de la base locale.
-                                </p>
-                            </div>
-
-                            <div className="space-y-4">
-                                <div>
-                                    <label className={`text-xs font-black uppercase tracking-widest block mb-2 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-                                        Mot de passe administrateur
-                                    </label>
-                                    <input
-                                        type="password"
-                                        value={deletePassword}
-                                        onChange={(e) => { setDeletePassword(e.target.value); setDeleteError(''); }}
-                                        placeholder="Entrez le mot de passe admin"
-                                        title="Mot de passe administrateur"
-                                        onKeyDown={(e) => e.key === 'Enter' && handleDeleteProject()}
-                                        autoFocus
-                                        className={`w-full px-4 py-3 rounded-xl border text-sm font-bold outline-none transition-all ${deleteError
-                                            ? 'border-rose-500 bg-rose-500/5'
-                                            : isDarkMode ? 'bg-slate-800 border-slate-700 text-white placeholder:text-slate-600 focus:border-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-indigo-500'
-                                            }`}
-                                    />
-                                    {deleteError && (
-                                        <p className="text-rose-500 text-xs font-bold mt-2">{deleteError}</p>
-                                    )}
-                                </div>
-
-                                <div className="flex gap-3 pt-2">
-                                    <button
-                                        onClick={() => setShowDeleteModal(false)}
-                                        title="Annuler"
-                                        className={`flex-1 py-3 rounded-xl border font-black text-sm transition-all ${isDarkMode ? 'border-slate-700 text-slate-400 hover:text-white hover:bg-slate-800' : 'border-slate-200 text-slate-500 hover:text-slate-900 hover:bg-slate-100'
-                                            }`}
-                                    >
-                                        Annuler
-                                    </button>
-                                    <button
-                                        onClick={handleDeleteProject}
-                                        title="Confirmer la suppression"
-                                        className="flex-1 py-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-black text-sm transition-all shadow-lg shadow-rose-600/20 active:scale-95"
-                                    >
-                                        {deleteLoading ? 'Vérification...' : 'Supprimer définitivement'}
-                                    </button>
-                                </div>
-                            </div>
+            {showDeleteModal && (
+                <div className="fixed inset-0 z-[4000] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+                    <div className={`w-full max-w-md rounded-3xl shadow-2xl border p-8 ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+                        <h2 className={`text-xl font-black ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Supprimer le Projet</h2>
+                        <input
+                            type="password"
+                            value={deletePassword}
+                            onChange={(e) => setDeletePassword(e.target.value)}
+                            className="w-full px-4 py-3 mt-4 rounded-xl border"
+                            placeholder="Mot de passe admin"
+                        />
+                        {deleteError && <p className="text-rose-500 text-xs mt-2">{deleteError}</p>}
+                        <div className="flex gap-3 mt-6">
+                            <button onClick={() => setShowDeleteModal(false)} className="flex-1 py-3 rounded-xl border">Annuler</button>
+                            <button onClick={handleDeleteProject} className="flex-1 py-3 rounded-xl bg-rose-600 text-white font-black">Supprimer</button>
                         </div>
                     </div>
-                )
-            }
-        </div >
+                </div>
+            )}
+        </div>
     );
 };
 

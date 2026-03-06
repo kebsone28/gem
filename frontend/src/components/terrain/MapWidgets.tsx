@@ -32,7 +32,7 @@ export const WidgetBar: React.FC<WidgetBarProps> = ({ activeWidgets, onToggleWid
                 <button
                     onClick={() => onToggleWidget('unified')}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${activeWidgets.unified
-                        ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20'
+                        ? 'bg-primary text-white shadow-lg shadow-primary/30'
                         : isDarkMode ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
                         }`}
                 >
@@ -42,7 +42,7 @@ export const WidgetBar: React.FC<WidgetBarProps> = ({ activeWidgets, onToggleWid
                 <button
                     onClick={() => onToggleWidget('tools')}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${activeWidgets.tools
-                        ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20'
+                        ? 'bg-primary text-white shadow-lg shadow-primary/30'
                         : isDarkMode ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
                         }`}
                 >
@@ -52,7 +52,7 @@ export const WidgetBar: React.FC<WidgetBarProps> = ({ activeWidgets, onToggleWid
                 <button
                     onClick={() => onToggleWidget('search')}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${activeWidgets.search
-                        ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20'
+                        ? 'bg-primary text-white shadow-lg shadow-primary/30'
                         : isDarkMode ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
                         }`}
                 >
@@ -63,7 +63,7 @@ export const WidgetBar: React.FC<WidgetBarProps> = ({ activeWidgets, onToggleWid
                 <button
                     onClick={() => onToggleWidget('legend')}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${activeWidgets.legend
-                        ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20'
+                        ? 'bg-primary text-white shadow-lg shadow-primary/30'
                         : isDarkMode ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
                         }`}
                 >
@@ -75,7 +75,7 @@ export const WidgetBar: React.FC<WidgetBarProps> = ({ activeWidgets, onToggleWid
 
                 <button
                     onClick={toggleTheme}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${isDarkMode ? 'text-amber-400 hover:bg-amber-400/10' : 'text-indigo-600 hover:bg-indigo-50'}`}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${isDarkMode ? 'text-blue-400 hover:bg-blue-400/10' : 'text-primary hover:bg-primary/10'}`}
                     title={isDarkMode ? 'Passer au mode clair' : 'Passer au mode sombre'}
                 >
                     {isDarkMode ? <Sun size={12} /> : <Moon size={12} />}
@@ -133,20 +133,20 @@ export const UnifiedStatusWidget: React.FC<UnifiedStatusWidgetProps> = ({
     };
 
     const teamRows = [
-        { id: 'livraison', label: 'Livreur', progress: stats?.teamProgress.livraison || 0, color: 'bg-amber-400' },
+        { id: 'livraison', label: 'Livreur', progress: stats?.teamProgress.livraison || 0, color: 'bg-blue-300' },
         { id: 'maconnerie', label: 'Maçon', progress: stats?.teamProgress.maconnerie || 0, color: 'bg-blue-400' },
-        { id: 'reseau', label: 'Réseau', progress: stats?.teamProgress.reseau || 0, color: 'bg-indigo-400' },
+        { id: 'reseau', label: 'Réseau', progress: stats?.teamProgress.reseau || 0, color: 'bg-primary' },
         { id: 'installation', label: 'Installateur', progress: stats?.teamProgress.installation || 0, color: 'bg-emerald-400' },
-        { id: 'controle', label: 'Contrôleur', progress: stats?.teamProgress.controle || 0, color: 'bg-purple-400' },
+        { id: 'controle', label: 'Contrôleur', progress: stats?.teamProgress.controle || 0, color: 'bg-emerald-500' },
     ];
 
     return (
         <motion.div
             drag
             dragMomentum={false}
-            className={`absolute bottom-32 left-8 z-[1000] w-72 rounded-2xl border shadow-2xl overflow-hidden transition-colors map-widget-glass ${isDarkMode ? 'border-slate-800' : 'border-slate-200'}`}
+            className={`absolute bottom-32 left-4 md:left-8 z-[1000] w-[calc(100%-2rem)] md:w-72 rounded-2xl border shadow-2xl overflow-hidden transition-colors map-widget-glass ${isDarkMode ? 'border-primary/20' : 'border-slate-200'}`}
         >
-            <div className="p-4 bg-indigo-600 map-widget-header flex items-center justify-between cursor-grab active:cursor-grabbing">
+            <div className="p-4 flex items-center justify-between cursor-grab active:cursor-grabbing" style={{ background: 'var(--gradient-electric)' }}>
                 <div className="flex items-center gap-2">
                     <Activity size={16} className="text-white" />
                     <span className="text-xs font-black text-white italic uppercase tracking-widest">Suivi Opérationnel</span>
@@ -182,11 +182,11 @@ export const UnifiedStatusWidget: React.FC<UnifiedStatusWidgetProps> = ({
                                     key={tab.id}
                                     onClick={() => setActiveTab(tab.id as any)}
                                     className={`flex-1 py-3 text-[9px] font-black uppercase tracking-widest transition-all relative ${activeTab === tab.id
-                                        ? 'text-indigo-500 bg-indigo-500/5'
+                                        ? 'text-primary bg-primary/5'
                                         : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
                                 >
                                     {tab.label}
-                                    {activeTab === tab.id && <div className="absolute bottom-0 left-[20%] right-[20%] h-0.5 bg-indigo-500 rounded-full shadow-[0_0_10px_rgba(99,102,241,0.5)]" />}
+                                    {activeTab === tab.id && <div className="absolute bottom-0 left-[20%] right-[20%] h-0.5 bg-primary rounded-full shadow-[0_0_10px_rgba(30,144,255,0.5)]" />}
                                 </button>
                             ))}
                         </div>
@@ -200,7 +200,7 @@ export const UnifiedStatusWidget: React.FC<UnifiedStatusWidgetProps> = ({
                                             <div
                                                 key={i}
                                                 onClick={() => onTogglePhase(phase.value)}
-                                                className={`flex items-center justify-between p-2.5 rounded-xl border map-widget-item transition-all cursor-pointer ${active ? (isDarkMode ? 'bg-indigo-600/20 border-indigo-500/50 text-white shadow-xl shadow-slate-950/20' : 'bg-indigo-50 border-indigo-200 text-indigo-700 font-bold shadow-sm shadow-indigo-100') : (isDarkMode ? 'bg-slate-900/50 border-slate-800 text-slate-400 hover:bg-slate-800' : 'bg-white border-slate-100 text-slate-500 hover:bg-slate-50')}`}
+                                                className={`flex items-center justify-between p-2.5 rounded-xl border map-widget-item transition-all cursor-pointer ${active ? (isDarkMode ? 'bg-primary/20 border-primary/50 text-white shadow-xl shadow-slate-950/20' : 'bg-primary/5 border-primary/20 text-primary font-bold shadow-sm shadow-primary/10') : (isDarkMode ? 'bg-slate-900/50 border-slate-800 text-slate-400 hover:bg-slate-800' : 'bg-white border-slate-100 text-slate-500 hover:bg-slate-50')}`}
                                             >
                                                 <div className="flex items-center gap-3">
                                                     <div className={`w-1.5 h-1.5 rounded-full ${phase.color}`} />
@@ -241,7 +241,7 @@ export const UnifiedStatusWidget: React.FC<UnifiedStatusWidgetProps> = ({
                                         </div>
                                         <div className={`h-1.5 w-full rounded-full overflow-hidden transition-colors ${isDarkMode ? 'bg-slate-800' : 'bg-slate-100'}`}>
                                             <div
-                                                className={`h-full bg-indigo-500 rounded-full transition-all duration-1000 dynamic-progress-bar`}
+                                                className={`h-full bg-primary rounded-full transition-all duration-1000 dynamic-progress-bar`}
                                                 data-progress={`${stats?.total ? (stats.termine / stats.total) * 100 : 0}`}
                                                 ref={(el) => { if (el) el.style.setProperty('--progress-width', `${stats?.total ? (stats.termine / stats.total) * 100 : 0}%`); }}
                                             />
