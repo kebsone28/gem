@@ -11,7 +11,17 @@ import { config } from './core/config/config.js';
 
 const app = express();
 
-app.get('/api/ping', (req, res) => res.json({ status: 'ok', msg: 'Core API is alive' }));
+app.get('/api/ping', async (req, res) => {
+    let dbStatus = 'waiting';
+    try {
+        const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('DB Timeout')), 5000));
+        await Promise.race([prisma.$queryRaw`SELECT 1`, timeout]);
+        dbStatus = 'connected';
+    } catch (e) {
+        dbStatus = `error: ${e.message}`;
+    }
+    res.json({ status: 'ok', msg: 'Core API is alive', db: dbStatus });
+});
 
 // 1. Security Middlewares
 app.use(helmet());
