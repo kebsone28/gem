@@ -190,16 +190,45 @@ export default function Aide() {
         },
         {
             id: 'terrain',
-            title: 'Terrain — Cartographie Interactive',
+            title: 'Carte Terrain — Mode Google Maps Entreprise',
             icon: MapIcon,
             color: 'rose',
             bg: 'bg-rose-500/10 text-rose-500',
             zap: 'text-rose-400',
             content: [
-                "Architecture Vector Tiles (MapLibre GL) : rendu fluide de 50 000+ points via GPU.",
-                "Organisation K-Means : regroupement automatique en Grappes et Sous-grappes.",
-                "Filtres de statut et popups d'information par grappe avec clustering natif.",
-                "Routage : calcul d'itinéraires pour les livreurs.",
+                "Architecture Vector Tiles (MapLibre GL) : rendu GPU fluide de 50 000+ points avec clustering natif automatique.",
+                "Marqueurs SVG intelligents : icônes par statut (✓ Terminé, ⚠ Problème, 🔧 Travaux, 🚚 Livraison) chargés dynamiquement.",
+                "Légende interactive cliquable : filtrez les ménages visibles par statut en un clic.",
+                "Outils intégrés dans le header : Zoom, Carte satellite/rues, Heatmap thermique, Zones, Règle de mesure.",
+                "Superposition des Grappes et Sous-grappes avec popups d'information et filtres d'équipes.",
+            ]
+        },
+        {
+            id: 'tournee',
+            title: 'Planification de Tournées Camion',
+            icon: Truck,
+            color: 'cyan',
+            bg: 'bg-cyan-500/10 text-cyan-500',
+            zap: 'text-cyan-400',
+            content: [
+                "Panneau multi-stops : sélectionnez les ménages à visiter dans l'ordre que vous souhaitez.",
+                "Calcul automatique de la distance totale et estimation du coût carburant en FCFA.",
+                "Bouton 'Lancer la tournée' : ouvre Google Maps avec l'itinéraire optimisé pour le chauffeur.",
+                "Activé depuis l'icône Camion 🚛 dans la barre d'outils de la carte.",
+            ]
+        },
+        {
+            id: 'geofencing',
+            title: 'Alertes GPS & Galerie Photos Kobo',
+            icon: Bell,
+            color: 'orange',
+            bg: 'bg-orange-500/10 text-orange-500',
+            zap: 'text-orange-400',
+            content: [
+                "Détection géofencing : alerte automatique si un ménage actif est à plus de 2km de sa zone assignée.",
+                "Chaque alerte inclut un lien direct Google Maps pour vérifier la position réelle sur le terrain.",
+                "Galerie photos Kobo : cliquez sur une photo de ménage pour l'afficher en plein écran (lightbox).",
+                "Navigation clavier dans le lightbox : flèches ← → pour passer de la photo maison à la photo compteur.",
             ]
         },
         {
@@ -397,7 +426,7 @@ export default function Aide() {
 
             <div className={`p-6 rounded-2xl border text-center ${isDarkMode ? 'bg-indigo-900/20 border-indigo-500/20' : 'bg-indigo-50 border-indigo-100'}`}>
                 <p className={`text-sm font-bold ${isDarkMode ? 'text-indigo-300' : 'text-indigo-700'}`}>
-                    GEM SaaS v3 PRO — Backend PostgreSQL · PostGIS · Sécurité Bcrypt · BullMQ Workers · Multi-Tenancy
+                    GEM SaaS v3.9 — Carte Entreprise · Marqueurs SVG · Alertes Géofencing · Tournées Camion · Redis BullMQ
                 </p>
             </div>
         </div>
