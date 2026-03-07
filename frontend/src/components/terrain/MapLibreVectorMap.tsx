@@ -206,6 +206,12 @@ export default function MapLibreVectorMap({
             clusterMaxZoom: 15
         });
 
+        // Source non-clusterisée pour la heatmap (cluster: true supprime les points individuels)
+        map.addSource('households-raw', {
+            type: 'geojson',
+            data: householdGeoJSON as any
+        });
+
         map.addSource('grappes', { type: 'geojson', data: grappesGeoJSON as any });
         map.addSource('sous-grappes', { type: 'geojson', data: sousGrappesGeoJSON as any });
 
@@ -253,17 +259,37 @@ export default function MapLibreVectorMap({
             }
         });
 
-        // --- LAYERS : HOUSEHOLDS (Heatmap) ---
+        // --- LAYERS : HOUSEHOLDS (Heatmap) — utilise la source RAW non-clusterisée ---
         map.addLayer({
             id: 'heatmap',
             type: 'heatmap',
-            source: 'households',
-            layout: { visibility: showHeatmap ? 'visible' : 'none' },
+            source: 'households-raw',   // ← source sans cluster
+            layout: { visibility: 'none' }, // toujours commencer caché
             paint: {
-                'heatmap-opacity': 0.6,
+                'heatmap-weight': [
+                    'interpolate', ['linear'], ['zoom'],
+                    0, 0.3,
+                    15, 1
+                ],
+                'heatmap-intensity': [
+                    'interpolate', ['linear'], ['zoom'],
+                    0, 0.5,
+                    15, 3
+                ],
+                'heatmap-radius': [
+                    'interpolate', ['linear'], ['zoom'],
+                    0, 8,
+                    15, 30
+                ],
+                'heatmap-opacity': 0.7,
                 'heatmap-color': [
                     'interpolate', ['linear'], ['heatmap-density'],
-                    0, 'rgba(0,0,0,0)', 0.2, 'rgba(99,102,241,0.2)', 0.5, 'rgba(239,68,68,0.5)', 1, 'rgba(239,68,68,1)'
+                    0, 'rgba(0,0,0,0)',
+                    0.1, '#4f46e5',
+                    0.3, '#7c3aed',
+                    0.5, '#ef4444',
+                    0.8, '#f97316',
+                    1, '#fbbf24'
                 ]
             }
         });
@@ -378,6 +404,7 @@ export default function MapLibreVectorMap({
         const map = mapRef.current;
         if (!map || !styleIsReady) return;
         (map.getSource('households') as any)?.setData(householdGeoJSON);
+        (map.getSource('households-raw') as any)?.setData(householdGeoJSON); // pour la heatmap
         (map.getSource('grappes') as any)?.setData(grappesGeoJSON);
         (map.getSource('sous-grappes') as any)?.setData(sousGrappesGeoJSON);
     }, [householdGeoJSON, grappesGeoJSON, sousGrappesGeoJSON, styleIsReady]);
