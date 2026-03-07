@@ -34,6 +34,10 @@ interface MapComponentProps {
     isMeasuring?: boolean;
     showDatabaseStats?: boolean;
     mapStyle?: 'streets' | 'satellite';
+    grappeZonesData?: any;
+    grappeCentroidsData?: any;
+    activeGrappeId?: string | null;
+    onHouseholdDrop?: (id: string, lat: number, lng: number) => void;
 }
 
 const MapComponent: React.FC<MapComponentProps> = ({
@@ -51,7 +55,12 @@ const MapComponent: React.FC<MapComponentProps> = ({
     readOnly = false,
     isMeasuring = false,
     showDatabaseStats = false,
-    mapStyle = 'streets'
+    mapStyle = 'streets',
+    grappeZonesData,
+    grappeCentroidsData,
+    activeGrappeId,
+    userLocation,
+    onHouseholdDrop
 }) => {
     return (
         <div className="h-full w-full relative bg-slate-100 dark:bg-slate-900 overflow-hidden">
@@ -69,6 +78,11 @@ const MapComponent: React.FC<MapComponentProps> = ({
                 readOnly={readOnly}
                 isMeasuring={isMeasuring}
                 mapStyle={mapStyle}
+                grappeZonesData={grappeZonesData}
+                grappeCentroidsData={grappeCentroidsData}
+                activeGrappeId={activeGrappeId}
+                userLocation={userLocation}
+                onHouseholdDrop={onHouseholdDrop}
             />
 
             {showDatabaseStats && <MapStatsWidget stats={{

@@ -83,6 +83,7 @@ import kpiRoutes from './api/routes/kpi.routes.js';
 import teamRoutes from './api/routes/team.routes.js';
 import simulationRoutes from './api/routes/simulation.routes.js';
 import monitoringRoutes from './api/routes/monitoring.routes.js';
+import geoRoutes from './api/routes/geo.routes.js';
 
 app.use('/api/auth', authRoutes);
 app.use('/api/sync', syncRoutes);
@@ -93,6 +94,7 @@ app.use('/api/kpi', kpiRoutes);
 app.use('/api/teams', teamRoutes);
 app.use('/api/simulation', simulationRoutes);
 app.use('/api/monitoring', monitoringRoutes);
+app.use('/api/geo', geoRoutes);
 
 app.get('/health', async (req, res) => {
     const health = {

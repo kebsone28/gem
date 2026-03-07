@@ -102,6 +102,38 @@ export function useTerrainData() {
         }
     }, [activeProjectId]);
 
+    const updateHouseholdLocation = useCallback(async (id: string, lat: number, lng: number) => {
+        const household = await db.households.get(id);
+        if (!household) return;
+
+        // Update local Dexie DB so the frontend recalculates instantly
+        await db.households.update(id, {
+            location: {
+                ...household.location,
+                type: 'Point',
+                coordinates: [lng, lat]
+            }
+        });
+
+        // Trigger an API call to update the backend PostGIS layer
+        try {
+            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5005';
+            const token = localStorage.getItem('token');
+            await fetch(`${apiUrl}/api/households/${id}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    location: { type: 'Point', coordinates: [lng, lat] }
+                })
+            });
+        } catch (e) {
+            console.error('Failed to sync location to backend', e);
+        }
+    }, []);
+
     const importHouseholds = useCallback(async (data: Household[]) => {
         await db.households.bulkPut(data);
     }, []);
@@ -163,6 +195,7 @@ export function useTerrainData() {
         setStatusFilter,
         stats,
         updateHouseholdStatus,
+        updateHouseholdLocation,
         importHouseholds,
         clearHouseholds,
         simulateKoboSync,

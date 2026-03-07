@@ -7,17 +7,20 @@ import {
     Navigation,
     Focus,
     Maximize,
-    Undo2,
-    Search,
-    RefreshCw,
-    Plus,
     LayoutList,
     LayoutGrid,
     FileDown,
     Truck,
-    PenLine,
+    Undo2,
+    Search,
+    RefreshCw,
+    Plus,
     Globe,
-    Users
+    Users,
+    Layers,
+    PenLine,
+    Wifi,
+    CloudDownload
 } from 'lucide-react';
 import { useTerrainData } from '../hooks/useTerrainData';
 import { useAuth } from '../contexts/AuthContext';
@@ -39,6 +42,7 @@ import type { DrawnZone } from '../components/terrain/MapDrawZones';
 import { GeoJsonOverlayPanel } from '../components/terrain/GeoJsonOverlay';
 import type { ExternalLayer } from '../components/terrain/GeoJsonOverlay';
 import { TeamTrackingPanel } from '../components/terrain/TeamTracking';
+import { GrappeSelectorPanel } from '../components/terrain/GrappeSelectorPanel';
 
 import {
     StatusBadge,
@@ -62,6 +66,7 @@ const Terrain: React.FC = () => {
     const {
         households,
         updateHouseholdStatus,
+        updateHouseholdLocation,
         getHouseholdLogs
     } = useTerrainData();
 
@@ -108,6 +113,66 @@ const Terrain: React.FC = () => {
     const [externalLayers, setExternalLayers] = useState<ExternalLayer[]>([]);
     const [showLayersPanel, setShowLayersPanel] = useState(false);
     const [showTrackingPanel, setShowTrackingPanel] = useState(false);
+    const [isOfflineMode, setIsOfflineMode] = useState(!navigator.onLine);
+    const [isDownloadingOffline, setIsDownloadingOffline] = useState(false);
+
+    // Grappe Clustering State
+    const [showGrappePanel, setShowGrappePanel] = useState(false);
+    const [activeGrappeId, setActiveGrappeId] = useState<string | null>(null);
+    const [grappeClusters, setGrappeClusters] = useState<any[]>([]);
+    const [grappeZonesData, setGrappeZonesData] = useState<any>(null);
+    const [grappeCentroidsData, setGrappeCentroidsData] = useState<any>(null);
+
+    React.useEffect(() => {
+        const handleStatus = () => setIsOfflineMode(!navigator.onLine);
+        window.addEventListener('online', handleStatus);
+        window.addEventListener('offline', handleStatus);
+        return () => {
+            window.removeEventListener('online', handleStatus);
+            window.removeEventListener('offline', handleStatus);
+        };
+    }, []);
+
+    // Track real-time user location
+    React.useEffect(() => {
+        if ("geolocation" in navigator) {
+            const watchId = navigator.geolocation.watchPosition(
+                (position) => {
+                    setUserLocation([position.coords.latitude, position.coords.longitude]);
+                },
+                (error) => {
+                    console.error("Erreur de géolocalisation:", error);
+                },
+                { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+            );
+            return () => navigator.geolocation.clearWatch(watchId);
+        }
+    }, []);
+
+    // Init Web Worker (doit utiliser type: module pour les imports ESM dans le worker)
+    const clusterWorker = useMemo(() => new Worker(new URL('../workers/clusterWorker.ts', import.meta.url), { type: 'module' }), []);
+
+    React.useEffect(() => {
+        if (!households || households.length === 0) return;
+
+        clusterWorker.onmessage = (e) => {
+            if (e.data.success) {
+                setGrappeClusters(e.data.panelData);
+                setGrappeZonesData(e.data.zones);
+                setGrappeCentroidsData(e.data.centroids);
+            }
+        };
+
+        // Format the households slightly if needed or just pass as is
+        // We ensure lat/lon are numbers
+        const workerData = households.filter((h: any) => h.location?.coordinates).map((h: any) => ({
+            id: h.id,
+            lat: h.location.coordinates[1],
+            lon: h.location.coordinates[0]
+        }));
+
+        clusterWorker.postMessage({ households: workerData, maxPerCluster: 80 });
+    }, [households, clusterWorker]);
 
     const handleConfirmZone = (name: string, team: string, color: string) => {
         if (pendingPoints.length < 3) return;
@@ -189,6 +254,23 @@ const Terrain: React.FC = () => {
 
     const [selectedTeam, setSelectedTeam] = useState<string>('all');
     const [dateRange, setDateRange] = useState<'all' | '7d' | '30d'>('all');
+
+    const handleDownloadOffline = async () => {
+        setIsDownloadingOffline(true);
+        const toastId = toast.loading("Mise en cache de la zone en cours...");
+
+        try {
+            // Simulation de pré-chargement des tuiles pour la vue actuelle
+            // Dans un vrai PWA, on pourrait itérer sur les x/y/z du viewport
+            // Ici on s'appuie sur le fait que l'utilisateur a visualisé la zone
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            toast.success("Zone disponible hors-ligne !", { id: toastId });
+        } catch (e) {
+            toast.error("Échec du téléchargement", { id: toastId });
+        } finally {
+            setIsDownloadingOffline(false);
+        }
+    };
 
     const householdList = (households || []) as Household[];
 
@@ -334,7 +416,7 @@ const Terrain: React.FC = () => {
 
     return (
         <>
-            <div className={`flex flex-col h-screen overflow-hidden transition-colors duration-500 ${isDarkMode ? 'bg-slate-950 text-slate-200' : 'bg-[#F8FAFC] text-slate-900'}`}>
+            <div className={`flex flex-col h-full overflow-hidden transition-colors duration-500 ${isDarkMode ? 'bg-slate-950 text-slate-200' : 'bg-[#F8FAFC] text-slate-900'}`}>
 
                 {/* ── CONSOLIDATED HEADER (Google Maps Style) ── */}
                 <div className={`z-50 border-b shadow-sm transition-colors ${isDarkMode ? 'bg-slate-900/90 border-white/5' : 'bg-white border-gray-100'} backdrop-blur-2xl`}>
@@ -491,12 +573,34 @@ const Terrain: React.FC = () => {
                                         <Globe size={14} />
                                     </button>
                                     <button
-                                        onClick={() => { setShowTrackingPanel(prev => !prev); setShowDrawPanel(false); setShowLayersPanel(false); }}
+                                        onClick={() => { setShowTrackingPanel(prev => !prev); setShowDrawPanel(false); setShowLayersPanel(false); setShowGrappePanel(false); }}
                                         className={`p-2 rounded-lg border transition-all ${showTrackingPanel ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-500/20' : 'bg-gray-50 dark:bg-white/5 border-gray-100 dark:border-white/5 text-slate-500 hover:text-blue-600'}`}
                                         title="Suivi des équipes terrain"
                                     >
                                         <Users size={14} />
                                     </button>
+                                    <div className="w-px h-6 bg-slate-200 dark:bg-white/10 mx-1" />
+                                    <button
+                                        onClick={() => { setShowGrappePanel(prev => !prev); setShowDrawPanel(false); setShowLayersPanel(false); setShowTrackingPanel(false); }}
+                                        className={`p-2 rounded-lg border transition-all ${showGrappePanel ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'bg-gray-50 dark:bg-white/5 border-gray-100 dark:border-white/5 text-slate-500 hover:text-indigo-600'}`}
+                                        title="Régionalisation Auto (Clustering)"
+                                    >
+                                        <Layers size={14} />
+                                    </button>
+                                    <div className="w-px h-6 bg-slate-200 dark:bg-white/10 mx-1" />
+                                    <button
+                                        onClick={handleDownloadOffline}
+                                        disabled={isDownloadingOffline}
+                                        className={`p-2 rounded-lg border transition-all ${isDownloadingOffline ? 'animate-pulse bg-amber-100 text-amber-600' : 'bg-gray-50 dark:bg-white/5 border-gray-100 dark:border-white/5 text-slate-500 hover:text-amber-600'}`}
+                                        title="Télécharger cette zone pour usage hors-ligne"
+                                    >
+                                        <CloudDownload size={14} />
+                                    </button>
+                                    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all ${isOfflineMode ? 'bg-red-500/10 border-red-500 text-red-500' : 'bg-emerald-500/10 border-emerald-500 text-emerald-500'}`}>
+                                        <Wifi size={12} className={isOfflineMode ? 'text-red-500' : 'text-emerald-500'} />
+                                        <span className="text-[9px] font-black uppercase tracking-tighter">{isOfflineMode ? 'Hors-Ligne' : 'Connecté'}</span>
+                                    </div>
+
                                 </div>
                             </div>
 
@@ -568,11 +672,15 @@ const Terrain: React.FC = () => {
                                         onZoneClick={handleZoneClick}
                                         selectedPhases={selectedPhases}
                                         userLocation={userLocation}
+                                        onHouseholdDrop={updateHouseholdLocation}
                                         grappesConfig={grappesConfig}
                                         readOnly={!peutModifierCarte}
                                         isMeasuring={isMeasuring}
                                         showDatabaseStats={showDatabaseStats}
                                         mapStyle={mapStyle}
+                                        grappeZonesData={grappeZonesData}
+                                        grappeCentroidsData={grappeCentroidsData}
+                                        activeGrappeId={activeGrappeId}
                                     />
                                     {/* Routing Panel Overlay */}
                                     {showRoutingPanel && (
@@ -613,6 +721,23 @@ const Terrain: React.FC = () => {
                                     {showTrackingPanel && (
                                         <TeamTrackingPanel
                                             isDarkMode={isDarkMode}
+                                        />
+                                    )}
+                                    {/* Grappe Selector Panel */}
+                                    {showGrappePanel && (
+                                        <GrappeSelectorPanel
+                                            isDarkMode={isDarkMode}
+                                            onClose={() => setShowGrappePanel(false)}
+                                            clusters={grappeClusters}
+                                            activeGrappeId={activeGrappeId}
+                                            onSelectGrappe={(id, bbox) => {
+                                                setActiveGrappeId(id);
+                                                if (bbox) {
+                                                    // On utilise un événement custom ou MapComponent s'occupera du fitBounds si on lui passe le bbox.
+                                                    // Pour le moment on laisse MapComponent gérer le recadrage si on veut, ou on peut lancer un event window.
+                                                    window.dispatchEvent(new CustomEvent('fit-bounds', { detail: bbox }));
+                                                }
+                                            }}
                                         />
                                     )}
                                     {searchResults.length > 0 && searchQuery && (

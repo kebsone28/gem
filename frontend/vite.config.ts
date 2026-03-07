@@ -63,6 +63,33 @@ export default defineConfig({
                 maxAgeSeconds: 60 * 60 * 24 // 24 hours
               }
             }
+          },
+          {
+            // Cache pour les fonds de carte (OpenFreeMap)
+            urlPattern: /^https:\/\/tiles\.openfreemap\.org\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'map-tiles-cache',
+              expiration: {
+                maxEntries: 500,
+                maxAgeSeconds: 60 * 60 * 24 * 7 // 1 week
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          },
+          {
+            // Cache pour nos propres tuiles vectorielles (MVT Households)
+            urlPattern: /\/api\/geo\/mvt\/.*/i,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'households-mvt-cache',
+              expiration: {
+                maxEntries: 200,
+                maxAgeSeconds: 60 * 60 * 24 // 24 hours
+              }
+            }
           }
         ]
       },

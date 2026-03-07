@@ -80,6 +80,15 @@ export const createHousehold = async (req, res) => {
             }
         });
 
+        // Sync PostGIS point
+        if (location && Array.isArray(location.coordinates)) {
+            await prisma.$executeRaw`
+                UPDATE "Household"
+                SET location_gis = ST_SetSRID(ST_MakePoint(${location.coordinates[0]}, ${location.coordinates[1]}), 4326)
+                WHERE id = ${household.id}
+            `;
+        }
+
         // Audit Log
         await tracerAction({
             userId: req.user.id,
@@ -118,11 +127,20 @@ export const updateHousehold = async (req, res) => {
             where: { id },
             data: {
                 status,
-                location,
-                owner,
+                location: location !== undefined ? location : household.location,
+                owner: owner !== undefined ? owner : household.owner,
                 version: household.version + 1
             }
         });
+
+        // Sync PostGIS point
+        if (location && Array.isArray(location.coordinates)) {
+            await prisma.$executeRaw`
+                UPDATE "Household"
+                SET location_gis = ST_SetSRID(ST_MakePoint(${location.coordinates[0]}, ${location.coordinates[1]}), 4326)
+                WHERE id = ${id}
+            `;
+        }
 
         // Audit Log
         await tracerAction({
