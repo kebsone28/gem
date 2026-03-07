@@ -36,6 +36,60 @@ const MAP_STYLE_DARK = 'https://tiles.openfreemap.org/styles/dark';
 const MAP_STYLE_LIGHT = 'https://tiles.openfreemap.org/styles/positron';
 const MAP_STYLE_SATELLITE = 'https://tiles.openfreemap.org/styles/bright'; // Simulation for now
 
+const ICON_SVGS = {
+    'check': `<path fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" d="M20 6L9 17l-5-5"/>`,
+    'truck': `<path fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M10 17h4V5H2v12h3M20 17h2v-9h-4m-2 2h4M17 17a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm-8 0a2 2 0 1 1-4 0 2 2 0 0 1 4 0z"/>`,
+    'wrench': `<path fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>`,
+    'alert': `<path fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>`,
+    'dot': `<circle cx="12" cy="12" r="5" fill="white"/>`
+};
+
+const getIconForStatus = (status: string) => {
+    if (status.includes('Terminé') || status.includes('Validée') || status.includes('Conforme')) return 'check';
+    if (status.includes('Problème')) return 'alert';
+    if (status.includes('Livraison')) return 'truck';
+    if (status.includes('Murs') || status.includes('Réseau') || status.includes('Intérieur')) return 'wrench';
+    return 'dot';
+};
+
+const createIconDataURI = (svgContent: string, color: string) => {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="11" fill="${color}" stroke="#ffffff" stroke-width="2"/>
+        <g transform="translate(2,2) scale(0.83)">
+            ${svgContent}
+        </g>
+    </svg>`;
+    return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+};
+
+const getIconId = (status: string) => {
+    const match = Object.keys(STATUS_COLOR).find(k => status.includes(k));
+    return match ? `icon-${match}` : 'icon-default';
+};
+
+const loadMapImages = async (map: maplibregl.Map) => {
+    const statuses = Object.keys(STATUS_COLOR);
+    statuses.push('default');
+    
+    await Promise.all(statuses.map(status => {
+        return new Promise((resolve) => {
+            const color = getStatusColor(status);
+            const iconType = getIconForStatus(status);
+            const svgContent = ICON_SVGS[iconType as keyof typeof ICON_SVGS] || ICON_SVGS['dot'];
+            const dataUri = createIconDataURI(svgContent, color);
+            
+            const img = new Image();
+            img.onload = () => {
+                if (!map.hasImage(`icon-${status}`)) {
+                    map.addImage(`icon-${status}`, img);
+                }
+                resolve(null);
+            };
+            img.src = dataUri;
+        });
+    }));
+};
+
 export default function MapLibreVectorMap({
     households,
     center,
@@ -87,7 +141,8 @@ export default function MapLibreVectorMap({
                 properties: {
                     id: h.id,
                     status: getHouseholdDerivedStatus(h),
-                    color: getStatusColor(getHouseholdDerivedStatus(h))
+                    color: getStatusColor(getHouseholdDerivedStatus(h)),
+                    iconId: getIconId(getHouseholdDerivedStatus(h))
                 }
             }))
     }), [households]);
@@ -116,8 +171,12 @@ export default function MapLibreVectorMap({
             }))
     }), [grappesConfig]);
 
-    const setupLayers = useCallback((map: maplibregl.Map) => {
-        if (!map || map.getSource('households')) return;
+    const setupLayers = useCallback(async (map: maplibregl.Map) => {
+        if (!map) return;
+        
+        await loadMapImages(map);
+        
+        if (map.getSource('households')) return;
 
         // --- SOURCES ---
         map.addSource('households', {
@@ -220,14 +279,14 @@ export default function MapLibreVectorMap({
         // --- LAYERS : POINTS ---
         map.addLayer({
             id: 'unclustered-points',
-            type: 'circle',
+            type: 'symbol',
             source: 'households',
             filter: ['!', ['has', 'point_count']],
-            paint: {
-                'circle-color': ['get', 'color'],
-                'circle-radius': 9,
-                'circle-stroke-width': 2.5,
-                'circle-stroke-color': '#fff'
+            layout: {
+                'icon-image': ['get', 'iconId'],
+                'icon-size': 0.8,
+                'icon-allow-overlap': true,
+                'icon-ignore-placement': true
             }
         });
 

@@ -78,24 +78,30 @@ const MapComponent: React.FC<MapComponentProps> = ({
                 pending: households.filter(h => h.status === 'Non débuté').length
             }} />}
 
-            {/* Légende en overlay DOM simple */}
+            {/* Légende améliorée avec icônes */}
             {showLegend && (
-                <div className="absolute bottom-8 left-8 z-[100] p-6 rounded-3xl bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border border-slate-200 dark:border-white/10 shadow-2xl">
-                    <h4 className="text-[10px] font-black uppercase tracking-widest mb-4 opacity-70 text-slate-800 dark:text-white">Légende</h4>
-                    <div className="flex flex-col gap-3">
+                <div className="absolute bottom-8 left-4 z-[100] px-5 py-4 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200/80 dark:border-white/10 shadow-2xl">
+                    <h4 className="text-[9px] font-black uppercase tracking-widest mb-3 text-slate-500 dark:text-slate-400">Légende</h4>
+                    <div className="flex flex-col gap-2">
                         {[
-                            { label: 'Terminé', color: 'bg-emerald-500', status: 'Terminé' },
-                            { label: 'Problème', color: 'bg-rose-500', status: 'Problème' },
-                            { label: 'En cours', color: 'bg-indigo-500', status: 'En cours' },
-                            { label: 'Non débuté', color: 'bg-slate-400', status: 'Non débuté' }
+                            { label: 'Terminé', hex: '#10b981', icon: '✓', status: 'Terminé' },
+                            { label: 'Problème', hex: '#f43f5e', icon: '!', status: 'Problème' },
+                            { label: 'En cours', hex: '#06b6d4', icon: '⚙', status: 'En cours' },
+                            { label: 'Non débuté', hex: '#6366f1', icon: '·', status: 'Non débuté' }
                         ].map((item) => (
                             <div
                                 key={item.status}
                                 onClick={() => onToggleStatus?.(item.status)}
-                                className={`flex items-center gap-3 cursor-pointer transition-all hover:translate-x-1 ${selectedPhases.includes(item.status) ? 'opacity-100' : 'opacity-40 grayscale-[50%]'}`}
+                                title={`Filtrer: ${item.label}`}
+                                className={`flex items-center gap-2.5 cursor-pointer transition-all duration-200 hover:translate-x-1 select-none ${selectedPhases.includes(item.status) ? 'opacity-100' : 'opacity-30'}`}
                             >
-                                <div className={`w-3.5 h-3.5 rounded-full ${item.color} shadow-lg dark:shadow-none border border-black/10 dark:border-white/20`} />
-                                <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200">{item.label}</span>
+                                <div
+                                    className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold shadow-md flex-shrink-0"
+                                    style={{ backgroundColor: item.hex }}
+                                >
+                                    {item.icon}
+                                </div>
+                                <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">{item.label}</span>
                             </div>
                         ))}
                     </div>

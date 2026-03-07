@@ -13,7 +13,8 @@ import {
     Plus,
     LayoutList,
     LayoutGrid,
-    FileDown
+    FileDown,
+    Truck
 } from 'lucide-react';
 import { useTerrainData } from '../hooks/useTerrainData';
 import { useAuth } from '../contexts/AuthContext';
@@ -27,6 +28,7 @@ import { useProject } from '../hooks/useProject';
 import { useSync } from '../hooks/useSync';
 import { useLogistique } from '../hooks/useLogistique';
 import { usePermissions } from '../hooks/usePermissions';
+import { MapRoutingPanel } from '../components/terrain/MapRoutingPanel';
 
 import {
     StatusBadge,
@@ -85,6 +87,7 @@ const Terrain: React.FC = () => {
     const [isMeasuring, setIsMeasuring] = useState(false);
     const [showDatabaseStats, setShowDatabaseStats] = useState(false);
     const [mapStyle, setMapStyle] = useState<'streets' | 'satellite'>('streets');
+    const [showRoutingPanel, setShowRoutingPanel] = useState(false);
 
     React.useEffect(() => {
         const fetchLogs = async () => {
@@ -438,6 +441,13 @@ const Terrain: React.FC = () => {
                                 >
                                     {mapStyle === 'streets' ? 'Satellite' : 'Rues'}
                                 </button>
+                                <button
+                                    onClick={() => setShowRoutingPanel(prev => !prev)}
+                                    className={`p-2 rounded-lg border transition-all ${showRoutingPanel ? 'bg-cyan-600 border-cyan-600 text-white shadow-lg shadow-cyan-500/20' : 'bg-gray-50 dark:bg-white/5 border-gray-100 dark:border-white/5 text-slate-500 hover:text-cyan-600'}`}
+                                    title="Planifier une tournée camion"
+                                >
+                                    <Truck size={14} />
+                                </button>
                             </div>
                         </div>
 
@@ -515,6 +525,14 @@ const Terrain: React.FC = () => {
                                     showDatabaseStats={showDatabaseStats}
                                     mapStyle={mapStyle}
                                 />
+                                {/* Routing Panel Overlay */}
+                                {showRoutingPanel && (
+                                    <MapRoutingPanel
+                                        households={filteredHouseholds}
+                                        isDarkMode={isDarkMode}
+                                        onClose={() => setShowRoutingPanel(false)}
+                                    />
+                                )}
                                 {searchResults.length > 0 && searchQuery && (
                                     <div className={`absolute top-4 left-1/2 -translate-x-1/2 w-full max-w-md mx-auto rounded-xl border shadow-2xl backdrop-blur-xl overflow-hidden z-[4000] ${isDarkMode ? 'bg-slate-900/95 border-slate-800' : 'bg-white/95 border-slate-200'}`}>
                                         <div className="max-h-60 overflow-y-auto">
