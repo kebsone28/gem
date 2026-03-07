@@ -11,8 +11,8 @@ export const getActivityFeed = async (req, res) => {
         const activities = await getRecentActions(organizationId, 15);
         res.json({ activities });
     } catch (error) {
-        console.error('Error fetching activity feed:', error);
-        res.status(500).json({ error: 'Server error' });
+        console.error('Error fetching activity feed:', error.message);
+        res.status(500).json({ error: 'Server error', details: error.message });
     }
 };
 
@@ -22,37 +22,40 @@ export const getPerformanceStats = async (req, res) => {
     try {
         const { organizationId } = req.user;
 
-        // On agrège les ménages validés par teamId (User.role/specialty)
+        // Agrégation des ménages par statut pour cette organisation
         const stats = await prisma.household.groupBy({
             by: ['status'],
-            where: {
-                // On pourrait filtrer par projet si nécessaire
-            },
-            _count: {
-                id: true
-            }
+            where: { organizationId },
+            _count: { id: true }
         });
 
-        // Pour un dashboard "WOW", on va aussi chercher les validations par jour sur les 7 derniers jours
+        // Validations par jour sur les 7 derniers jours
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-        const dailyStats = await prisma.auditLog.findMany({
-            where: {
-                organizationId,
-                action: 'VALIDATION_TERRAIN', // Supposons que c'est l'action de validation
-                timestamp: { gte: sevenDaysAgo }
-            },
-            select: {
-                timestamp: true,
-                action: true
-            }
-        });
+        let dailyStats = [];
+        try {
+            dailyStats = await prisma.auditLog.findMany({
+                where: {
+                    organizationId,
+                    timestamp: { gte: sevenDaysAgo }
+                },
+                select: {
+                    timestamp: true,
+                    action: true
+                },
+                take: 200,
+                orderBy: { timestamp: 'desc' }
+            });
+        } catch (auditErr) {
+            // auditLog may not be available – not critical
+            console.warn('[MONITORING] Impossible de lire auditLog:', auditErr.message);
+        }
 
         res.json({ stats, dailyStats });
     } catch (error) {
-        console.error('Error fetching performance stats:', error);
-        res.status(500).json({ error: 'Server error' });
+        console.error('Error fetching performance stats:', error.message);
+        res.status(500).json({ error: 'Server error', details: error.message });
     }
 };
 
@@ -65,7 +68,7 @@ export const getSystemHealth = async (req, res) => {
             timestamp: new Date(),
             services: {
                 database: { status: 'DOWN', details: 'N/A' },
-                redis: { status: 'DOWN', details: 'N/A' }
+                redis: { status: 'N/A', details: 'Non configuré en local' }
             },
             system: {
                 uptime: os.uptime(),
@@ -77,7 +80,7 @@ export const getSystemHealth = async (req, res) => {
                 load: os.loadavg(),
                 platform: os.platform()
             },
-            version: '1.0.0-PRO'
+            version: '3.9.0-ENT'
         };
 
         // Check Database
@@ -90,16 +93,18 @@ export const getSystemHealth = async (req, res) => {
             health.status = 'DEGRADED';
         }
 
-        // Check Redis
-        try {
-            const ping = await redisConnection.ping();
-            if (ping === 'PONG') {
-                health.services.redis.status = 'UP';
-                health.services.redis.details = 'BullMQ Queue Manager Ready';
+        // Check Redis (optional – may be null in dev)
+        if (redisConnection) {
+            try {
+                const ping = await redisConnection.ping();
+                if (ping === 'PONG') {
+                    health.services.redis.status = 'UP';
+                    health.services.redis.details = 'BullMQ Queue Manager Ready';
+                }
+            } catch (redisError) {
+                health.services.redis.status = 'DOWN';
+                health.services.redis.details = redisError.message;
             }
-        } catch (redisError) {
-            health.services.redis.details = redisError.message;
-            health.status = 'DEGRADED';
         }
 
         res.json(health);
@@ -107,8 +112,7 @@ export const getSystemHealth = async (req, res) => {
         console.error('Critical Diagnostic Error:', error);
         res.status(500).json({
             error: 'Failed to generate diagnostic report',
-            details: error.message,
-            stack: error.stack
+            details: error.message
         });
     }
 };
