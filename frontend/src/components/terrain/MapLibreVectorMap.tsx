@@ -70,14 +70,14 @@ const getIconId = (status: string) => {
 const loadMapImages = async (map: maplibregl.Map) => {
     const statuses = Object.keys(STATUS_COLOR);
     statuses.push('default');
-    
+
     await Promise.all(statuses.map(status => {
         return new Promise((resolve) => {
             const color = getStatusColor(status);
             const iconType = getIconForStatus(status);
             const svgContent = ICON_SVGS[iconType as keyof typeof ICON_SVGS] || ICON_SVGS['dot'];
             const dataUri = createIconDataURI(svgContent, color);
-            
+
             const img = new Image();
             img.onload = () => {
                 if (!map.hasImage(`icon-${status}`)) {
@@ -120,32 +120,51 @@ export default function MapLibreVectorMap({
     useEffect(() => { onSelectRef.current = onSelectHousehold; }, [onSelectHousehold]);
     useEffect(() => { onZoneClickRef.current = onZoneClick; }, [onZoneClick]);
 
-    // GéoJSON des Ménages
-    const householdGeoJSON = useMemo(() => ({
-        type: 'FeatureCollection',
-        features: (households || [])
-            .filter((h: any) =>
-                Array.isArray(h.location?.coordinates) &&
-                h.location.coordinates.length === 2 &&
-                h.location.coordinates[0] != null &&
-                h.location.coordinates[1] != null &&
-                !isNaN(Number(h.location.coordinates[0])) &&
-                !isNaN(Number(h.location.coordinates[1]))
-            )
-            .map((h: any) => ({
-                type: 'Feature',
-                geometry: {
-                    type: 'Point',
-                    coordinates: [Number(h.location.coordinates[0]), Number(h.location.coordinates[1])]
-                },
-                properties: {
-                    id: h.id,
-                    status: getHouseholdDerivedStatus(h),
-                    color: getStatusColor(getHouseholdDerivedStatus(h)),
-                    iconId: getIconId(getHouseholdDerivedStatus(h))
+    // GéoJSON des Ménages avec correction jitter (décalage spirale pour coordonnées dupliquées)
+    const householdGeoJSON = useMemo(() => {
+        const valid = (households || []).filter((h: any) =>
+            Array.isArray(h.location?.coordinates) &&
+            h.location.coordinates.length === 2 &&
+            h.location.coordinates[0] != null &&
+            h.location.coordinates[1] != null &&
+            !isNaN(Number(h.location.coordinates[0])) &&
+            !isNaN(Number(h.location.coordinates[1]))
+        );
+
+        // Compter les doublons de coordonnées et appliquer un offset spirale
+        const coordCount: Record<string, number> = {};
+        const JITTER_STEP = 0.00005; // ~5m par step
+
+        return {
+            type: 'FeatureCollection',
+            features: valid.map((h: any) => {
+                let lon = Number(h.location.coordinates[0]);
+                let lat = Number(h.location.coordinates[1]);
+                const key = `${lon.toFixed(5)}_${lat.toFixed(5)}`;
+                const n = coordCount[key] ?? 0;
+                coordCount[key] = n + 1;
+
+                if (n > 0) {
+                    // Disposition en spirale pour éviter la superposition
+                    const angle = (n * 137.5 * Math.PI) / 180; // golden angle
+                    const radius = JITTER_STEP * Math.sqrt(n);
+                    lon += radius * Math.cos(angle);
+                    lat += radius * Math.sin(angle);
                 }
-            }))
-    }), [households]);
+
+                return {
+                    type: 'Feature',
+                    geometry: { type: 'Point', coordinates: [lon, lat] },
+                    properties: {
+                        id: h.id,
+                        status: getHouseholdDerivedStatus(h),
+                        color: getStatusColor(getHouseholdDerivedStatus(h)),
+                        iconId: getIconId(getHouseholdDerivedStatus(h))
+                    }
+                };
+            })
+        };
+    }, [households]);
 
     // GéoJSON des Grappes (Zones)
     const grappesGeoJSON = useMemo(() => ({
@@ -173,9 +192,9 @@ export default function MapLibreVectorMap({
 
     const setupLayers = useCallback(async (map: maplibregl.Map) => {
         if (!map) return;
-        
+
         await loadMapImages(map);
-        
+
         if (map.getSource('households')) return;
 
         // --- SOURCES ---

@@ -14,7 +14,9 @@ import {
     LayoutList,
     LayoutGrid,
     FileDown,
-    Truck
+    Truck,
+    PenLine,
+    Globe
 } from 'lucide-react';
 import { useTerrainData } from '../hooks/useTerrainData';
 import { useAuth } from '../contexts/AuthContext';
@@ -31,6 +33,10 @@ import { usePermissions } from '../hooks/usePermissions';
 import { MapRoutingPanel } from '../components/terrain/MapRoutingPanel';
 import { GeofencingAlerts } from '../components/terrain/GeofencingAlerts';
 import { PhotoLightbox } from '../components/terrain/PhotoLightbox';
+import { MapDrawZonesPanel, useDrawnZones } from '../components/terrain/MapDrawZones';
+import type { DrawnZone } from '../components/terrain/MapDrawZones';
+import { GeoJsonOverlayPanel } from '../components/terrain/GeoJsonOverlay';
+import type { ExternalLayer } from '../components/terrain/GeoJsonOverlay';
 
 import {
     StatusBadge,
@@ -92,6 +98,20 @@ const Terrain: React.FC = () => {
     const [showRoutingPanel, setShowRoutingPanel] = useState(false);
     const [lightboxPhotos, setLightboxPhotos] = useState<{ url: string; label: string }[]>([]);
     const [lightboxIndex, setLightboxIndex] = useState(0);
+    // Drawing zones & layers
+    const { zones: drawnZones, addZone, deleteZone } = useDrawnZones();
+    const [isDrawing, setIsDrawing] = useState(false);
+    const [pendingPoints, setPendingPoints] = useState<[number, number][]>([]);
+    const [showDrawPanel, setShowDrawPanel] = useState(false);
+    const [externalLayers, setExternalLayers] = useState<ExternalLayer[]>([]);
+    const [showLayersPanel, setShowLayersPanel] = useState(false);
+
+    const handleConfirmZone = (name: string, team: string, color: string) => {
+        if (pendingPoints.length < 3) return;
+        addZone({ id: `zone_${Date.now()}`, name, team, color, coordinates: pendingPoints, createdAt: new Date().toISOString() });
+        setIsDrawing(false);
+        setPendingPoints([]);
+    };
 
     React.useEffect(() => {
         const fetchLogs = async () => {
@@ -453,6 +473,20 @@ const Terrain: React.FC = () => {
                                     >
                                         <Truck size={14} />
                                     </button>
+                                    <button
+                                        onClick={() => { setShowDrawPanel(prev => !prev); setShowLayersPanel(false); }}
+                                        className={`p-2 rounded-lg border transition-all ${showDrawPanel ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'bg-gray-50 dark:bg-white/5 border-gray-100 dark:border-white/5 text-slate-500 hover:text-indigo-600'}`}
+                                        title="Dessiner des zones"
+                                    >
+                                        <PenLine size={14} />
+                                    </button>
+                                    <button
+                                        onClick={() => { setShowLayersPanel(prev => !prev); setShowDrawPanel(false); }}
+                                        className={`p-2 rounded-lg border transition-all ${showLayersPanel ? 'bg-teal-600 border-teal-600 text-white shadow-lg shadow-teal-500/20' : 'bg-gray-50 dark:bg-white/5 border-gray-100 dark:border-white/5 text-slate-500 hover:text-teal-600'}`}
+                                        title="Importer une couche GeoJSON / KML"
+                                    >
+                                        <Globe size={14} />
+                                    </button>
                                 </div>
                             </div>
 
@@ -544,6 +578,27 @@ const Terrain: React.FC = () => {
                                         grappesConfig={grappesConfig}
                                         isDarkMode={isDarkMode}
                                     />
+                                    {/* Draw Zones Panel */}
+                                    {showDrawPanel && (
+                                        <MapDrawZonesPanel
+                                            isDrawing={isDrawing}
+                                            onStartDraw={() => setIsDrawing(true)}
+                                            pendingPoints={pendingPoints}
+                                            onConfirmZone={handleConfirmZone}
+                                            onCancelDraw={() => { setIsDrawing(false); setPendingPoints([]); }}
+                                            zones={drawnZones}
+                                            onDeleteZone={deleteZone}
+                                            isDarkMode={isDarkMode}
+                                        />
+                                    )}
+                                    {/* External Layers Panel */}
+                                    {showLayersPanel && (
+                                        <GeoJsonOverlayPanel
+                                            layers={externalLayers}
+                                            onLayersChange={setExternalLayers}
+                                            isDarkMode={isDarkMode}
+                                        />
+                                    )}
                                     {searchResults.length > 0 && searchQuery && (
                                         <div className={`absolute top-4 left-1/2 -translate-x-1/2 w-full max-w-md mx-auto rounded-xl border shadow-2xl backdrop-blur-xl overflow-hidden z-[4000] ${isDarkMode ? 'bg-slate-900/95 border-slate-800' : 'bg-white/95 border-slate-200'}`}>
                                             <div className="max-h-60 overflow-y-auto">
