@@ -11,6 +11,27 @@ import { config } from './core/config/config.js';
 
 const app = express();
 
+// 1. CORS Configuration (MUST be the absolute first middleware)
+app.use(cors({
+    origin: (origin, callback) => {
+        // Echo the origin back to satisfy Access-Control-Allow-Credentials: true
+        callback(null, true);
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin', 'Cache-Control', 'Pragma']
+}));
+
+// Explicitly handle pre-flight OPTIONS requests for all routes
+app.options('*', cors());
+
+// 2. Security Middlewares (Set after CORS)
+app.use(helmet({
+    crossOriginResourcePolicy: false,
+    contentSecurityPolicy: false,
+    crossOriginOpenerPolicy: false // Sometimes blocks PWA/Auth popups
+}));
+
 app.get('/api/ping', async (req, res) => {
     let dbStatus = 'waiting';
     try {
@@ -20,26 +41,8 @@ app.get('/api/ping', async (req, res) => {
     } catch (e) {
         dbStatus = `error: ${e.message}`;
     }
-    res.json({ status: 'ok', msg: 'Core API is alive', db: dbStatus, version: '1.0.1-DEBUG' });
+    res.json({ status: 'ok', msg: 'Core API is alive', db: dbStatus, version: '1.0.2-CORS-FIX' });
 });
-
-// 1. Basic Middlewares & CORS (MUST be before helmet and other security layers)
-app.use(cors({
-    origin: (origin, callback) => {
-        // Allow all origins for debug/production flexibility
-        // With credentials: true, we MUST echo the origin instead of using '*'
-        callback(null, true);
-    },
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
-}));
-
-// 2. Security Middlewares
-app.use(helmet({
-    crossOriginResourcePolicy: false, // Important for cross-origin images/resources
-    contentSecurityPolicy: false      // Temporarily disabled for easier PWA/Map tracking
-}));
 
 // 2. Request Parsing
 app.use(express.json({ limit: '50mb' }));
