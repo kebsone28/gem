@@ -38,6 +38,11 @@ export const initSimulationWorker = () => {
         }
     });
 
+    if (!worker) {
+        console.warn('[WORKER] Redis non disponible, Simulation Worker est désactivé.');
+        return;
+    }
+
     worker.on('failed', (job, err) => {
         console.error(`[WORKER] Job ${job?.id} a échoué : ${err.message}`);
     });
