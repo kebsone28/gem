@@ -175,21 +175,7 @@ const Terrain: React.FC = () => {
         };
     }, []);
 
-    // Track real-time user location
-    React.useEffect(() => {
-        if ("geolocation" in navigator) {
-            const watchId = navigator.geolocation.watchPosition(
-                (position) => {
-                    setUserLocation([position.coords.latitude, position.coords.longitude]);
-                },
-                (error) => {
-                    console.error("Erreur de géolocalisation:", error);
-                },
-                { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
-            );
-            return () => navigator.geolocation.clearWatch(watchId);
-        }
-    }, []);
+
 
     // Init Web Worker (doit utiliser type: module pour les imports ESM dans le worker)
     const clusterWorker = useMemo(() => new Worker(new URL('../workers/clusterWorker.ts', import.meta.url), { type: 'module' }), []);
@@ -207,11 +193,13 @@ const Terrain: React.FC = () => {
 
         // Format the households slightly if needed or just pass as is
         // We ensure lat/lon are numbers
-        const workerData = households.filter((h: any) => h.location?.coordinates).map((h: any) => ({
-            id: h.id,
-            lat: h.location.coordinates[1],
-            lon: h.location.coordinates[0]
-        }));
+        const workerData = households
+            .filter((h: any) => h.location?.coordinates && !isNaN(Number(h.location.coordinates[0])) && !isNaN(Number(h.location.coordinates[1])))
+            .map((h: any) => ({
+                id: h.id,
+                lat: Number(h.location.coordinates[1]),
+                lon: Number(h.location.coordinates[0])
+            }));
 
         clusterWorker.postMessage({ households: workerData, maxPerCluster: 80 });
     }, [households, clusterWorker]);
