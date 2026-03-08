@@ -18,7 +18,15 @@ export interface DrawnZone {
     createdAt: string;
 }
 
-const ZONE_COLORS = ['#6366f1', '#f43f5e', '#10b981', '#f59e0b', '#06b6d4', '#8b5cf6', '#ec4899'];
+const ZONE_COLORS = [
+    { hex: '#6366f1', tw: 'bg-[#6366f1]' },
+    { hex: '#f43f5e', tw: 'bg-[#f43f5e]' },
+    { hex: '#10b981', tw: 'bg-[#10b981]' },
+    { hex: '#f59e0b', tw: 'bg-[#f59e0b]' },
+    { hex: '#06b6d4', tw: 'bg-[#06b6d4]' },
+    { hex: '#8b5cf6', tw: 'bg-[#8b5cf6]' },
+    { hex: '#ec4899', tw: 'bg-[#ec4899]' }
+];
 const TEAMS = ['Maçons', 'Réseau', 'Électriciens', 'Livreurs', 'Non assigné'];
 const STORAGE_KEY = 'gem_drawn_zones';
 
@@ -80,11 +88,11 @@ export function MapDrawZonesPanel({
 }) {
     const [name, setName] = useState('Zone ' + (zones.length + 1));
     const [team, setTeam] = useState(TEAMS[0]);
-    const [color, setColor] = useState(ZONE_COLORS[zones.length % ZONE_COLORS.length]);
+    const [colorObj, setColorObj] = useState(ZONE_COLORS[zones.length % ZONE_COLORS.length]);
 
     useEffect(() => {
         setName('Zone ' + (zones.length + 1));
-        setColor(ZONE_COLORS[zones.length % ZONE_COLORS.length]);
+        setColorObj(ZONE_COLORS[zones.length % ZONE_COLORS.length]);
     }, [zones.length]);
 
     const bg = isDarkMode ? 'bg-slate-900/95 border-slate-700' : 'bg-white/95 border-slate-200';
@@ -140,18 +148,17 @@ export function MapDrawZonesPanel({
                             <div className="flex gap-2">
                                 {ZONE_COLORS.map(c => (
                                     <button
-                                        key={c}
-                                        title={`Couleur ${c}`}
-                                        onClick={() => setColor(c)}
-                                        className={`w-6 h-6 rounded-full border-2 transition-all ${color === c ? 'border-white scale-125' : 'border-transparent'}`}
-                                        style={{ backgroundColor: c } as React.CSSProperties}
+                                        key={c.hex}
+                                        title={`Couleur ${c.hex}`}
+                                        onClick={() => setColorObj(c)}
+                                        className={`w-6 h-6 rounded-full border-2 transition-all ${colorObj.hex === c.hex ? 'border-white scale-125' : 'border-transparent'} ${c.tw}`}
                                     />
                                 ))}
                             </div>
                             <div className="flex gap-2 pt-1">
                                 <button
                                     title="Confirmer la zone"
-                                    onClick={() => onConfirmZone(name, team, color)}
+                                    onClick={() => onConfirmZone(name, team, colorObj.hex)}
                                     className="flex-1 flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl py-2 transition-colors"
                                 >
                                     <CheckCircle2 size={14} /> Confirmer
@@ -197,7 +204,7 @@ export function MapDrawZonesPanel({
                                     key={z.id}
                                     className={`flex items-center gap-3 p-3 rounded-xl border ${isDarkMode ? 'bg-slate-800/50 border-slate-700' : 'bg-slate-50 border-slate-200'}`}
                                 >
-                                    <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: z.color } as React.CSSProperties} />
+                                    <div className={`w-3 h-3 rounded-full flex-shrink-0 bg-[${z.color}]`} />
                                     <div className="flex-1 min-w-0">
                                         <p className={`text-xs font-bold truncate ${text}`}>{z.name}</p>
                                         <p className={`text-[10px] flex items-center gap-1 ${sub}`}>

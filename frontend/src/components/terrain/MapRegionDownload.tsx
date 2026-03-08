@@ -118,7 +118,8 @@ export const MapRegionDownload: React.FC<MapRegionDownloadProps> = ({
                 <div className="h-1.5 w-full bg-slate-200 dark:bg-white/10 rounded-full overflow-hidden">
                     <div
                         className="h-full bg-blue-600 transition-all duration-500"
-                        style={{ width: `${(downloadedRegions.length / 10) * 100}%` }}
+                        style={{ '--progress-width': `${(downloadedRegions.length / 10) * 100}%` } as React.CSSProperties}
+                        className="w-[var(--progress-width)]"
                     />
                 </div>
             </div>

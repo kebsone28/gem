@@ -113,10 +113,10 @@ const MapComponent: React.FC<MapComponentProps> = ({
                     <h4 className="text-[9px] font-black uppercase tracking-widest mb-3 text-slate-500 dark:text-slate-400">Légende</h4>
                     <div className="flex flex-col gap-2">
                         {[
-                            { label: 'Terminé', hex: '#10b981', icon: '✓', status: 'Terminé' },
-                            { label: 'Problème', hex: '#f43f5e', icon: '!', status: 'Problème' },
-                            { label: 'En cours', hex: '#06b6d4', icon: '⚙', status: 'En cours' },
-                            { label: 'Non débuté', hex: '#6366f1', icon: '·', status: 'Non débuté' }
+                            { label: 'Terminé', tailwindClass: 'bg-[#10b981]', icon: '✓', status: 'Terminé' },
+                            { label: 'Problème', tailwindClass: 'bg-[#f43f5e]', icon: '!', status: 'Problème' },
+                            { label: 'En cours', tailwindClass: 'bg-[#06b6d4]', icon: '⚙', status: 'En cours' },
+                            { label: 'Non débuté', tailwindClass: 'bg-[#6366f1]', icon: '·', status: 'Non débuté' }
                         ].map((item) => (
                             <div
                                 key={item.status}
@@ -125,8 +125,7 @@ const MapComponent: React.FC<MapComponentProps> = ({
                                 className={`flex items-center gap-2.5 cursor-pointer transition-all duration-200 hover:translate-x-1 select-none ${selectedPhases.includes(item.status) ? 'opacity-100' : 'opacity-30'}`}
                             >
                                 <div
-                                    className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold shadow-md flex-shrink-0"
-                                    style={{ backgroundColor: item.hex }}
+                                    className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold shadow-md flex-shrink-0 ${item.tailwindClass}`}
                                 >
                                     {item.icon}
                                 </div>
