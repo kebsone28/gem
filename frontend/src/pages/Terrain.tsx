@@ -800,7 +800,7 @@ const Terrain: React.FC = () => {
                                         />
                                     )}
                                     {searchResults.length > 0 && searchQuery && (
-                                        <div className={`absolute top-4 left-1/2 -translate-x-1/2 w-full max-w-md mx-auto rounded-xl border shadow-2xl backdrop-blur-xl overflow-hidden z-[4000] ${isDarkMode ? 'bg-slate-900/95 border-slate-800' : 'bg-white/95 border-slate-200'}`}>
+                                        <div className={`absolute top-4 left-1/2 -translate-x-1/2 w-[calc(100vw-2rem)] md:w-full max-w-md mx-auto rounded-xl border shadow-2xl backdrop-blur-xl overflow-hidden z-[4000] ${isDarkMode ? 'bg-slate-900/95 border-slate-800' : 'bg-white/95 border-slate-200'}`}>
                                             <div className="max-h-60 overflow-y-auto">
                                                 {searchResults.map((res, i) => (
                                                     <button

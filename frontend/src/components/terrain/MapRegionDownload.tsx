@@ -41,7 +41,7 @@ export const MapRegionDownload: React.FC<MapRegionDownloadProps> = ({
     };
 
     return (
-        <div className="absolute top-20 right-4 w-80 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-white/10 overflow-hidden z-[1000] animate-in slide-in-from-right-4 duration-300">
+        <div className="absolute top-20 left-4 right-4 md:right-4 md:left-auto max-w-[calc(100vw-2rem)] md:w-80 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-white/10 overflow-hidden z-[1000] animate-in slide-in-from-right-4 duration-300">
             <div className="p-4 border-b border-slate-100 dark:border-white/5 flex items-center justify-between bg-slate-50 dark:bg-white/5">
                 <div className="flex items-center gap-2">
                     <Download size={18} className="text-blue-600" />

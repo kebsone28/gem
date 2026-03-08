@@ -20,7 +20,7 @@ export const MapStatsWidget: React.FC<MapStatsWidgetProps> = ({ stats }) => {
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 20 }}
-            className={`absolute top-24 right-6 z-[1000] w-64 p-6 rounded-[2rem] border shadow-2xl backdrop-blur-xl transition-all ${isDarkMode ? 'bg-slate-900/90 border-white/10' : 'bg-white/90 border-slate-200'
+            className={`hidden md:block absolute top-24 right-6 z-[1000] w-64 p-6 rounded-[2rem] border shadow-2xl backdrop-blur-xl transition-all ${isDarkMode ? 'bg-slate-900/90 border-white/10' : 'bg-white/90 border-slate-200'
                 }`}
         >
             <div className="flex items-center gap-3 mb-6">
@@ -69,7 +69,7 @@ export const MapStatsWidget: React.FC<MapStatsWidgetProps> = ({ stats }) => {
                     </div>
                 </div>
             </div>
-        </motion.div>
+        </motion.div >
     );
 };
 

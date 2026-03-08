@@ -106,7 +106,7 @@ export const MapRoutingPanel: React.FC<MapRoutingPanelProps> = ({
     const rowHover = isDarkMode ? 'hover:bg-slate-800' : 'hover:bg-slate-50';
 
     return (
-        <div className={`absolute top-16 left-4 z-[200] w-80 rounded-2xl border shadow-2xl backdrop-blur-xl overflow-hidden transition-all ${base}`}>
+        <div className={`absolute top-16 left-4 md:left-4 right-4 md:right-auto z-[200] max-w-[calc(100vw-2rem)] md:w-80 rounded-2xl border shadow-2xl backdrop-blur-xl overflow-hidden transition-all ${base}`}>
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-inherit">
                 <div className="flex items-center gap-2">
