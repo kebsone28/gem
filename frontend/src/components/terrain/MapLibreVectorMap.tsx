@@ -248,28 +248,13 @@ export default function MapLibreVectorMap({
             // --- SOURCES ---
             const martinUrl = import.meta.env.VITE_MARTIN_URL || '';
 
-            if (martinUrl) {
-                // High Performance MVT from Martin (Rust)
-                map.addSource('households', {
-                    type: 'vector',
-                    tiles: [`${martinUrl}/public.Household/{z}/{x}/{y}`],
-                    minzoom: 0,
-                    maxzoom: 20
-                });
-            } else {
-                // Legacy MVT from Node.js (Fallback)
-                const rawApiUrl = import.meta.env.VITE_API_URL || '';
-                const baseUrl = rawApiUrl.startsWith('http')
-                    ? (rawApiUrl.endsWith('/api') ? rawApiUrl : `${rawApiUrl}/api`)
-                    : '/api';
-
-                map.addSource('households', {
-                    type: 'vector',
-                    tiles: [`${baseUrl}/geo/mvt/households/{z}/{x}/{y}`],
-                    minzoom: 0,
-                    maxzoom: 20
-                });
-            }
+            // Utiliser le GeoJSON calculé localement au lieu du MVT pour garantir l'affichage 
+            // des points (fallback robuste comme demandé)
+            map.addSource('households', {
+                type: 'geojson',
+                data: householdGeoJSON as any,
+                cluster: false
+            });
 
             if (!map.getSource('grappes')) {
                 map.addSource('grappes', { type: 'geojson', data: grappesGeoJSON as any });
@@ -457,7 +442,6 @@ export default function MapLibreVectorMap({
                 id: 'heatmap',
                 type: 'heatmap',
                 source: 'households',
-                'source-layer': 'households',
                 layout: { visibility: 'none' }, // toujours commencer caché
                 paint: {
                     'heatmap-weight': [
@@ -491,21 +475,13 @@ export default function MapLibreVectorMap({
             // --- LAYERS : MVT POINTS ---
             map.addLayer({
                 id: 'unclustered-points',
-                type: 'circle',
+                type: 'symbol',
                 source: 'households',
-                'source-layer': 'households',
-                paint: {
-                    'circle-radius': 4,
-                    'circle-color': [
-                        'match',
-                        ['get', 'status'],
-                        'Terminé', '#10b981',
-                        'Problème', '#ef4444',
-                        'En cours', '#3b82f6',
-                        '#94a3b8' // default / Non débuté
-                    ],
-                    'circle-stroke-width': 1,
-                    'circle-stroke-color': '#ffffff'
+                layout: {
+                    'icon-image': ['get', 'iconId'],
+                    'icon-size': 0.85,
+                    'icon-allow-overlap': true,
+                    'icon-ignore-placement': true
                 }
             });
 
