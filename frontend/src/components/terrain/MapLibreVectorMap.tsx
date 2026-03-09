@@ -17,20 +17,18 @@ import { getHouseholdDerivedStatus } from '../../utils/statusUtils';
 
 // ── Configuration Visuelle ──
 const STATUS_COLOR: Record<string, string> = {
-    'Réception: Validée': '#10b981',
-    'Terminé': '#10b981',
-    'Conforme': '#10b981',
-    'Problème': '#f43f5e',
-    'Non débuté': '#6366f1',
-    'Intérieur': '#818cf8',
-    'Réseau': '#3b82f6',
-    'Murs': '#f59e0b',
-    'Livraison': '#06b6d4'
+    'Contrôle conforme': '#10b981', // Vert émeraude
+    'Non conforme': '#f43f5e', // Rouge rose
+    'Intérieur terminé': '#818cf8', // Indigo clair
+    'Réseau terminé': '#3b82f6', // Bleu
+    'Murs terminés': '#f59e0b', // Ambre / Orange
+    'Livraison effectuée': '#06b6d4', // Cyan
+    'Non encore commencé': '#94a3b8' // Slate / Gris
 };
 
 const getStatusColor = (status?: string): string => {
     if (!status) return '#94a3b8';
-    const match = Object.entries(STATUS_COLOR).find(([k]) => status.includes(k));
+    const match = Object.entries(STATUS_COLOR).find(([k]) => status.includes(k) || k.includes(status));
     return match ? match[1] : '#94a3b8';
 };
 
@@ -47,10 +45,10 @@ const ICON_SVGS = {
 };
 
 const getIconForStatus = (status: string) => {
-    if (status.includes('Terminé') || status.includes('Validée') || status.includes('Conforme')) return 'check';
-    if (status.includes('Problème')) return 'alert';
-    if (status.includes('Livraison')) return 'truck';
-    if (status.includes('Murs') || status.includes('Réseau') || status.includes('Intérieur')) return 'wrench';
+    if (status.includes('Contrôle conforme')) return 'check';
+    if (status.includes('Non conforme') || status.includes('Problème')) return 'alert';
+    if (status.includes('Livraison effectuée')) return 'truck';
+    if (status.includes('Murs terminés') || status.includes('Réseau terminé') || status.includes('Intérieur terminé')) return 'wrench';
     return 'dot';
 };
 
@@ -246,7 +244,7 @@ export default function MapLibreVectorMap({
             }
 
             // --- SOURCES ---
-            const martinUrl = import.meta.env.VITE_MARTIN_URL || '';
+            // const martinUrl = import.meta.env.VITE_MARTIN_URL || '';
 
             // Utiliser le GeoJSON calculé localement au lieu du MVT pour garantir l'affichage 
             // des points (fallback robuste comme demandé)

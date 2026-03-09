@@ -88,7 +88,15 @@ const Terrain: React.FC = () => {
     const [mapCenter, setMapCenter] = useState<[number, number]>([14.7167, -17.4677]);
     const [mapZoom, setMapZoom] = useState(12);
 
-    const [selectedPhases, setSelectedPhases] = useState<string[]>(['Non débuté', 'En cours', 'Terminé', 'Problème']);
+    const [selectedPhases, setSelectedPhases] = useState<string[]>([
+        'Non encore commencé',
+        'Livraison effectuée',
+        'Murs terminés',
+        'Réseau terminé',
+        'Intérieur terminé',
+        'Contrôle conforme',
+        'Non conforme'
+    ]);
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
     const [isSearching, setIsSearching] = useState(false);
@@ -854,12 +862,12 @@ const Terrain: React.FC = () => {
                                                             </span>
                                                         </td>
                                                         <td className="px-6 py-4">
-                                                            <span className={`px-2 py-1 rounded-md text-[10px] font-bold ${h.status === 'Terminé' || h.status === 'Réception: Validée' ? 'bg-emerald-500/10 text-emerald-500' :
-                                                                h.status === 'Problème' ? 'bg-rose-500/10 text-rose-500' :
-                                                                    h.status === 'Non débuté' ? 'bg-slate-500/10 text-slate-500' :
+                                                            <span className={`px-2 py-1 rounded-md text-[10px] font-bold ${getHouseholdDerivedStatus(h) === 'Contrôle conforme' || getHouseholdDerivedStatus(h) === 'Intérieur terminé' ? 'bg-emerald-500/10 text-emerald-500' :
+                                                                getHouseholdDerivedStatus(h) === 'Non conforme' ? 'bg-rose-500/10 text-rose-500' :
+                                                                    getHouseholdDerivedStatus(h) === 'Non encore commencé' ? 'bg-slate-500/10 text-slate-500' :
                                                                         'bg-indigo-500/10 text-indigo-500'
                                                                 }`}>
-                                                                {h.status || 'Inconnu'}
+                                                                {getHouseholdDerivedStatus(h)}
                                                             </span>
                                                         </td>
                                                         <td className="px-6 py-4 text-right">
@@ -1001,11 +1009,11 @@ const Terrain: React.FC = () => {
                                         </div>
                                         <div>
                                             <p className={`text-[8px] font-black uppercase tracking-widest mb-1 ${isDarkMode ? 'text-slate-600' : 'text-slate-400'}`}>Statut Actuel</p>
-                                            <p className={`text-[10px] font-black uppercase tracking-wider ${selectedHousehold.status === 'Réception: Validée' || selectedHousehold.status === 'Terminé' ? 'text-emerald-500' :
-                                                selectedHousehold.status === 'Problème' ? 'text-rose-500' :
-                                                    selectedHousehold.status === 'Non débuté' ? 'text-rose-600' : 'text-primary'
+                                            <p className={`text-[10px] font-black uppercase tracking-wider ${getHouseholdDerivedStatus(selectedHousehold) === 'Contrôle conforme' || getHouseholdDerivedStatus(selectedHousehold) === 'Intérieur terminé' ? 'text-emerald-500' :
+                                                    getHouseholdDerivedStatus(selectedHousehold) === 'Non conforme' ? 'text-rose-500' :
+                                                        getHouseholdDerivedStatus(selectedHousehold) === 'Non encore commencé' ? 'text-rose-600' : 'text-primary'
                                                 }`}>
-                                                {selectedHousehold.status}
+                                                {getHouseholdDerivedStatus(selectedHousehold)}
                                             </p>
                                         </div>
                                     </div>

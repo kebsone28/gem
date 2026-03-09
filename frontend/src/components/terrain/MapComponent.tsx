@@ -7,6 +7,7 @@
 
 import React from 'react';
 import type { Household } from '../../utils/types';
+import { getHouseholdDerivedStatus } from '../../utils/statusUtils';
 import MapLibreVectorMap from './MapLibreVectorMap';
 import { MapStatsWidget } from './MapStatsWidget';
 import './MapComponent.css';
@@ -102,21 +103,24 @@ const MapComponent: React.FC<MapComponentProps> = ({
 
             {showDatabaseStats && <MapStatsWidget stats={{
                 visible: households.length,
-                completed: households.filter(h => h.status === 'Terminé' || h.status === 'Réception: Validée').length,
-                problems: households.filter(h => h.status === 'Problème').length,
-                pending: households.filter(h => h.status === 'Non débuté').length
+                completed: households.filter(h => getHouseholdDerivedStatus(h) === 'Contrôle conforme' || getHouseholdDerivedStatus(h) === 'Intérieur terminé').length,
+                problems: households.filter(h => getHouseholdDerivedStatus(h) === 'Non conforme').length,
+                pending: households.filter(h => getHouseholdDerivedStatus(h) === 'Non encore commencé').length
             }} />}
 
             {/* Légende améliorée avec icônes */}
             {showLegend && (
                 <div className="absolute bottom-8 left-4 z-[100] px-5 py-4 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200/80 dark:border-white/10 shadow-2xl">
-                    <h4 className="text-[9px] font-black uppercase tracking-widest mb-3 text-slate-500 dark:text-slate-400">Légende</h4>
+                    <h4 className="text-[9px] font-black uppercase tracking-widest mb-3 text-slate-500 dark:text-slate-400">Légende / Étapes</h4>
                     <div className="flex flex-col gap-2">
                         {[
-                            { label: 'Terminé', tailwindClass: 'bg-[#10b981]', icon: '✓', status: 'Terminé' },
-                            { label: 'Problème', tailwindClass: 'bg-[#f43f5e]', icon: '!', status: 'Problème' },
-                            { label: 'En cours', tailwindClass: 'bg-[#06b6d4]', icon: '⚙', status: 'En cours' },
-                            { label: 'Non débuté', tailwindClass: 'bg-[#6366f1]', icon: '·', status: 'Non débuté' }
+                            { label: 'Contrôle conforme', tailwindClass: 'bg-[#10b981]', icon: '✓', status: 'Contrôle conforme' },
+                            { label: 'Non conforme', tailwindClass: 'bg-[#f43f5e]', icon: '!', status: 'Non conforme' },
+                            { label: 'Intérieur terminé', tailwindClass: 'bg-[#818cf8]', icon: '🔧', status: 'Intérieur terminé' },
+                            { label: 'Réseau terminé', tailwindClass: 'bg-[#3b82f6]', icon: '🔧', status: 'Réseau terminé' },
+                            { label: 'Murs terminés', tailwindClass: 'bg-[#f59e0b]', icon: '🔧', status: 'Murs terminés' },
+                            { label: 'Livraison effectuée', tailwindClass: 'bg-[#06b6d4]', icon: '🚚', status: 'Livraison effectuée' },
+                            { label: 'Non débuté', tailwindClass: 'bg-[#94a3b8]', icon: '·', status: 'Non encore commencé' }
                         ].map((item) => (
                             <div
                                 key={item.status}
