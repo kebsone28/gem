@@ -42,7 +42,7 @@ apiClient.interceptors.response.use(
                 const hasToken = !!safeStorage.getItem('access_token');
                 if (!hasToken) throw new Error('No token to refresh');
 
-                const { data } = await apiClient.post('/auth/refresh');
+                const { data } = await apiClient.post('auth/refresh');
                 safeStorage.setItem('access_token', data.accessToken);
                 return apiClient(originalRequest);
             } catch (refreshError) {

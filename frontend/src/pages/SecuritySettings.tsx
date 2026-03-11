@@ -118,7 +118,7 @@ export default function SecuritySettings() {
         if (adminPwNew !== adminPwConf) { toast('Les mots de passe ne correspondent pas.', 'error'); return; }
 
         try {
-            await apiClient.post('/auth/change-password', {
+            await apiClient.post('auth/change-password', {
                 currentPassword: adminPwCur,
                 newPassword: adminPwNew
             });
@@ -135,7 +135,7 @@ export default function SecuritySettings() {
 
         try {
             // On vérifie d'abord le MDP pour autoriser le changement
-            await apiClient.post('/auth/security-settings', {
+            await apiClient.post('auth/security-settings', {
                 securityQuestion: secQ.trim(),
                 securityAnswer: secA.trim()
             });
@@ -154,7 +154,7 @@ export default function SecuritySettings() {
         ).join('');
 
         try {
-            await apiClient.post('/auth/security-settings', { recoveryCode: code });
+            await apiClient.post('auth/security-settings', { recoveryCode: code });
             setRecoveryCode(code);
             toast('🔑 Code de récupération généré et sécurisé sur le serveur !', 'warning');
         } catch (err: any) {
@@ -189,7 +189,7 @@ export default function SecuritySettings() {
         if (recNewPw.length < 8) { toast('Minimum 8 caractères.', 'error'); return; }
 
         try {
-            await apiClient.post('/auth/reset-password', {
+            await apiClient.post('auth/reset-password', {
                 email: recInput, // L'email saisi au début
                 securityAnswer: recSecAns,
                 recoveryCode: recSecAns.includes('-') ? recSecAns : undefined, // On essaie l'un ou l'autre

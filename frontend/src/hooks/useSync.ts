@@ -43,7 +43,7 @@ export function useSync() {
             const expenses = await (db as any).expenses?.toArray() || [];
 
             try {
-                await apiClient.post('/sync/push', {
+                await apiClient.post('sync/push', {
                     timestamp: lastSyncRef.current,
                     changes: {
                         projects,
@@ -60,7 +60,7 @@ export function useSync() {
             }
 
             // 2. PULL server changes with pagination to avoid memory overload
-            const response = await apiClient.get('/sync/pull', {
+            const response = await apiClient.get('sync/pull', {
                 params: { 
                     since: lastSyncRef.current,
                     projectId: projectId || undefined,

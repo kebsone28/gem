@@ -41,7 +41,7 @@ export default function Login() {
         setError('');
 
         try {
-            const response = await apiClient.post('/auth/login', {
+            const response = await apiClient.post('auth/login', {
                 email: username.trim(),
                 password: password
             });
@@ -89,7 +89,7 @@ export default function Login() {
         setError('');
 
         try {
-            const { data } = await apiClient.post('/auth/verify-2fa', {
+            const { data } = await apiClient.post('auth/verify-2fa', {
                 email: pendingUser.email,
                 answer: twoFAAnswer
             });
@@ -143,7 +143,7 @@ export default function Login() {
         }
 
         try {
-            await apiClient.post('/auth/reset-password', {
+            await apiClient.post('auth/reset-password', {
                 email: recInput, // L'identifiant/email
                 securityAnswer: recSecAns,
                 recoveryCode: recSecAns.includes('-') ? recSecAns : undefined,

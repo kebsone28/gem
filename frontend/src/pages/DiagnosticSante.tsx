@@ -34,7 +34,7 @@ export default function DiagnosticSante() {
     const fetchServerHealth = async () => {
         setIsLoading(true);
         try {
-            const { data } = await apiClient.get('/monitoring/system-health');
+            const { data } = await apiClient.get('monitoring/system-health');
             setServerData(data);
         } catch (err) {
             logger.error('Failed to fetch diagnostics', err);

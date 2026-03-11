@@ -213,10 +213,16 @@ export default function MapLibreVectorMap({
             }
 
             // --- SOURCES ---
-            // const martinUrl = import.meta.env.VITE_MARTIN_URL || '';
+            // Source MVT pour les performances (PostGIS)
+            const apiUrl = import.meta.env.VITE_API_URL || '/api';
+            map.addSource('households-mvt', {
+                type: 'vector',
+                tiles: [`${window.location.origin}${apiUrl}/geo/mvt/households/{z}/{x}/{y}`],
+                minzoom: 0,
+                maxzoom: 14
+            });
 
-            // Utiliser le GeoJSON calculé localement au lieu du MVT pour garantir l'affichage 
-            // des points (fallback robuste comme demandé)
+            // Fallback GeoJSON pour le offline / petits datasets
             map.addSource('households', {
                 type: 'geojson',
                 data: householdGeoJSON as any,
@@ -522,7 +528,8 @@ export default function MapLibreVectorMap({
             map.addLayer({
                 id: 'unclustered-points',
                 type: 'symbol',
-                source: 'households',
+                source: 'households-mvt',
+                'source-layer': 'households',
                 minzoom: 12,  // ✅ Show points only when zoomed IN
                 layout: {
                     'icon-image': ['get', 'iconId'],

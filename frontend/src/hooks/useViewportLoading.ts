@@ -50,7 +50,7 @@ export function useViewportLoading(options: UseViewportLoadingOptions = {}) {
 
             // Call API with bbox query
             const response = await apiClient.get(
-                `/households?project_id=${projectId}&bbox=${bboxString}&limit=5000`,
+                `households?project_id=${projectId}&bbox=${bboxString}&limit=5000`,
                 { signal: abortControllerRef.current.signal }
             );
 

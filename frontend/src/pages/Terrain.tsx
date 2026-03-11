@@ -119,63 +119,19 @@ const Terrain: React.FC = () => {
     const [isDrawing, setIsDrawing] = useState(false);
 
     const [isDownloadingOffline, setIsDownloadingOffline] = useState(false);
-    const [hasAutoCentered, setHasAutoCentered] = useState(false);
-    const [showRegionDownload, setShowRegionDownload] = useState(false);
-    
 
-const [downloadedRegions, setDownloadedRegions] = useState<string[]>(JSON.parse(safeStorage.getItem('downloaded_regions') || '[]'));
+    const [showRegionDownload, setShowRegionDownload] = useState(false);
+    const [downloadedRegions, setDownloadedRegions] = useState<string[]>(JSON.parse(safeStorage.getItem('downloaded_regions') || '[]'));
     const [geolocationError, setGeolocationError] = useState<string | null>(null);
     const [requestingGeolocation, setRequestingGeolocation] = useState(false);
 
-    // Initial geolocation attempt on page load
+    // Initial geolocation check (not request)
     React.useEffect(() => {
         if (!navigator.geolocation) {
             setGeolocationError('Géolocalisation non disponible sur ce navigateur');
             logger.warn('Geolocation not available');
-            return;
         }
-
-        // Try to get position once on mount
-        const attemptGeolocation = () => {
-            navigator.geolocation.getCurrentPosition(
-                (pos) => {
-                    const newLoc: [number, number] = [pos.coords.longitude, pos.coords.latitude];
-                    setUserLocation(newLoc);
-                    setGeolocationError(null);
-                    
-                    // Auto-center on first discovery
-                    if (!hasAutoCentered) {
-                        setMapCenter(newLoc);
-                        setMapZoom(16);
-                        setHasAutoCentered(true);
-                        logger.log('✅ Position trouvée au chargement:', newLoc);
-                    }
-                },
-                (err) => {
-                    let errorMsg = 'Position indisponible';
-                    switch(err.code) {
-                        case err.PERMISSION_DENIED:
-                            errorMsg = 'Permission refusée. Cliquez sur le bouton Focus pour activer.';
-                            break;
-                        case err.POSITION_UNAVAILABLE:
-                            errorMsg = 'Position indisponible. Vérifiez votre GPS.';
-                            break;
-                        case err.TIMEOUT:
-                            errorMsg = 'Délai d\'attente dépassé.';
-                            break;
-                    }
-                    logger.warn('❌ Geolocation error:', err.code, errorMsg);
-                    setGeolocationError(errorMsg);
-                },
-                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-            );
-        };
-
-        // Schedule the geolocation attempt with a small delay
-        const timeout = setTimeout(attemptGeolocation, 500);
-        
-        return () => clearTimeout(timeout);
-    }, [hasAutoCentered]);
+    }, []);
 
     const handleRecenterOnUser = () => {
         if (userLocation) {
@@ -205,7 +161,7 @@ const [downloadedRegions, setDownloadedRegions] = useState<string[]>(JSON.parse(
                 setUserLocation(newLoc);
                 setMapCenter(newLoc);
                 setMapZoom(16);
-                setHasAutoCentered(true);
+
                 setRequestingGeolocation(false);
                 toast.success('✅ Position trouvée ! ' + newLoc.map(v => v.toFixed(4)).join(', '));
                 logger.log('✅ Position obtenue:', newLoc);

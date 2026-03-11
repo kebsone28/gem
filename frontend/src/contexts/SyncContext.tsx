@@ -20,6 +20,7 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [isSyncing, setIsSyncing] = useState(false);
     const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'error' | 'success'>('idle');
     const [lastSync, setLastSync] = useState<string | null>(safeStorage.getItem('last_sync_timestamp'));
+    const lastSyncRef = useRef<string | null>(safeStorage.getItem('last_sync_timestamp'));
     const [pendingChanges, setPendingChanges] = useState(0);
     const syncInProgressRef = useRef(false);
     const syncIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -36,14 +37,7 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, []);
 
     const sync = useCallback(async (projectId?: string) => {
-        // ✅ CRITICAL OPTIMIZATION #1: Don't sync if nothing pending
-        const pendingCount = await (db as any).syncOutbox.where({ status: 'pending' }).count();
-        if (pendingCount === 0) {
-            logger.log('✅ No pending changes, skipping sync');
-            return;
-        }
-
-        // Prevent concurrent syncs
+        // Prevention and optimization
         if (syncInProgressRef.current) {
             logger.warn('⚠️ Sync already in progress');
             return;
@@ -52,58 +46,65 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const token = safeStorage.getItem('access_token');
         if (!token || !navigator.onLine) return;
 
+        // ✅ CRITICAL OPTIMIZATION #1: Check pending changes
+        const pendingCount = await (db as any).syncOutbox.where({ status: 'pending' }).count();
+        
+        // If no pending changes and we already have a sync timestamp, we might skip push but we still want to pull periodically
+        // However, if the user manually triggered sync, we force it.
+        
         syncInProgressRef.current = true;
         setIsSyncing(true);
         setSyncStatus('syncing');
 
         try {
-            logger.log(`📤 [SYNC] Pushing ${pendingCount} pending changes...`);
+            // 1. PUSH local changes
+            if (pendingCount > 0) {
+                logger.log(`📤 [SYNC] Pushing ${pendingCount} pending changes...`);
+                let households: any[] = [];
+                if (projectId) {
+                    households = await (db as any).households
+                        .where('projectId').equals(projectId)
+                        .toArray()
+                        .catch(() => []);
+                }
 
-            // 1. PUSH local changes with project filter
-            let households: any[] = [];
-            if (projectId) {
-                households = await (db as any).households
-                    .where('projectId').equals(projectId)
-                    .toArray()
-                    .catch(() => []);
+                const projects = await db.projects.toArray();
+                const zones = await db.zones.toArray();
+                const teams = await db.teams.toArray();
+                const inventory = await (db as any).inventory?.toArray() || [];
+                const expenses = await (db as any).expenses?.toArray() || [];
+
+                try {
+                    await apiClient.post('sync/push', {
+                        timestamp: lastSyncRef.current,
+                        changes: {
+                            projects,
+                            households,
+                            zones,
+                            teams,
+                            inventory,
+                            expenses,
+                            missions: await (db as any).missions?.toArray() || []
+                        }
+                    });
+                } catch (pushErr) {
+                    logger.warn('Push sync failed, continuing with pull...', pushErr);
+                }
             }
 
-            const projects = await db.projects.toArray();
-            const zones = await db.zones.toArray();
-            const teams = await db.teams.toArray();
-            const inventory = await (db as any).inventory?.toArray() || [];
-            const expenses = await (db as any).expenses?.toArray() || [];
-
-            try {
-                await apiClient.post('/sync/push', {
-                    timestamp: lastSync,
-                    changes: {
-                        projects,
-                        households,
-                        zones,
-                        teams,
-                        inventory,
-                        expenses,
-                        missions: await (db as any).missions?.toArray() || []
-                    }
-                });
-            } catch (pushErr) {
-                logger.warn('Push sync failed, continuing with pull...', pushErr);
-            }
-
-            // 2. PULL server changes with pagination and smart limits
+            // 2. PULL server changes
             logger.log('📥 [SYNC] Pulling server changes...');
-            const response = await apiClient.get('/sync/pull', {
+            const response = await apiClient.get('sync/pull', {
                 params: {
-                    since: lastSync,
+                    since: lastSyncRef.current,
                     projectId: projectId || undefined,
-                    limit: 1000 // Pagination
+                    limit: 1000
                 }
             });
 
             const { timestamp, changes } = response.data;
 
-            // Apply changes with chunking to prevent memory spikes
+            // Apply changes with chunking
             if (changes.projects) await syncData('projects', changes.projects);
 
             if (changes.households && changes.households.length > 0) {
@@ -121,8 +122,9 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (changes.expenses) await syncData('expenses', changes.expenses);
             if (changes.missions) await syncData('missions', changes.missions);
 
-            // Update sync timestamp
-            setLastSync(timestamp);
+            // Update sync timestamp (using ref to avoid callback re-creation loop)
+            lastSyncRef.current = timestamp;
+            setLastSync(timestamp); 
             safeStorage.setItem('last_sync_timestamp', timestamp);
             setSyncStatus('success');
 
@@ -145,7 +147,7 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
             syncInProgressRef.current = false;
             setIsSyncing(false);
         }
-    }, [lastSync]);
+    }, []); // Empty dependencies = stable callback identity
 
     // ✅ CRITICAL OPTIMIZATION #1: Auto-sync only if user authenticated and has pending changes
     useEffect(() => {

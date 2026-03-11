@@ -60,12 +60,12 @@ export default function Bordereau() {
         const fetchData = async () => {
             try {
                 const [zonesRes] = await Promise.all([
-                    apiClient.get('/zones'),
+                    apiClient.get('zones'),
                 ]);
 
                 let fetchedTeams = [];
                 try {
-                    const tRes = await apiClient.get('/teams');
+                    const tRes = await apiClient.get('teams');
                     fetchedTeams = tRes.data.teams;
                 } catch (e) {
                     fetchedTeams = [
@@ -221,7 +221,7 @@ export default function Bordereau() {
         if (!name?.trim()) return;
 
         try {
-            const { data } = await apiClient.post('/zones', {
+            const { data } = await apiClient.post('zones', {
                 name: name.trim(),
                 projectId: project.id
             });
@@ -474,7 +474,7 @@ export default function Bordereau() {
                                                                     if (!teamId) return;
                                                                     try {
                                                                         await apiClient.post(`/teams/${teamId}/assign`, { zoneId: selectedZone.id });
-                                                                        const tRes = await apiClient.get('/teams');
+                                                                        const tRes = await apiClient.get('teams');
                                                                         setTeams(tRes.data.teams);
                                                                     } catch (err) {
                                                                         logger.error('Failed to assign team', err);

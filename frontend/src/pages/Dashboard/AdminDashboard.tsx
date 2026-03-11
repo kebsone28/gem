@@ -52,7 +52,7 @@ export default function AdminDashboard() {
         const fetchRemoteMetrics = async () => {
             if (!project?.id) return;
             try {
-                const response = await apiClient.get(`/kpi/${project.id}`);
+                const response = await apiClient.get(`kpi/${project.id}`);
                 if (response.status === 200 && response.data?.metrics) {
                     setMetrics(response.data.metrics);
                 }
@@ -63,8 +63,8 @@ export default function AdminDashboard() {
         const fetchMonitoringData = async () => {
             try {
                 const [actRes, perfRes] = await Promise.all([
-                    apiClient.get('/monitoring/activity'),
-                    apiClient.get('/monitoring/performance')
+                    apiClient.get('monitoring/activity'),
+                    apiClient.get('monitoring/performance')
                 ]);
                 setActivities(actRes.data.activities);
                 setPerfData(perfRes.data);
@@ -80,7 +80,7 @@ export default function AdminDashboard() {
         await sync();
         if (project?.id) {
             try {
-                const { data } = await apiClient.get(`/kpi/${project.id}`);
+                const { data } = await apiClient.get(`kpi/${project.id}`);
                 setMetrics(data.metrics);
             } catch (err) {
                 console.error('Failed to refresh metrics after sync', err);

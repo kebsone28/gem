@@ -124,7 +124,7 @@ export const DataHubModal: React.FC<DataHubModalProps> = ({ isOpen, onClose }) =
                     targetZoneId = zones[0].id;
                 } else {
                     // Create a default zone
-                    const newZoneRes = await apiClient.post('/zones', {
+                    const newZoneRes = await apiClient.post('zones', {
                         projectId: currentProjectId,
                         name: 'Zone Importée'
                     });
