@@ -85,8 +85,8 @@ const Terrain: React.FC = () => {
     const [viewMode, setViewMode] = useState<'map' | 'list'>('map');
     const [showHeatmap, setShowHeatmap] = useState(false);
     const { isDarkMode } = useTheme();
-    const [mapCenter, setMapCenter] = useState<[number, number]>([14.4563, -14.4994]);
-    const [mapZoom, setMapZoom] = useState(5);
+    const [mapCenter, setMapCenter] = useState<[number, number]>([-14.65, 14.45]); // ✅ Lng, Lat (Center Senegal)
+    const [mapZoom, setMapZoom] = useState(7);
 
     const [selectedPhases, setSelectedPhases] = useState<string[]>([
         'Non débuté',
@@ -130,6 +130,25 @@ const Terrain: React.FC = () => {
         if (!navigator.geolocation) {
             setGeolocationError('Géolocalisation non disponible sur ce navigateur');
             logger.warn('Geolocation not available');
+        }
+    }, []);
+
+    // ✅ Automatic geolocation on mount
+    React.useEffect(() => {
+        if (navigator.geolocation && !userLocation) {
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    const loc: [number, number] = [pos.coords.longitude, pos.coords.latitude];
+                    setUserLocation(loc);
+                    setMapCenter(loc);
+                    setMapZoom(14);
+                    logger.log('📍 Auto-location detected:', loc);
+                },
+                (err) => {
+                    logger.warn('⚠️ Auto-location failed:', err);
+                },
+                { enableHighAccuracy: false, timeout: 5000 }
+            );
         }
     }, []);
 
@@ -535,8 +554,8 @@ const Terrain: React.FC = () => {
     };
 
     const handleRecenter = () => {
-        // Center of Senegal approx, with zoom 7 to see the whole country
-        setMapCenter([14.4563, -14.4994]);
+        // Center of Senegal: Longitude ~ -14.45, Latitude ~ 14.5
+        setMapCenter([-14.4563, 14.4563]); 
         setMapZoom(7);
     };
 

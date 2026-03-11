@@ -66,6 +66,7 @@ export default function MapLibreVectorMap({
     const mapRef = useRef<maplibregl.Map | null>(null);
     const [styleIsReady, setStyleIsReady] = useState(false);
     const [isRoutingLoading, setIsRoutingLoading] = useState(false);
+    const hasCentered = useRef(false); // ✅ Track if initial centering is done
 
     // Refs pour éviter les closures périmées (stale closures) dans les event listeners de MapLibre
     const householdsRef = useRef(households);
@@ -371,9 +372,9 @@ export default function MapLibreVectorMap({
                 type: 'symbol',
                 source: 'senegal-regions',
                 layout: {
-                    'text-field': ['get', 'REGION'],
+                    'text-field': ['to-string', ['coalesce', ['get', 'REGION'], 'Sénégal']],
                     'text-size': 12,
-                    'text-font': ['Open Sans Regular'],
+                    'text-font': ['Noto Sans Regular'],
                     'text-offset': [0, 0],
                     'text-anchor': 'center'
                 },
@@ -429,9 +430,15 @@ export default function MapLibreVectorMap({
                     source: 'auto-grappes-centroids',
                     layout: {
                         visibility: 'visible',
-                        'text-field': ['concat', ['get', 'name'], '\n', ['get', 'count'], ' pts'],
+                        'text-field': [
+                            'concat', 
+                            ['to-string', ['coalesce', ['get', 'name'], 'Zone']], 
+                            '\n', 
+                            ['to-string', ['coalesce', ['get', 'count'], 0]], 
+                            ' pts'
+                        ],
                         'text-size': 12,
-                        'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+                        'text-font': ['Noto Sans Bold'],
                         'text-offset': [0, 0],
                         'text-anchor': 'center'
                     },
@@ -465,7 +472,7 @@ export default function MapLibreVectorMap({
                 source: 'grappes',
                 layout: {
                     visibility: 'none',
-                    'text-field': ['get', 'nom'],
+                    'text-field': ['to-string', ['coalesce', ['get', 'nom'], '']],
                     'text-size': 10,
                     'text-offset': [0, 3],
                     'text-anchor': 'top'
@@ -523,17 +530,36 @@ export default function MapLibreVectorMap({
                 }
             });
 
-            // --- LAYERS : MVT POINTS ---
-            // ✅ Visible at ZOOM 12+ (when zoomed in, show individual points)
+            // ✅ Points visible at ALL zoom levels with dynamic scaling
             map.addLayer({
                 id: 'unclustered-points',
                 type: 'symbol',
                 source: 'households-mvt',
                 'source-layer': 'households',
-                minzoom: 12,  // ✅ Show points only when zoomed IN
+                minzoom: 0,
                 layout: {
-                    'icon-image': ['get', 'iconId'],
-                    'icon-size': 0.60,
+                    'icon-image': [
+                        'match',
+                        ['coalesce', ['get', 'status'], 'default'],
+                        'Contrôle conforme', 'icon-Contrôle conforme',
+                        'Non conforme', 'icon-Non conforme',
+                        'Intérieur terminé', 'icon-Intérieur terminé',
+                        'Réseau terminé', 'icon-Réseau terminé',
+                        'Murs terminés', 'icon-Murs terminés',
+                        'Livraison effectuée', 'icon-Livraison effectuée',
+                        'Non encore commencé', 'icon-Non encore commencé',
+                        'icon-default'
+                    ],
+                    'icon-size': [
+                        'interpolate',
+                        ['linear'],
+                        ['zoom'],
+                        3, 0.15,
+                        6, 0.25,
+                        10, 0.4,
+                        14, 0.7,
+                        18, 1
+                    ],
                     'icon-allow-overlap': true,
                     'icon-ignore-placement': true
                 }
@@ -549,10 +575,21 @@ export default function MapLibreVectorMap({
                     filter: ['has', 'point_count'],
                     paint: {
                         'circle-color': '#3b82f6',
-                        'circle-radius': ['step', ['get', 'point_count'], 15, 5, 20, 10, 25, 50, 30],
+                        'circle-radius': [
+                            'step', 
+                            ['number', ['get', 'point_count'], 0], 
+                            18, 50, 24, 200, 30
+                        ],
                         'circle-stroke-width': 3,
                         'circle-stroke-color': '#1e40af',
-                        'circle-opacity': 0.8
+                        'circle-opacity': [
+                            'interpolate',
+                            ['linear'],
+                            ['zoom'],
+                            5, 0.8,
+                            10, 0.4,
+                            12, 0
+                        ]
                     }
                 });
             }
@@ -566,8 +603,8 @@ export default function MapLibreVectorMap({
                     maxzoom: 12,  // ✅ Only show at low zoom like clusters
                     filter: ['has', 'point_count'],
                     layout: {
-                        'text-field': '{point_count_abbreviated}',
-                        'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+                        'text-field': ['coalesce', ['to-string', ['get', 'point_count_abbreviated']], ['to-string', ['get', 'point_count']], '0'],
+                        'text-font': ['Noto Sans Bold'],
                         'text-size': 12
                     },
                     paint: {
@@ -638,8 +675,14 @@ export default function MapLibreVectorMap({
         };
 
         map.on('load', onLoad);
-        // ℹ️  Only setup layers on initial map load, not on every styledata event (prevents flickering)
-        // Style changes are handled separately via the style-switching useEffect below
+        
+        // ✅ Handle style changes WITHOUT destroying the map (prevents flickering)
+        // We use 'styledata' to re-add sources and layers because setStyle clears them
+        map.on('styledata', () => {
+            logger.log('🎨 Style data changed, re-applying layers...');
+            setupLayers(map);
+        });
+
         map.on('moveend', handleMoveEnd);
 
         // ✅ Setup clustering events via hook (zoomend + moveend for supercluster updates)
@@ -650,13 +693,28 @@ export default function MapLibreVectorMap({
             // ✅ Cleanup clustering events
             if (clusteringCleanup) clusteringCleanup();
 
-            // ✅ Cleanup all event listeners with proper handler references
+            // ✅ Cleanup all event listeners
             map.off('load', onLoad);
+            map.off('styledata', () => setupLayers(map));
             map.off('moveend', handleMoveEnd);
             map.remove();
             mapRef.current = null;
         };
     }, [setupClusteringEvents, updateViewport]);
+
+    // ✅ Dynamic Style Switching (Streets vs Satellite vs Dark)
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map) return;
+
+        let targetStyle = isDarkMode ? MAP_STYLE_DARK : MAP_STYLE_LIGHT;
+        if (mapStyle === 'satellite') targetStyle = MAP_STYLE_SATELLITE;
+
+        if (map.getStyle()?.sprite !== targetStyle) { // Simple check to avoid redundant setStyle
+            logger.log('🔄 Switching map style to:', targetStyle);
+            map.setStyle(targetStyle);
+        }
+    }, [isDarkMode, mapStyle]);
 
     // Sync Données
     useEffect(() => {
@@ -691,18 +749,20 @@ export default function MapLibreVectorMap({
         const targetLat = Number(center[1]);
 
         // Only jump if there's a significant difference (e.g. recenter button clicked)
-        // 0.001 represents ~110 meters, enough to ignore slight drag/drift syncs
-        const isDifferent = Math.abs(currentCenter.lng - targetLng) > 0.001 ||
-            Math.abs(currentCenter.lat - targetLat) > 0.001 ||
-            Math.abs(map.getZoom() - (zoom || 11)) > 0.5;
+        // 0.05 represents ~5km at equator, enough to ignore slight drag/drift syncs
+        const isDifferent = Math.abs(currentCenter.lng - targetLng) > 0.05 ||
+            Math.abs(currentCenter.lat - targetLat) > 0.05 ||
+            (zoom && Math.abs(map.getZoom() - zoom) > 1.0);
 
-        if (isDifferent) {
+        if (isDifferent && !hasCentered.current) {
+            logger.log('🚀 Initial centring flyTo to:', [targetLng, targetLat], 'Zoom:', zoom);
             map.flyTo({
                 center: [targetLng, targetLat],
                 zoom: zoom || map.getZoom(),
-                duration: 800, // Smooth transition
+                duration: 1000,
                 essential: true
             });
+            hasCentered.current = true;
         }
     }, [center[0], center[1], zoom]);
 
