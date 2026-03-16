@@ -11,61 +11,75 @@ const normalizeCoordinates = (household: any): Household => {
     if (!household) return household;
     
     try {
-        // Vérifier si location existe et a les bonnes propriétés
-        if (!household.location || !household.location.coordinates) {
-            return household;
-        }
+        // Case 1: location.coordinates exists — normalize comma-separated strings
+        if (household.location?.coordinates) {
+            const coordinates = household.location.coordinates;
+            if (Array.isArray(coordinates) && coordinates.length === 2) {
+                const [lon, lat] = coordinates;
+                
+                let normalizedLon: number;
+                let normalizedLat: number;
+                
+                if (typeof lon === 'string') {
+                    normalizedLon = parseFloat((lon as string).replace(',', '.'));
+                } else if (typeof lon === 'number') {
+                    normalizedLon = lon;
+                } else {
+                    return household;
+                }
 
-        const coordinates = household.location.coordinates;
-        if (!Array.isArray(coordinates) || coordinates.length !== 2) {
-            return household;
-        }
+                if (typeof lat === 'string') {
+                    normalizedLat = parseFloat((lat as string).replace(',', '.'));
+                } else if (typeof lat === 'number') {
+                    normalizedLat = lat;
+                } else {
+                    return household;
+                }
 
-        const [lon, lat] = coordinates;
-        
-        // Convertir en nombres si ce sont des strings avec virgules
-        let normalizedLon: number;
-        let normalizedLat: number;
-        
-        if (typeof lon === 'string') {
-            normalizedLon = parseFloat((lon as string).replace(',', '.'));
-        } else if (typeof lon === 'number') {
-            normalizedLon = lon;
-        } else {
-            return household;
-        }
+                if (isNaN(normalizedLon) || isNaN(normalizedLat)) return household;
+                if (Math.abs(normalizedLon) > 180 || Math.abs(normalizedLat) > 90) {
+                    logger.warn(`⚠️ Coordonnées hors limites pour ${household.id}: [${normalizedLon}, ${normalizedLat}]`);
+                    return household;
+                }
 
-        if (typeof lat === 'string') {
-            normalizedLat = parseFloat((lat as string).replace(',', '.'));
-        } else if (typeof lat === 'number') {
-            normalizedLat = lat;
-        } else {
-            return household;
-        }
-
-        // Valider les plages
-        if (isNaN(normalizedLon) || isNaN(normalizedLat)) {
-            return household;
-        }
-
-        if (Math.abs(normalizedLon) > 180 || Math.abs(normalizedLat) > 90) {
-            logger.warn(`⚠️ Coordonnées hors limites pour ${household.id}: [${normalizedLon}, ${normalizedLat}]`);
-            return household;
-        }
-
-        return {
-            ...household,
-            location: {
-                ...household.location,
-                coordinates: [normalizedLon, normalizedLat] as [number, number]
+                return {
+                    ...household,
+                    location: {
+                        ...household.location,
+                        coordinates: [normalizedLon, normalizedLat] as [number, number]
+                    }
+                } as Household;
             }
-        } as Household;
+        }
+
+        // Case 2: No location.coordinates — try scalar latitude/longitude fields
+        // This covers households imported from Excel/Kobo with individual lat/lng columns
+        const rawLon = household.longitude ?? household.koboData?.longitude ?? household.koboSync?.longitude;
+        const rawLat = household.latitude ?? household.koboData?.latitude ?? household.koboSync?.latitude;
+
+        if (rawLon != null && rawLat != null) {
+            const lon = typeof rawLon === 'string' ? parseFloat(rawLon.replace(',', '.')) : Number(rawLon);
+            const lat = typeof rawLat === 'string' ? parseFloat(rawLat.replace(',', '.')) : Number(rawLat);
+
+            if (!isNaN(lon) && !isNaN(lat) && Math.abs(lon) <= 180 && Math.abs(lat) <= 90) {
+                return {
+                    ...household,
+                    location: {
+                        type: 'Point',
+                        coordinates: [lon, lat] as [number, number]
+                    }
+                } as Household;
+            }
+        }
+
+        return household;
     } catch (e) {
         // Si une erreur survient, retourner l'original sans modifier
         logger.warn(`❌ Erreur normalisation coords pour ${household?.id}:`, e);
         return household;
     }
 };
+
 
 export function useTerrainData() {
     const { activeProjectId } = useProject();
@@ -75,8 +89,24 @@ export function useTerrainData() {
     const households = useLiveQuery(async () => {
         if (!activeProjectId) return [];
 
-        let collection = db.households.where('projectId').equals(activeProjectId);
-        const all = await collection.toArray();
+        // Primary query: households with direct projectId (fast indexed lookup)
+        let all = await db.households.where('projectId').equals(activeProjectId).toArray();
+
+        // Fallback: if no results, look up by zoneId for households imported without projectId
+        if (all.length === 0) {
+            const zones = await db.zones.where('projectId').equals(activeProjectId).toArray();
+            const zoneIds = zones.map((z: any) => z.id);
+            if (zoneIds.length > 0) {
+                const byZone = await db.households.where('zoneId').anyOf(zoneIds).toArray();
+                // Backfill projectId in Dexie for future queries (silent background update)
+                for (const h of byZone) {
+                    if (!h.projectId) {
+                        db.households.update(h.id, { projectId: activeProjectId }).catch(() => {});
+                    }
+                }
+                all = byZone;
+            }
+        }
 
         // 🔧 Normaliser les coordonnées de tous les ménages
         const normalized = all.map(h => normalizeCoordinates(h as Household));
@@ -90,6 +120,7 @@ export function useTerrainData() {
             return matchesSearch && matchesStatus;
         });
     }, [activeProjectId, searchTerm, statusFilter]);
+
 
     const stats = useMemo(() => {
         if (!households) return null;
