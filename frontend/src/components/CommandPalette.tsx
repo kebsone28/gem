@@ -40,7 +40,7 @@ export default function CommandPalette() {
 
     const navigate = useNavigate();
     const { isDarkMode, toggleTheme } = useTheme();
-    const { sync } = useSync();
+    const { forceSync } = useSync();
     const { peut, PERMISSIONS } = usePermissions();
 
     useEffect(() => {
@@ -91,7 +91,7 @@ export default function CommandPalette() {
 
         // Actions Rapides
         { id: 'action-theme', icon: isDarkMode ? Sun : Moon, title: 'Changer le thème', subtitle: isDarkMode ? 'Passer en mode clair' : 'Passer en mode sombre', action: toggleTheme, keywords: ['theme', 'dark', 'light', 'sombre', 'clair'] },
-        { id: 'action-sync', icon: RefreshCw, title: 'Synchroniser avec le serveur', action: sync, keywords: ['sync', 'synchronisation', 'refresh', 'actualiser'] },
+        { id: 'action-sync', icon: RefreshCw, title: 'Synchroniser avec le serveur', action: forceSync, keywords: ['sync', 'synchronisation', 'refresh', 'actualiser'] },
     ];
 
     const filteredItems = items

@@ -31,7 +31,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 export default function Sidebar() {
     const { isDarkMode, toggleTheme } = useTheme();
     const { user, logout } = useAuth();
-    const { sync, isSyncing } = useSync();
+    const { forceSync } = useSync();
+    const isSyncing = false; // Sync is now background-only
     const { peut, PERMISSIONS } = usePermissions();
     const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -122,7 +123,7 @@ export default function Sidebar() {
                     </div>
 
                     <button
-                        onClick={() => sync()}
+                        onClick={() => forceSync()}
                         disabled={isSyncing || !navigator.onLine}
                         className={`w-full group relative overflow-hidden p-3 rounded-2xl transition-all ${isSyncing ? 'bg-indigo-600 shadow-lg shadow-indigo-500/30' :
                             isDarkMode ? 'bg-slate-900/50 hover:bg-indigo-600/10 border border-slate-800' : 'bg-white hover:bg-slate-100 border border-slate-200 shadow-sm'

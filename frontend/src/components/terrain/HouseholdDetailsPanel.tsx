@@ -261,7 +261,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
                             <p className={`text-sm font-black uppercase tracking-wider ${getStatusTailwindClasses(currentStatus).text}`}>
                                 {currentStatus}
                             </p>
-                            <p className="text-[10px] font-bold text-slate-500 mt-1">Dernière mise à jour: {new Date(household.updatedAt).toLocaleDateString('fr-FR')}</p>
+                            <p className="text-[10px] font-bold text-slate-500 mt-1">Dernière mise à jour: {household.updatedAt ? new Date(household.updatedAt).toLocaleDateString('fr-FR') : 'Date inconnue'}</p>
                         </div>
                         <button
                             onClick={() => setShowStatusModal(true)}

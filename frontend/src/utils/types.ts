@@ -20,6 +20,18 @@ export interface Household {
     projectId: string;
     zoneId: string;
     organizationId: string;
+    updatedAt?: string;
+    grappeId?: string;
+    grappeName?: string;
+    deliveryStatus?: string;
+    delivery?: {
+        agent?: string;
+        date?: string;
+    };
+    assignedTeams?: string[];
+    workTime?: {
+        durationMinutes?: number;
+    };
     
     name?: string;
     phone?: string;

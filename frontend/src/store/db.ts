@@ -12,10 +12,28 @@ export interface Project {
 
 export interface Household {
     id: string;
+    projectId?: string;
     zoneId: string;
     organizationId: string;
+    updatedAt?: string;
+    grappeId?: string;
+    grappeName?: string;
+    deliveryStatus?: string;
+    delivery?: any;
+    assignedTeams?: string[];
+    workTime?: any;
+    latitude?: number;
+    longitude?: number;
+    name?: string;
+    phone?: string;
+    region?: string;
+    departement?: string;
+    village?: string;
     status: string;
     version: number;
+    location?: any;
+    owner?: any;
+    koboData?: any;
     deletedAt?: Date | null;
 }
 

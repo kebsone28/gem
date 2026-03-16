@@ -95,10 +95,6 @@ const Terrain: React.FC = () => {
     const mapCenterRef = useRef<[number, number]>([-14.65, 14.45]);
     const mapZoomRef = useRef(7);
 
-    const setMapPosition = useCallback((center: [number, number], zoom: number) => {
-        mapCenterRef.current = center;
-        mapZoomRef.current = zoom;
-    }, []);
 
     // ✅ COMMAND STATE for programmatic movements (Search results, list clicks)
     const [mapCommand, setMapCommand] = useState<{ center: [number, number]; zoom: number; timestamp: number } | null>(null);

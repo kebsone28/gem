@@ -27,6 +27,7 @@ export default function DataManagement({ onImport, onClear, totalCount }: DataMa
                 status: row.status || row.etat_avancement || 'En attente',
                 region: row.region || 'N/A',
                 projectId: '',
+                zoneId: '',
                 organizationId: 'org_default',
                 version: 1,
                 location: row.lat && row.lon ? {

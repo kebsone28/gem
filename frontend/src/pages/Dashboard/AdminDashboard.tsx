@@ -36,7 +36,8 @@ export default function AdminDashboard() {
     const [metrics, setMetrics] = useState<any>(null);
     const navigate = useNavigate();
     const { project } = useProject();
-    const { sync, isSyncing } = useSync();
+    const { forceSync } = useSync();
+    const isSyncing = false;
 
     const [activities, setActivities] = useState<any[]>([]);
     const [perfData, setPerfData] = useState<any>(null);
@@ -86,7 +87,7 @@ export default function AdminDashboard() {
     }, [project?.id]);
 
     const handleSync = async () => {
-        await sync();
+        await forceSync();
         if (project?.id) {
             try {
                 const { data } = await apiClient.get(`kpi/${project.id}`);

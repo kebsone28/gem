@@ -43,7 +43,7 @@ export const DataHubModal: React.FC<DataHubModalProps> = ({ isOpen, onClose }) =
 
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const { sync } = useSync();
+    const { forceSync } = useSync();
     
     // Charger la liste des sauvegardes au montage
     useEffect(() => {
@@ -245,7 +245,7 @@ Total: ${parsedHouseholds.length} ménages traités`;
 
             // Auto-push to server
             try {
-                await sync();
+                await forceSync();
             } catch (e) {
                 logger.warn("Local import ok, but server sync failed", e);
             }
@@ -268,7 +268,7 @@ Total: ${parsedHouseholds.length} ménages traités`;
             await apiClient.post('kobo/sync');
             setKoboStep(2); // Applying
             
-            await sync(); // Force local DB sync to get new kobo data
+            await forceSync(); // Force local DB sync to get new kobo data
             
             setKoboStep(3); // Done
             const statusRes = await apiClient.get('kobo/status');
