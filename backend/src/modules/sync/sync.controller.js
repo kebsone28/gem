@@ -222,6 +222,16 @@ export const pushChanges = async (req, res) => {
                             version: 1
                         }
                     });
+
+                    // Sync PostGIS point for new households
+                    if (location && Array.isArray(location.coordinates) && location.coordinates.length === 2) {
+                        await prisma.$executeRaw`
+                            UPDATE "Household"
+                            SET location_gis = ST_SetSRID(ST_MakePoint(${location.coordinates[0]}, ${location.coordinates[1]}), 4326)
+                            WHERE id = ${id}
+                        `;
+                    }
+
                     results.success.push({ id, type: 'household' });
                 } catch (e) {
                     console.error(`[SYNC-ERROR] Household [${id}]:`, e.message);

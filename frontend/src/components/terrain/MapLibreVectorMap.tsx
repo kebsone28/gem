@@ -237,10 +237,12 @@ export default function MapLibreVectorMap({
             // --- SOURCES ---
             // Source MVT pour les performances (PostGIS)
             const apiUrl = import.meta.env.VITE_API_URL || '/api';
+            const mvtBaseUrl = apiUrl.startsWith('http') ? apiUrl : `${window.location.origin}${apiUrl}`;
+            
             if (!map.getSource('households-mvt')) {
                 map.addSource('households-mvt', {
                     type: 'vector',
-                    tiles: [`${window.location.origin}${apiUrl}/geo/mvt/households/{z}/{x}/{y}`],
+                    tiles: [`${mvtBaseUrl}/geo/mvt/households/{z}/{x}/{y}`],
                     minzoom: 0,
                     maxzoom: 14
                 });
@@ -472,10 +474,11 @@ export default function MapLibreVectorMap({
                             'concat', 
                             ['to-string', ['coalesce', ['get', 'name'], 'Zone']], 
                             '\n', 
-                            ['to-string', ['coalesce', ['get', 'count'], 0]], 
+                            ['to-string', ['number', ['get', 'count'], 0]], 
                             ' pts'
                         ],
                         'text-size': 12,
+                        'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
                         'text-offset': [0, 0],
                         'text-anchor': 'center'
                     },
@@ -693,7 +696,8 @@ export default function MapLibreVectorMap({
                     filter: ['has', 'point_count'],
                     layout: {
                         'text-field': ['coalesce', ['to-string', ['get', 'point_count_abbreviated']], ['to-string', ['get', 'point_count']], '0'],
-                        'text-size': 12
+                        'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+                        'text-size': 14
                     },
                     paint: {
                         'text-color': '#ffffff'

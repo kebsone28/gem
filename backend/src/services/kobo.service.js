@@ -143,6 +143,15 @@ export async function syncKoboToDatabase(organizationId, defaultZoneId, since = 
                 }
             });
 
+            // Sync PostGIS point
+            if (household.location && Array.isArray(household.location.coordinates) && household.location.coordinates.length === 2) {
+                await prisma.$executeRaw`
+                    UPDATE "Household"
+                    SET location_gis = ST_SetSRID(ST_MakePoint(${household.location.coordinates[0]}, ${household.location.coordinates[1]}), 4326)
+                    WHERE id = ${household.id}
+                `;
+            }
+
             applied++;
         } catch (err) {
             console.error(`[KOBO-SYNC] Error applying submission ${submission['_id']}:`, err.message);

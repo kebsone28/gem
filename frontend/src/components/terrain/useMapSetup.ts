@@ -181,9 +181,9 @@ export const useMapSetup = () => {
                 type: 'symbol',
                 source: 'senegal-regions',
                 layout: {
-                    'text-field': ['get', 'REGION'],
+                    'text-field': ['coalesce', ['get', 'REGION'], ''],
                     'text-size': 12,
-                    'text-font': ['Open Sans Regular'],
+                    'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
                     'text-anchor': 'center'
                 },
                 paint: {
@@ -235,7 +235,13 @@ export const useMapSetup = () => {
                     source: 'auto-grappes-centroids',
                     layout: {
                         visibility: 'visible',
-                        'text-field': ['concat', ['get', 'name'], '\n', ['get', 'count'], ' pts'],
+                        'text-field': [
+                            'concat', 
+                            ['coalesce', ['get', 'name'], ''], 
+                            '\n', 
+                            ['number', ['get', 'count'], 0], 
+                            ' pts'
+                        ],
                         'text-size': 12,
                         'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
                         'text-anchor': 'center'

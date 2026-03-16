@@ -106,7 +106,9 @@ const Terrain: React.FC = () => {
         'Réseau terminé',
         'Murs terminés',
         'Livraison effectuée',
-        'Non encore commencé'
+        'Non encore commencé',
+        'En attente',
+        'Non débuté'
     ];
 
     const [selectedPhases, setSelectedPhases] = useState<string[]>(ALL_STATUSES);

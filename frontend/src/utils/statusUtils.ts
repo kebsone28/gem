@@ -8,7 +8,9 @@ export const STATUS_TO_HEX_COLOR: Record<string, string> = {
     'Réseau terminé': '#3b82f6',         // Bleu
     'Murs terminés': '#f59e0b',          // Orange/Ambre
     'Livraison effectuée': '#06b6d4',    // Cyan
-    'Non encore commencé': '#94a3b8'     // Slate/Gris
+    'Non encore commencé': '#94a3b8',    // Slate/Gris
+    'En attente': '#94a3b8',             // Gris (identique à Non encore commencé)
+    'Non débuté': '#94a3b8'              // Gris
 };
 
 export const STATUS_TO_TAILWIND_COLORS: Record<string, { text: string; bg: string }> = {
@@ -18,7 +20,9 @@ export const STATUS_TO_TAILWIND_COLORS: Record<string, { text: string; bg: strin
     'Réseau terminé': { text: 'text-blue-500', bg: 'bg-blue-500/10' },
     'Murs terminés': { text: 'text-amber-500', bg: 'bg-amber-500/10' },
     'Livraison effectuée': { text: 'text-cyan-500', bg: 'bg-cyan-500/10' },
-    'Non encore commencé': { text: 'text-slate-500', bg: 'bg-slate-500/10' }
+    'Non encore commencé': { text: 'text-slate-500', bg: 'bg-slate-500/10' },
+    'En attente': { text: 'text-slate-500', bg: 'bg-slate-500/10' },
+    'Non débuté': { text: 'text-slate-500', bg: 'bg-slate-500/10' }
 };
 
 /**
