@@ -35,6 +35,19 @@ export interface MissionOrderData {
     reportObservations?: string;
     isCertified?: boolean;
     signatureImage?: string; // Base64 string
+    features?: {
+        map: boolean;
+        expenses: boolean;
+        inventory: boolean;
+        ai: boolean;
+    };
+    expenses?: any[];
+    fuelStats?: {
+        kmStart: number;
+        kmEnd: number;
+        rate: number;
+    };
+    inventory?: any[];
 }
 
 const INDIGO = [67, 56, 202] as [number, number, number];

@@ -169,7 +169,10 @@ export const pushChanges = async (req, res) => {
                     results.errors.push({ id: h?.id, type: 'household', error: 'Missing ID or ZoneID' });
                     continue;
                 }
-                const { id, zoneId, status, location, owner, koboData, version } = h;
+                const { 
+                    id, zoneId, status, location, owner, koboData, version,
+                    name, phone, region, departement, village, latitude, longitude, source
+                } = h;
                 try {
                     const serverH = await prisma.household.findUnique({ where: { id } });
                     if (serverH && serverH.version > (parseInt(version) || 0)) {
@@ -180,11 +183,21 @@ export const pushChanges = async (req, res) => {
                     await prisma.household.upsert({
                         where: { id },
                         update: {
-                            zoneId, // Ensure zone association is updated if changed
+                            zoneId,
                             status: status || serverH?.status || 'planned',
                             location: (location && Object.keys(location).length > 0) ? location : (serverH?.location || {}),
                             owner: (owner && Object.keys(owner).length > 0) ? owner : (serverH?.owner || {}),
                             koboData: koboData || serverH?.koboData || {},
+                            
+                            name: name ?? undefined,
+                            phone: phone ?? undefined,
+                            region: region ?? undefined,
+                            departement: departement ?? undefined,
+                            village: village ?? undefined,
+                            latitude: latitude !== undefined ? latitude : undefined,
+                            longitude: longitude !== undefined ? longitude : undefined,
+                            source: source ?? undefined,
+
                             version: (parseInt(version) || 0) + 1,
                             updatedAt: new Date()
                         },
@@ -196,6 +209,16 @@ export const pushChanges = async (req, res) => {
                             location: location || {},
                             owner: owner || {},
                             koboData: koboData || {},
+                            
+                            name: name || null,
+                            phone: phone || null,
+                            region: region || null,
+                            departement: departement || null,
+                            village: village || null,
+                            latitude: latitude || null,
+                            longitude: longitude || null,
+                            source: source || 'Sync',
+
                             version: 1
                         }
                     });

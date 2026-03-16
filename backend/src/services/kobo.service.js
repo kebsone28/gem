@@ -59,7 +59,8 @@ export async function fetchKoboSubmissions(since = null) {
  * @param {string} defaultZoneId
  */
 function mapSubmissionToHousehold(submission, organizationId, defaultZoneId) {
-    // Common Kobo field name patterns — adjust to your form
+    const data = submission; // Kobo directly provides fields at root in kobo-v2 results
+    
     const id = submission['_id']
             || submission['numeroordre']
             || submission['id_menage']
@@ -73,11 +74,22 @@ function mapSubmissionToHousehold(submission, organizationId, defaultZoneId) {
         organizationId,
         zoneId: submission['zone_id'] || defaultZoneId,
         status: submission['statut'] || submission['status'] || 'Non débuté',
+        
+        name: submission['nom_prenom'] || submission['chef_menage'] || submission['nom_chef_menage'] || '',
+        phone: submission['telephone'] || submission['phone'] || submission['numero'] || '',
+        region: submission['region'] || submission['region_administrative'] || '',
+        departement: submission['departement'] || submission['dept'] || '',
+        village: submission['village'] || submission['localite'] || '',
+        
+        latitude: lat || null,
+        longitude: lon || null,
+        source: 'Kobo',
+
         owner: {
             nom: submission['nom_prenom'] || submission['chef_menage'] || '',
             telephone: submission['telephone'] || ''
         },
-        koboData: submission,  // store raw submission for auditing
+        koboData: submission,
         location: (lat && lon) ? {
             type: 'Point',
             coordinates: [lon, lat]

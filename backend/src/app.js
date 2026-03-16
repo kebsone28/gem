@@ -15,15 +15,15 @@ const app = express();
 app.use((req, res, next) => {
     const origin = req.headers.origin;
 
-    // Validation de l'origine
-    const allowedOrigins = Array.isArray(config.cors.origin) ? config.cors.origin : [config.cors.origin];
-    const isAllowed = allowedOrigins.includes('*') || allowedOrigins.includes(origin);
+    // Validation de l'origine (Safe check)
+    const allowedOrigins = Array.isArray(config.cors.origin) ? config.cors.origin : (config.cors.origin ? [config.cors.origin] : []);
+    const isAllowed = allowedOrigins.includes('*') || (origin && allowedOrigins.includes(origin));
 
     if (origin && isAllowed) {
         res.setHeader('Access-Control-Allow-Origin', origin);
         res.setHeader('Access-Control-Allow-Credentials', 'true');
-    } else if (process.env.NODE_ENV !== 'production') {
-        res.setHeader('Access-Control-Allow-Origin', '*');
+    } else if (process.env.NODE_ENV !== 'production' && origin) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
     } else {
         // En cas de refus CORS clair, on peut ne pas mettre l'en-tête (bloquant net)
         // Mais pour débugger l'erreur 408/preflight, on log.

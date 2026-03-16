@@ -76,6 +76,7 @@ export default function MapLibreVectorMap({
     routingDest,
     onRouteFound,
     onMove,
+    onBoundsChange,
     followUser = false,
     favorites = [],
     projectId
@@ -95,6 +96,7 @@ export default function MapLibreVectorMap({
     const grappesConfigRef = useRef(grappesConfig);
     const grappeZonesDataRef = useRef(grappeZonesData);
     const grappeCentroidsDataRef = useRef(grappeCentroidsData);
+    const onBoundsChangeRef = useRef(onBoundsChange);
 
     // ✅ Shared event handler refs for perfect map.off() cleanup
     const handlersRef = useRef<Record<string, Function>>({});
@@ -135,6 +137,7 @@ export default function MapLibreVectorMap({
     useEffect(() => { grappesConfigRef.current = grappesConfig; }, [grappesConfig]);
     useEffect(() => { grappeZonesDataRef.current = grappeZonesData; }, [grappeZonesData]);
     useEffect(() => { grappeCentroidsDataRef.current = grappeCentroidsData; }, [grappeCentroidsData]);
+    useEffect(() => { onBoundsChangeRef.current = onBoundsChange; }, [onBoundsChange]);
 
     // GéoJSON des Ménages avec correction jitter (décalage spirale pour coordonnées dupliquées)
     // ✅ Using useMemoDeep for deep memoization - prevents recalculation on 50k+ points
@@ -230,11 +233,6 @@ export default function MapLibreVectorMap({
             }
             
             await loadMapImages(map);
-
-            if (map.getSource('households')) {
-                setupLayersLock.current = false;
-                return;
-            }
 
             // --- SOURCES ---
             // Source MVT pour les performances (PostGIS)
@@ -413,7 +411,6 @@ export default function MapLibreVectorMap({
                     layout: {
                         'text-field': ['to-string', ['coalesce', ['get', 'REGION'], 'Sénégal']],
                         'text-size': 12,
-                        'text-font': ['Noto Sans Regular'],
                         'text-offset': [0, 0],
                         'text-anchor': 'center'
                     },
@@ -479,7 +476,6 @@ export default function MapLibreVectorMap({
                             ' pts'
                         ],
                         'text-size': 12,
-                        'text-font': ['Noto Sans Bold'],
                         'text-offset': [0, 0],
                         'text-anchor': 'center'
                     },
@@ -493,120 +489,130 @@ export default function MapLibreVectorMap({
 
             // --- LAYERS : ZONES (Grappes Manuelles/Anciennes) - MASQUÉES ---
             // Ces couches sont désactivées - utiliser les auto-grappes à la place
-            map.addLayer({
-                id: 'grappes-layer',
-                type: 'circle',
-                source: 'grappes',
-                layout: { visibility: 'none' },
-                paint: {
-                    'circle-radius': 25,
-                    'circle-color': '#4f46e5',
-                    'circle-opacity': 0.2,
-                    'circle-stroke-width': 2,
-                    'circle-stroke-color': '#4f46e5'
-                }
-            });
+            if (!map.getLayer('grappes-layer')) {
+                map.addLayer({
+                    id: 'grappes-layer',
+                    type: 'circle',
+                    source: 'grappes',
+                    layout: { visibility: 'none' },
+                    paint: {
+                        'circle-radius': 25,
+                        'circle-color': '#4f46e5',
+                        'circle-opacity': 0.2,
+                        'circle-stroke-width': 2,
+                        'circle-stroke-color': '#4f46e5'
+                    }
+                });
+            }
 
-            map.addLayer({
-                id: 'grappes-labels',
-                type: 'symbol',
-                source: 'grappes',
-                layout: {
-                    visibility: 'none',
-                    'text-field': ['to-string', ['coalesce', ['get', 'nom'], '']],
-                    'text-size': 10,
-                    'text-offset': [0, 3],
-                    'text-anchor': 'top'
-                },
-                paint: { 'text-color': '#4f46e5', 'text-halo-color': '#fff', 'text-halo-width': 1 }
-            });
+            if (!map.getLayer('grappes-labels')) {
+                map.addLayer({
+                    id: 'grappes-labels',
+                    type: 'symbol',
+                    source: 'grappes',
+                    layout: {
+                        visibility: 'none',
+                        'text-field': ['to-string', ['coalesce', ['get', 'nom'], '']],
+                        'text-size': 10,
+                        'text-offset': [0, 3],
+                        'text-anchor': 'top'
+                    },
+                    paint: { 'text-color': '#4f46e5', 'text-halo-color': '#fff', 'text-halo-width': 1 }
+                });
+            }
 
             // --- LAYERS : SOUS-GRAPPES - MASQUÉES ---
-            map.addLayer({
-                id: 'sous-grappes-layer',
-                type: 'circle',
-                source: 'sous-grappes',
-                layout: { visibility: 'none' },
-                paint: {
-                    'circle-radius': 12,
-                    'circle-color': '#10b981',
-                    'circle-opacity': 0.3,
-                    'circle-stroke-width': 1.5,
-                    'circle-stroke-color': '#10b981'
-                }
-            });
+            if (!map.getLayer('sous-grappes-layer')) {
+                map.addLayer({
+                    id: 'sous-grappes-layer',
+                    type: 'circle',
+                    source: 'sous-grappes',
+                    layout: { visibility: 'none' },
+                    paint: {
+                        'circle-radius': 12,
+                        'circle-color': '#10b981',
+                        'circle-opacity': 0.3,
+                        'circle-stroke-width': 1.5,
+                        'circle-stroke-color': '#10b981'
+                    }
+                });
+            }
 
             // --- LAYERS : MVT HOUSEHOLDS (Heatmap) ---
-            map.addLayer({
-                id: 'heatmap',
-                type: 'heatmap',
-                source: 'households',
-                layout: { visibility: 'none' }, // toujours commencer caché
-                paint: {
-                    'heatmap-weight': [
-                        'interpolate', ['linear'], ['zoom'],
-                        0, 0.3,
-                        15, 1
-                    ],
-                    'heatmap-intensity': [
-                        'interpolate', ['linear'], ['zoom'],
-                        0, 0.5,
-                        15, 3
-                    ],
-                    'heatmap-radius': [
-                        'interpolate', ['linear'], ['zoom'],
-                        0, 8,
-                        15, 30
-                    ],
-                    'heatmap-opacity': 0.7,
-                    'heatmap-color': [
-                        'interpolate', ['linear'], ['heatmap-density'],
-                        0, 'rgba(0,0,0,0)',
-                        0.1, '#4f46e5',
-                        0.3, '#7c3aed',
-                        0.5, '#ef4444',
-                        0.8, '#f97316',
-                        1, '#fbbf24'
-                    ]
-                }
-            });
+            if (!map.getLayer('heatmap')) {
+                map.addLayer({
+                    id: 'heatmap',
+                    type: 'heatmap',
+                    source: 'households',
+                    layout: { visibility: 'none' }, // toujours commencer caché
+                    paint: {
+                        'heatmap-weight': [
+                            'interpolate', ['linear'], ['zoom'],
+                            0, 0.3,
+                            15, 1
+                        ],
+                        'heatmap-intensity': [
+                            'interpolate', ['linear'], ['zoom'],
+                            0, 0.5,
+                            15, 3
+                        ],
+                        'heatmap-radius': [
+                            'interpolate', ['linear'], ['zoom'],
+                            0, 8,
+                            15, 30
+                        ],
+                        'heatmap-opacity': 0.7,
+                        'heatmap-color': [
+                            'interpolate', ['linear'], ['heatmap-density'],
+                            0, 'rgba(0,0,0,0)',
+                            0.1, '#4f46e5',
+                            0.3, '#7c3aed',
+                            0.5, '#ef4444',
+                            0.8, '#f97316',
+                            1, '#fbbf24'
+                        ]
+                    }
+                });
+            }
 
             // ✅ 1. SERVER LAYER (High performance MVT foundation)
-            map.addLayer({
-                id: 'households-server-layer',
-                type: 'symbol',
-                source: 'households-mvt',
-                'source-layer': 'households',
-                minzoom: 0,
-                layout: {
-                    'icon-image': [
-                        'match',
-                        ['coalesce', ['get', 'status'], 'default'],
-                        'Contrôle conforme', 'icon-Contrôle conforme',
-                        'Non conforme', 'icon-Non conforme',
-                        'Intérieur terminé', 'icon-Intérieur terminé',
-                        'Réseau terminé', 'icon-Réseau terminé',
-                        'Murs terminés', 'icon-Murs terminés',
-                        'Livraison effectuée', 'icon-Livraison effectuée',
-                        'Non encore commencé', 'icon-Non encore commencé',
-                        'icon-default'
-                    ],
-                    'icon-size': [
-                        'interpolate', ['linear'], ['zoom'],
-                        3, 0.15, 6, 0.25, 10, 0.4, 14, 0.7, 18, 1
-                    ],
-                    'icon-allow-overlap': true,
-                    'icon-ignore-placement': true,
-                    'visibility': 'visible'
-                },
-                paint: {
-                    'icon-opacity': [
-                        'interpolate', ['linear'], ['zoom'],
-                        10, 0.6, // Faded when zipped out to avoid visual noise
-                        14, 1.0
-                    ]
-                }
-            });
+            if (!map.getLayer('households-server-layer')) {
+                map.addLayer({
+                    id: 'households-server-layer',
+                    type: 'symbol',
+                    source: 'households-mvt',
+                    'source-layer': 'households',
+                    minzoom: 0,
+                    layout: {
+                        'icon-image': [
+                            'match',
+                            ['coalesce', ['get', 'status'], 'default'],
+                            'Contrôle conforme', 'icon-Contrôle conforme',
+                            'Non conforme', 'icon-Non conforme',
+                            'Intérieur terminé', 'icon-Intérieur terminé',
+                            'Réseau terminé', 'icon-Réseau terminé',
+                            'Murs terminés', 'icon-Murs terminés',
+                            'Livraison effectuée', 'icon-Livraison effectuée',
+                            'Non encore commencé', 'icon-Non encore commencé',
+                            'icon-default'
+                        ],
+                        'icon-size': [
+                            'interpolate', ['linear'], ['zoom'],
+                            3, 0.15, 6, 0.25, 10, 0.4, 14, 0.7, 18, 1
+                        ],
+                        'icon-allow-overlap': true,
+                        'icon-ignore-placement': true,
+                        'visibility': 'visible'
+                    },
+                    paint: {
+                        'icon-opacity': [
+                            'interpolate', ['linear'], ['zoom'],
+                            10, 0.6, // Faded when zipped out to avoid visual noise
+                            14, 1.0
+                        ]
+                    }
+                });
+            }
 
             // ✅ 2. LOCAL LAYER (Highly reactive GeoJSON for Outbox/Recent edits)
             if (!map.getLayer('households-local-layer')) {
@@ -687,7 +693,6 @@ export default function MapLibreVectorMap({
                     filter: ['has', 'point_count'],
                     layout: {
                         'text-field': ['coalesce', ['to-string', ['get', 'point_count_abbreviated']], ['to-string', ['get', 'point_count']], '0'],
-                        'text-font': ['Noto Sans Bold'],
                         'text-size': 12
                     },
                     paint: {
@@ -721,7 +726,11 @@ export default function MapLibreVectorMap({
             // ✅ Setup interactions with the new layer IDs
             setupInteractions(map);
 
+            // --- FINALIZATION ---
+            logger.debug('✅ Layers setup complete. Unlocking data sync.');
             setStyleIsReady(true);
+        } catch (error) {
+            logger.error('❌ Error setting up MapLibre layers:', error);
         } finally {
             setupLayersLock.current = false;
         }
@@ -755,6 +764,17 @@ export default function MapLibreVectorMap({
             if (onMoveRef.current) {
                 const c = map.getCenter();
                 onMoveRef.current([c.lng, c.lat], map.getZoom());
+            }
+
+            // ✅ Emit bounds for real-time statistics
+            if (onBoundsChangeRef.current && map) {
+                const b = map.getBounds();
+                onBoundsChangeRef.current([
+                    b.getWest(),
+                    b.getSouth(),
+                    b.getEast(),
+                    b.getNorth()
+                ]);
             }
 
             // ✅ Trigger viewport loading on map move - use ref for stability
@@ -960,33 +980,29 @@ export default function MapLibreVectorMap({
         let style = isDarkMode ? MAP_STYLE_DARK : MAP_STYLE_LIGHT;
         if (mapStyle === 'satellite') style = MAP_STYLE_SATELLITE;
         
-        // Guard: Skip if style is already active to prevent flickering
-        // Use a custom property to track the target style accurately
-        if ((map as any)._currentStyle === style || (map as any)._targetStyle === style) return;
-        (map as any)._targetStyle = style;
+        // Use a simpler approach that forces MapLibre to completely swap styles
+        const currentStyleUrl = (map.getStyle() as any)?.sprite?.replace?.(/(\/sprite)$/, "") || "unknown";
+        if (currentStyleUrl.includes(style.replace?.(/(\/sprite)$/, ""))) return;
 
         logger.debug('🔄 Switching map style to:', style);
         setStyleIsReady(false);
         
         const handleStyleLoad = () => {
             if (map.isStyleLoaded()) {
-                (map as any)._currentStyle = style;
-                setStyleIsReady(true);
-                map.off('styledata', handleStyleLoad);
-                // ✅ Reload layers only once after style change to preserve map state
-                // Use ref for setupLayers to avoid re-triggering this effect during rendering
-                setupLayersRef.current(map);
-                delete (map as any)._targetStyle;
+                // Ensure layers are always re-added when style changes
+                if (setupLayersRef.current) setupLayersRef.current(map);
             }
         };
         
+        // It's safe to listen to styledata. MapLibre automatically drops our custom
+        // non-style layers when sweeping styles, so setupLayers handles recreation correctly.
         map.on('styledata', handleStyleLoad);
         map.setStyle(style);
         
         return () => {
             if (map) map.off('styledata', handleStyleLoad);
         };
-    }, [isDarkMode, mapStyle]); // setupLayers removed from dependencies
+    }, [isDarkMode, mapStyle]);
 
     // ✅ Layer visibility setup
     useEffect(() => {

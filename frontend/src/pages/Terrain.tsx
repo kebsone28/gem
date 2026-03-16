@@ -103,12 +103,18 @@ const Terrain: React.FC = () => {
     // ✅ COMMAND STATE for programmatic movements (Search results, list clicks)
     const [mapCommand, setMapCommand] = useState<{ center: [number, number]; zoom: number; timestamp: number } | null>(null);
 
-    const [selectedPhases, setSelectedPhases] = useState<string[]>([
-        'Non débuté',
-        'En cours',
-        'Terminé',
-        'Problème'
-    ]);
+    const ALL_STATUSES = [
+        'Contrôle conforme',
+        'Non conforme',
+        'Intérieur terminé',
+        'Réseau terminé',
+        'Murs terminés',
+        'Livraison effectuée',
+        'Non encore commencé'
+    ];
+
+    const [selectedPhases, setSelectedPhases] = useState<string[]>(ALL_STATUSES);
+    const [mapBounds, setMapBounds] = useState<[number, number, number, number] | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
     const [isSearching, setIsSearching] = useState(false);
@@ -345,8 +351,7 @@ const Terrain: React.FC = () => {
 
     const handleTogglePhase = (phase: string) => {
         if (phase === 'all') {
-            const allPhases = ['Non débuté', 'En cours', 'Terminé', 'Problème'];
-            setSelectedPhases(selectedPhases.length === allPhases.length ? [] : allPhases);
+            setSelectedPhases(selectedPhases.length === ALL_STATUSES.length ? [] : ALL_STATUSES);
             return;
         }
         setSelectedPhases(prev =>
@@ -386,15 +391,7 @@ const Terrain: React.FC = () => {
             }
 
             const hStatus = getHouseholdDerivedStatus(h);
-            const mappedStatus = (hStatus === 'Réception: Validée' || h.status === 'Terminé') ? 'Terminé' :
-                hStatus === 'Problème' ? 'Problème' :
-                    (hStatus === 'Non débuté' || hStatus === 'Non Raccordable') ? 'Non débuté' :
-                        'En cours';
-            
-            // Track status distribution
-            statusDistribution[mappedStatus] = (statusDistribution[mappedStatus] || 0) + 1;
-            
-            const matchesPhase = selectedPhases.includes(mappedStatus);
+            const matchesPhase = selectedPhases.includes(hStatus);
             if (!matchesPhase) {
                 rejectedByPhase++;
                 return false;
@@ -449,6 +446,25 @@ const Terrain: React.FC = () => {
 
         return filtered;
     }, [householdList, selectedPhases, selectedTeamFilters, selectedTeam, dateRange]);
+
+    const visibleHouseholds = useMemo(() => {
+        if (!mapBounds) return filteredHouseholds;
+        const [west, south, east, north] = mapBounds;
+        
+        return filteredHouseholds.filter(h => {
+             if (!hasValidCoordinates(h)) return false;
+             // We know location.coordinates is valid because of hasValidCoordinates
+             const lng = h.location!.coordinates[0] as number;
+             const lat = h.location!.coordinates[1] as number;
+             
+             return (
+                 lng >= west &&
+                 lng <= east &&
+                 lat >= south &&
+                 lat <= north
+             );
+        });
+    }, [filteredHouseholds, mapBounds]);
 
     // Update stats AFTER filtering (using useEffect to avoid infinite render loop)
     React.useEffect(() => {
@@ -933,9 +949,10 @@ const Terrain: React.FC = () => {
                                             followUser={followUser}
                                             onHouseholdDrop={updateHouseholdLocation}
                                             onRouteFound={handleRouteFound}
-                                            onMove={setMapPosition}
                                             favorites={localFavorites}
                                             projectId={project?.id}
+                                            onBoundsChange={setMapBounds}
+                                            visibleHouseholds={visibleHouseholds}
                                         />
                                     </Suspense>
                                     {/* Routing Panel Overlay */}

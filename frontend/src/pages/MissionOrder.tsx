@@ -27,6 +27,11 @@ import { generateMissionOrderWord, generateMissionReportWord } from '../services
 import type { MissionOrderData, MissionMember } from '../services/missionOrderGenerator';
 import { db } from '../store/db';
 import SignatureModal from '../components/common/SignatureModal';
+import { MissionSettings } from '../components/mission/MissionSettings';
+import { MissionExpenses } from '../components/mission/MissionExpenses';
+import { MissionInventory } from '../components/mission/MissionInventory';
+import { MissionAI } from '../components/mission/MissionAI';
+import { MissionMiniMap } from '../components/mission/MissionMiniMap';
 import logger from '../utils/logger';
 
 const DEFAULT_PLANNING_STEPS = [
@@ -60,7 +65,13 @@ export default function MissionOrder() {
         itineraryRetour: 'Kaffrine – Dakar',
         purpose: 'Préparation Projet électrification LES 3750 Ménages',
         transport: 'Véhicule PROQUELEC DK 4673 BH',
-        planning: DEFAULT_PLANNING_STEPS
+        planning: DEFAULT_PLANNING_STEPS,
+        features: {
+            map: true,
+            expenses: false,
+            inventory: false,
+            ai: false
+        }
     });
 
     const [members, setMembers] = useState<MissionMember[]>([
@@ -101,6 +112,15 @@ export default function MissionOrder() {
         });
         setMembers([]);
         setIsCertified(false);
+        setFormData(prev => ({
+            ...prev,
+            features: {
+                map: true,
+                expenses: false,
+                inventory: false,
+                ai: false
+            }
+        }));
     };
 
     const handleSaveMission = async () => {
@@ -342,6 +362,31 @@ export default function MissionOrder() {
             generateMissionReportWord(data);
         }
     };
+
+    const handleToggleFeature = (feature: keyof NonNullable<typeof formData.features>) => {
+        setFormData(prev => ({
+            ...prev,
+            features: {
+                ...(prev.features || { map: true, expenses: false, inventory: false, ai: false }),
+                [feature]: !((prev.features || {})[feature])
+            }
+        }));
+    };
+
+    const handleExpensesChange = (data: { expenses?: any[]; fuelStats?: any }) => {
+        setFormData(prev => ({
+            ...prev,
+            ...data
+        }));
+    };
+
+    const handleAIConclusion = (conclusion: string) => {
+        setFormData(prev => ({
+            ...prev,
+            reportObservations: conclusion
+        }));
+    };
+
     return (
         <div className="p-6 md:p-8 space-y-10 min-h-full relative overflow-hidden bg-slate-50/50 dark:bg-slate-950/20">
             {/* Background glows */}
@@ -380,7 +425,7 @@ export default function MissionOrder() {
                     </div>
                     <div>
                         <h1 className="text-4xl font-black uppercase tracking-tighter italic text-slate-800 dark:text-white leading-none">
-                            {activeTab === 'prep' ? 'Launch Blueprint' : 'Field Operation Report'}
+                            {activeTab === 'prep' ? 'Plan de Lancement' : 'Rapport d\'Exécution Terrain'}
                         </h1>
                         <div className="flex items-center gap-3 mt-3">
                             <div className="flex -space-x-2">
@@ -391,7 +436,7 @@ export default function MissionOrder() {
                                 ))}
                             </div>
                             <p className="text-slate-500 text-[11px] font-bold uppercase tracking-widest opacity-60 ml-2">
-                                {members.length} Active Operatives • {formData.region || 'Unassigned Sector'}
+                                {members.length} Opératifs Actifs • {formData.region || 'Secteur Non Assigné'}
                             </p>
                         </div>
                     </div>
@@ -399,8 +444,8 @@ export default function MissionOrder() {
 
                 <div className="flex items-center gap-4 bg-slate-100/50 dark:bg-slate-900/50 backdrop-blur-md p-1.5 rounded-[2.5rem] border border-slate-200/50 dark:border-white/5 shadow-inner">
                     {[
-                        { id: 'prep', label: 'STRATEGY', icon: FileText },
-                        { id: 'report', label: 'EXECUTION', icon: CheckCircle2 }
+                        { id: 'prep', label: 'STRATÉGIE', icon: FileText },
+                        { id: 'report', label: 'EXÉCUTION', icon: CheckCircle2 }
                     ].map((tab) => (
                         <button
                             key={tab.id}
@@ -430,7 +475,7 @@ export default function MissionOrder() {
                             className={`flex items-center gap-2 px-5 py-3 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-500/20 transition-all shadow-sm shadow-emerald-500/10 ${isSyncing ? 'opacity-50' : ''}`}
                         >
                             <DollarSign size={14} className={isSyncing ? 'animate-ping' : ''} />
-                            {isSyncing ? 'Syncing Ledger...' : 'SYNC WITH ACCOUNTING'}
+                            {isSyncing ? 'Synchronisation...' : 'SYNCHRONISER AVEC LA COMPTABILITÉ'}
                         </button>
                     )}
                 </div>
@@ -452,6 +497,22 @@ export default function MissionOrder() {
                 </div>
             </div>
 
+            {/* Feature Configuration & Modular Toggles */}
+            <MissionSettings 
+                features={formData.features || { map: true, expenses: false, inventory: false, ai: false }} 
+                onToggle={handleToggleFeature} 
+            />
+
+            {/* Modular SIG Preview */}
+            {formData.features?.map && (
+                <div className="relative z-10 animate-in fade-in slide-in-from-bottom-5 duration-700">
+                    <MissionMiniMap 
+                        region={formData.region || ''}
+                        households={[]} // Could be populated with actual households from Dexie if needed
+                    />
+                </div>
+            )}
+
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 relative z-10">
                 <div className="lg:col-span-8 space-y-8">
                     {activeTab === 'prep' ? (
@@ -460,12 +521,12 @@ export default function MissionOrder() {
                                 <div className="p-2 bg-indigo-500/10 rounded-xl">
                                     <ClipboardList size={20} className="text-indigo-500" />
                                 </div>
-                                <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-800 dark:text-white">Core Specifications</h3>
+                                <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-800 dark:text-white">Spécifications de Base</h3>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                 <div className="space-y-6">
                                     <div className="group space-y-2">
-                                        <label className="text-[10px] font-black text-slate-700 dark:text-slate-400 uppercase tracking-widest pl-2">Protocol Identifier</label>
+                                        <label className="text-[10px] font-black text-slate-700 dark:text-slate-400 uppercase tracking-widest pl-2">Identifiant du Protocole</label>
                                         <div className="flex items-center gap-3 p-4 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/5 rounded-2xl transition-all focus-within:ring-2 focus-within:ring-indigo-500/50 focus-within:border-indigo-500/50 shadow-sm shadow-slate-200/50 dark:shadow-none">
                                             <ShieldCheck size={18} className="text-indigo-600 dark:text-indigo-500/70" />
                                             <input
@@ -478,20 +539,20 @@ export default function MissionOrder() {
                                         </div>
                                     </div>
                                     <div className="group space-y-2">
-                                        <label className="text-[10px] font-black text-slate-700 dark:text-slate-400 uppercase tracking-widest pl-2">Strategic Purpose</label>
+                                        <label className="text-[10px] font-black text-slate-700 dark:text-slate-400 uppercase tracking-widest pl-2">Objectif Stratégique</label>
                                         <textarea
                                             value={formData.purpose}
                                             onChange={e => setFormData({ ...formData, purpose: e.target.value })}
                                             className="w-full p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-white/5 outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 text-sm font-medium text-slate-800 dark:text-slate-300 transition-all resize-none shadow-sm shadow-slate-200/50 dark:shadow-none placeholder-slate-400"
                                             rows={3}
-                                            placeholder="Define the core objective of this deployment..."
+                                            placeholder="Définir l'objectif principal de ce déploiement..."
                                         />
                                     </div>
                                 </div>
                                 <div className="space-y-6">
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-2">
-                                            <label className="text-[10px] font-black text-slate-700 dark:text-slate-400 uppercase tracking-widest pl-2">Launch Date</label>
+                                            <label className="text-[10px] font-black text-slate-700 dark:text-slate-400 uppercase tracking-widest pl-2">Date de Lancement</label>
                                             <div className="flex items-center gap-2 p-4 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/5 rounded-2xl focus-within:border-indigo-500/50 transition-all shadow-sm shadow-slate-200/50 dark:shadow-none">
                                                 <input
                                                     type="text"
@@ -503,7 +564,7 @@ export default function MissionOrder() {
                                             </div>
                                         </div>
                                         <div className="space-y-2">
-                                            <label className="text-[10px] font-black text-slate-700 dark:text-slate-400 uppercase tracking-widest pl-2">Extraction Date</label>
+                                            <label className="text-[10px] font-black text-slate-700 dark:text-slate-400 uppercase tracking-widest pl-2">Date de Fin</label>
                                             <div className="flex items-center gap-2 p-4 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/5 rounded-2xl focus-within:border-indigo-500/50 transition-all shadow-sm shadow-slate-200/50 dark:shadow-none">
                                                 <input
                                                     type="text"
@@ -516,7 +577,7 @@ export default function MissionOrder() {
                                         </div>
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-slate-700 dark:text-slate-400 uppercase tracking-widest pl-2">Routing Vector (Outbound)</label>
+                                        <label className="text-[10px] font-black text-slate-700 dark:text-slate-400 uppercase tracking-widest pl-2">Vecteur d'Itinéraire (Aller)</label>
                                         <div className="flex items-center gap-3 p-4 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/5 rounded-2xl focus-within:border-indigo-500/50 transition-all shadow-sm shadow-slate-200/50 dark:shadow-none">
                                             <MapPin size={16} className="text-emerald-600 dark:text-emerald-500/70" />
                                             <input
@@ -541,12 +602,12 @@ export default function MissionOrder() {
                                         <ShieldCheck size={32} />
                                     </div>
                                     <div className="relative z-10 w-full">
-                                        <h2 className="text-[10px] font-black text-slate-700 dark:text-slate-400 uppercase tracking-widest mb-3">Protocol Status</h2>
+                                        <h2 className="text-[10px] font-black text-slate-700 dark:text-slate-400 uppercase tracking-widest mb-3">Statut du Protocole</h2>
                                         <button
                                             onClick={() => setIsCertified(!isCertified)}
                                             className={`w-full max-w-[140px] mx-auto block px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-md active:scale-95 border ${isCertified ? 'bg-emerald-500 border-emerald-400 text-white shadow-emerald-500/20' : 'bg-slate-800 dark:bg-slate-700 border-slate-900 dark:border-slate-600 text-white hover:bg-slate-700'}`}
                                         >
-                                            {isCertified ? 'CERTIFIED ✓' : 'AUTHORIZE'}
+                                            {isCertified ? 'CERTIFIÉ ✓' : 'AUTORISER'}
                                         </button>
                                     </div>
                                 </section>
@@ -556,7 +617,7 @@ export default function MissionOrder() {
                                         <ListChecks size={28} />
                                     </div>
                                     <div>
-                                        <h2 className="text-[10px] font-black text-slate-700 dark:text-slate-400 uppercase tracking-widest mb-1 mt-2">Objectives Met</h2>
+                                        <h2 className="text-[10px] font-black text-slate-700 dark:text-slate-400 uppercase tracking-widest mb-1 mt-2">Objectifs Atteints</h2>
                                         <div className="flex items-baseline justify-center gap-1">
                                             <span className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter">
                                                 {formData.reportDays?.filter(d => d.isCompleted).length || 0}
@@ -571,10 +632,10 @@ export default function MissionOrder() {
                                         <History size={28} />
                                     </div>
                                     <div>
-                                        <h2 className="text-[10px] font-black text-slate-700 dark:text-slate-400 uppercase tracking-widest mb-1 mt-2">Time Delta</h2>
+                                        <h2 className="text-[10px] font-black text-slate-700 dark:text-slate-400 uppercase tracking-widest mb-1 mt-2">Delta Temporel</h2>
                                         <div className="flex items-baseline justify-center gap-1">
                                             <span className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter">{formData.planning?.length || 0}</span>
-                                            <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase">Days</span>
+                                            <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase">Jours</span>
                                         </div>
                                     </div>
                                 </section>
@@ -584,11 +645,11 @@ export default function MissionOrder() {
                             <section className="glass-card !p-8 !rounded-[2.5rem] space-y-6">
                                 <div className="flex items-center justify-between border-b border-slate-200/50 dark:border-white/5 pb-6">
                                     <h2 className="font-black text-slate-800 dark:text-white uppercase tracking-wider text-sm flex items-center gap-3">
-                                        <div className="p-1.5 bg-indigo-500/10 rounded-lg"><FileSearch size={16} className="text-indigo-500" /></div> Execution Log
+                                        <div className="p-1.5 bg-indigo-500/10 rounded-lg"><FileSearch size={16} className="text-indigo-500" /></div> Journal d'Exécution
                                     </h2>
                                     <div className="flex bg-slate-100/50 dark:bg-slate-900/50 p-1.5 rounded-xl border border-slate-200/50 dark:border-white/5">
-                                        <button onClick={() => setReportView('status')} className={`px-4 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${reportView === 'status' ? 'bg-white dark:bg-slate-800 text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>LIST</button>
-                                        <button onClick={() => setReportView('timeline')} className={`px-4 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${reportView === 'timeline' ? 'bg-white dark:bg-slate-800 text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>TIMELINE</button>
+                                        <button onClick={() => setReportView('status')} className={`px-4 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${reportView === 'status' ? 'bg-white dark:bg-slate-800 text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>LISTE</button>
+                                        <button onClick={() => setReportView('timeline')} className={`px-4 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${reportView === 'timeline' ? 'bg-white dark:bg-slate-800 text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>CHRONOLOGIE</button>
                                     </div>
                                 </div>
 
@@ -611,18 +672,18 @@ export default function MissionOrder() {
                                                                 {rd.location && (
                                                                     <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-100 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-500 rounded-md border border-emerald-200 dark:border-emerald-500/20">
                                                                         <MapPin size={10} className="animate-bounce" />
-                                                                        <span className="text-[8px] font-black uppercase tracking-widest">GPS Locked</span>
+                                                                        <span className="text-[8px] font-black uppercase tracking-widest">GPS Verrouillé</span>
                                                                     </div>
                                                                 )}
                                                             </div>
-                                                            <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-500/60 uppercase tracking-widest">Day {rd.day}</span>
+                                                            <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-500/60 uppercase tracking-widest">Jour {rd.day}</span>
                                                         </div>
                                                         <div className="flex gap-4 items-start">
                                                             <textarea
                                                                 value={rd.observation}
                                                                 onChange={e => updateReportDay(i, 'observation', e.target.value)}
                                                                 className="flex-1 bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-white/5 rounded-xl p-4 text-xs font-medium outline-none focus:ring-2 focus:ring-indigo-500/20 resize-none text-slate-800 dark:text-slate-300 shadow-inner"
-                                                                placeholder="Record field observations, anomalies, actions taken..."
+                                                                placeholder="Enregistrer les observations de terrain, anomalies, actions entreprises..."
                                                                 rows={2}
                                                             />
                                                             <div className="flex flex-col gap-2">
@@ -664,7 +725,7 @@ export default function MissionOrder() {
                                                     <div className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm">
                                                         <div className="flex justify-between items-start">
                                                             <div>
-                                                                <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-500 uppercase tracking-widest">Day {rd.day}</span>
+                                                                <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-500 uppercase tracking-widest">Jour {rd.day}</span>
                                                                 <h4 className="text-sm font-bold text-slate-900 dark:text-white mt-1">{rd.title}</h4>
                                                             </div>
                                                             <div className="flex gap-2">
@@ -680,7 +741,7 @@ export default function MissionOrder() {
                                                                 )}
                                                             </div>
                                                         </div>
-                                                        <p className="text-xs text-slate-700 dark:text-slate-400 mt-3 italic font-medium">{rd.observation || "No debrief data entered for this cycle."}</p>
+                                                        <p className="text-xs text-slate-700 dark:text-slate-400 mt-3 italic font-medium">{rd.observation || "Aucune donnée de débriefing saisie pour ce cycle."}</p>
                                                     </div>
                                                 </div>
                                             ))}
@@ -690,17 +751,17 @@ export default function MissionOrder() {
 
                                 <div className="pt-8 border-t border-slate-200 dark:border-white/5 flex flex-col md:flex-row gap-8">
                                     <div className="flex-1">
-                                        <label className="text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase mb-3 block tracking-widest pl-2">Executive Summary</label>
+                                        <label className="text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase mb-3 block tracking-widest pl-2">Résumé Exécutif</label>
                                         <textarea
                                             value={formData.reportObservations}
                                             onChange={e => setFormData({ ...formData, reportObservations: e.target.value })}
                                             className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/5 rounded-2xl p-5 text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500/30 resize-none text-slate-900 dark:text-slate-300 shadow-inner placeholder-slate-400"
                                             rows={5}
-                                            placeholder="Final debrief, strategic recommendations..."
+                                            placeholder="Débriefing final, recommandations stratégiques..."
                                         />
                                     </div>
                                     <div className="w-full md:w-72 space-y-3">
-                                        <label className="text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase block tracking-widest pl-2">Commander Authorization</label>
+                                        <label className="text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase block tracking-widest pl-2">Autorisation du Commandant</label>
                                         <div
                                             onClick={() => setIsSignatureModalOpen(true)}
                                             className="h-32 bg-slate-50 dark:bg-slate-900/30 border-2 border-dashed border-indigo-200 dark:border-indigo-500/30 rounded-2xl flex flex-col items-center justify-center p-2 cursor-pointer hover:bg-indigo-50 dark:hover:bg-indigo-500/5 hover:border-indigo-400 transition-all overflow-hidden relative group"
@@ -710,7 +771,7 @@ export default function MissionOrder() {
                                                     <img src={formData.signatureImage} alt="Signature" className="w-full h-full object-contain mix-blend-multiply dark:mix-blend-screen" />
                                                     <div className="absolute inset-0 bg-slate-900/80 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center backdrop-blur-sm gap-2">
                                                         <PenTool size={20} className="text-white" />
-                                                        <span className="text-[9px] font-black text-white uppercase tracking-widest">Resign</span>
+                                                        <span className="text-[9px] font-black text-white uppercase tracking-widest">Signer à nouveau</span>
                                                     </div>
                                                 </>
                                             ) : (
@@ -718,7 +779,7 @@ export default function MissionOrder() {
                                                     <div className="p-3 rounded-full bg-indigo-100 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-500 mb-2 group-hover:scale-110 transition-transform">
                                                         <PenTool size={24} />
                                                     </div>
-                                                    <span className="text-[9px] font-black text-indigo-600 dark:text-indigo-500/70 uppercase tracking-[0.2em] text-center">Digitally Sign</span>
+                                                    <span className="text-[9px] font-black text-indigo-600 dark:text-indigo-500/70 uppercase tracking-[0.2em] text-center">Signer Numériquement</span>
                                                 </>
                                             )}
                                         </div>
@@ -727,13 +788,39 @@ export default function MissionOrder() {
                                                 onClick={() => setFormData({ ...formData, signatureImage: undefined })}
                                                 className="w-full py-2.5 bg-rose-500/10 text-rose-500 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-rose-500/20 transition-all border border-rose-500/20"
                                             >
-                                                Clear Signature Matrix
+                                                Effacer la Signature
                                             </button>
                                         )}
                                     </div>
                                 </div>
                             </section>
                         </div>
+                    )}
+
+                    {/* Modular Add-ons - Expenses */}
+                    {formData.features?.expenses && (
+                        <MissionExpenses 
+                            expenses={formData.expenses} 
+                            fuelStats={formData.fuelStats}
+                            onChange={handleExpensesChange}
+                        />
+                    )}
+
+                    {/* Modular Add-ons - Inventory */}
+                    {formData.features?.inventory && (
+                        <MissionInventory 
+                            inventory={formData.inventory}
+                            onChange={(inv) => setFormData(prev => ({ ...prev, inventory: inv }))}
+                        />
+                    )}
+
+                    {/* Modular Add-ons - AI */}
+                    {formData.features?.ai && (
+                        <MissionAI 
+                            region={formData.region || ''}
+                            reportDays={formData.reportDays}
+                            onReportAutoGenerated={handleAIConclusion}
+                        />
                     )}
 
                     <SignatureModal
@@ -746,9 +833,9 @@ export default function MissionOrder() {
                     <section className="glass-card !p-8 !rounded-[2.5rem] mt-8">
                         <div className="flex items-center justify-between mb-8">
                             <h2 className="font-black text-slate-800 dark:text-white uppercase tracking-wider text-sm flex items-center gap-3">
-                                <div className="p-1.5 bg-indigo-500/10 rounded-lg"><User size={16} className="text-indigo-500" /></div> Unit Cost & Allocation
+                                <div className="p-1.5 bg-indigo-500/10 rounded-lg"><User size={16} className="text-indigo-500" /></div> Coût Unitaire & Allocation
                             </h2>
-                            <button onClick={addMember} className="px-4 py-2 bg-indigo-500/10 text-indigo-500 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-indigo-500/20 transition-all">+ Assign Member</button>
+                            <button onClick={addMember} className="px-4 py-2 bg-indigo-500/10 text-indigo-500 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-indigo-500/20 transition-all">+ Assigner un membre</button>
                         </div>
                         <div className="space-y-4">
                             {members.map((m, i) => (
@@ -759,7 +846,7 @@ export default function MissionOrder() {
                                             value={m.name}
                                             onChange={e => updateMember(i, 'name', e.target.value)}
                                             className="w-full bg-transparent border-none text-xs font-bold text-slate-800 dark:text-white outline-none px-2 placeholder-slate-400"
-                                            placeholder="Operative Name"
+                                            placeholder="Nom de l'opératif"
                                         />
                                     </div>
                                     <div className="col-span-12 md:col-span-3">
@@ -768,37 +855,37 @@ export default function MissionOrder() {
                                             value={m.role}
                                             onChange={e => updateMember(i, 'role', e.target.value)}
                                             className="w-full bg-transparent border-none text-xs italic text-slate-600 dark:text-slate-400 outline-none px-2 placeholder-slate-400/50"
-                                            placeholder="Specialty/Role"
+                                            placeholder="Spécialité/Rôle"
                                         />
                                     </div>
                                     <div className="col-span-5 md:col-span-2">
                                         <div className="flex items-center gap-2 bg-white/60 dark:bg-slate-800 p-2 rounded-xl ring-1 ring-slate-200/50 dark:ring-white/10">
-                                            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Rate</span>
+                                            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Taux</span>
                                             <input
                                                 type="number"
                                                 value={m.dailyIndemnity}
                                                 onChange={e => updateMember(i, 'dailyIndemnity', Number(e.target.value))}
                                                 className="w-full bg-transparent border-none text-xs font-black text-emerald-700 dark:text-emerald-400 outline-none text-right px-1 focus:ring-0 placeholder-slate-400"
-                                                title="Daily Rate"
+                                                title="Taux Journalier"
                                                 placeholder="0"
                                             />
                                         </div>
                                     </div>
                                     <div className="col-span-5 md:col-span-2">
                                         <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 p-2 rounded-xl ring-1 ring-slate-200 dark:ring-white/10">
-                                            <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Days</span>
+                                            <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Jours</span>
                                             <input
                                                 type="number"
                                                 value={m.days}
                                                 onChange={e => updateMember(i, 'days', Number(e.target.value))}
                                                 className="w-full bg-transparent border-none text-xs font-black text-indigo-700 dark:text-indigo-400 outline-none text-center px-1 focus:ring-0 placeholder-slate-400"
-                                                title="Duration"
+                                                title="Durée"
                                                 placeholder="1"
                                             />
                                         </div>
                                     </div>
                                     <div className="col-span-2 md:col-span-1 flex justify-end pr-2">
-                                        <button onClick={() => removeMember(i)} className="text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 p-2 rounded-lg transition-colors" title="Declassify Member">
+                                        <button onClick={() => removeMember(i)} className="text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 p-2 rounded-lg transition-colors" title="Retirer le membre">
                                             <Trash2 size={16} />
                                         </button>
                                     </div>
@@ -814,7 +901,7 @@ export default function MissionOrder() {
                         <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-500/10 blur-[60px] rounded-full transition-transform duration-700 group-hover:scale-[2]" />
                         <div className="relative z-10 space-y-6">
                             <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
-                                <DollarSign size={14} className="text-emerald-500" /> Fiscal Projection
+                                <DollarSign size={14} className="text-emerald-500" /> Projection Budgétaire
                             </h2>
                             <div className="text-4xl font-black text-white italic tracking-tighter">
                                 {totalFrais.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ")} <span className="text-xl text-emerald-500 font-bold ml-1">XOF</span>
@@ -822,18 +909,18 @@ export default function MissionOrder() {
                             <div className="space-y-3 pt-6 border-t border-slate-800">
                                 {members.slice(0, 4).map((m, i) => (
                                     <div key={i} className="flex justify-between items-center text-[11px]">
-                                        <span className="text-slate-400 font-bold truncate max-w-[120px]">{m.name || 'Unassigned'}</span>
+                                        <span className="text-slate-400 font-bold truncate max-w-[120px]">{m.name || 'Non assigné'}</span>
                                         <div className="flex flex-col items-end">
                                             <span className="text-white font-black font-mono">{(m.dailyIndemnity * m.days).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ")} <span className="text-[8px] text-slate-500">XOF</span></span>
                                         </div>
                                     </div>
                                 ))}
                                 {members.length > 4 && (
-                                    <div className="text-[9px] font-black text-slate-600 text-center pt-2 uppercase tracking-widest">+ {members.length - 4} More...</div>
+                                    <div className="text-[9px] font-black text-slate-600 text-center pt-2 uppercase tracking-widest">+ {members.length - 4} Autres...</div>
                                 )}
                             </div>
                             <button onClick={syncDurationWithPlanning} className="w-full mt-6 py-3.5 bg-white/5 border border-white/10 hover:border-amber-500/50 hover:bg-amber-500/10 rounded-xl text-[10px] font-black text-amber-500 uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-sm">
-                                <Sparkles size={14} /> Matrix Duration Sync
+                                <Sparkles size={14} /> Sync. Durée Matrice
                             </button>
                         </div>
                     </section>
@@ -842,7 +929,7 @@ export default function MissionOrder() {
                     <section className="glass-card !p-8 !rounded-[2.5rem] space-y-6">
                         <div className="flex items-center justify-between">
                             <h2 className="font-black text-slate-800 dark:text-white uppercase tracking-wider text-sm flex items-center gap-2">
-                                <div className="p-1.5 bg-indigo-500/10 rounded-lg"><CheckCircle2 size={16} className="text-indigo-500" /></div> Mission Pipeline
+                                <div className="p-1.5 bg-indigo-500/10 rounded-lg"><CheckCircle2 size={16} className="text-indigo-500" /></div> Pipeline de Mission
                             </h2>
                             <button onClick={() => setShowPlanningEditor(!showPlanningEditor)} className="p-2 bg-slate-100 dark:bg-slate-800 rounded-xl text-slate-500 hover:text-indigo-500 transition-colors">
                                 {showPlanningEditor ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
@@ -853,26 +940,26 @@ export default function MissionOrder() {
                             <div className="space-y-4">
                                 <div className="flex gap-3">
                                     <button onClick={handleGenerateAIPlanning} className="flex-1 py-3 bg-slate-800 dark:bg-slate-700 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-900 shadow-md transition-all flex items-center justify-center gap-2">
-                                        <Sparkles size={14} className="text-amber-500" /> AI Timeline Gen
+                                        <Sparkles size={14} className="text-amber-500" /> Générer Chronologie IA
                                     </button>
                                     <button onClick={addPlanningStep} className="px-5 py-3 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-md hover:bg-indigo-500 transition-all flex items-center gap-2">
-                                        <span className="text-lg leading-none">+</span> Node
+                                        <span className="text-lg leading-none">+</span> Étape
                                     </button>
                                 </div>
                                 <div className="space-y-3 pt-2">
                                     {formData.planning?.map((p, i) => (
                                         <div key={i} className="relative group flex items-start gap-3">
-                                            <div className="mt-2 text-[9px] font-black text-indigo-700 dark:text-indigo-500 bg-indigo-100 dark:bg-indigo-500/10 px-2 py-1 rounded-md">D{i + 1}</div>
+                                            <div className="mt-2 text-[9px] font-black text-indigo-700 dark:text-indigo-500 bg-indigo-100 dark:bg-indigo-500/10 px-2 py-1 rounded-md">J{i + 1}</div>
                                             <textarea
                                                 value={p}
                                                 onChange={e => updatePlanningStep(i, e.target.value)}
                                                 className="flex-1 p-3 text-xs bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/5 rounded-xl min-h-[80px] outline-none focus:ring-2 focus:ring-indigo-500/30 font-medium text-slate-900 dark:text-slate-300 resize-none transition-all placeholder-slate-400"
-                                                placeholder={`Day ${i + 1} parameters...`}
+                                                placeholder={`Paramètres du Jour ${i + 1}...`}
                                             />
                                             <button
                                                 onClick={() => removePlanningStep(i)}
                                                 className="absolute top-2 right-2 text-rose-500 bg-white dark:bg-slate-800 p-1.5 rounded-lg shadow-sm border border-slate-200 dark:border-white/5 opacity-0 group-hover:opacity-100 transition-all hover:bg-rose-500 hover:text-white"
-                                                title="Remove Node"
+                                                title="Supprimer l'étape"
                                             >
                                                 <Trash2 size={14} />
                                             </button>
@@ -890,7 +977,7 @@ export default function MissionOrder() {
                                 ))}
                                 {formData.planning && formData.planning.length > 3 && (
                                     <button onClick={() => setShowPlanningEditor(true)} className="text-indigo-500 font-bold text-[10px] flex items-center gap-1 mt-2 hover:translate-x-1 transition-transform uppercase tracking-widest pt-2 border-t border-slate-200/50 dark:border-white/5 w-full">
-                                        + Unroll Full Pipeline ({formData.planning?.length} Nodes)
+                                        + Dérouler tout le pipeline ({formData.planning?.length} étapes)
                                     </button>
                                 )}
                             </div>

@@ -18,35 +18,30 @@ export interface User {
 export interface Household {
     id: string;
     projectId: string;
+    zoneId: string;
     organizationId: string;
-    region: string;
+    
+    name?: string;
+    phone?: string;
+    region?: string;
+    departement?: string;
+    village?: string;
+    
+    latitude?: number;
+    longitude?: number;
+    
     status: string;
     owner?: string;
     photo?: string;
-    compteurPhoto?: string;
-    version?: number;
-    grappeId?: string;
-    grappeName?: string;
-    village?: string;
-    departement?: string;
-    phone?: string;
-    ownerPhone?: string;
+    ownerPhone?: string; // Garder pour compatibilité
+    
+    location: {
+        type: 'Point';
+        coordinates: [number, number];
+    };
+    
+    source?: string;
     koboData?: any;
-    delivery?: {
-        agent?: string;
-        date?: string;
-        deviceId?: string;
-        validationStatus?: string;
-    };
-    workTime?: {
-        durationMinutes?: number;
-    };
-    material?: Record<string, number>;
-    assignedTeams?: string[] | Record<string, any>;
-    location?: {
-        type: "Point",
-        coordinates: [number, number]
-    },
     koboSync?: {
         preparateurKits?: number;
         livreurDate?: string;

@@ -76,14 +76,31 @@ model Household {
   zoneId         String
   zone           Zone         @relation(fields: [zoneId], references: [id])
   organizationId String
+  
+  name           String?
+  phone          String?
+  region         String?
+  departement    String?
+  village        String?
+  
+  latitude       Float?
+  longitude      Float?
+  
   status         String
   location       Json
   location_gis   Unsupported("geometry(Point, 4326)")?
   owner          Json
   koboData       Json?        @default("{}")
+  
+  source         String?      // Kobo, Agent, Import, etc.
+  
   version        Int          @default(1)
   updatedAt      DateTime     @updatedAt
   deletedAt      DateTime?
+
+  @@index([region])
+  @@index([departement])
+  @@index([village])
 }
 
 model Team {

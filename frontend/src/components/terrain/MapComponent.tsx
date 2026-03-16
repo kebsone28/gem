@@ -43,6 +43,8 @@ interface MapComponentProps {
     projectId?: string;
     followUser?: boolean;
     onMove?: (center: [number, number], zoom: number) => void;
+    visibleHouseholds?: Household[];
+    onBoundsChange?: (bounds: [number, number, number, number]) => void;
 }
 
 const MapComponent: React.FC<MapComponentProps> = ({
@@ -72,7 +74,9 @@ const MapComponent: React.FC<MapComponentProps> = ({
     favorites = [],
     projectId,
     followUser = false,
-    onMove
+    onMove,
+    visibleHouseholds = [],
+    onBoundsChange
 }) => {
     return (
         <div className="h-full w-full relative bg-slate-100 dark:bg-slate-900 overflow-hidden">
@@ -102,13 +106,14 @@ const MapComponent: React.FC<MapComponentProps> = ({
                 projectId={projectId}
                 followUser={followUser}
                 onMove={onMove}
+                onBoundsChange={onBoundsChange}
             />
 
             {showDatabaseStats && <MapStatsWidget stats={{
-                visible: households.length,
-                completed: households.filter(h => getHouseholdDerivedStatus(h) === 'Contrôle conforme' || getHouseholdDerivedStatus(h) === 'Intérieur terminé').length,
-                problems: households.filter(h => getHouseholdDerivedStatus(h) === 'Non conforme').length,
-                pending: households.filter(h => getHouseholdDerivedStatus(h) === 'Non encore commencé').length
+                visible: visibleHouseholds.length,
+                completed: visibleHouseholds.filter((h: Household) => getHouseholdDerivedStatus(h) === 'Contrôle conforme' || getHouseholdDerivedStatus(h) === 'Intérieur terminé').length,
+                problems: visibleHouseholds.filter((h: Household) => getHouseholdDerivedStatus(h) === 'Non conforme').length,
+                pending: visibleHouseholds.filter((h: Household) => getHouseholdDerivedStatus(h) === 'Non encore commencé').length
             }} />}
 
             {/* Légende améliorée avec icônes */}
