@@ -15,8 +15,7 @@ import './MapComponent.css';
 interface MapComponentProps {
     households: Household[];
     onSelect: (household: Household) => void;
-    center: [number, number];
-    zoom: number;
+    mapCommand: { center: [number, number]; zoom: number; timestamp: number } | null;
     showHeatmap?: boolean;
     activeHouseholdId?: string | null;
     selectedPhases?: string[];
@@ -40,17 +39,16 @@ interface MapComponentProps {
     grappeCentroidsData?: any;
     activeGrappeId?: string | null;
     onHouseholdDrop?: (id: string, lat: number, lng: number) => void;
-    onMove?: (center: [number, number], zoom: number) => void;
     favorites?: any[];
     projectId?: string;
+    followUser?: boolean;
+    onMove?: (center: [number, number], zoom: number) => void;
 }
 
 const MapComponent: React.FC<MapComponentProps> = ({
     households,
     onSelect,
-    center,
-    zoom,
-    onMove,
+    mapCommand,
     showHeatmap = false,
     selectedPhases = [],
     onToggleStatus,
@@ -72,15 +70,16 @@ const MapComponent: React.FC<MapComponentProps> = ({
     activeGrappeId,
     onHouseholdDrop,
     favorites = [],
-    projectId
+    projectId,
+    followUser = false,
+    onMove
 }) => {
     return (
         <div className="h-full w-full relative bg-slate-100 dark:bg-slate-900 overflow-hidden">
             {/* Seul et unique layer de carte pour éviter les superpositions grises */}
             <MapLibreVectorMap
                 households={households}
-                center={center}
-                zoom={zoom}
+                mapCommand={mapCommand}
                 onSelectHousehold={onSelect}
                 showHeatmap={showHeatmap}
                 showZones={showZones}
@@ -95,13 +94,14 @@ const MapComponent: React.FC<MapComponentProps> = ({
                 activeGrappeId={activeGrappeId}
                 userLocation={userLocation}
                 onHouseholdDrop={onHouseholdDrop}
-                onMove={onMove}
                 routingEnabled={routingEnabled}
                 routingStart={routingStart}
                 routingDest={routingDest}
                 onRouteFound={onRouteFound}
                 favorites={favorites}
                 projectId={projectId}
+                followUser={followUser}
+                onMove={onMove}
             />
 
             {showDatabaseStats && <MapStatsWidget stats={{

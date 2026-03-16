@@ -169,6 +169,16 @@ export const login = async (req, res) => {
         }
     } catch (error) {
         console.error('Login error:', error);
+        
+        // Handle database connection errors specifically
+        if (error.code === 'P1001' || error.message.includes("Can't reach database server")) {
+            return res.status(503).json({
+                error: 'Base de données inaccessible',
+                message: 'Le serveur ne parvient pas à contacter la base de données. Vérifiez que Docker Desktop est lancé.',
+                code: 'DB_CONNECTION_ERROR'
+            });
+        }
+
         res.status(500).json({
             error: 'Server error during login',
             message: error.message,

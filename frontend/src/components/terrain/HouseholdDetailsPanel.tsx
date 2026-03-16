@@ -14,6 +14,10 @@ interface HouseholdDetailsPanelProps {
     isFavorite: (id: string) => boolean;
     toggleFavorite: (id: string) => void;
     onTraceItinerary: () => void;
+    onCancelItinerary: () => void;
+    routingEnabled: boolean;
+    followUser: boolean;
+    setFollowUser: (follow: boolean) => void;
     routeStats?: { distance: number; duration: number } | null;
     grappeInfo?: { id: string; name: string; count: number } | null;
 }
@@ -27,6 +31,10 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
     isFavorite,
     toggleFavorite,
     onTraceItinerary,
+    onCancelItinerary,
+    routingEnabled,
+    followUser,
+    setFollowUser,
     routeStats,
     grappeInfo
 }) => {
@@ -249,13 +257,49 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
 
             {/* Actions */}
             <div className="pt-6 flex flex-col gap-3">
-                <button
-                    onClick={onTraceItinerary}
-                    className="w-full bg-emerald-500 hover:bg-emerald-600 text-white py-4 rounded-2xl font-black text-sm transition-all shadow-lg shadow-emerald-500/20 active:scale-95 flex items-center justify-center gap-2"
-                >
-                    <Navigation size={16} />
-                    TRACER ITINÉRAIRE
-                </button>
+                {!routingEnabled ? (
+                    <button
+                        onClick={onTraceItinerary}
+                        className="w-full bg-emerald-500 hover:bg-emerald-600 text-white py-4 rounded-2xl font-black text-sm transition-all shadow-lg shadow-emerald-500/20 active:scale-95 flex items-center justify-center gap-2 uppercase tracking-tighter"
+                    >
+                        <Navigation size={16} />
+                        Tracer l'itinéraire
+                    </button>
+                ) : (
+                    <div className="grid grid-cols-2 gap-3">
+                        <button
+                            onClick={onCancelItinerary}
+                            className="bg-rose-500 hover:bg-rose-600 text-white py-4 rounded-2xl font-black text-[10px] transition-all shadow-lg shadow-rose-500/20 active:scale-95 flex items-center justify-center gap-2 uppercase tracking-tighter"
+                        >
+                            <X size={14} />
+                            Annuler
+                        </button>
+                        <button
+                            onClick={() => {
+                                const [lng, lat] = household.location!.coordinates;
+                                window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`, '_blank');
+                            }}
+                            className="bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-2xl font-black text-[10px] transition-all shadow-lg shadow-blue-600/20 active:scale-95 flex items-center justify-center gap-2 uppercase tracking-tighter"
+                        >
+                            <Navigation size={14} />
+                            Guidage GPS
+                        </button>
+                    </div>
+                )}
+
+                {routingEnabled && (
+                    <button
+                        onClick={() => setFollowUser(!followUser)}
+                        className={`w-full py-4 rounded-2xl font-black text-sm transition-all active:scale-95 flex items-center justify-center gap-2 uppercase tracking-tighter ${
+                            followUser 
+                                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' 
+                                : isDarkMode ? 'bg-white/5 text-slate-400 border border-white/10' : 'bg-slate-100 text-slate-600 border border-slate-200'
+                        }`}
+                    >
+                        <MapPin size={16} className={followUser ? 'animate-pulse' : ''} />
+                        {followUser ? 'Suivi actif' : 'Suivre ma position'}
+                    </button>
+                )}
             </div>
 
             {/* Modal de changement de status */}

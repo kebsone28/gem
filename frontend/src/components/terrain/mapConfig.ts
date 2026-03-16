@@ -23,8 +23,10 @@ export const getStatusColor = (status?: string): string => {
     return match ? match[1] : '#94a3b8';
 };
 
+const defaultStyle = import.meta.env.VITE_MAP_STYLE || 'https://tiles.openfreemap.org/styles/positron';
+
 export const MAP_STYLE_DARK = 'https://tiles.openfreemap.org/styles/dark';
-export const MAP_STYLE_LIGHT = 'https://tiles.openfreemap.org/styles/positron';
+export const MAP_STYLE_LIGHT = defaultStyle;
 export const MAP_STYLE_SATELLITE = 'https://tiles.openfreemap.org/styles/bright';
 
 export const ICON_SVGS = {
@@ -60,7 +62,7 @@ export const getIconForStatus = (status: string) => {
 
 export const createIconDataURI = (svgContent: string, color: string) => {
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24">
-        <circle cx="12" cy="12" r="11" fill="${color}" stroke="#fbbf24" stroke-width="2.5"/>
+        <circle cx="12" cy="12" r="11" fill="${color}" stroke="#ef4444" stroke-width="2.5"/>
         <g transform="translate(2,2) scale(0.83)">
             ${svgContent}
         </g>

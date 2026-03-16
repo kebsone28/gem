@@ -1,15 +1,7 @@
-/**
- * useMapInteractions.ts
- * 
- * Hook pour gérer les interactions avec la map
- * - Click sur points
- * - Hover sur zones
- * - Drag & drop ménages (mouse + touch)
- */
-
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef, useEffect } from 'react';
 import maplibregl from 'maplibre-gl';
 import toast from 'react-hot-toast';
+import { generatePopupHTML } from './mapUtils';
 
 export const useMapInteractions = (
     readOnly: boolean,
@@ -19,8 +11,41 @@ export const useMapInteractions = (
     onDropRef: React.MutableRefObject<(id: string, lat: number, lng: number) => void>
 ) => {
     const dragStateRef = useRef({ isDragging: false, draggedFeatureId: null as string | null });
+    const popupRef = useRef<maplibregl.Popup | null>(null);
+
+    // ✅ Clean up popup on unmount
+    useEffect(() => {
+        return () => {
+            if (popupRef.current) {
+                popupRef.current.remove();
+            }
+        };
+    }, []);
 
     const setupInteractions = useCallback((map: maplibregl.Map) => {
+        // ✅ Initialize shared native popup
+        if (!popupRef.current) {
+            popupRef.current = new maplibregl.Popup({
+                closeButton: false,
+                closeOnClick: true,
+                className: 'premium-map-popup',
+                maxWidth: '300px',
+                offset: 15
+            });
+        }
+
+        // ✅ Handle the 'Voir les détails' button click from inside the native HTML popup
+        const handleSelectEvent = (e: any) => {
+            const hId = e.detail;
+            const h = householdsRef.current?.find((item: any) => item.id === hId);
+            if (h) {
+                onSelectRef.current(h);
+                popupRef.current?.remove();
+            }
+        };
+        
+        window.addEventListener('map:select-household', handleSelectEvent);
+
         // Cursor pointer on hover
         const setupInteraction = (layerId: string) => {
             map.on('mouseenter', layerId, () => {
@@ -31,7 +56,7 @@ export const useMapInteractions = (
             map.on('mouseleave', layerId, () => map.getCanvas().style.cursor = '');
         };
 
-        ['unclustered-points', 'grappes-layer', 'sous-grappes-layer', 'grappes-labels', 'auto-grappes-fill'].forEach(setupInteraction);
+        ['households-server-layer', 'households-local-layer', 'grappes-layer', 'sous-grappes-layer', 'grappes-labels', 'auto-grappes-fill'].forEach(setupInteraction);
 
         // Auto-Grappes hover state
         let hoveredAutoGrappeId: string | number | null = null;
@@ -85,11 +110,13 @@ export const useMapInteractions = (
         };
 
         // Mouse drag
-        map.on('mousedown', 'unclustered-points', (e) => {
+        map.on('mousedown', 'households-local-layer', (e) => {
             if (readOnly) return;
             const feature = e.features?.[0];
             if (!feature) return;
 
+            // Wait a few ms to distinguish between click (for popup) and drag
+            // Simple threshold: if mouse stays down and moves, it's a drag
             e.preventDefault();
             map.dragPan.disable();
             dragStateRef.current = { isDragging: true, draggedFeatureId: feature.properties.id };
@@ -97,7 +124,7 @@ export const useMapInteractions = (
         });
 
         // Touch drag
-        map.on('touchstart', 'unclustered-points', (e) => {
+        map.on('touchstart', 'households-local-layer', (e) => {
             if (readOnly) return;
             const feature = e.features?.[0];
             if (!feature) return;
@@ -135,17 +162,22 @@ export const useMapInteractions = (
         });
 
         // Safety: mouseleave during drag
-        map.on('mouseleave', 'unclustered-points', () => {
+        map.on('mouseleave', 'households-local-layer', () => {
             if (dragStateRef.current.isDragging) endDrag(null);
         });
 
         // ── CLICK HANDLERS ──
-        map.on('click', 'unclustered-points', (e) => {
-            const feature = e.features?.[0];
-            if (feature) {
-                const h = householdsRef.current.find((item: any) => item.id === feature.properties.id);
-                if (h) onSelectRef.current(h);
-            }
+        ['households-server-layer', 'households-local-layer'].forEach(layerId => {
+            map.on('click', layerId, (e) => {
+                const feature = e.features?.[0];
+                if (feature && popupRef.current) {
+                    // ✅ Show high-performance native popup
+                    popupRef.current
+                        .setLngLat((feature.geometry as any).coordinates)
+                        .setHTML(generatePopupHTML(feature))
+                        .addTo(map);
+                }
+            });
         });
 
         map.on('click', 'grappes-layer', (e) => {
@@ -166,6 +198,10 @@ export const useMapInteractions = (
                 }
             }
         });
+
+        return () => {
+            window.removeEventListener('map:select-household', handleSelectEvent);
+        };
     }, [readOnly, householdsRef, onSelectRef, onZoneClickRef, onDropRef]);
 
     return { setupInteractions };

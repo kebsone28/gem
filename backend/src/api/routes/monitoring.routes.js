@@ -1,11 +1,11 @@
 import express from 'express';
 import { getActivityFeed, getPerformanceStats, getSystemHealth } from '../../modules/monitoring/monitoring.controller.js';
-import { authenticate } from '../../middleware/auth.js';
+import { authProtect } from '../../api/middlewares/auth.js';
 
 const router = express.Router();
 
 // Toutes les routes de monitoring sont protégées
-router.use(authenticate);
+router.use(authProtect);
 
 router.get('/activity', getActivityFeed);
 router.get('/performance', getPerformanceStats);

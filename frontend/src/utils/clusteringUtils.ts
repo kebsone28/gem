@@ -22,9 +22,10 @@ export interface ClusteredPoint {
  */
 export function initializeSupercluster(points: Feature<Point>[], options?: any) {
     const cluster = new Supercluster({
-        radius: 80,
-        maxZoom: 17,
+        radius: 70,      // ✅ Increased radius for better visual stability (Audit recommendation)
+        maxZoom: 16,     // ✅ Neighbourhood precision
         minZoom: 0,
+        minPoints: 3,    // ✅ Only cluster if 3+ points are grouped
         ...options
     });
 

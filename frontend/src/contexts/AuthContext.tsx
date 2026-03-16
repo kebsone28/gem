@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { User, UserRole } from '../utils/types';
 import logger from '../utils/logger';
 import * as safeStorage from '../utils/safeStorage';
@@ -27,6 +27,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         return null;
     });
+
+    // Listen for forced logout events dispatched by apiClient when token refresh fails.
+    // This breaks the stale-auth sync loop without needing AuthContext inside interceptors.
+    useEffect(() => {
+        const handleForceLogout = () => {
+            logger.warn('🔐 [AUTH] Force logout: token refresh failed, clearing session');
+            safeStorage.removeItem('access_token');
+            safeStorage.removeItem('user');
+            setUser(null);
+        };
+        window.addEventListener('auth:logout', handleForceLogout);
+        return () => window.removeEventListener('auth:logout', handleForceLogout);
+    }, []);
 
     const login = (email: string, role: string, name: string, organization?: string, id?: string, accessToken?: string) => {
         const newUser: User = {

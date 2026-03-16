@@ -20,10 +20,15 @@ export function useViewportLoading(options: UseViewportLoadingOptions = {}) {
 
     const [visibleHouseholds, setVisibleHouseholds] = useState<any[]>([]);
     const [isLoadingViewport, setIsLoadingViewport] = useState(false);
-    const [viewportBounds, setViewportBounds] = useState<BoundingBox | null>(null);
+    const viewportBoundsRef = useRef<BoundingBox | null>(null);
     const lastBboxRef = useRef<string | null>(null);
     const abortControllerRef = useRef<AbortController | null>(null);
     const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+    const onHouseholdsLoadedRef = useRef(onHouseholdsLoaded);
+    useEffect(() => {
+        onHouseholdsLoadedRef.current = onHouseholdsLoaded;
+    }, [onHouseholdsLoaded]);
 
     // Debounced viewport loader
     const loadPointsForViewport = useCallback(async (bounds: BoundingBox) => {
@@ -46,7 +51,7 @@ export function useViewportLoading(options: UseViewportLoadingOptions = {}) {
                 return;
             }
 
-            logger.log(`📍 Loading households for viewport: ${bboxString}`);
+            logger.debug(`📍 Loading households for viewport: ${bboxString}`);
 
             // Call API with bbox query
             const response = await apiClient.get(
@@ -58,11 +63,11 @@ export function useViewportLoading(options: UseViewportLoadingOptions = {}) {
             setVisibleHouseholds(households);
             lastBboxRef.current = bboxString;
 
-            if (onHouseholdsLoaded) {
-                onHouseholdsLoaded(households);
+            if (onHouseholdsLoadedRef.current) {
+                onHouseholdsLoadedRef.current(households);
             }
 
-            logger.log(`✅ Loaded ${households.length} households for viewport`);
+            logger.debug(`✅ Loaded ${households.length} households for viewport`);
         } catch (error: any) {
             if (error.name !== 'AbortError') {
                 logger.error('Failed to load viewport households:', error);
@@ -70,10 +75,10 @@ export function useViewportLoading(options: UseViewportLoadingOptions = {}) {
         } finally {
             setIsLoadingViewport(false);
         }
-    }, [enabled, projectId, onHouseholdsLoaded]);
+    }, [enabled, projectId]); // Removed onHouseholdsLoaded from dependencies
 
     const updateViewport = useCallback((bounds: BoundingBox) => {
-        setViewportBounds(bounds);
+        viewportBoundsRef.current = bounds;
         
         // Debounce the actual load
         if (debounceTimerRef.current) {
@@ -100,7 +105,7 @@ export function useViewportLoading(options: UseViewportLoadingOptions = {}) {
     return {
         visibleHouseholds,
         isLoadingViewport,
-        viewportBounds,
+        viewportBoundsRef,
         updateViewport
     };
 }

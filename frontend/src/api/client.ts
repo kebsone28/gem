@@ -47,8 +47,10 @@ apiClient.interceptors.response.use(
                 return apiClient(originalRequest);
             } catch (refreshError) {
                 safeStorage.removeItem('access_token');
+                // Notify AuthContext to clear the user state (breaks the stale-auth sync loop)
+                window.dispatchEvent(new CustomEvent('auth:logout'));
 
-                // CRITICAL: Avoid redirection loop if already at login
+                // Only redirect if not already on login to avoid redirect loops
                 if (!isAlreadyAtLogin) {
                     window.location.href = '/login';
                 }

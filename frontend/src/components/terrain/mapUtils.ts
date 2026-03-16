@@ -94,3 +94,32 @@ export const applyJitter = (coordinates: [number, number], index: number): [numb
         coordinates[1] + radius * Math.sin(angle)
     ];
 };
+/**
+ * Generate lightweight HTML for the shared native popup
+ */
+export const generatePopupHTML = (feature: any): string => {
+    const props = feature.properties;
+    const color = props.color || '#3b82f6';
+    const status = props.status || 'Inconnu';
+    
+    return `
+        <div class="p-3 min-w-[200px] font-sans">
+            <div class="flex items-center gap-2 mb-2">
+                <div class="w-3 h-3 rounded-full" style="background-color: ${color}"></div>
+                <span class="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">${status}</span>
+            </div>
+            <h3 class="text-sm font-bold text-slate-900 dark:text-white mb-1">
+                Ménage #${props.id?.slice(-6) || 'N/A'}
+            </h3>
+            <p class="text-[11px] text-slate-600 dark:text-slate-400 mb-3">
+                ID: <span class="font-mono">${props.id || 'N/A'}</span>
+            </p>
+            <button 
+                onclick="window.dispatchEvent(new CustomEvent('map:select-household', { detail: '${props.id}' }))"
+                class="w-full py-2 px-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg text-[11px] font-bold transition-transform active:scale-95 shadow-lg"
+            >
+                Voir les détails
+            </button>
+        </div>
+    `;
+};

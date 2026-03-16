@@ -12,14 +12,12 @@ export function useProject() {
     const projects = useLiveQuery(() => db.projects.toArray()) || [];
 
     const activeProject = useLiveQuery(async () => {
-        if (!activeProjectId && projects.length > 0) {
-            return projects[0];
-        }
         if (activeProjectId) {
             return await db.projects.get(activeProjectId);
         }
-        return null;
-    }, [activeProjectId, projects]);
+        // No active project ID saved: return first project
+        return (await db.projects.toArray())[0] ?? null;
+    }, [activeProjectId]); // ✅ Only primitive dep — no loop
 
     useEffect(() => {
         if (!activeProjectId && projects.length > 0) {
@@ -27,7 +25,7 @@ export function useProject() {
             setActiveProjectIdState(id);
             safeStorage.setItem('active_project_id', id);
         }
-    }, [projects, activeProjectId]);
+    }, [projects.length, activeProjectId]); // ✅ Use .length (number) not the array ref
 
     const setActiveProjectId = (id: string) => {
         setActiveProjectIdState(id);

@@ -82,6 +82,7 @@ import teamRoutes from './api/routes/team.routes.js';
 import simulationRoutes from './api/routes/simulation.routes.js';
 import monitoringRoutes from './api/routes/monitoring.routes.js';
 import geoRoutes from './api/routes/geo.routes.js';
+import koboRoutes from './modules/kobo/kobo.routes.js';
 
 app.use('/api/auth', authRoutes);
 app.use('/api/sync', syncRoutes);
@@ -93,6 +94,7 @@ app.use('/api/teams', teamRoutes);
 app.use('/api/simulation', simulationRoutes);
 app.use('/api/monitoring', monitoringRoutes);
 app.use('/api/geo', geoRoutes);
+app.use('/api/kobo', koboRoutes);
 
 app.get('/health', async (req, res) => {
     const health = {
@@ -129,13 +131,23 @@ app.get('/health', async (req, res) => {
     res.status(statusCode).json(health);
 });
 
-// 6. Global Error Handler (Coming soon)
+// 6. Global Error Handler
 app.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(500).json({
+    console.error('🔥 GLOBAL ERROR:', err.stack);
+    
+    // Specific handling for DB errors in the global handler
+    if (err.message?.includes("Can't reach database server")) {
+        return res.status(503).json({
+            error: 'Database Connection Error',
+            message: 'Le serveur ne parvient pas à contacter PostgreSQL. Vérifiez Docker Desktop.',
+            code: 'DB_CONNECTION_ERROR'
+        });
+    }
+
+    res.status(err.status || 500).json({
         error: 'Internal Server Error',
         message: err.message,
-        stack: err.stack
+        stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
     });
 });
 

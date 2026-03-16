@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useCallback, Suspense } from 'react';
+import React, { useState, useMemo, useCallback, Suspense, useRef } from 'react';
+import maplibregl from 'maplibre-gl';
 import * as safeStorage from '../utils/safeStorage';
 import logger from '../utils/logger';
 import toast from 'react-hot-toast';
@@ -67,6 +68,9 @@ type SearchResult = {
 };
 
 const Terrain: React.FC = () => {
+    const renderCountRef = useRef(0);
+    renderCountRef.current++;
+
     const {
         households,
         updateHouseholdStatus,
@@ -74,7 +78,8 @@ const Terrain: React.FC = () => {
     } = useTerrainData();
 
     const { project, projects, setActiveProjectId, createProject, deleteProject } = useProject();
-    const { sync, syncStatus, isSyncing } = useSync();
+    const { forceSync } = useSync();
+    const isSyncing = false; // Sync is now background-only
     const { grappesConfig } = useLogistique();
 
     const { user } = useAuth();
@@ -85,8 +90,18 @@ const Terrain: React.FC = () => {
     const [viewMode, setViewMode] = useState<'map' | 'list'>('map');
     const [showHeatmap, setShowHeatmap] = useState(false);
     const { isDarkMode } = useTheme();
-    const [mapCenter, setMapCenter] = useState<[number, number]>([-14.65, 14.45]); // ✅ Lng, Lat (Center Senegal)
-    const [mapZoom, setMapZoom] = useState(7);
+
+    // ✅ REFS for map position (Prevents re-renders during drag/zoom)
+    const mapCenterRef = useRef<[number, number]>([-14.65, 14.45]);
+    const mapZoomRef = useRef(7);
+
+    const setMapPosition = useCallback((center: [number, number], zoom: number) => {
+        mapCenterRef.current = center;
+        mapZoomRef.current = zoom;
+    }, []);
+
+    // ✅ COMMAND STATE for programmatic movements (Search results, list clicks)
+    const [mapCommand, setMapCommand] = useState<{ center: [number, number]; zoom: number; timestamp: number } | null>(null);
 
     const [selectedPhases, setSelectedPhases] = useState<string[]>([
         'Non débuté',
@@ -105,6 +120,7 @@ const Terrain: React.FC = () => {
     const [routingStart, setRoutingStart] = useState<[number, number] | null>(null);
     const [routingDest, setRoutingDest] = useState<[number, number] | null>(null);
     const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
+    const [followUser, setFollowUser] = useState(false);
     const [routeStats, setRouteStats] = useState<{ distance: number; duration: number } | null>(null);
     const [turnByTurnInstructions, setTurnByTurnInstructions] = useState<any[]>([]);
 
@@ -140,8 +156,7 @@ const Terrain: React.FC = () => {
                 (pos) => {
                     const loc: [number, number] = [pos.coords.longitude, pos.coords.latitude];
                     setUserLocation(loc);
-                    setMapCenter(loc);
-                    setMapZoom(14);
+                    setMapCommand({ center: loc, zoom: 14, timestamp: Date.now() });
                     logger.log('📍 Auto-location detected:', loc);
                 },
                 (err) => {
@@ -154,8 +169,7 @@ const Terrain: React.FC = () => {
 
     const handleRecenterOnUser = () => {
         if (userLocation) {
-            setMapCenter(userLocation);
-            setMapZoom(16);
+            setMapCommand({ center: userLocation, zoom: 16, timestamp: Date.now() });
         } else if (geolocationError) {
             // If permission denied, try to request again
             handleRequestGeolocation();
@@ -178,8 +192,7 @@ const Terrain: React.FC = () => {
             (pos) => {
                 const newLoc: [number, number] = [pos.coords.longitude, pos.coords.latitude];
                 setUserLocation(newLoc);
-                setMapCenter(newLoc);
-                setMapZoom(16);
+                setMapCommand({ center: newLoc, zoom: 16, timestamp: Date.now() });
 
                 setRequestingGeolocation(false);
                 toast.success('✅ Position trouvée ! ' + newLoc.map(v => v.toFixed(4)).join(', '));
@@ -283,12 +296,10 @@ const Terrain: React.FC = () => {
     //     };
     //     fetchLogs();
     // }, [selectedHousehold, getHouseholdLogs]);
-
     const handleManualSync = async () => {
         try {
-            // isSyncing will be updated by the context
-            await sync();
-            toast.success('✅ Synchronisation réussie');
+            await forceSync();
+            toast.success('✅ Synchronisation demandée');
         } catch (e) {
             logger.error(e);
             toast.error('❌ Erreur lors de la synchronisation');
@@ -530,20 +541,23 @@ const Terrain: React.FC = () => {
         if (result.type === 'household') {
             setSelectedHousehold(result.data);
             if (result.data.location?.coordinates) {
-                setMapCenter([result.data.location.coordinates[1], result.data.location.coordinates[0]]);
+                // ✅ Use [lng, lat] directly from GeoJSON
+                setMapCommand({ 
+                    center: [result.data.location.coordinates[0], result.data.location.coordinates[1]], 
+                    zoom: 18, 
+                    timestamp: Date.now() 
+                });
             }
-            setMapZoom(18);
         } else {
-            setMapCenter([result.lat, result.lon]);
-            setMapZoom(16);
+            // ✅ Nominatim returns [lat, lon], swap to [lng, lat] for MapLibre consistency
+            setMapCommand({ center: [result.lon, result.lat], zoom: 16, timestamp: Date.now() });
         }
         setSearchQuery('');
         setSearchResults([]);
     };
 
     const handleZoneClick = (center: [number, number], zoom: number) => {
-        setMapCenter(center);
-        setMapZoom(zoom);
+        setMapCommand({ center, zoom, timestamp: Date.now() });
     };
 
     const handleStatusUpdate = async (newStatus: string) => {
@@ -555,13 +569,13 @@ const Terrain: React.FC = () => {
 
     const handleRecenter = () => {
         // Center of Senegal: Longitude ~ -14.45, Latitude ~ 14.5
-        setMapCenter([-14.4563, 14.4563]); 
-        setMapZoom(7);
+        setMapCommand({ center: [-14.4563, 14.4563], zoom: 7, timestamp: Date.now() });
     };
 
     const handleTraceItinerary = () => {
         if (!selectedHousehold || !selectedHousehold.location?.coordinates) return;
-        const dest: [number, number] = [selectedHousehold.location.coordinates[1], selectedHousehold.location.coordinates[0]];
+        // ✅ Keep as [lng, lat] - consistent with map standard
+        const dest: [number, number] = [selectedHousehold.location.coordinates[0], selectedHousehold.location.coordinates[1]];
 
         setRoutingDest(dest);
         setRoutingEnabled(true);
@@ -571,7 +585,8 @@ const Terrain: React.FC = () => {
             setRoutingStart(userLocation);
         } else if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition((pos) => {
-                setRoutingStart([pos.coords.latitude, pos.coords.longitude]);
+                // ✅ Set as [lng, lat]
+                setRoutingStart([pos.coords.longitude, pos.coords.latitude]);
             }, () => {
                 toast.error("Géolocalisation impossible");
                 setRoutingStart(null);
@@ -579,9 +594,30 @@ const Terrain: React.FC = () => {
         }
     };
 
-    const handleRouteFound = (stats: { distance: number; duration: number; instructions?: any[] } | null) => {
+    const handleRouteFound = (stats: { distance: number; duration: number; instructions?: any[]; geometry?: any } | null) => {
         setRouteStats(stats ? { distance: stats.distance, duration: stats.duration } : null);
         setTurnByTurnInstructions(stats?.instructions || []);
+        
+        // ✅ Auto-fit bounds if we have geometry
+        if (stats?.geometry && stats.geometry.coordinates?.length > 0) {
+            const coords = stats.geometry.coordinates;
+            const bounds = coords.reduce(
+                (b: maplibregl.LngLatBounds, coord: [number, number]) => b.extend(coord),
+                new maplibregl.LngLatBounds(coords[0], coords[0])
+            );
+            
+            // Dispatch custom event to trigger fitBounds in MapLibreVectorMap
+            window.dispatchEvent(new CustomEvent('fit-bounds', { detail: [bounds.getSouthWest().toArray(), bounds.getNorthEast().toArray()] }));
+        }
+    };
+
+    const handleCancelItinerary = () => {
+        setRoutingEnabled(false);
+        setRoutingDest(null);
+        setRouteStats(null);
+        setTurnByTurnInstructions([]);
+        setFollowUser(false);
+        toast.success("Itinéraire annulé");
     };
 
     return (
@@ -598,7 +634,7 @@ const Terrain: React.FC = () => {
                             <div>
                                 <div className="flex items-center gap-2">
                                     <h1 className="text-lg font-black tracking-tight uppercase italic leading-none">Map Explorer</h1>
-                                    <StatusBadge status={syncStatus === 'success' ? 'success' : 'info'} label={syncStatus === 'success' ? 'Live' : 'Sync'} />
+                                    <StatusBadge status="success" label="Live" />
                                 </div>
                             </div>
                         </div>
@@ -697,8 +733,26 @@ const Terrain: React.FC = () => {
                             <div className="flex items-center gap-4">
                                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest shrink-0">Outils:</span>
                                 <div className="flex items-center gap-1.5">
-                                    <button onClick={() => setMapZoom(prev => Math.min(prev + 1, 20))} className="p-2 rounded-lg bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 text-slate-500 hover:text-blue-600 transition-all" title="Zoom +"><Plus size={14} /></button>
-                                    <button onClick={() => setMapZoom(prev => Math.max(prev - 1, 1))} className="p-2 rounded-lg bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 text-slate-500 hover:text-blue-600 transition-all" title="Zoom -"><Search size={14} className="scale-75 translate-y-0.5" /></button>
+                                    <button 
+                                        onClick={() => {
+                                            const currentZoom = mapZoomRef.current;
+                                            setMapCommand({ center: mapCenterRef.current, zoom: Math.min(currentZoom + 1, 20), timestamp: Date.now() });
+                                        }} 
+                                        className="p-2 rounded-lg bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 text-slate-500 hover:text-blue-600 transition-all" 
+                                        title="Zoom +"
+                                    >
+                                        <Plus size={14} />
+                                    </button>
+                                    <button 
+                                        onClick={() => {
+                                            const currentZoom = mapZoomRef.current;
+                                            setMapCommand({ center: mapCenterRef.current, zoom: Math.max(currentZoom - 1, 1), timestamp: Date.now() });
+                                        }} 
+                                        className="p-2 rounded-lg bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 text-slate-500 hover:text-blue-600 transition-all" 
+                                        title="Zoom -"
+                                    >
+                                        <Search size={14} className="scale-75 translate-y-0.5" />
+                                    </button>
                                     <div className="w-px h-4 bg-gray-100 dark:bg-white/5 mx-1" />
                                     <button
                                         onClick={() => setIsMeasuring(!isMeasuring)}
@@ -856,12 +910,7 @@ const Terrain: React.FC = () => {
                                         <MapComponent
                                             households={filteredHouseholds}
                                             onSelect={setSelectedHousehold}
-                                            center={mapCenter}
-                                            zoom={mapZoom}
-                                            onMove={(c, z) => {
-                                                setMapCenter(c);
-                                                setMapZoom(z);
-                                            }}
+                                            mapCommand={mapCommand}
                                             showHeatmap={showHeatmap}
                                             routingEnabled={routingEnabled}
                                             onRoutingClose={() => setRoutingEnabled(false)}
@@ -873,17 +922,18 @@ const Terrain: React.FC = () => {
                                             onToggleStatus={handleTogglePhase}
                                             onZoneClick={handleZoneClick}
                                             selectedPhases={selectedPhases}
-                                            userLocation={userLocation}
-                                            onHouseholdDrop={updateHouseholdLocation}
                                             grappesConfig={grappesConfig}
                                             readOnly={!peutModifierCarte}
                                             isMeasuring={isMeasuring}
-                                            showDatabaseStats={showDatabaseStats}
                                             mapStyle={mapStyle}
                                             grappeZonesData={grappeZonesData}
                                             grappeCentroidsData={grappeCentroidsData}
                                             activeGrappeId={activeGrappeId}
+                                            userLocation={userLocation}
+                                            followUser={followUser}
+                                            onHouseholdDrop={updateHouseholdLocation}
                                             onRouteFound={handleRouteFound}
+                                            onMove={setMapPosition}
                                             favorites={localFavorites}
                                             projectId={project?.id}
                                         />
@@ -1062,6 +1112,10 @@ const Terrain: React.FC = () => {
                                 isFavorite={isFavorite}
                                 toggleFavorite={toggleFavorite}
                                 onTraceItinerary={handleTraceItinerary}
+                                onCancelItinerary={handleCancelItinerary}
+                                routingEnabled={routingEnabled}
+                                followUser={followUser}
+                                setFollowUser={setFollowUser}
                                 routeStats={routeStats || null}
                                 grappeInfo={selectedHousehold.grappeId ? {
                                     id: selectedHousehold.grappeId,
@@ -1147,4 +1201,4 @@ const Terrain: React.FC = () => {
     );
 };
 
-export default Terrain;
+export default React.memo(Terrain);

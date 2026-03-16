@@ -1,10 +1,10 @@
 import { useState, useMemo, useCallback } from 'react';
-import * as safeStorage from '../utils/safeStorage';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../store/db';
 import type { Household } from '../utils/types';
 import { useProject } from './useProject';
 import logger from '../utils/logger';
+import apiClient from '../api/client';
 
 // 🔧 Fonction pour normaliser les coordonnées GPS (convertir virgules en points)
 const normalizeCoordinates = (household: any): Household => {
@@ -183,17 +183,8 @@ export function useTerrainData() {
 
         // Trigger an API call to update the backend PostGIS layer
         try {
-            const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:5005').replace(/\/api$/, '');
-            const token = safeStorage.getItem('access_token');
-            await fetch(`${apiUrl}/api/households/${id}`, {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({
-                    location: { type: 'Point', coordinates: [lng, lat] }
-                })
+            await apiClient.patch(`households/${id}`, {
+                location: { type: 'Point', coordinates: [lng, lat] }
             });
         } catch (e) {
             logger.error('Failed to sync location to backend', e);

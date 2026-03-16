@@ -17,7 +17,15 @@ export const useMapVisibility = (
     const setupVisibility = (map: maplibregl.Map) => {
         if (!map || !styleIsReady) return;
 
-        // Heatmap visibility
+        // Household and Heatmap visibility
+        const householdVisibility = showHeatmap ? 'none' : 'visible';
+        
+        ['households-server-layer', 'households-local-layer'].forEach(layerId => {
+            if (map.getLayer(layerId)) {
+                map.setLayoutProperty(layerId, 'visibility', householdVisibility);
+            }
+        });
+
         if (map.getLayer('heatmap')) {
             map.setLayoutProperty('heatmap', 'visibility', showHeatmap ? 'visible' : 'none');
         }

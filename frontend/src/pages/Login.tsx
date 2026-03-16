@@ -1,4 +1,4 @@
-import { useState, useEffect, type FormEvent } from 'react';
+import { useState, useEffect, useRef, type FormEvent } from 'react';
 import logger from '../utils/logger';
 import { useNavigate } from 'react-router-dom';
 import { LogIn, User, Lock, ShieldCheck, Eye, EyeOff } from 'lucide-react';
@@ -31,8 +31,11 @@ export default function Login() {
     const [recoveryInfo, setRecoveryInfo] = useState('');
 
     // Track renders in development
+    const renderCount = useRef(0);
     useEffect(() => {
+        renderCount.current++;
         trackRender('Login');
+        console.log(`📊 [DIAGNOSTIC] Login render #${renderCount.current}`);
     });
 
     const handleCredentials = async (e: FormEvent) => {
@@ -74,8 +77,12 @@ export default function Login() {
             navigate('/dashboard');
         } catch (err: any) {
             logger.error('Login error:', err);
-            // Supprimé: handleCreateProject n'est plus utilisé ici (géré par DataHubModal ou Admin)
-            setError(err.response?.data?.error || 'Identifiant ou mot de passe incorrect.');
+            
+            if (err.response?.status === 503 || err.message?.includes('Network Error')) {
+                setError('⚠️ Base de données inaccessible. Veuillez vérifier que le serveur backend et la base de données sont lancés.');
+            } else {
+                setError(err.response?.data?.error || 'Identifiant ou mot de passe incorrect.');
+            }
         } finally {
             setLoading(false);
         }

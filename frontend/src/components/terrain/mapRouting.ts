@@ -36,8 +36,9 @@ export interface RouteCoordinates {
 export const fetchOSRMRoute = async (
     coords: RouteCoordinates
 ): Promise<RouteResult | null> => {
-    const startStr = `${coords.start[1]},${coords.start[0]}`;
-    const destStr = `${coords.destination[1]},${coords.destination[0]}`;
+    // OSRM expects {lon},{lat}
+    const startStr = `${coords.start[0]},${coords.start[1]}`; 
+    const destStr = `${coords.destination[0]},${coords.destination[1]}`;
 
     try {
         // Use env var for OSRM URL (fixes hardcoding issue for production)

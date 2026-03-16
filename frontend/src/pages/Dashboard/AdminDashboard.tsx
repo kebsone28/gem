@@ -41,9 +41,18 @@ export default function AdminDashboard() {
     const [activities, setActivities] = useState<any[]>([]);
     const [perfData, setPerfData] = useState<any>(null);
 
-    const households = useLiveQuery(() => db.households.toArray()) || [];
-    const zones = useLiveQuery(() => db.zones.toArray()) || [];
-    const missions = useLiveQuery(() => db.missions.where('projectId').equals(project?.id || '').toArray(), [project?.id]) || [];
+    // Use primitive string to avoid object identity issues in deps
+    const projId = project?.id || '';
+
+    const households = useLiveQuery(
+        async () => projId ? db.households.where('projectId').equals(projId).toArray() : [],
+        [projId]
+    ) || [];
+    const zones = useLiveQuery(async () => db.zones.toArray(), []) || [];
+    const missions = useLiveQuery(
+        async () => projId ? db.missions.where('projectId').equals(projId).toArray() : [],
+        [projId]
+    ) || [];
 
     const localTotal = households.length;
     const localDone = households.filter(h => h.status === 'Terminé' || h.status === 'Réception: Validée').length;

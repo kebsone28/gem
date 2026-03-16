@@ -11,8 +11,13 @@ function error(...args: any[]) {
     if (!isProd) console.error(...args);
 }
 
+function debug(...args: any[]) {
+    if (!isProd) console.debug(...args);
+}
+
 export default {
     log,
     warn,
     error,
+    debug,
 };
