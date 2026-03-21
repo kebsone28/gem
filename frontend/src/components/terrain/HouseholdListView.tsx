@@ -51,7 +51,9 @@ export const HouseholdListView: React.FC<HouseholdListViewProps> = ({
                                         </div>
                                         <div className="flex flex-col">
                                             <span className={`font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{h.id}</span>
-                                            <span className={`text-[10px] ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>{h.owner || '—'}</span>
+                                            <span className={`text-[10px] ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
+                                                {typeof h.owner === 'object' && h.owner !== null ? ((h.owner as any).nom || '—') : (h.owner || '—')}
+                                            </span>
                                         </div>
                                     </div>
                                 </td>

@@ -112,12 +112,13 @@ export const useMapFilters = (households: Household[] = [], mapBounds: [number, 
         const qLower = query.toLowerCase();
         
         households.forEach((h: Household) => {
-            const owner = h.owner || '';
-            if (h.id.toLowerCase().includes(qLower) || owner.toLowerCase().includes(qLower)) {
+            const ownerObj = h.owner;
+            const ownerStr = String(typeof ownerObj === 'object' && ownerObj !== null ? ((ownerObj as any).nom || '') : (ownerObj || ''));
+            if (h.id.toLowerCase().includes(qLower) || ownerStr.toLowerCase().includes(qLower)) {
                 results.push({
                     type: 'household',
                     id: h.id,
-                    label: h.id + (owner ? ` — ${owner}` : ''),
+                    label: h.id + (ownerStr ? ` — ${ownerStr}` : ''),
                     data: h
                 });
             }
