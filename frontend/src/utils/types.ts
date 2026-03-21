@@ -71,21 +71,55 @@ export interface Household {
     }
 }
 
-export interface SubTeam {
-    id: string;
-    name: string;
-    leader: string;
-    phone?: string;
-}
+export type TeamRole = 'PREPARATION' | 'INSTALLATION' | 'SUPERVISION' | 'LOGISTICS';
+export type SyncStatus = 'PENDING' | 'SYNCED' | 'CONFLICT';
 
 export interface Team {
     id: string;
     name: string;
-    type: TradeKey;
+    projectId: string;
+    organizationId: string;
+    
+    // Hierarchy
+    parentTeamId?: string;
+    children?: Team[];
+    path?: string;
+    level: number;
+    
+    // Business
+    role: TeamRole;
+    tradeKey?: string;
     capacity: number;
-    leader?: string;
-    phone?: string;
-    subTeams?: SubTeam[];
+    
+    // Logistics
+    regionId?: string;
+    region?: { id: string; name: string };
+    grappeId?: string;
+    grappe?: { id: string; name: string };
+    zoneId?: string;
+    warehouseId?: string;
+    
+    // Personnel
+    leaderId?: string;
+    leader?: { id: string; name: string };
+    
+    // State & Sync
+    status: 'active' | 'inactive';
+    offlineId?: string;
+    syncStatus?: SyncStatus;
+    
+    updatedAt?: string;
+    deletedAt?: string;
+}
+
+// Legacy SubTeam is now just a Team with a parentTeamId
+export interface SubTeam extends Team {}
+
+export interface Grappe {
+    id: string;
+    name: string;
+    regionId: string;
+    region?: { name: string };
 }
 
 export interface SubGrappe {
@@ -123,15 +157,45 @@ export interface SubTeamEquipment {
     acquisitionType: 'achat' | 'location';
 }
 
+export interface PreparatorLoading {
+    date: string;        // ISO date YYYY-MM-DD
+    kitsLoaded: number;
+}
+
+export interface PreparatorTeam {
+    teamId: string;
+    teamName: string;
+    loadings: PreparatorLoading[];
+}
+
+export interface Warehouse {
+    id: string;
+    name: string;
+    region: string;
+    regionId?: string;
+    latitude?: number;
+    longitude?: number;
+    address?: string;
+    preparatorTeams: PreparatorTeam[];
+    stockOverrides: Record<string, number>;
+    deletedAt?: string;
+}
+
 export interface ProjectConfig {
     teams?: Team[];
     grappesConfig?: any;
     kitComposition?: any[];
+    warehouses?: Warehouse[];    // NEW: per-region warehouses
     logisticsEquipment?: Partial<Record<TradeKey, LogisticsEquipment>>;
     stock_overrides?: Record<string, number>;
     assignments?: Record<string, Record<string, string[]>>; // sgId -> tradeKey -> teamIds
     clientProvidesMaterials?: boolean; // Legacy/Labor toggle
     includeSupply?: boolean; // NEW: Toggle to include material procurement costs
+    logistique?: {
+        history: any[];
+        geofencingRadius?: number;
+        variantPricing?: Record<string, number>;
+    };
 
     // Legacy / transitional
     logistics_workshop?: {
@@ -161,6 +225,7 @@ export interface Project {
     status: string;
     version: number;
     duration?: number;
+    totalHouses?: number;
     config: ProjectConfig;
 }
 

@@ -1,4 +1,4 @@
-﻿# Node modules
+# Node modules
 node_modules/
 backend/prisma/client/
 backend/tmp_prisma/
@@ -47,10 +47,17 @@ backend/osrm_data/
 *.mvt
 
 # Temporary scripts
-backend/check_db.js
-backend/check_db_raw.js
-backend/check_org.js
-backend/test_mvt_fix.js
+backend/check_*.js
+backend/test_*.js
+backend/migrate_*.js
+backend/seed_*.js
+backend/clear_cache.js
+backend/discover_columns.js
+backend/find_grappe_keys.js
+backend/reset_pass.js
+backend/update_project_id.js
+backend/verification_sync_automation.js
+backend/scripts/*.js
 
 # Archiving legacy
 archive/

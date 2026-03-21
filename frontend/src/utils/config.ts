@@ -1,3 +1,16 @@
+export const SENEGAL_REGIONS = [
+    'Dakar', 'Diourbel', 'Fatick', 'Kaffrine', 'Kaolack', 'Kédougou', 'Kolda',
+    'Louga', 'Matam', 'Saint-Louis', 'Sédhiou', 'Tambacounda', 'Thiès', 'Ziguinchor'
+];
+
+export const DEFAULT_GEOFENCING_RADIUS = 500; // meters
+
+export const KIT_VARIANTS = [
+    { id: 'standard', label: 'Kit Standard (Réseau)', color: 'blue' },
+    { id: 'solar_lite', label: 'Kit Solaire Lite', color: 'amber' },
+    { id: 'solar_premium', label: 'Kit Solaire Premium', color: 'indigo' },
+];
+
 export const KIT_COMPOSITION = [
     { id: 'coffret_compteur', category: 'Réseau Branchement', label: 'Coffret compteur', qty: 1, unit: 'u' },
     { id: 'potelet_galva', category: 'Réseau Branchement', label: 'Potelet Galva 4m (40×40 creux)', qty: 1, unit: 'u' },

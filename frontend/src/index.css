@@ -701,3 +701,18 @@ body {
   background: rgba(30, 144, 255, 0.25);
   border-radius: 999px;
 }
+/* 
+   ERP ELITE - DYNAMIC WIDTHS
+─ */
+:root {
+  --p: 0%;
+  --width: 0%;
+}
+
+.h-full.bg-blue-500.rounded-full {
+  width: var(--width);
+}
+
+.h-full.bg-gradient-to-r.from-indigo-600.to-blue-500 {
+  width: var(--p);
+} 

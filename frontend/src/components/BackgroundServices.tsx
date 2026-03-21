@@ -8,8 +8,12 @@ export default function BackgroundServices() {
     useEffect(() => {
         // 1. Sync when pending count changes
         if (pendingCount > 0) {
-            logger.log(`📈 [SYNC SERVICE] Pending items detected: ${pendingCount}. Triggering sync...`);
-            syncData();
+            // Debounce the sync to avoid rapid re-triggering
+            const timer = setTimeout(() => {
+                logger.log(`📈 [SYNC SERVICE] Pending items (${pendingCount}). Syncing...`);
+                syncData();
+            }, 500);
+            return () => clearTimeout(timer);
         }
     }, [pendingCount, syncData]);
 

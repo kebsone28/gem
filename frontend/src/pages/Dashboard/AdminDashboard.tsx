@@ -31,6 +31,7 @@ import {
     ActivityFeed,
     AlertPanel
 } from '../../components/dashboards/DashboardComponents';
+import { TeamPerformance } from '../../components/dashboards/TeamPerformance';
 
 export default function AdminDashboard() {
     const [metrics, setMetrics] = useState<any>(null);
@@ -198,6 +199,12 @@ export default function AdminDashboard() {
                     </div>
                 </div>
             </div>
+
+            {/* ── LEVEL 1.5: TEAM PERFORMANCE ── */}
+            <TeamPerformance 
+                teamStats={displayStats.breakdown.byTeam} 
+                productionRates={project?.config?.productionRates}
+            />
 
             {/* ── LEVEL 2: STRATEGIC KPIs ── */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">

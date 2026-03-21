@@ -72,8 +72,8 @@ export default function GrappesTab() {
             {/* Summary Header */}
             <div className="flex flex-wrap items-center justify-between gap-6">
                 <div>
-                    <h3 className="text-2xl font-bold text-white">Affectations par Zones</h3>
-                    <p className="text-slate-500 font-medium mt-1">Gérez le déploiement des équipes sur les sous-grappes.</p>
+                    <h3 className="text-2xl font-bold text-white">Planning de Déploiement Terrain</h3>
+                    <p className="text-slate-500 font-medium mt-1">Gérez le déploiement opérationnel des équipes sur les sous-grappes.</p>
                 </div>
                 <div className="flex items-center space-x-4">
                     <button
@@ -148,7 +148,7 @@ export default function GrappesTab() {
                                 </div>
 
                                 <div className="grid grid-cols-4 gap-2 pt-2">
-                                    {Array.from(new Set(teams.map((t: Team) => t.type))).map((key: any) => {
+                                    {Array.from(new Set(teams.map((t: Team) => t.tradeKey))).map((key: any) => {
                                         const Icon = getTradeIcon(key);
                                         const assignedTeams = (assignments as any)[key] || [];
                                         const isAssigned = assignedTeams.length > 0;
@@ -189,7 +189,7 @@ export default function GrappesTab() {
                     </div>
 
                     <div className="flex-1 grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4 items-start">
-                        {Array.from(new Set(teams.map((t: Team) => t.type))).map((key: any) => {
+                        {Array.from(new Set(teams.map((t: Team) => t.tradeKey))).map((key: any) => {
                             const tradeLabel = getTradeLabel(key);
                             const currentBulk = bulkAssignments[key] || [];
 
@@ -211,9 +211,9 @@ export default function GrappesTab() {
                                         >
                                             <option value="" disabled>+ {tradeLabel}</option>
                                             <option value="UNASSIGN">Désassigner tout</option>
-                                            {teams?.filter((t: Team) => t.type === key).map((t: Team) => (
+                                            {teams?.filter((t: Team) => t.tradeKey === key).map((t: Team) => (
                                                 <optgroup key={t.id} label={t.name}>
-                                                    {(t.subTeams || []).map(st => (
+                                                    {(t.children || []).map(st => (
                                                         <option key={st.id} value={st.id}>{st.name} {st.leader ? `(${st.leader})` : ''}</option>
                                                     ))}
                                                 </optgroup>
@@ -234,7 +234,7 @@ export default function GrappesTab() {
                                                         </div>
                                                     );
                                                 }
-                                                const stName = teams?.flatMap(t => t.subTeams || []).find(st => st.id === val)?.name || val;
+                                                const stName = teams?.flatMap(t => t.children || []).find(st => st.id === val)?.name || val;
                                                 return (
                                                     <div key={val} className="flex items-center gap-1 text-[10px] bg-indigo-500/20 text-indigo-300 font-bold px-2 py-1 rounded">
                                                         <span className="truncate max-w-[100px]">{stName}</span>
@@ -280,7 +280,7 @@ export default function GrappesTab() {
                         </div>
 
                         <div className="space-y-6 max-h-[55vh] overflow-y-auto pr-2">
-                            {Array.from(new Set(teams.map((t: Team) => t.type))).map((key: any) => {
+                            {Array.from(new Set(teams.map((t: Team) => t.tradeKey))).map((key: any) => {
                                 const tradeLabel = getTradeLabel(key);
                                 const Icon = getTradeIcon(key);
                                 const currentAssignments = project?.config?.assignments?.[selectedSubGrappe.id]?.[key] || [];
@@ -299,7 +299,7 @@ export default function GrappesTab() {
                                         {currentAssignments.length > 0 && (
                                             <div className="flex flex-wrap gap-2 mb-4">
                                                 {currentAssignments.map((assignedId: string) => {
-                                                    const foundSubTeam = teams?.flatMap((t: Team) => t.subTeams || []).find(st => st.id === assignedId);
+                                                    const foundSubTeam = teams?.flatMap((t: Team) => t.children || []).find(st => st.id === assignedId);
                                                     return (
                                                         <div key={assignedId} className="flex items-center gap-2 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-3 py-1.5 rounded-lg text-xs font-bold">
                                                             <span>{foundSubTeam ? foundSubTeam.name : assignedId}</span>
@@ -327,9 +327,9 @@ export default function GrappesTab() {
                                                 }}
                                             >
                                                 <option value="" disabled>+ Ajouter une équipe...</option>
-                                                {teams?.filter((t: Team) => t.type === key).map((t: Team) => (
+                                                {teams?.filter((t: Team) => t.tradeKey === key).map((t: Team) => (
                                                     <optgroup key={t.id} label={t.name}>
-                                                        {(t.subTeams || []).map(st => (
+                                                        {(t.children || []).map(st => (
                                                             <option key={st.id} value={st.id}>{st.name} {st.leader ? `(${st.leader})` : ''}</option>
                                                         ))}
                                                     </optgroup>

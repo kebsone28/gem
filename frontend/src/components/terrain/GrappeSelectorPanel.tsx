@@ -16,6 +16,7 @@ interface Props {
     clusters: ClusterPanelData[];
     activeGrappeId: string | null;
     onSelectGrappe: (id: string | null, bbox?: [[number, number], [number, number]]) => void;
+    isLoading?: boolean;
 }
 
 // Couleurs utilisées de manière déterministe par MapLibre et le Panel
@@ -24,7 +25,7 @@ const COLORS = [
     '#ec4899', '#06b6d4', '#14b8a6', '#f43f5e', '#6366f1'
 ];
 
-export function GrappeSelectorPanel({ isDarkMode = true, onClose, clusters, activeGrappeId, onSelectGrappe }: Props) {
+export function GrappeSelectorPanel({ isDarkMode = true, onClose, clusters, activeGrappeId, onSelectGrappe, isLoading = false }: Props) {
     const [search, setSearch] = useState('');
 
     const bg = isDarkMode ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-200';
@@ -52,8 +53,13 @@ export function GrappeSelectorPanel({ isDarkMode = true, onClose, clusters, acti
                         <Layers size={18} className="text-indigo-500" />
                     </div>
                     <div>
-                        <h3 className={`font-bold ${text}`}>Régionalisation</h3>
-                        <p className={`text-xs ${subText}`}>{clusters.length} grappes générées</p>
+                        <h3 className={`font-bold flex items-center gap-2 ${text}`}>
+                            Régionalisation
+                            {isLoading && <div className="w-3 h-3 rounded-full border-2 border-indigo-500/30 border-t-indigo-500 animate-spin" />}
+                        </h3>
+                        <p className={`text-xs ${subText}`}>
+                            {isLoading ? 'Analyse spatiale en cours...' : `${clusters.length} grappes générées`}
+                        </p>
                     </div>
                 </div>
                 <button onClick={onClose} className={`p-1.5 rounded-lg hover:bg-slate-500/10 ${subText}`} title="Fermer le panneau">
@@ -93,8 +99,23 @@ export function GrappeSelectorPanel({ isDarkMode = true, onClose, clusters, acti
                     {activeGrappeId === null && <CheckCircle2 size={16} className="text-indigo-500" />}
                 </button>
 
+                {/* Loading Skeletons */}
+                {isLoading && clusters.length === 0 && (
+                    <div className="space-y-2 mt-4">
+                        {[1, 2, 3, 4, 5].map((i) => (
+                            <div key={i} className={`w-full flex items-center gap-3 p-3 rounded-xl border animate-pulse ${isDarkMode ? 'border-slate-800 bg-slate-800/20' : 'border-slate-100 bg-slate-50'}`}>
+                                <div className={`w-4 h-8 rounded-md flex-shrink-0 ${isDarkMode ? 'bg-slate-700' : 'bg-slate-200'}`} />
+                                <div className="flex-1 space-y-2">
+                                    <div className={`h-3 rounded w-1/2 ${isDarkMode ? 'bg-slate-700' : 'bg-slate-200'}`} />
+                                    <div className={`h-2 rounded w-1/4 ${isDarkMode ? 'bg-slate-700' : 'bg-slate-200'}`} />
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
                 {/* Individual Clusters */}
-                {renderClusters.map((c) => {
+                {!isLoading && renderClusters.map((c) => {
                     const isActive = activeGrappeId === c.id;
                     const color = COLORS[parseInt(c.id.replace(/\D/g, '')) % COLORS.length] || COLORS[0];
 

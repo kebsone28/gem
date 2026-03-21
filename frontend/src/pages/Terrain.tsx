@@ -3,32 +3,18 @@ import maplibregl from 'maplibre-gl';
 import * as safeStorage from '../utils/safeStorage';
 import logger from '../utils/logger';
 import toast from 'react-hot-toast';
-import debounce from 'lodash.debounce';
+
 import {
     MapPin,
-    Navigation,
-    Focus,
-    Maximize,
     LayoutList,
-    LayoutGrid,
-    FileDown,
-    Truck,
-    Undo2,
     Search,
     RefreshCw,
     Plus,
-    Globe,
-    Users,
-    Layers,
-    PenLine,
-    Wifi,
-    CloudDownload,
-    Loader2
+    Wifi
 } from 'lucide-react';
 import { useTerrainData } from '../hooks/useTerrainData';
 import { useAuth } from '../contexts/AuthContext';
 const MapComponent = React.lazy(() => import('../components/terrain/MapComponent'));
-import { getHouseholdDerivedStatus, getStatusTailwindClasses } from '../utils/statusUtils';
 import type { Household } from '../utils/types';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '../context/ThemeContext';
@@ -48,24 +34,15 @@ import { GrappeSelectorPanel } from '../components/terrain/GrappeSelectorPanel';
 import { MapRegionDownload } from '../components/terrain/MapRegionDownload';
 import { HouseholdDetailsPanel } from '../components/terrain/HouseholdDetailsPanel';
 import { useFavorites } from '../hooks/useFavorites';
+import { MapToolbar } from '../components/terrain/MapToolbar';
 
 import {
     StatusBadge,
     ActionBar
 } from '../components/dashboards/DashboardComponents';
-
-type SearchResult = {
-    type: 'household';
-    id: string;
-    label: string;
-    data: Household;
-} | {
-    type: 'geo';
-    id: string;
-    label: string;
-    lat: number;
-    lon: number;
-};
+import { useGeolocation } from '../hooks/useGeolocation';
+import { useMapFilters, hasValidCoordinates, type SearchResult } from '../hooks/useMapFilters';
+import { HouseholdListView } from '../components/terrain/HouseholdListView';
 
 const Terrain: React.FC = () => {
     const renderCountRef = useRef(0);
@@ -80,7 +57,7 @@ const Terrain: React.FC = () => {
     const { project, projects, setActiveProjectId, createProject, deleteProject } = useProject();
     const { forceSync } = useSync();
     const isSyncing = false; // Sync is now background-only
-    const { grappesConfig } = useLogistique();
+    const { grappesConfig, warehouseStats } = useLogistique();
 
     const { user } = useAuth();
     const { peut, PERMISSIONS } = usePermissions();
@@ -91,39 +68,43 @@ const Terrain: React.FC = () => {
     const [showHeatmap, setShowHeatmap] = useState(false);
     const { isDarkMode } = useTheme();
 
+    const [mapBounds, setMapBounds] = useState<[number, number, number, number] | null>(null);
+
     // ✅ REFS for map position (Prevents re-renders during drag/zoom)
     const mapCenterRef = useRef<[number, number]>([-14.65, 14.45]);
     const mapZoomRef = useRef(7);
 
-
     // ✅ COMMAND STATE for programmatic movements (Search results, list clicks)
     const [mapCommand, setMapCommand] = useState<{ center: [number, number]; zoom: number; timestamp: number } | null>(null);
 
-    const ALL_STATUSES = [
-        'Contrôle conforme',
-        'Non conforme',
-        'Intérieur terminé',
-        'Réseau terminé',
-        'Murs terminés',
-        'Livraison effectuée',
-        'Non encore commencé',
-        'En attente',
-        'Non débuté'
-    ];
+    const {
+        selectedPhases,
+        handleTogglePhase,
+        selectedTeam,
+        setSelectedTeam,
+        searchQuery,
+        setSearchQuery,
+        searchResults,
+        setSearchResults,
+        isSearching,
+        debouncedSearch,
+        filteredHouseholds,
+        visibleHouseholds
+    } = useMapFilters(households, mapBounds);
 
-    const [selectedPhases, setSelectedPhases] = useState<string[]>(ALL_STATUSES);
-    const [mapBounds, setMapBounds] = useState<[number, number, number, number] | null>(null);
-    const [searchQuery, setSearchQuery] = useState('');
-    const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
-    const [isSearching, setIsSearching] = useState(false);
+    const {
+        userLocation,
+        geolocationError,
+        handleRequestGeolocation
+    } = useGeolocation((loc) => {
+        setMapCommand({ center: loc, zoom: 16, timestamp: Date.now() });
+    });
     const [routingEnabled, setRoutingEnabled] = useState(false);
     const [showZones, setShowZones] = useState(false);
+    const [showWarehouses] = useState(true);
     const [isDataHubOpen, setIsDataHubOpen] = useState(false);
-    const [selectedTeamFilters] = useState<string[]>(['livraison', 'maconnerie', 'reseau', 'installation', 'controle']);
-
     const [routingStart, setRoutingStart] = useState<[number, number] | null>(null);
     const [routingDest, setRoutingDest] = useState<[number, number] | null>(null);
-    const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
     const [followUser, setFollowUser] = useState(false);
     const [routeStats, setRouteStats] = useState<{ distance: number; duration: number } | null>(null);
     const [turnByTurnInstructions, setTurnByTurnInstructions] = useState<any[]>([]);
@@ -131,45 +112,27 @@ const Terrain: React.FC = () => {
     const [isMeasuring, setIsMeasuring] = useState(false);
     const [showDatabaseStats, setShowDatabaseStats] = useState(false);
     const [mapStyle, setMapStyle] = useState<'streets' | 'satellite'>('streets');
+    const [isSelecting, setIsSelecting] = useState(false);
     const [showRoutingPanel, setShowRoutingPanel] = useState(false);
+    const [showDrawPanel, setShowDrawPanel] = useState(false);
+    const [showLayersPanel, setShowLayersPanel] = useState(false);
+    const [showTrackingPanel, setShowTrackingPanel] = useState(false);
+    const [showGrappePanel, setShowGrappePanel] = useState(false);
     const [lightboxPhotos, setLightboxPhotos] = useState<{ url: string; label: string }[]>([]);
     const [lightboxIndex, setLightboxIndex] = useState(0);
+
     // Drawing zones & layers
     const { zones: drawnZones, addZone, deleteZone } = useDrawnZones();
     const [isDrawing, setIsDrawing] = useState(false);
 
     const [isDownloadingOffline, setIsDownloadingOffline] = useState(false);
-
     const [showRegionDownload, setShowRegionDownload] = useState(false);
     const [downloadedRegions, setDownloadedRegions] = useState<string[]>(JSON.parse(safeStorage.getItem('downloaded_regions') || '[]'));
-    const [geolocationError, setGeolocationError] = useState<string | null>(null);
-    const [requestingGeolocation, setRequestingGeolocation] = useState(false);
+    // const [requestingGeolocation, setRequestingGeolocation] = useState(false);
 
     // Initial geolocation check (not request)
-    React.useEffect(() => {
-        if (!navigator.geolocation) {
-            setGeolocationError('Géolocalisation non disponible sur ce navigateur');
-            logger.warn('Geolocation not available');
-        }
-    }, []);
 
-    // ✅ Automatic geolocation on mount
-    React.useEffect(() => {
-        if (navigator.geolocation && !userLocation) {
-            navigator.geolocation.getCurrentPosition(
-                (pos) => {
-                    const loc: [number, number] = [pos.coords.longitude, pos.coords.latitude];
-                    setUserLocation(loc);
-                    setMapCommand({ center: loc, zoom: 14, timestamp: Date.now() });
-                    logger.log('📍 Auto-location detected:', loc);
-                },
-                (err) => {
-                    logger.warn('⚠️ Auto-location failed:', err);
-                },
-                { enableHighAccuracy: false, timeout: 5000 }
-            );
-        }
-    }, []);
+// ✅ Automatic geolocation now handled by useGeolocation
 
     const handleRecenterOnUser = () => {
         if (userLocation) {
@@ -182,64 +145,19 @@ const Terrain: React.FC = () => {
         }
     };
 
-    const handleRequestGeolocation = () => {
-        if (!navigator.geolocation) {
-            toast.error('Géolocalisation non disponible sur ce navigateur');
-            return;
-        }
-        
-        setRequestingGeolocation(true);
-        setGeolocationError(null);
-        
-        // Request geolocation once - this should trigger the permission prompt again
-        navigator.geolocation.getCurrentPosition(
-            (pos) => {
-                const newLoc: [number, number] = [pos.coords.longitude, pos.coords.latitude];
-                setUserLocation(newLoc);
-                setMapCommand({ center: newLoc, zoom: 16, timestamp: Date.now() });
-
-                setRequestingGeolocation(false);
-                toast.success('✅ Position trouvée ! ' + newLoc.map(v => v.toFixed(4)).join(', '));
-                logger.log('✅ Position obtenue:', newLoc);
-            },
-            (err) => {
-                setRequestingGeolocation(false);
-                let errorMsg = 'Position indisponible';
-                switch(err.code) {
-                    case err.PERMISSION_DENIED:
-                        errorMsg = '❌ Permission refusée.\n\nPour activer :\n• Chrome/Edge : Menu ⋮ → Paramètres → Confidentialité → Permissions → Localisation\n• Firefox : Volet des autorisations en haut à gauche';
-                        break;
-                    case err.POSITION_UNAVAILABLE:
-                        errorMsg = '⚠️ Position indisponible. Vérifiez votre GPS et réessayez.';
-                        break;
-                    case err.TIMEOUT:
-                        errorMsg = '⏱️ Délai d\'attente dépassé. Réessayez.';
-                        break;
-                }
-                logger.warn('❌ Geolocation error:', err.code, errorMsg);
-                setGeolocationError(errorMsg);
-                toast.error(errorMsg, { duration: 5000 });
-            },
-            { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-        );
-    };
+    // handleRequestGeolocation now handled by useGeolocation
     const [pendingPoints, setPendingPoints] = useState<[number, number][]>([]);
-    const [showDrawPanel, setShowDrawPanel] = useState(false);
     const [externalLayers, setExternalLayers] = useState<ExternalLayer[]>([]);
-    const [showLayersPanel, setShowLayersPanel] = useState(false);
-    const [showTrackingPanel, setShowTrackingPanel] = useState(false);
     const [isOfflineMode, setIsOfflineMode] = useState(!navigator.onLine);
 
     // Grappe Clustering State
-    const [showGrappePanel, setShowGrappePanel] = useState(false);
     const [activeGrappeId, setActiveGrappeId] = useState<string | null>(null);
     const [grappeClusters, setGrappeClusters] = useState<any[]>([]);
     const [grappeZonesData, setGrappeZonesData] = useState<any>(null);
     const [grappeCentroidsData, setGrappeCentroidsData] = useState<any>(null);
+    const [isClustersLoading, setIsClustersLoading] = useState<boolean>(true);
 
-    // Debug Statistics
-    const [householdStats, setHouseholdStats] = useState({ total: 0, withoutCoords: 0, withCoords: 0, afterFilters: 0 });
-    const [showCoordWarning, setShowCoordWarning] = useState(false);
+
 
     React.useEffect(() => {
         const handleStatus = () => setIsOfflineMode(!navigator.onLine);
@@ -262,12 +180,14 @@ const Terrain: React.FC = () => {
 
     React.useEffect(() => {
         if (!households || households.length === 0) return;
+        setIsClustersLoading(true);
 
         clusterWorker.onmessage = (e) => {
             if (e.data.success) {
                 setGrappeClusters(e.data.panelData);
                 setGrappeZonesData(e.data.zones);
                 setGrappeCentroidsData(e.data.centroids);
+                setIsClustersLoading(false);
             }
         };
 
@@ -291,15 +211,7 @@ const Terrain: React.FC = () => {
         setPendingPoints([]);
     };
 
-    // Audit logs are no longer displayed in the UI
-    // React.useEffect(() => {
-    //     const fetchLogs = async () => {
-    //         if (selectedHousehold) {
-    //             const logs = await getHouseholdLogs(selectedHousehold.id);
-    //         }
-    //     };
-    //     fetchLogs();
-    // }, [selectedHousehold, getHouseholdLogs]);
+
     const handleManualSync = async () => {
         try {
             await forceSync();
@@ -347,122 +259,13 @@ const Terrain: React.FC = () => {
         legend: true
     });
 
-    const handleTogglePhase = (phase: string) => {
-        if (phase === 'all') {
-            setSelectedPhases(selectedPhases.length === ALL_STATUSES.length ? [] : ALL_STATUSES);
-            return;
-        }
-        setSelectedPhases(prev =>
-            prev.includes(phase)
-                ? prev.filter(p => p !== phase)
-                : [...prev, phase]
-        );
-    };
-
-    const [selectedTeam, setSelectedTeam] = useState<string>('all');
-    const [dateRange, setDateRange] = useState<'all' | '7d' | '30d'>('all');
+    // handleTogglePhase and selectedTeam now managed by useMapFilters
+    // const [dateRange, setDateRange] = useState<'all' | '7d' | '30d'>('all');
 
 
     const householdList = (households || []) as Household[];
 
-    // Fonction pour vérifier si les coordonnées sont valides
-    const hasValidCoordinates = (h: Household): boolean => {
-        return !!(h.location?.coordinates && 
-                  Array.isArray(h.location.coordinates) &&
-                  h.location.coordinates.length === 2 &&
-                  typeof h.location.coordinates[0] === 'number' &&
-                  typeof h.location.coordinates[1] === 'number' &&
-                  !isNaN(h.location.coordinates[0]) &&
-                  !isNaN(h.location.coordinates[1]) &&
-                  Math.abs(h.location.coordinates[0]) <= 180 &&
-                  Math.abs(h.location.coordinates[1]) <= 90);
-    };
-
-    const filteredHouseholds = useMemo(() => {
-        let rejectedByPhase = 0, rejectedByTeam = 0, rejectedByDateRange = 0;
-        const statusDistribution: any = {};
-        
-        const filtered = householdList.filter(h => {
-            // Vérifier les coordonnées d'abord
-            if (!hasValidCoordinates(h)) {
-                return false;
-            }
-
-            const hStatus = getHouseholdDerivedStatus(h);
-            const matchesPhase = selectedPhases.includes(hStatus);
-            if (!matchesPhase) {
-                rejectedByPhase++;
-                return false;
-            }
-
-            const fulfillsTeamCriteria =
-                (!!h.koboSync?.livreurDate && selectedTeamFilters.includes('livraison')) ||
-                (!!h.koboSync?.maconOk && selectedTeamFilters.includes('maconnerie')) ||
-                (!!h.koboSync?.reseauOk && selectedTeamFilters.includes('reseau')) ||
-                (!!h.koboSync?.interieurOk && selectedTeamFilters.includes('installation')) ||
-                (!!h.koboSync?.controleOk && selectedTeamFilters.includes('controle'));
-
-            const hasAnyKoboProgress = !!h.koboSync?.livreurDate || !!h.koboSync?.maconOk || !!h.koboSync?.reseauOk || !!h.koboSync?.interieurOk || !!h.koboSync?.controleOk;
-            if (hasAnyKoboProgress && !fulfillsTeamCriteria) {
-                rejectedByTeam++;
-                return false;
-            }
-
-            if (selectedTeam !== 'all') {
-                const assignedTeams = Array.isArray(h.assignedTeams) ? h.assignedTeams : [];
-                if (!assignedTeams.includes(selectedTeam)) return false;
-            }
-
-            if (dateRange !== 'all') {
-                const now = new Date();
-                const householdDate = h.delivery?.date ? new Date(h.delivery.date) : new Date();
-                const diffDays = (now.getTime() - householdDate.getTime()) / (1000 * 3600 * 24);
-                if (dateRange === '7d' && diffDays > 7) {
-                    rejectedByDateRange++;
-                    return false;
-                }
-                if (dateRange === '30d' && diffDays > 30) {
-                    rejectedByDateRange++;
-                    return false;
-                }
-            }
-
-            return true;
-        });
-
-        // Debug: Show why items are rejected
-        console.log('🤔 [FILTER DEBUG]', {
-            totalBefore: householdList.length,
-            selectedPhases,
-            selectedTeamFilters,
-            rejectedByPhase,
-            rejectedByTeam,
-            rejectedByDateRange,
-            statusDistribution,
-            totalAfter: filtered.length
-        });
-
-        return filtered;
-    }, [householdList, selectedPhases, selectedTeamFilters, selectedTeam, dateRange]);
-
-    const visibleHouseholds = useMemo(() => {
-        if (!mapBounds) return filteredHouseholds;
-        const [west, south, east, north] = mapBounds;
-        
-        return filteredHouseholds.filter(h => {
-             if (!hasValidCoordinates(h)) return false;
-             // We know location.coordinates is valid because of hasValidCoordinates
-             const lng = h.location!.coordinates[0] as number;
-             const lat = h.location!.coordinates[1] as number;
-             
-             return (
-                 lng >= west &&
-                 lng <= east &&
-                 lat >= south &&
-                 lat <= north
-             );
-        });
-    }, [filteredHouseholds, mapBounds]);
+    // hasValidCoordinates, filteredHouseholds, visibleHouseholds now managed by useMapFilters
 
     // Update stats AFTER filtering (using useEffect to avoid infinite render loop)
     React.useEffect(() => {
@@ -491,65 +294,14 @@ const Terrain: React.FC = () => {
             });
         });
         
-        setHouseholdStats({ 
-            total: totalHouseholds, 
-            withoutCoords, 
-            withCoords,
-            afterFilters 
-        });
-        
-        if (withoutCoords > 0) {
-            setShowCoordWarning(true);
-        }
+
         
         if (totalHouseholds > 0) {
             logger.log(`📊 MÉNAGES: Total=${totalHouseholds}, Valid coords=${withCoords} (${((withCoords/totalHouseholds)*100).toFixed(1)}%), Sans coords=${withoutCoords} (${((withoutCoords/totalHouseholds)*100).toFixed(1)}%), Après filtres=${afterFilters}`);
         }
     }, [filteredHouseholds, householdList]);
 
-    // search with debounce to avoid iterating thousands of households on every keystroke
-    const performSearch = useCallback(async (query: string) => {
-        if (!query.trim()) {
-            setSearchResults([]);
-            return;
-        }
-
-        setIsSearching(true);
-        const results: SearchResult[] = [];
-        const qLower = query.toLowerCase();
-        householdList.forEach((h: Household) => {
-            const owner = h.owner || '';
-            if (h.id.toLowerCase().includes(qLower) || owner.toLowerCase().includes(qLower)) {
-                results.push({
-                    type: 'household',
-                    id: h.id,
-                    label: h.id + (owner ? ` — ${owner}` : ''),
-                    data: h
-                });
-            }
-        });
-
-        try {
-            const resp = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=5&q=${encodeURIComponent(query)}`);
-            const geoData = await resp.json();
-            geoData.forEach((r: { place_id: string; display_name: string; lat: string; lon: string; }) => {
-                results.push({
-                    type: 'geo',
-                    id: r.place_id,
-                    label: r.display_name,
-                    lat: parseFloat(r.lat),
-                    lon: parseFloat(r.lon)
-                });
-            });
-        } catch (e) {
-            logger.error('Search error:', e);
-        }
-
-        setSearchResults(results);
-        setIsSearching(false);
-    }, [householdList]);
-
-    const debouncedSearch = useMemo(() => debounce(performSearch, 300), [performSearch]);
+    // performSearch and debouncedSearch handled by useMapFilters
 
     const handleSelectResult = (result: SearchResult) => {
         if (result.type === 'household') {
@@ -581,10 +333,26 @@ const Terrain: React.FC = () => {
         }
     };
 
-    const handleRecenter = () => {
-        // Center of Senegal: Longitude ~ -14.45, Latitude ~ 14.5
-        setMapCommand({ center: [-14.4563, 14.4563], zoom: 7, timestamp: Date.now() });
-    };
+    // handleRecenter is now handled inline in MapToolbar
+    // const handleRecenter = () => { ... }
+
+    const handleLassoSelection = useCallback((ids: string[]) => {
+        if (ids.length > 0) {
+            toast.success(`${ids.length} ménages sélectionnés !`, {
+                icon: '🎯',
+                style: {
+                    borderRadius: '16px',
+                    background: isDarkMode ? '#1e293b' : '#fff',
+                    color: isDarkMode ? '#f8fafc' : '#1e293b',
+                    border: '1px solid rgba(79, 70, 229, 0.2)',
+                    fontWeight: 900,
+                    textTransform: 'uppercase',
+                    fontSize: '10px',
+                    letterSpacing: '0.05em'
+                }
+            });
+        }
+    }, [isDarkMode]);
 
     const handleTraceItinerary = () => {
         if (!selectedHousehold || !selectedHousehold.location?.coordinates) return;
@@ -719,194 +487,69 @@ const Terrain: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* Sub-Header: Toolbar & Status Controls */}
+                    {/* Sub-Header: Status Controls & Point Count */}
                     <div className="px-6 py-2 border-t border-gray-50 dark:border-white/5 flex items-center justify-between overflow-x-auto scrollbar-none gap-8">
-                        <div className="flex items-center gap-4 border-r dark:border-white/5 pr-4">
-                            <div className="flex items-center gap-2">
-                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest shrink-0">Calques:</span>
-                                <div className="flex items-center gap-1">
-                                    <button
-                                        onClick={() => setShowHeatmap(!showHeatmap)}
-                                        className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all flex items-center gap-2 ${showHeatmap ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20' : 'bg-gray-100 dark:bg-white/5 text-slate-500 hover:bg-gray-200'}`}
-                                    >
-                                        <div className={`w-1.5 h-1.5 rounded-full ${showHeatmap ? 'bg-white' : 'bg-orange-500'}`} />
-                                        Chaleur
-                                    </button>
-                                    <button
-                                        onClick={() => setShowZones(!showZones)}
-                                        className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all flex items-center gap-2 ${showZones ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-gray-100 dark:bg-white/5 text-slate-500 hover:bg-gray-200'}`}
-                                    >
-                                        <div className={`w-1.5 h-1.5 rounded-full ${showZones ? 'bg-white' : 'bg-emerald-500'}`} />
-                                        Zones
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
+
 
                         <div className="flex items-center gap-6">
-                            <div className="flex items-center gap-4">
-                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest shrink-0">Outils:</span>
-                                <div className="flex items-center gap-1.5">
-                                    <button 
-                                        onClick={() => {
-                                            const currentZoom = mapZoomRef.current;
-                                            setMapCommand({ center: mapCenterRef.current, zoom: Math.min(currentZoom + 1, 20), timestamp: Date.now() });
-                                        }} 
-                                        className="p-2 rounded-lg bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 text-slate-500 hover:text-blue-600 transition-all" 
-                                        title="Zoom +"
-                                    >
-                                        <Plus size={14} />
-                                    </button>
-                                    <button 
-                                        onClick={() => {
-                                            const currentZoom = mapZoomRef.current;
-                                            setMapCommand({ center: mapCenterRef.current, zoom: Math.max(currentZoom - 1, 1), timestamp: Date.now() });
-                                        }} 
-                                        className="p-2 rounded-lg bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 text-slate-500 hover:text-blue-600 transition-all" 
-                                        title="Zoom -"
-                                    >
-                                        <Search size={14} className="scale-75 translate-y-0.5" />
-                                    </button>
-                                    <div className="w-px h-4 bg-gray-100 dark:bg-white/5 mx-1" />
-                                    <button
-                                        onClick={() => setIsMeasuring(!isMeasuring)}
-                                        className={`p-2 rounded-lg border transition-all ${isMeasuring ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg' : 'bg-gray-50 dark:bg-white/5 border-gray-100 dark:border-white/5 text-slate-500 hover:text-blue-600'}`}
-                                        title="Mesurer la distance"
-                                    >
-                                        <Undo2 size={14} className={isMeasuring ? 'rotate-90' : ''} />
-                                    </button>
-                                    <button
-                                        onClick={() => setShowDatabaseStats(!showDatabaseStats)}
-                                        className={`p-2 rounded-lg border transition-all ${showDatabaseStats ? 'bg-blue-600 border-blue-600 text-white shadow-lg' : 'bg-gray-50 dark:bg-white/5 border-gray-100 dark:border-white/5 text-slate-500 hover:text-blue-600'}`}
-                                        title="Statistiques de zone"
-                                    >
-                                        <LayoutGrid size={14} />
-                                    </button>
-                                    <button
-                                        onClick={() => setMapStyle(prev => prev === 'streets' ? 'satellite' : 'streets')}
-                                        className={`px-3 py-1.5 rounded-lg border text-[9px] font-black uppercase tracking-widest transition-all ${mapStyle === 'satellite' ? 'bg-slate-900 border-slate-800 text-white' : 'bg-gray-50 dark:bg-white/5 border-gray-100 dark:border-white/5 text-slate-500 hover:text-blue-600'}`}
-                                    >
-                                        {mapStyle === 'streets' ? 'Satellite' : 'Rues'}
-                                    </button>
-                                    <button
-                                        onClick={() => setShowRoutingPanel(prev => !prev)}
-                                        className={`p-2 rounded-lg border transition-all ${showRoutingPanel ? 'bg-cyan-600 border-cyan-600 text-white shadow-lg shadow-cyan-500/20' : 'bg-gray-50 dark:bg-white/5 border-gray-100 dark:border-white/5 text-slate-500 hover:text-cyan-600'}`}
-                                        title="Planifier une tournée camion"
-                                    >
-                                        <Truck size={14} />
-                                    </button>
-                                    <button
-                                        onClick={() => { setShowDrawPanel(prev => !prev); setShowLayersPanel(false); }}
-                                        className={`p-2 rounded-lg border transition-all ${showDrawPanel ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'bg-gray-50 dark:bg-white/5 border-gray-100 dark:border-white/5 text-slate-500 hover:text-indigo-600'}`}
-                                        title="Dessiner des zones"
-                                    >
-                                        <PenLine size={14} />
-                                    </button>
-                                    <button
-                                        onClick={() => { setShowLayersPanel(prev => !prev); setShowDrawPanel(false); setShowTrackingPanel(false); }}
-                                        className={`p-2 rounded-lg border transition-all ${showLayersPanel ? 'bg-teal-600 border-teal-600 text-white shadow-lg shadow-teal-500/20' : 'bg-gray-50 dark:bg-white/5 border-gray-100 dark:border-white/5 text-slate-500 hover:text-teal-600'}`}
-                                        title="Importer une couche GeoJSON / KML"
-                                    >
-                                        <Globe size={14} />
-                                    </button>
-                                    <button
-                                        onClick={() => { setShowTrackingPanel(prev => !prev); setShowDrawPanel(false); setShowLayersPanel(false); setShowGrappePanel(false); }}
-                                        className={`p-2 rounded-lg border transition-all ${showTrackingPanel ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-500/20' : 'bg-gray-50 dark:bg-white/5 border-gray-100 dark:border-white/5 text-slate-500 hover:text-blue-600'}`}
-                                        title="Suivi des équipes terrain"
-                                    >
-                                        <Users size={14} />
-                                    </button>
-                                    <div className="w-px h-6 bg-slate-200 dark:bg-white/10 mx-1" />
-                                    <button
-                                        onClick={() => { setShowGrappePanel(prev => !prev); setShowDrawPanel(false); setShowLayersPanel(false); setShowTrackingPanel(false); }}
-                                        className={`p-2 rounded-lg border transition-all ${showGrappePanel ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'bg-gray-50 dark:bg-white/5 border-gray-100 dark:border-white/5 text-slate-500 hover:text-indigo-600'}`}
-                                        title="Régionalisation Auto (Clustering)"
-                                    >
-                                        <Layers size={14} />
-                                    </button>
-                                    <div className="w-px h-6 bg-slate-200 dark:bg-white/10 mx-1" />
-                                    <button
-                                        onClick={() => setShowRegionDownload(prev => !prev)}
-                                        className={`p-2 rounded-lg border transition-all ${showRegionDownload ? 'bg-amber-600 border-amber-600 text-white shadow-lg shadow-amber-500/20' : 'bg-gray-50 dark:bg-white/5 border-gray-100 dark:border-white/5 text-slate-500 hover:text-amber-600'} ${isDownloadingOffline ? 'animate-pulse opacity-70' : ''}`}
-                                        title={isDownloadingOffline ? "Téléchargement en cours..." : "Cartes Offline (Packs par région)"}
-                                        disabled={isDownloadingOffline}
-                                    >
-                                        <CloudDownload size={14} />
-                                    </button>
-                                    <div className="w-px h-6 bg-slate-200 dark:bg-white/10 mx-1" />
-                                    <div className="flex items-center gap-1 bg-gray-50 dark:bg-white/5 p-1 rounded-xl border border-gray-100 dark:border-white/5">
-                                        <button
-                                            onClick={handleRecenter}
-                                            className="p-2 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-white dark:hover:bg-white/10 transition-all"
-                                            title="Vue globale (Sénégal)"
-                                        >
-                                            <Focus size={14} />
-                                        </button>
-                                        <button
-                                            onClick={handleRecenterOnUser}
-                                            disabled={requestingGeolocation}
-                                            className={`p-2 rounded-lg transition-all hover:bg-white dark:hover:bg-white/10 disabled:opacity-50 ${requestingGeolocation ? 'text-amber-500 animate-spin' : userLocation ? 'text-blue-500' : 'text-slate-400'}`}
-                                            title={requestingGeolocation ? "Localisation en cours..." : geolocationError ? "Cliquez pour redemander la permission" : "Ma position actuelle"}
-                                        >
-                                            {requestingGeolocation ? <Loader2 size={14} className="animate-spin" /> : <Navigation size={14} />}
-                                        </button>
-                                    </div>
-                                    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all ${isOfflineMode ? 'bg-red-500/10 border-red-500 text-red-500' : 'bg-emerald-500/10 border-emerald-500 text-emerald-500'}`}>
-                                        <Wifi size={12} className={isOfflineMode ? 'text-red-500' : 'text-emerald-500'} />
-                                        <span className="text-[9px] font-black uppercase tracking-tighter">{isOfflineMode ? 'Hors-Ligne' : 'Connecté'}</span>
-                                    </div>
-
-                                </div>
-                            </div>
-
                             <div className="flex items-center gap-4 border-l dark:border-white/5 pl-6">
-                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest shrink-0">Filtres:</span>
-                                <div className="flex items-center gap-1.5">
-                                    <select
-                                        value={selectedTeam}
-                                        onChange={(e) => setSelectedTeam(e.target.value)}
-                                        title="Filtrer par équipe"
-                                        className="bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 text-[9px] font-black uppercase tracking-widest rounded-lg px-3 py-1.5 outline-none cursor-pointer text-slate-900 dark:text-white"
-                                    >
-                                        <option value="all">Équipes: Toutes</option>
-                                        <option value="Équipe A">Équipe A</option>
-                                        <option value="Équipe B">Équipe B</option>
-                                        <option value="Équipe C">Équipe C</option>
-                                    </select>
-                                    <select
-                                        value={dateRange}
-                                        onChange={(e) => setDateRange(e.target.value as any)}
-                                        title="Filtrer par période"
-                                        className="bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 text-[9px] font-black uppercase tracking-widest rounded-lg px-3 py-1.5 outline-none cursor-pointer text-slate-900 dark:text-white"
-                                    >
-                                        <option value="all">Période: Max</option>
-                                        <option value="7d">7 derniers jours</option>
-                                        <option value="30d">30 derniers jours</option>
-                                    </select>
-                                </div>
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest shrink-0">Équipe:</span>
+                                <select
+                                    value={selectedTeam}
+                                    onChange={(e) => setSelectedTeam(e.target.value)}
+                                    title="Filtrer par équipe"
+                                    className="bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 text-[9px] font-black uppercase tracking-widest rounded-lg px-3 py-1.5 outline-none cursor-pointer text-slate-900 dark:text-white"
+                                >
+                                    <option value="all">Toutes</option>
+                                    <option value="Équipe A">Équipe A</option>
+                                    <option value="Équipe B">Équipe B</option>
+                                </select>
                             </div>
                         </div>
 
                         <div className="flex items-center gap-4 shrink-0">
                             <span className={`text-[9px] font-black px-2 py-1 rounded-md ${filteredHouseholds.length > 5000 ? 'text-red-600 bg-red-50 dark:bg-red-500/10' : 'text-blue-600 bg-blue-50 dark:bg-blue-500/10'}`}>
-                                {filteredHouseholds.length} POINTS {filteredHouseholds.length > 5000 ? '⚠️ NOMBREUX' : 'VISIBLES'}
+                                {filteredHouseholds.length} POINTS VISIBLES
                             </span>
-                            {showCoordWarning && householdStats.withoutCoords > 0 && (
-                                <div 
-                                    className="text-[8px] font-black px-2 py-1 rounded-md bg-orange-50 dark:bg-orange-500/10 text-orange-600 cursor-help"
-                                    title={`${householdStats.withoutCoords} ménages n'ont pas de coordonnées GPS valides et ne s'affichent pas sur la carte`}
-                                >
-                                    ⚠️ {householdStats.withoutCoords} SEM. SANS GPS ({((householdStats.withoutCoords/householdStats.total)*100).toFixed(0)}%)
-                                </div>
-                            )}
-                            <div className="flex items-center gap-1">
-                                <button onClick={() => setViewMode(viewMode === 'map' ? 'list' : 'map')} className="p-2 text-slate-400 hover:text-blue-600 transition-colors" title="Plein Écran">
-                                    <Maximize size={16} />
-                                </button>
+                            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all ${isOfflineMode ? 'bg-red-500/10 border-red-500 text-red-500' : 'bg-emerald-500/10 border-emerald-500 text-emerald-500'}`}>
+                                <Wifi size={12} className={isOfflineMode ? 'text-red-500' : 'text-emerald-500'} />
+                                <span className="text-[9px] font-black uppercase tracking-tighter">{isOfflineMode ? 'Offline' : 'Online'}</span>
                             </div>
                         </div>
                     </div>
                 </div>
+
+                <MapToolbar 
+                    onZoomIn={() => setMapCommand({ center: mapCenterRef.current, zoom: Math.min(mapZoomRef.current + 1, 20), timestamp: Date.now() })}
+                    onZoomOut={() => setMapCommand({ center: mapCenterRef.current, zoom: Math.max(mapZoomRef.current - 1, 1), timestamp: Date.now() })}
+                    onRecenter={() => setMapCommand({ center: [-14.65, 14.45], zoom: 7, timestamp: Date.now() })}
+                    onLocate={handleRecenterOnUser}
+                    onToggleHeatmap={() => setShowHeatmap(!showHeatmap)}
+                    onToggleZones={() => setShowZones(!showZones)}
+                    showHeatmap={showHeatmap}
+                    showZones={showZones}
+                    isMeasuring={isMeasuring}
+                    onToggleMeasuring={() => setIsMeasuring(!isMeasuring)}
+                    showDatabaseStats={showDatabaseStats}
+                    onToggleDatabaseStats={() => setShowDatabaseStats(!showDatabaseStats)}
+                    mapStyle={mapStyle}
+                    onToggleMapStyle={() => setMapStyle(prev => prev === 'streets' ? 'satellite' : 'streets')}
+                    isSelecting={isSelecting}
+                    onToggleSelection={() => setIsSelecting(!isSelecting)}
+                    showRoutingPanel={showRoutingPanel}
+                    onToggleRouting={() => setShowRoutingPanel(!showRoutingPanel)}
+                    showDrawPanel={showDrawPanel}
+                    onToggleDraw={() => setShowDrawPanel(!showDrawPanel)}
+                    showLayersPanel={showLayersPanel}
+                    onToggleLayers={() => setShowLayersPanel(!showLayersPanel)}
+                    showTrackingPanel={showTrackingPanel}
+                    onToggleTracking={() => setShowTrackingPanel(!showTrackingPanel)}
+                    showGrappePanel={showGrappePanel}
+                    onToggleGrappe={() => setShowGrappePanel(!showGrappePanel)}
+                    showRegionDownload={showRegionDownload}
+                    onToggleRegionDownload={() => setShowRegionDownload(!showRegionDownload)}
+                    isDownloadingOffline={isDownloadingOffline}
+                />
 
                 {/* Main Area */}
                 <div className="flex-1 flex overflow-hidden relative">
@@ -949,8 +592,10 @@ const Terrain: React.FC = () => {
                                             onRouteFound={handleRouteFound}
                                             favorites={localFavorites}
                                             projectId={project?.id}
+                                            warehouses={showWarehouses ? warehouseStats : []}
                                             onBoundsChange={setMapBounds}
                                             visibleHouseholds={visibleHouseholds}
+                                            onLassoSelection={handleLassoSelection}
                                         />
                                     </Suspense>
                                     {/* Routing Panel Overlay */}
@@ -1004,6 +649,7 @@ const Terrain: React.FC = () => {
                                             onClose={() => setShowGrappePanel(false)}
                                             clusters={grappeClusters}
                                             activeGrappeId={activeGrappeId}
+                                            isLoading={isClustersLoading}
                                             onSelectGrappe={(id, bbox) => {
                                                 setActiveGrappeId(id);
                                                 if (bbox) {
@@ -1036,75 +682,11 @@ const Terrain: React.FC = () => {
                                     )}
                                 </motion.div>
                             ) : (
-                                <motion.div
-                                    key="list"
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    exit={{ opacity: 0 }}
-                                    className={`h-full w-full overflow-hidden flex flex-col rounded-3xl border shadow-lg ${isDarkMode ? 'bg-transparent border-none' : 'bg-white border-slate-200'}`}
-                                >
-                                    <div className={`p-4 border-b flex items-center justify-between ${isDarkMode ? 'border-slate-800' : 'border-slate-100'}`}>
-                                        <h3 className="text-sm font-black uppercase tracking-widest text-indigo-500">Ménages ({filteredHouseholds.length})</h3>
-                                        <button
-                                            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${isDarkMode ? 'bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20' : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100'}`}
-                                        >
-                                            <FileDown size={14} /> Exporter CSV
-                                        </button>
-                                    </div>
-                                    <div className="flex-1 overflow-auto">
-                                        <table className="w-full text-left text-sm whitespace-nowrap">
-                                            <thead className={`sticky top-0 z-10 text-[10px] font-black uppercase tracking-widest ${isDarkMode ? 'bg-slate-900 text-slate-500' : 'bg-slate-50 text-slate-500'}`}>
-                                                <tr>
-                                                    <th className="px-6 py-4">ID / Propriétaire</th>
-                                                    <th className="px-6 py-4">Région</th>
-                                                    <th className="px-6 py-4">Statut</th>
-                                                    <th className="px-6 py-4 flex justify-end">Actions</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className={`divide-y ${isDarkMode ? 'divide-slate-800/50' : 'divide-slate-100'}`}>
-                                                {filteredHouseholds.slice(0, 100).map(h => (
-                                                    <tr key={h.id} className={`transition-colors hover:${isDarkMode ? 'bg-slate-800/50' : 'bg-slate-50'}`}>
-                                                        <td className="px-6 py-4">
-                                                            <div className="flex items-center gap-3">
-                                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center border ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-slate-100 border-slate-200'}`}>
-                                                                    <MapPin size={14} className={isDarkMode ? 'text-slate-400' : 'text-slate-500'} />
-                                                                </div>
-                                                                <div className="flex flex-col">
-                                                                    <span className={`font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{h.id}</span>
-                                                                    <span className={`text-[10px] ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>{h.owner || '—'}</span>
-                                                                </div>
-                                                            </div>
-                                                        </td>
-                                                        <td className="px-6 py-4">
-                                                            <span className={`px-2 py-1 rounded-md text-[10px] font-bold ${isDarkMode ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
-                                                                {h.region || '—'}
-                                                            </span>
-                                                        </td>
-                                                        <td className="px-6 py-4">
-                                                            {(() => {
-                                                                const status = getHouseholdDerivedStatus(h);
-                                                                const colors = getStatusTailwindClasses(status);
-                                                                return (
-                                                                    <span className={`px-2 py-1 rounded-md text-[10px] font-bold ${colors.bg} ${colors.text}`}>
-                                                                        {status}
-                                                                    </span>
-                                                                );
-                                                            })()}
-                                                        </td>
-                                                        <td className="px-6 py-4 text-right">
-                                                            <button
-                                                                onClick={() => setSelectedHousehold(h)}
-                                                                className="text-indigo-500 hover:text-indigo-600 font-bold text-xs"
-                                                            >
-                                                                Détails
-                                                            </button>
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </motion.div>
+                                <HouseholdListView
+                                    households={filteredHouseholds}
+                                    isDarkMode={isDarkMode}
+                                    onSelectHousehold={setSelectedHousehold}
+                                />
                             )}
                         </AnimatePresence>
                     </div>
@@ -1132,11 +714,73 @@ const Terrain: React.FC = () => {
                                 followUser={followUser}
                                 setFollowUser={setFollowUser}
                                 routeStats={routeStats || null}
-                                grappeInfo={selectedHousehold.grappeId ? {
-                                    id: selectedHousehold.grappeId,
-                                    name: selectedHousehold.grappeName || `Grappe ${selectedHousehold.grappeId}`,
-                                    count: (households || []).filter((h: Household) => h.grappeId === selectedHousehold.grappeId).length
-                                } : undefined}
+                                grappeInfo={(() => {
+                                    const gId = selectedHousehold.grappeId;
+                                    const allGrappes: any[] = grappesConfig?.grappes || [];
+
+                                    // Helper: Haversine distance in km
+                                    const haversine = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+                                        const R = 6371;
+                                        const dLat = (lat2 - lat1) * Math.PI / 180;
+                                        const dLon = (lon2 - lon1) * Math.PI / 180;
+                                        const a = Math.sin(dLat/2) ** 2 + Math.cos(lat1 * Math.PI/180) * Math.cos(lat2 * Math.PI/180) * Math.sin(dLon/2) ** 2;
+                                        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+                                    };
+
+                                    if (gId) {
+                                        // Direct lookup in grappesConfig (uses `nom` field, not `name`)
+                                        const grappeDef = allGrappes.find((g: any) => g.id === gId);
+                                        const grappeName = selectedHousehold.grappeName
+                                            || grappeDef?.nom
+                                            || grappeDef?.name
+                                            || `Grappe ${gId}`;
+                                        const grappeCount = (households || []).filter((h: Household) => h.grappeId === gId).length;
+                                        return { id: gId, name: grappeName, count: grappeCount };
+                                    }
+
+                                    // Spatial fallback: find nearest grappe centroid (filtered by household region)
+                                    const coords = selectedHousehold.location?.coordinates;
+                                    if (!coords || allGrappes.length === 0) return undefined;
+                                    const [lng, lat] = coords;
+                                    
+                                    // Robust region extraction (from top-level, koboData or koboSync)
+                                    const hRegion = selectedHousehold.region 
+                                        || (selectedHousehold.koboData as any)?.region 
+                                        || (selectedHousehold.koboSync as any)?.region;
+
+                                    // Prefer same region, else any grappe (case-insensitive matching)
+                                    const candidates = hRegion
+                                        ? allGrappes.filter((g: any) => 
+                                            (g.region && g.region.toLowerCase() === hRegion.toLowerCase()) || !g.region
+                                          )
+                                        : allGrappes;
+                                    const pool = candidates.length > 0 ? candidates : allGrappes;
+
+                                    let nearest: any = null;
+                                    let minDist = Infinity;
+                                    for (const g of pool) {
+                                        if (g.centroide_lat == null || g.centroide_lon == null) continue;
+                                        const d = haversine(lat, lng, g.centroide_lat, g.centroide_lon);
+                                        if (d < minDist) { minDist = d; nearest = g; }
+                                    }
+
+                                    if (!nearest || minDist > 150) return undefined; // >150 km = no match
+                                    const grappeName = nearest.nom || nearest.name || `Grappe ${nearest.id}`;
+                                    
+                                    // Calculate how many households are in this same nearest grappe (using same region as proxy if ID not assigned)
+                                    const grappeCount = (households || []).filter((h: Household) => {
+                                        if (h.grappeId === nearest.id) return true;
+                                        const hReg = h.region || (h.koboData as any)?.region || (h.koboSync as any)?.region;
+                                        if (!hReg || !nearest.region) return false;
+                                        return hReg.toLowerCase() === nearest.region.toLowerCase();
+                                    }).length;
+
+                                    return { 
+                                        id: nearest.id, 
+                                        name: grappeName, 
+                                        count: grappeCount || nearest.nb_menages || 0 
+                                    };
+                                })()}
                             />
                         )}
                     </AnimatePresence>

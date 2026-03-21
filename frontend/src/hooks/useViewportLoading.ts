@@ -22,6 +22,7 @@ export function useViewportLoading(options: UseViewportLoadingOptions = {}) {
     const [isLoadingViewport, setIsLoadingViewport] = useState(false);
     const viewportBoundsRef = useRef<BoundingBox | null>(null);
     const lastBboxRef = useRef<string | null>(null);
+    const lastHouseholdsRef = useRef<any[]>([]); // ✅ Keep last known data to avoid blanking
     const abortControllerRef = useRef<AbortController | null>(null);
     const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -60,14 +61,27 @@ export function useViewportLoading(options: UseViewportLoadingOptions = {}) {
             );
 
             const households = response.data?.households || response.data || [];
-            setVisibleHouseholds(households);
-            lastBboxRef.current = bboxString;
+            
+            // ✅ Only update if we actually got data OR this is a different viewport
+            // This prevents blanking the map when API returns empty for a transitional bbox
+            if (households.length > 0) {
+                lastHouseholdsRef.current = households;
+                setVisibleHouseholds(households);
+                lastBboxRef.current = bboxString;
 
-            if (onHouseholdsLoadedRef.current) {
-                onHouseholdsLoadedRef.current(households);
+                if (onHouseholdsLoadedRef.current) {
+                    onHouseholdsLoadedRef.current(households);
+                }
+            } else if (lastHouseholdsRef.current.length === 0) {
+                // Only pass empty array if we never had data (fresh load)
+                lastBboxRef.current = bboxString;
+                if (onHouseholdsLoadedRef.current) {
+                    onHouseholdsLoadedRef.current([]);
+                }
             }
+            // If new result is empty but we had previous data → keep previous data on map
 
-            logger.debug(`✅ Loaded ${households.length} households for viewport`);
+            logger.debug(`✅ Loaded ${households.length} households for viewport (kept: ${lastHouseholdsRef.current.length})`);
         } catch (error: any) {
             if (error.name !== 'AbortError') {
                 logger.error('Failed to load viewport households:', error);

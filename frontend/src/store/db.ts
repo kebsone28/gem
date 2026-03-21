@@ -53,6 +53,7 @@ export interface SyncQueueItem {
     timestamp: number;
     status: 'pending' | 'failed';
     retryCount: number;
+    lastError?: string;
 }
 
 // Paramètres de sécurité applicatifs (persistés localement)
@@ -173,17 +174,17 @@ export const db = new ProquelecDatabase();
 export const syncData = async (table: string, items: any[]) => {
     return await db.transaction('rw', table, async () => {
         const dbTable = (db as any)[table];
-        for (const item of items) {
-            if (item.deletedAt) {
-                await dbTable.delete(item.id);
-            } else {
-                const existing = await dbTable.get(item.id);
-                if (existing) {
-                    await dbTable.update(item.id, { ...existing, ...item });
-                } else {
-                    await dbTable.put(item);
-                }
-            }
+        
+        const toDelete = items.filter(item => item.deletedAt).map(item => item.id);
+        const toPut = items.filter(item => !item.deletedAt);
+
+        if (toDelete.length > 0) {
+            await dbTable.bulkDelete(toDelete);
+        }
+        
+        if (toPut.length > 0) {
+            // Use bulkPut to handle both creation and updates efficiently
+            await dbTable.bulkPut(toPut);
         }
     });
 };

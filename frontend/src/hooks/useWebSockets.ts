@@ -10,11 +10,12 @@ export const useWebSockets = () => {
     useEffect(() => {
         if (!user) return;
 
-        // Connect via Vite proxy: /socket.io is proxied to localhost:5000
-        // This eliminates WebSocket CORS issues for any Vite port.
-        const BASE_URL = import.meta.env.VITE_API_URL
-            ? import.meta.env.VITE_API_URL.replace(/\/api$/, '')
-            : window.location.origin; // Use Vite's own origin → proxy handles the rest
+        // Connect via Vite proxy: /socket.io is intercepted and sent to the backend.
+        // VITE_API_URL defaults to '/api' in local dev.
+        // We want the socket to connect to the origin (e.g., http://localhost:3000) so the proxy can catch it.
+        const BASE_URL = import.meta.env.PROD 
+            ? (import.meta.env.VITE_API_URL?.replace(/\/api$/, '') || window.location.origin)
+            : window.location.origin;
 
         socketRef.current = io(BASE_URL, {
             withCredentials: true,

@@ -35,6 +35,7 @@ import { useMemorizedSupercluster } from './useMemorizedSupercluster';
 import { useMapMarkers } from './useMapMarkers';
 import { useMapMeasure } from './useMapMeasure';
 import { useMapVisibility } from './useMapVisibility';
+import { useMapLasso } from './useMapLasso';
 
 // ── Configuration Visuelle ──
 // (All configurations moved to mapConfig.ts - imported above)
@@ -65,6 +66,7 @@ export default function MapLibreVectorMap({
     grappesConfig,
     readOnly = false,
     isMeasuring = false,
+    isSelecting = false,
     mapStyle = 'streets',
     grappeZonesData,
     grappeCentroidsData,
@@ -79,12 +81,15 @@ export default function MapLibreVectorMap({
     onBoundsChange,
     followUser = false,
     favorites = [],
-    projectId
+    projectId,
+    warehouses = [],
+    onLassoSelection
 }: any) {
     const containerRef = useRef<HTMLDivElement>(null);
     const mapRef = useRef<maplibregl.Map | null>(null);
     const [styleIsReady, setStyleIsReady] = useState(false);
     const [isRoutingLoading, setIsRoutingLoading] = useState(false);
+    const [isStyleSwitching, setIsStyleSwitching] = useState(false); // ✅ Prevents blank-map flash
 
     // Refs pour éviter les closures périmées (stale closures) dans les event listeners de MapLibre
     const householdsRef = useRef(households);
@@ -109,13 +114,14 @@ export default function MapLibreVectorMap({
     const { setupClusteringEvents } = useMapClustering(superclusterRef);
     const { setupUserMarker, cleanup: cleanupMarker } = useMapMarkers(userLocation);
     const { setupMeasureTool } = useMapMeasure();
+    const { setupLasso } = useMapLasso(isSelecting, householdsRef, onLassoSelection);
     const { setupVisibility } = useMapVisibility(showHeatmap, showZones, styleIsReady);
 
     // ✅ Viewport loading - Enabled for large datasets
     // Allows loading only visible households based on map viewport
     // Reduces bandwidth by ~95% for large datasets (50k+ points)
     // Uses PostGIS spatial query via GET /households?bbox=...
-    const { updateViewport } = useViewportLoading({
+    const { updateViewport, isLoadingViewport } = useViewportLoading({
         enabled: true,
         projectId,
         debounceMs: 300,
@@ -125,6 +131,8 @@ export default function MapLibreVectorMap({
                 (mapRef.current.getSource('households') as any)?.setData(geoJSON);
                 logger.debug(`📍 Viewport loaded ${households.length} households`);
             }
+            // ✅ If households is EMPTY, we intentionally do NOT call setData([])
+            // The map keeps the previous frame's data until the next successful load
         }
     });
 
@@ -138,6 +146,9 @@ export default function MapLibreVectorMap({
     useEffect(() => { grappeZonesDataRef.current = grappeZonesData; }, [grappeZonesData]);
     useEffect(() => { grappeCentroidsDataRef.current = grappeCentroidsData; }, [grappeCentroidsData]);
     useEffect(() => { onBoundsChangeRef.current = onBoundsChange; }, [onBoundsChange]);
+    
+    const warehousesRef = useRef(warehouses);
+    useEffect(() => { warehousesRef.current = warehouses; }, [warehouses]);
 
     // GéoJSON des Ménages avec correction jitter (décalage spirale pour coordonnées dupliquées)
     // ✅ Using useMemoDeep for deep memoization - prevents recalculation on 50k+ points
@@ -205,6 +216,27 @@ export default function MapLibreVectorMap({
             }))
     }), [grappesConfig]);
 
+    // GéoJSON des Warehouses (Magasins)
+    const warehousesGeoJSON = useMemo(() => {
+        return {
+            type: 'FeatureCollection',
+            features: (warehouses || [])
+                .filter((w: any) => w.latitude && w.longitude)
+                .map((w: any) => ({
+                    type: 'Feature',
+                    geometry: { type: 'Point', coordinates: [Number(w.longitude), Number(w.latitude)] },
+                    properties: { 
+                        id: w.id, 
+                        name: w.name, 
+                        address: w.address || '', 
+                        type: 'warehouse',
+                        stockStatus: w.hasAlert ? 'alert' : 'ok',
+                        daysLeft: w.daysBeforeBreakout
+                    }
+                }))
+        };
+    }, [warehouses]);
+
     // GéoJSON des Sous-Grappes
     const sousGrappesGeoJSON = useMemo(() => ({
         type: 'FeatureCollection',
@@ -260,6 +292,9 @@ export default function MapLibreVectorMap({
             if (!map.getSource('grappes')) {
                 map.addSource('grappes', { type: 'geojson', data: grappesGeoJSON as any });
             }
+            if (!map.getSource('warehouses-source')) {
+                map.addSource('warehouses-source', { type: 'geojson', data: warehousesGeoJSON as any });
+            }
             if (!map.getSource('sous-grappes')) {
                 map.addSource('sous-grappes', { type: 'geojson', data: sousGrappesGeoJSON as any });
             }
@@ -297,6 +332,67 @@ export default function MapLibreVectorMap({
             }
 
             // --- LAYERS ---
+            if (!map.getLayer('warehouses-geofence')) {
+                map.addLayer({
+                    id: 'warehouses-geofence',
+                    type: 'circle',
+                    source: 'warehouses-source',
+                    paint: {
+                        'circle-radius': [
+                            'interpolate', ['exponential', 2], ['zoom'],
+                            10, ['/', ['coalesce', ['get', 'geofencingRadius'], 500], 100], // rudimentary approximation for meters
+                            20, ['/', ['coalesce', ['get', 'geofencingRadius'], 500], 0.1]
+                        ],
+                        'circle-color': '#10b981',
+                        'circle-opacity': 0.15,
+                        'circle-stroke-width': 1,
+                        'circle-stroke-color': '#059669',
+                        'circle-stroke-opacity': 0.3
+                    }
+                });
+            }
+
+            if (!map.getLayer('warehouses-layer')) {
+                map.addLayer({
+                    id: 'warehouses-layer',
+                    type: 'circle',
+                    source: 'warehouses-source',
+                    paint: {
+                        'circle-radius': 12,
+                        'circle-color': [
+                            'match',
+                            ['get', 'stockStatus'],
+                            'alert', '#ef4444', // Red for alert
+                            '#3b82f6' // Blue for ok
+                        ],
+                        'circle-stroke-width': 3,
+                        'circle-stroke-color': '#ffffff',
+                        'circle-opacity': 0.9
+                    }
+                });
+            }
+
+            if (!map.getLayer('warehouses-labels')) {
+                map.addLayer({
+                    id: 'warehouses-labels',
+                    type: 'symbol',
+                    source: 'warehouses-source',
+                    minzoom: 8,
+                    layout: {
+                        'text-field': ['get', 'name'],
+                        'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+                        'text-size': 14,
+                        'text-offset': [0, 1.5],
+                        'text-anchor': 'top'
+                    },
+                    paint: {
+                        'text-color': '#1e293b',
+                        'text-halo-color': '#ffffff',
+                        'text-halo-width': 2
+                    }
+                });
+            }
+
             if (!map.getLayer('favorites-layer')) {
                 map.addLayer({
                     id: 'favorites-layer',
@@ -733,12 +829,13 @@ export default function MapLibreVectorMap({
             // --- FINALIZATION ---
             logger.debug('✅ Layers setup complete. Unlocking data sync.');
             setStyleIsReady(true);
+            setIsStyleSwitching(false); // ✅ Hide skeleton overlay once layers are back
         } catch (error) {
             logger.error('❌ Error setting up MapLibre layers:', error);
         } finally {
             setupLayersLock.current = false;
         }
-    }, [householdGeoJSON, favoritesGeoJSON, grappesGeoJSON, sousGrappesGeoJSON, showHeatmap, showZones, setupInteractions, setupClusteringEvents]);
+    }, [householdGeoJSON, favoritesGeoJSON, grappesGeoJSON, warehousesGeoJSON, sousGrappesGeoJSON, showHeatmap, showZones, setupInteractions, setupClusteringEvents]);
 
     // ✅ REFS for stability - prevents map re-initialization when these change
     const setupLayersRef = useRef(setupLayers);
@@ -836,12 +933,13 @@ export default function MapLibreVectorMap({
         // Mettre à jour les ménages avec les données filtrées/actuelles
         (map.getSource('households') as any)?.setData(householdGeoJSON);
         (map.getSource('grappes') as any)?.setData(grappesGeoJSON);
+        (map.getSource('warehouses-source') as any)?.setData(warehousesGeoJSON);
         (map.getSource('sous-grappes') as any)?.setData(sousGrappesGeoJSON);
         if (grappeZonesData) (map.getSource('auto-grappes') as any)?.setData(grappeZonesData);
         if (grappeCentroidsData) (map.getSource('auto-grappes-centroids') as any)?.setData(grappeCentroidsData);
         if (favoritesGeoJSON) (map.getSource('favorites-source') as any)?.setData(favoritesGeoJSON);
 
-    }, [householdGeoJSON, grappesGeoJSON, sousGrappesGeoJSON, styleIsReady, grappeZonesData, grappeCentroidsData, favoritesGeoJSON]);
+    }, [householdGeoJSON, grappesGeoJSON, warehousesGeoJSON, sousGrappesGeoJSON, styleIsReady, grappeZonesData, grappeCentroidsData, favoritesGeoJSON]);
 
     // Sync Map View (Reactivity to center/zoom props)
     // To prevent the map from freezing during drag, we only flyTo if the user isn't interacting
@@ -976,6 +1074,14 @@ export default function MapLibreVectorMap({
         return cleanup;
     }, [isMeasuring, styleIsReady, setupMeasureTool]);
 
+    // ✅ Lasso/Selection tool setup
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map || !styleIsReady) return;
+        const cleanup = setupLasso(map);
+        return cleanup;
+    }, [isSelecting, styleIsReady, setupLasso]);
+
     // ✅ Consolidated Map Style Switching (Dynamic & Surgical)
     useEffect(() => {
         const map = mapRef.current;
@@ -990,6 +1096,7 @@ export default function MapLibreVectorMap({
 
         logger.debug('🔄 Switching map style to:', style);
         setStyleIsReady(false);
+        setIsStyleSwitching(true); // ✅ Show skeleton overlay instead of blank map
         
         const handleStyleLoad = () => {
             if (map.isStyleLoaded()) {
@@ -1024,10 +1131,42 @@ export default function MapLibreVectorMap({
 
     return (
         <div ref={containerRef} className="w-full h-full overflow-hidden bg-black relative">
+            {/* ✅ Style-switch skeleton: hides the blank-map flash during tile reload */}
+            {isStyleSwitching && (
+                <div className="absolute inset-0 z-40 bg-slate-800/60 backdrop-blur-[2px] flex items-center justify-center pointer-events-none transition-opacity duration-300">
+                    <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-slate-900/80 text-white text-xs font-semibold shadow-lg">
+                        <RefreshCw size={12} className="animate-spin" />
+                        Changement de carte...
+                    </div>
+                </div>
+            )}
+
+            {/* ✅ Viewport Loading Indicator - non-intrusive pill, map stays visible */}
+            {isLoadingViewport && !isStyleSwitching && (
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 bg-slate-900/80 backdrop-blur-sm text-white px-3 py-1.5 rounded-full shadow-lg flex items-center gap-2 text-[11px] font-semibold pointer-events-none">
+                    <div className="w-2 h-2 rounded-full bg-blue-400 animate-ping" />
+                    Chargement des données...
+                </div>
+            )}
+
             {isRoutingLoading && (
                 <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 bg-indigo-600 text-white px-4 py-2 rounded-full shadow-lg flex items-center gap-2 text-xs font-bold animate-pulse">
                     <RefreshCw size={14} className="animate-spin" />
                     Calcul de l'itinéraire...
+                </div>
+            )}
+
+            {/* ✅ GPS Accuracy Indicator */}
+            {userLocation && (
+                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[2000] flex items-center gap-3 px-4 py-2 rounded-2xl map-widget-glass border border-white/10 shadow-2xl backdrop-blur-xl">
+                    <div className="relative flex items-center justify-center">
+                        <div className="w-2 h-2 rounded-full bg-emerald-500 animate-ping absolute"></div>
+                        <div className="w-2 h-2 rounded-full bg-emerald-500 relative"></div>
+                    </div>
+                    <div className="flex flex-col">
+                        <span className="text-[10px] font-black text-white uppercase tracking-widest leading-none mb-0.5">GPS Haute Précision</span>
+                        <span className="text-[8px] font-bold text-emerald-400 uppercase tracking-tighter opacity-80 italic">Précision &lt; 5 mètres</span>
+                    </div>
                 </div>
             )}
         </div>

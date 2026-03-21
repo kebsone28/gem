@@ -20,9 +20,9 @@ import toast from 'react-hot-toast';
 const TABS = [
     { id: 'stock', label: 'Stock & Matériel', icon: Package },
     { id: 'deliveries', label: 'Livraisons', icon: Truck },
-    { id: 'agents', label: 'Équipes & Agents', icon: Users },
+    { id: 'agents', label: 'Suivi des Agents', icon: Users },
     { id: 'workshop', label: 'Atelier', icon: Wrench },
-    { id: 'grappes', label: 'Grappes', icon: MapIcon },
+    { id: 'grappes', label: 'Déploiement Terrain', icon: MapIcon },
 ];
 
 export default function Logistique() {
@@ -55,10 +55,10 @@ export default function Logistique() {
                         <div className="flex justify-between items-start mb-8">
                             <div>
                                 <h1 className={`text-4xl font-black tracking-tight mb-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                                    Gestion Logistique
+                                    Opérations & Logistique
                                 </h1>
                                 <p className={`text-sm font-medium ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-                                    Orchestration du matériel, des équipes et des zones de déploiement
+                                    Suivi en temps réel du matériel, des performances agents et de l'avancement du déploiement
                                 </p>
                             </div>
                             <button

@@ -38,7 +38,7 @@ export function useProject() {
             id,
             organizationId: (window as any).organizationId || 'org_test_2026',
             name,
-            status: 'planned',
+            status: 'active',
             version: 1,
             config: {
                 teams: [],
@@ -46,7 +46,22 @@ export function useProject() {
                 materialCatalog: []
             }
         } as any;
+        
+        // 1. Save to local Dexie first
         await db.projects.add(newProject);
+        
+        // 2. Push to backend (Interceptor will handle offline queue if needed)
+        try {
+            await apiClient.post('/projects', {
+                id, // Use our generated ID if backend allows, or backend will return its own
+                name,
+                status: 'active',
+                config: newProject.config
+            });
+        } catch (err) {
+            console.warn('Backend project creation failed, will sync later.', err);
+        }
+
         setActiveProjectId(id);
         return newProject;
     };
@@ -54,7 +69,15 @@ export function useProject() {
     const updateProject = async (updates: Partial<Project>) => {
         const currentId = activeProject?.id || activeProjectId;
         if (currentId) {
+            // Update local Dexie DB first for immediate UI response
             await db.projects.update(currentId, updates);
+            
+            // Push changes to backend (will be queued by interceptor if offline)
+            try {
+                await apiClient.patch(`/projects/${currentId}`, updates);
+            } catch (err) {
+                console.warn('Backend sync failed, changes queued for offline sync.', err);
+            }
         }
     };
 

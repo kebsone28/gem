@@ -1,7 +1,14 @@
 import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
+
 async function main() {
-    const users = await prisma.user.findMany({ select: { email: true } });
-    console.log('Users in DB:', users);
+    const users = await prisma.user.findMany();
+    console.log('Users in DB:');
+    users.forEach(u => {
+        console.log(`- Email: ${u.email}, Role: ${u.role}`);
+    });
 }
-main().finally(() => prisma.$disconnect());
+
+main()
+    .catch(e => console.error(e))
+    .finally(async () => await prisma.$disconnect());

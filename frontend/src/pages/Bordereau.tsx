@@ -18,7 +18,6 @@ import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { useTheme } from '../context/ThemeContext';
-import { useProject } from '../hooks/useProject';
 import { fmtNum } from '../utils/format';
 import logger from '../utils/logger';
 
@@ -45,7 +44,6 @@ interface Household {
 
 export default function Bordereau() {
     const { isDarkMode } = useTheme();
-    const { project } = useProject();
     const [zones, setZones] = useState<Zone[]>([]);
     const [selectedZone, setSelectedZone] = useState<Zone | null>(null);
     const [households, setHouseholds] = useState<Household[]>([]);
@@ -212,32 +210,6 @@ export default function Bordereau() {
         doc.save(`Bordereau_${selectedZone.name}_${new Date().getTime()}.pdf`);
     };
 
-    const handleAddZone = async () => {
-        if (!project?.id) {
-            alert("Aucun projet actif sélectionné");
-            return;
-        }
-        const name = window.prompt("Nom de la nouvelle zone / arrondissement :");
-        if (!name?.trim()) return;
-
-        try {
-            const { data } = await apiClient.post('zones', {
-                name: name.trim(),
-                projectId: project.id
-            });
-            const newZone = {
-                ...data,
-                householdCount: 0,
-                electrified: 0,
-                villageCount: 1
-            };
-            setZones([...zones, newZone]);
-            setSelectedZone(newZone);
-        } catch (err) {
-            logger.error("Failed to create zone", err);
-            alert("Erreur lors de la création de la zone");
-        }
-    }; 
 
     const handleExportExcel = () => {
         if (!selectedZone) return;
@@ -344,7 +316,6 @@ export default function Bordereau() {
                         <div className="space-y-4">
                             <h3 className={`text-[10px] font-black uppercase tracking-[0.2em] px-2 flex items-center justify-between ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
                                 <span>Zones / Arrondissements ({searchedZones.length})</span>
-                                <span onClick={handleAddZone} className="text-indigo-500 cursor-pointer hover:underline">+ Ajouter</span>
                             </h3>
                             <div className="space-y-3">
                                 {searchedZones.map((zone) => {

@@ -1,5 +1,6 @@
 import prisma from '../../core/utils/prisma.js';
 import { tracerAction } from '../../services/audit.service.js';
+import { logPerformance } from '../../services/performance.service.js';
 
 // @desc    Get all households for an organization
 // @route   GET /api/households
@@ -172,7 +173,8 @@ export const updateHousehold = async (req, res) => {
         const { organizationId } = req.user;
 
         const household = await prisma.household.findFirst({
-            where: { id, organizationId }
+            where: { id, organizationId },
+            include: { zone: { select: { projectId: true } } }
         });
 
         if (!household) {
@@ -211,6 +213,20 @@ export const updateHousehold = async (req, res) => {
             },
             req
         });
+        
+        // --- PERFORMANCE LOGGING ---
+        if (status && status !== household.status) {
+            await logPerformance({
+                organizationId,
+                projectId: household.zone?.projectId,
+                userId: req.user.id,
+                householdId: id,
+                action: 'STATUS_CHANGE',
+                oldStatus: household.status,
+                newStatus: status,
+                details: { source: 'WEB_REALTIME' }
+            });
+        }
 
         res.json(updated);
     } catch (error) {

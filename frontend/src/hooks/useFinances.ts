@@ -63,9 +63,9 @@ export function useFinances() {
     // 1. Teams (Tech)
     const techTeamsCount: Record<string, number> = { 'Maçon': 0, 'Réseau': 0, 'Intérieur': 0 };
     teams?.forEach(t => {
-        if (t.type === 'macons') techTeamsCount['Maçon']++;
-        if (t.type === 'reseau') techTeamsCount['Réseau']++;
-        if (t.type === 'interieur_type1') techTeamsCount['Intérieur']++;
+        if (t.tradeKey === 'macons') techTeamsCount['Maçon']++;
+        if (t.tradeKey === 'reseau') techTeamsCount['Réseau']++;
+        if (t.tradeKey === 'interieur_type1') techTeamsCount['Intérieur']++;
     });
 
     const teamsCost = Object.entries(techTeamsCount).reduce((sum, [type, count]) => {

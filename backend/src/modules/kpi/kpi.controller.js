@@ -74,17 +74,22 @@ export const getProjectKPIs = async (req, res) => {
             GROUP BY z.id, z.name
         `;
 
-        // 3. Stats by Team (using koboData.username as proxy)
+        // 3. Stats by Team (New structured logging + Leader Name)
         const teamStats = await prisma.$queryRaw`
             SELECT 
-                COALESCE(h."koboData"->>'username', 'Inconnu') as team_name,
-                COUNT(*) filter (where h.status = 'Terminé' OR h.status = 'Réception: Validée') as done,
-                COUNT(DISTINCT h."koboData"->>'today') as days_active,
-                SUM(COALESCE(NULLIF(h."koboData"->'group_ed3yt17'->>'Nombre_de_KIT_pr_par', '')::numeric, 0)) as prepared
-            FROM "Household" h
-            JOIN "Zone" z ON h."zoneId" = z.id
-            WHERE z."projectId" = ${projectId} AND h."organizationId" = ${organizationId} AND h."deletedAt" IS NULL
-            GROUP BY h."koboData"->>'username'
+                COALESCE(t.name, 'Équipe Inconnue') as team_name,
+                COALESCE(u.name, 'N/A') as leader_name,
+                COUNT(*) as done,
+                COUNT(DISTINCT DATE(pl."timestamp")) as days_active,
+                pl."tradeKey"
+            FROM "PerformanceLog" pl
+            LEFT JOIN "Team" t ON pl."teamId" = t.id
+            LEFT JOIN "User" u ON pl."userId" = u.id
+            WHERE pl."projectId" = ${projectId} 
+              AND pl."organizationId" = ${organizationId}
+              AND pl."action" = 'STATUS_CHANGE'
+              AND pl."newStatus" IN ('Terminé', 'Réception: Validée', 'Conforme')
+            GROUP BY t.id, t.name, u.name, pl."tradeKey"
         `;
 
         const aggr = koboAggrResult[0] || {};
@@ -145,6 +150,8 @@ export const getProjectKPIs = async (req, res) => {
                         const done = Number(t.done);
                         return {
                             worker: t.team_name,
+                            leader: t.leader_name,
+                            trade: t.tradeKey,
                             done,
                             days,
                             yield: days > 0 ? Math.round((done / days) * 10) / 10 : 0

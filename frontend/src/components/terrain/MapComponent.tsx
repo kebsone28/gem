@@ -33,6 +33,7 @@ interface MapComponentProps {
     userLocation?: [number, number] | null;
     readOnly?: boolean;
     isMeasuring?: boolean;
+    isSelecting?: boolean;
     showDatabaseStats?: boolean;
     mapStyle?: 'streets' | 'satellite';
     grappeZonesData?: any;
@@ -45,6 +46,8 @@ interface MapComponentProps {
     onMove?: (center: [number, number], zoom: number) => void;
     visibleHouseholds?: Household[];
     onBoundsChange?: (bounds: [number, number, number, number]) => void;
+    warehouses?: any[];
+    onLassoSelection?: (ids: string[]) => void;
 }
 
 const MapComponent: React.FC<MapComponentProps> = ({
@@ -65,6 +68,7 @@ const MapComponent: React.FC<MapComponentProps> = ({
     userLocation,
     readOnly = false,
     isMeasuring = false,
+    isSelecting = false,
     showDatabaseStats = false,
     mapStyle = 'streets',
     grappeZonesData,
@@ -76,7 +80,9 @@ const MapComponent: React.FC<MapComponentProps> = ({
     followUser = false,
     onMove,
     visibleHouseholds = [],
-    onBoundsChange
+    onBoundsChange,
+    warehouses = [],
+    onLassoSelection
 }) => {
     return (
         <div className="h-full w-full relative bg-slate-100 dark:bg-slate-900 overflow-hidden">
@@ -92,6 +98,7 @@ const MapComponent: React.FC<MapComponentProps> = ({
                 className="w-full h-full"
                 readOnly={readOnly}
                 isMeasuring={isMeasuring}
+                isSelecting={isSelecting}
                 mapStyle={mapStyle}
                 grappeZonesData={grappeZonesData}
                 grappeCentroidsData={grappeCentroidsData}
@@ -107,6 +114,8 @@ const MapComponent: React.FC<MapComponentProps> = ({
                 followUser={followUser}
                 onMove={onMove}
                 onBoundsChange={onBoundsChange}
+                warehouses={warehouses}
+                onLassoSelection={onLassoSelection}
             />
 
             {showDatabaseStats && <MapStatsWidget stats={{

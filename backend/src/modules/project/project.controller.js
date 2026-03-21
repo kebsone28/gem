@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import prisma from '../../core/utils/prisma.js';
 import { tracerAction } from '../../services/audit.service.js';
+import { socketService } from '../../services/socket.service.js';
 
 // @desc    Get all projects for an organization
 // @route   GET /api/projects
@@ -73,11 +74,12 @@ export const getProjectById = async (req, res) => {
 // @route   POST /api/projects
 export const createProject = async (req, res) => {
     try {
-        const { name, budget, duration, totalHouses, config } = req.body;
+        const { id, name, budget, duration, totalHouses, config } = req.body;
         const { organizationId, id: userId } = req.user;
 
         const project = await prisma.project.create({
             data: {
+                id: id || undefined, // Use client-provided ID or let Prisma generate one
                 name,
                 status: 'active',
                 budget: budget || 0,
@@ -150,6 +152,17 @@ export const updateProject = async (req, res) => {
             },
             req
         });
+
+        // 🟢 NEW: Emit websocket event to notify all clients
+        try {
+            socketService.emit('notification', {
+                type: 'SYNC',
+                message: `La configuration du projet a été mise à jour`,
+                data: { user: userId, action: 'PROJECT_UPDATED', id }
+            });
+        } catch (wsError) {
+             console.error('WebSocket Emit error during project update:', wsError);
+        }
 
         res.json(updatedProject);
     } catch (error) {

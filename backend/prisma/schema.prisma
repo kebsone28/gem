@@ -15,6 +15,7 @@ model Organization {
   users     User[]
   projects  Project[]
   teams     Team[]
+  performanceLogs PerformanceLog[]
   createdAt DateTime  @default(now())
 }
 
@@ -35,6 +36,7 @@ model User {
   syncLogs       SyncLog[]
   auditLogs      AuditLog[]
   ledTeam        Team?        @relation("TeamLeader")
+  performanceLogs PerformanceLog[]
   createdAt      DateTime     @default(now())
 }
 
@@ -55,6 +57,7 @@ model Project {
   deletedAt      DateTime?
   zones          Zone[]
   teams          Team[]
+  performanceLogs PerformanceLog[]
 }
 
 model Zone {
@@ -97,28 +100,95 @@ model Household {
   version        Int          @default(1)
   updatedAt      DateTime     @updatedAt
   deletedAt      DateTime?
+  performanceLogs PerformanceLog[]
 
   @@index([region])
   @@index([departement])
   @@index([village])
 }
 
+enum TeamRole {
+  PREPARATION
+  INSTALLATION
+  SUPERVISION
+  LOGISTICS
+}
+
+enum SyncStatus {
+  PENDING
+  SYNCED
+  CONFLICT
+}
+
+model Region {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  teams     Team[]
+  grappes   Grappe[]
+  createdAt DateTime @default(now())
+}
+
+model Grappe {
+  id        String   @id @default(uuid())
+  name      String
+  regionId  String
+  region    Region   @relation(fields: [regionId], references: [id])
+  teams     Team[]
+}
+
 model Team {
   id             String       @id @default(uuid())
+  name           String
+  
+  // 🔗 Projet & Organisation
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id])
-  projectId      String?
-  project        Project?     @relation(fields: [projectId], references: [id])
+  projectId      String
+  project        Project      @relation(fields: [projectId], references: [id])
+  
+  // 🌳 Hiérarchie avancée (Materialized Path)
+  parentTeamId   String?
+  parent         Team?        @relation("TeamHierarchy", fields: [parentTeamId], references: [id])
+  children       Team[]       @relation("TeamHierarchy")
+  path           String?      // Materialized Path (ex: "root/child/subchild")
+  level          Int          @default(0)
+
+  // 🧠 Métier & Performance
+  role           TeamRole     @default(INSTALLATION)
+  tradeKey       String?      // ex: 'electrician', 'mason'
+  capacity       Int?         @default(0) // nb ménages/jour
+  
+  // 🌍 Localisation & Logistique
+  regionId       String?
+  region         Region?      @relation(fields: [regionId], references: [id])
+  grappeId       String?
+  grappe         Grappe?      @relation(fields: [grappeId], references: [id])
   zoneId         String?
   zone           Zone?        @relation(fields: [zoneId], references: [id])
+  warehouseId    String?      // Link to Warehouse (stored in Project JSON for now or future table)
+
+  // 👤 Leadership
   leaderId       String?      @unique
   leader         User?        @relation("TeamLeader", fields: [leaderId], references: [id])
-  name           String
-  type           String
-  status         String
+
+  // 🔄 État & Sync Offline
+  status         String       @default("active")
   version        Int          @default(1)
+  offlineId      String?      @unique
+  syncStatus     SyncStatus   @default(SYNCED)
+  updatedBy      String?      // userId
+  legacyId       String?      // Pour traçabilité migration JSON
+  createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   deletedAt      DateTime?
+  performanceLogs PerformanceLog[]
+
+  @@index([organizationId])
+  @@index([projectId, deletedAt])
+  @@index([parentTeamId])
+  @@index([regionId])
+  @@index([path])
+  @@index([role])
 }
 
 model SyncLog {
@@ -147,4 +217,31 @@ model AuditLog {
   @@index([organizationId])
   @@index([userId])
   @@index([timestamp])
+}
+
+model PerformanceLog {
+  id             String   @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  projectId      String
+  project        Project      @relation(fields: [projectId], references: [id])
+  teamId         String?
+  team           Team?        @relation(fields: [teamId], references: [id])
+  userId         String?
+  user           User?        @relation(fields: [userId], references: [id])
+  householdId    String?
+  household      Household?   @relation(fields: [householdId], references: [id])
+  
+  action         String       // e.g., 'STATUS_CHANGE', 'MATERIAL_CONSUMPTION'
+  oldStatus      String?
+  newStatus      String?
+  tradeKey       String?      // Snapshot of team trade at time of log
+  details        Json?        // For material quantities or sync info
+  
+  timestamp      DateTime     @default(now())
+
+  @@index([organizationId])
+  @@index([projectId, timestamp])
+  @@index([teamId, timestamp])
+  @@index([userId, timestamp])
 }

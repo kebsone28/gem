@@ -37,6 +37,15 @@ export function useOfflineSync() {
             
             if (changes.households && changes.households.length > 0) {
                 logger.log(`📥 [SYNC] Applying ${changes.households.length} household changes...`);
+                
+                // [DEBUG] Check for :1 suffix in IDs
+                const suffixedIds = changes.households
+                    .filter((h: any) => h.id.toString().includes(':'))
+                    .map((h: any) => h.id);
+                if (suffixedIds.length > 0) {
+                    logger.warn('⚠️ [SYNC] Found household IDs with suffixes in pull response:', suffixedIds);
+                }
+
                 const CHUNK = 100;
                 for (let i = 0; i < changes.households.length; i += CHUNK) {
                     const chunk = changes.households.slice(i, i + CHUNK);
@@ -94,11 +103,9 @@ export function useOfflineSync() {
 
                     if (items.length === 0) break;
 
-                    logger.log(`📈 [SYNC] Processing batch of ${items.length} items...`);
-
                     // Group items by entity type for the /sync/push endpoint
-                    const batchChanges: any = {};
-                    const itemMap: Record<string, any> = {}; // To track item original IDs for deletion
+                    const batchChanges: Record<string, any[]> = {};
+                    const itemMap = new Map<string, number[]>(); // Map entity_key -> outbox_ids[]
 
                     for (const item of items) {
                         let entityType = '';
@@ -110,18 +117,33 @@ export function useOfflineSync() {
                         if (entityType) {
                             if (!batchChanges[entityType]) batchChanges[entityType] = [];
                             
-                            // Try to extract ID from endpoint if not in payload
-                            const endpointSegments = item.endpoint.split('/');
-                            const idFromEndpoint = endpointSegments[endpointSegments.length - 1];
-                            const payload = { ...item.payload };
+                            const payload = item.payload;
+                            let id = payload.id;
                             
-                            if (idFromEndpoint && idFromEndpoint !== entityType && !payload.id) {
-                                payload.id = idFromEndpoint;
+                            if (!id) {
+                                const segments = item.endpoint.split('/');
+                                id = segments[segments.length - 1];
+                                if (id && id !== entityType) {
+                                    payload.id = id;
+                                }
                             }
 
-                            batchChanges[entityType].push(payload);
-                            itemMap[`${entityType}:${payload.id}`] = item.id;
+                            if (id) {
+                                batchChanges[entityType].push(payload);
+                                
+                                // Store the mapping to delete from outbox later (supports duplicates)
+                                const key = `${entityType}:${id}`;
+                                const existing = itemMap.get(key) || [];
+                                itemMap.set(key, [...existing, item.id as number]);
+                            }
                         }
+                    }
+
+                    if (Object.keys(batchChanges).length === 0) {
+                        // If no valid entities found, mark items as 'failed' to prevent infinite loop
+                        const itemIds = items.map(i => i.id as number);
+                        await db.syncOutbox.bulkUpdate(itemIds.map(id => ({ key: id, changes: { status: 'failed' } })));
+                        break;
                     }
 
                     try {
@@ -129,35 +151,58 @@ export function useOfflineSync() {
                         const { results } = response.data;
 
                         // ✅ Delete successfully synced items
+                        const idsToDelete: number[] = [];
+                        let successCount = 0;
                         if (results?.success?.length > 0) {
-                            const idsToDelete = results.success
-                                .map((s: any) => itemMap[`${s.type}s:${s.id}`] || itemMap[`${s.type}:${s.id}`])
-                                .filter(Boolean);
-                            
-                            if (idsToDelete.length > 0) {
-                                await db.syncOutbox.bulkDelete(idsToDelete);
-                                logger.log(`🗑️ [SYNC] Deleted ${idsToDelete.length} synced items from outbox`);
+                            for (const s of results.success) {
+                                const type = s.type.endsWith('s') ? s.type : `${s.type}s`;
+                                const key = `${type}:${s.id}`;
+                                const outboxIds = itemMap.get(key);
+                                if (outboxIds && outboxIds.length > 0) {
+                                    const outboxId = outboxIds.shift();
+                                    if (outboxId) {
+                                        idsToDelete.push(outboxId);
+                                        successCount++;
+                                    }
+                                }
                             }
                         }
 
-                        // Handle conflicts or errors if needed (non-fatal)
+                        if (idsToDelete.length > 0) {
+                            await db.syncOutbox.bulkDelete(idsToDelete);
+                        }
+
+                        logger.log(`📤 [SYNC] Batch progress: ${successCount}/${items.length} items synced successfully`);
+
                         if (results?.errors?.length > 0) {
                             logger.warn(`⚠️ [SYNC] ${results.errors.length} items had errors during batch`);
+                            // Mark failed items to avoid infinite loop
+                            for (const e of results.errors) {
+                                const type = e.type.endsWith('s') ? e.type : `${e.type}s`;
+                                const key = `${type}:${e.id}`;
+                                const outboxIds = itemMap.get(key);
+                                if (outboxIds && outboxIds.length > 0) {
+                                    const outboxId = outboxIds.shift();
+                                    if (outboxId) {
+                                        await db.syncOutbox.update(outboxId, { status: 'failed', lastError: e.error });
+                                    }
+                                }
+                            }
                         }
 
                     } catch (error: any) {
                         logger.error('❌ [SYNC] Batch push failed:', error);
-                        // If it's a transient error, stop the loop and retry later
                         if (!error.response || error.response.status >= 500 || error.response.status === 429) {
                             throw error;
                         }
-                        break; // Fatal error for this batch, stop loop
+                        // For 400 errors, mark current batch as failed to allow progress
+                        const itemIds = items.map(i => i.id as number);
+                        await db.syncOutbox.bulkUpdate(itemIds.map(id => ({ key: id, changes: { status: 'failed' } })));
+                        break; 
                     }
 
                     if (items.length < LIMIT) break;
-                    
-                    // ✅ Sleep 300ms to avoid overwhelming the server (Audit recommendation)
-                    await new Promise(r => setTimeout(r, 300));
+                    await new Promise(r => setTimeout(r, 200)); // Slight delay
                 }
             }
 

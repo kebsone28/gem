@@ -2,6 +2,8 @@ import prisma from '../../core/utils/prisma.js';
 import { pushSchema } from './sync.validation.js';
 import { socketService } from '../../services/socket.service.js';
 import { tracerAction } from '../../services/audit.service.js';
+import { recalculateProjectGrappes } from '../../services/project_config.service.js';
+import { logPerformance } from '../../services/performance.service.js';
 
 // @desc    Pull changes from server
 // @route   GET /api/sync/pull
@@ -106,21 +108,23 @@ export const pushChanges = async (req, res) => {
                 if (!p || !p.id) continue;
                 const { id, name, status, budget, duration, totalHouses, config: pConfig, version } = p;
                 try {
+                    const serverProject = await prisma.project.findUnique({ where: { id } });
+
                     await prisma.project.upsert({
                         where: { id },
                         update: {
-                            name,
-                            status: status || 'active',
-                            budget: budget ? String(budget) : "0",
-                            duration: parseInt(duration) || 0,
-                            totalHouses: parseInt(totalHouses) || 0,
-                            config: pConfig || {},
+                            name: name ?? serverProject?.name,
+                            status: status ?? serverProject?.status ?? 'active',
+                            budget: budget ? String(budget) : serverProject?.budget,
+                            duration: duration !== undefined ? parseInt(duration) : serverProject?.duration,
+                            totalHouses: totalHouses !== undefined ? parseInt(totalHouses) : serverProject?.totalHouses,
+                            config: pConfig ? { ...(serverProject?.config || {}), ...pConfig } : serverProject?.config,
                             updatedAt: new Date(),
-                            version: (parseInt(version) || 1) + 1
+                            version: (parseInt(version) || serverProject?.version || 1) + 1
                         },
                         create: {
                             id,
-                            name,
+                            name: name ?? 'Nouveau Projet',
                             organizationId,
                             status: status || 'active',
                             budget: budget ? String(budget) : "0",
@@ -174,7 +178,10 @@ export const pushChanges = async (req, res) => {
                     name, phone, region, departement, village, latitude, longitude, source
                 } = h;
                 try {
-                    const serverH = await prisma.household.findUnique({ where: { id } });
+                    const serverH = await prisma.household.findUnique({ 
+                        where: { id },
+                        include: { zone: { select: { projectId: true } } }
+                    });
                     if (serverH && serverH.version > (parseInt(version) || 0)) {
                         results.conflicts.push({ id, type: 'household', server: serverH });
                         continue;
@@ -233,6 +240,30 @@ export const pushChanges = async (req, res) => {
                     }
 
                     results.success.push({ id, type: 'household' });
+                    
+                    // --- PERFORMANCE LOGGING ---
+                    if (status && (!serverH || status !== serverH.status)) {
+                        // For new households without serverH, we look up the projectId from the zoneId
+                        let pId = serverH?.zone?.projectId;
+                        
+                        if (!pId && zoneId) {
+                            const zone = await prisma.zone.findUnique({ where: { id: zoneId }, select: { projectId: true } });
+                            pId = zone?.projectId;
+                        }
+
+                        if (pId) {
+                            await logPerformance({
+                                organizationId,
+                                projectId: pId,
+                                userId,
+                                householdId: id,
+                                action: 'STATUS_CHANGE',
+                                oldStatus: serverH?.status,
+                                newStatus: status,
+                                details: { source: 'OFFLINE_SYNC', version: parseInt(version) || 1 }
+                            });
+                        }
+                    }
                 } catch (e) {
                     console.error(`[SYNC-ERROR] Household [${id}]:`, e.message);
                     results.errors.push({ id, type: 'household', error: e.message });
@@ -306,6 +337,36 @@ export const pushChanges = async (req, res) => {
             } catch (broadcastError) {
                 console.error('[SYNC-BROADCAST-ERROR] Error during post-sync notification/audit:', broadcastError.message);
                 // We DON'T fail the request if audit/socket fails, as the DB data is already saved.
+            }
+        }
+
+        // --- AUTOMATED GRAPPE RECALCULATION ---
+        if (results.success.length > 0) {
+            try {
+                // Collect affected projects
+                const affectedProjectIds = new Set();
+                
+                // 1. From updated projects directly
+                changes.projects?.forEach(p => affectedProjectIds.add(p.id));
+                
+                // 2. From updated households (need to find their project via zone)
+                if (changes.households?.length > 0) {
+                    const zoneIds = Array.from(new Set(changes.households.map(h => h.zoneId).filter(Boolean)));
+                    const zones = await prisma.zone.findMany({
+                        where: { id: { in: zoneIds } },
+                        select: { projectId: true }
+                    });
+                    zones.forEach(z => affectedProjectIds.add(z.projectId));
+                }
+
+                // Trigger recalculation for each affected project
+                for (const projectId of affectedProjectIds) {
+                    if (projectId) {
+                        await recalculateProjectGrappes(projectId, organizationId);
+                    }
+                }
+            } catch (recalcError) {
+                console.error('[SYNC-PROJECT-CONFIG-ERROR] Error during post-sync grappe recalculation:', recalcError.message);
             }
         }
 

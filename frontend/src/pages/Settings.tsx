@@ -15,13 +15,17 @@ import {
     Zap,
     ChevronRight,
     CloudDownload,
+    Navigation2,
     Save
 } from 'lucide-react';
 import { useProject } from '../hooks/useProject';
-import type { Team, SubTeam, CatalogItem, SubTeamEquipment } from '../utils/types';
+import type { CatalogItem, SubTeamEquipment } from '../utils/types';
 import { generateDynamicGrappes } from '../utils/clustering';
 import logger from '../utils/logger';
+import { useTeams } from '../hooks/useTeams';
+import apiClient from '../api/client';
 
+import { SENEGAL_REGIONS } from '../utils/config';
 import { StatusBadge } from '../components/dashboards/DashboardComponents';
 
 type TabType = 'teams' | 'costs' | 'zones' | 'logistics' | 'kobo' | 'data';
@@ -49,7 +53,7 @@ export default function Settings() {
         { id: 'teams', label: 'Équipes', icon: Users },
         { id: 'costs', label: 'Tarifs', icon: DollarSign },
         { id: 'zones', label: 'Zones & Affectations', icon: Layers },
-        { id: 'logistics', label: 'Dotations & Logistique', icon: Wrench },
+        { id: 'logistics', label: 'Dotations Standard', icon: Wrench },
         { id: 'kobo', label: 'KoBo', icon: CloudDownload },
         { id: 'data', label: 'Données', icon: Database },
     ];
@@ -112,7 +116,7 @@ export default function Settings() {
                             <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/5 blur-[100px] pointer-events-none rounded-full" />
 
                             <div className="relative z-10">
-                                {activeTab === 'teams' && <TeamsSection project={project} onUpdate={updateProject} />}
+                                {activeTab === 'teams' && <TeamsSection project={project} />}
                                 {activeTab === 'costs' && <CostsSection project={project} onUpdate={updateProject} />}
                                 {activeTab === 'zones' && <ZonesSection project={project} onUpdate={updateProject} />}
                                 {activeTab === 'logistics' && <LogisticsSection project={project} onUpdate={updateProject} />}
@@ -127,12 +131,59 @@ export default function Settings() {
     );
 }
 
-function TeamsSection({ project, onUpdate }: { project: any, onUpdate: any }) {
-    const teams: Team[] = project?.config?.teams || [];
+function TeamsSection({ project }: { project: any }) {
+    const { 
+        teamTree, 
+        regions, 
+        grappes,
+        createTeam, 
+        updateTeam, 
+        deleteTeam, 
+        fetchTeamTree, 
+        fetchRegions, 
+        fetchGrappes,
+        isLoading: isTeamsLoading 
+    } = useTeams(project?.id);
+    const { updateProject } = useProject();
     const productionRates = project?.config?.productionRates || { macons: 5, reseau: 8, interieur_type1: 6, controle: 15 };
 
+    const [searchQuery, setSearchQuery] = useState('');
+    const [collapsedTeams, setCollapsedTeams] = useState<Record<string, boolean>>({});
+
+    useEffect(() => {
+        fetchTeamTree();
+        fetchRegions();
+        fetchGrappes();
+    }, [fetchTeamTree, fetchRegions, fetchGrappes, project?.id]);
+
+    const toggleCollapse = (id: string) => {
+        setCollapsedTeams(prev => ({ ...prev, [id]: !prev[id] }));
+    };
+
+    const toggleAllCollapse = (collapse: boolean) => {
+        const newState: Record<string, boolean> = {};
+        if (collapse) {
+            teamTree.forEach((t: any) => newState[t.id] = true);
+        }
+        setCollapsedTeams(newState);
+    };
+    const filteredTeams = teamTree.filter((t: any) => {
+        const matchesName = t.name.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesSubTeams = (t.children || []).some((sub: any) => 
+            sub.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (sub.leader?.name && sub.leader.name.toLowerCase().includes(searchQuery.toLowerCase()))
+        );
+        return matchesName || matchesSubTeams;
+    });
+
+    const stats = {
+        total: teamTree.reduce((acc: number, t: any) => acc + (t.children || []).length, 0),
+        active: teamTree.reduce((acc: number, t: any) => acc + (t.children || []).filter((c: any) => c.status === 'active').length, 0),
+        inactive: teamTree.reduce((acc: number, t: any) => acc + (t.children || []).filter((c: any) => c.status !== 'active').length, 0),
+    };
+
     const handleUpdateProductionRate = (trade: string, value: number) => {
-        onUpdate({
+        updateProject({
             config: {
                 ...project.config,
                 productionRates: { ...productionRates, [trade]: value }
@@ -140,62 +191,72 @@ function TeamsSection({ project, onUpdate }: { project: any, onUpdate: any }) {
         });
     };
 
-    const handleAddTeam = () => {
-        const newTeam: Team = {
-            id: `team_${Date.now()}`,
-            name: `Entreprise / Groupement ${teams.length + 1}`,
-            type: 'macons',
-            capacity: 2,
-            subTeams: []
-        };
-        onUpdate({
-            config: { ...project.config, teams: [...teams, newTeam] }
+    const handleAddProductionRate = () => {
+        const tradeName = prompt("Entrez le nom du nouveau corps de métier (ex: Peinture, Soudure) :");
+        if (!tradeName) return;
+        
+        const tradeKey = tradeName.trim().toLowerCase().replace(/[^a-z0-9]/g, '_');
+        if (!tradeKey || productionRates[tradeKey]) {
+            alert("Nom invalide ou métier déjà existant.");
+            return;
+        }
+
+        updateProject({
+            config: {
+                ...project.config,
+                productionRates: { ...productionRates, [tradeKey]: 5 }
+            }
         });
     };
 
-    const handleAddSubTeam = (parentId: string, parentType: string) => {
-        const teamIndex = teams.findIndex(t => t.id === parentId);
-        if (teamIndex === -1) return;
-        const parent = teams[teamIndex];
-        const subTeams = parent.subTeams || [];
-        const prefixe = parentType === 'macons' ? 'Eq-macon' : parentType === 'reseau' ? 'Eq-reseau' : parentType === 'interieur_type1' ? 'Eq-interieur' : 'Eq-controle';
-
-        const newSubTeam: SubTeam = {
-            id: `sub_${Date.now()}`,
-            name: `${prefixe}${subTeams.length + 1}`,
-            leader: ''
-        };
-        handleUpdateTeam(parentId, 'subTeams', [...subTeams, newSubTeam]);
+    const handleDeleteProductionRate = (tradeKey: string) => {
+        if (!window.confirm("Supprimer ce corps de métier ? Attention, si des équipes y sont affectées, elles n'auront plus de cadence valide.")) return;
+        
+        const newRates = { ...productionRates };
+        delete newRates[tradeKey];
+        
+        updateProject({
+            config: {
+                ...project.config,
+                productionRates: newRates
+            }
+        });
     };
 
-    const handleUpdateSubTeam = (parentId: string, subId: string, field: 'name' | 'leader' | 'phone', value: string) => {
-        const teamIndex = teams.findIndex(t => t.id === parentId);
-        if (teamIndex === -1) return;
-        const parent = teams[teamIndex];
-        const subTeams = parent.subTeams || [];
-        const updatedSubs = subTeams.map((st: SubTeam) => st.id === subId ? { ...st, [field]: value } : st);
-        handleUpdateTeam(parentId, 'subTeams', updatedSubs);
+    const handleAddTeam = async () => {
+        await createTeam({
+            name: `Nouveau Groupement ${teamTree.length + 1}`,
+            role: 'INSTALLATION',
+            capacity: 2
+        });
     };
 
-    const handleDeleteSubTeam = (parentId: string, subId: string) => {
-        const teamIndex = teams.findIndex(t => t.id === parentId);
-        if (teamIndex === -1) return;
-        const parent = teams[teamIndex];
-        const subTeams = parent.subTeams || [];
-        const updatedSubs = subTeams.filter((st: SubTeam) => st.id !== subId);
-        handleUpdateTeam(parentId, 'subTeams', updatedSubs);
+    const handleAddSubTeam = async (parentId: string, parentRole: string) => {
+        await createTeam({
+            name: `Équipe de terrain`,
+            role: parentRole as any,
+            parentTeamId: parentId,
+            capacity: 0
+        });
     };
 
-    const handleUpdateTeam = (id: string, field: keyof Team, value: any) => {
-        const newTeams = teams.map((t: Team) => t.id === id ? { ...t, [field]: value } : t);
-        onUpdate({ config: { ...project.config, teams: newTeams } });
+    const handleUpdateTeamField = async (id: string, field: string, value: any) => {
+        await updateTeam(id, { [field]: value });
     };
 
-    const handleDeleteTeam = (id: string) => {
-        if (!window.confirm("Supprimer cette équipe ?")) return;
-        const newTeams = teams.filter((t: Team) => t.id !== id);
-        onUpdate({ config: { ...project.config, teams: newTeams } });
+    const handleRemoveTeam = async (id: string) => {
+        const team = teamTree.find((t: any) => t.id === id);
+        const hasRegion = team?.regionId;
+        const msg = hasRegion 
+            ? "Cette équipe est affectée à une région. Supprimer cette équipe et ses sous-équipes ?"
+            : "Supprimer cette équipe et ses sous-équipes ?";
+            
+        if (window.confirm(msg)) {
+            await deleteTeam(id);
+        }
     };
+
+    if (isTeamsLoading && teamTree.length === 0) return <div className="p-8 text-slate-400">Chargement des équipes...</div>;
 
     return (
         <div className="space-y-12">
@@ -207,179 +268,304 @@ function TeamsSection({ project, onUpdate }: { project: any, onUpdate: any }) {
                     </h2>
                     <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Configuration des effectifs et sous-équipes terrain</p>
                 </div>
-                <div className="flex gap-4 items-center">
-                    <StatusBadge status="info" label={`${teams.length} Équipes`} />
+                <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/5 rounded-xl border border-blue-500/10">
+                        <Users size={12} className="text-blue-500" />
+                        <span className="text-[10px] font-black text-blue-600 uppercase tracking-tight">{stats.total} Équipes</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/5 rounded-xl border border-emerald-500/10">
+                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                        <span className="text-[10px] font-black text-emerald-600 uppercase tracking-tight">{stats.active} Actives</span>
+                    </div>
+                    {stats.inactive > 0 && (
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-500/5 rounded-xl border border-slate-500/10">
+                            <div className="w-1.5 h-1.5 rounded-full bg-slate-300" />
+                            <span className="text-[10px] font-black text-slate-600 uppercase tracking-tight">{stats.inactive} Inactives</span>
+                        </div>
+                    )}
+                </div>
+                <div className="flex flex-wrap gap-3 items-center">
+                    <div className="relative">
+                        <input 
+                            type="text"
+                            placeholder="Rechercher une équipe..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="pl-9 pr-4 py-2.5 bg-white dark:bg-white/5 border border-gray-100 dark:border-white/5 rounded-xl text-[11px] font-bold outline-none focus:ring-2 focus:ring-blue-500/20 w-64 transition-all"
+                        />
+                        <Users size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    </div>
+                    <div className="flex gap-2">
+                        <button 
+                            onClick={() => toggleAllCollapse(true)}
+                            className="p-2.5 bg-gray-50 dark:bg-white/5 text-gray-400 hover:text-blue-500 rounded-xl border border-gray-100 dark:border-white/5 transition-colors"
+                            title="Réduire tout"
+                        >
+                            <Layers size={14} />
+                        </button>
+                        <button 
+                            onClick={() => toggleAllCollapse(false)}
+                            className="p-2.5 bg-gray-50 dark:bg-white/5 text-gray-400 hover:text-blue-500 rounded-xl border border-gray-100 dark:border-white/5 transition-colors"
+                            title="Développer tout"
+                        >
+                            <ChevronRight size={14} className="rotate-90" />
+                        </button>
+                    </div>
                     <button
                         onClick={handleAddTeam}
-                        className="px-6 py-3 bg-slate-900 dark:bg-blue-600 text-white text-[11px] font-black uppercase tracking-widest rounded-xl transition-all shadow-lg shadow-blue-500/10 hover:brightness-110 active:scale-95"
+                        className="px-6 py-3 bg-blue-600 dark:bg-blue-600 text-white text-[11px] font-black uppercase tracking-widest rounded-xl transition-all shadow-lg shadow-blue-500/10 hover:brightness-110 active:scale-95 ml-2"
                     >
-                        + Nouvelle Équipe
+                        + Nouveau Groupement
                     </button>
                 </div>
             </div>
 
             {/* ── CADENCES DE PRODUCTION ── */}
             <div className="bg-gray-50 dark:bg-white/5 p-8 rounded-[2rem] border border-gray-100 dark:border-white/5 mb-8">
-                <div className="flex items-center gap-3 mb-6">
-                    <Zap size={18} className="text-amber-500" />
-                    <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest">Cadence Standard (Foyers / Jour)</h3>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                    <div className="flex items-center gap-3">
+                        <Zap size={18} className="text-amber-500" />
+                        <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest">Cadence Standard (Foyers / Jour)</h3>
+                    </div>
+                    <button
+                        onClick={handleAddProductionRate}
+                        className="px-4 py-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all border border-amber-500/20"
+                    >
+                        + Ajouter un métier
+                    </button>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {[
-                        { id: 'macons', label: 'Maçonnerie', default: 5 },
-                        { id: 'reseau', label: 'Déploiement Réseau', default: 8 },
-                        { id: 'interieur_type1', label: 'Installations Int.', default: 6 },
-                        { id: 'controle', label: 'Contrôle & Visite', default: 15 }
-                    ].map(trade => (
-                        <div key={trade.id} className="bg-white dark:bg-slate-950 border border-gray-100 dark:border-white/5 rounded-2xl p-5 shadow-sm">
-                            <label className="text-[9px] font-black text-gray-400 uppercase tracking-[0.2em] mb-3 block">{trade.label}</label>
-                            <div className="flex items-center gap-3">
-                                <input
-                                    type="number"
-                                    title={`Cadence ${trade.label}`}
-                                    value={productionRates[trade.id] ?? trade.default}
-                                    onChange={e => handleUpdateProductionRate(trade.id, parseInt(e.target.value) || 1)}
-                                    className="w-full bg-transparent border-b-2 border-gray-100 dark:border-white/10 py-1 text-xl font-black text-blue-600 focus:border-blue-500 outline-none transition-colors"
-                                />
-                                <span className="text-[10px] font-bold text-gray-400">f/j</span>
+                    {Object.entries(productionRates).map(([tradeKey, rate]) => {
+                        const labelMap: Record<string, string> = {
+                            macons: 'Maçonnerie',
+                            reseau: 'Déploiement Réseau',
+                            interieur_type1: 'Électriciens',
+                            controle: 'Contrôle & Visite',
+                            preparateurs: 'Préparateurs / Magasin'
+                        };
+                        const displayLabel = labelMap[tradeKey] || tradeKey.replace(/_/g, ' ').toUpperCase();
+                        const isCoreTrade = ['macons', 'reseau', 'interieur_type1', 'controle', 'preparateurs'].includes(tradeKey);
+
+                        return (
+                            <div key={tradeKey} className="bg-white dark:bg-slate-950 border border-gray-100 dark:border-white/5 rounded-2xl p-5 shadow-sm relative group">
+                                {!isCoreTrade && (
+                                    <button
+                                        onClick={() => handleDeleteProductionRate(tradeKey)}
+                                        className="absolute top-3 right-3 text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                        title="Supprimer ce métier"
+                                    >
+                                        <Trash2 size={14} />
+                                    </button>
+                                )}
+                                <label className="text-[9px] font-black text-gray-400 uppercase tracking-[0.2em] mb-3 block truncate pr-5" title={displayLabel}>{displayLabel}</label>
+                                <div className="flex items-center gap-3">
+                                    <input
+                                        type="number"
+                                        title={`Cadence ${displayLabel}`}
+                                        value={rate as number}
+                                        onChange={e => handleUpdateProductionRate(tradeKey, parseInt(e.target.value) || 1)}
+                                        className="w-full bg-transparent border-b-2 border-gray-100 dark:border-white/10 py-1 text-xl font-black text-blue-600 focus:border-blue-500 outline-none transition-colors"
+                                    />
+                                    <span className="text-[10px] font-bold text-gray-400">f/j</span>
+                                </div>
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {teams.map(team => (
-                    <div key={team.id} className="bg-slate-950/50 p-6 rounded-3xl border border-slate-800/50 group hover:border-indigo-500/50 transition-all relative">
-                        <button
-                            onClick={() => handleDeleteTeam(team.id)}
-                            title="Supprimer cette équipe"
-                            aria-label="Supprimer cette équipe"
-                            className="absolute top-4 right-4 text-slate-600 hover:text-red-500 transition-colors"
-                        >
-                            <Trash2 size={16} />
-                        </button>
-
-                        <div className="space-y-4 pt-2">
-                            <div>
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Nom de l'équipe</label>
-                                <input
-                                    title="Nom de l'équipe"
-                                    placeholder="Nom de l'équipe"
-                                    value={team.name}
-                                    onChange={e => handleUpdateTeam(team.id, 'name', e.target.value)}
-                                    className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
-                                />
-                            </div>
-                            <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Métier</label>
-                                    <input
-                                        list="trades-list"
-                                        value={team.type}
-                                        onChange={e => handleUpdateTeam(team.id, 'type', e.target.value)}
-                                        className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-                                        placeholder="Taper ou sélectionner..."
-                                    />
-                                    <datalist id="trades-list">
-                                        <option value="macons">Maçons</option>
-                                        <option value="reseau">Réseau</option>
-                                        <option value="interieur_type1">Intérieur</option>
-                                        <option value="controle">Contrôle</option>
-                                    </datalist>
-                                </div>
-                                <div>
-                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Effectif</label>
-                                    <input
-                                        type="number"
-                                        title="Effectif de l'équipe"
-                                        placeholder="2"
-                                        value={team.capacity}
-                                        onChange={e => handleUpdateTeam(team.id, 'capacity', parseInt(e.target.value) || 1)}
-                                        className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-                                    />
-                                </div>
-                            </div>
-                            <div>
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Contact Principal / Entreprise</label>
-                                <div className="flex gap-2">
-                                    <input
-                                        placeholder="Nom du contact"
-                                        value={team.leader || ''}
-                                        onChange={e => handleUpdateTeam(team.id, 'leader', e.target.value)}
-                                        className="w-1/2 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white text-xs focus:ring-2 focus:ring-indigo-500 outline-none"
-                                    />
-                                    <input
-                                        title="Numéro de téléphone"
-                                        placeholder="Téléphone"
-                                        value={team.phone || ''}
-                                        onChange={e => handleUpdateTeam(team.id, 'phone', e.target.value)}
-                                        className="w-1/2 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white text-xs focus:ring-2 focus:ring-indigo-500 outline-none"
-                                    />
-                                </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {filteredTeams.map((team: any) => {
+                    const isCollapsed = collapsedTeams[team.id];
+                    return (
+                        <div key={team.id} className="bg-slate-50 dark:bg-slate-900/40 p-5 rounded-[1.5rem] border border-gray-100 dark:border-white/10 group hover:border-blue-500/50 transition-all relative overflow-hidden shadow-sm self-start">
+                            <div className="absolute top-0 left-0 w-1 y-full bg-blue-500" />
+                            <div className="absolute top-4 right-4 flex items-center gap-2">
+                                <button
+                                    onClick={() => toggleCollapse(team.id)}
+                                    className="p-1 text-slate-400 hover:text-blue-500 transition-colors"
+                                    title={isCollapsed ? "Développer" : "Réduire"}
+                                >
+                                    {isCollapsed ? <ChevronRight size={16} /> : <div className="rotate-90"><ChevronRight size={16} /></div>}
+                                </button>
+                                <button
+                                    onClick={() => handleRemoveTeam(team.id)}
+                                    title="Supprimer ce groupement"
+                                    className="p-1 text-slate-400 hover:text-red-500 transition-colors"
+                                >
+                                    <Trash2 size={16} />
+                                </button>
                             </div>
 
-                            <div className="pt-4 border-t border-slate-800/50 space-y-3">
-                                <div className="flex items-center justify-between">
-                                    <label className="text-[10px] font-black text-indigo-400 uppercase tracking-widest block">Sous-équipes Terrain ({(team.subTeams || []).length})</label>
-                                    <button
-                                        onClick={() => handleAddSubTeam(team.id, team.type)}
-                                        className="text-[10px] bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 px-2 py-1 rounded-lg font-bold transition-colors"
+                            <div className="space-y-4 pt-1">
+                                <div className={isCollapsed ? "pr-14" : ""}>
+                                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] block mb-1">Groupement / Entreprise</label>
+                                    <input
+                                        title="Nom"
+                                        placeholder="Nom"
+                                        value={team.name}
+                                        onChange={e => handleUpdateTeamField(team.id, 'name', e.target.value)}
+                                        className="w-full bg-white dark:bg-slate-950 border border-gray-100 dark:border-white/10 rounded-xl px-3 py-1.5 text-slate-900 dark:text-white font-bold text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                    />
+                                </div>
+                                <div className="grid grid-cols-2 gap-3 pb-1">
+                                    <div>
+                                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Métier Principal</label>
+                                        <select
+                                            title="Sélectionner le métier principal"
+                                            value={team.tradeKey || ''}
+                                            onChange={e => handleUpdateTeamField(team.id, 'tradeKey', e.target.value)}
+                                            className="w-full bg-white dark:bg-slate-950 border border-gray-100 dark:border-white/10 rounded-xl px-3 py-2 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                        >
+                                            <option value="">Sélectionner métier...</option>
+                                            {Object.keys(productionRates).map((tk) => (
+                                                <option key={tk} value={tk}>{tk.replace(/_/g, ' ').toUpperCase()}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Rôle Global</label>
+                                        <select
+                                            title="Détermine la visibilité de l'équipe : 'Préparation' pour l'atelier Logistique, 'Installation' pour le terrain."
+                                            value={team.role}
+                                            onChange={e => handleUpdateTeamField(team.id, 'role', e.target.value)}
+                                            className="w-full bg-white dark:bg-slate-950 border border-gray-100 dark:border-white/10 rounded-xl px-3 py-1.5 text-slate-900 dark:text-white text-[11px] font-bold focus:ring-2 focus:ring-blue-500 outline-none"
+                                        >
+                                            <option value="INSTALLATION">Installation Terrain</option>
+                                            <option value="PREPARATION">Préparation (Atelier)</option>
+                                            <option value="LOGISTICS">Logistique / Magasin</option>
+                                            <option value="SUPERVISION">Supervision / Contrôle</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Région d'Intervention</label>
+                                    <select
+                                        title="Sélectionnez la région d'affectation pour filtrer cette équipe dans les différents modules (Logistique, Terrain)."
+                                        value={team.regionId || ''}
+                                        onChange={e => {
+                                            const newRegionId = e.target.value;
+                                            handleUpdateTeamField(team.id, 'regionId', newRegionId);
+                                            // Reset Grappe when region changes
+                                            handleUpdateTeamField(team.id, 'grappeId', null);
+                                        }}
+                                        className="w-full bg-white dark:bg-slate-950 border border-gray-100 dark:border-white/10 rounded-xl px-3 py-1.5 text-slate-900 dark:text-white text-[11px] font-bold focus:ring-2 focus:ring-blue-500 outline-none mb-3"
                                     >
-                                        + Sous-équipe
-                                    </button>
+                                        <option value="">Toutes Régions</option>
+                                        {regions.map((reg: any) => (
+                                            <option key={reg.id} value={reg.id}>{reg.name}</option>
+                                        ))}
+                                    </select>
                                 </div>
-                                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                                    {(team.subTeams || []).map((st: SubTeam) => (
-                                        <div key={st.id} className="flex items-center gap-2 bg-slate-900 p-2 rounded-xl border border-slate-800 relative group">
-                                            <input
-                                                value={st.name}
-                                                onChange={e => handleUpdateSubTeam(team.id, st.id, 'name', e.target.value)}
-                                                placeholder="N° Equipe"
-                                                className="w-[90px] bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 text-white text-xs focus:ring-1 focus:ring-indigo-500 outline-none"
-                                            />
-                                            <input
-                                                value={st.leader}
-                                                onChange={e => handleUpdateSubTeam(team.id, st.id, 'leader', e.target.value)}
-                                                placeholder="Nom du Chef"
-                                                className="w-[120px] bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 text-white text-xs focus:ring-1 focus:ring-indigo-500 outline-none"
-                                            />
-                                            <input
-                                                value={st.phone || ''}
-                                                onChange={e => handleUpdateSubTeam(team.id, st.id, 'phone', e.target.value)}
-                                                placeholder="Téléphone"
-                                                className="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 text-white text-xs focus:ring-1 focus:ring-indigo-500 outline-none"
-                                            />
+
+                                <div>
+                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Grappe / Cluster</label>
+                                    <select
+                                        title="Sélectionnez la grappe d'affectation précise pour cette équipe."
+                                        value={team.grappeId || ''}
+                                        onChange={e => handleUpdateTeamField(team.id, 'grappeId', e.target.value)}
+                                        disabled={!team.regionId}
+                                        className={`w-full bg-white dark:bg-slate-950 border border-gray-100 dark:border-white/10 rounded-xl px-3 py-1.5 text-slate-900 dark:text-white text-[11px] font-bold focus:ring-2 focus:ring-blue-500 outline-none ${!team.regionId ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    >
+                                        <option value="">{team.regionId ? 'Sélectionner une grappe...' : 'Choisir une région d\'abord'}</option>
+                                        {grappes
+                                            .filter((g: any) => g.regionId === team.regionId)
+                                            .map((g: any) => (
+                                                <option key={g.id} value={g.id}>{g.name}</option>
+                                            ))
+                                        }
+                                        {team.regionId && grappes.filter((g: any) => g.regionId === team.regionId).length === 0 && (
+                                            <option value="" disabled>Aucune grappe disponible</option>
+                                        )}
+                                    </select>
+                                </div>
+
+                                {!isCollapsed && (
+                                    <div className="pt-3 border-t border-gray-100 dark:border-white/5 space-y-2.5">
+                                        <div className="flex items-center justify-between">
+                                            <label className="text-[10px] font-black text-blue-500 uppercase tracking-widest block">Équipes de terrain ({(team.children || []).length})</label>
                                             <button
-                                                onClick={() => handleDeleteSubTeam(team.id, st.id)}
-                                                title="Supprimer cette sous-équipe"
-                                                aria-label="Supprimer cette sous-équipe"
-                                                className="text-slate-600 hover:text-red-500 p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                onClick={() => handleAddSubTeam(team.id, team.role)}
+                                                className="text-[10px] bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 px-3 py-1.5 rounded-xl font-black uppercase tracking-widest transition-colors"
                                             >
-                                                <Trash2 size={12} />
+                                                + Ajouter Équipe
                                             </button>
                                         </div>
-                                    ))}
-                                    {(!team.subTeams || team.subTeams.length === 0) && (
-                                        <div className="text-xs text-slate-500 text-center py-2 italic font-medium">
-                                            Aucune sous-équipe. Les affectations terrain nécessitent au moins une sous-équipe.
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                            {(team.children || []).map((sub: any) => (
+                                                <div key={sub.id} className="flex items-center gap-2 bg-white dark:bg-slate-950/50 p-2 rounded-xl border border-gray-100 dark:border-white/5 group/sub relative hover:border-blue-500/30 transition-all">
+                                                    <button 
+                                                        onClick={() => handleUpdateTeamField(sub.id, 'status', sub.status === 'active' ? 'inactive' : 'active')}
+                                                        className={`w-2 h-2 rounded-full shrink-0 transition-transform active:scale-125 ${sub.status === 'active' ? 'bg-emerald-500 shadow-[0_0_5px_rgba(16,185,129,0.5)]' : 'bg-slate-300'}`} 
+                                                        title={`Cliquer pour ${sub.status === 'active' ? 'désactiver' : 'activer'}`}
+                                                    />
+                                                    <div className="flex-1 min-w-0">
+                                                        <input
+                                                            title="Nom de l'équipe terrain"
+                                                            placeholder="Nom de l'équipe"
+                                                            value={sub.name}
+                                                            onChange={e => handleUpdateTeamField(sub.id, 'name', e.target.value)}
+                                                            className="w-full bg-transparent border-none p-0 text-slate-900 dark:text-white font-bold text-[11px] focus:ring-0 outline-none truncate"
+                                                        />
+                                                    </div>
+                                                    <div className="flex items-center gap-1.5 px-1.5 py-0.5 bg-slate-50 dark:bg-white/5 rounded-lg border border-gray-100 dark:border-white/5 shrink-0">
+                                                        <Users size={8} className="text-slate-400" />
+                                                        <span className="text-[8px] font-black text-slate-500 uppercase tracking-tighter">{sub.leader?.name ? sub.leader.name.split(' ')[0] : 'Chef'}</span>
+                                                    </div>
+                                                    {team.tradeKey === 'interieur_type1' && (
+                                                        <div className="px-2 py-0.5 bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 rounded-lg text-[8px] font-black uppercase tracking-widest border border-yellow-200 dark:border-yellow-500/10">
+                                                            Corps d'état
+                                                        </div>
+                                                    )}
+                                                    {team.tradeKey === 'macons' && (
+                                                        <div className="px-2 py-0.5 bg-orange-100 dark:bg-orange-500/20 text-orange-700 dark:text-orange-400 rounded-lg text-[8px] font-black uppercase tracking-widest border border-orange-200 dark:border-orange-500/10">
+                                                            Ouvrier
+                                                        </div>
+                                                    )}
+                                                    <button
+                                                        onClick={() => handleRemoveTeam(sub.id)}
+                                                        title="Supprimer cette équipe terrain"
+                                                        className="text-slate-300 hover:text-red-500 opacity-0 group-hover/sub:opacity-100 transition-opacity p-1"
+                                                    >
+                                                        <Trash2 size={10} />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                            {(team.children?.length === 0) && (
+                                                <div className="col-span-full text-[9px] text-slate-400 text-center py-3 bg-white/5 rounded-xl border border-dashed border-white/5 font-medium uppercase tracking-widest">
+                                                    Aucune équipe terrain
+                                                </div>
+                                            )}
                                         </div>
-                                    )}
-                                </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
         </div>
     );
 }
 
 function CostsSection({ project, onUpdate }: { project: any, onUpdate: any }) {
-    const teams = project?.config?.teams || [];
+    const { regions, fetchRegions, teams, fetchTeams } = useTeams(project?.id);
+    const [selectedRegionId, setSelectedRegionId] = useState<string>('');
     const costs = project?.config?.costs || {};
     const staffRates = costs.staffRates || {};
     const vehicleRental = costs.vehicleRental || {};
+
+    useEffect(() => {
+        fetchRegions();
+        fetchTeams();
+    }, [fetchRegions, fetchTeams]);
+
+    // Default to first region if available and none selected
+    useEffect(() => {
+        if (regions.length > 0 && !selectedRegionId) {
+            setSelectedRegionId(regions[0].id);
+        }
+    }, [regions, selectedRegionId]);
 
     const materialCatalog: CatalogItem[] = project?.config?.materialCatalog || [
         { id: 'cat_1', name: 'Casque de Chantier', category: 'Securité', purchasePrice: 5000, rentalPrice: 0 },
@@ -390,9 +576,19 @@ function CostsSection({ project, onUpdate }: { project: any, onUpdate: any }) {
 
     const handleUpdateRate = (category: 'staffRates' | 'vehicleRental', key: string, field: string, value: any) => {
         const newCategory = { ...(costs[category] || {}) };
+        
         if (category === 'staffRates') {
-            if (!newCategory[key]) newCategory[key] = { amount: 0, mode: 'daily' };
-            newCategory[key] = { ...newCategory[key], [field]: value };
+            if (!selectedRegionId) return;
+            // Nested structure: staffRates[regionId][teamId]
+            if (!newCategory[selectedRegionId]) newCategory[selectedRegionId] = {};
+            if (!newCategory[selectedRegionId][key]) newCategory[selectedRegionId][key] = { amount: 0, mode: 'daily' };
+            
+            const oldVal = newCategory[selectedRegionId][key][field];
+            newCategory[selectedRegionId][key] = { ...newCategory[selectedRegionId][key], [field]: value };
+            
+            // Logically, we should trigger an audit log here. 
+            // The backend updateProject will log the change to 'config'.
+            console.log(`Rate updated for region ${selectedRegionId}, team ${key}: ${oldVal} -> ${value}`);
         } else {
             newCategory[key] = value;
         }
@@ -440,7 +636,25 @@ function CostsSection({ project, onUpdate }: { project: any, onUpdate: any }) {
                             <DollarSign className="text-emerald-500" />
                             Grille Tarifaire
                         </h2>
-                        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Barèmes de rémunération et coûts logistiques</p>
+                        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Barèmes de rémunération par région</p>
+                    </div>
+
+                    <div className="flex items-center gap-4 bg-white dark:bg-slate-950 p-2 rounded-2xl border border-gray-100 dark:border-white/5 shadow-sm">
+                        <div className="flex items-center gap-2 px-3">
+                            <MapPin size={16} className="text-blue-500" />
+                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Région Active :</span>
+                        </div>
+                        <select
+                            title="Sélectionner la région"
+                            value={selectedRegionId}
+                            onChange={(e) => setSelectedRegionId(e.target.value)}
+                            className="bg-gray-50 dark:bg-white/5 border-none rounded-xl px-4 py-2 text-xs font-black text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/20 outline-none"
+                        >
+                            <option value="">Sélectionner...</option>
+                            {regions.map(reg => (
+                                <option key={reg.id} value={reg.id}>{reg.name}</option>
+                            ))}
+                        </select>
                     </div>
                 </div>
 
@@ -452,9 +666,10 @@ function CostsSection({ project, onUpdate }: { project: any, onUpdate: any }) {
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {teams.map((team: any) => {
-                            const rate = staffRates[team.id] || { amount: 0, mode: 'daily' };
-                            const subTeamCount = (team.subTeams || []).length;
-                            const tradeLabel = team.type === 'macons' ? 'Maçonnerie' : team.type === 'reseau' ? 'Réseau' : team.type === 'interieur_type1' ? 'Intérieur' : team.type === 'controle' ? 'Contrôle' : team.type;
+                            const regionRates = staffRates[selectedRegionId] || {};
+                            const rate = regionRates[team.id] || { amount: 0, mode: 'daily' };
+                            const subTeamCount = (team.children || []).length;
+                            const tradeLabel = team.tradeKey === 'macons' ? 'Maçonnerie' : team.tradeKey === 'reseau' ? 'Réseau' : team.tradeKey === 'interieur_type1' ? 'Intérieur' : team.tradeKey === 'controle' ? 'Contrôle' : team.tradeKey;
 
                             return (
                                 <div key={team.id} className="bg-white dark:bg-slate-950 p-8 rounded-[2rem] border border-gray-100 dark:border-white/5 hover:border-blue-500/30 transition-all shadow-sm">
@@ -646,8 +861,13 @@ function CostsSection({ project, onUpdate }: { project: any, onUpdate: any }) {
 }
 
 function ZonesSection({ project, onUpdate }: { project: any, onUpdate: any }) {
+    const { grappes, fetchGrappes } = useTeams(project?.id);
     const [zones, setZones] = useState<Zone[]>(project?.config?.zones || []);
     const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null);
+
+    useEffect(() => {
+        fetchGrappes();
+    }, [fetchGrappes, project?.id]);
 
     useEffect(() => {
         setZones(project?.config?.zones || []);
@@ -740,8 +960,6 @@ function ZonesSection({ project, onUpdate }: { project: any, onUpdate: any }) {
         handleUpdateZones(updatedZones);
     };
 
-    // Dummy data for clusters and subteams for UI demonstration
-    const allClusters = ['A', 'B', 'C', 'D', 'E', 'F']; // Replace with actual clusters from project data
     const allSubTeams = project?.config?.teams?.flatMap((t: any) => (t.subTeams || []).map((st: any) => ({ ...st, trade: t.type }))) || [];
 
     return (
@@ -798,12 +1016,17 @@ function ZonesSection({ project, onUpdate }: { project: any, onUpdate: any }) {
                             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                                 <div className="flex-1">
                                     <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-2">Identifiant de la Zone</label>
-                                    <input
-                                        title="Nom"
+                                    <select
+                                        title="Région"
                                         value={selectedZone.name}
                                         onChange={e => handleUpdateZoneName(selectedZone.id, e.target.value)}
                                         className="w-full bg-transparent text-2xl font-black text-slate-900 dark:text-white border-b-2 border-gray-200 dark:border-white/10 focus:border-blue-500 outline-none transition-colors pb-1"
-                                    />
+                                    >
+                                        <option value="" disabled>Sélectionner...</option>
+                                        {SENEGAL_REGIONS.map(reg => (
+                                            <option key={reg} value={reg} className="bg-white dark:bg-slate-900 text-sm font-bold">{reg}</option>
+                                        ))}
+                                    </select>
                                 </div>
                                 <button
                                     onClick={() => handleDeleteZone(selectedZone.id)}
@@ -817,22 +1040,61 @@ function ZonesSection({ project, onUpdate }: { project: any, onUpdate: any }) {
                             <div className="space-y-6">
                                 <div className="flex items-center justify-between">
                                     <h4 className="text-[11px] font-black text-slate-900 dark:text-white uppercase tracking-widest">Affectation des Grappes</h4>
-                                    <StatusBadge status="warning" label="PROVISOIRE" />
+                                    <div className="flex items-center gap-2">
+                                        <select
+                                            title="Ajouter une grappe"
+                                            className="bg-white dark:bg-slate-950 border border-gray-100 dark:border-white/5 rounded-xl px-3 py-1.5 text-slate-900 dark:text-white text-[11px] font-bold focus:ring-2 focus:ring-blue-500 outline-none"
+                                            onChange={(e) => {
+                                                if (e.target.value) {
+                                                    toggleClusterInZone(selectedZone.id, e.target.value);
+                                                    e.target.value = "";
+                                                }
+                                            }}
+                                        >
+                                            <option value="">+ Ajouter une grappe...</option>
+                                            {grappes
+                                                .filter(g => !selectedZone.clusters.includes(g.id))
+                                                .map(g => (
+                                                    <option key={g.id} value={g.id}>{g.name} ({g.region?.name})</option>
+                                                ))
+                                            }
+                                        </select>
+                                    </div>
                                 </div>
 
-                                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                                    {allClusters.map(cluster => (
-                                        <button
-                                            key={cluster}
-                                            onClick={() => toggleClusterInZone(selectedZone.id, cluster)}
-                                            className={`p-4 rounded-xl border text-[11px] font-black uppercase tracking-widest transition-all ${selectedZone.clusters.includes(cluster)
-                                                ? 'bg-emerald-500 border-emerald-500 text-white shadow-md'
-                                                : 'bg-white dark:bg-slate-950 border-gray-100 dark:border-white/5 text-gray-400 hover:bg-gray-50'
-                                                }`}
-                                        >
-                                            Grappe {cluster}
-                                        </button>
-                                    ))}
+                                <div className="space-y-3">
+                                    {selectedZone.clusters.map((clusterId: string) => {
+                                        const cluster = grappes.find(g => g.id === clusterId);
+                                        return (
+                                            <div key={clusterId} className="flex items-center justify-between p-4 bg-white dark:bg-slate-950 border border-gray-100 dark:border-white/5 rounded-2xl shadow-sm group">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-10 h-10 bg-emerald-500/10 rounded-xl flex items-center justify-center text-emerald-500">
+                                                        <Layers size={18} />
+                                                    </div>
+                                                    <div>
+                                                        <span className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                                                            {cluster?.name || `Grappe ${clusterId}`}
+                                                        </span>
+                                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                                                            {cluster?.region?.name || 'Région Inconnue'}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    onClick={() => toggleClusterInZone(selectedZone.id, clusterId)}
+                                                    className="p-2 text-gray-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                                                    title="Désaffecter la grappe"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </div>
+                                        );
+                                    })}
+                                    {selectedZone.clusters.length === 0 && (
+                                        <div className="text-center py-10 bg-white/50 dark:bg-white/5 rounded-2xl border border-dashed border-gray-200 dark:border-white/10">
+                                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Aucune grappe affectée à cette zone</p>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
@@ -908,6 +1170,7 @@ function ZonesSection({ project, onUpdate }: { project: any, onUpdate: any }) {
 }
 
 function DataSection({ project, onUpdate }: { project: any, onUpdate: any }) {
+    const { fetchGrappes } = useTeams(project?.id);
     const handleReorganizeGrappes = async () => {
         if (!project || !project.households) {
             alert("Aucune donnée de ménages pour le calcul des grappes.");
@@ -916,14 +1179,20 @@ function DataSection({ project, onUpdate }: { project: any, onUpdate: any }) {
         if (!window.confirm("Calculer dynamiquement de nouvelles grappes via K-Means ?")) return;
 
         try {
-            const { grappes, sous_grappes } = generateDynamicGrappes(project.households, { 'Kaffrine': 600, 'Tambacounda': 600 });
-            onUpdate({
-                config: {
-                    ...project.config,
-                    grappesConfig: { grappes, sous_grappes }
-                }
-            });
-            alert("Grappes générées avec succès !");
+            const { grappes } = generateDynamicGrappes(project.households, { 'Kaffrine': 600, 'Tambacounda': 600 });
+            
+            // Transform grappes for the sync API
+            const grappesToSync = grappes.map((g: any) => ({
+                name: g.name,
+                regionName: g.region
+            }));
+
+            await apiClient.post('/teams/grappes/sync', { grappes: grappesToSync });
+            
+            // Refresh grappes in the UI
+            await fetchGrappes();
+            
+            alert("Grappes générées et synchronisées avec succès !");
         } catch (error) {
             logger.error("Erreur clustering :", error);
             alert("Erreur lors de la génération des grappes.");
@@ -1064,9 +1333,13 @@ function DataSection({ project, onUpdate }: { project: any, onUpdate: any }) {
 }
 
 function LogisticsSection({ project, onUpdate }: { project: any, onUpdate: any }) {
-    const teams = project?.config?.teams || [];
+    const { teams, fetchTeams } = useTeams(project?.id);
     const materialCatalog: CatalogItem[] = project?.config?.materialCatalog || [];
     const allocations = project?.config?.subTeamAllocations || {};
+
+    useEffect(() => {
+        fetchTeams();
+    }, [fetchTeams]);
 
     const handleUpdateAllocation = (subTeamId: string, itemId: string, field: 'quantity' | 'acquisitionType', value: any) => {
         const teamAlloc = allocations[subTeamId] || [];
@@ -1163,10 +1436,10 @@ function LogisticsSection({ project, onUpdate }: { project: any, onUpdate: any }
         if (sourceAllocations.length === 0) return;
 
         const parentTeam = teams.find((t: any) => t.id === parentTeamId);
-        if (!parentTeam || !parentTeam.subTeams) return;
+        if (!parentTeam || !parentTeam.children) return;
 
         const newAllocations = { ...allocations };
-        parentTeam.subTeams.forEach((st: any) => {
+        parentTeam.children.forEach((st: any) => {
             if (st.id !== sourceSubTeamId) {
                 newAllocations[st.id] = sourceAllocations.map((alloc: any) => ({
                     ...alloc,
@@ -1183,16 +1456,101 @@ function LogisticsSection({ project, onUpdate }: { project: any, onUpdate: any }
         });
     };
 
-    const allSubTeams = teams.flatMap((t: any) => (t.subTeams || []).map((st: any) => ({ ...st, parentTeam: t })));
+    const allSubTeams = teams.filter((t: any) => t.parentTeamId !== null);
 
     return (
         <div className="space-y-12">
+            {/* ERP Elite Settings */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+                <div className="bg-slate-50 dark:bg-white/5 p-8 rounded-[2rem] border border-gray-100 dark:border-white/5 shadow-sm">
+                    <div className="flex items-center gap-4 mb-6">
+                        <div className="p-3 bg-indigo-500/10 rounded-xl">
+                            <Navigation2 size={20} className="text-indigo-500" />
+                        </div>
+                        <div>
+                            <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">Périmètre de Sécurité (Geofencing)</h3>
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Rayon autour des magasins pour validation</p>
+                        </div>
+                    </div>
+                    
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-slate-600 dark:text-slate-400">Rayon de détection</span>
+                            <div className="flex items-center gap-3">
+                                <input
+                                    type="number"
+                                    title="Rayon en mètres"
+                                    value={project?.config?.logistique?.geofencingRadius || 500}
+                                    onChange={(e) => onUpdate({
+                                        config: {
+                                            ...project.config,
+                                            logistique: {
+                                                ...(project.config.logistique || { history: [] }),
+                                                geofencingRadius: parseInt(e.target.value) || 0
+                                            }
+                                        }
+                                    })}
+                                    className="w-24 bg-white dark:bg-slate-900 border border-gray-200 dark:border-white/10 rounded-lg px-3 py-2 text-sm font-black text-indigo-600 text-center outline-none"
+                                />
+                                <span className="text-xs font-bold text-slate-500 uppercase">Mètres</span>
+                            </div>
+                        </div>
+                        <p className="text-[10px] text-gray-400 leading-relaxed">
+                            Définit la distance maximale autorisée entre l'agent et le magasin pour valider une opération de stock.
+                        </p>
+                    </div>
+                </div>
+
+                <div className="bg-slate-50 dark:bg-white/5 p-8 rounded-[2rem] border border-gray-100 dark:border-white/5 shadow-sm">
+                    <div className="flex items-center gap-4 mb-6">
+                        <div className="p-3 bg-amber-500/10 rounded-xl">
+                            <DollarSign size={20} className="text-amber-500" />
+                        </div>
+                        <div>
+                            <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">Valorisation des Variantes</h3>
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Coût unitaire indicatif par type de kit</p>
+                        </div>
+                    </div>
+                    
+                    <div className="space-y-3">
+                        {['standard', 'solar_lite', 'solar_premium'].map(variantId => (
+                            <div key={variantId} className="flex items-center justify-between p-3 bg-white dark:bg-slate-900/50 rounded-xl border border-gray-100 dark:border-white/5">
+                                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                                    {variantId.replace('_', ' ')}
+                                </span>
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type="number"
+                                        title={`Prix ${variantId}`}
+                                        value={project?.config?.logistique?.variantPricing?.[variantId] || 0}
+                                        onChange={(e) => onUpdate({
+                                            config: {
+                                                ...project.config,
+                                                logistique: {
+                                                    ...(project.config.logistique || { history: [] }),
+                                                    variantPricing: {
+                                                        ...(project.config.logistique?.variantPricing || {}),
+                                                        [variantId]: parseInt(e.target.value) || 0
+                                                    }
+                                                }
+                                            }
+                                        })}
+                                        className="w-28 bg-transparent border-none text-right text-xs font-black text-amber-600 outline-none"
+                                    />
+                                    <span className="text-[9px] font-bold text-slate-400 uppercase">FCFA</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+
             <div>
                 <h2 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-3 uppercase tracking-tight mb-1">
                     <Truck className="text-amber-500" />
-                    Dotations & Logistique
+                    Dotations Standard (Théoriques)
                 </h2>
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Affectation du matériel par unité opérationnelle</p>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Affectation type du matériel par unité opérationnelle (Configuration)</p>
             </div>
 
             {allSubTeams.length === 0 ? (

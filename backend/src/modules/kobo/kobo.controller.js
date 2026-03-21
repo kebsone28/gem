@@ -5,7 +5,7 @@
  *
  * Routes:
  *   POST /api/kobo/sync   — Trigger a Kobo sync
- *   GET  /api/kobo/status — Return latest Kobo sync metadata
+ *   GET  /api//status — Return latest Kobo sync metadata
  */
 
 import { syncKoboToDatabase } from '../../services/kobo.service.js';
@@ -26,17 +26,49 @@ export const triggerKoboSync = async (req, res) => {
         let defaultZoneId = req.body.zoneId || null;
 
         if (!defaultZoneId) {
-            const firstZone = await prisma.zone.findFirst({
-                where: { organizationId },
-                select: { id: true }
-            });
-            defaultZoneId = firstZone?.id || null;
+            // AUTO-INITIALIZATION: Create a default project and zone if none exist
+            const existingProject = await prisma.project.findFirst({ where: { organizationId } });
+            if (!existingProject) {
+                console.log(`[KOBO] 💡 Auto-creating default project for org ${organizationId}`);
+                const newProject = await prisma.project.create({
+                    data: {
+                        name: 'Projet Kobo Global',
+                        organizationId,
+                        status: 'active',
+                        budget: '0',
+                        duration: 0,
+                        totalHouses: 0,
+                        config: {}
+                    }
+                });
+                const newZone = await prisma.zone.create({
+                    data: {
+                        name: 'Zone Kobo A',
+                        projectId: newProject.id,
+                        organizationId
+                    }
+                });
+                defaultZoneId = newZone.id;
+            } else {
+                const existingZone = await prisma.zone.findFirst({ where: { organizationId } });
+                if (existingZone) {
+                    defaultZoneId = existingZone.id;
+                } else {
+                    console.log(`[KOBO] 💡 Auto-creating default zone for project ${existingProject.id}`);
+                    const newZone = await prisma.zone.create({
+                        data: {
+                            name: 'Zone Kobo A',
+                            projectId: existingProject.id,
+                            organizationId
+                        }
+                    });
+                    defaultZoneId = newZone.id;
+                }
+            }
         }
 
         if (!defaultZoneId) {
-            return res.status(400).json({
-                error: 'Aucune zone trouvée. Créez un projet et une zone avant de synchroniser.'
-            });
+            return res.status(500).json({ error: 'Failed to find or create a default sync zone.' });
         }
 
         const since = lastKoboSyncMap[organizationId] || req.body.since || null;
