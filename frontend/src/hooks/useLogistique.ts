@@ -8,9 +8,12 @@ import * as safeStorage from '../utils/safeStorage';
 import logger from '../utils/logger';
 
 export function useLogistique() {
-    const households = useLiveQuery(() => db.households.toArray()) as Household[] | undefined;
-    const projects = useLiveQuery(() => db.projects.toArray()) as Project[] | undefined;
     const activeProjectId = safeStorage.getItem('active_project_id');
+    const households = useLiveQuery(async () => {
+        if (!activeProjectId) return [];
+        return await db.households.where('projectId').equals(activeProjectId).toArray();
+    }, [activeProjectId]) as Household[] | undefined;
+    const projects = useLiveQuery(() => db.projects.toArray()) as Project[] | undefined;
     
     const project = useLiveQuery(async () => {
         if (activeProjectId) return await db.projects.get(activeProjectId);
@@ -92,7 +95,8 @@ export function useLogistique() {
                 const grappe = grappesConfig?.grappes?.find((g: any) =>
                     g.id === h.grappeId || g.region === wh.region
                 );
-                return h.status === 'Conforme' && grappe;
+                const isConsumed = ['Conforme', 'Contrôle conforme', 'Terminé'].includes(h.status);
+                return isConsumed && grappe;
             }) || [];
             const kitsConsumed = regionHouseholds.length;
 
@@ -105,7 +109,8 @@ export function useLogistique() {
 
             const recentConforming = households?.filter(h => {
                 const grappe = grappesConfig?.grappes?.find((g: any) => g.region === wh.region);
-                return h.status === 'Conforme' && grappe && (h.updatedAt || '') >= sevenDaysAgo;
+                const isConsumed = ['Conforme', 'Contrôle conforme', 'Terminé'].includes(h.status);
+                return isConsumed && grappe && (h.updatedAt || h.delivery?.date || '') >= sevenDaysAgo;
             }) || [];
             const teamVelocity = recentConforming.length / 7;
 
@@ -185,10 +190,14 @@ export function useLogistique() {
     });
 
     // Global consumed count (all conforming households)
-    const globalConsumed = useMemo(() => households?.filter(h => h.status === 'Conforme').length || 0, [households]);
+    const globalConsumed = useMemo(() => 
+        households?.filter(h => ['Conforme', 'Contrôle conforme', 'Terminé'].includes(h.status)).length || 0, 
+    [households]);
     const globalVelocity = useMemo(() => {
         const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];
-        const recent = households?.filter(h => h.status === 'Conforme' && (h.updatedAt || '') >= sevenDaysAgo) || [];
+        const recent = households?.filter(h => 
+            ['Conforme', 'Contrôle conforme', 'Terminé'].includes(h.status) && 
+            (h.updatedAt || h.delivery?.date || '') >= sevenDaysAgo) || [];
         return Math.round((recent.length / 7) * 10) / 10;
     }, [households]);
 

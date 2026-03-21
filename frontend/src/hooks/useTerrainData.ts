@@ -170,6 +170,15 @@ export function useTerrainData() {
         const oldStatus = household.status;
         await db.households.update(id, { status: newStatus });
 
+        // 🔄 Sync to backend so MVT layer reflects the change after refresh
+        try {
+            await apiClient.patch(`households/${id}`, { status: newStatus });
+            logger.log(`✅ Status synced to backend for ${id}: ${newStatus}`);
+        } catch (e) {
+            logger.error(`❌ Failed to sync status to backend for ${id}`, e);
+            // The offline interceptor will catch this if it's a network error
+        }
+
         // Logic: Deduction from stock if finished
         if (newStatus === 'Terminé' && oldStatus !== 'Terminé' && activeProjectId) {
             // Find kit items
