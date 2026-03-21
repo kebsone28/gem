@@ -48,6 +48,10 @@ interface MapComponentProps {
     onBoundsChange?: (bounds: [number, number, number, number]) => void;
     warehouses?: any[];
     onLassoSelection?: (ids: string[]) => void;
+    isDrawing?: boolean;
+    pendingPoints?: [number, number][];
+    onAddPoint?: (point: [number, number]) => void;
+    drawnZones?: any[];
 }
 
 const MapComponent: React.FC<MapComponentProps> = ({
@@ -82,7 +86,11 @@ const MapComponent: React.FC<MapComponentProps> = ({
     visibleHouseholds = [],
     onBoundsChange,
     warehouses = [],
-    onLassoSelection
+    onLassoSelection,
+    isDrawing = false,
+    pendingPoints = [],
+    onAddPoint,
+    drawnZones = []
 }) => {
     return (
         <div className="h-full w-full relative bg-slate-100 dark:bg-slate-900 overflow-hidden">
@@ -116,6 +124,10 @@ const MapComponent: React.FC<MapComponentProps> = ({
                 onBoundsChange={onBoundsChange}
                 warehouses={warehouses}
                 onLassoSelection={onLassoSelection}
+                isDrawing={isDrawing}
+                pendingPoints={pendingPoints}
+                onAddPoint={onAddPoint}
+                drawnZones={drawnZones}
             />
 
             {showDatabaseStats && <MapStatsWidget stats={{

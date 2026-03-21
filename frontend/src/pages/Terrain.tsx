@@ -10,7 +10,8 @@ import {
     Search,
     RefreshCw,
     Plus,
-    Wifi
+    Wifi,
+    Trash2
 } from 'lucide-react';
 import { useTerrainData } from '../hooks/useTerrainData';
 import { useAuth } from '../contexts/AuthContext';
@@ -204,12 +205,7 @@ const Terrain: React.FC = () => {
         clusterWorker.postMessage({ households: workerData, maxPerCluster: 80 });
     }, [households, clusterWorker]);
 
-    const handleConfirmZone = (name: string, team: string, color: string) => {
-        if (pendingPoints.length < 3) return;
-        addZone({ id: `zone_${Date.now()}`, name, team, color, coordinates: pendingPoints, createdAt: new Date().toISOString() });
-        setIsDrawing(false);
-        setPendingPoints([]);
-    };
+
 
 
     const handleManualSync = async () => {
@@ -253,6 +249,59 @@ const Terrain: React.FC = () => {
         setShowDeleteModal(false);
         setDeletePassword('');
         setDeleteError('');
+    };
+
+    const handleDownloadRegion = async (region: any) => {
+        setIsDownloadingOffline(true);
+        try {
+            const martinUrl = import.meta.env.VITE_MARTIN_URL || 'http://localhost:3000';
+            const cache = await caches.open('households-mvt-cache');
+
+            // Fetch a few sample tiles to populate cache
+            const samples = [
+                `${martinUrl}/public.Household/12/2048/2048`,
+                `${martinUrl}/public.Household/12/2049/2048`
+            ];
+
+            await Promise.all(samples.map(url => cache.add(url).catch(() => { })));
+            await new Promise(r => setTimeout(r, 1000));
+
+            const newRegions = [...downloadedRegions, region.id];
+            setDownloadedRegions(newRegions);
+            safeStorage.setItem('downloaded_regions', JSON.stringify(newRegions));
+            toast.success(`Région ${region.name} téléchargée !`);
+        } catch (e) {
+            toast.error("Erreur lors du téléchargement");
+        } finally {
+            setIsDownloadingOffline(false);
+        }
+    };
+
+    const handleRemoveRegion = (id: string) => {
+        const newRegions = downloadedRegions.filter(r => r !== id);
+        setDownloadedRegions(newRegions);
+        safeStorage.setItem('downloaded_regions', JSON.stringify(newRegions));
+        toast.success("Région supprimée du cache");
+    };
+
+
+
+    const handleConfirmZone = (name: string, team: string, color: string) => {
+        if (pendingPoints.length < 3) return;
+        
+        const newZone: any = {
+            id: `zone_${Date.now()}`,
+            name,
+            team,
+            color,
+            coordinates: pendingPoints,
+            createdAt: new Date().toISOString()
+        };
+        
+        addZone(newZone);
+        setIsDrawing(false);
+        setPendingPoints([]);
+        toast.success(`Zone "${name}" enregistrée !`);
     };
 
     const [visibleWidgets] = useState({
@@ -354,6 +403,13 @@ const Terrain: React.FC = () => {
         }
     }, [isDarkMode]);
 
+    const handleMapMove = (center: [number, number], zoom: number) => {
+        mapCenterRef.current = center;
+        mapZoomRef.current = zoom;
+    };
+
+
+
     const handleTraceItinerary = () => {
         if (!selectedHousehold || !selectedHousehold.location?.coordinates) return;
         // ✅ Keep as [lng, lat] - consistent with map standard
@@ -451,8 +507,13 @@ const Terrain: React.FC = () => {
                                     ))}
                                 </select>
                                 {peutGererProjets && (
-                                    <button onClick={handleCreateProject} title="Créer un projet" className="p-1.5 hover:bg-white dark:hover:bg-white/10 rounded-lg text-gray-400 hover:text-blue-600 transition-all">
+                                    <button onClick={handleCreateProject} title="Créer un projet" className="p-1.5 hover:bg-white dark:hover:bg-white/10 rounded-lg text-gray-400 hover:text-blue-600 transition-all object-contain">
                                         <Plus size={14} />
+                                    </button>
+                                )}
+                                {peutSupprimerProjet && project?.id && (
+                                    <button onClick={() => setShowDeleteModal(true)} title="Supprimer ce projet" className="p-1.5 hover:bg-white dark:hover:bg-rose-500/10 rounded-lg text-gray-400 hover:text-rose-500 transition-all object-contain">
+                                        <Trash2 size={14} />
                                     </button>
                                 )}
                             </div>
@@ -563,7 +624,7 @@ const Terrain: React.FC = () => {
                                     exit={{ opacity: 0 }}
                                     className={`h-full w-full map-container relative`}
                                 >
-                                    <Suspense fallback={<div className="h-full w-full flex items-center justify-center">Chargement de la carte…</div>}>
+                                    <Suspense fallback={<div className="h-full w-full flex items-center justify-center text-slate-500 font-bold uppercase tracking-widest text-xs animate-pulse">Chargement cartographique...</div>}>
                                         <MapComponent
                                             households={filteredHouseholds}
                                             onSelect={setSelectedHousehold}
@@ -582,6 +643,8 @@ const Terrain: React.FC = () => {
                                             grappesConfig={grappesConfig}
                                             readOnly={!peutModifierCarte}
                                             isMeasuring={isMeasuring}
+                                            isSelecting={isSelecting}
+                                            showDatabaseStats={showDatabaseStats}
                                             mapStyle={mapStyle}
                                             grappeZonesData={grappeZonesData}
                                             grappeCentroidsData={grappeCentroidsData}
@@ -591,11 +654,16 @@ const Terrain: React.FC = () => {
                                             onHouseholdDrop={updateHouseholdLocation}
                                             onRouteFound={handleRouteFound}
                                             favorites={localFavorites}
-                                            projectId={project?.id}
-                                            warehouses={showWarehouses ? warehouseStats : []}
+                                            onMove={handleMapMove}
                                             onBoundsChange={setMapBounds}
-                                            visibleHouseholds={visibleHouseholds}
                                             onLassoSelection={handleLassoSelection}
+                                            isDrawing={isDrawing}
+                                            pendingPoints={pendingPoints}
+                                            onAddPoint={(pt: [number, number]) => setPendingPoints(prev => [...prev, pt])}
+                                            drawnZones={drawnZones}
+                                            visibleHouseholds={visibleHouseholds}
+                                            warehouses={showWarehouses ? warehouseStats : []}
+                                            projectId={project?.id}
                                         />
                                     </Suspense>
                                     {/* Routing Panel Overlay */}
@@ -658,6 +726,15 @@ const Terrain: React.FC = () => {
                                                     window.dispatchEvent(new CustomEvent('fit-bounds', { detail: bbox }));
                                                 }
                                             }}
+                                        />
+                                    )}
+                                    {/* Region Download Panel */}
+                                    {showRegionDownload && (
+                                        <MapRegionDownload
+                                            onClose={() => setShowRegionDownload(false)}
+                                            onDownload={handleDownloadRegion}
+                                            downloadedRegions={downloadedRegions}
+                                            onRemove={handleRemoveRegion}
                                         />
                                     )}
                                     {searchResults.length > 0 && searchQuery && (
@@ -788,43 +865,7 @@ const Terrain: React.FC = () => {
 
                 <DataHubModal isOpen={isDataHubOpen} onClose={() => setIsDataHubOpen(false)} />
 
-                {showRegionDownload && (
-                    <MapRegionDownload
-                        onClose={() => setShowRegionDownload(false)}
-                        downloadedRegions={downloadedRegions}
-                        onDownload={async (region) => {
-                            setIsDownloadingOffline(true);
-                            try {
-                                const martinUrl = import.meta.env.VITE_MARTIN_URL || 'http://localhost:3000';
-                                const cache = await caches.open('households-mvt-cache');
 
-                                // Fetch a few sample tiles to populate cache
-                                const samples = [
-                                    `${martinUrl}/public.Household/12/2048/2048`,
-                                    `${martinUrl}/public.Household/12/2049/2048`
-                                ];
-
-                                await Promise.all(samples.map(url => cache.add(url).catch(() => { })));
-                                await new Promise(r => setTimeout(r, 1000));
-
-                                const newRegions = [...downloadedRegions, region.id];
-                                setDownloadedRegions(newRegions);
-                                safeStorage.setItem('downloaded_regions', JSON.stringify(newRegions));
-                                toast.success(`Région ${region.name} téléchargée !`);
-                            } catch (e) {
-                                toast.error("Erreur lors du téléchargement");
-                            } finally {
-                                setIsDownloadingOffline(false);
-                            }
-                        }}
-                        onRemove={(id) => {
-                            const newRegions = downloadedRegions.filter(r => r !== id);
-                            setDownloadedRegions(newRegions);
-                            safeStorage.setItem('downloaded_regions', JSON.stringify(newRegions));
-                            toast.success("Région supprimée du cache");
-                        }}
-                    />
-                )}
 
                 {showDeleteModal && (
                     <div className="fixed inset-0 z-[4000] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">

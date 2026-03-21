@@ -83,7 +83,11 @@ export default function MapLibreVectorMap({
     favorites = [],
     projectId,
     warehouses = [],
-    onLassoSelection
+    onLassoSelection,
+    isDrawing = false,
+    pendingPoints = [],
+    onAddPoint,
+    drawnZones = []
 }: any) {
     const containerRef = useRef<HTMLDivElement>(null);
     const mapRef = useRef<maplibregl.Map | null>(null);
@@ -102,6 +106,8 @@ export default function MapLibreVectorMap({
     const grappeZonesDataRef = useRef(grappeZonesData);
     const grappeCentroidsDataRef = useRef(grappeCentroidsData);
     const onBoundsChangeRef = useRef(onBoundsChange);
+    const isDrawingRef = useRef(isDrawing);
+    const onAddPointRef = useRef(onAddPoint);
 
     // ✅ Shared event handler refs for perfect map.off() cleanup
     const handlersRef = useRef<Record<string, Function>>({});
@@ -149,6 +155,8 @@ export default function MapLibreVectorMap({
     
     const warehousesRef = useRef(warehouses);
     useEffect(() => { warehousesRef.current = warehouses; }, [warehouses]);
+    useEffect(() => { isDrawingRef.current = isDrawing; }, [isDrawing]);
+    useEffect(() => { onAddPointRef.current = onAddPoint; }, [onAddPoint]);
 
     // GéoJSON des Ménages avec correction jitter (décalage spirale pour coordonnées dupliquées)
     // ✅ Using useMemoDeep for deep memoization - prevents recalculation on 50k+ points
@@ -272,9 +280,13 @@ export default function MapLibreVectorMap({
             const mvtBaseUrl = apiUrl.startsWith('http') ? apiUrl : `${window.location.origin}${apiUrl}`;
             
             if (!map.getSource('households-mvt')) {
+                const tilesUrl = (projectId && projectId !== 'undefined')
+                    ? `${mvtBaseUrl}/geo/mvt/households/{z}/{x}/{y}?projectId=${projectId}&t=${Date.now()}`
+                    : `${mvtBaseUrl}/geo/mvt/households/{z}/{x}/{y}?projectId=none`;
+                    
                 map.addSource('households-mvt', {
                     type: 'vector',
-                    tiles: [`${mvtBaseUrl}/geo/mvt/households/{z}/{x}/{y}`],
+                    tiles: [tilesUrl],
                     minzoom: 0,
                     maxzoom: 14
                 });
@@ -326,6 +338,22 @@ export default function MapLibreVectorMap({
             // ✅ Source pour les clusters générés par Supercluster (mise à jour dynamique au zoom)
             if (!map.getSource('supercluster-generated')) {
                 map.addSource('supercluster-generated', {
+                    type: 'geojson',
+                    data: { type: 'FeatureCollection', features: [] }
+                });
+            }
+
+            // Source pour le dessin de zone en cours
+            if (!map.getSource('pending-zone')) {
+                map.addSource('pending-zone', {
+                    type: 'geojson',
+                    data: { type: 'FeatureCollection', features: [] }
+                });
+            }
+
+            // Source pour les zones enregistrées (drawnZones)
+            if (!map.getSource('drawn-zones')) {
+                map.addSource('drawn-zones', {
                     type: 'geojson',
                     data: { type: 'FeatureCollection', features: [] }
                 });
@@ -801,6 +829,56 @@ export default function MapLibreVectorMap({
                 });
             }
 
+            // --- LAYERS : DESSIN DE ZONE ---
+            if (!map.getLayer('pending-zone-fill')) {
+                map.addLayer({
+                    id: 'pending-zone-fill',
+                    type: 'fill',
+                    source: 'pending-zone',
+                    paint: { 'fill-color': '#6366f1', 'fill-opacity': 0.2 }
+                });
+            }
+            if (!map.getLayer('pending-zone-line')) {
+                map.addLayer({
+                    id: 'pending-zone-line',
+                    type: 'line',
+                    source: 'pending-zone',
+                    paint: { 'line-color': '#6366f1', 'line-width': 2, 'line-dasharray': [2, 1] }
+                });
+            }
+            if (!map.getLayer('pending-zone-points')) {
+                map.addLayer({
+                    id: 'pending-zone-points',
+                    type: 'circle',
+                    source: 'pending-zone',
+                    paint: { 'circle-radius': 4, 'circle-color': '#fff', 'circle-stroke-width': 2, 'circle-stroke-color': '#6366f1' }
+                });
+            }
+
+            // Couches pour les zones enregistrées
+            if (!map.getLayer('drawn-zones-fill')) {
+                map.addLayer({
+                    id: 'drawn-zones-fill',
+                    type: 'fill',
+                    source: 'drawn-zones',
+                    paint: {
+                        'fill-color': ['get', 'color'],
+                        'fill-opacity': 0.15
+                    }
+                });
+            }
+            if (!map.getLayer('drawn-zones-outline')) {
+                map.addLayer({
+                    id: 'drawn-zones-outline',
+                    type: 'line',
+                    source: 'drawn-zones',
+                    paint: {
+                        'line-color': ['get', 'color'],
+                        'line-width': 2
+                    }
+                });
+            }
+
             // Source temporaire pour le drag & drop (visual feedback)
             if (!map.getSource('drag-point')) {
                 map.addSource('drag-point', {
@@ -906,12 +984,28 @@ export default function MapLibreVectorMap({
         map.on('moveend', handleMoveEnd);
         map.on('styledata', handleStyleData);
 
+        // ✅ Drawing click handler
+        const handleMapClick = (e: maplibregl.MapMouseEvent) => {
+            // Check if tool is active and we are NOT clicking on a point/household
+            // (Standard map clicks only)
+            const features = map.queryRenderedFeatures(e.point, { 
+                layers: ['households-server-layer', 'households-local-layer'] 
+            });
+            if (features.length > 0) return;
+
+            if (isDrawingRef.current && onAddPointRef.current) {
+                onAddPointRef.current([e.lngLat.lng, e.lngLat.lat]);
+            }
+        };
+        map.on('click', handleMapClick);
+
         // ✅ Setup clustering events via hook (zoomend + moveend for supercluster updates)
         const clusteringCleanup = setupClusteringEvents(map);
 
         mapRef.current = map;
         return () => {
             if (clusteringCleanup) clusteringCleanup();
+            map.off('click', handleMapClick);
 
             // ✅ Use exact same references for perfect map.off()
             const h = handlersRef.current;
@@ -935,11 +1029,44 @@ export default function MapLibreVectorMap({
         (map.getSource('grappes') as any)?.setData(grappesGeoJSON);
         (map.getSource('warehouses-source') as any)?.setData(warehousesGeoJSON);
         (map.getSource('sous-grappes') as any)?.setData(sousGrappesGeoJSON);
-        if (grappeZonesData) (map.getSource('auto-grappes') as any)?.setData(grappeZonesData);
         if (grappeCentroidsData) (map.getSource('auto-grappes-centroids') as any)?.setData(grappeCentroidsData);
         if (favoritesGeoJSON) (map.getSource('favorites-source') as any)?.setData(favoritesGeoJSON);
 
-    }, [householdGeoJSON, grappesGeoJSON, warehousesGeoJSON, sousGrappesGeoJSON, styleIsReady, grappeZonesData, grappeCentroidsData, favoritesGeoJSON]);
+        // ✅ Sync Drawing Zones
+        const pendingGeoJSON = {
+            type: 'FeatureCollection',
+            features: pendingPoints.length > 0 ? [
+                {
+                    type: 'Feature',
+                    geometry: {
+                        type: pendingPoints.length > 2 ? 'Polygon' : (pendingPoints.length > 1 ? 'LineString' : 'Point'),
+                        coordinates: pendingPoints.length > 2 ? [[...pendingPoints, pendingPoints[0]]] : pendingPoints
+                    },
+                    properties: {}
+                }
+            ] : []
+        };
+        (map.getSource('pending-zone') as any)?.setData(pendingGeoJSON);
+
+        // Drawn zones persistence
+        const drawnZonesGeoJSON = {
+            type: 'FeatureCollection',
+            features: (drawnZones || []).map((z: any) => ({
+                type: 'Feature',
+                geometry: {
+                    type: 'Polygon',
+                    coordinates: [z.coordinates.length > 2 ? [...z.coordinates, z.coordinates[0]] : z.coordinates]
+                },
+                properties: {
+                    id: z.id,
+                    name: z.name,
+                    team: z.team,
+                    color: z.color
+                }
+            }))
+        };
+        (map.getSource('drawn-zones') as any)?.setData(drawnZonesGeoJSON);
+    }, [householdGeoJSON, grappesGeoJSON, warehousesGeoJSON, sousGrappesGeoJSON, styleIsReady, grappeZonesData, grappeCentroidsData, favoritesGeoJSON, pendingPoints, drawnZones]);
 
     // Sync Map View (Reactivity to center/zoom props)
     // To prevent the map from freezing during drag, we only flyTo if the user isn't interacting
@@ -960,6 +1087,25 @@ export default function MapLibreVectorMap({
         });
     }, [mapCommand]);
 
+
+    // 🔄 Dynamic source update when projectId changes (without style reload)
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map || !styleIsReady || !map.isStyleLoaded?.()) return;
+
+        const source = map.getSource('households-mvt');
+        if (source && 'setTiles' in source) {
+            const apiUrl = import.meta.env.VITE_API_URL || '/api';
+            const mvtBaseUrl = apiUrl.startsWith('http') ? apiUrl : `${window.location.origin}${apiUrl}`;
+            
+            const tilesUrl = (projectId && projectId !== 'undefined')
+                ? `${mvtBaseUrl}/geo/mvt/households/{z}/{x}/{y}?projectId=${projectId}&t=${Date.now()}`
+                : `${mvtBaseUrl}/geo/mvt/households/{z}/{x}/{y}?projectId=none`;
+            
+            (source as any).setTiles([tilesUrl]);
+            logger.log(`🔄 MVT tiles source updated for project: ${projectId}`);
+        }
+    }, [projectId, styleIsReady]);
 
     // Update active auto-grappe filter
     useEffect(() => {
