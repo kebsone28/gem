@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
     Download,
     CheckCircle2,
@@ -11,9 +11,12 @@ import {
     Save,
     Truck,
     Box as BoxIcon,
-    Glasses
+    Glasses,
+    RefreshCw
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useProject } from '../hooks/useProject';
+import { useTeams } from '../hooks/useTeams';
 import { exportCahiersToWord } from '../utils/exportWord';
 import * as safeStorage from '../utils/safeStorage';
 import './Cahier.css';
@@ -185,12 +188,43 @@ const DEFAULT_TASK_LIBRARY = {
   }
 };
 
+const ROLE_TO_TRADE_MAPPING: Record<string, string> = {
+    'Maçonnerie': 'macons',
+    'Réseau': 'reseau',
+    'Installation Intérieure': 'interieur_type1',
+    'Contrôle & Validation': 'controle',
+    'Préparateur': 'preparateurs',
+    'Livreur': 'logistics'
+};
+
 export default function Cahier() {
     const { user } = useAuth();
     const isAdmin = user?.role === 'ADMIN_PROQUELEC' || user?.role === 'DG_PROQUELEC' || user?.role === 'CLIENT_LSE';
 
+    const { project } = useProject();
+    const { teams: allTeams } = useTeams(project?.id);
+
     const [selectedRole, setSelectedRole] = useState('Installation Intérieure');
     const [isEditing, setIsEditing] = useState(false);
+
+    // Get automated rate for the current role from project settings
+    const automatedRate = useMemo(() => {
+        if (!project?.config?.costs?.staffRates) return null;
+        const tradeKey = ROLE_TO_TRADE_MAPPING[selectedRole];
+        if (!tradeKey) return null;
+
+        const staffRates = project.config.costs.staffRates;
+        for (const regionId in staffRates) {
+            for (const teamId in staffRates[regionId]) {
+                const team = (allTeams || []).find((t: any) => t.id === teamId);
+                // We match by tradeKey to get the standard rate for this type of work
+                if (team?.tradeKey === tradeKey) {
+                    return staffRates[regionId][teamId].amount || null;
+                }
+            }
+        }
+        return null;
+    }, [project, allTeams, selectedRole]);
 
     // Load local overrides or fallback to default
     const [customLibrary, setCustomLibrary] = useState(() => {
@@ -230,6 +264,13 @@ export default function Cahier() {
     const [editPricingPersonnel, setEditPricingPersonnel] = useState(currentTask.pricing?.personnelCount || 0);
     const [editPricingDuration, setEditPricingDuration] = useState(currentTask.pricing?.durationDays || 0);
     const [editPricingPenalties, setEditPricingPenalties] = useState(currentTask.pricing?.penalties || '');
+
+    // Sync automated rate to state if available and in edit mode
+    useEffect(() => {
+        if (automatedRate && isEditing && editPricingDailyRate === 0) {
+            setEditPricingDailyRate(automatedRate);
+        }
+    }, [automatedRate, isEditing, editPricingDailyRate]);
 
     // Reset editable fields when role changes
     const handleRoleChange = (role: string) => {
@@ -594,14 +635,33 @@ export default function Cahier() {
                                             <div className="space-y-4">
                                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                                     <div>
-                                                        <label className="block text-xs text-emerald-400 uppercase mb-1.5 font-bold">Tarif journalier (FCFA)</label>
-                                                        <input 
-                                                            type="number" 
-                                                            title="Tarif journalier"
-                                                            value={editPricingDailyRate}
-                                                            onChange={(e) => setEditPricingDailyRate(e.target.valueAsNumber || 0)}
-                                                            className="w-full bg-slate-950 border border-emerald-500/30 rounded-lg px-3 py-2 text-emerald-300 text-sm outline-none focus:border-emerald-500"
-                                                        />
+                                                        <div className="flex items-center justify-between mb-1.5">
+                                                            <label className="block text-xs text-emerald-400 uppercase font-bold">Tarif journalier (FCFA)</label>
+                                                            {automatedRate && (
+                                                                <span className="flex items-center gap-1 text-[9px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded uppercase font-black tracking-tighter">
+                                                                    <RefreshCw size={8} className="animate-spin-slow" />
+                                                                    Sync Paramètres
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <div className="relative">
+                                                            <input 
+                                                                type="number" 
+                                                                title="Tarif journalier"
+                                                                value={editPricingDailyRate}
+                                                                onChange={(e) => setEditPricingDailyRate(e.target.valueAsNumber || 0)}
+                                                                className="w-full bg-slate-950 border border-emerald-500/30 rounded-lg px-3 py-2 text-emerald-300 text-sm outline-none focus:border-emerald-500"
+                                                            />
+                                                            {automatedRate && editPricingDailyRate !== automatedRate && (
+                                                                <button 
+                                                                    onClick={() => setEditPricingDailyRate(automatedRate)}
+                                                                    title={`Réinitialiser au tarif paramétré (${automatedRate})`}
+                                                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-emerald-500 hover:text-emerald-400 p-1"
+                                                                >
+                                                                    <RefreshCw size={14} />
+                                                                </button>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                     <div>
                                                         <label className="block text-xs text-emerald-400 uppercase mb-1.5 font-bold">Effectif (Pers.)</label>
@@ -643,8 +703,13 @@ export default function Cahier() {
                                         ) : (
                                             <div className="space-y-6">
                                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                                                    <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-800">
-                                                        <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">Prix Unitaire</p>
+                                                    <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-800 relative">
+                                                        <div className="flex justify-between items-start mb-1">
+                                                            <p className="text-[10px] text-slate-500 uppercase font-bold">Prix Unitaire</p>
+                                                            {automatedRate && currentTask.pricing?.dailyRate === automatedRate && (
+                                                                <span className="text-[8px] text-emerald-500/50 font-black uppercase tracking-tighter">Sync ✔</span>
+                                                            )}
+                                                        </div>
                                                         <p className="text-emerald-400 font-bold">{currentTask.pricing?.dailyRate?.toLocaleString()} <span className="text-[10px]">{currentTask.pricing?.currency}</span></p>
                                                     </div>
                                                     <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-800">

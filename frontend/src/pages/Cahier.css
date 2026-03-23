@@ -28,3 +28,12 @@
     background-image: radial-gradient(circle at 2px 2px, #f59e0b 1px, transparent 0);
     background-size: 24px 24px;
 }
+
+@keyframes spin-slow {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.animate-spin-slow {
+    animation: spin-slow 8s linear infinite;
+}
