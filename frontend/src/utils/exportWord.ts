@@ -12,7 +12,6 @@ import {
     BorderStyle,
     AlignmentType, 
     ImageRun,
-    VerticalAlign,
 } from "docx";
 import { saveAs } from "file-saver";
 import logger from './logger';
@@ -67,10 +66,10 @@ const createRoleSection = async (data: ExportData) => {
                     children: [
                         new ImageRun({
                             data: buffer,
-                            transformation: { width: 400, height: 300 },
+                            transformation: { width: 300, height: 220 },
                         } as any),
                     ],
-                    spacing: { after: 400 }
+                    spacing: { after: 300 }
                 })
             );
         }
@@ -98,7 +97,6 @@ const createRoleSection = async (data: ExportData) => {
             new Paragraph({
                 children: [new TextRun({ text: "2. MISSIONS TECHNIQUES", bold: true, size: 26, color: "1d4ed8" })],
                 spacing: { before: 200, after: 100 },
-                border: { bottom: { color: "1d4ed8", space: 1, style: BorderStyle.SINGLE, size: 6 } }
             })
         );
         missions.forEach(m => {
@@ -112,7 +110,7 @@ const createRoleSection = async (data: ExportData) => {
         });
     }
 
-    // Matériel (Tableau)
+    // Matériel (Tableau simple)
     if (materials.length) {
         children.push(
             new Paragraph({
@@ -124,8 +122,8 @@ const createRoleSection = async (data: ExportData) => {
         const rows = materials.map(m => new TableRow({
             children: [
                 new TableCell({
-                    children: [new Paragraph({ text: m, spacing: { before: 80, after: 80 } })],
-                    verticalAlign: VerticalAlign.CENTER,
+                    children: [new Paragraph({ text: m })],
+                    width: { size: 100, type: WidthType.PERCENTAGE }
                 })
             ]
         }));
@@ -156,13 +154,12 @@ const createRoleSection = async (data: ExportData) => {
         });
     }
 
-    // Sous-traitance (Jaune/Ambre)
+    // Sous-traitance (Ambre)
     if (subcontracting.length) {
         children.push(
             new Paragraph({
                 children: [new TextRun({ text: "5. CLAUSES DE SOUS-TRAITANCE (LSE COMPLIANCE)", bold: true, size: 26, color: "b45309" })],
                 spacing: { before: 300, after: 150 },
-                shading: { fill: "fef3c7" }
             })
         );
         
@@ -188,7 +185,7 @@ const createRoleSection = async (data: ExportData) => {
         new Paragraph({ text: `Contact direct : ${contact || "N/A"}` })
     );
 
-    // Signatures
+    // Signatures (Tableau sans bordures complexes)
     children.push(
         new Paragraph({ text: "", spacing: { before: 600 } }),
         new Table({
@@ -202,17 +199,17 @@ const createRoleSection = async (data: ExportData) => {
                                     children: [new TextRun({ text: "VISA DIRECTION PROQUELEC", bold: true })],
                                     alignment: AlignmentType.CENTER 
                                 }),
-                                new Paragraph({ text: "", spacing: { before: 400 } }), // Spacer
+                                new Paragraph({ text: "", spacing: { before: 800 } }),
                                 new Paragraph({ 
                                     children: [new TextRun({ text: `Fait le ${new Date().toLocaleDateString()}`, size: 18 })],
                                     alignment: AlignmentType.CENTER 
                                 })
                             ],
-                            borders: { 
-                                top: { style: BorderStyle.DASHED, size: 1, color: "94a3b8" }, 
-                                bottom: { style: BorderStyle.DASHED, size: 1, color: "94a3b8" }, 
-                                left: { style: BorderStyle.DASHED, size: 1, color: "94a3b8" }, 
-                                right: { style: BorderStyle.DASHED, size: 1, color: "94a3b8" } 
+                            borders: {
+                                top: { style: BorderStyle.SINGLE, size: 1 },
+                                bottom: { style: BorderStyle.SINGLE, size: 1 },
+                                left: { style: BorderStyle.SINGLE, size: 1 },
+                                right: { style: BorderStyle.SINGLE, size: 1 },
                             }
                         }),
                         new TableCell({
@@ -221,17 +218,17 @@ const createRoleSection = async (data: ExportData) => {
                                     children: [new TextRun({ text: `VISA PRESTATAIRE (${role.toUpperCase()})`, bold: true })],
                                     alignment: AlignmentType.CENTER 
                                 }),
-                                new Paragraph({ text: "", spacing: { before: 400 } }), // Spacer
+                                new Paragraph({ text: "", spacing: { before: 800 } }),
                                 new Paragraph({ 
                                     children: [new TextRun({ text: "Signature et Cachet", size: 18 })],
                                     alignment: AlignmentType.CENTER 
                                 })
                             ],
-                            borders: { 
-                                top: { style: BorderStyle.DASHED, size: 1, color: "94a3b8" }, 
-                                bottom: { style: BorderStyle.DASHED, size: 1, color: "94a3b8" }, 
-                                left: { style: BorderStyle.DASHED, size: 1, color: "94a3b8" }, 
-                                right: { style: BorderStyle.DASHED, size: 1, color: "94a3b8" } 
+                            borders: {
+                                top: { style: BorderStyle.SINGLE, size: 1 },
+                                bottom: { style: BorderStyle.SINGLE, size: 1 },
+                                left: { style: BorderStyle.SINGLE, size: 1 },
+                                right: { style: BorderStyle.SINGLE, size: 1 },
                             }
                         })
                     ]
