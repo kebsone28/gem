@@ -19,92 +19,128 @@ import * as safeStorage from '../utils/safeStorage';
 import './Cahier.css';
 
 const DEFAULT_TASK_LIBRARY = {
-    'Préparateur': {
-        icon: BoxIcon,
-        color: 'indigo',
-        image: '/assets/images/preparateur-atelier.png',
-        introduction: "Le présent lot définit les exigences et modalités opérationnelles liées à la préparation en atelier, l'assemblage et le conditionnement logistique des équipements électriques, en stricte conformité avec la norme NS 01-001 et les spécifications techniques de Senelec.",
-        missions: [
-            'PHASE 1 - INVENTAIRE & CONTRÔLE KITS : Réception des fournitures selon nomenclature NS 01-001. Contrôle quantitatif et qualitatif (conformité Senelec) avant montage.',
-            'PHASE 2 - ATELIER DE PRÉCÂBLAGE : Équipement des coffrets modulaires. Pose et pontage des disjoncteurs C10, C20, différentiel 25A/30mA, et disjoncteur de branchement 5/15A.',
-            'PHASE 3 - CONDITIONNEMENT & MARQUAGE : Séparation en Kits Principaux et Secondaires (Option). Intégration des composants annexes (accessoires, prises, terre).',
-            'PHASE 4 - LOGISTIQUE DÉPART : Conditionnement hermétique et étiquetage (ID Ménage / Code Kobo). Préparation des bons de sortie magasin.'
-        ],
-        materials: ['Coffrets', 'Disjoncteurs et Interrupteurs', 'Filerie', 'Outillage (Sertissage)'],
-        hse: ['Gants de manutention', 'Poste ergonomique']
-    },
-    'Livreur': {
-        icon: Truck,
-        color: 'teal',
-        image: '/assets/images/livreur-distribution.png',
-        introduction: "Ce volet encadre la chaîne logistique de transport, l'arrimage sécurisé et la distribution des kits complets (sur site) destinés à chaque ménage bénéficiaire, garantissant l'intégrité du matériel et la traçabilité des livraisons.",
-        missions: [
-            'PHASE 1 - CHARGEMENT & ARRIMAGE : Prise en charge des kits au dépôt. Disposition sécurisée dans les véhicules pour éviter toute détérioration des appareillages.',
-            'PHASE 2 - ACHEMINEMENT ROUTIER : Transport du matériel et du personnel vers les zones d\'intervention ciblées.',
-            'PHASE 3 - DÉPLOIEMENT TERRAIN : Distribution exacte (clé en main) des kits par ménage identifié sur la liste locale.',
-            'PHASE 4 - RESTITUTION : Signature obligatoire du bordereau / accusé de réception par le bénéficiaire. Signalement des anomalies Kobo.'
-        ],
-        materials: ['Véhicule', 'Tablette', 'Bordereaux de livraison/réception'],
-        hse: ['Vigilance routière', 'Chaussures de sécurité']
-    },
-    'Maçonnerie': {
-        icon: Hammer,
-        color: 'emerald',
-        image: '/assets/images/maconnerie-base.png',
-        introduction: "Le présent document décrit les prescriptions techniques obligatoires pour les travaux de génie civil, incluant la réalisation des fondations, l'élévation des murets de comptage, le scellement des potelets galvanisés et les tranchées de raccordement.",
-        missions: [
-            'PHASE 1 - GÉNIE CIVIL & FONDATIONS (Briques Pleines) : Décaissement et coulage d\'une semelle de béton de propreté 65x65x10 cm. Pose des 8 briques pleines en guise de socle porteur incompressible.',
-            'PHASE 2 - ÉLÉVATION & JOINTOIEMENT (Briques Creuses) : Montage des 32 briques creuses de qualité supérieure. Application d\'un jointoiement "tiré au fer", lissé, dense et sans coulures (mortier riche en ciment).',
-            'PHASE 3 - REMPLISSAGE INTERNE : Remplissage hermétique par strates successives (Absence absolue de câblage interne). Niveau Bas: Ciment. Niveau Médian: Sable propre. Niveau Haut: Bouchon en ciment profilé en pente pour ruissellement des eaux.',
-            'PHASE 4 - SCELLEMENT DU POTELET GALVA : Fixation en façade avec patte de scellement. Réglage strict de l\'aplomb et de la verticalité aux deux axes (Niveau à bulle & fil à plomb). Le mortier doit fusionner avec l\'appareillage pour contrer la tension de ligne.',
-            'PHASE 5 - TRANCHÉES DE RACCORDEMENT : Fouille normalisée (Prof: 50cm, Larg: 30cm) entre coffret compteur et coffret principal avec pose de grillage avertisseur. (2ème tranchée applicable pour kits secondaires).'
-        ],
-        materials: ['8 briques pleines & 32 briques creuses (Format 15)', 'Ciment de grade 32.5 min', 'Sable de mer ou carrière tamisé', 'Niveau à bulle & Fil à plomb', 'Potelet Galva 4m et accessoires (tube PVC, pattes, etc)'],
-        hse: ['Port obligatoire des EPI (Casque, chaussures de sécurité)', 'Balisage obligatoire de la zone de tranchée/fouille', 'Personnel formé et aucune sous-traitance tolérée']
-    },
-    'Réseau': {
-        icon: Zap,
-        color: 'blue',
-        image: '/assets/images/reseau-poteau.png',
-        introduction: "Ce chapitre détaille les procédures techniques de raccordement des ménages au réseau aérien public basse tension (branchement monophasé), incluant le tirage de câble, la pose des organes d'ancrage et la connexion sécurisée.",
-        missions: [
-            'PHASE 1 - CONSIGNATION & PRÉPARATION : Balisage de la zone d\'intervention en aval du réseau aérien public basse tension.',
-            'PHASE 2 - TIRAGE DE LIGNE : Déroulage et tension du câble aluminium torsadé préassemblé 2x16 mm² depuis l\'armement de poteau (portée ~20m).',
-            'PHASE 3 - FIXATION MÉCANIQUE : Ancrage via pinces 25 et mise en place des arrêtoirs et brides de serrage autour du potelet.',
-            'PHASE 4 - CONNEXION ÉLECTRIQUE : Fixation des connecteurs homologués à perforation d\'isolant (CPB1/CT70). Raccordement en interface ménage / Senelec. (Note: Compteur pris en charge par Senelec ERA).'
-        ],
-        materials: ['Câble aluminium torsadé 2x16 mm²', 'Outillage isolé', 'Échelle 3m'],
-        hse: ['Port des EPI : Gants isolants, Écran facial, Casque sécurité, Chaussures de sécurité', 'Habilitation électrique obligatoire', 'Véhicule et échelle 3m conformes']
-    },
-    'Installation Intérieure': {
-        icon: HardHat,
-        color: 'orange',
-        image: '/assets/images/installation-terre.png',
-        introduction: "Ces spécifications fixent le cadre d'exécution pour le déploiement des branchements électriques intérieurs, de la pose du coffret jusqu'à l'équipement des terminaux et la mise à la terre, en respect absolu des normes de sécurité pour la protection des usagers.",
-        missions: [
-            'PHASE 1 - TRAÇAGE & FIXATION : Détermination des cheminements de câbles. Pose en apparent ou saigné sous fourreaux des câbles 2x6mm² FRN05 (15m) et 3x1.5mm² (4m) selon NS 01-001.',
-            'PHASE 2 - RACCORDEMENT COFFRET : Fixation murale. Connexion des appareillages modulaires avec serrage dynamométrique (C10, C20, Inter-Différentiel 30mA, Disjoncteur 5/15A).',
-            'PHASE 3 - ÉQUIPEMENT TERMINAL : Câblage et pose des douilles, hublots, lampes LED LBC et socles de prises de courant étanches.',
-            'PHASE 4 - KIT SECONDAIRE (Optionnel) : Extension de l\'installation via câble armé 3x1.5mm² (10m) pour éclairage déporté.',
-            'PHASE 5 - MISE À LA TERRE : Creusement et enfoncement du piquet cuivre. Intégration de la barrette de coupure, tube annelé et liaison via cuivre nu Ø25 puis conducteur sous gaine V/J 6mm² vers le bornier principal.'
-        ],
-        materials: ['Kit principal complet', 'Kit secondaire (option)', 'Dispositif de mise à la terre complet'],
-        hse: ['Aptitude physique confirmée et bonne moralité', 'Respect des nouvelles dispositions Senelec', 'Outillage isolé']
-    },
-    'Contrôle & Validation': {
-        icon: Glasses,
-        color: 'pink',
-        image: '/assets/images/controle-validation.png',
-        introduction: "Le présent volet encadre l'ultime phase d'audit technique, de contrôle de conformité et de certification (mesures d'isolement, continuité électrique) requise préalablement à la mise sous tension et à l'obtention de l'attestation Cossuel.",
-        missions: [
-            'PHASE 1 - INSPECTION VISUELLE : Examen systématique de l\'ingéniosité, des serrages, et du respect drastique des normes NS 01-001 et prescriptions Senelec.',
-            'PHASE 2 - ESSAIS MESURES : Vérification d\'Absence de Tension (VAT). Prise de valeur de la résistance de terre au telluromètre. Test de déclenchement différentiel et mesureurs d\'isolement 500V.',
-            'PHASE 3 - ENREGISTREMENTS : Restitution des valeurs trouvées sur KoboCollect. Élaboration du rapport analytique de réception pour chaque ménage validé.',
-            'PHASE 4 - APPROBATION : Validation définitive pour soumission au Cossuel (comité pour la sécurité des usagers). Signature du PV avec le bénéficiaire.'
-        ],
-        materials: ['Mesureur d’isolement 500V', 'Vérificateur d\'Absence de Tension (VAT)', 'Telluromètre', 'Multimètre', 'Ligne téléphonique/GSM fonctionnel'],
-        hse: ['Obligation d’aviser en cas d’accident électrique', 'Assurance accident obligatoire', 'Responsabilité totale des risques']
-    }
+  'Préparateur': {
+    icon: BoxIcon,
+    color: 'indigo',
+    image: '/assets/images/preparateur-atelier.png',
+    introduction: "Le présent lot définit les exigences et modalités opérationnelles liées à la préparation en atelier, l'assemblage et le conditionnement logistique des équipements électriques, en stricte conformité avec la norme NS 01-001 et les spécifications techniques de Senelec.",
+    missions: [
+      'PHASE 1 - INVENTAIRE & CONTRÔLE KITS : Réception des fournitures selon nomenclature NS 01-001. Contrôle quantitatif et qualitatif (conformité Senelec) avant montage.',
+      'PHASE 2 - ATELIER DE PRÉCÂBLAGE : Équipement des coffrets modulaires. Pose et pontage des disjoncteurs C10, C20, différentiel 25A/30mA, et disjoncteur de branchement 5/15A.',
+      'PHASE 3 - CONDITIONNEMENT & MARQUAGE : Séparation en Kits Principaux et Secondaires (Option). Intégration des composants annexes (accessoires, prises, terre).',
+      'PHASE 4 - LOGISTIQUE DÉPART : Conditionnement hermétique et étiquetage (ID Ménage / Code Kobo). Préparation des bons de sortie magasin.'
+    ],
+    materials: ['Coffrets', 'Disjoncteurs et Interrupteurs', 'Filerie', 'Outillage (Sertissage)'],
+    hse: ['Gants de manutention', 'Poste ergonomique'],
+    subcontracting: [
+      'Reporting GEM-SAAS : Obligation de validation numérique en temps réel.',
+      'Non Sous-traitance : Interdiction du second rang.',
+      'Qualité Senelec : Respect strict des normes NS 01-001.',
+      'Pénalités & Délais : Rappel de l\'importance du calendrier LSE.'
+    ]
+  },
+  'Livreur': {
+    icon: Truck,
+    color: 'teal',
+    image: '/assets/images/livreur-distribution.png',
+    introduction: "Ce volet encadre la chaîne logistique de transport, l'arrimage sécurisé et la distribution des kits complets (sur site) destinés à chaque ménage bénéficiaire, garantissant l'intégrité du matériel et la traçabilité des livraisons.",
+    missions: [
+      'PHASE 1 - CHARGEMENT & ARRIMAGE : Prise en charge des kits au dépôt. Disposition sécurisée dans les véhicules pour éviter toute détérioration des appareillages.',
+      'PHASE 2 - ACHEMINEMENT ROUTIER : Transport du matériel et du personnel vers les zones d\'intervention ciblées.',
+      'PHASE 3 - DÉPLOIEMENT TERRAIN : Distribution exacte (clé en main) des kits par ménage identifié sur la liste locale.',
+      'PHASE 4 - RESTITUTION : Signature obligatoire du bordereau / accusé de réception par le bénéficiaire. Signalement des anomalies Kobo.'
+    ],
+    materials: ['Véhicule', 'Tablette', 'Bordereaux de livraison/réception'],
+    hse: ['Vigilance routière', 'Chaussures de sécurité'],
+    subcontracting: [
+      'Reporting GEM-SAAS : Suivi journalier obligatoire.',
+      'Non Sous-traitance : Livraison exclusivement par l\'équipe interne.',
+      'Qualité Senelec : Vérification intégrale des bordereaux.',
+      'Pénalités & Délais : Respect strict du planning LSE.'
+    ]
+  },
+  'Maçonnerie': {
+    icon: Hammer,
+    color: 'emerald',
+    image: '/assets/images/maconnerie-base.png',
+    introduction: "Le présent document décrit les prescriptions techniques obligatoires pour les travaux de génie civil, incluant la réalisation des fondations, l'élévation des murets de comptage, le scellement des potelets galvanisés et les tranchées de raccordement.",
+    missions: [
+      'PHASE 1 - GÉNIE CIVIL & FONDATIONS (Briques Pleines) : Décaissement et coulage d\'une semelle de béton de propreté 65x65x10 cm. Pose des 8 briques pleines en guise de socle porteur incompressible.',
+      'PHASE 2 - ÉLÉVATION & JOINTOIEMENT (Briques Creuses) : Montage des 32 briques creuses de qualité supérieure. Application d\'un jointoiement "tiré au fer", lissé, dense et sans coulures (mortier riche en ciment).',
+      'PHASE 3 - REMPLISSAGE INTERNE : Remplissage hermétique par strates successives (Absence absolue de câblage interne). Niveau Bas: Ciment. Niveau Médian: Sable propre. Niveau Haut: Bouchon en ciment profilé en pente pour ruissellement des eaux.',
+      'PHASE 4 - SCELLEMENT DU POTELET GALVA : Fixation en façade avec patte de scellement. Réglage strict de l\'aplomb et de la verticalité aux deux axes (Niveau à bulle & fil à plomb). Le mortier doit fusionner avec l\'appareillage pour contrer la tension de ligne.',
+      'PHASE 5 - TRANCHÉES DE RACCORDEMENT : Fouille normalisée (Prof: 50cm, Larg: 30cm) entre coffret compteur et coffret principal avec pose de grillage avertisseur. (2ème tranchée applicable pour kits secondaires).'
+    ],
+    materials: ['8 briques pleines & 32 briques creuses (Format 15)', 'Ciment de grade 32.5 min', 'Sable de mer ou carrière tamisé', 'Niveau à bulle & Fil à plomb', 'Potelet Galva 4m et accessoires (tube PVC, pattes, etc)'],
+    hse: ['Port obligatoire des EPI (Casque, chaussures de sécurité)', 'Balisage obligatoire de la zone de tranchée/fouille', 'Personnel formé et aucune sous-traitance tolérée'],
+    subcontracting: [
+      'Reporting GEM-SAAS : Suivi obligatoire pour chaque phase de maçonnerie.',
+      'Non Sous-traitance : Tous travaux réalisés par l\'équipe interne.',
+      'Qualité Senelec : Respect strict des normes NS 01-001.',
+      'Pénalités & Délais : Respect du calendrier LSE impératif.'
+    ]
+  },
+  'Réseau': {
+    icon: Zap,
+    color: 'blue',
+    image: '/assets/images/reseau-poteau.png',
+    introduction: "Ce chapitre détaille les procédures techniques de raccordement des ménages au réseau aérien public basse tension (branchement monophasé), incluant le tirage de câble, la pose des organes d'ancrage et la connexion sécurisée.",
+    missions: [
+      'PHASE 1 - CONSIGNATION & PRÉPARATION : Balisage de la zone d\'intervention en aval du réseau aérien public basse tension.',
+      'PHASE 2 - TIRAGE DE LIGNE : Déroulage et tension du câble aluminium torsadé préassemblé 2x16 mm² depuis l\'armement de poteau (portée ~20m).',
+      'PHASE 3 - FIXATION MÉCANIQUE : Ancrage via pinces 25 et mise en place des arrêtoirs et brides de serrage autour du potelet.',
+      'PHASE 4 - CONNEXION ÉLECTRIQUE : Fixation des connecteurs homologués à perforation d\'isolant (CPB1/CT70). Raccordement en interface ménage / Senelec. (Note: Compteur pris en charge par Senelec ERA).'
+    ],
+    materials: ['Câble aluminium torsadé 2x16 mm²', 'Outillage isolé', 'Échelle 3m'],
+    hse: ['Port des EPI : Gants isolants, Écran facial, Casque sécurité, Chaussures de sécurité', 'Habilitation électrique obligatoire', 'Véhicule et échelle 3m conformes'],
+    subcontracting: [
+      'Reporting GEM-SAAS : Obligation de suivi en temps réel pour chaque ligne.',
+      'Non Sous-traitance : Interdiction de déléguer le tirage ou la connexion.',
+      'Qualité Senelec : Contrôle obligatoire de chaque connexion.',
+      'Pénalités & Délais : Respect strict du planning LSE.'
+    ]
+  },
+  'Installation Intérieure': {
+    icon: HardHat,
+    color: 'orange',
+    image: '/assets/images/installation-terre.png',
+    introduction: "Ces spécifications fixent le cadre d'exécution pour le déploiement des branchements électriques intérieurs, de la pose du coffret jusqu'à l'équipement des terminaux et la mise à la terre, en respect absolu des normes de sécurité pour la protection des usagers.",
+    missions: [
+      'PHASE 1 - TRAÇAGE & FIXATION : Détermination des cheminements de câbles. Pose en apparent ou saigné sous fourreaux des câbles 2x6mm² FRN05 (15m) et 3x1.5mm² (4m) selon NS 01-001.',
+      'PHASE 2 - RACCORDEMENT COFFRET : Fixation murale. Connexion des appareillages modulaires avec serrage dynamométrique (C10, C20, Inter-Différentiel 30mA, Disjoncteur 5/15A).',
+      'PHASE 3 - ÉQUIPEMENT TERMINAL : Câblage et pose des douilles, hublots, lampes LED LBC et socles de prises de courant étanches.',
+      'PHASE 4 - KIT SECONDAIRE (Optionnel) : Extension de l\'installation via câble armé 3x1.5mm² (10m) pour éclairage déporté.',
+      'PHASE 5 - MISE À LA TERRE : Creusement et enfoncement du piquet cuivre. Intégration de la barrette de coupure, tube annelé et liaison via cuivre nu Ø25 puis conducteur sous gaine V/J 6mm² vers le bornier principal.'
+    ],
+    materials: ['Kit principal complet', 'Kit secondaire (option)', 'Dispositif de mise à la terre complet'],
+    hse: ['Aptitude physique confirmée et bonne moralité', 'Respect des nouvelles dispositions Senelec', 'Outillage isolé'],
+    subcontracting: [
+      'Reporting GEM-SAAS : Suivi numérique obligatoire à chaque étape.',
+      'Non Sous-traitance : Travaux exclusivement réalisés par l’équipe interne.',
+      'Qualité Senelec : Respect strict des normes NS 01-001 et inspection obligatoire.',
+      'Pénalités & Délais : Suivi impératif du planning LSE.'
+    ]
+  },
+  'Contrôle & Validation': {
+    icon: Glasses,
+    color: 'pink',
+    image: '/assets/images/controle-validation.png',
+    introduction: "Le présent volet encadre l'ultime phase d'audit technique, de contrôle de conformité et de certification (mesures d'isolement, continuité électrique) requise préalablement à la mise sous tension et à l'obtention de l'attestation Cossuel.",
+    missions: [
+      'PHASE 1 - INSPECTION VISUELLE : Examen systématique de l\'ingéniosité, des serrages, et du respect drastique des normes NS 01-001 et prescriptions Senelec.',
+      'PHASE 2 - ESSAIS MESURES : Vérification d\'Absence de Tension (VAT). Prise de valeur de la résistance de terre au telluromètre. Test de déclenchement différentiel et mesureurs d\'isolement 500V.',
+      'PHASE 3 - ENREGISTREMENTS : Restitution des valeurs trouvées sur KoboCollect. Élaboration du rapport analytique de réception pour chaque ménage validé.',
+      'PHASE 4 - APPROBATION : Validation définitive pour soumission au Cossuel (comité pour la sécurité des usagers). Signature du PV avec le bénéficiaire.'
+    ],
+    materials: ['Mesureur d’isolement 500V', 'Vérificateur d\'Absence de Tension (VAT)', 'Telluromètre', 'Multimètre', 'Ligne téléphonique/GSM fonctionnel'],
+    hse: ['Obligation d’aviser en cas d’accident électrique', 'Assurance accident obligatoire', 'Responsabilité totale des risques'],
+    subcontracting: [
+      'Reporting GEM-SAAS : Enregistrement obligatoire de tous les contrôles.',
+      'Non Sous-traitance : Contrôle exclusivement réalisé par l’équipe interne certifiée.',
+      'Qualité Senelec : Respect strict des normes NS 01-001 pour la validation finale.',
+      'Pénalités & Délais : Suivi rigoureux du planning LSE pour la réception finale.'
+    ]
+  }
 };
 
 export default function Cahier() {
@@ -141,11 +177,11 @@ export default function Cahier() {
     const currentTask = customLibrary[currentRoleKey as keyof typeof customLibrary] || DEFAULT_TASK_LIBRARY['Installation Intérieure'];
     const CurrentIcon = currentTask.icon || Hammer;
 
-    // Local state for the editable fields of the currently selected role
     const [editIntroduction, setEditIntroduction] = useState(currentTask.introduction || '');
     const [editMissions, setEditMissions] = useState(currentTask.missions.join('\n'));
     const [editMaterials, setEditMaterials] = useState(currentTask.materials.join('\n'));
     const [editHse, setEditHse] = useState(currentTask.hse.join('\n'));
+    const [editSubcontracting, setEditSubcontracting] = useState(currentTask.subcontracting?.join('\n') || '');
 
     // Reset editable fields when role changes
     const handleRoleChange = (role: string) => {
@@ -156,6 +192,7 @@ export default function Cahier() {
         setEditMissions(task.missions.join('\n'));
         setEditMaterials(task.materials.join('\n'));
         setEditHse(task.hse.join('\n'));
+        setEditSubcontracting(task.subcontracting?.join('\n') || '');
     };
 
     const handleSave = () => {
@@ -165,7 +202,8 @@ export default function Cahier() {
             introduction: editIntroduction,
             missions: editMissions.split('\n').filter(Boolean),
             materials: editMaterials.split('\n').filter(Boolean),
-            hse: editHse.split('\n').filter(Boolean)
+            hse: editHse.split('\n').filter(Boolean),
+            subcontracting: editSubcontracting.split('\n').filter(Boolean)
         };
         setCustomLibrary(updatedLibrary);
         safeStorage.setItem('gem_cahier_library', JSON.stringify(updatedLibrary));
@@ -181,6 +219,7 @@ export default function Cahier() {
             missions: currentTask.missions,
             materials: currentTask.materials,
             hse: currentTask.hse,
+            subcontracting: currentTask.subcontracting || [],
             startDate: new Date().toISOString().slice(0, 10),
             endDate: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
             responsible: user?.name || '',
@@ -196,6 +235,7 @@ export default function Cahier() {
             missions: (task as any).missions,
             materials: (task as any).materials,
             hse: (task as any).hse,
+            subcontracting: (task as any).subcontracting || [],
             startDate: new Date().toISOString().slice(0, 10),
             endDate: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
             responsible: '',
@@ -460,6 +500,27 @@ export default function Cahier() {
                                                     </div>
                                                 ))}
                                             </div>
+                                        )}
+                                    </div>
+
+                                    <div className="flex items-center space-x-2 mb-6 mt-8">
+                                        <div className="w-1 h-6 bg-violet-500 rounded-full" />
+                                        <h4 className="font-bold text-white uppercase tracking-wider text-sm">Clauses de Sous-traitance</h4>
+                                    </div>
+                                    <div className="bg-violet-500/5 border border-violet-500/20 rounded-xl p-4">
+                                        {isEditing ? (
+                                            <textarea
+                                                title="Modifier les clauses de sous-traitance"
+                                                value={editSubcontracting}
+                                                onChange={(e) => setEditSubcontracting(e.target.value)}
+                                                className="w-full h-32 bg-slate-950 border border-violet-500/30 rounded-xl p-3 text-violet-200 text-sm focus:border-violet-500 outline-none resize-none"
+                                            />
+                                        ) : (
+                                            <ul className="space-y-2 list-disc list-inside text-violet-200 text-sm">
+                                                {currentTask.subcontracting?.map((clause: string, i: number) => (
+                                                    <li key={i}>{clause}</li>
+                                                ))}
+                                            </ul>
                                         )}
                                     </div>
                                 </section>

@@ -6,6 +6,7 @@ export interface ExportData {
     missions: string[];
     materials: string[];
     hse: string[];
+    subcontracting: string[];
     startDate: string;
     endDate: string;
     responsible: string;
@@ -31,7 +32,7 @@ const getBase64Image = async (imgUrl: string): Promise<string | null> => {
 };
 
 const generateRoleHTML = (data: ExportData) => {
-    const { role, introduction, missions, materials, hse, startDate, endDate, responsible, image } = data;
+    const { role, introduction, missions, materials, hse, subcontracting, startDate, endDate, responsible, image } = data;
     return `
         <div style="background: #0f172a; padding: 25px; border-bottom: 6px solid #f59e0b;">
             <table style="width: 100%; border-collapse: collapse;">
@@ -92,11 +93,20 @@ const generateRoleHTML = (data: ExportData) => {
                     </div>
 
                     <h3 style="color: #dc2626; font-size: 12pt; text-transform: uppercase; letter-spacing: 1px; margin-top: 35px; border-top: 1px solid #fecaca; padding-top: 15px; margin-bottom: 15px;">SÉCURITÉ & HSE</h3>
-                    <div style="background: #fef2f2; border: 1px solid #fee2e2; padding: 20px; border-radius: 12px;">
+                    <div style="background: #fef2f2; border: 1px solid #fee2e2; padding: 20px; border-radius: 12px; margin-bottom: 30px;">
                         <ul style="margin: 0; padding-left: 20px; font-size: 10pt; color: #991b1b;">
                             ${hse.map(m => `<li style="margin-bottom: 6px;">${m}</li>`).join('')}
                         </ul>
                     </div>
+
+                    ${subcontracting && subcontracting.length > 0 ? `
+                        <h3 style="color: #7c3aed; font-size: 12pt; text-transform: uppercase; letter-spacing: 1px; margin-top: 35px; border-top: 1px solid #ddd6fe; padding-top: 15px; margin-bottom: 15px;">CLAUSES DE SOUS-TRAITANCE</h3>
+                        <div style="background: #f5f3ff; border: 1px solid #ede9fe; padding: 20px; border-radius: 12px;">
+                            <ul style="margin: 0; padding-left: 20px; font-size: 10pt; color: #5b21b6;">
+                                ${subcontracting.map(c => `<li style="margin-bottom: 6px;">${c}</li>`).join('')}
+                            </ul>
+                        </div>
+                    ` : ''}
                 </td>
             </tr>
         </table>
