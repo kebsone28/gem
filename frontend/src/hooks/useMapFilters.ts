@@ -95,8 +95,16 @@ export const useMapFilters = (households: Household[] = [], mapBounds: [number, 
         const [west, south, east, north] = mapBounds;
         
         return filteredHouseholds.filter(h => {
-             const lng = h.location!.coordinates[0] as number;
-             const lat = h.location!.coordinates[1] as number;
+             let lng = h.location!.coordinates[0] as number;
+             let lat = h.location!.coordinates[1] as number;
+             
+             // Au Sénégal, lng est négative et lat est positive. Si c'est inversé [lat, lng], on swap.
+             if (lng > 0 && lat < 0) {
+                 const temp = lng;
+                 lng = lat;
+                 lat = temp;
+             }
+
              return (lng >= west && lng <= east && lat >= south && lat <= north);
         });
     }, [filteredHouseholds, mapBounds]);

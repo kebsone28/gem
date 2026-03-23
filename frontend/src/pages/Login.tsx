@@ -1,11 +1,10 @@
-import { useState, useEffect, useRef, type FormEvent } from 'react';
+import { useState, useRef, type FormEvent } from 'react';
 import logger from '../utils/logger';
 import { useNavigate } from 'react-router-dom';
 import { LogIn, User, Lock, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import apiClient from '../api/client';
 import type { User as DBUser } from '../utils/types';
-import { trackRender } from '../utils/debugHelper';
 
 
 type LoginStep = 'credentials' | '2fa' | 'recovery';
@@ -30,13 +29,9 @@ export default function Login() {
     const [recSecAns, setRecSecAns] = useState('');
     const [recoveryInfo, setRecoveryInfo] = useState('');
 
-    // Track renders in development
+    // Track renders in development (mount only - prevents excessive re-renders)
     const renderCount = useRef(0);
-    useEffect(() => {
-        renderCount.current++;
-        trackRender('Login');
-        console.log(`📊 [DIAGNOSTIC] Login render #${renderCount.current}`);
-    });
+    renderCount.current++;
 
     const handleCredentials = async (e: FormEvent) => {
         e.preventDefault();

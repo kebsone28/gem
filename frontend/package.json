@@ -13,6 +13,9 @@
     "dev:3000": "node --max-old-space-size=4096 ./node_modules/vite/bin/vite.js --port 3000"
   },
   "dependencies": {
+    "@turf/boolean-point-in-polygon": "^7.3.4",
+    "@turf/buffer": "^7.3.4",
+    "@turf/convex": "^7.3.4",
     "@turf/helpers": "^7.3.4",
     "@turf/simplify": "^7.3.4",
     "@types/file-saver": "^2.0.7",

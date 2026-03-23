@@ -23,11 +23,22 @@ export const config = {
         refreshExpiry: process.env.REFRESH_TOKEN_EXPIRY || '7d'
     },
     cors: {
-        origin: process.env.CORS_ORIGIN
-            ? process.env.CORS_ORIGIN.split(',')
-                .map(o => o.trim())
-                .map(o => (o !== '*' && !o.startsWith('http')) ? `http://${o}` : o)
-            : ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175']
+        origin: (origin, callback) => {
+            const allowedOrigins = [
+                'http://localhost:3000',
+                'http://localhost:5173',
+                'http://localhost:5174',
+                'http://localhost:5175'
+            ];
+            // Allow requests with no origin (like mobile apps or curl) or if origin is in allowed list
+            if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+                callback(null, true);
+            } else {
+                console.warn(`🔒 CORS Blocked attempt from origin: ${origin}`);
+                callback(new Error('CORS non autorisé par la politique PROQUELEC'));
+            }
+        },
+        credentials: true
     },
     sentry: {
         dsn: process.env.SENTRY_DSN

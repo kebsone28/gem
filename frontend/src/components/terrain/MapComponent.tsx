@@ -17,6 +17,7 @@ interface MapComponentProps {
     onSelect: (household: Household) => void;
     mapCommand: { center: [number, number]; zoom: number; timestamp: number } | null;
     showHeatmap?: boolean;
+    isFilteringActive?: boolean;
     activeHouseholdId?: string | null;
     selectedPhases?: string[];
     onToggleStatus?: (status: string) => void;
@@ -59,6 +60,7 @@ const MapComponent: React.FC<MapComponentProps> = ({
     onSelect,
     mapCommand,
     showHeatmap = false,
+    isFilteringActive = false,
     selectedPhases = [],
     onToggleStatus,
     showLegend = true,
@@ -100,6 +102,7 @@ const MapComponent: React.FC<MapComponentProps> = ({
                 mapCommand={mapCommand}
                 onSelectHousehold={onSelect}
                 showHeatmap={showHeatmap}
+                isFilteringActive={isFilteringActive}
                 showZones={showZones}
                 onZoneClick={onZoneClick}
                 grappesConfig={grappesConfig}

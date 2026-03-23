@@ -31,14 +31,14 @@ apiClient.interceptors.response.use(
         const originalRequest = error.config;
 
         // 1. Handle Token Refresh (401)
-        const isAuthRequest = originalRequest.url?.includes('/auth/login') || originalRequest.url?.includes('/auth/register');
-        const isRefreshRequest = originalRequest.url?.includes('/auth/refresh');
+        // ✅ Use flexible matching - URL may be 'auth/login' OR '/auth/login' depending on context
+        const url = originalRequest.url || '';
+        const isAuthRoute = url.includes('auth/login') || url.includes('auth/register') || url.includes('auth/refresh') || url.includes('auth/verify');
         const isAlreadyAtLogin = window.location.pathname === '/login';
 
-        if (error.response?.status === 401 && !originalRequest._retry && !isRefreshRequest && !isAuthRequest) {
+        if (error.response?.status === 401 && !originalRequest._retry && !isAuthRoute) {
             originalRequest._retry = true;
             try {
-                // Only try refresh if we have a token (or at least we think we do)
                 const hasToken = !!safeStorage.getItem('access_token');
                 if (!hasToken) throw new Error('No token to refresh');
 
@@ -47,11 +47,10 @@ apiClient.interceptors.response.use(
                 return apiClient(originalRequest);
             } catch (refreshError) {
                 safeStorage.removeItem('access_token');
-                // Notify AuthContext to clear the user state (breaks the stale-auth sync loop)
-                window.dispatchEvent(new CustomEvent('auth:logout'));
-
-                // Only redirect if not already on login to avoid redirect loops
+                // Only notify logout if NOT already on login page (avoid event loops)
                 if (!isAlreadyAtLogin) {
+                    logger.warn('🔐 [AUTH] Force logout: token refresh failed, clearing session');
+                    window.dispatchEvent(new CustomEvent('auth:logout'));
                     window.location.href = '/login';
                 }
                 return Promise.reject(refreshError);

@@ -2,11 +2,11 @@ import prisma from '../../core/utils/prisma.js';
 import { tracerAction } from '../../services/audit.service.js';
 
 // @desc    Get all grappes (clusters)
-// @route   GET /api/grappes
+// @route   GET /api/teams/grappes
 export const getGrappes = async (req, res) => {
     try {
         const { regionId } = req.query;
-        
+
         const grappes = await prisma.grappe.findMany({
             where: regionId ? { regionId } : {},
             include: {
@@ -16,7 +16,7 @@ export const getGrappes = async (req, res) => {
             },
             orderBy: { name: 'asc' }
         });
-        
+
         res.json({ grappes });
     } catch (error) {
         console.error('Get grappes error:', error);
@@ -27,27 +27,38 @@ export const getGrappes = async (req, res) => {
 // @desc    Sync grappes (Bulk UPSERT)
 // @route   POST /api/teams/grappes/sync
 export const syncGrappes = async (req, res) => {
+    console.log('📥 [SYNC GRAPPES] Body reçu:', JSON.stringify(req.body).slice(0, 300));
+
     try {
-        const { grappes } = req.body; // Expecting [{ name: string, regionName: string }, ...]
+        const { grappes } = req.body;
         const { organizationId, id: userId } = req.user;
 
         if (!Array.isArray(grappes)) {
-            return res.status(400).json({ error: 'Invalid data format' });
+            return res.status(400).json({ error: 'Format invalide : grappes doit être un tableau' });
         }
 
-        const results = [];
-        for (const g of grappes) {
-            // Find region by name (since clustering utility handles names)
-            const region = await prisma.region.findFirst({
-                where: { name: g.regionName, organizationId }
-            });
+        if (grappes.length === 0) {
+            return res.status(400).json({ error: 'Tableau de grappes vide' });
+        }
 
-            if (!region) {
-                console.warn(`Region not found for grappe sync: ${g.regionName}`);
+        console.log(`📊 [SYNC GRAPPES] ${grappes.length} grappes à synchroniser pour org: ${organizationId}`);
+
+        const results = [];
+
+        for (const g of grappes) {
+            if (!g.name || !g.regionName) {
+                console.warn(`⚠️ [SYNC GRAPPES] Grappe invalide ignorée:`, g);
                 continue;
             }
 
-            // Upsert Grappe
+            // ✅ Upsert Region (la table Region n'a pas d'organizationId)
+            const region = await prisma.region.upsert({
+                where: { name: g.regionName },
+                update: {},
+                create: { name: g.regionName }
+            });
+
+            // ✅ Upsert Grappe avec organizationId
             const grappe = await prisma.grappe.upsert({
                 where: {
                     name_regionId: {
@@ -55,17 +66,20 @@ export const syncGrappes = async (req, res) => {
                         regionId: region.id
                     }
                 },
-                update: {}, // No update needed if exists, or update other fields
+                update: {},
                 create: {
                     name: g.name,
                     regionId: region.id,
                     organizationId
                 }
             });
+
             results.push(grappe);
         }
 
-        // Audit Log
+        console.log(`✅ [SYNC GRAPPES] ${results.length} grappes synchronisées`);
+
+        // Audit log
         if (results.length > 0) {
             await tracerAction({
                 userId,
@@ -74,18 +88,21 @@ export const syncGrappes = async (req, res) => {
                 resource: 'Grappe',
                 details: { count: results.length },
                 req
-            });
+            }).catch(e => console.warn('Audit log failed (non-blocking):', e.message));
         }
 
-        res.json({ success: true, count: results.length });
+        res.json({ success: true, count: results.length, synced: results.length });
     } catch (error) {
-        console.error('Sync grappes error:', error);
-        res.status(500).json({ error: 'Server error while syncing clusters' });
+        console.error('🔥 [SYNC GRAPPES] Erreur:', error.message, error.stack);
+        res.status(500).json({
+            error: 'Erreur lors de la synchronisation des grappes',
+            details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
     }
 };
 
 // @desc    Get single grappe
-// @route   GET /api/grappes/:id
+// @route   GET /api/teams/grappes/:id
 export const getGrappeById = async (req, res) => {
     try {
         const { id } = req.params;
@@ -93,11 +110,11 @@ export const getGrappeById = async (req, res) => {
             where: { id },
             include: { region: true }
         });
-        
+
         if (!grappe) {
             return res.status(404).json({ error: 'Cluster not found' });
         }
-        
+
         res.json(grappe);
     } catch (error) {
         console.error('Get grappe error:', error);

@@ -124,16 +124,56 @@ export const getHouseholdById = async (req, res) => {
 // @route   POST /api/households
 export const createHousehold = async (req, res) => {
     try {
-        const { zoneId, status, location, owner } = req.body;
+        const { 
+            zoneId: requestedZoneId, status, location, owner, 
+            koboData, koboSync, assignedTeams,
+            name, phone, region, departement, village
+        } = req.body;
         const { organizationId } = req.user;
+
+        // ── ZONE RESOLUTION (zone fallback automatique) ──
+        let resolvedZoneId = requestedZoneId;
+
+        if (resolvedZoneId) {
+            // Vérifier que la zone existe bien dans la DB
+            const zone = await prisma.zone.findUnique({ where: { id: resolvedZoneId } });
+            if (!zone) {
+                console.warn(`⚠️ Zone ${resolvedZoneId} introuvable → fallback`);
+                resolvedZoneId = null;
+            }
+        }
+
+        // Fallback : chercher la première zone de l'organisation
+        if (!resolvedZoneId) {
+            const defaultZone = await prisma.zone.findFirst({
+                where: { organizationId },
+                orderBy: { id: 'asc' }
+            });
+
+            if (!defaultZone) {
+                return res.status(400).json({ 
+                    error: 'Aucune zone disponible pour cette organisation. Créez une zone d\'abord.' 
+                });
+            }
+            resolvedZoneId = defaultZone.id;
+            console.log(`ℹ️ Zone fallback utilisée: ${resolvedZoneId}`);
+        }
 
         const household = await prisma.household.create({
             data: {
-                zoneId,
+                zoneId: resolvedZoneId,
+                organizationId,
                 status: status || 'planned',
                 location: location || {},
                 owner: owner || {},
-                organizationId
+                koboData: koboData ?? {},
+                koboSync: koboSync ?? {},
+                assignedTeams: assignedTeams || [],
+                name: name || null,
+                phone: phone || null,
+                region: region || null,
+                departement: departement || null,
+                village: village || null,
             }
         });
 
@@ -153,14 +193,23 @@ export const createHousehold = async (req, res) => {
             action: 'CREATION_MENAGE',
             resource: 'Ménage',
             resourceId: household.id,
-            details: { zoneId, status: household.status },
+            details: { zoneId: resolvedZoneId, status: household.status },
             req
         });
 
         res.status(201).json(household);
     } catch (error) {
-        console.error('Create household error:', error);
-        res.status(500).json({ error: 'Server error while creating household' });
+        const prismaCode = error?.code;
+        const prismaMessage = error?.message;
+        console.error('🔥 Create household error:', { code: prismaCode, message: prismaMessage, meta: error?.meta });
+        
+        // Retourner le détail Prisma pour debugging
+        res.status(500).json({ 
+            error: 'Server error while creating household',
+            details: prismaMessage,
+            code: prismaCode,
+            meta: error?.meta
+        });
     }
 };
 
@@ -169,7 +218,7 @@ export const createHousehold = async (req, res) => {
 export const updateHousehold = async (req, res) => {
     try {
         const { id } = req.params;
-        const { status, location, owner } = req.body;
+        const { status, location, owner, assignedTeams } = req.body;
         const { organizationId } = req.user;
 
         const household = await prisma.household.findFirst({
@@ -187,6 +236,7 @@ export const updateHousehold = async (req, res) => {
                 status,
                 location: location !== undefined ? location : household.location,
                 owner: owner !== undefined ? owner : household.owner,
+                assignedTeams: assignedTeams !== undefined ? assignedTeams : household.assignedTeams,
                 version: household.version + 1
             }
         });

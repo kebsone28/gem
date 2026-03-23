@@ -42,7 +42,7 @@ import {
     ActionBar
 } from '../components/dashboards/DashboardComponents';
 import { useGeolocation } from '../hooks/useGeolocation';
-import { useMapFilters, hasValidCoordinates, type SearchResult } from '../hooks/useMapFilters';
+import { useMapFilters, hasValidCoordinates, type SearchResult, ALL_STATUSES } from '../hooks/useMapFilters';
 import { HouseholdListView } from '../components/terrain/HouseholdListView';
 
 const Terrain: React.FC = () => {
@@ -52,16 +52,28 @@ const Terrain: React.FC = () => {
     const {
         households,
         updateHouseholdStatus,
-        updateHouseholdLocation
+        updateHouseholdLocation,
+        uploadHouseholdPhoto
     } = useTerrainData();
 
     const { project, projects, setActiveProjectId, createProject, deleteProject } = useProject();
     const { forceSync } = useSync();
     const isSyncing = false; // Sync is now background-only
-    const { grappesConfig, warehouseStats } = useLogistique();
+    const { grappesConfig, warehouseStats, teams } = useLogistique();
 
     const { user } = useAuth();
     const { peut, PERMISSIONS } = usePermissions();
+
+    const allAvailableTeams = useMemo(() => {
+        const fromDB = (teams || []).map(t => t.name);
+        const fromHouseholds = (households || []).reduce((acc, h) => {
+            if (Array.isArray(h.assignedTeams)) {
+                h.assignedTeams.forEach(at => acc.add(at));
+            }
+            return acc;
+        }, new Set<string>());
+        return Array.from(new Set([...fromDB, ...fromHouseholds])).sort();
+    }, [teams, households]);
     const { isFavorite, toggleFavorite, favorites: localFavorites } = useFavorites(project?.id);
 
     const [selectedHousehold, setSelectedHousehold] = useState<Household | null>(null);
@@ -375,12 +387,7 @@ const Terrain: React.FC = () => {
         setMapCommand({ center, zoom, timestamp: Date.now() });
     };
 
-    const handleStatusUpdate = async (newStatus: string) => {
-        if (selectedHousehold) {
-            await updateHouseholdStatus(selectedHousehold.id, newStatus);
-            setSelectedHousehold(prev => prev ? { ...prev, status: newStatus } : null);
-        }
-    };
+
 
     // handleRecenter is now handled inline in MapToolbar
     // const handleRecenter = () => { ... }
@@ -561,9 +568,10 @@ const Terrain: React.FC = () => {
                                     title="Filtrer par équipe"
                                     className="bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 text-[9px] font-black uppercase tracking-widest rounded-lg px-3 py-1.5 outline-none cursor-pointer text-slate-900 dark:text-white"
                                 >
-                                    <option value="all">Toutes</option>
-                                    <option value="Équipe A">Équipe A</option>
-                                    <option value="Équipe B">Équipe B</option>
+                                    <option value="all">Toutes les équipes</option>
+                                    {allAvailableTeams.map(teamName => (
+                                        <option key={teamName} value={teamName}>{teamName}</option>
+                                    ))}
                                 </select>
                             </div>
                         </div>
@@ -627,6 +635,7 @@ const Terrain: React.FC = () => {
                                     <Suspense fallback={<div className="h-full w-full flex items-center justify-center text-slate-500 font-bold uppercase tracking-widest text-xs animate-pulse">Chargement cartographique...</div>}>
                                         <MapComponent
                                             households={filteredHouseholds}
+                                            isFilteringActive={selectedTeam !== 'all' || selectedPhases.length !== ALL_STATUSES.length || searchQuery.trim().length > 0}
                                             onSelect={setSelectedHousehold}
                                             mapCommand={mapCommand}
                                             showHeatmap={showHeatmap}
@@ -782,7 +791,12 @@ const Terrain: React.FC = () => {
                                     setLightboxPhotos(photos);
                                     setLightboxIndex(index);
                                 }}
-                                onStatusUpdate={handleStatusUpdate}
+                                onStatusUpdate={async (status) => {
+                                    await updateHouseholdStatus(selectedHousehold.id, status);
+                                }}
+                                onPhotoUpload={async (file) => {
+                                    return await uploadHouseholdPhoto(selectedHousehold.id, file);
+                                }}
                                 isFavorite={isFavorite}
                                 toggleFavorite={toggleFavorite}
                                 onTraceItinerary={handleTraceItinerary}

@@ -119,7 +119,7 @@ export const useMapInteractions = (
             // Simple threshold: if mouse stays down and moves, it's a drag
             e.preventDefault();
             map.dragPan.disable();
-            dragStateRef.current = { isDragging: true, draggedFeatureId: feature.properties.id };
+            dragStateRef.current = { isDragging: true, draggedFeatureId: feature.properties.household_id || feature.properties.id || String(feature.id) };
             map.getCanvas().style.cursor = 'grabbing';
         });
 
@@ -131,7 +131,7 @@ export const useMapInteractions = (
 
             e.preventDefault();
             map.dragPan.disable();
-            dragStateRef.current = { isDragging: true, draggedFeatureId: feature.properties.id };
+            dragStateRef.current = { isDragging: true, draggedFeatureId: feature.properties.household_id || feature.properties.id || String(feature.id) };
             map.getCanvas().style.cursor = 'grabbing';
         });
 

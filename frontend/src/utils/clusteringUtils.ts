@@ -72,21 +72,33 @@ export function getClusterExpansionZoom(
 export function householdsToGeoJSON(households: any[]): Feature<Point>[] {
     return households
         .filter((h) => h.location?.coordinates && h.location.coordinates.length === 2)
-        .map((h) => ({
-            type: 'Feature' as const,
-            geometry: {
-                type: 'Point' as const,
-                coordinates: [
-                    Number(h.location.coordinates[0]),
-                    Number(h.location.coordinates[1])
-                ] as [number, number]
-            },
-            properties: {
-                id: h.id,
-                status: h.status,
-                name: h.owner?.name || 'N/A'
+        .map((h) => {
+            let lng = Number(h.location.coordinates[0]);
+            let lat = Number(h.location.coordinates[1]);
+
+            // Auto-correction : Au Sénégal, Lng est négatif (~-17) et Lat positif (~14).
+            if (lng > 0 && lat < 0) {
+                const temp = lng;
+                lng = lat;
+                lat = temp;
             }
-        }));
+
+            return {
+                type: 'Feature' as const,
+                geometry: {
+                    type: 'Point' as const,
+                    coordinates: [lng, lat] as [number, number]
+                },
+                properties: {
+                    id: h.id,
+                    household_id: h.id,
+                    status: h.status,
+                    name: h.owner?.name || 'N/A',
+                    longitude: lng,
+                    latitude: lat
+                }
+            };
+        });
 }
 
 /**

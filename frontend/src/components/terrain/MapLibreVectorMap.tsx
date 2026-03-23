@@ -61,6 +61,7 @@ export default function MapLibreVectorMap({
     isDarkMode,
     onSelectHousehold,
     showHeatmap = false,
+    isFilteringActive = false,
     showZones = false,
     onZoneClick,
     grappesConfig,
@@ -123,12 +124,20 @@ export default function MapLibreVectorMap({
     const { setupLasso } = useMapLasso(isSelecting, householdsRef, onLassoSelection);
     const { setupVisibility } = useMapVisibility(showHeatmap, showZones, styleIsReady);
 
+    // Active/Desactive la couche serveur en fonction des filtres
+    useEffect(() => {
+        if (!mapRef.current || !styleIsReady) return;
+        if (mapRef.current.getLayer('households-server-layer')) {
+            mapRef.current.setLayoutProperty('households-server-layer', 'visibility', isFilteringActive ? 'none' : 'visible');
+        }
+    }, [isFilteringActive, styleIsReady]);
+
     // ✅ Viewport loading - Enabled for large datasets
     // Allows loading only visible households based on map viewport
     // Reduces bandwidth by ~95% for large datasets (50k+ points)
-    // Uses PostGIS spatial query via GET /households?bbox=...
+    // ✅ Viewport loading - Disabled since we now use MVT for high-perf and Dexie for local filtered data
     const { updateViewport, isLoadingViewport } = useViewportLoading({
-        enabled: true,
+        enabled: false,
         projectId,
         debounceMs: 300,
         onHouseholdsLoaded: (households) => {
@@ -183,19 +192,43 @@ export default function MapLibreVectorMap({
                     ];
                 }
 
+                let lng = coordinates[0];
+                let lat = coordinates[1];
+
+                // Auto-correction : Au Sénégal, Lng est négatif (~-17) et Lat positif (~14).
+                // Si lat est négatif et lng positif, on intervertit.
+                if (lng > 0 && lat < 0) {
+                    const temp = lng;
+                    lng = lat;
+                    lat = temp;
+                    coordinates = [lng, lat]; // update geometry
+                }
+
                 return {
                     type: 'Feature',
                     geometry: { type: 'Point', coordinates },
                     properties: {
-                        id: h.id,
-                        status: getHouseholdDerivedStatus(h),
-                        color: getStatusColor(getHouseholdDerivedStatus(h)),
-                        iconId: getIconId(getHouseholdDerivedStatus(h))
+                        id: h.id ?? '',
+                        household_id: h.id ?? '',
+                        status: getHouseholdDerivedStatus(h) ?? 'planned',
+                        color: getStatusColor(getHouseholdDerivedStatus(h)) ?? '#94a3b8',
+                        iconId: getIconId(getHouseholdDerivedStatus(h)) ?? 'icon-default',
+                        longitude: typeof lng === 'number' && isFinite(lng) ? lng : 0,
+                        latitude: typeof lat === 'number' && isFinite(lat) ? lat : 0
                     }
                 };
             })
         };
     }, [households]);
+
+    // ✅ SYNCHRONISATION JS -> CARTE : Applique instantanément le filtrage local sur la couche 'households'
+    useEffect(() => {
+        if (!mapRef.current || !styleIsReady) return;
+        const source = mapRef.current.getSource('households') as maplibregl.GeoJSONSource | undefined;
+        if (source?.setData) {
+            source.setData(householdGeoJSON as any);
+        }
+    }, [householdGeoJSON, styleIsReady]);
 
     // GéoJSON des Favoris
     const favoritesGeoJSON = useMemo(() => {
@@ -368,8 +401,8 @@ export default function MapLibreVectorMap({
                     paint: {
                         'circle-radius': [
                             'interpolate', ['exponential', 2], ['zoom'],
-                            10, ['/', ['coalesce', ['get', 'geofencingRadius'], 500], 100], // rudimentary approximation for meters
-                            20, ['/', ['coalesce', ['get', 'geofencingRadius'], 500], 0.1]
+                            10, ['/', ['to-number', ['coalesce', ['get', 'geofencingRadius'], 500]], 100],
+                            20, ['/', ['to-number', ['coalesce', ['get', 'geofencingRadius'], 500]], 0.1]
                         ],
                         'circle-color': '#10b981',
                         'circle-opacity': 0.15,
@@ -408,7 +441,6 @@ export default function MapLibreVectorMap({
                     minzoom: 8,
                     layout: {
                         'text-field': ['get', 'name'],
-                        'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
                         'text-size': 14,
                         'text-offset': [0, 1.5],
                         'text-anchor': 'top'
@@ -598,11 +630,10 @@ export default function MapLibreVectorMap({
                             'concat', 
                             ['to-string', ['coalesce', ['get', 'name'], 'Zone']], 
                             '\n', 
-                            ['to-string', ['number', ['get', 'count'], 0]], 
+                            ['to-string', ['to-number', ['get', 'count'], 0]], 
                             ' pts'
                         ],
                         'text-size': 12,
-                        'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
                         'text-offset': [0, 0],
                         'text-anchor': 'center'
                     },
@@ -781,6 +812,30 @@ export default function MapLibreVectorMap({
                 });
             }
 
+            // ✅ 3. SYNC FEEDBACK LAYER (Shows red/orange dot for offline/pending households)
+            if (!map.getLayer('households-sync-indicator')) {
+                map.addLayer({
+                    id: 'households-sync-indicator',
+                    type: 'circle',
+                    source: 'households',
+                    filter: ['in', ['coalesce', ['get', 'syncStatus'], ''], ['literal', ['pending', 'error']]],
+                    minzoom: 12, // Only show when zoomed in to avoid clutter
+                    paint: {
+                        'circle-radius': 5,
+                        'circle-color': [
+                            'match',
+                            ['get', 'syncStatus'],
+                            'pending', '#f59e0b', // amber
+                            'error', '#ef4444', // red
+                            'transparent'
+                        ],
+                        'circle-stroke-width': 1.5,
+                        'circle-stroke-color': '#ffffff',
+                        'circle-translate': [8, -8] // offset to top right of the pin
+                    }
+                });
+            }
+
             // ✅ Cluster circles layer (visible when ZOOMED OUT < zoom 12)
             if (!map.getLayer('cluster-circles')) {
                 map.addLayer({
@@ -793,7 +848,7 @@ export default function MapLibreVectorMap({
                         'circle-color': '#3b82f6',
                         'circle-radius': [
                             'step', 
-                            ['number', ['get', 'point_count'], 0], 
+                            ['to-number', ['get', 'point_count'], 0], 
                             18, 50, 24, 200, 30
                         ],
                         'circle-stroke-width': 3,
@@ -820,7 +875,6 @@ export default function MapLibreVectorMap({
                     filter: ['has', 'point_count'],
                     layout: {
                         'text-field': ['coalesce', ['to-string', ['get', 'point_count_abbreviated']], ['to-string', ['get', 'point_count']], '0'],
-                        'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
                         'text-size': 14
                     },
                     paint: {
@@ -931,7 +985,13 @@ export default function MapLibreVectorMap({
             center: [-14.4563, 14.4563], // Default Senegal center
             zoom: 7,
             localIdeographFontFamily: 'sans-serif',
-            trackResize: false // Improved performance
+            trackResize: false, // Improved performance
+            // ✅ Fix glyph 404: intercept openfreemap font requests and redirect to stable CDN
+            transformRequest: (url, resourceType) => {
+                if (resourceType === 'Glyphs' && url.includes('openfreemap')) {
+                    return { url: url.replace('https://tiles.openfreemap.org/fonts', 'https://demotiles.maplibre.org/font') };
+                }
+            }
         });
 
         const onLoad = () => {
@@ -1029,6 +1089,7 @@ export default function MapLibreVectorMap({
         (map.getSource('grappes') as any)?.setData(grappesGeoJSON);
         (map.getSource('warehouses-source') as any)?.setData(warehousesGeoJSON);
         (map.getSource('sous-grappes') as any)?.setData(sousGrappesGeoJSON);
+        if (grappeZonesData) (map.getSource('auto-grappes') as any)?.setData(grappeZonesData);
         if (grappeCentroidsData) (map.getSource('auto-grappes-centroids') as any)?.setData(grappeCentroidsData);
         if (favoritesGeoJSON) (map.getSource('favorites-source') as any)?.setData(favoritesGeoJSON);
 

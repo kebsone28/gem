@@ -109,13 +109,13 @@ export const generatePopupHTML = (feature: any): string => {
                 <span class="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">${status}</span>
             </div>
             <h3 class="text-sm font-bold text-slate-900 dark:text-white mb-1">
-                Ménage #${props.id?.slice(-6) || 'N/A'}
+                Ménage #${(props.household_id || props.id)?.slice(-6) || 'N/A'}
             </h3>
             <p class="text-[11px] text-slate-600 dark:text-slate-400 mb-3">
-                ID: <span class="font-mono">${props.id || 'N/A'}</span>
+                ID: <span class="font-mono">${props.household_id || props.id || 'N/A'}</span>
             </p>
             <button 
-                onclick="window.dispatchEvent(new CustomEvent('map:select-household', { detail: '${props.id}' }))"
+                onclick="window.dispatchEvent(new CustomEvent('map:select-household', { detail: '${props.household_id || props.id}' }))"
                 class="w-full py-2 px-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg text-[11px] font-bold transition-transform active:scale-95 shadow-lg"
             >
                 Voir les détails

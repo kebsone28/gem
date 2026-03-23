@@ -18,12 +18,18 @@ export default function BackgroundServices() {
     }, [pendingCount, syncData]);
 
     useEffect(() => {
-        // 2. Handle manual force-sync events from the UI
+        // 2. Handle manual force-sync events from the UI and online events
         const handleForceSync = () => {
             logger.log('⚡ [SYNC SERVICE] Forced sync event received');
             syncData();
         };
+        const handleOnline = () => {
+            logger.log('🌐 [SYNC SERVICE] Network restored. Triggering sync...');
+            syncData();
+        };
+        
         window.addEventListener('sync:force', handleForceSync);
+        window.addEventListener('online', handleOnline);
         
         // 3. Periodic full sync (pull) every 5 minutes
         const interval = setInterval(() => {
@@ -33,6 +39,7 @@ export default function BackgroundServices() {
 
         return () => {
             window.removeEventListener('sync:force', handleForceSync);
+            window.removeEventListener('online', handleOnline);
             clearInterval(interval);
         };
     }, [syncData]);

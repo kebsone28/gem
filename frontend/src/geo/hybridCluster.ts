@@ -1,10 +1,12 @@
 import simplify from '@turf/simplify';
+import convex from '@turf/convex';
+import buffer from '@turf/buffer';
+import booleanPointInPolygon from '@turf/boolean-point-in-polygon';
 import logger from '../utils/logger';
-import { featureCollection, polygon } from '@turf/helpers';
+import { featureCollection, point as turfPoint } from '@turf/helpers';
 import { dbscan, isochroneDbscan } from './dbscan';
 import { kmeans } from './kmeans';
 import { buildSpatialIndex, type SpatialPoint } from './spatialIndex';
-import { convexHull } from './convexHull';
 import { haversine } from './haversine';
 import { getTravelTimeMatrix } from './osrm';
 
@@ -15,21 +17,51 @@ export interface ClusterResult {
     centroid: { lat: number, lon: number };
 }
 
-// L'approche Smart-City Hybride ISOCHRONE:
-// 1. Détection MACRO via DBSCAN (Haversine 200m)
-// 2. Pour chaque macro-cluster, requête OSRM pour la matrice de temps de trajet
-// 3. Détection MICRO via isochroneDbscan (300s = 5 minutes de temps réel)
-// 4. Si un micro-cluster est encore trop gros (> seuil, ex: 60) -> on subdivise via K-Means
-export async function hybridCluster(households: SpatialPoint[], maxHouseholdsPerCluster = 80): Promise<ClusterResult[]> {
+// Configuration Centralisée PROQUELEC
+const CLUSTER_CONFIG = {
+    // 3 Tiers de densité (Points par km²)
+    tiers: {
+        deepRural: { densityMax: 20, eps: 0.60, minPts: 2 },
+        semiUrban: { densityMax: 100, eps: 0.40, minPts: 4 },
+        urban: { densityMax: Infinity, eps: 0.25, minPts: 5 }
+    },
+    defaultBuffer: 0.03, // 30 mètres
+    smallClusterBuffer: 0.05, // 50 mètres pour visibilité
+    maxInCluster: 80
+};
+
+export async function hybridCluster(households: SpatialPoint[], maxHouseholdsPerCluster = CLUSTER_CONFIG.maxInCluster): Promise<ClusterResult[]> {
+    if (!households.length) return [];
+    
     const tree = buildSpatialIndex(households);
 
-    // On lance DBSCAN (Rayon : ~200 mètres, Min pts : 3 pour définir un "macro-village")
-    const macroClusters = dbscan(households, tree, 0.20, 3);
+    // 1. Détection de la densité locale dynamique
+    const lats = households.map(h => h.lat);
+    const lons = households.map(h => h.lon);
+    
+    // Estimation grossière de la surface (box)
+    const latDiff = Math.max(...lats) - Math.min(...lats);
+    const lonDiff = Math.max(...lons) - Math.min(...lons);
+    const areaKm2 = (latDiff * 111) * (lonDiff * 111 * Math.cos(lats[0] * Math.PI / 180)) || 0.1;
+    
+    const globalDensity = households.length / areaKm2;
+    
+    // Sélection des paramètres DBSCAN basés sur la densité globale
+    let config = CLUSTER_CONFIG.tiers.urban;
+    if (globalDensity < CLUSTER_CONFIG.tiers.deepRural.densityMax) {
+        config = CLUSTER_CONFIG.tiers.deepRural;
+    } else if (globalDensity < CLUSTER_CONFIG.tiers.semiUrban.densityMax) {
+        config = CLUSTER_CONFIG.tiers.semiUrban;
+    }
+
+    logger.log(`🔍 [CLUSTERING] Densité: ${globalDensity.toFixed(2)} pts/km². Tier: ${globalDensity < 20 ? 'RURAL' : globalDensity < 100 ? 'SEMI' : 'URBAIN'}`);
+
+    // 2. DBSCAN Adaptatif
+    const macroClusters = dbscan(households, tree, config.eps, config.minPts);
 
     const result: ClusterResult[] = [];
     let clusterCounter = 1;
 
-    // Process sub-clusters with KMeans if needed
     const processFinalGroup = (pts: SpatialPoint[], isIsochrone: boolean) => {
         if (pts.length > maxHouseholdsPerCluster) {
             const k = Math.ceil(pts.length / maxHouseholdsPerCluster);
@@ -48,31 +80,27 @@ export async function hybridCluster(households: SpatialPoint[], maxHouseholdsPer
             groups.forEach((g, idx) => {
                 if (g.length > 0) result.push({ id: `G-${clusterCounter++}`, type: 'kmeans', households: g, centroid: centroids[idx] });
             });
-        } else {
+        } else if (pts.length > 0) {
             const centroidLat = pts.reduce((sum, p) => sum + p.lat, 0) / pts.length;
             const centroidLon = pts.reduce((sum, p) => sum + p.lon, 0) / pts.length;
             result.push({ id: `G-${clusterCounter++}`, type: isIsochrone ? 'dense' : 'isolated', households: pts, centroid: { lat: centroidLat, lon: centroidLon } });
         }
     };
 
-    // Traitement des Macro Clusters
     for (const macroCluster of macroClusters) {
-        // Trop grand pour OSRM API (limite fallback à 500 pour ne pas timeout, à ajuster selon instance locale)
         if (macroCluster.length > 500) {
             processFinalGroup(macroCluster, false);
             continue;
         }
 
+        // Pour les groupes moyens, on peut tenter l'isochrone (OSRM)
         const timeMatrix = await getTravelTimeMatrix(macroCluster);
-
         if (timeMatrix) {
-            // Isochrone clustering (Max 5 mins = 300s)
             const microClusters = isochroneDbscan(macroCluster, timeMatrix, 300, 3);
             for (const micro of microClusters) {
                 processFinalGroup(micro, true);
             }
         } else {
-            // Fallback to purely geometric partitioning
             processFinalGroup(macroCluster, false);
         }
     }
@@ -80,38 +108,63 @@ export async function hybridCluster(households: SpatialPoint[], maxHouseholdsPer
     return result;
 }
 
-// Convertit les clusters en FeatureCollection prête pour MapLibre
 export function clustersToGeoJSON(clusters: ClusterResult[]): any {
     const collection = featureCollection([]);
 
     clusters.forEach((c, i) => {
-        if (!c.households || c.households.length < 3) return; // Un polygone a besoin d'au moins 3 points
-
-        const hull = convexHull(c.households);
-        // Fermer le polygone pour Turf/MapLibre (le premier point doit être le dernier)
-        hull.push(hull[0]);
-
-        const coords = hull.map(p => [p.lon, p.lat]);
+        if (!c.households || c.households.length === 0) return;
 
         try {
-            const poly = polygon([[...coords]], {
+            const points = featureCollection(c.households.map(h => turfPoint([h.lon, h.lat])));
+            
+            // 1. Enveloppe Convexe avec Turf
+            let poly = convex(points);
+            
+            // 2. Sécurité : Fallback si convex retourne null (ex: points alignés ou < 3 points)
+            if (!poly) {
+                // Créer un petit buffer autour des points pour simuler une zone
+                poly = buffer(points, 0.015, { units: 'kilometers' }) as any;
+            }
+
+            if (!poly) return;
+
+            // 3. Buffer de sécurité adaptatif
+            const bufferSize = c.households.length < 5 ? CLUSTER_CONFIG.smallClusterBuffer : CLUSTER_CONFIG.defaultBuffer;
+            let buffered = buffer(poly, bufferSize, { units: 'kilometers' });
+            if (!buffered) return;
+
+            // 4. Garantie Inclusion 100%
+            let needsInflation = false;
+            for (const h of c.households) {
+                if (!booleanPointInPolygon(turfPoint([h.lon, h.lat]), buffered as any)) {
+                    needsInflation = true;
+                    break;
+                }
+            }
+            if (needsInflation && buffered) {
+                buffered = buffer(buffered as any, 0.01, { units: 'kilometers' }) as any;
+            }
+
+            if (!buffered) return;
+
+            // 5. Propriétés
+            const intId = parseInt(c.id.replace(/\D/g, '')) || (1000 + i);
+            buffered.properties = {
                 id: c.id,
                 name: `Grappe ${c.id.replace('G-', '')}`,
                 count: c.households.length,
                 type: c.type,
                 centroidX: c.centroid.lon,
                 centroidY: c.centroid.lat
-            });
+            };
 
-            // Simplification Turf.js pour des perf extrêmes sur MapLibre
-            const simplified = simplify(poly, { tolerance: 0.0001, highQuality: false });
-
-            // MapLibre a besoin d'un ID numérique entier ou string simple au top-level pour le feature-state
-            const intId = parseInt(c.id.replace(/\D/g, '')) || i;
-            (simplified as any).id = intId;
-            collection.features.push(simplified as any);
+            // 6. Simplification pour fluidité (Tolerance 10m env.)
+            const optimized = simplify(buffered as any, { tolerance: 0.0001, highQuality: false });
+            (optimized as any).id = intId;
+            
+            collection.features.push(optimized as any);
         } catch (e) {
-            logger.error("Erreur de polygon", e);
+            logger.error("❌ [GEO ERROR] Polygone non généré:", e);
         }
     });
 

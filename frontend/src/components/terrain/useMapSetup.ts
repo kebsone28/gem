@@ -183,7 +183,6 @@ export const useMapSetup = () => {
                 layout: {
                     'text-field': ['coalesce', ['get', 'REGION'], ''],
                     'text-size': 12,
-                    'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
                     'text-anchor': 'center'
                 },
                 paint: {
@@ -239,11 +238,10 @@ export const useMapSetup = () => {
                             'concat', 
                             ['coalesce', ['get', 'name'], ''], 
                             '\n', 
-                            ['number', ['get', 'count'], 0], 
+                            ['to-string', ['to-number', ['get', 'count'], 0]], 
                             ' pts'
                         ],
                         'text-size': 12,
-                        'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
                         'text-anchor': 'center'
                     },
                     paint: {
@@ -365,7 +363,6 @@ export const useMapSetup = () => {
                     filter: ['has', 'point_count'],
                     layout: {
                         'text-field': '{point_count_abbreviated}',
-                        'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
                         'text-size': 12
                     },
                     paint: { 'text-color': '#ffffff' }

@@ -80,7 +80,14 @@ function mapSubmissionToHousehold(submission, organizationId, defaultZoneId) {
         id: String(id),
         organizationId,
         zoneId: submission['zone_id'] || defaultZoneId,
-        status: submission['statut'] || submission['status'] || 'Non débuté',
+        
+        // 🛠️ Alignement sur les clés XLSForm de l'utilisateur (v1 et v2)
+        status: submission['ETAT_DE_L_INSTALLATION'] || 
+                submission['etat_installation_interieur'] ||
+                submission['statut_installation'] || 
+                submission['statut'] || 
+                submission['status'] || 
+                'Non débuté',
         
         name: submission['nom_prenom'] || submission['chef_menage'] || submission['nom_chef_menage'] || submission['TYPE_DE_VISITE/nom_key'] || '',
         phone: submission['telephone'] || submission['phone'] || submission['numero'] || submission['TYPE_DE_VISITE/telephone_key'] || '',
@@ -96,7 +103,33 @@ function mapSubmissionToHousehold(submission, organizationId, defaultZoneId) {
             nom: submission['nom_prenom'] || submission['chef_menage'] || submission['TYPE_DE_VISITE/nom_key'] || '',
             telephone: submission['telephone'] || submission['TYPE_DE_VISITE/telephone_key'] || ''
         },
-        koboData: submission,
+        koboData: {
+            ...submission,
+            // 📸 Photos references (basenames in Kobo)
+            photo_compteur: submission['photo_compteur'] || submission['Photo_compteur_install'],
+            photo_installation: submission['photo_installation'] || 
+                                submission['Photo'] || 
+                                submission['Photo_installation_terminee'] ||
+                                submission['_1_photo_anomalie_si_possible']
+        },
+        assignedTeams: submission['role'] ? [
+            {
+                'macon': 'Maçon',
+                'livreur': 'Livreur',
+                'reseau': 'Réseau',
+                'interieur': 'Intérieur',
+                'controleur': 'Contrôleur'
+            }[submission['role'].toLowerCase()] || submission['role']
+        ] : [],
+        koboSync: {
+            maconOk: !!submission['validation_macon_final'],
+            reseauOk: !!submission['validation_reseau_final'],
+            interieurOk: !!submission['validation_interieur_final'],
+            controleOk: !!submission['validation_controleur_final'],
+            livreurDate: submission['Numero_ordre'] ? submission['_submission_time'] : null,
+            village: submission['village_key'] || submission['TYPE_DE_VISITE/village_key'],
+            tel: submission['telephone_key'] || submission['TYPE_DE_VISITE/telephone_key']
+        },
         location: (lat && lon) ? {
             type: 'Point',
             coordinates: [lon, lat]
@@ -199,6 +232,10 @@ export async function syncKoboToDatabase(organizationId, fallbackZoneId, since =
                     latitude: household.latitude,
                     longitude: household.longitude,
                     source: household.source,
+                    assignedTeams: {
+                        set: household.assignedTeams 
+                    },
+                    koboSync: household.koboSync,
                     updatedAt: new Date()
                 },
                 create: {
@@ -210,6 +247,8 @@ export async function syncKoboToDatabase(organizationId, fallbackZoneId, since =
                     owner: household.owner,
                     koboData: household.koboData,
                     location: household.location || {},
+                    assignedTeams: household.assignedTeams,
+                    koboSync: household.koboSync,
                     source: household.source,
                     version: 1
                 }

@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "start": "npx prisma generate && (npx prisma db push --accept-data-loss || true) && (npx prisma db seed || true) && node src/server.js",
-    "dev": "nodemon --exec \"node --max-old-space-size=4096\" src/server.js",
+    "dev": "nodemon src/server.js",
+    "dev:saas": "npm run dev",
     "build": "npx prisma generate",
     "migrate": "npx prisma migrate deploy",
     "seed": "node prisma/seed.js",
@@ -23,6 +24,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1002.0",
     "@aws-sdk/lib-storage": "^3.1002.0",
+    "@aws-sdk/s3-request-presigner": "^3.1014.0",
     "@prisma/client": "6.4.1",
     "bcryptjs": "^2.4.3",
     "bullmq": "^5.70.2",
@@ -37,6 +39,7 @@
     "joi": "^17.11.0",
     "jsonwebtoken": "^9.0.3",
     "morgan": "^1.10.1",
+    "multer": "^2.1.1",
     "pg": "^8.20.0",
     "socket.io": "^4.8.3",
     "winston": "^3.19.0",

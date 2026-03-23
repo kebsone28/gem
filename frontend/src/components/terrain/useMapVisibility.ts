@@ -11,38 +11,35 @@ import maplibregl from 'maplibre-gl';
 
 export const useMapVisibility = (
     showHeatmap: boolean,
-    _showZones: boolean,
+    showZones: boolean,
     styleIsReady: boolean
 ) => {
     const setupVisibility = (map: maplibregl.Map) => {
         if (!map || !styleIsReady) return;
 
+        const setLayerVisibility = (layerIds: string[], visibility: 'visible' | 'none') => {
+            layerIds.forEach(id => {
+                if (map.getLayer(id)) {
+                    map.setLayoutProperty(id, 'visibility', visibility);
+                } else {
+                    // console.warn(`Layer ${id} not found`); // Optionnel, utile en debug
+                }
+            });
+        };
+
         // Household and Heatmap visibility
-        const householdVisibility = showHeatmap ? 'none' : 'visible';
-        
-        ['households-server-layer', 'households-local-layer'].forEach(layerId => {
-            if (map.getLayer(layerId)) {
-                map.setLayoutProperty(layerId, 'visibility', householdVisibility);
-            }
-        });
+        setLayerVisibility(['households-server-layer', 'households-local-layer', 'households-sync-indicator'], showHeatmap ? 'none' : 'visible');
+        setLayerVisibility(['heatmap'], showHeatmap ? 'visible' : 'none');
 
-        if (map.getLayer('heatmap')) {
-            map.setLayoutProperty('heatmap', 'visibility', showHeatmap ? 'visible' : 'none');
-        }
+        // Toujours masquer les anciennes grappes
+        setLayerVisibility(['grappes-layer', 'grappes-labels', 'sous-grappes-layer'], 'none');
 
-        // Always hide old grappes - use auto-grappes instead
-        if (map.getLayer('grappes-layer')) {
-            map.setLayoutProperty('grappes-layer', 'visibility', 'none');
-            map.setLayoutProperty('grappes-labels', 'visibility', 'none');
-            map.setLayoutProperty('sous-grappes-layer', 'visibility', 'none');
-        }
-
-        // Always show auto-grappes
-        if (map.getLayer('auto-grappes-fill')) {
-            map.setLayoutProperty('auto-grappes-fill', 'visibility', 'visible');
-            map.setLayoutProperty('auto-grappes-outline', 'visibility', 'visible');
-            map.setLayoutProperty('auto-grappes-labels', 'visibility', 'visible');
-        }
+        // Afficher/masquer les Auto-Grappes (polygones/trapèzes) et les clusters selon le bouton Zones
+        const zonesVisibility = showZones ? 'visible' : 'none';
+        setLayerVisibility(
+            ['auto-grappes-fill', 'auto-grappes-outline', 'auto-grappes-labels', 'cluster-circles', 'cluster-counts'],
+            zonesVisibility
+        );
     };
 
     return { setupVisibility };

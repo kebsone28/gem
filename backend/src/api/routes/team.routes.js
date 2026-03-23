@@ -24,7 +24,7 @@ router.get('/regions', getRegions);
 router.get('/grappes', getGrappes);
 router.get('/positions', getTeamPositions);
 
-router.post('/grappes/sync', verifierPermission(PERMISSIONS.GERER_UTILISATEURS), syncGrappes);
+router.post('/grappes/sync', verifierPermission(PERMISSIONS.GERER_PARAMETRES), syncGrappes);
 
 router.post('/', verifierPermission(PERMISSIONS.GERER_UTILISATEURS), createTeam);
 router.patch('/:id', verifierPermission(PERMISSIONS.GERER_UTILISATEURS), updateTeam);

@@ -15,6 +15,7 @@ model Organization {
   users     User[]
   projects  Project[]
   teams     Team[]
+  grappes   Grappe[]
   performanceLogs PerformanceLog[]
   createdAt DateTime  @default(now())
 }
@@ -94,10 +95,12 @@ model Household {
   location_gis   Unsupported("geometry(Point, 4326)")?
   owner          Json
   koboData       Json?        @default("{}")
+  koboSync       Json?        @default("{}")
   
   source         String?      // Kobo, Agent, Import, etc.
   
   version        Int          @default(1)
+  assignedTeams  String[]     @default([])
   updatedAt      DateTime     @updatedAt
   deletedAt      DateTime?
   performanceLogs PerformanceLog[]
@@ -105,6 +108,7 @@ model Household {
   @@index([region])
   @@index([departement])
   @@index([village])
+  @@index([assignedTeams])
 }
 
 enum TeamRole {
@@ -129,11 +133,15 @@ model Region {
 }
 
 model Grappe {
-  id        String   @id @default(uuid())
-  name      String
-  regionId  String
-  region    Region   @relation(fields: [regionId], references: [id])
-  teams     Team[]
+  id             String       @id @default(uuid())
+  name           String
+  regionId       String
+  region         Region       @relation(fields: [regionId], references: [id])
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  teams          Team[]
+
+  @@unique([name, regionId])
 }
 
 model Team {

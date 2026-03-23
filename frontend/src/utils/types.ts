@@ -16,7 +16,9 @@ export interface User {
 }
 
 export interface Household {
-    id: string;
+    id: string; // Local Dexie ID
+    backendId?: string; // Real backend ID
+    syncStatus?: 'pending' | 'synced' | 'error';
     projectId: string;
     zoneId: string;
     organizationId: string;

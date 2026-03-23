@@ -1,4 +1,5 @@
 import express from 'express';
+import path from 'path';
 import prisma from './core/utils/prisma.js';
 import { redisConnection } from './core/utils/queueManager.js';
 import cors from 'cors';
@@ -11,35 +12,7 @@ import { config } from './core/config/config.js';
 
 const app = express();
 
-// 1. Manual CORS & Preflight (Bulletproof for production)
-app.use((req, res, next) => {
-    const origin = req.headers.origin;
-
-    // Validation de l'origine (Safe check)
-    const allowedOrigins = Array.isArray(config.cors.origin) ? config.cors.origin : (config.cors.origin ? [config.cors.origin] : []);
-    const isAllowed = allowedOrigins.includes('*') || (origin && allowedOrigins.includes(origin));
-
-    if (origin && isAllowed) {
-        res.setHeader('Access-Control-Allow-Origin', origin);
-        res.setHeader('Access-Control-Allow-Credentials', 'true');
-    } else if (process.env.NODE_ENV !== 'production' && origin) {
-        res.setHeader('Access-Control-Allow-Origin', origin);
-    } else {
-        // En cas de refus CORS clair, on peut ne pas mettre l'en-tête (bloquant net)
-        // Mais pour débugger l'erreur 408/preflight, on log.
-        // console.log(`CORS Blocked: ${origin}`);
-    }
-
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Cache-Control, Pragma');
-    res.setHeader('Access-Control-Max-Age', '86400'); // Cache preflight for 24h
-
-    // Handle pre-flight
-    if (req.method === 'OPTIONS') {
-        return res.status(204).end();
-    }
-    next();
-});
+app.use(cors(config.cors));
 
 app.get('/api/ping', async (req, res) => {
     let dbStatus = 'waiting';
@@ -58,11 +31,15 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(cookieParser());
 app.use(compression());
+app.use('/api/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
-// 3. Rate Limiting
+// 3. Rate Limiting (désactivé en DEV pour éviter les faux positifs)
 const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 1000 // Increased for testing and map tile heavy sessions
+    windowMs: 15 * 60 * 1000,
+    max: config.env === 'development' ? 0 : 1000, // 0 = illimité en DEV
+    skip: () => config.env === 'development',
+    standardHeaders: true,
+    legacyHeaders: false
 });
 app.use('/api/', limiter);
 
@@ -83,6 +60,7 @@ import simulationRoutes from './api/routes/simulation.routes.js';
 import monitoringRoutes from './api/routes/monitoring.routes.js';
 import geoRoutes from './api/routes/geo.routes.js';
 import koboRoutes from './modules/kobo/kobo.routes.js';
+import uploadRoutes from './api/routes/upload.routes.js';
 
 app.use('/api/auth', authRoutes);
 app.use('/api/sync', syncRoutes);
@@ -95,6 +73,7 @@ app.use('/api/simulation', simulationRoutes);
 app.use('/api/monitoring', monitoringRoutes);
 app.use('/api/geo', geoRoutes);
 app.use('/api/kobo', koboRoutes);
+app.use('/api/upload', uploadRoutes);
 
 app.get('/health', async (req, res) => {
     const health = {

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, MapPin, Navigation, Star, Eye, Phone, Navigation2 } from 'lucide-react';
+import { X, MapPin, Navigation, Star, Eye, Phone, Navigation2, Plus, CloudOff, RefreshCcw } from 'lucide-react';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { getHouseholdDerivedStatus, getStatusTailwindClasses } from '../../utils/statusUtils';
@@ -11,6 +11,7 @@ interface HouseholdDetailsPanelProps {
     onClose: () => void;
     onPhotoOpen: (photos: any[], index: number) => void;
     onStatusUpdate: (newStatus: string) => Promise<void>;
+    onPhotoUpload: (file: File) => Promise<string>;
     isFavorite: (id: string) => boolean;
     toggleFavorite: (id: string) => void;
     onTraceItinerary: () => void;
@@ -28,6 +29,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
     onClose,
     onPhotoOpen,
     onStatusUpdate,
+    onPhotoUpload,
     isFavorite,
     toggleFavorite,
     onTraceItinerary,
@@ -81,7 +83,17 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
             {/* Header */}
             <div className="flex justify-between items-center mb-6">
                 <div className="flex flex-col">
-                    <h2 className="text-xl font-black italic uppercase tracking-tighter leading-none">MÉNAGE {household.id.slice(-6)}</h2>
+                    <div className="flex items-center gap-3">
+                        <h2 className="text-xl font-black italic uppercase tracking-tighter leading-none">MÉNAGE {household.id.slice(-6)}</h2>
+                        {(household.syncStatus === 'pending' || household.syncStatus === 'error') && (
+                            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400 border border-amber-500/20">
+                                {household.syncStatus === 'pending' ? <RefreshCcw size={10} className="animate-spin" /> : <CloudOff size={10} />}
+                                <span className="text-[9px] font-black uppercase tracking-wider">
+                                    {household.syncStatus === 'pending' ? 'En attente' : 'Non synchronisé'}
+                                </span>
+                            </div>
+                        )}
+                    </div>
                     <button
                         onClick={() => {
                             navigator.clipboard.writeText(household.id);
@@ -108,33 +120,50 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
                         <Eye size={12} /> GALERIE DE PHOTOS
                     </h4>
                     <div className="grid grid-cols-2 gap-2">
-                        {household.photo ? (
+                        {/* Photo d'installation ou Bouton d'upload */}
+                        {household.koboData?.photoUrl ? (
                             <button
                                 onClick={() => {
                                     const photos = [
-                                        { url: household.photo!, label: 'Photo Ménage' }
+                                        { url: household.koboData!.photoUrl!, label: 'Preuve Installation' }
                                     ];
                                     onPhotoOpen(photos, 0);
                                 }}
                                 className={`aspect-square sm:aspect-video rounded-2xl overflow-hidden border cursor-pointer hover:opacity-80 transition-opacity hover:ring-2 hover:ring-indigo-500 ${isDarkMode ? 'border-slate-800' : 'border-slate-200'}`}
                             >
                                 <img
-                                    src={household.photo}
-                                    alt={`Ménage ${household.id}`}
+                                    src={household.koboData.photoUrl}
+                                    alt="Preuve"
                                     className="w-full h-full object-cover"
                                 />
                             </button>
                         ) : (
-                            <div className={`aspect-square sm:aspect-video rounded-2xl overflow-hidden border flex items-center justify-center p-4 text-center ${isDarkMode ? 'bg-slate-900 border-slate-800 text-slate-600' : 'bg-slate-50 border-slate-200 text-slate-400'}`}>
-                                <div className="flex flex-col items-center gap-2">
-                                    <MapPin size={16} />
-                                    <span className="text-[9px] font-bold uppercase">Aucune photo</span>
-                                </div>
+                            <div className="relative aspect-square sm:aspect-video">
+                                <label className={`flex flex-col items-center justify-center w-full h-full border-2 border-dashed rounded-2xl cursor-pointer hover:bg-primary/5 transition-all ${isDarkMode ? 'bg-slate-900 border-slate-700 text-slate-500' : 'bg-slate-50 border-slate-200 text-slate-400'}`}>
+                                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                        <Plus size={20} className="mb-2" />
+                                        <p className="text-[9px] font-black uppercase text-center px-4">Preuve d'installation</p>
+                                    </div>
+                                    <input 
+                                        type="file" 
+                                        className="hidden" 
+                                        accept="image/*" 
+                                        capture="environment"
+                                        onChange={async (e) => {
+                                            const file = e.target.files?.[0];
+                                            if (!file) return;
+                                            const loadingToast = toast.loading('Upload de la photo...');
+                                            try {
+                                                await onPhotoUpload(file);
+                                                toast.success('Photo enregistrée !', { id: loadingToast });
+                                            } catch (err) {
+                                                toast.error("Échec de l'upload", { id: loadingToast });
+                                            }
+                                        }}
+                                    />
+                                </label>
                             </div>
                         )}
-                        <div className={`aspect-square sm:aspect-video rounded-2xl overflow-hidden border border-dashed flex items-center justify-center p-4 text-center ${isDarkMode ? 'bg-slate-900/50 border-slate-800 text-slate-700' : 'bg-slate-50 border-slate-200 text-slate-300'}`}>
-                            <span className="text-[9px] font-bold uppercase">Actions<br />Sur Terrain</span>
-                        </div>
                     </div>
                 </div>
 

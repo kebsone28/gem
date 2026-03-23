@@ -16,7 +16,8 @@ import {
     ChevronRight,
     CloudDownload,
     Navigation2,
-    Save
+    Save,
+    RefreshCw
 } from 'lucide-react';
 import { useProject } from '../hooks/useProject';
 import type { CatalogItem, SubTeamEquipment } from '../utils/types';
@@ -27,6 +28,7 @@ import apiClient from '../api/client';
 
 import { SENEGAL_REGIONS } from '../utils/config';
 import { StatusBadge } from '../components/dashboards/DashboardComponents';
+import { useTerrainData } from '../hooks/useTerrainData';
 
 type TabType = 'teams' | 'costs' | 'zones' | 'logistics' | 'kobo' | 'data';
 
@@ -45,9 +47,19 @@ interface Zone {
 
 export default function Settings() {
     const [activeTab, setActiveTab] = useState<TabType>('teams');
-    const { project, updateProject, isLoading } = useProject();
+    const { project, updateProject, isLoading: isProjectLoading } = useProject();
+    const { households, isLoading: isHouseholdsLoading } = useTerrainData();
 
-    if (isLoading) return <div className="p-8 text-slate-400">Chargement...</div>;
+    const isLoading = isProjectLoading || isHouseholdsLoading;
+
+    if (isLoading) return (
+        <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC] dark:bg-slate-950">
+            <div className="flex flex-col items-center gap-4">
+                <div className="w-12 h-12 border-4 border-blue-600/20 border-t-blue-600 rounded-full animate-spin"></div>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Initialisation des paramètres...</p>
+            </div>
+        </div>
+    );
 
     const tabs = [
         { id: 'teams', label: 'Équipes', icon: Users },
@@ -83,7 +95,7 @@ export default function Settings() {
                         <button // eslint-disable-line jsx-a11y/aria-proptypes
                             key={tab.id}
                             role="tab"
-                            aria-selected={activeTab === tab.id}
+                            aria-selected={activeTab === tab.id ? "true" : "false"}
                             aria-controls={`panel-${tab.id}`}
                             id={`tab-${tab.id}`}
                             onClick={() => setActiveTab(tab.id as TabType)}
@@ -121,7 +133,7 @@ export default function Settings() {
                                 {activeTab === 'zones' && <ZonesSection project={project} onUpdate={updateProject} />}
                                 {activeTab === 'logistics' && <LogisticsSection project={project} onUpdate={updateProject} />}
                                 {activeTab === 'kobo' && <KoboSettingsSection project={project} onUpdate={updateProject} />}
-                                {activeTab === 'data' && <DataSection project={project} onUpdate={updateProject} />}
+                                {activeTab === 'data' && <DataSection project={project} households={households || []} onUpdate={updateProject} />}
                             </div>
                         </motion.div>
                     </AnimatePresence>
@@ -1147,7 +1159,15 @@ function ZonesSection({ project, onUpdate }: { project: any, onUpdate: any }) {
                                     ))}
                                     {selectedZone.teamAllocations.length === 0 && (
                                         <div className="text-center py-10 bg-white/50 dark:bg-white/5 rounded-2xl border border-dashed border-gray-200 dark:border-white/10">
-                                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Aucune unité affectée à cette zone</p>
+                                        <div className="flex flex-col items-center gap-4 py-8">
+                                            <div className="w-12 h-12 bg-slate-100 dark:bg-white/5 rounded-2xl flex items-center justify-center text-slate-300">
+                                                <Layers size={20} />
+                                            </div>
+                                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">
+                                                Aucune unité affectée à cette zone.<br/>
+                                                Sélectionnez un cluster pour voir les ménages.
+                                            </p>
+                                        </div>
                                         </div>
                                     )}
                                 </div>
@@ -1169,33 +1189,49 @@ function ZonesSection({ project, onUpdate }: { project: any, onUpdate: any }) {
     );
 }
 
-function DataSection({ project, onUpdate }: { project: any, onUpdate: any }) {
+function DataSection({ project, households, onUpdate }: { project: any, households: any[], onUpdate: any }) {
     const { fetchGrappes } = useTeams(project?.id);
+    const [isProcessing, setIsProcessing] = useState(false);
+
     const handleReorganizeGrappes = async () => {
-        if (!project || !project.households) {
-            alert("Aucune donnée de ménages pour le calcul des grappes.");
+        if (!households || households.length === 0) {
+            alert("Aucune donnée de ménages. Synchronisez d'abord vos données terrain.");
             return;
         }
-        if (!window.confirm("Calculer dynamiquement de nouvelles grappes via K-Means ?")) return;
+        if (!window.confirm(`Calculer les grappes pour ${households.length} ménages ?`)) return;
 
+        setIsProcessing(true);
         try {
-            const { grappes } = generateDynamicGrappes(project.households, { 'Kaffrine': 600, 'Tambacounda': 600 });
-            
+            const { grappes } = generateDynamicGrappes(households, { 'Kaffrine': 600, 'Tambacounda': 600 });
+            logger.log(`🗂️ [GRAPPES] Grappes générées: ${grappes.length}`);
+
+            if (grappes.length === 0) {
+                alert("Aucune grappe générée. Vérifiez que les ménages ont une région et des coordonnées valides.");
+                return;
+            }
+
             // Transform grappes for the sync API
             const grappesToSync = grappes.map((g: any) => ({
-                name: g.name,
+                name: g.nom || g.name,
                 regionName: g.region
-            }));
+            })).filter((g: any) => g.name && g.regionName);
 
-            await apiClient.post('/teams/grappes/sync', { grappes: grappesToSync });
+            logger.log(`📤 [GRAPPES] Envoi au backend: ${grappesToSync.length} grappes`, grappesToSync.slice(0, 3));
+
+            const result = await apiClient.post('/teams/grappes/sync', { grappes: grappesToSync });
             
+            logger.log(`✅ [GRAPPES] Résultat sync:`, result.data);
+
             // Refresh grappes in the UI
             await fetchGrappes();
-            
-            alert("Grappes générées et synchronisées avec succès !");
-        } catch (error) {
+
+            alert(`✅ ${result.data.count || grappesToSync.length} grappes synchronisées avec succès !`);
+        } catch (error: any) {
+            const detail = error?.response?.data?.details || error?.response?.data?.error || error?.message || 'Erreur inconnue';
             logger.error("Erreur clustering :", error);
-            alert("Erreur lors de la génération des grappes.");
+            alert(`Erreur lors de la génération des grappes:\n${detail}`);
+        } finally {
+            setIsProcessing(false);
         }
     };
 
@@ -1302,10 +1338,17 @@ function DataSection({ project, onUpdate }: { project: any, onUpdate: any }) {
                         </p>
                         <button
                             onClick={handleReorganizeGrappes}
-                            title="Générer les grappes"
-                            className="px-10 py-5 bg-white text-blue-600 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-gray-50 transition-all active:scale-95 shadow-xl shadow-black/10"
+                            disabled={isProcessing}
+                            className={`px-10 py-5 bg-white text-blue-600 rounded-2xl text-xs font-black uppercase tracking-widest transition-all active:scale-95 shadow-xl shadow-black/10 flex items-center gap-3 ${isProcessing ? 'opacity-70 cursor-wait' : 'hover:bg-gray-50'}`}
                         >
-                            Démarrer le Calcul des Grappes
+                            {isProcessing ? (
+                                <>
+                                    <RefreshCw size={16} className="animate-spin" />
+                                    Calcul en cours...
+                                </>
+                            ) : (
+                                "Démarrer le Calcul des Grappes"
+                            )}
                         </button>
                     </div>
                 </div>
