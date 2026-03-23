@@ -504,19 +504,19 @@ export default function Cahier() {
                                     </div>
 
                                     <div className="flex items-center space-x-2 mb-6 mt-8">
-                                        <div className="w-1 h-6 bg-violet-500 rounded-full" />
+                                        <div className="w-1 h-6 bg-yellow-500 rounded-full" />
                                         <h4 className="font-bold text-white uppercase tracking-wider text-sm">Clauses de Sous-traitance</h4>
                                     </div>
-                                    <div className="bg-violet-500/5 border border-violet-500/20 rounded-xl p-4">
+                                    <div className="bg-yellow-500/5 border border-yellow-500/20 rounded-xl p-4">
                                         {isEditing ? (
                                             <textarea
                                                 title="Modifier les clauses de sous-traitance"
                                                 value={editSubcontracting}
                                                 onChange={(e) => setEditSubcontracting(e.target.value)}
-                                                className="w-full h-32 bg-slate-950 border border-violet-500/30 rounded-xl p-3 text-violet-200 text-sm focus:border-violet-500 outline-none resize-none"
+                                                className="w-full h-32 bg-slate-950 border border-yellow-500/30 rounded-xl p-3 text-yellow-200 text-sm focus:border-yellow-500 outline-none resize-none"
                                             />
                                         ) : (
-                                            <ul className="space-y-2 list-disc list-inside text-violet-200 text-sm">
+                                            <ul className="space-y-2 list-disc list-inside text-yellow-200 text-sm">
                                                 {currentTask.subcontracting?.map((clause: string, i: number) => (
                                                     <li key={i}>{clause}</li>
                                                 ))}
