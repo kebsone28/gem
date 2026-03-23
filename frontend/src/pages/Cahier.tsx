@@ -37,7 +37,14 @@ const DEFAULT_TASK_LIBRARY = {
       'Non Sous-traitance : Interdiction du second rang.',
       'Qualité Senelec : Respect strict des normes NS 01-001.',
       'Pénalités & Délais : Rappel de l\'importance du calendrier LSE.'
-    ]
+    ],
+    pricing: {
+        dailyRate: 25000,
+        personnelCount: 5,
+        durationDays: 20,
+        penalties: "Pénalités de retard : 5% du montant du lot par semaine de retard.",
+        currency: "FCFA"
+    }
   },
   'Livreur': {
     icon: Truck,
@@ -57,7 +64,14 @@ const DEFAULT_TASK_LIBRARY = {
       'Non Sous-traitance : Livraison exclusivement par l\'équipe interne.',
       'Qualité Senelec : Vérification intégrale des bordereaux.',
       'Pénalités & Délais : Respect strict du planning LSE.'
-    ]
+    ],
+    pricing: {
+        dailyRate: 35000,
+        personnelCount: 2,
+        durationDays: 15,
+        penalties: "Pénalités : 10% par lot non livré dans les délais contractuels.",
+        currency: "FCFA"
+    }
   },
   'Maçonnerie': {
     icon: Hammer,
@@ -78,13 +92,20 @@ const DEFAULT_TASK_LIBRARY = {
       'Non Sous-traitance : Tous travaux réalisés par l\'équipe interne.',
       'Qualité Senelec : Respect strict des normes NS 01-001.',
       'Pénalités & Délais : Respect du calendrier LSE impératif.'
-    ]
+    ],
+    pricing: {
+        dailyRate: 30000,
+        personnelCount: 2,
+        durationDays: 20,
+        penalties: "Pénalités de retard : 15% du montant du lot par semaine de retard.",
+        currency: "FCFA"
+    }
   },
   'Réseau': {
     icon: Zap,
     color: 'blue',
     image: '/assets/images/reseau-poteau.png',
-    introduction: "Ce chapitre détaille les procédures techniques de raccordement des ménages au réseau aérien public basse tension (branchement monophasé), incluant le tirage de câble, la pose des organes d'ancrage et la connexion sécurisée.",
+    introduction: "Ce chapitre détaille les procédures techniques de raccordement des ménages au réseau aérien public basse tension (branchement monophasé), inclus le tirage de câble, la pose des organes d'ancrage et la connexion sécurisée.",
     missions: [
       'PHASE 1 - CONSIGNATION & PRÉPARATION : Balisage de la zone d\'intervention en aval du réseau aérien public basse tension.',
       'PHASE 2 - TIRAGE DE LIGNE : Déroulage et tension du câble aluminium torsadé préassemblé 2x16 mm² depuis l\'armement de poteau (portée ~20m).',
@@ -98,7 +119,14 @@ const DEFAULT_TASK_LIBRARY = {
       'Non Sous-traitance : Interdiction de déléguer le tirage ou la connexion.',
       'Qualité Senelec : Contrôle obligatoire de chaque connexion.',
       'Pénalités & Délais : Respect strict du planning LSE.'
-    ]
+    ],
+    pricing: {
+        dailyRate: 40000,
+        personnelCount: 2,
+        durationDays: 15,
+        penalties: "Interdiction de sous-traiter sans validation préalable. Respect strict des normes Senelec.",
+        currency: "FCFA"
+    }
   },
   'Installation Intérieure': {
     icon: HardHat,
@@ -119,7 +147,14 @@ const DEFAULT_TASK_LIBRARY = {
       'Non Sous-traitance : Travaux exclusivement réalisés par l’équipe interne.',
       'Qualité Senelec : Respect strict des normes NS 01-001 et inspection obligatoire.',
       'Pénalités & Délais : Suivi impératif du planning LSE.'
-    ]
+    ],
+    pricing: {
+        dailyRate: 35000,
+        personnelCount: 2,
+        durationDays: 20,
+        penalties: "Pénalités : 10% du montant du lot par semaine de retard. Respect strict des normes HSE.",
+        currency: "FCFA"
+    }
   },
   'Contrôle & Validation': {
     icon: Glasses,
@@ -139,7 +174,14 @@ const DEFAULT_TASK_LIBRARY = {
       'Non Sous-traitance : Contrôle exclusivement réalisé par l’équipe interne certifiée.',
       'Qualité Senelec : Respect strict des normes NS 01-001 pour la validation finale.',
       'Pénalités & Délais : Suivi rigoureux du planning LSE pour la réception finale.'
-    ]
+    ],
+    pricing: {
+        dailyRate: 30000,
+        personnelCount: 2,
+        durationDays: 15,
+        penalties: "Pénalités : 20% du montant du lot en cas d'anomalies majeures non détectées.",
+        currency: "FCFA"
+    }
   }
 };
 
@@ -182,6 +224,12 @@ export default function Cahier() {
     const [editMaterials, setEditMaterials] = useState(currentTask.materials.join('\n'));
     const [editHse, setEditHse] = useState(currentTask.hse.join('\n'));
     const [editSubcontracting, setEditSubcontracting] = useState(currentTask.subcontracting?.join('\n') || '');
+    
+    // Pricing states
+    const [editPricingDailyRate, setEditPricingDailyRate] = useState(currentTask.pricing?.dailyRate || 0);
+    const [editPricingPersonnel, setEditPricingPersonnel] = useState(currentTask.pricing?.personnelCount || 0);
+    const [editPricingDuration, setEditPricingDuration] = useState(currentTask.pricing?.durationDays || 0);
+    const [editPricingPenalties, setEditPricingPenalties] = useState(currentTask.pricing?.penalties || '');
 
     // Reset editable fields when role changes
     const handleRoleChange = (role: string) => {
@@ -193,6 +241,10 @@ export default function Cahier() {
         setEditMaterials(task.materials.join('\n'));
         setEditHse(task.hse.join('\n'));
         setEditSubcontracting(task.subcontracting?.join('\n') || '');
+        setEditPricingDailyRate(task.pricing?.dailyRate || 0);
+        setEditPricingPersonnel(task.pricing?.personnelCount || 0);
+        setEditPricingDuration(task.pricing?.durationDays || 0);
+        setEditPricingPenalties(task.pricing?.penalties || '');
     };
 
     const handleSave = () => {
@@ -203,7 +255,14 @@ export default function Cahier() {
             missions: editMissions.split('\n').filter(Boolean),
             materials: editMaterials.split('\n').filter(Boolean),
             hse: editHse.split('\n').filter(Boolean),
-            subcontracting: editSubcontracting.split('\n').filter(Boolean)
+            subcontracting: editSubcontracting.split('\n').filter(Boolean),
+            pricing: {
+                ...currentTask.pricing,
+                dailyRate: editPricingDailyRate,
+                personnelCount: editPricingPersonnel,
+                durationDays: editPricingDuration,
+                penalties: editPricingPenalties
+            }
         };
         setCustomLibrary(updatedLibrary);
         safeStorage.setItem('gem_cahier_library', JSON.stringify(updatedLibrary));
@@ -224,7 +283,8 @@ export default function Cahier() {
             endDate: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
             responsible: user?.name || '',
             contact: '',
-            imagePath: currentTask.image
+            imagePath: currentTask.image,
+            pricing: currentTask.pricing
         }], false);
     };
 
@@ -240,7 +300,8 @@ export default function Cahier() {
             endDate: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
             responsible: '',
             contact: '',
-            imagePath: (task as any).image
+            imagePath: (task as any).image,
+            pricing: (task as any).pricing
         }));
         await exportCahiersToWord(allData, true);
     };
@@ -521,6 +582,95 @@ export default function Cahier() {
                                                     <li key={i}>{clause}</li>
                                                 ))}
                                             </ul>
+                                        )}
+                                    </div>
+
+                                    <div className="flex items-center space-x-2 mb-6 mt-8">
+                                        <div className="w-1 h-6 bg-emerald-500 rounded-full" />
+                                        <h4 className="font-bold text-white uppercase tracking-wider text-sm">Configurations & Barèmes Contractuels</h4>
+                                    </div>
+                                    <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-6">
+                                        {isEditing ? (
+                                            <div className="space-y-4">
+                                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                                    <div>
+                                                        <label className="block text-xs text-emerald-400 uppercase mb-1.5 font-bold">Tarif journalier (FCFA)</label>
+                                                        <input 
+                                                            type="number" 
+                                                            title="Tarif journalier"
+                                                            value={editPricingDailyRate}
+                                                            onChange={(e) => setEditPricingDailyRate(e.target.valueAsNumber || 0)}
+                                                            className="w-full bg-slate-950 border border-emerald-500/30 rounded-lg px-3 py-2 text-emerald-300 text-sm outline-none focus:border-emerald-500"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs text-emerald-400 uppercase mb-1.5 font-bold">Effectif (Pers.)</label>
+                                                        <input 
+                                                            type="number" 
+                                                            title="Effectif"
+                                                            value={editPricingPersonnel}
+                                                            onChange={(e) => setEditPricingPersonnel(e.target.valueAsNumber || 0)}
+                                                            className="w-full bg-slate-950 border border-emerald-500/30 rounded-lg px-3 py-2 text-emerald-300 text-sm outline-none focus:border-emerald-500"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs text-emerald-400 uppercase mb-1.5 font-bold">Durée (Jours)</label>
+                                                        <input 
+                                                            type="number" 
+                                                            title="Durée"
+                                                            value={editPricingDuration}
+                                                            onChange={(e) => setEditPricingDuration(e.target.valueAsNumber || 0)}
+                                                            className="w-full bg-slate-950 border border-emerald-500/30 rounded-lg px-3 py-2 text-emerald-300 text-sm outline-none focus:border-emerald-500"
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <label className="block text-xs text-emerald-400 uppercase mb-1.5 font-bold">Clauses Pénales & Précisions</label>
+                                                    <textarea 
+                                                        title="Modifier les pénalités"
+                                                        value={editPricingPenalties}
+                                                        onChange={(e) => setEditPricingPenalties(e.target.value)}
+                                                        className="w-full h-20 bg-slate-950 border border-emerald-500/30 rounded-lg p-3 text-emerald-300 text-sm outline-none focus:border-emerald-500 resize-none"
+                                                    />
+                                                </div>
+                                                <div className="pt-2 flex justify-end">
+                                                    <div className="bg-emerald-500/20 px-4 py-2 rounded-lg border border-emerald-500/30">
+                                                        <span className="text-xs text-emerald-400 font-bold uppercase mr-2">Total Auto :</span>
+                                                        <span className="text-emerald-300 font-black">{(editPricingDailyRate * editPricingPersonnel * editPricingDuration).toLocaleString()} FCFA</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-6">
+                                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                                                    <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-800">
+                                                        <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">Prix Unitaire</p>
+                                                        <p className="text-emerald-400 font-bold">{currentTask.pricing?.dailyRate?.toLocaleString()} <span className="text-[10px]">{currentTask.pricing?.currency}</span></p>
+                                                    </div>
+                                                    <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-800">
+                                                        <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">Ressources</p>
+                                                        <p className="text-white font-bold">{currentTask.pricing?.personnelCount} <span className="text-[10px] text-slate-400">Agents</span></p>
+                                                    </div>
+                                                    <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-800">
+                                                        <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">Durée</p>
+                                                        <p className="text-white font-bold">{currentTask.pricing?.durationDays} <span className="text-[10px] text-slate-400">Jours</span></p>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div className="border-t border-emerald-500/10 pt-4">
+                                                    <p className="text-[10px] text-slate-500 uppercase font-bold mb-2">Clauses de pénalités applicables</p>
+                                                    <p className="text-xs text-emerald-500/70 italic leading-relaxed">
+                                                        "{currentTask.pricing?.penalties}"
+                                                    </p>
+                                                </div>
+
+                                                <div className="flex items-center justify-between bg-emerald-500/10 px-4 py-3 rounded-xl border border-emerald-500/20">
+                                                    <span className="text-xs font-bold text-emerald-400 uppercase tracking-tighter font-display">Total Prévisionnel du Lot</span>
+                                                    <span className="text-xl font-black text-emerald-400 font-display">
+                                                        {((currentTask.pricing?.dailyRate || 0) * (currentTask.pricing?.personnelCount || 0) * (currentTask.pricing?.durationDays || 0)).toLocaleString()} {currentTask.pricing?.currency}
+                                                    </span>
+                                                </div>
+                                            </div>
                                         )}
                                     </div>
                                 </section>

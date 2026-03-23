@@ -28,6 +28,13 @@ export interface ExportData {
     responsible: string;
     contact: string;
     imagePath?: string;
+    pricing?: {
+        dailyRate: number;
+        personnelCount: number;
+        durationDays: number;
+        penalties: string;
+        currency: string;
+    };
 }
 
 const fetchImageAsArrayBuffer = async (url: string): Promise<ArrayBuffer | null> => {
@@ -42,14 +49,14 @@ const fetchImageAsArrayBuffer = async (url: string): Promise<ArrayBuffer | null>
 };
 
 const createRoleSection = async (data: ExportData) => {
-    const { role, introduction, missions, materials, hse, subcontracting, responsible, imagePath, startDate, endDate, contact } = data;
+    const { role, introduction, missions, materials, hse, subcontracting, responsible, imagePath, startDate, endDate, contact, pricing } = data;
     
     const children: any[] = [];
 
     // Header stylized
     children.push(
         new Paragraph({
-            text: `CAHIER DES CHARGES : ${role.toUpperCase()}`,
+            text: `CAHIER DES CHARGES & CONTRAT : ${role.toUpperCase()}`,
             heading: HeadingLevel.HEADING_1,
             alignment: AlignmentType.CENTER,
             spacing: { before: 400, after: 400 },
@@ -174,10 +181,56 @@ const createRoleSection = async (data: ExportData) => {
         });
     }
 
+    // Tarification (Emerald / Green)
+    if (pricing) {
+        children.push(
+            new Paragraph({
+                children: [new TextRun({ text: "6. BARÈMES & TARIFICATION CONTRACTUELLE", bold: true, size: 26, color: "059669" })],
+                spacing: { before: 400, after: 150 },
+            })
+        );
+
+        const tableHeader = new TableRow({
+            children: [
+                new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Désignation", bold: true })] })], width: { size: 30, type: WidthType.PERCENTAGE } }),
+                new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Unité", bold: true })] })], width: { size: 10, type: WidthType.PERCENTAGE } }),
+                new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Qté/Effectif", bold: true })] })], width: { size: 15, type: WidthType.PERCENTAGE } }),
+                new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Durée (j)", bold: true })] })], width: { size: 15, type: WidthType.PERCENTAGE } }),
+                new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "P.U journalier", bold: true })] })], width: { size: 15, type: WidthType.PERCENTAGE } }),
+                new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Total Lot", bold: true })] })], width: { size: 15, type: WidthType.PERCENTAGE } }),
+            ],
+        });
+
+        const tableBody = new TableRow({
+            children: [
+                new TableCell({ children: [new Paragraph(role)] }),
+                new TableCell({ children: [new Paragraph("Prestation")] }),
+                new TableCell({ children: [new Paragraph(pricing.personnelCount.toString())] }),
+                new TableCell({ children: [new Paragraph(pricing.durationDays.toString())] }),
+                new TableCell({ children: [new Paragraph(`${pricing.dailyRate.toLocaleString()} ${pricing.currency}`)] }),
+                new TableCell({ 
+                    children: [new Paragraph({ children: [new TextRun({ text: `${(pricing.dailyRate * pricing.personnelCount * pricing.durationDays).toLocaleString()} ${pricing.currency}`, bold: true })] })],
+                }),
+            ],
+        });
+
+        children.push(new Table({
+            rows: [tableHeader, tableBody],
+            width: { size: 100, type: WidthType.PERCENTAGE },
+        }));
+
+        children.push(
+            new Paragraph({
+                children: [new TextRun({ text: "Clauses pénales : ", bold: true, color: "dc2626" }), new TextRun({ text: pricing.penalties, italics: true })],
+                spacing: { before: 200, after: 200 },
+            })
+        );
+    }
+
     // Infos complémentaires
     children.push(
         new Paragraph({
-            children: [new TextRun({ text: "6. DÉTAILS D'EXÉCUTION", bold: true, size: 26, color: "475569" })],
+            children: [new TextRun({ text: "7. DÉTAILS D'EXÉCUTION", bold: true, size: 26, color: "475569" })],
             spacing: { before: 400, after: 150 },
         }),
         new Paragraph({ text: `Période prévue : du ${startDate} au ${endDate}` }),
@@ -262,12 +315,12 @@ export const exportCahiersToWord = async (dataList: ExportData[], isMultiple: bo
     }
 
     const doc = new Document({
-        title: isMultiple ? "Cahier des Charges Complet" : `Cahier des Charges ${dataList[0].role}`,
+        title: isMultiple ? "Cahier des Charges & Contrat Complet" : `Cahier des Charges ${dataList[0].role}`,
         description: "Généré par GEM-SAAS",
         sections: sections
     });
 
     const blob = await Packer.toBlob(doc);
-    const fileName = isMultiple ? "CDC_COMPLET_PROJET_RACCORDEMENT.docx" : `CDC_${dataList[0].role.replace(/\s+/g, '_')}.docx`;
+    const fileName = isMultiple ? "CDC_CONTRAT_COMPLET_PROQUELEC.docx" : `CDC_CONTRAT_${dataList[0].role.replace(/\s+/g, '_')}.docx`;
     saveAs(blob, fileName);
 };
