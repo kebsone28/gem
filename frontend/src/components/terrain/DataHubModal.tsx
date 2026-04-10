@@ -534,6 +534,7 @@ export const DataHubModal: React.FC<DataHubModalProps> = ({ isOpen, onClose }) =
                             )}
 
                             {activeTab === 'kobo' && (
+                                <div className="flex flex-col items-center justify-center p-4 md:p-10 text-center">
                                     <RefreshCcw size={48} className={`text-indigo-500 mb-4 md:mb-6 ${isProcessing ? 'animate-spin' : ''}`} />
                                     <h3 className="text-white font-black italic uppercase text-base md:text-lg mb-2">Synchronisation Kobo</h3>
                                     
