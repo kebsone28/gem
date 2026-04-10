@@ -94,18 +94,30 @@ export default function Sidebar() {
         );
     }
 
-    const groupedItems = navItems.reduce((acc, item) => {
-        // L'Administrateur voit TOUT par défaut (sauf si explicitement invisible)
-        if (item.visible === false) return acc;
+    const groupedItems = useState(() => {
+        return navItems.reduce((acc, item) => {
+            if (item.visible === false) return acc;
+            const canSee = isMaster || !item.permission || peut(item.permission);
+            if (canSee) {
+                if (!acc[item.category]) acc[item.category] = [];
+                acc[item.category].push(item);
+            }
+            return acc;
+        }, {} as Record<string, NavItem[]>);
+    })[0];
 
-        const canSee = isMaster || !item.permission || peut(item.permission);
-
-        if (canSee) {
-            if (!acc[item.category]) acc[item.category] = [];
-            acc[item.category].push(item);
-        }
-        return acc;
-    }, {} as Record<string, NavItem[]>);
+    // 🚀 [REACTIVITY] Re-calculate items when user or permissions change
+    const memoGroupedItems = useMemo(() => {
+        return navItems.reduce((acc, item) => {
+            if (item.visible === false) return acc;
+            const canSee = isMaster || !item.permission || peut(item.permission);
+            if (canSee) {
+                if (!acc[item.category]) acc[item.category] = [];
+                acc[item.category].push(item);
+            }
+            return acc;
+        }, {} as Record<string, NavItem[]>);
+    }, [user, user?.role, user?.permissions, isMaster, peut]);
 
     const categoryConfig = {
         PILOTAGE: { color: 'blue', label: 'STRATÉGIE', glow: 'shadow-blue-500/10' },
@@ -243,7 +255,7 @@ export default function Sidebar() {
 
                         {/* Navigation Scroll Area */}
                         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-10 no-scrollbar">
-                            {Object.entries(groupedItems).map(([cat, items]) => (
+                            {Object.entries(memoGroupedItems).map(([cat, items]) => (
                                 <div key={cat} className="space-y-4">
                                     <div className="flex items-center gap-3 px-2">
                                         <div className={`w-1 h-3 rounded-full bg-blue-500 shadow-lg shadow-blue-500/50`} />
