@@ -160,19 +160,17 @@ export default defineConfig({
     chunkSizeWarningLimit: 2500,
     rollupOptions: {
       output: {
-          // Core dependencies (React, Router, Axios, Lucide, etc.) in one stable chunk
+        manualChunks(id) {
           if (id.includes('node_modules')) {
-             // Keep internal bulky libs isolated as planned
              if (id.includes('maplibre-gl')) return 'maplibre';
              if (id.includes('leaflet')) return 'leaflet';
              if (id.includes('jspdf') || id.includes('jspdf-autotable') || id.includes('html2canvas')) return 'pdf';
              if (id.includes('xlsx')) return 'xlsx';
              if (id.includes('framer-motion')) return 'animation';
              if (id.includes('dexie')) return 'dexie';
-             
-             // Everything else in a single vendor chunk to avoid circularity
              return 'vendor';
           }
+        },
       },
     },
   },
