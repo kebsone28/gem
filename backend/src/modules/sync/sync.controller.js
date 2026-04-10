@@ -7,8 +7,8 @@ import { logPerformance } from '../../services/performance.service.js';
 import fs from 'fs';
 import path from 'path';
 
-// Force absolute path for reliable debugging
-const DEBUG_LOG = 'c:/Mes-Sites-Web/GEM_SAAS/backend/sync_debug.log';
+// Force relative path for reliable debugging across OS
+const DEBUG_LOG = path.join(process.cwd(), 'sync_debug.log');
 
 // 🛠️ BIGINT SERIALIZATION FIX
 // JSON.stringify doesn't support BigInt by default, which causes 500 errors

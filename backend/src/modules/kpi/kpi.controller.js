@@ -11,10 +11,12 @@ export const getProjectKPIs = async (req, res) => {
         // 0. Tentative de récupération depuis le cache Redis
         const cacheKey = `kpi:${organizationId}:${projectId}`;
         try {
-            const cachedData = await redisConnection.get(cacheKey);
-            if (cachedData) {
-                console.log(`[CACHE HIT] KPI pour le projet ${projectId}`);
-                return res.json(JSON.parse(cachedData));
+            if (redisConnection) {
+                const cachedData = await redisConnection.get(cacheKey);
+                if (cachedData) {
+                    console.log(`[CACHE HIT] KPI pour le projet ${projectId}`);
+                    return res.json(JSON.parse(cachedData));
+                }
             }
         } catch (cacheError) {
             console.error('[REDIS CACHE ERROR]', cacheError);
@@ -163,7 +165,9 @@ export const getProjectKPIs = async (req, res) => {
 
         // Enregistrement dans le cache pour 5 minutes (300 secondes)
         try {
-            await redisConnection.setex(cacheKey, 300, JSON.stringify(result));
+            if (redisConnection) {
+                await redisConnection.setex(cacheKey, 300, JSON.stringify(result));
+            }
         } catch (cacheError) {
             console.error('[REDIS CACHE SET ERROR]', cacheError);
         }
