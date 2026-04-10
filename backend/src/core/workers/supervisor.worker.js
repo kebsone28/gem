@@ -49,34 +49,44 @@ export const startSilentSupervisor = () => {
             // Équipes sans soumission Kobo depuis 5 jours = inactives
             const staleSince = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000);
             
-            // Trouver les équipes qui ont des ménages mais dont les derniers updates sont vieux
-            const inactiveTeams = await prisma.team.findMany({
+            // Trouver les grappes actives avec leurs équipes et ménages vieux
+            const activeGrappes = await prisma.grappe.findMany({
                 where: {
-                    grappeId: { not: null },
+                    teams: { some: {} }, // Au moins une équipe
                     households: {
-                        some: {
-                            koboSync: { isNot: null } // Ont eu au moins une synchro Kobo
-                        }
+                        some: { koboSync: { isNot: null } }
                     }
                 },
                 include: { 
-                    grappe: true,
+                    teams: {
+                        include: { leader: true }
+                    },
                     households: {
                         where: {
                             koboSync: { isNot: null },
                             updatedAt: { lt: staleSince }
                         },
                         orderBy: { updatedAt: 'desc' },
-                        take: 5 // Derniers ménages pour analyse
+                        take: 5
                     }
                 }
             });
 
-            // Filtrer les équipes qui ont vraiment des ménages stagnants (tous vieux)
-            const trulyInactiveTeams = inactiveTeams.filter(team => 
-                team.households.length > 0 && 
-                team.households.every(h => h.updatedAt < staleSince)
-            );
+            // Transformer les grappes en liste d'équipes inactives pour la suite du script
+            const inactiveTeams = [];
+            for (const grappe of activeGrappes) {
+                // Si tous les ménages de la grappe sont vieux, toutes les équipes de la grappe sont "inactives"
+                if (grappe.households.length > 0 && grappe.households.every(h => h.updatedAt < staleSince)) {
+                    grappe.teams.forEach(t => {
+                        inactiveTeams.push({
+                            ...t,
+                            grappe: { id: grappe.id, name: grappe.name }
+                        });
+                    });
+                }
+            }
+
+            const trulyInactiveTeams = inactiveTeams;
 
             if (trulyInactiveTeams.length > 0) {
                 // Grouper par organisation pour ne pas spammer
