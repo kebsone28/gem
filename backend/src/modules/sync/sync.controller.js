@@ -596,7 +596,8 @@ export const syncKobo = async (req, res) => {
                     skipped: results.skipped || 0,
                     errors: results.errors || 0,
                     total: results.total || 0,
-                    syncedAt: new Date()
+                    syncedAt: new Date(),
+                    deviceId: 'SERVER_BULK_SYNC'
                 }
             });
         } catch (e) {
@@ -720,7 +721,7 @@ export const bulkImportHouseholds = async (req, res) => {
         await prisma.$executeRaw`
             UPDATE "Household"
             SET location_gis = ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)
-            WHERE organizationId = ${organizationId} 
+            WHERE "organizationId" = ${organizationId} 
             AND location_gis IS NULL 
             AND latitude IS NOT NULL 
             AND longitude IS NOT NULL
