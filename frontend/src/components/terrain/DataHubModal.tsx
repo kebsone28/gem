@@ -326,7 +326,7 @@ export const DataHubModal: React.FC<DataHubModalProps> = ({ isOpen, onClose }) =
         }
     };
 
-    const handleKoboSync = async () => {
+    const handleKoboSync = async (force: boolean = false) => {
         const currentProjectId = project?.id || activeProjectId;
 
         if (!currentProjectId) {
@@ -337,7 +337,10 @@ export const DataHubModal: React.FC<DataHubModalProps> = ({ isOpen, onClose }) =
         setIsProcessing(true);
         setKoboStep(1);
         try {
-            await apiClient.post('sync/kobo', { projectId: currentProjectId });
+            await apiClient.post('sync/kobo', { 
+                projectId: currentProjectId,
+                force: force 
+            });
             setKoboStep(2);
             await forceSync();
             
@@ -348,9 +351,7 @@ export const DataHubModal: React.FC<DataHubModalProps> = ({ isOpen, onClose }) =
         } catch (e: any) {
             console.error('[KOBO] Erreur de synchronisation:', e);
             setKoboStep(0);
-            toast.error(
-                e?.response?.data?.error || "Erreur de connexion au serveur KoboToolbox."
-            );
+            toast.error(e?.response?.data?.message || "Erreur de synchronisation Kobo.");
         } finally {
             setIsProcessing(false);
         }

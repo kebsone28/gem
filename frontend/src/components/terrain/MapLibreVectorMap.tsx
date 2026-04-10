@@ -16,7 +16,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { globalSingletonMap } from '../../services/map/MapSingleton';
 import { registerTileCacheProtocol } from '../../services/map/tileCacheService';
 import { useViewportLoading } from '../../hooks/useViewportLoading';
-import { logger } from '../../utils/logger';
+import logger from '../../utils/logger';
 
 // Import Modular Layers
 import BackgroundLayer from './layers/BackgroundLayer';
