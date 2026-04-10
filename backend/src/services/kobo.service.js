@@ -232,12 +232,15 @@ export async function syncKoboToDatabase(organizationId, fallbackZoneId, since =
                     existingHousehold = await prisma.household.findFirst({
                         where: {
                             organizationId: organizationId,
-                            numeroordre: String(numeroDemande),
+                            OR: [
+                                { numeroordre: String(numeroDemande) },
+                                { id: String(numeroDemande) }
+                            ],
                             deletedAt: null
                         }
                     });
                 } catch (e) {
-                    console.warn(`[KOBO-SYNC] Could not search for existing household by numeroordre:`, e.message);
+                    console.warn(`[KOBO-SYNC] Could not search for existing household by numeroordre/id:`, e.message);
                 }
             }
 
