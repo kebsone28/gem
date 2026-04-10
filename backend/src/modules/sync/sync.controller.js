@@ -649,3 +649,93 @@ export const clearEntityData = async (req, res) => {
     }
 };
 
+
+// @desc    Bulk import households (Direct Server Import)
+// @route   POST /api/sync/import-bulk
+export const bulkImportHouseholds = async (req, res) => {
+    const { organizationId } = req.user;
+    const { households } = req.body;
+
+    if (!households || !Array.isArray(households)) {
+        return res.status(400).json({ error: 'Format invalide : "households" doit être un tableau.' });
+    }
+
+    console.log(`[SYNC-BULK] Starting bulk import of ${households.length} households for Org: ${organizationId}`);
+    
+    try {
+        // 1. Validation de la Zone (on prend la zone du premier ménage ou une zone par défaut)
+        const firstHousehold = households[0];
+        let zoneId = firstHousehold.zoneId;
+
+        let zoneExists = await prisma.zone.findUnique({ where: { id: zoneId } });
+        if (!zoneExists) {
+            // Recours à une zone existante ou création
+            const fallbackZone = await prisma.zone.findFirst({ where: { organizationId, deletedAt: null } });
+            if (fallbackZone) {
+                zoneId = fallbackZone.id;
+            } else {
+                const project = await prisma.project.findFirst({ where: { organizationId } });
+                if (project) {
+                    const newZone = await prisma.zone.create({
+                        data: { name: 'Zone Import', projectId: project.id, organizationId }
+                    });
+                    zoneId = newZone.id;
+                } else {
+                    return res.status(400).json({ error: 'Aucun projet trouvé pour cet import. Créez d\'abord un projet.' });
+                }
+            }
+        }
+
+        // 2. Préparation des données pour Prisma createMany
+        const dataToInsert = households.map(h => {
+            const lat = (h.location?.coordinates?.[1] !== undefined) ? parseFloat(h.location.coordinates[1]) : null;
+            const lon = (h.location?.coordinates?.[0] !== undefined) ? parseFloat(h.location.coordinates[0]) : null;
+
+            return {
+                id: String(h.id),
+                organizationId,
+                zoneId: zoneId,
+                status: h.status || 'planned',
+                owner: h.owner || {},
+                location: h.location || {},
+                name: h.name || null,
+                phone: h.phone || null,
+                region: h.region || null,
+                departement: h.departement || null,
+                village: h.village || null,
+                latitude: lat,
+                longitude: lon,
+                source: h.source || 'Excel-Import',
+                version: 1
+            };
+        });
+
+        // 3. Insertion Massive (Postgres supporte skipDuplicates)
+        const result = await prisma.household.createMany({
+            data: dataToInsert,
+            skipDuplicates: true
+        });
+
+        // 4. Mise à jour PostGIS (Spatial) pour tous les points d'un coup
+        await prisma.$executeRaw`
+            UPDATE "Household"
+            SET location_gis = ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)
+            WHERE organizationId = ${organizationId} 
+            AND location_gis IS NULL 
+            AND latitude IS NOT NULL 
+            AND longitude IS NOT NULL
+        `;
+
+        console.log(`[SYNC-BULK] Success: ${result.count} households imported.`);
+        
+        res.json({
+            success: true,
+            importedCount: result.count,
+            message: `${result.count} ménages importés directement sur le serveur.`
+        });
+
+    } catch (error) {
+        console.error('[SYNC-BULK-ERROR]:', error);
+        res.status(500).json({ error: 'Bulk import failed', details: error.message });
+    }
+};

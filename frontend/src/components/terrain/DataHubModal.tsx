@@ -34,6 +34,7 @@ export const DataHubModal: React.FC<DataHubModalProps> = ({ isOpen, onClose }) =
     const { activeProjectId, project, createProject, projects, deleteProject } = useProject();
     const [activeTab, setActiveTab] = useState<'import' | 'kobo' | 'backups' | 'danger' | 'projects'>('import');
     const [isProcessing, setIsProcessing] = useState(false);
+    const [useServerImport, setUseServerImport] = useState(true); // Default to Server for mass imports
     
     // Nouveaux états UX
     const [importResult, setImportResult] = useState<{type: 'success'|'error', message: string} | null>(null);
@@ -296,16 +297,30 @@ export const DataHubModal: React.FC<DataHubModalProps> = ({ isOpen, onClose }) =
         setIsProcessing(true);
         try {
             const currentProjectId = project?.id || activeProjectId;
-            await importHouseholds(finalData);
-            setImportResult({ type: 'success', message: `✅ Import réussi (${finalData.length} ménages traités).` });
-            await forceSync();
+
+            if (useServerImport) {
+                // 🚀 DIRECT SERVER IMPORT (FAST)
+                toast.loading(`Envoi de ${finalData.length} ménages au serveur...`, { id: 'bulk-import' });
+                const response = await apiClient.post('sync/import-bulk', { households: finalData });
+                toast.success(response.data.message || "Import serveur réussi !", { id: 'bulk-import' });
+                
+                // On met quand même à jour localement pour l'affichage immédiat
+                await db.households.bulkPut(finalData);
+            } else {
+                // 📱 LOCAL PWA IMPORT (OFFLINE-FIRST)
+                await importHouseholds(finalData);
+                setImportResult({ type: 'success', message: `✅ Import local réussi (${finalData.length} ménages).` });
+                await forceSync();
+            }
+
             syncEventBus.emit(SYNC_EVENTS.IMPORT_COMPLETE, {
                 projectId: currentProjectId,
                 householdCount: finalData.length,
                 timestamp: new Date()
             });
-        } catch (e) {
-            toast.error("Erreur lors de la finalisation de l'import.");
+        } catch (e: any) {
+            console.error("Erreur finalisation import:", e);
+            toast.error(e?.response?.data?.error || "Erreur lors de la finalisation de l'import.", { id: 'bulk-import' });
         } finally {
             setIsProcessing(false);
         }
@@ -495,6 +510,19 @@ export const DataHubModal: React.FC<DataHubModalProps> = ({ isOpen, onClose }) =
                                         <button onClick={() => fileInputRef.current?.click()} className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-indigo-500 transition-all shadow-lg hover:shadow-indigo-500/25">
                                             Sélectionner Fichier
                                         </button>
+
+                                        <div className="mt-8 flex items-center gap-4 p-4 bg-white/5 rounded-2xl border border-white/10">
+                                            <div className="flex flex-col">
+                                                <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Mode d'importation</span>
+                                                <span className="text-[9px] text-slate-500 font-bold uppercase">{useServerImport ? "🚀 Direct Serveur (Recommandé pour 1000+)" : "📱 Local (Mode déconnecté)"}</span>
+                                            </div>
+                                            <button 
+                                                onClick={() => setUseServerImport(!useServerImport)}
+                                                className={`relative w-12 h-6 rounded-full transition-colors ${useServerImport ? 'bg-indigo-600' : 'bg-slate-700'}`}
+                                            >
+                                                <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${useServerImport ? 'translate-x-6' : ''}`} />
+                                            </button>
+                                        </div>
                                     </div>
                                     {importResult && (
                                         <div className={`p-4 rounded-xl text-xs font-bold flex items-center gap-3 ${importResult.type === 'success' ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-500' : 'bg-rose-500/10 border border-rose-500/20 text-rose-500'}`}>
