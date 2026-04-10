@@ -23,7 +23,7 @@ export const TeamSizingModal: React.FC<TeamSizingModalProps> = ({ isOpen, onClos
         setIsLoading(true);
         try {
             const token = localStorage.getItem('gem_token');
-            const res = await fetch('http://localhost:5000/api/sizing/recommend', {
+            const res = await fetch('/api/sizing/recommend', {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',
@@ -51,7 +51,7 @@ export const TeamSizingModal: React.FC<TeamSizingModalProps> = ({ isOpen, onClos
         setIsLoading(true);
         try {
             const token = localStorage.getItem('gem_token');
-            const res = await fetch('http://localhost:5000/api/sizing/apply', {
+            const res = await fetch('/api/sizing/apply', {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',

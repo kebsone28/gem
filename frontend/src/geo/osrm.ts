@@ -5,7 +5,8 @@ export async function getTravelTimeMatrix(coords: { lat: number, lon: number }[]
 
     // OSRM expects: longitude,latitude;longitude,latitude...
     const coordStr = coords.map(c => `${c.lon},${c.lat}`).join(';');
-    const url = `http://localhost:5000/table/v1/driving/${coordStr}?annotations=duration`;
+    const osrmUrl = import.meta.env.VITE_OSRM_URL || 'http://localhost:5000';
+    const url = `${osrmUrl}/table/v1/driving/${coordStr}?annotations=duration`;
 
     try {
         const response = await fetch(url);
