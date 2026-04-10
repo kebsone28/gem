@@ -583,7 +583,14 @@ export const DataHubModal: React.FC<DataHubModalProps> = ({ isOpen, onClose }) =
                                             {koboResult && koboStep === 3 && (
                                                 <div className="mt-6 p-4 bg-white/5 rounded-xl border border-white/10 text-left">
                                                     <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-2">Bilan de l'opération</p>
-                                                    <p className="text-white text-xs font-mono">{JSON.stringify(koboResult)}</p>
+                                                    <p className="text-white text-xs font-mono mb-4">{JSON.stringify(koboResult)}</p>
+                                                    
+                                                    <button 
+                                                        onClick={() => { setKoboStep(0); setKoboResult(null); }}
+                                                        className="w-full py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
+                                                    >
+                                                        Réinitialiser / Recommencer
+                                                    </button>
                                                 </div>
                                             )}
                                         </div>
