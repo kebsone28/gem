@@ -2,6 +2,11 @@ import bcrypt from 'bcryptjs';
 import prisma from '../../core/utils/prisma.js';
 import { tracerAction } from '../../services/audit.service.js';
 import { socketService } from '../../services/socket.service.js';
+import { recalculateProjectGrappes } from '../../services/project_config.service.js';
+
+const DONE_STATUSES = new Set(['completed', 'Terminé', 'Réception: Validée', 'Conforme']);
+
+const isCompletedStatus = (status) => DONE_STATUSES.has(status);
 
 // @desc    Get all projects for an organization
 // @route   GET /api/projects
@@ -229,5 +234,261 @@ export const deleteProject = async (req, res) => {
     } catch (error) {
         console.error('Delete project error:', error);
         res.status(500).json({ error: 'Server error while deleting project' });
+    }
+};
+
+// -------------------------------------------------------------
+// BORDEREAU GENERATION (Spatial assignment on the fly)
+// -------------------------------------------------------------
+const haversineDistance = (lat1, lon1, lat2, lon2) => {
+    const R = 6371; // Earth's radius in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+        Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+        Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+};
+
+export const getProjectBordereau = async (req, res) => {
+    try {
+        console.log(`[BORDEREAU] Starting getProjectBordereau for projectId: ${req.params.id}`);
+        const { id: projectId } = req.params;
+        const { organizationId } = req.user;
+
+        const project = await prisma.project.findFirst({
+            where: {
+                id: projectId,
+                organizationId,
+                deletedAt: null
+            },
+            select: { id: true }
+        });
+
+        if (!project) {
+            return res.status(404).json({ error: 'Project not found' });
+        }
+
+        // 1. Fetch Regions and their Grappes
+        console.time('[BORDEREAU] prisma.region.findMany');
+        const regions = await prisma.region.findMany({
+            include: {
+                grappes: {
+                    where: { organizationId },
+                    include: {
+                        _count: {
+                            select: { households: true }
+                        },
+                        households: {
+                            where: {
+                                deletedAt: null,
+                                organizationId,
+                                zone: { projectId }
+                            },
+                            select: {
+                                id: true,
+                                numeroordre: true,
+                                name: true,
+                                phone: true,
+                                village: true,
+                                departement: true,
+                                status: true,
+                                owner: true,
+                                location: true,
+                                latitude: true,
+                                longitude: true,
+                                koboData: true,
+                                koboSync: true,
+                                updatedAt: true
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // 2. Fetch all teams for this project to map them to grappes
+        const teams = await prisma.team.findMany({
+            where: { organizationId, projectId, deletedAt: null },
+            select: { id: true, name: true, tradeKey: true, role: true, grappeId: true }
+        });
+
+        const mappedTeams = teams.map(t => {
+            let type = t.tradeKey || t.role || '';
+            const tL = type.toLowerCase();
+            if (tL.includes('macon') || tL.includes('maçon')) type = 'Maçonnerie';
+            if (tL.includes('reseau') || tL.includes('réseau')) type = 'Réseau';
+            if (tL.includes('interieur') || tL.includes('installation')) type = 'Installation intérieure';
+            if (tL.includes('controle') || tL.includes('contrôle')) type = 'Contrôle & Validation';
+            return { id: t.id, name: t.name, type, grappeId: t.grappeId };
+        });
+
+        // 3. Flatten and enrich the structure for the frontend
+        const enrichedGrappes = [];
+
+        for (const reg of regions) {
+            // Only keep regions that have grappes containing households for THIS project
+            // Note: Currently, Household has a zoneId which links to Project. 
+            // We should filter households by project too.
+            
+            for (const g of reg.grappes) {
+                // IMPORTANT: Filter households that belong to THIS project specifically 
+                // (though a grappe is usually project-specific by organization and name)
+                const projectHouseholds = g.households; // Already filtered by deletedAt
+
+                if (projectHouseholds.length === 0) continue;
+
+                enrichedGrappes.push({
+                    id: g.id,
+                    name: g.name,
+                    region: reg.name,
+                    householdCount: projectHouseholds.length,
+                    electrified: projectHouseholds.filter(h => isCompletedStatus(h.status)).length,
+                    teams: mappedTeams.filter(t => t.grappeId === g.id),
+                    households: projectHouseholds
+                });
+            }
+        }
+
+        // 4. Handle "Unclassified" households (those not linked to any grappe yet)
+        const unclassifiedHouseholds = await prisma.household.findMany({
+            where: {
+                organizationId,
+                zone: { projectId },
+                grappeId: null,
+                deletedAt: null
+            }
+        });
+
+        if (unclassifiedHouseholds.length > 0) {
+            // Group unclassified by region
+            const byRegion = {};
+            unclassifiedHouseholds.forEach(h => {
+                const r = h.region || 'Sans Région';
+                if (!byRegion[r]) byRegion[r] = [];
+                byRegion[r].push(h);
+            });
+
+            for (const regionName in byRegion) {
+                const hList = byRegion[regionName];
+                enrichedGrappes.push({
+                    id: `unclassified_${regionName}`,
+                    name: `À CLASSER – ${regionName}`,
+                    region: regionName,
+                    householdCount: hList.length,
+                    electrified: hList.filter(h => isCompletedStatus(h.status)).length,
+                    teams: [],
+                    households: hList
+                });
+            }
+        }
+
+        // 5. Final Sort: Region first, then Name
+        enrichedGrappes.sort((a, b) => {
+            if (a.region !== b.region) return a.region.localeCompare(b.region);
+            if (a.id.startsWith('unclassified')) return 1;
+            if (b.id.startsWith('unclassified')) return -1;
+            return a.name.localeCompare(b.name);
+        });
+
+        console.timeEnd('[BORDEREAU] Formatting and sorting');
+        console.log(`[BORDEREAU] Success. Returning ${enrichedGrappes.length} grappes.`);
+
+        res.json({
+            timestamp: new Date().toISOString(),
+            grappes: enrichedGrappes
+        });
+
+    } catch (error) {
+        console.error('Bordereau calculation error:', error);
+        res.status(500).json({ error: 'Failed to generate bordereau' });
+    }
+};
+
+/**
+ * Manually trigger grappe recalculation for a project
+ */
+export const triggerRecalculateGrappes = async (req, res) => {
+    try {
+        const { id: projectId } = req.params;
+        const { organizationId } = req.user;
+
+        const result = await recalculateProjectGrappes(projectId, organizationId, true);
+        
+        res.json({
+            message: 'Recalculation triggered and completed',
+            result
+        });
+    } catch (error) {
+        console.error('Manual recalculate error:', error);
+        res.status(500).json({ error: 'Failed to recalculate grappes' });
+    }
+};
+
+/**
+ * Reset: Supprimer TOUS les ménages et grappes du projet
+ * WARNING: Action destructive, ne peut pas être annulée
+ */
+export const resetProjectData = async (req, res) => {
+    try {
+        const { id: projectId } = req.params;
+        const { organizationId } = req.user;
+
+        // Vérifier que le projet existe et appartient à l'organisation
+        const project = await prisma.project.findFirst({
+            where: {
+                id: projectId,
+                organizationId,
+                deletedAt: null
+            }
+        });
+
+        if (!project) {
+            return res.status(404).json({ error: 'Project not found' });
+        }
+
+        // Supprimer TOUS les ménages du projet
+        const deletedHouseholds = await prisma.household.deleteMany({
+            where: {
+                zone: {
+                    projectId
+                }
+            }
+        });
+
+        // Supprimer TOUTES les grappes associées (optionnel, elles seront recréées si nécessaire)
+        const deletedGrappes = await prisma.grappe.deleteMany({
+            where: {
+                households: {
+                    none: {}  // Grappes sans ménages
+                }
+            }
+        });
+
+        console.log(`[RESET] Supprimé ${deletedHouseholds.count} ménages du projet ${projectId}`);
+        console.log(`[RESET] Supprimé ${deletedGrappes.count} grappes orphelines`);
+
+        // Tracer l'action
+        await tracerAction(
+            organizationId,
+            projectId,
+            'projet_reset',
+            `Réinitialisation du projet: ${project.name}`,
+            req.user.id
+        );
+
+        res.json({
+            message: 'Project data reset successfully',
+            deleted: {
+                households: deletedHouseholds.count,
+                grappes: deletedGrappes.count
+            }
+        });
+
+    } catch (error) {
+        console.error('Project reset error:', error);
+        res.status(500).json({ error: 'Failed to reset project data' });
     }
 };

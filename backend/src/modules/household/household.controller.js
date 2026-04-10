@@ -284,3 +284,38 @@ export const updateHousehold = async (req, res) => {
         res.status(500).json({ error: 'Server error while updating household' });
     }
 };
+
+// @desc    Get household by numeroordre (business identifier for Kobo matching)
+// @route   GET /api/households/by-numero/:numeroordre
+export const getHouseholdByNumero = async (req, res) => {
+    try {
+        const { organizationId } = req.user;
+        const { numeroordre } = req.params;
+
+        if (!numeroordre) {
+            return res.status(400).json({ error: 'numeroordre is required' });
+        }
+
+        const household = await prisma.household.findFirst({
+            where: {
+                organizationId,
+                numeroordre: String(numeroordre),
+                deletedAt: null
+            },
+            include: {
+                zone: {
+                    select: { name: true, projectId: true }
+                }
+            }
+        });
+
+        if (!household) {
+            return res.status(404).json({ error: 'Household not found' });
+        }
+
+        res.json({ household });
+    } catch (error) {
+        console.error('Get household by numero error:', error);
+        res.status(500).json({ error: 'Server error while fetching household' });
+    }
+};

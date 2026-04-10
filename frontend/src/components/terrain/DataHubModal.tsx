@@ -8,16 +8,19 @@ import {
     Trash2,
     AlertTriangle,
     CheckCircle2,
-    FileText,
     History
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { useTerrainData } from '../../hooks/useTerrainData';
 import { useSync } from '../../hooks/useSync';
 import logger from '../../utils/logger';
-import { useTheme } from '../../context/ThemeContext';
+import { useTheme } from '../../contexts/ThemeContext';
 import { useProject } from '../../hooks/useProject';
 import { useAuth } from '../../contexts/AuthContext';
 import apiClient from '../../api/client';
+import { syncEventBus, SYNC_EVENTS } from '../../utils/syncEventBus';
+import { SyncConflictResolver } from './SyncConflictResolver';
+import { db } from '../../store/db';
 
 interface DataHubModalProps {
     isOpen: boolean;
@@ -27,9 +30,9 @@ interface DataHubModalProps {
 export const DataHubModal: React.FC<DataHubModalProps> = ({ isOpen, onClose }) => {
     const { isDarkMode } = useTheme();
     const { user } = useAuth();
-    const { importHouseholds, detectDuplicates, clearHouseholds, stats, simulateKoboSync } = useTerrainData();
-    const { activeProjectId, project, createProject } = useProject();
-    const [activeTab, setActiveTab] = useState<'import' | 'kobo' | 'backups' | 'danger'>('import');
+    const { importHouseholds, repairSyncQueue } = useTerrainData();
+    const { activeProjectId, project, createProject, projects, deleteProject } = useProject();
+    const [activeTab, setActiveTab] = useState<'import' | 'kobo' | 'backups' | 'danger' | 'projects'>('import');
     const [isProcessing, setIsProcessing] = useState(false);
     
     // Nouveaux états UX
@@ -40,6 +43,27 @@ export const DataHubModal: React.FC<DataHubModalProps> = ({ isOpen, onClose }) =
     
     // Etat des sauvegardes
     const [backups, setBackups] = useState<Array<{id: string, date: string, count: number}>>([]);
+
+    // Gestion des conflits
+    const [conflicts, setConflicts] = useState<any[]>([]);
+    const [isConflictModalOpen, setIsConflictModalOpen] = useState(false);
+    const [pendingImportData, setPendingImportData] = useState<any[]>([]);
+
+    // Modals Custom
+    const [promptState, setPromptState] = useState<{isOpen: boolean, message: string, value: string, resolve: ((v: string | null) => void) | null}>({isOpen: false, message: '', value: '', resolve: null});
+    const [confirmState, setConfirmState] = useState<{isOpen: boolean, title: string, message: string, resolve: ((v: boolean) => void) | null}>({isOpen: false, title: '', message: '', resolve: null});
+
+    const showPrompt = (message: string): Promise<string | null> => {
+        return new Promise(resolve => {
+            setPromptState({isOpen: true, message, value: '', resolve});
+        });
+    };
+
+    const showConfirm = (title: string, message: string): Promise<boolean> => {
+        return new Promise(resolve => {
+            setConfirmState({isOpen: true, title, message, resolve});
+        });
+    };
 
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -93,7 +117,7 @@ export const DataHubModal: React.FC<DataHubModalProps> = ({ isOpen, onClose }) =
         setImportResult(null);
 
         if (!activeProjectId) {
-            const name = prompt("Veuillez donner un nom à ce nouveau projet avant d'importer :");
+            const name = await showPrompt("Veuillez donner un nom à ce nouveau projet avant d'importer :");
             if (!name) return;
             const newProj = await createProject(name);
             if (!newProj) return;
@@ -163,30 +187,8 @@ export const DataHubModal: React.FC<DataHubModalProps> = ({ isOpen, onClose }) =
                 return isNaN(parsed) ? 0 : parsed;
             };
 
-            const currentProjectId = activeProjectId || project?.id;
+            const currentProjectId = project?.id || activeProjectId;
             const currentOrgId = project?.organizationId || user?.organization || 'org_test_2026';
-
-            if (!currentProjectId) throw new Error("Aucun projet actif pour l'import");
-
-            // 1. Ensure we have at least one zone for this project
-            let targetZoneId = '';
-            try {
-                const zonesRes = await apiClient.get(`/zones?projectId=${currentProjectId}`);
-                const zones = zonesRes.data.zones;
-                if (zones && zones.length > 0) {
-                    targetZoneId = zones[0].id;
-                } else {
-                    // Create a default zone
-                    const newZoneRes = await apiClient.post('zones', {
-                        projectId: currentProjectId,
-                        name: 'Zone Importée'
-                    });
-                    targetZoneId = newZoneRes.data.id;
-                }
-            } catch (zErr) {
-                console.warn("Could not fetch/create zone, creating a local placeholder", zErr);
-                targetZoneId = `zone_${Date.now()}`;
-            }
 
             const parsedHouseholds = rawData.map((household: any) => {
                 const hId = findValue(household, aliases.id);
@@ -204,7 +206,7 @@ export const DataHubModal: React.FC<DataHubModalProps> = ({ isOpen, onClose }) =
                     return {
                         id: String(hId).trim(),
                         projectId: currentProjectId,
-                        zoneId: targetZoneId, // CRITICAL: Link to zone
+                        zoneId: 'default_zone',
                         organizationId: currentOrgId,
                         owner: String(owner).trim(),
                         photo: String(photo).trim(),
@@ -224,441 +226,402 @@ export const DataHubModal: React.FC<DataHubModalProps> = ({ isOpen, onClose }) =
                 return null;
             }).filter(h => h !== null);
 
-            logger.log(`[IMPORT] Importing ${parsedHouseholds.length} households to zone ${targetZoneId}`);
-            
-            // 🔍 Détecte les doublons AVANT import
-            const duplicateStats = await detectDuplicates(parsedHouseholds as any);
-            
-            logger.log(`[IMPORT] Duplicate stats:`, duplicateStats);
-            
-            // Importe les données
-            await importHouseholds(parsedHouseholds as any);
+            // 🔍 DÉTECTION DES CONFLITS (Optimisée O(n) + Smart Sync)
+            const householdsInDb = await db.households.toArray();
+            const localMap = new Map(householdsInDb.map(h => [h.id, h]));
 
-            // Message détaillé pour l'utilisateur
-            const message = `✅ Import réussi pour "${project?.name || 'Nouveau'}":
-  • ${duplicateStats.newItems} nouveaux ménages ajoutés
-  • ${duplicateStats.duplicates} ménages détectés (doublons par ID)${duplicateStats.updates > 0 ? `\n  • ${duplicateStats.updates} mises à jour détectées` : ''}
-  
-Total: ${parsedHouseholds.length} ménages traités`;
+            const detectedConflicts: any[] = [];
+            const finalProcessedData: any[] = [];
 
-            setImportResult({ type: 'success', message });
+            for (const imported of parsedHouseholds as any[]) {
+                // On marque la source et le temps de modif de l'import
+                const remote = { 
+                    ...imported, 
+                    source: 'import', 
+                    lastModified: Date.now() 
+                };
 
-            // Auto-push to server
-            try {
-                await forceSync();
-            } catch (e) {
-                logger.warn("Local import ok, but server sync failed", e);
+                const existing = localMap.get(remote.id);
+
+                if (existing) {
+                    const diffFields: string[] = [];
+                    const oldCoords = existing.location?.coordinates || [0,0];
+                    const newCoords = remote.location?.coordinates || [0,0];
+                    if (Math.abs(oldCoords[0] - newCoords[0]) > 0.00001 || Math.abs(oldCoords[1] - newCoords[1]) > 0.00001) {
+                        diffFields.push('gps');
+                    }
+                    if (existing.status !== remote.status) {
+                        diffFields.push('status');
+                    }
+                    if (existing.owner !== remote.owner) {
+                        diffFields.push('owner');
+                    }
+
+                    if (diffFields.length > 0) {
+                        // LOGIQUE SMART: Auto-merge si le remote est > 5 min plus récent
+                        const remoteTime = remote.lastModified || 0;
+                        const localTime = (existing as any).lastModified || 0;
+                        const isRemoteNewer = remoteTime > (localTime + 5 * 60 * 1000);
+                        
+                        if (isRemoteNewer) {
+                            finalProcessedData.push(remote); // Auto-accept
+                        } else {
+                            detectedConflicts.push({ local: existing, remote, fields: diffFields });
+                        }
+                    } else {
+                        finalProcessedData.push(remote); // Identique, on met à jour le timestamp/source
+                    }
+                } else {
+                    finalProcessedData.push(remote); // Nouveau
+                }
+            }
+
+            if (detectedConflicts.length > 0) {
+                setConflicts(detectedConflicts);
+                setPendingImportData(finalProcessedData);
+                setIsConflictModalOpen(true);
+            } else {
+                await finalizeImport(finalProcessedData);
             }
         } catch (err) {
             logger.error("Erreur d'import", err);
-            setImportResult({ type: 'error', message: "Erreur lors de l'import : Vérifiez le format du fichier (CSV ou Excel attendu)." });
+            setImportResult({ type: 'error', message: "Erreur lors de l'import : Vérifiez le format du fichier." });
         } finally {
             setIsProcessing(false);
             if (fileInputRef.current) fileInputRef.current.value = '';
         }
     };
 
-    const handleKoboSync = async () => {
+    const finalizeImport = async (finalData: any[]) => {
         setIsProcessing(true);
-        setKoboStep(1); // Connecting
-        setKoboResult(null);
-        
         try {
-            // Real Server Sync - Triggers both DB and Kobo pull
-            await apiClient.post('kobo/sync');
-            setKoboStep(2); // Applying
-            
-            await forceSync(); // Force local DB sync to get new kobo data
-            
-            setKoboStep(3); // Done
-            const statusRes = await apiClient.get('kobo/status');
-            setKoboResult(statusRes.data.lastResult);
-            
+            const currentProjectId = project?.id || activeProjectId;
+            await importHouseholds(finalData);
+            setImportResult({ type: 'success', message: `✅ Import réussi (${finalData.length} ménages traités).` });
+            await forceSync();
+            syncEventBus.emit(SYNC_EVENTS.IMPORT_COMPLETE, {
+                projectId: currentProjectId,
+                householdCount: finalData.length,
+                timestamp: new Date()
+            });
         } catch (e) {
-            console.error(e);
-            // Simulation fallback if no server
-            try {
-                await simulateKoboSync();
-                setKoboStep(3);
-                setKoboResult({ applied: 'Simulé', skipped: 0, errors: 0 });
-            } catch (simErr) {
-                setKoboStep(0);
-                alert("Erreur critique lors de la synchronisation Kobo.");
-            }
+            toast.error("Erreur lors de la finalisation de l'import.");
         } finally {
             setIsProcessing(false);
         }
     };
 
-    // --- LOGIQUE DES SAUVEGARDES LOCALES ---
+    const handleKoboSync = async () => {
+        const currentProjectId = project?.id || activeProjectId;
+
+        if (!currentProjectId) {
+             toast.error("Veuillez d'abord sélectionner ou créer un espace de travail actif.");
+             return;
+        }
+
+        setIsProcessing(true);
+        setKoboStep(1);
+        try {
+            await apiClient.post('sync/kobo', { projectId: currentProjectId });
+            setKoboStep(2);
+            await forceSync();
+            
+            syncEventBus.emit(SYNC_EVENTS.KOBO_SYNC_COMPLETE, { timestamp: new Date() });
+            setKoboStep(3);
+            const statusRes = await apiClient.get('kobo/status');
+            setKoboResult(statusRes.data?.lastResult || { applied: 0, skipped: 0, errors: 0 });
+        } catch (e: any) {
+            console.error('[KOBO] Erreur de synchronisation:', e);
+            setKoboStep(0);
+            toast.error(
+                e?.response?.data?.error || "Erreur de connexion au serveur KoboToolbox."
+            );
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
+    const handleRepairSync = async () => {
+        setIsProcessing(true);
+        try {
+            const count = await repairSyncQueue();
+            if (count > 0) {
+                await forceSync();
+                toast.success(`${count} ménages synchronisés.`);
+            } else {
+                toast.success("Aucun ménage orphelin détecté.");
+            }
+        } catch (e) {
+            toast.error("Erreur réparation.");
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
+    const handleClearData = async () => {
+        const confirmed = await showConfirm('⚠️ ATTENTION', 'Effacer toutes les données locales ?');
+        if (!confirmed) return;
+        setIsProcessing(true);
+        try {
+            await db.households.clear();
+            await db.grappes.clear();
+            await db.syncOutbox.clear();
+            await db.zones.clear();
+            localStorage.clear();
+            toast.success('✅ Base effacée ! Rechargement...');
+            setTimeout(() => window.location.reload(), 1500);
+        } catch (e) {
+            toast.error('Erreur nettoyage.');
+            setIsProcessing(false);
+        }
+    };
+
+    const handleClearServerEntity = async (entity: string) => {
+        const confirmed = await showConfirm('⚠️ DANGER SÉVÈRE', `Voulez-vous VRAIMENT supprimer définitivement ce type de données (${entity}) de la base centrale du SERVEUR et en local ?`);
+        if (!confirmed) return;
+        setIsProcessing(true);
+        try {
+            await apiClient.delete(`sync/clear/${entity}`);
+            if(entity === 'households' || entity === 'all') await db.households.clear();
+            if(entity === 'grappes' || entity === 'all') await db.grappes.clear();
+            if(entity === 'zones' || entity === 'all') await db.zones.clear();
+            toast.success(`✅ Données '${entity}' supprimées du serveur et du cache.`);
+        } catch(err: any) {
+            toast.error(`Erreur serveur: ${err?.message || 'Inconnue'}`);
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
     const handleCreateBackup = async () => {
         setIsProcessing(true);
         try {
-            const { db } = await import('../../store/db');
             const data = await db.households.toArray();
-            
             if (data.length === 0) {
-                alert("Aucune donnée à sauvegarder.");
+                toast.error("Aucune donnée.");
                 return;
             }
-
-            const backupMeta = {
-                id: `bkp_${Date.now()}`,
-                date: new Date().toISOString(),
-                count: data.length
-            };
-
-            // Stocker les données
-            localStorage.setItem(`gem_backup_data_${backupMeta.id}`, JSON.stringify(data));
-            
-            // Mettre à jour la liste
+            const bkpId = `bkp_${Date.now()}`;
+            localStorage.setItem(`gem_backup_data_${bkpId}`, JSON.stringify(data));
             const list = JSON.parse(localStorage.getItem('gem_households_backups') || '[]');
-            list.unshift(backupMeta);
+            list.unshift({ id: bkpId, date: new Date().toISOString(), count: data.length });
             localStorage.setItem('gem_households_backups', JSON.stringify(list));
-            
             setBackups(list);
-            alert("Sauvegarde créée avec succès.");
+            toast.success("Sauvegarde créée.");
         } catch (e) {
-            console.error("Erreur de sauvegarde", e);
-            alert("Impossible de créer la sauvegarde (quota dépassé ?).");
+            toast.error("Erreur sauvegarde.");
         } finally {
             setIsProcessing(false);
         }
     };
 
-    const handleRestoreBackup = async (backupId: string) => {
-        if (!window.confirm("Restaurer cette sauvegarde écrasera vos données locales actuelles. Continuer ?")) return;
-        
+    const handleRestoreBackup = async (id: string) => {
+        if (!(await showConfirm("Restauration", "Écraser les données ?"))) return;
         setIsProcessing(true);
         try {
-            const dataStr = localStorage.getItem(`gem_backup_data_${backupId}`);
-            if (!dataStr) throw new Error("Données introuvables");
-            
-            const data = JSON.parse(dataStr);
-            const { db } = await import('../../store/db');
+            const data = JSON.parse(localStorage.getItem(`gem_backup_data_${id}`) || '[]');
             await db.households.clear();
             await db.households.bulkPut(data);
-            
-            alert(`Restauration terminée (${data.length} ménages).`);
+            toast.success("Restauration terminée.");
         } catch (e) {
-            console.error("Erreur de restauration", e);
-            alert("Erreur lors de la restauration.");
+            toast.error("Erreur restauration.");
         } finally {
             setIsProcessing(false);
         }
     };
 
-    const handleDeleteBackup = (backupId: string) => {
-        if (!window.confirm("Supprimer cette sauvegarde définitivement ?")) return;
-        
-        localStorage.removeItem(`gem_backup_data_${backupId}`);
-        const list = backups.filter(b => b.id !== backupId);
+    const handleDeleteBackup = (id: string) => {
+        localStorage.removeItem(`gem_backup_data_${id}`);
+        const list = backups.filter(b => b.id !== id);
         localStorage.setItem('gem_households_backups', JSON.stringify(list));
         setBackups(list);
     };
 
-    const handleDownloadBackup = (backupId: string) => {
-        const dataStr = localStorage.getItem(`gem_backup_data_${backupId}`);
-        if (!dataStr) return alert("Données introuvables");
-        
-        const blob = new Blob([dataStr], { type: 'application/json' });
+    const handleDownloadBackup = (id: string) => {
+        const data = localStorage.getItem(`gem_backup_data_${id}`);
+        if (!data) return;
+        const blob = new Blob([data], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        const backupMeta = backups.find(b => b.id === backupId);
-        a.download = `gem_backup_${backupMeta?.date.split('T')[0]}.json`;
-        document.body.appendChild(a);
+        a.download = `backup_${id}.json`;
         a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
     };
-
-    const handleClearData = async () => {
-        if (window.confirm("Êtes-vous sûr de vouloir supprimer tous les ménages ? Cette action est irréversible.")) {
-            if (window.confirm("CONFIRMATION REQUISE : Toutes les données locales seront effacées.")) {
-                await clearHouseholds();
-                alert("Base de données vidée.");
-            }
-        }
-    };
-
-    if (!isOpen) return null;
 
     return (
-        <AnimatePresence>
-            <div className="fixed inset-0 z-[3000] flex items-center justify-center p-4 sm:p-6 bg-slate-950/80 backdrop-blur-sm">
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                    className={`relative w-full max-w-4xl max-h-[90vh] flex flex-col rounded-3xl overflow-hidden shadow-2xl border ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}
-                >
-                    {/* Header */}
-                    <div className={`flex items-center justify-between p-6 border-b shrink-0 ${isDarkMode ? 'border-slate-800' : 'border-slate-100'}`}>
-                        <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-indigo-600 shadow-lg shadow-indigo-600/20">
-                                <Database size={24} className="text-white" />
-                            </div>
-                            <div>
-                                <h2 className={`text-2xl font-black uppercase tracking-tight italic ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Data Hub</h2>
-                                <p className={`text-sm font-medium ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>Synchronisation, Imports & Sauvegardes</p>
-                            </div>
+        <>
+            <AnimatePresence>
+                {isOpen && (
+                    <div key="data-hub-overlay" className="fixed inset-0 z-[3000] flex items-center justify-center p-2 md:p-4 bg-slate-950/80 backdrop-blur-sm">
+                        <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className={`relative w-full max-w-4xl h-[90vh] md:h-auto md:max-h-[90vh] flex flex-col rounded-2xl md:rounded-3xl overflow-hidden shadow-2xl border ${isDarkMode ? 'bg-[#0A101D] border-slate-800/50' : 'bg-white border-slate-200'}`}>
+                            <div className="flex items-center justify-between p-4 md:p-6 border-b border-slate-800/50 shrink-0 bg-white/5">
+                        <div className="flex items-center gap-3 md:gap-4">
+                            <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl md:rounded-2xl bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-600/20"><Database size={20} className="w-4 h-4 md:w-5 md:h-5" /></div>
+                            <h2 className={`text-base md:text-xl font-black uppercase tracking-widest italic ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Data Hub</h2>
                         </div>
-                        <button onClick={onClose} title="Fermer" aria-label="Fermer" className={`p-2 rounded-xl transition-colors ${isDarkMode ? 'text-slate-500 hover:text-white hover:bg-slate-800' : 'text-slate-400 hover:text-slate-900 hover:bg-slate-100'}`}>
-                            <X size={24} />
-                        </button>
+                        <button onClick={onClose} aria-label="Fermer" className="p-2 md:p-2.5 bg-white/5 rounded-xl text-slate-400 hover:text-white hover:bg-rose-500/20 hover:text-rose-400 transition-colors"><X size={20} className="w-5 h-5" /></button>
                     </div>
 
-                    <div className="flex flex-1 overflow-hidden">
-                        {/* Sidebar Tabs */}
-                        <div className={`w-64 p-4 border-r shrink-0 space-y-2 overflow-y-auto ${isDarkMode ? 'border-slate-800 bg-slate-950/50' : 'border-slate-100 bg-slate-50/50'}`}>
-                            <button
-                                onClick={() => setActiveTab('import')}
-                                title="Importer un fichier Excel ou CSV"
-                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === 'import' ? 'bg-indigo-600 text-white shadow-md' : isDarkMode ? 'text-slate-400 hover:bg-slate-800 hover:text-white' : 'text-slate-600 hover:bg-slate-200'}`}
-                            >
-                                <Upload size={18} /> Import Fichier
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('kobo')}
-                                title="Synchroniser avec KoboToolbox"
-                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === 'kobo' ? 'bg-indigo-600 text-white shadow-md' : isDarkMode ? 'text-slate-400 hover:bg-slate-800 hover:text-white' : 'text-slate-600 hover:bg-slate-200'}`}
-                            >
-                                <RefreshCcw size={18} /> Synchronisation Kobo
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('backups')}
-                                title="Voir les sauvegardes historiques"
-                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === 'backups' ? 'bg-indigo-600 text-white shadow-md' : isDarkMode ? 'text-slate-400 hover:bg-slate-800 hover:text-white' : 'text-slate-600 hover:bg-slate-200'}`}
-                            >
-                                <History size={18} /> Sauvegardes
-                            </button>
-                            <div className={`my-4 border-t ${isDarkMode ? 'border-slate-800' : 'border-slate-200'}`} />
-                            <button
-                                onClick={() => setActiveTab('danger')}
-                                title="Accéder aux options de suppression et données sensibles"
-                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === 'danger' ? 'bg-rose-600 text-white shadow-md' : isDarkMode ? 'text-rose-500/70 hover:bg-rose-500/10 hover:text-rose-400' : 'text-rose-600/70 hover:bg-rose-50'}`}
-                            >
-                                <AlertTriangle size={18} /> Zone de Danger
-                            </button>
+                    <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
+                        <div className="flex flex-row md:flex-col w-full md:w-64 p-2 md:p-4 border-b md:border-b-0 md:border-r border-slate-800/50 shrink-0 gap-2 overflow-x-auto md:overflow-y-auto bg-black/20 scrollbar-hide">
+                            {[
+                                { id: 'import', label: 'Import', icon: <Upload size={16} /> },
+                                { id: 'kobo', label: 'Kobo Sync', icon: <RefreshCcw size={16} /> },
+                                { id: 'projects', label: 'Projets', icon: <Database size={16} /> },
+                                { id: 'backups', label: 'Sauvegardes', icon: <History size={16} /> },
+                                { id: 'danger', label: 'Danger', icon: <AlertTriangle size={16} />, color: 'text-rose-500 hover:bg-rose-500/10' }
+                            ].map(tab => (
+                                <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`shrink-0 flex items-center gap-2 md:gap-3 px-4 py-2.5 md:py-3 rounded-xl text-[10px] md:text-sm font-bold uppercase tracking-widest transition-all ${activeTab === tab.id ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/25' : tab.color || 'text-slate-400 hover:text-indigo-300 hover:bg-indigo-500/10'}`}>
+                                    {tab.icon} <span className="whitespace-nowrap">{tab.label}</span>
+                                </button>
+                            ))}
                         </div>
 
-                        {/* Content Area */}
-                        <div className="flex-1 p-8 overflow-y-auto">
+                        <div className="flex-1 p-4 md:p-8 overflow-y-auto bg-[#0A101D]">
                             {activeTab === 'import' && (
-                                <div className="space-y-6">
-                                    <div className={`p-6 rounded-2xl border ${isDarkMode ? 'bg-slate-800/50 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
-                                        <h3 className={`text-lg font-bold mb-2 flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                                            <FileText size={20} className="text-indigo-500" />
-                                            Importation de Ménages
-                                        </h3>
-                                        <p className={`text-sm mb-6 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-                                            Importez un fichier Excel (.xlsx) ou CSV contenant les données des ménages. Les identifiants existants seront mis à jour.
+                                <div className="space-y-4 md:space-y-6">
+                                    <div 
+                                        className={`p-6 md:p-10 border-2 border-dashed rounded-3xl flex flex-col items-center transition-all ${isDragActive ? 'border-indigo-500 bg-indigo-500/10 scale-[1.02]' : 'border-slate-700 hover:border-indigo-400'}`}
+                                        onDragEnter={handleDragEnter}
+                                        onDragLeave={handleDragLeave}
+                                        onDragOver={handleDragOver}
+                                        onDrop={handleDrop}
+                                    >
+                                        <Upload size={48} className={`mb-4 transition-colors ${isDragActive ? 'text-indigo-400 align-bounce' : 'text-slate-600'}`} />
+                                        <p className="text-sm font-bold text-slate-300 mb-6 text-center italic uppercase tracking-widest">
+                                            {isDragActive ? 'Lâchez le fichier ici !' : 'Glissez votre fichier Excel ou CSV ici'}
                                         </p>
-
-                                        <div 
-                                            className={`border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center text-center transition-all duration-200 ${
-                                                isDragActive 
-                                                    ? 'border-indigo-500 bg-indigo-500/10 scale-[1.02]' 
-                                                    : isDarkMode 
-                                                        ? 'border-slate-700 hover:border-indigo-500/50 bg-slate-900/50' 
-                                                        : 'border-slate-300 hover:border-indigo-500/50 bg-white'
-                                            }`}
-                                            onDragEnter={handleDragEnter}
-                                            onDragLeave={handleDragLeave}
-                                            onDragOver={handleDragOver}
-                                            onDrop={handleDrop}
-                                        >
-                                            <Upload size={32} className={`mb-4 transition-colors ${isDragActive ? 'text-indigo-500' : isDarkMode ? 'text-slate-500' : 'text-slate-400'}`} />
-                                            <p className={`text-sm font-bold mb-2 ${isDragActive ? 'text-indigo-600 dark:text-indigo-400' : isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
-                                                Glissez-déposez votre fichier Excel / CSV ici
-                                            </p>
-                                            <p className={`text-xs mb-6 ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>ou cliquez pour parcourir</p>
-                                            <input
-                                                type="file"
-                                                accept=".csv, .xlsx, .xls"
-                                                className="hidden"
-                                                ref={fileInputRef}
-                                                title="Choisir un fichier Excel ou CSV"
-                                                aria-label="Choisir un fichier Excel ou CSV"
-                                                onChange={handleFileUpload}
-                                            />
-                                            <button
-                                                onClick={() => fileInputRef.current?.click()}
-                                                disabled={isProcessing}
-                                                title="Parcourir vos fichiers"
-                                                className="px-6 py-2.5 bg-indigo-600 text-white text-sm font-bold rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-colors shadow-lg shadow-indigo-600/20"
-                                            >
-                                                {isProcessing ? 'Traitement...' : 'Sélectionner un fichier'}
-                                            </button>
-                                        </div>
+                                        <input type="file" aria-label="Sélectionner un fichier Excel ou CSV" className="hidden" ref={fileInputRef} onChange={handleFileUpload} />
+                                        <button onClick={() => fileInputRef.current?.click()} className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-indigo-500 transition-all shadow-lg hover:shadow-indigo-500/25">
+                                            Sélectionner Fichier
+                                        </button>
                                     </div>
-
                                     {importResult && (
-                                        <motion.div 
-                                            initial={{ opacity: 0, y: 10 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            className={`p-4 rounded-xl flex items-start gap-3 ${importResult.type === 'success' ? 'bg-emerald-500/10 text-emerald-600 shadow-sm border border-emerald-500/20' : 'bg-rose-500/10 text-rose-600 shadow-sm border border-rose-500/20'}`}
-                                        >
-                                            {importResult.type === 'success' ? <CheckCircle2 size={20} className="mt-0.5 shrink-0" /> : <AlertTriangle size={20} className="mt-0.5 shrink-0" />}
-                                            <div className="text-sm font-medium whitespace-pre-wrap">
-                                                {importResult.message}
-                                            </div>
-                                        </motion.div>
-                                    )}
-
-                                    <div className={`p-4 rounded-xl flex gap-3 ${isDarkMode ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-50 text-indigo-700'}`}>
-                                        <CheckCircle2 size={20} className="shrink-0" />
-                                        <div className="text-sm">
-                                            <p className="font-bold mb-1">Tolérance sur les en-têtes :</p>
-                                            <p className="opacity-80">Notre système est intelligent : "Numéro_ordre", "nom", "Prénom et Nom", "Téléphone", etc., sont détectés automatiquement, peu importe les espaces ou accents. De plus, les coordonnées avec des virgules (14,215) sont gérées correctement.</p>
+                                        <div className={`p-4 rounded-xl text-xs font-bold flex items-center gap-3 ${importResult.type === 'success' ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-500' : 'bg-rose-500/10 border border-rose-500/20 text-rose-500'}`}>
+                                            {importResult.type === 'success' ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
+                                            {importResult.message}
                                         </div>
-                                    </div>
+                                    )}
                                 </div>
                             )}
 
                             {activeTab === 'kobo' && (
-                                <div className="space-y-6">
-                                    <h3 className={`text-lg font-bold flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                                        <RefreshCcw size={20} className="text-indigo-500" />
-                                        Synchronisation KoboCollect
-                                    </h3>
-                                    <p className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-                                        Récupérez les dernières enquêtes terrain et mettez à jour la base de données locale.
-                                    </p>
+                                <div className="flex flex-col items-center justify-center p-4 md:p-10 text-center">
+                                    <RefreshCcw size={48} className={`text-indigo-500 mb-4 md:mb-6 ${isProcessing ? 'animate-spin' : ''}`} />
+                                    <h3 className="text-white font-black italic uppercase text-base md:text-lg mb-2">Synchronisation Kobo</h3>
+                                    
+                                    {!isProcessing && koboStep === 0 && (
+                                        <>
+                                            <p className="text-slate-500 text-xs mb-8 uppercase tracking-widest">Récupérez les nouveaux ménages du serveur</p>
+                                            <button onClick={handleKoboSync} disabled={isProcessing} className="px-10 py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-indigo-500 transition-all shadow-xl shadow-indigo-500/20">Lancer la Sync</button>
+                                        </>
+                                    )}
 
-                                    <div className={`p-6 rounded-2xl border flex flex-col items-center text-center ${isDarkMode ? 'bg-slate-800/50 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
-                                        <div className="w-16 h-16 bg-blue-500/10 text-blue-500 rounded-2xl flex items-center justify-center mb-4">
-                                            <Database size={32} />
-                                        </div>
-                                        <div className="mb-8">
-                                            <h4 className={`text-xl font-black ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{stats?.total || 0}</h4>
-                                            <p className={`text-xs uppercase tracking-widest font-bold ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Ménages Locaux</p>
-                                        </div>
-
-                                        {koboStep > 0 && (
-                                            <div className="w-full max-w-sm mb-6 space-y-3">
-                                                <div className="flex items-center gap-3 text-sm font-medium">
-                                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center ${koboStep >= 1 ? 'bg-indigo-500 text-white' : 'bg-slate-200 text-slate-400'}`}>1</div>
-                                                    <span className={koboStep >= 1 ? (isDarkMode ? 'text-white' : 'text-slate-900') : 'text-slate-400'}>Connexion API</span>
-                                                </div>
-                                                <div className="flex items-center gap-3 text-sm font-medium">
-                                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center ${koboStep >= 2 ? 'bg-indigo-500 text-white' : 'bg-slate-200 text-slate-400'}`}>2</div>
-                                                    <span className={koboStep >= 2 ? (isDarkMode ? 'text-white' : 'text-slate-900') : 'text-slate-400'}>Récupération & DB Locale</span>
-                                                </div>
-                                                <div className="flex items-center gap-3 text-sm font-medium">
-                                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center ${koboStep >= 3 ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-400'}`}>3</div>
-                                                    <span className={koboStep >= 3 ? (isDarkMode ? 'text-white' : 'text-slate-900') : 'text-slate-400'}>Terminé</span>
-                                                </div>
+                                    {koboStep > 0 && (
+                                        <div className="w-full max-w-sm mt-6 space-y-4">
+                                            <div className="flex items-center gap-4 text-left p-4 rounded-xl bg-white/5 border border-white/10">
+                                                <div className={`w-3 h-3 rounded-full ${koboStep >= 1 ? 'bg-indigo-500 shadow-lg shadow-indigo-500/50' : 'bg-slate-700'}`} />
+                                                <div className={`text-xs font-bold uppercase tracking-widest ${koboStep >= 1 ? 'text-white' : 'text-slate-500'}`}>Connexion au serveur</div>
                                             </div>
-                                        )}
-                                        
-                                        {koboResult && koboStep === 3 && (
-                                            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className={`w-full max-w-sm p-4 rounded-xl mb-6 text-sm flex flex-col gap-2 ${isDarkMode ? 'bg-slate-900 border border-slate-700 text-slate-300' : 'bg-white border border-slate-200 text-slate-600'}`}>
-                                                <div className={`flex justify-between font-bold border-b pb-2 ${isDarkMode ? 'border-slate-800' : 'border-slate-100'}`}>
-                                                    <span>Résultat de la synchronisation</span>
-                                                </div>
-                                                <div className="flex justify-between"><span>Nouveaux ménages :</span> <span className="text-emerald-500 font-bold">{koboResult.applied}</span></div>
-                                                <div className="flex justify-between"><span>Ignorés (existants) :</span> <span>{koboResult.skipped}</span></div>
-                                                {koboResult.errors > 0 && <div className="flex justify-between"><span>Erreurs de format :</span> <span className="text-rose-500">{koboResult.errors}</span></div>}
-                                            </motion.div>
-                                        )}
-
-                                        <button
-                                            onClick={handleKoboSync}
-                                            disabled={isProcessing}
-                                            className="w-full max-w-sm px-6 py-4 bg-indigo-600 text-white text-sm font-black rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-all shadow-lg shadow-indigo-600/20 flex items-center justify-center gap-3"
-                                        >
-                                            <RefreshCcw size={18} className={isProcessing ? "animate-spin" : ""} />
-                                            {isProcessing ? 'Synchronisation en cours...' : koboStep === 3 ? 'Relancer la Synchronisation' : 'Lancer la Synchronisation'}
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-
-                            {activeTab === 'backups' && (
-                                <div className="space-y-6">
-                                    <h3 className={`text-lg font-bold flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                                        <History size={20} className="text-indigo-500" />
-                                        Gestion des Sauvegardes
-                                    </h3>
-
-                                    {backups.length === 0 ? (
-                                        <div className={`flex flex-col items-center justify-center p-12 text-center rounded-2xl border border-dashed ${isDarkMode ? 'border-slate-700 bg-slate-900/30' : 'border-slate-300 bg-slate-50'}`}>
-                                            <History size={48} className={isDarkMode ? 'text-slate-700 mb-4' : 'text-slate-300 mb-4'} />
-                                            <p className={`text-sm font-bold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Aucune sauvegarde récente trouvée.</p>
-                                            <button onClick={handleCreateBackup} disabled={isProcessing} className="mt-4 px-4 py-2 bg-indigo-600/10 text-indigo-500 hover:bg-indigo-600/20 rounded-lg text-sm font-bold transition-colors">
-                                                Créer une sauvegarde maintenant
-                                            </button>
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-4">
-                                            <div className="flex justify-between items-center bg-indigo-50 dark:bg-indigo-500/10 p-4 rounded-xl border border-indigo-100 dark:border-indigo-500/20">
-                                                <div>
-                                                    <h4 className="font-bold text-indigo-800 dark:text-indigo-400">Instantané Local</h4>
-                                                    <p className="text-xs text-indigo-600/70 dark:text-indigo-400/70 mt-1">Créez une copie de sécurité des données de votre navigateur.</p>
-                                                </div>
-                                                <button onClick={handleCreateBackup} disabled={isProcessing} className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold hover:bg-indigo-700 shadow-md transition-colors shrink-0">
-                                                    {isProcessing ? 'Création...' : '+ Nouvelle Sauvegarde'}
-                                                </button>
+                                            <div className="flex items-center gap-4 text-left p-4 rounded-xl bg-white/5 border border-white/10">
+                                                <div className={`w-3 h-3 rounded-full ${koboStep >= 2 ? 'bg-indigo-500 shadow-lg shadow-indigo-500/50' : 'bg-slate-700'}`} />
+                                                <div className={`text-xs font-bold uppercase tracking-widest ${koboStep >= 2 ? 'text-white' : 'text-slate-500'}`}>Application locale</div>
                                             </div>
-
-                                            <div className="space-y-2">
-                                                {backups.map(backup => (
-                                                    <div key={backup.id} className={`flex items-center justify-between p-4 rounded-xl border ${isDarkMode ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200'}`}>
-                                                        <div>
-                                                            <div className="flex items-center gap-2">
-                                                                <span className={`font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                                                                    {new Date(backup.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                                                                </span>
-                                                                <span className="px-2 py-0.5 text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-md">
-                                                                    {backup.count} ménages
-                                                                </span>
-                                                            </div>
-                                                            <p className={`text-xs mt-1 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>ID: {backup.id}</p>
-                                                        </div>
-                                                        <div className="flex items-center gap-2">
-                                                            <button onClick={() => handleDownloadBackup(backup.id)} title="Télécharger" className={`p-2 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-slate-700 text-slate-400 hover:text-white' : 'hover:bg-slate-100 text-slate-500 hover:text-slate-900'}`}>
-                                                                <Upload size={18} className="rotate-180" />
-                                                            </button>
-                                                            <button onClick={() => handleRestoreBackup(backup.id)} disabled={isProcessing} className="px-3 py-1.5 text-xs font-bold bg-indigo-50 text-indigo-600 hover:bg-indigo-100 dark:bg-indigo-500/20 dark:text-indigo-400 dark:hover:bg-indigo-500/30 rounded-lg transition-colors">
-                                                                Restaurer
-                                                            </button>
-                                                            <button onClick={() => handleDeleteBackup(backup.id)} title="Supprimer" className="p-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-lg transition-colors">
-                                                                <Trash2 size={18} />
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                ))}
+                                            <div className="flex items-center gap-4 text-left p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                                                <div className={`w-3 h-3 rounded-full ${koboStep >= 3 ? 'bg-emerald-500 shadow-lg shadow-emerald-500/50' : 'bg-slate-700'}`} />
+                                                <div className={`text-xs font-bold uppercase tracking-widest ${koboStep >= 3 ? 'text-emerald-400' : 'text-slate-500'}`}>Terminé</div>
                                             </div>
+                                            
+                                            {koboResult && koboStep === 3 && (
+                                                <div className="mt-6 p-4 bg-white/5 rounded-xl border border-white/10 text-left">
+                                                    <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-2">Bilan de l'opération</p>
+                                                    <p className="text-white text-xs font-mono">{JSON.stringify(koboResult)}</p>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
                                 </div>
                             )}
 
-                            {activeTab === 'danger' && (
-                                <div className="space-y-6">
-                                    <h3 className="text-lg font-bold text-rose-500 flex items-center gap-2">
-                                        <AlertTriangle size={20} />
-                                        Zone de Danger
-                                    </h3>
-
-                                    <div className={`p-6 rounded-2xl border border-rose-500/30 bg-rose-500/5`}>
-                                        <div className="flex gap-4">
-                                            <div className="shrink-0 p-3 bg-rose-500/10 rounded-xl text-rose-500 mt-1">
-                                                <Trash2 size={24} />
+                            {activeTab === 'projects' && (
+                                <div className="space-y-4">
+                                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4 md:mb-6 p-4 md:p-6 bg-indigo-500/10 border border-indigo-500/20 rounded-3xl">
+                                        <div>
+                                            <h3 className="text-indigo-400 font-black italic uppercase text-sm">Espaces de travail</h3>
+                                            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-1">Gérez vos différentes zones</p>
+                                        </div>
+                                        <button onClick={async () => {
+                                            const name = await showPrompt("Nom du nouveau projet :");
+                                            if (name) {
+                                                const newProj = await createProject(name);
+                                                if (newProj) toast.success("Projet créé avec succès !");
+                                            }
+                                        }} disabled={isProcessing} className="w-full md:w-auto px-6 py-3 bg-indigo-600 text-white rounded-xl text-[10px] md:text-xs font-black uppercase tracking-widest hover:bg-indigo-500 transition-colors shadow-lg shadow-indigo-600/20 disabled:opacity-50">
+                                            + Nouveau Projet
+                                        </button>
+                                    </div>
+                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                     {projects?.map((p: any) => (
+                                        <div key={p.id} className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 p-4 bg-white/5 border border-white/10 hover:border-white/20 transition-colors rounded-2xl">
+                                            <div className="flex flex-col">
+                                                <div className="font-bold text-white text-xs md:text-sm uppercase tracking-wide truncate">{p.name}</div>
+                                                {p.id === activeProjectId && <div className="text-[9px] font-black uppercase text-indigo-400 mt-1">Actif</div>}
                                             </div>
-                                            <div>
-                                                <h4 className={`text-base font-bold mb-1 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Effacer toutes les données</h4>
-                                                <p className={`text-sm mb-4 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-                                                    Attention : Cette action va complètement supprimer la base de données locale des ménages et des grappes. Assurez-vous d'avoir une sauvegarde ou une connexion à Kobo pour récupérer les données.
-                                                </p>
-                                                <button
-                                                    onClick={handleClearData}
-                                                    className="px-6 py-2.5 bg-rose-600 text-white text-sm font-bold rounded-xl hover:bg-rose-700 transition-colors shadow-lg shadow-rose-600/20"
-                                                >
-                                                    Effacer la base locale
-                                                </button>
+                                            {p.id !== activeProjectId && (
+                                                <button onClick={async () => {
+                                                    const pwd = await showPrompt("Mot de passe admin :");
+                                                    if (pwd) {
+                                                        const res = await deleteProject(p.id, pwd);
+                                                        if (res.success) toast.success("Supprimé");
+                                                    }
+                                                }} aria-label="Supprimer projet" className="p-2 bg-rose-500/10 hover:bg-rose-500/20 rounded-xl text-rose-500 transition-colors"><Trash2 size={16} /></button>
+                                            )}
+                                        </div>
+                                     ))}
+                                     </div>
+                                </div>
+                            )}
+
+                            {activeTab === 'backups' && (
+                                <div className="space-y-4">
+                                    <button onClick={handleCreateBackup} className="w-full p-4 border border-indigo-500/30 text-indigo-400 rounded-2xl font-bold text-xs uppercase">+ Nouvelle Sauvegarde</button>
+                                    {backups.map(b => (
+                                        <div key={b.id} className="flex items-center justify-between p-4 bg-white/5 rounded-2xl text-xs">
+                                            <div className="text-white font-bold">{new Date(b.date).toLocaleDateString()} - {b.count} éléments</div>
+                                            <div className="flex gap-3">
+                                                <button onClick={() => handleDownloadBackup(b.id)} className="text-emerald-400" title="Télécharger">⬇️</button>
+                                                <button onClick={() => handleRestoreBackup(b.id)} className="text-indigo-400 hover:text-indigo-300">Restaurer</button>
+                                                <button onClick={() => handleDeleteBackup(b.id)} className="text-rose-500 uppercase font-black hover:text-rose-400">X</button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {activeTab === 'danger' && (
+                                <div className="space-y-4">
+                                    <div className="p-4 md:p-6 border border-amber-500/20 bg-amber-500/5 rounded-3xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                        <div>
+                                            <h4 className="text-amber-500 font-black italic uppercase tracking-tight text-sm mb-1">Réparation Base</h4>
+                                            <p className="text-amber-500/60 text-[10px] uppercase font-bold leading-relaxed">Corriger les blocages de synchronisation</p>
+                                        </div>
+                                        <button onClick={handleRepairSync} disabled={isProcessing} className="w-full md:w-auto px-6 py-3 bg-amber-600/20 text-amber-500 border border-amber-500/50 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-amber-500 hover:text-slate-900 transition-all">Réparer Sync</button>
+                                    </div>
+
+                                    <div className="p-4 md:p-8 border-2 border-rose-500/20 bg-rose-500/5 rounded-3xl">
+                                        <h4 className="text-rose-500 font-black italic uppercase tracking-tight text-base md:text-lg mb-2 md:mb-4">Effacement Complet</h4>
+                                        <p className="text-rose-500/60 text-[10px] md:text-xs mb-6 md:mb-8 uppercase font-bold leading-relaxed">Cette action détruira irréversiblement toute votre base de données locale.</p>
+                                        <button onClick={handleClearData} className="w-full md:w-auto px-8 py-3 bg-rose-600 text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-rose-500 transition-all shadow-lg hover:shadow-rose-500/25">Tout vider (Cache Local)</button>
+
+                                        <div className="mt-8 pt-8 border-t border-rose-500/30">
+                                            <h5 className="text-rose-400 font-black uppercase text-xs mb-4 flex items-center gap-2"><AlertTriangle size={14}/> Base de données Centrale (Serveur)</h5>
+                                            <p className="text-rose-500/60 text-[10px] mb-4 uppercase font-bold">ATTENTION: La suppression impactera tous les utilisateurs du SaaS.</p>
+                                            <div className="flex flex-wrap gap-3">
+                                                <button onClick={() => handleClearServerEntity('households')} className="px-4 py-2 border border-rose-500/50 text-rose-400 rounded-lg text-[10px] uppercase font-bold hover:bg-rose-500 hover:text-white transition-all">Purger Ménages</button>
+                                                <button onClick={() => handleClearServerEntity('grappes')} className="px-4 py-2 border border-rose-500/50 text-rose-400 rounded-lg text-[10px] uppercase font-bold hover:bg-rose-500 hover:text-white transition-all">Purger Grappes</button>
+                                                <button onClick={() => handleClearServerEntity('zones')} className="px-4 py-2 border border-rose-500/50 text-rose-400 rounded-lg text-[10px] uppercase font-bold hover:bg-rose-500 hover:text-white transition-all">Purger Zones (+ Ménages)</button>
+                                                <button onClick={() => handleClearServerEntity('teams')} className="px-4 py-2 border border-rose-500/50 text-rose-400 rounded-lg text-[10px] uppercase font-bold hover:bg-rose-500 hover:text-white transition-all">Purger Équipes</button>
+                                                <button onClick={() => handleClearServerEntity('all')} className="px-4 py-2 bg-rose-900 border border-rose-500/50 text-white rounded-lg text-[10px] uppercase font-bold hover:bg-rose-700 transition-all ml-auto">NUCLÉAIRE (TOUT)</button>
                                             </div>
                                         </div>
                                     </div>
@@ -668,6 +631,50 @@ Total: ${parsedHouseholds.length} ménages traités`;
                     </div>
                 </motion.div>
             </div>
+            )}
         </AnimatePresence>
+
+            <SyncConflictResolver 
+                isOpen={isConflictModalOpen}
+                conflicts={conflicts}
+                onCancel={() => {
+                    setIsConflictModalOpen(false);
+                    setConflicts([]);
+                }}
+                onResolve={async (resolvedData) => {
+                    const finalData = [...pendingImportData, ...resolvedData];
+                    await finalizeImport(finalData);
+                    setIsConflictModalOpen(false);
+                    setConflicts([]);
+                }}
+            />
+
+            {/* Custom Modals */}
+            {promptState.isOpen && (
+                <div className="fixed inset-0 z-[5000] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+                    <div className="bg-slate-900 border border-white/10 p-8 rounded-3xl w-full max-w-md shadow-2xl">
+                        <p className="text-white font-black italic uppercase text-xs mb-6 tracking-widest">{promptState.message}</p>
+                        <input autoFocus type="text" value={promptState.value} onChange={e => setPromptState({...promptState, value: e.target.value})} aria-label={promptState.message} className="w-full p-4 bg-white/5 border border-white/10 rounded-2xl text-white mb-6 focus:outline-none focus:border-indigo-500" />
+                        <div className="flex gap-4">
+                            <button onClick={() => { promptState.resolve?.(null); setPromptState({...promptState, isOpen: false}); }} className="flex-1 p-4 bg-white/5 text-slate-500 font-bold rounded-2xl uppercase text-[10px]">Annuler</button>
+                            <button onClick={() => { promptState.resolve?.(promptState.value); setPromptState({...promptState, isOpen: false}); }} className="flex-1 p-4 bg-indigo-600 text-white font-black rounded-2xl uppercase text-[10px]">Valider</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            
+            {confirmState.isOpen && (
+                <div className="fixed inset-0 z-[5000] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+                    <div className="bg-slate-900 border border-white/10 p-8 rounded-3xl w-full max-w-md shadow-2xl">
+                        <h4 className="text-rose-500 font-black italic uppercase text-xs mb-2">{confirmState.title}</h4>
+                        <p className="text-slate-300 text-[11px] font-bold mb-8 uppercase leading-relaxed">{confirmState.message}</p>
+                        <div className="flex gap-4">
+                            <button onClick={() => { confirmState.resolve?.(false); setConfirmState({...confirmState, isOpen: false}); }} className="flex-1 p-4 bg-white/5 text-slate-500 font-bold rounded-2xl uppercase text-[10px]">Non</button>
+                            <button onClick={() => { confirmState.resolve?.(true); setConfirmState({...confirmState, isOpen: false}); }} className="flex-1 p-4 bg-rose-600 text-white font-black rounded-2xl uppercase text-[10px]">Confirmer</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </>
     );
 };

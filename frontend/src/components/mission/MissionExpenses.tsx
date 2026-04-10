@@ -79,7 +79,7 @@ export function MissionExpenses({ expenses = [], fuelStats, onChange }: MissionE
                     <div className="p-1.5 bg-emerald-500/10 rounded-lg"><Receipt size={16} className="text-emerald-500" /></div> 
                     Gestion des Frais & Carburant
                 </h2>
-                <div className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 text-emerald-600 rounded-xl font-black text-[11px] uppercase tracking-widest shadow-inner">
+                <div className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 text-emerald-600 rounded-xl font-black text-xs uppercase tracking-widest shadow-inner">
                     Total: {totalGlobal.toLocaleString()} FCFA
                 </div>
             </div>
@@ -89,12 +89,12 @@ export function MissionExpenses({ expenses = [], fuelStats, onChange }: MissionE
                 <div className="space-y-6 bg-slate-50/50 dark:bg-slate-900/30 p-6 rounded-3xl border border-slate-200/50 dark:border-white/5">
                     <div className="flex items-center gap-3 mb-2">
                         <Fuel className="text-indigo-500" size={18} />
-                        <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-300">Calculateur Carburant</h3>
+                        <h3 className="text-xs font-black uppercase tracking-widest text-slate-700 dark:text-slate-300">Calculateur Carburant</h3>
                     </div>
                     
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest pl-2">Km Départ</label>
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest pl-2">Km Départ</label>
                             <input 
                                 type="number" 
                                 value={kmStart} 
@@ -105,7 +105,7 @@ export function MissionExpenses({ expenses = [], fuelStats, onChange }: MissionE
                             />
                         </div>
                         <div className="space-y-2">
-                            <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest pl-2">Km Arrivée</label>
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest pl-2">Km Arrivée</label>
                             <input 
                                 type="number" 
                                 value={kmEnd} 
@@ -119,12 +119,12 @@ export function MissionExpenses({ expenses = [], fuelStats, onChange }: MissionE
 
                     <div className="flex items-center justify-between p-4 bg-white/60 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-white/5">
                         <div className="flex flex-col">
-                            <span className="text-[10px] font-black uppercase text-slate-400">Consommation</span>
+                            <span className="text-xs font-black uppercase text-slate-400">Consommation</span>
                             <span className="text-lg font-black text-indigo-600">{kmTotal} Km</span>
                         </div>
-                        <div className="h-8 w-px bg-slate-200 dark:bg-white/10" />
+                        <div className="h-8 w-px bg-slate-200 dark:bg-white dark:bg-slate-900/10" />
                         <div className="flex flex-col text-right">
-                            <span className="text-[10px] font-black uppercase text-slate-400">Coût Estimé</span>
+                            <span className="text-xs font-black uppercase text-slate-400">Coût Estimé</span>
                             <span className="text-lg font-black text-indigo-600">{fuelCost.toLocaleString()} FCFA</span>
                         </div>
                     </div>
@@ -135,11 +135,11 @@ export function MissionExpenses({ expenses = [], fuelStats, onChange }: MissionE
                     <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-3">
                             <Calculator className="text-emerald-500" size={18} />
-                            <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-300">Justificatifs Divers</h3>
+                            <h3 className="text-xs font-black uppercase tracking-widest text-slate-700 dark:text-slate-300">Justificatifs Divers</h3>
                         </div>
                         <button 
                             onClick={handleAddExpense} 
-                            title="Ajouter un frais"
+                            aria-label="Ajouter un frais"
                             className="p-2 bg-emerald-500/10 text-emerald-500 rounded-lg hover:bg-emerald-500/20 transition-all"
                         >
                             <Plus size={16} />
@@ -148,42 +148,62 @@ export function MissionExpenses({ expenses = [], fuelStats, onChange }: MissionE
 
                     <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
                         {expenses.map((exp, i) => (
-                            <div key={exp.id} className="flex items-center gap-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 p-3 rounded-2xl group">
-                                <input 
-                                    type="text" 
-                                    value={exp.label} 
-                                    onChange={e => handleUpdateExpense(i, 'label', e.target.value)}
-                                    title="Libellé du frais"
-                                    placeholder="Libellé"
-                                    className="flex-1 bg-transparent border-none text-[11px] font-bold text-slate-800 dark:text-white focus:ring-0 p-0"
-                                />
-                                <input 
-                                    type="number" 
-                                    value={exp.amount} 
-                                    onChange={e => handleUpdateExpense(i, 'amount', Number(e.target.value))}
-                                    title="Montant du frais"
-                                    placeholder="0"
-                                    className="w-24 bg-slate-100 dark:bg-slate-800 border-none rounded-lg text-[11px] font-black text-emerald-600 text-right p-1.5 focus:ring-0"
-                                />
-                                <button 
-                                    onClick={() => handlePhotoCapture(i)}
-                                    title="Capturer le reçu"
-                                    className={`p-2 rounded-lg transition-all ${exp.receiptPhoto ? 'bg-indigo-500/20 text-indigo-500' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-indigo-500'}`}
-                                >
-                                    <Camera size={14} />
-                                </button>
-                                <button 
-                                    onClick={() => handleRemoveExpense(i)} 
-                                    title="Supprimer"
-                                    className="p-2 text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                                >
-                                    <Trash2 size={14} />
-                                </button>
+                            <div key={exp.id} className="flex flex-col gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 p-4 rounded-2xl group transition-all hover:border-indigo-500/30">
+                                <div className="flex items-center gap-3">
+                                    <input 
+                                        type="text" 
+                                        value={exp.label} 
+                                        onChange={e => handleUpdateExpense(i, 'label', e.target.value)}
+                                        aria-label="Libellé du frais"
+                                        placeholder="Libellé (ex: Hôtel, Repas...)"
+                                        className="flex-1 bg-transparent border-none text-xs font-bold text-slate-800 dark:text-white focus:ring-0 p-0"
+                                    />
+                                    <input 
+                                        type="number" 
+                                        value={exp.amount} 
+                                        onChange={e => handleUpdateExpense(i, 'amount', Number(e.target.value))}
+                                        title="Montant du frais"
+                                        placeholder="0"
+                                        className="w-24 bg-slate-100 dark:bg-slate-800 border-none rounded-lg text-xs font-black text-emerald-600 text-right p-1.5 focus:ring-0 font-mono"
+                                    />
+                                    <button 
+                                        onClick={() => handleRemoveExpense(i)} 
+                                        aria-label="Supprimer"
+                                        className="p-2 text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    >
+                                        <Trash2 size={14} />
+                                    </button>
+                                </div>
+                                
+                                <div className="flex items-center gap-4 mt-2 pt-2 border-t border-slate-100 dark:border-white/5">
+                                    <button 
+                                        onClick={() => handlePhotoCapture(i)}
+                                        className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-indigo-500 hover:text-white transition-all"
+                                    >
+                                        <Camera size={12} />
+                                        {exp.receiptPhoto ? 'Changer le reçu' : 'Scanner Reçu'}
+                                    </button>
+
+                                    {exp.receiptPhoto && (
+                                        <div 
+                                            className="relative w-10 h-10 rounded-lg overflow-hidden border border-slate-200 dark:border-white/10 cursor-pointer hover:scale-110 transition-transform group/img"
+                                            onClick={() => {
+                                                const win = window.open();
+                                                win?.document.write(`<img src="${exp.receiptPhoto}" style="max-width:100%; height:auto;" />`);
+                                            }}
+                                        >
+                                            <img src={exp.receiptPhoto} alt="Aperçu" className="w-full h-full object-cover" />
+                                            <div className="absolute inset-0 bg-indigo-600/40 opacity-0 group-hover/img:opacity-100 flex items-center justify-center transition-opacity">
+                                                <Plus size={12} className="text-white" />
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         ))}
                         {expenses.length === 0 && (
                             <div className="text-center py-8 border-2 border-dashed border-slate-200 dark:border-white/5 rounded-2xl">
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Aucun frais supplémentaire</p>
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Aucun frais supplémentaire</p>
                             </div>
                         )}
                     </div>

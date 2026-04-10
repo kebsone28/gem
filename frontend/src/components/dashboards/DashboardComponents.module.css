@@ -1,0 +1,10 @@
+/* DashboardComponents - Styles for dynamic components */
+
+.progressBar {
+  width: var(--progress-width, 0%);
+  transition: width 0.7s ease-out;
+}
+
+.sparklineBar {
+  height: var(--sparkline-height, 0%);
+}

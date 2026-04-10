@@ -89,7 +89,9 @@ export function useFinances() {
 
     const totalEstimated = teamsCost + logisticsCost + materialsCost + supervisionCost;
 
-    const devisReport = DEVIS_ITEMS.map(item => {
+    const currentDevisItems = ((project?.config?.financials as any)?.devisItems as DevisItem[]) ?? DEVIS_ITEMS;
+
+    const devisReport = currentDevisItems.map(item => {
         const pOverride = plannedCostsOverrides[item.id] || {};
         const pq = pOverride.qty !== undefined ? Number(pOverride.qty) : item.qty;
         const pu = pOverride.unit !== undefined ? Number(pOverride.unit) : item.unit;
@@ -124,6 +126,74 @@ export function useFinances() {
         if (!newConfig.financials.plannedCosts) newConfig.financials.plannedCosts = {};
         if (!newConfig.financials.plannedCosts[itemId]) newConfig.financials.plannedCosts[itemId] = {};
         newConfig.financials.plannedCosts[itemId][field] = value;
+        await db.projects.update(project.id, { config: newConfig });
+    };
+
+    const deleteDevisItem = async (itemId: string) => {
+        if (!project?.id) return;
+        const newConfig = { ...(project.config || {}) };
+        if (!newConfig.financials) newConfig.financials = {};
+        const sourceItems = (newConfig.financials as any).devisItems ?? DEVIS_ITEMS;
+        (newConfig.financials as any).devisItems = sourceItems.filter((i: any) => i.id !== itemId);
+        await db.projects.update(project.id, { config: newConfig });
+    };
+
+    const addDevisItem = async (item: { label: string; region: string; qty: number; unit: number }) => {
+        if (!project?.id) return;
+        const newConfig = { ...(project.config || {}) };
+        if (!newConfig.financials) newConfig.financials = {};
+        const sourceItems = (newConfig.financials as any).devisItems ?? DEVIS_ITEMS;
+        const newItem = { ...item, id: 'item_' + Date.now() };
+        (newConfig.financials as any).devisItems = [...sourceItems, newItem];
+        await db.projects.update(project.id, { config: newConfig });
+    };
+
+    const importDevisList = async (list: any[]) => {
+        if (!project?.id) return;
+        const newConfig = { ...(project.config || {}) };
+        if (!newConfig.financials) newConfig.financials = {};
+        if (!newConfig.financials.plannedCosts) newConfig.financials.plannedCosts = {};
+        
+        let sourceItems = [...((newConfig.financials as any).devisItems ?? DEVIS_ITEMS)];
+        
+        list.forEach((row, index) => {
+            const rowId = row.ID || row.id || `import_${Date.now()}_${index}`;
+            const existingIndex = sourceItems.findIndex(i => i.id === rowId);
+            
+            const newItem = {
+                id: rowId,
+                label: row.Poste_de_Depense || row.Label || row.Poste || row.label || 'Sans nom',
+                region: row.Region || row.region || 'Global',
+                qty: Number(row.Prevision_Qte || row.Quantite_Prevue || row.qty || 1),
+                unit: Number(row.Prevision_PU || row.Prix_Unitaire || row.unit || 0),
+                rq: Number(row.Reel_Qte || 0),
+                ru: Number(row.Reel_PU || 0)
+            };
+
+            if (existingIndex >= 0) {
+                // Update baseline item
+                sourceItems[existingIndex] = { ...sourceItems[existingIndex], label: newItem.label, region: newItem.region };
+            } else {
+                sourceItems.push(newItem);
+            }
+            
+            // Also update planned costs directly
+            if (!(newConfig.financials as any).plannedCosts[rowId]) {
+                (newConfig.financials as any).plannedCosts[rowId] = {};
+            }
+            (newConfig.financials as any).plannedCosts[rowId].qty = newItem.qty;
+            (newConfig.financials as any).plannedCosts[rowId].unit = newItem.unit;
+
+            // Import real costs if provided in the Excel sheet
+            if (row.Reel_Qte !== undefined || row.Reel_PU !== undefined) {
+                if (!(newConfig.financials as any).realCosts) (newConfig.financials as any).realCosts = {};
+                if (!(newConfig.financials as any).realCosts[rowId]) (newConfig.financials as any).realCosts[rowId] = {};
+                if (row.Reel_Qte !== undefined) (newConfig.financials as any).realCosts[rowId].qty = newItem.rq;
+                if (row.Reel_PU !== undefined) (newConfig.financials as any).realCosts[rowId].unit = newItem.ru;
+            }
+        });
+
+        (newConfig.financials as any).devisItems = sourceItems;
         await db.projects.update(project.id, { config: newConfig });
     };
 
@@ -188,6 +258,9 @@ export function useFinances() {
         updateInventoryItem,
         deleteInventoryItem,
         addInventoryItem,
+        addDevisItem,
+        deleteDevisItem,
+        importDevisList,
         isLoading: !projects || !teams || !households
     };
 }

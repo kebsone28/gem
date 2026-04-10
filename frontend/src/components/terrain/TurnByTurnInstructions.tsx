@@ -258,10 +258,10 @@ export const TurnByTurnInstructions: React.FC<TurnByTurnInstructionsProps> = ({
                                         </div>
                                     </div>
                                     <div className="flex gap-4 ml-11 text-xs font-bold">
-                                        <span className={isDarkMode ? 'text-slate-400' : 'text-slate-700'}>
+                                        <span className={isDarkMode ? 'text-slate-400' : 'text-slate-700 dark:text-slate-300'}>
                                             {formatDistance(step.distance)}
                                         </span>
-                                        <span className={isDarkMode ? 'text-slate-500' : 'text-slate-600'}>
+                                        <span className={isDarkMode ? 'text-slate-500' : 'text-slate-600 dark:text-slate-400'}>
                                             {formatDuration(step.duration)}
                                         </span>
                                     </div>

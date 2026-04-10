@@ -10,105 +10,121 @@ datasource db {
 }
 
 model Organization {
-  id        String    @id @default(uuid())
-  name      String
-  users     User[]
-  projects  Project[]
-  teams     Team[]
-  grappes   Grappe[]
+  id              String           @id @default(uuid())
+  name            String
+  users           User[]
+  projects        Project[]
+  teams           Team[]
+  grappes         Grappe[]
+  missions        Mission[]
   performanceLogs PerformanceLog[]
-  createdAt DateTime  @default(now())
+  config          Json             @default("{}")
+  createdAt       DateTime         @default(now())
 }
 
 model User {
-  id             String       @id @default(uuid())
-  organizationId String
-  organization   Organization @relation(fields: [organizationId], references: [id])
-  email          String       @unique
-  name           String?
-  passwordHash   String
-  role           String       @default("user")
-  lastLogin      DateTime?
-  requires2FA       Boolean      @default(false)
-  securityQuestion  String?
+  id                 String           @id @default(uuid())
+  organizationId     String
+  organization       Organization     @relation(fields: [organizationId], references: [id])
+  email              String           @unique
+  name               String?
+  passwordHash       String
+  roleLegacy         String           @default("user")
+  roleId             String?
+  role               Role?            @relation(fields: [roleId], references: [id])
+  lastLogin          DateTime?
+  requires2FA        Boolean          @default(false)
+  securityQuestion   String?
   securityAnswerHash String?
-  recoveryCodeHash  String?
-  projectsUpdated Project[]   @relation("UpdatedBy")
-  syncLogs       SyncLog[]
-  auditLogs      AuditLog[]
-  ledTeam        Team?        @relation("TeamLeader")
-  performanceLogs PerformanceLog[]
-  createdAt      DateTime     @default(now())
+  recoveryCodeHash   String?
+  projectsUpdated    Project[]        @relation("UpdatedBy")
+  syncLogs           SyncLog[]
+  auditLogs          AuditLog[]
+  ledTeam            Team?            @relation("TeamLeader")
+  performanceLogs    PerformanceLog[]
+  active             Boolean          @default(true)
+  permissions        Json?            @default("[]")
+  notificationEmail  String?
+  createdAt          DateTime         @default(now())
+  missions           Mission[]
 }
 
 model Project {
-  id             String       @id @default(uuid())
-  organizationId String
-  organization   Organization @relation(fields: [organizationId], references: [id])
-  name           String
-  status         String
-  budget         Decimal
-  duration       Int
-  totalHouses    Int
-  config         Json
-  version        Int          @default(1)
-  updatedAt      DateTime     @updatedAt
-  updatedById    String?
-  updatedBy      User?        @relation("UpdatedBy", fields: [updatedById], references: [id])
-  deletedAt      DateTime?
-  zones          Zone[]
-  teams          Team[]
+  id              String           @id @default(uuid())
+  organizationId  String
+  organization    Organization     @relation(fields: [organizationId], references: [id])
+  name            String
+  status          String
+  budget          Decimal
+  duration        Int
+  totalHouses     Int
+  config          Json
+  version         Int              @default(1)
+  updatedAt       DateTime         @updatedAt
+  updatedById     String?
+  updatedBy       User?            @relation("UpdatedBy", fields: [updatedById], references: [id])
+  deletedAt       DateTime?
+  zones           Zone[]
+  teams           Team[]
+  missions        Mission[]
   performanceLogs PerformanceLog[]
 }
 
 model Zone {
-  id             String       @id @default(uuid())
+  id             String      @id @default(uuid())
   projectId      String
-  project        Project      @relation(fields: [projectId], references: [id])
+  project        Project     @relation(fields: [projectId], references: [id])
   organizationId String
   name           String
-  metadata       Json?        @default("{}")
-  version        Int          @default(1)
-  updatedAt      DateTime     @updatedAt
+  metadata       Json?       @default("{}")
+  version        Int         @default(1)
+  updatedAt      DateTime    @updatedAt
   deletedAt      DateTime?
   households     Household[]
   teams          Team[]
 }
 
 model Household {
-  id             String       @id @default(uuid())
-  zoneId         String
-  zone           Zone         @relation(fields: [zoneId], references: [id])
+  id             String @id @default(uuid())
+  zoneId         String?
+  zone           Zone?  @relation(fields: [zoneId], references: [id])
   organizationId String
-  
-  name           String?
-  phone          String?
-  region         String?
-  departement    String?
-  village        String?
-  
-  latitude       Float?
-  longitude      Float?
-  
-  status         String
-  location       Json
-  location_gis   Unsupported("geometry(Point, 4326)")?
-  owner          Json
-  koboData       Json?        @default("{}")
-  koboSync       Json?        @default("{}")
-  
-  source         String?      // Kobo, Agent, Import, etc.
-  
-  version        Int          @default(1)
-  assignedTeams  String[]     @default([])
-  updatedAt      DateTime     @updatedAt
-  deletedAt      DateTime?
+
+  name        String?
+  phone       String?
+  region      String?
+  departement String?
+  village     String?
+
+  latitude  Float?
+  longitude Float?
+
+  status           String
+  location         Json
+  location_gis     Unsupported("geometry(Point, 4326)")?
+  owner            Json
+  koboData         Json?                                 @default("{}")
+  koboSync         Json?                                 @default("{}")
+  koboSubmissionId BigInt?                               @unique // Kobo internal submission ID (immutable, numeric)
+  numeroordre      String?                               @unique // Business identifier for household (Numero d'ordre from forms)
+  constructionData Json?                                 @default("{}") // Adaptive storage for form fields (Wall type, kit status, problems, etc.)
+  alerts           Json?                                 @default("[]") // Automated alerts (Kit incomplete, Wall non-conformity, etc.)
+
+  source String? // Kobo, Agent, Import, etc.
+
+  version         Int              @default(1)
+  assignedTeams   String[]         @default([])
+  grappeId        String?
+  grappe          Grappe?          @relation(fields: [grappeId], references: [id])
+  updatedAt       DateTime         @updatedAt
+  deletedAt       DateTime?
   performanceLogs PerformanceLog[]
 
   @@index([region])
   @@index([departement])
   @@index([village])
   @@index([assignedTeams])
+  @@index([grappeId])
 }
 
 enum TeamRole {
@@ -140,55 +156,56 @@ model Grappe {
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id])
   teams          Team[]
+  households     Household[]
 
   @@unique([name, regionId])
 }
 
 model Team {
-  id             String       @id @default(uuid())
-  name           String
-  
+  id   String @id @default(uuid())
+  name String
+
   // 🔗 Projet & Organisation
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id])
   projectId      String
   project        Project      @relation(fields: [projectId], references: [id])
-  
+
   // 🌳 Hiérarchie avancée (Materialized Path)
-  parentTeamId   String?
-  parent         Team?        @relation("TeamHierarchy", fields: [parentTeamId], references: [id])
-  children       Team[]       @relation("TeamHierarchy")
-  path           String?      // Materialized Path (ex: "root/child/subchild")
-  level          Int          @default(0)
+  parentTeamId String?
+  parent       Team?   @relation("TeamHierarchy", fields: [parentTeamId], references: [id])
+  children     Team[]  @relation("TeamHierarchy")
+  path         String? // Materialized Path (ex: "root/child/subchild")
+  level        Int     @default(0)
 
   // 🧠 Métier & Performance
-  role           TeamRole     @default(INSTALLATION)
-  tradeKey       String?      // ex: 'electrician', 'mason'
-  capacity       Int?         @default(0) // nb ménages/jour
-  
+  role     TeamRole @default(INSTALLATION)
+  tradeKey String? // ex: 'electrician', 'mason'
+  capacity Int?     @default(0) // nb ménages/jour
+
   // 🌍 Localisation & Logistique
-  regionId       String?
-  region         Region?      @relation(fields: [regionId], references: [id])
-  grappeId       String?
-  grappe         Grappe?      @relation(fields: [grappeId], references: [id])
-  zoneId         String?
-  zone           Zone?        @relation(fields: [zoneId], references: [id])
-  warehouseId    String?      // Link to Warehouse (stored in Project JSON for now or future table)
+  regionId    String?
+  region      Region? @relation(fields: [regionId], references: [id])
+  grappeId    String?
+  grappe      Grappe? @relation(fields: [grappeId], references: [id])
+  zoneId      String?
+  zone        Zone?   @relation(fields: [zoneId], references: [id])
+  warehouseId String? // Link to Warehouse (stored in Project JSON for now or future table)
 
   // 👤 Leadership
-  leaderId       String?      @unique
-  leader         User?        @relation("TeamLeader", fields: [leaderId], references: [id])
+  leaderId String? @unique
+  leader   User?   @relation("TeamLeader", fields: [leaderId], references: [id])
 
   // 🔄 État & Sync Offline
-  status         String       @default("active")
-  version        Int          @default(1)
-  offlineId      String?      @unique
-  syncStatus     SyncStatus   @default(SYNCED)
-  updatedBy      String?      // userId
-  legacyId       String?      // Pour traçabilité migration JSON
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-  deletedAt      DateTime?
+  status          String           @default("active")
+  version         Int              @default(1)
+  offlineId       String?          @unique
+  syncStatus      SyncStatus       @default(SYNCED)
+  updatedBy       String? // userId
+  legacyId        String? // Pour traçabilité migration JSON
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  deletedAt       DateTime?
   performanceLogs PerformanceLog[]
 
   @@index([organizationId])
@@ -228,7 +245,7 @@ model AuditLog {
 }
 
 model PerformanceLog {
-  id             String   @id @default(uuid())
+  id             String       @id @default(uuid())
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id])
   projectId      String
@@ -239,17 +256,131 @@ model PerformanceLog {
   user           User?        @relation(fields: [userId], references: [id])
   householdId    String?
   household      Household?   @relation(fields: [householdId], references: [id])
-  
-  action         String       // e.g., 'STATUS_CHANGE', 'MATERIAL_CONSUMPTION'
-  oldStatus      String?
-  newStatus      String?
-  tradeKey       String?      // Snapshot of team trade at time of log
-  details        Json?        // For material quantities or sync info
-  
-  timestamp      DateTime     @default(now())
+
+  action    String // e.g., 'STATUS_CHANGE', 'MATERIAL_CONSUMPTION'
+  oldStatus String?
+  newStatus String?
+  tradeKey  String? // Snapshot of team trade at time of log
+  details   Json? // For material quantities or sync info
+
+  timestamp DateTime @default(now())
 
   @@index([organizationId])
   @@index([projectId, timestamp])
   @@index([teamId, timestamp])
   @@index([userId, timestamp])
+}
+
+model Mission {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  projectId      String?
+  project        Project?     @relation(fields: [projectId], references: [id])
+
+  // orderNumber auto-generated AFTER DG approval (null during draft/validation)
+  orderNumber String? @unique
+  title       String?
+  description String?
+  status      String  @default("draft") // draft → en_attente_validation → approuvee → active
+
+  // Multi-step approval workflow
+  approvalWorkflow MissionApprovalWorkflow?
+
+  // Mission data
+  startDate DateTime?
+  endDate   DateTime?
+  budget    Decimal?
+
+  createdBy String?
+  user      User?     @relation(fields: [createdBy], references: [id])
+  data      Json?     @default("{}")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([organizationId])
+  @@index([projectId])
+  @@index([orderNumber])
+}
+
+model MissionApprovalWorkflow {
+  id        String  @id @default(uuid())
+  missionId String  @unique
+  mission   Mission @relation(fields: [missionId], references: [id], onDelete: Cascade)
+
+  // Workflow state: pending → approved → rejected
+  overallStatus String @default("pending")
+
+  // Current step: 1=CHEF_PROJET, 2=COMPTABLE, 3=DIRECTEUR, 99=ADMIN_OVERRIDE
+  currentStep Int @default(1)
+
+  // Auto-generated orderNumber AFTER DG approval
+  orderNumber            String?
+  orderNumberGeneratedAt DateTime?
+  orderNumberGeneratedBy String?
+
+  // Admin can override orderNumber
+  orderNumberOverridenAt DateTime?
+  orderNumberOverridenBy String?
+
+  approvalSteps MissionApprovalStep[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([missionId])
+  @@index([orderNumber])
+}
+
+model MissionApprovalStep {
+  id         String                  @id @default(uuid())
+  workflowId String
+  workflow   MissionApprovalWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  // Workflow roles: CHEF_PROJET → COMPTABLE → DIRECTEUR
+  // ADMIN has super-power and can approve all at once
+  role     String // CHEF_PROJET, COMPTABLE, DIRECTEUR, ADMIN
+  label    String? // Friendly name (ex: 'Validation Finance')
+  sequence Int // 1=CHEF_PROJET, 2=COMPTABLE, 3=DIRECTEUR, 99=ADMIN
+
+  // Approval state
+  status    String    @default("EN_ATTENTE") // EN_ATTENTE, APPROUVE, REJETE
+  decidedBy String? // userId
+  decidedAt DateTime?
+  comment   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([workflowId, role])
+  @@index([workflowId])
+  @@index([role])
+}
+
+model Role {
+  id              String           @id @default(uuid())
+  name            String           @unique
+  description     String?
+  permissions     RolePermission[]
+  users           User[]
+  createdAt       DateTime         @default(now())
+}
+
+model Permission {
+  id              String           @id @default(uuid())
+  key             String           @unique // ex: 'creer_mission'
+  label           String
+  description     String?
+  roles           RolePermission[]
+  createdAt       DateTime         @default(now())
+}
+
+model RolePermission {
+  roleId          String
+  permissionId    String
+  role           Role             @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission     Permission       @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
 }

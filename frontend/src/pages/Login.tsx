@@ -1,9 +1,10 @@
 import { useState, useRef, type FormEvent } from 'react';
 import logger from '../utils/logger';
 import { useNavigate } from 'react-router-dom';
-import { LogIn, User, Lock, ShieldCheck, Eye, EyeOff } from 'lucide-react';
+import { LogIn, User, Lock, ShieldCheck, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import apiClient from '../api/client';
+import { PageContainer } from '../components';
 import type { User as DBUser } from '../utils/types';
 
 
@@ -45,11 +46,11 @@ export default function Login() {
             });
 
             const { accessToken, user: userPayload } = response.data;
-            // copy only the minimal fields we need to avoid retaining a potentially large object
             const emailResp = userPayload?.email || '';
             const roleResp = userPayload?.role || '';
             const nameResp = userPayload?.name || '';
             const orgResp = userPayload?.organization;
+            const orgConfigResp = userPayload?.organizationConfig;
             const idResp = userPayload?.id;
             const requires2FA = userPayload?.requires2FA;
 
@@ -59,6 +60,7 @@ export default function Login() {
                     role: roleResp,
                     name: nameResp,
                     organization: orgResp,
+                    organizationConfig: orgConfigResp,
                     id: idResp,
                     requires2FA,
                     accessToken
@@ -68,7 +70,7 @@ export default function Login() {
                 return;
             }
 
-            login(emailResp, roleResp, nameResp, orgResp, idResp, accessToken);
+            login(emailResp, roleResp, nameResp, orgResp, idResp, accessToken, orgConfigResp);
             navigate('/dashboard');
         } catch (err: any) {
             logger.error('Login error:', err);
@@ -97,7 +99,7 @@ export default function Login() {
             });
 
             const { user, accessToken } = data;
-            login(user.email, user.role, user.name, user.organization, user.id, accessToken);
+            login(user.email, user.role, user.name, user.organization, user.id, accessToken, user.organizationConfig);
             navigate('/dashboard');
         } catch (err: any) {
             setError(err.response?.data?.error || 'Réponse secrète incorrecte. Accès refusé.');
@@ -163,251 +165,267 @@ export default function Login() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-dark-bg px-4 relative overflow-hidden">
-            {/* Background effects */}
-            <div className="absolute inset-0 pointer-events-none overflow-hidden">
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] rounded-full blur-[120px] opacity-20 gradient-primary" />
-                <div className="absolute bottom-0 right-0 w-[400px] h-[400px] rounded-full blur-[100px] opacity-10 bg-accent" />
-                {/* Grid pattern */}
-                <div className="absolute inset-0 opacity-[0.15] bg-[linear-gradient(theme(colors.slate.800)_1px,transparent_1px),linear-gradient(90deg,theme(colors.slate.800)_1px,transparent_1px)] bg-[size:60px_60px]" />
-            </div>
-
-            <div className="max-w-md w-full relative z-10">
-                <div className="bg-dark-surface/90 backdrop-blur-2xl rounded-[var(--radius-2xl)] shadow-elevated p-8 border border-dark-border">
-                    {/* Header */}
-                    <div className="text-center mb-8">
-                        <div className="inline-flex items-center justify-center w-16 h-16 mb-4 rounded-[var(--radius-xl)] shadow-[var(--shadow-glow)] overflow-hidden gradient-hero">
-                            <img
-                                src="/logo-proquelec.png"
-                                alt="PROQUELEC"
-                                className="w-full h-full object-contain"
-                                onError={(e) => {
-                                    e.currentTarget.style.display = 'none';
-                                }}
-                            />
-                        </div>
-                        <h1 className="text-2xl font-bold text-dark-text tracking-tight">PROQUELEC</h1>
-                        <p className="text-dark-text-muted mt-1 text-sm">Plateforme d'Électrification de Masse</p>
-                    </div>
-
-                    {error && (
-                        <div className="bg-danger/10 border border-danger/30 text-danger p-3 rounded-[var(--radius-md)] text-sm mb-6 text-center font-medium">
-                            {error}
-                        </div>
-                    )}
-
-                    {recoveryInfo && (
-                        <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 p-3 rounded-[var(--radius-md)] text-sm mb-6 text-center font-medium">
-                            {recoveryInfo}
-                        </div>
-                    )}
-
-                    {step === 'credentials' && (
-                        <form onSubmit={handleCredentials} className="space-y-5">
-                            <div className="space-y-2">
-                                <label className="text-xs font-semibold text-dark-text-secondary uppercase tracking-wider">Nom d'utilisateur</label>
-                                <div className="relative">
-                                    <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-dark-text-muted" />
-                                    <input
-                                        type="text"
-                                        value={username}
-                                        onChange={(e) => setUsername(e.target.value)}
-                                        className="w-full bg-dark-bg border border-dark-border rounded-[var(--radius-md)] py-3 pl-10 pr-4 text-dark-text focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/50 transition-all placeholder:text-dark-text-muted"
-                                        placeholder="ex: admin"
-                                        autoComplete="username"
-                                        required
-                                    />
+        <PageContainer maxWidth="full" className="min-h-screen p-0 m-0">
+            {/* Background - Wanekoo Solid Navy */}
+            <div className="min-h-screen flex text-white bg-surface px-4 relative overflow-hidden font-inter">
+                {/* Subtle depth accents */}
+                <div className="absolute top-[10%] left-[20%] w-[30%] h-[30%] bg-primary/20 blur-[150px] rounded-full pointer-events-none" />
+                <div className="absolute bottom-[20%] right-[10%] w-[40%] h-[40%] bg-blue-600/10 blur-[180px] rounded-full pointer-events-none" />
+                
+                <div className="w-full max-w-5xl mx-auto flex items-center justify-center my-auto z-10">
+                    <div className="flex flex-col md:flex-row w-full bg-surface-alt rounded-[40px] shadow-[0_40px_100px_rgba(0,0,0,0.4)] border border-white/5 overflow-hidden">
+                        
+                        {/* Left Branding/Info Panel - Wanekoo Style */}
+                        <div className="hidden md:flex flex-col justify-between w-1/2 p-16 bg-gradient-to-br from-primary-deep via-primary to-primary-light text-white relative overflow-hidden">
+                            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
+                            
+                            <div className="relative z-10">
+                                <div className="inline-flex items-center justify-center w-20 h-20 rounded-[24px] bg-white/10 border border-white/20 mb-10 shadow-lg">
+                                    <ShieldCheck size={40} className="text-white drop-shadow-md" />
                                 </div>
+                                <h1 className="text-5xl lg:text-6xl font-black tracking-tighter mb-6 leading-none italic uppercase">
+                                    GEM<span className="text-blue-200">SAAS</span>
+                                </h1>
+                                <p className="text-lg text-blue-100/80 font-bold max-w-sm leading-relaxed">
+                                    Solution de pilotage terrain et de gestion stratégique pour projets d'envergure.
+                                </p>
                             </div>
+                            
+                            <div className="relative z-10 flex items-center gap-6 text-[10px] font-black text-white/50 uppercase tracking-[0.3em] mt-12">
+                                <span className="flex items-center gap-2"><Lock size={14} /> SÉCURISÉ</span>
+                                <span className="flex items-center gap-2">•</span>
+                                <span className="flex items-center gap-2 text-white"><Eye size={14} /> MULTI-TENANT 3.0</span>
+                            </div>
+                        </div>
 
-                            <div className="space-y-2">
-                                <label className="text-xs font-semibold text-dark-text-secondary uppercase tracking-wider">Mot de passe</label>
-                                <div className="relative">
-                                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-dark-text-muted" />
-                                    <input
-                                        type={showPassword ? 'text' : 'password'}
-                                        value={password}
-                                        onChange={(e) => setPassword(e.target.value)}
-                                        className="w-full bg-dark-bg border border-dark-border rounded-[var(--radius-md)] py-3 pl-10 pr-12 text-dark-text focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/50 transition-all placeholder:text-dark-text-muted"
-                                        placeholder="••••••••••"
-                                        autoComplete="current-password"
-                                        required
-                                    />
-                                    <button
-                                        type="button"
-                                        title="Afficher/Masquer le mot de passe"
-                                        onClick={() => setShowPassword(v => !v)}
-                                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-dark-text-muted hover:text-dark-text-secondary transition-colors"
-                                    >
-                                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                                    </button>
+                        {/* Right Login Form Panel */}
+                        <div className="w-full md:w-1/2 p-8 md:p-12 lg:p-16 flex flex-col justify-center relative">
+                            <div className="w-full max-w-sm mx-auto">
+                                <div className="md:hidden flex items-center gap-3 mb-8">
+                                    <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center">
+                                        <ShieldCheck size={20} className="text-white" />
+                                    </div>
+                                    <h2 className="text-2xl font-black tracking-tight">GEM SAAS</h2>
                                 </div>
-                            </div>
 
-                            <button
-                                type="submit"
-                                disabled={loading}
-                                title="Se connecter"
-                                className="w-full btn-primary py-3.5 text-sm flex items-center justify-center gap-2 mt-2"
-                            >
-                                {loading ? (
-                                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                ) : (
-                                    <><LogIn size={18} /> Se connecter</>
+                                <h2 className="text-4xl font-black tracking-tighter text-white mb-2 italic">
+                                    {step === 'credentials' && 'Connexion'}
+                                    {step === '2fa' && 'Sécurité 2FA'}
+                                    {step === 'recovery' && 'Récupération'}
+                                </h2>
+                                <p className="text-blue-300/40 text-[11px] font-black uppercase tracking-[0.2em] mb-10">
+                                    {step === 'credentials' && 'Accédez à votre espace de travail sécurisé.'}
+                                    {step === '2fa' && 'Veuillez entrer votre code de vérification.'}
+                                    {step === 'recovery' && 'Réinitialisez votre accès.'}
+                                </p>
+
+                                {error && (
+                                    <div className="mb-6 p-4 rounded-2xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 animate-in fade-in slide-in-from-top-2">
+                                        <p className="text-sm font-bold text-red-600 dark:text-red-400 flex items-start gap-2">
+                                            <AlertCircle size={18} className="shrink-0 mt-0.5" />
+                                            <span>{error}</span>
+                                        </p>
+                                    </div>
                                 )}
-                            </button>
-
-                            <button
-                                type="button"
-                                onClick={startRecovery}
-                                title="Mot de passe oublié ?"
-                                className="w-full text-dark-text-muted hover:text-dark-text-secondary text-xs font-medium transition-colors mt-4 text-center"
-                            >
-                                Mot de passe oublié ?
-                            </button>
-                        </form>
-                    )}
-
-                    {step === '2fa' && pendingUser && (
-                        <form onSubmit={handle2FA} className="space-y-5">
-                            <div className="flex items-center gap-3 p-4 rounded-[var(--radius-md)] gradient-primary-soft border border-primary/20">
-                                <ShieldCheck className="text-primary shrink-0" size={22} />
-                                <div>
-                                    <p className="text-primary font-semibold text-sm">Double authentification</p>
-                                    <p className="text-dark-text-muted text-xs mt-0.5">Compte administrateur détecté.</p>
-                                </div>
-                            </div>
-
-                            {/* Accessibility: hidden username field for password manager - accessible but hidden */}
-                            <div className="sr-only" aria-hidden="true">
-                                <input type="text" name="username" value={pendingUser.email} readOnly autoComplete="username" tabIndex={-1} />
-                            </div>
-
-                            <div className="space-y-2">
-                                <label className="text-xs font-semibold text-dark-text-secondary uppercase tracking-wider">
-                                    {pendingUser.securityQuestion}
-                                </label>
-                                <input
-                                    type="password"
-                                    value={twoFAAnswer}
-                                    onChange={(e) => setTwoFAAnswer(e.target.value)}
-                                    className="w-full bg-dark-bg border border-primary/30 rounded-[var(--radius-md)] py-3 px-4 text-dark-text focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all placeholder:text-dark-text-muted text-center font-bold tracking-widest text-lg"
-                                    placeholder="Votre réponse..."
-                                    autoComplete="current-password"
-                                    autoFocus
-                                    required
-                                />
-                            </div>
-
-                            <button
-                                type="submit"
-                                disabled={loading}
-                                title="Vérifier et accéder"
-                                className="w-full btn-primary py-3.5 text-sm flex items-center justify-center gap-2"
-                            >
-                                {loading ? (
-                                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                ) : (
-                                    <><ShieldCheck size={18} /> Vérifier &amp; Accéder</>
+                                
+                                {recoveryInfo && (
+                                    <div className="mb-6 p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 animate-in fade-in slide-in-from-top-2">
+                                        <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{recoveryInfo}</p>
+                                    </div>
                                 )}
-                            </button>
 
-                            <button
-                                type="button"
-                                onClick={resetToCredentials}
-                                title="Retour à la connexion"
-                                className="w-full text-dark-text-muted hover:text-dark-text-secondary text-xs font-medium transition-colors mt-1"
-                            >
-                                ← Retour à la connexion
-                            </button>
-                        </form>
-                    )}
+                                {/* STEP: CREDENTIALS */}
+                                {step === 'credentials' && (
+                                    <form onSubmit={handleCredentials} className="space-y-5">
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black text-blue-300/30 uppercase tracking-[0.2em] ml-1">Identifiant</label>
+                                            <div className="relative group">
+                                                <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+                                                    <User size={18} className="text-blue-800 group-focus-within:text-primary transition-colors" />
+                                                </div>
+                                                <input
+                                                    type="text"
+                                                    required
+                                                    name="username"
+                                                    id="username"
+                                                    value={username}
+                                                    onChange={(e) => setUsername(e.target.value)}
+                                                    className="w-full pl-12 pr-4 py-5 rounded-2xl bg-white/5 border border-white/5 text-white placeholder-blue-600/40 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:bg-white/10 transition-all font-bold tracking-tight"
+                                                    placeholder="Votre identifiant"
+                                                    autoComplete="username"
+                                                />
+                                            </div>
+                                        </div>
 
-                    {step === 'recovery' && (
-                        <div className="space-y-6">
-                            <div className="flex items-center gap-3 p-4 rounded-[var(--radius-md)] bg-amber-500/10 border border-amber-500/20">
-                                <Lock className="text-amber-400 shrink-0" size={22} />
-                                <div>
-                                    <p className="text-amber-400 font-semibold text-sm">Récupération d'accès</p>
-                                    <p className="text-dark-text-muted text-xs mt-0.5">Étape {recStep}/2</p>
-                                </div>
+                                        <div className="space-y-2">
+                                            <div className="flex justify-between items-center ml-1">
+                                                <label className="text-[10px] font-black text-blue-300/30 uppercase tracking-[0.2em]">Mot de passe</label>
+                                                <button type="button" onClick={startRecovery} className="text-[10px] font-black text-primary hover:text-white transition-colors tracking-widest uppercase italic">
+                                                    Oublié ?
+                                                </button>
+                                            </div>
+                                            <div className="relative group">
+                                                <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+                                                    <Lock size={18} className="text-blue-800 group-focus-within:text-primary transition-colors" />
+                                                </div>
+                                                <input
+                                                    type={showPassword ? "text" : "password"}
+                                                    required
+                                                    name="password"
+                                                    id="password"
+                                                    value={password}
+                                                    onChange={(e) => setPassword(e.target.value)}
+                                                    className="w-full pl-12 pr-12 py-5 rounded-2xl bg-white/5 border border-white/5 text-white placeholder-blue-600/40 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:bg-white/10 transition-all font-bold tracking-tight"
+                                                    placeholder="••••••••"
+                                                    autoComplete="current-password"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowPassword(!showPassword)}
+                                                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                                                    aria-label={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+                                                >
+                                                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <button
+                                            type="submit"
+                                            disabled={loading}
+                                            className="w-full py-5 mt-6 bg-primary hover:bg-primary-light active:scale-95 text-white rounded-2xl font-black text-xs uppercase tracking-[0.25em] shadow-2xl shadow-primary/20 transition-all disabled:opacity-70 flex justify-center items-center gap-3"
+                                        >
+                                            {loading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><LogIn size={18} strokeWidth={3} /> SE CONNECTER</>}
+                                        </button>
+                                    </form>
+                                )}
+
+                                {/* STEP: 2FA */}
+                                {step === '2fa' && (
+                                    <form onSubmit={handle2FA} className="space-y-5">
+                                        <div className="space-y-1.5">
+                                            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest ml-1">Autentification Double Facteur</label>
+                                            <div className="relative group">
+                                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                                    <ShieldCheck size={18} className="text-slate-400 group-focus-within:text-purple-500 transition-colors" />
+                                                </div>
+                                                <input
+                                                    type="text"
+                                                    required
+                                                    name="twoFAAnswer"
+                                                    id="twoFAAnswer"
+                                                    value={twoFAAnswer}
+                                                    onChange={(e) => setTwoFAAnswer(e.target.value)}
+                                                    className="w-full pl-11 pr-4 py-4 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 transition-all font-medium"
+                                                    placeholder="Entrez votre réponse secrète"
+                                                    autoComplete="one-time-code"
+                                                    autoFocus
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="flex flex-col gap-3 mt-4">
+                                            <button
+                                                type="submit"
+                                                disabled={loading}
+                                                className="w-full py-4 bg-purple-600 hover:bg-purple-700 text-white rounded-2xl font-bold text-sm uppercase tracking-widest shadow-lg shadow-purple-500/30 transition-all hover:-translate-y-0.5 disabled:opacity-70 flex justify-center items-center gap-2"
+                                            >
+                                                {loading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><ShieldCheck size={18} /> VÉRIFIER</>}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={resetToCredentials}
+                                                className="w-full py-4 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white font-bold text-sm uppercase tracking-widest transition-colors"
+                                            >
+                                                Annuler
+                                            </button>
+                                        </div>
+                                    </form>
+                                )}
+
+                                {/* STEP: RECOVERY */}
+                                {step === 'recovery' && (
+                                    <form onSubmit={recStep === 1 ? handleRecStep1 : handleRecStep2} className="space-y-5">
+                                        {recStep === 1 ? (
+                                            <>
+                                                <div className="space-y-1.5">
+                                                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest ml-1">Question de sécurité</label>
+                                                    <p className="text-sm text-slate-900 dark:text-white font-medium p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-800">
+                                                        {recQuestion}
+                                                    </p>
+                                                </div>
+                                                <div className="space-y-1.5">
+                                                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest ml-1">Votre réponse</label>
+                                                    <input
+                                                        type="text"
+                                                        required
+                                                        name="securityAnswer"
+                                                        id="securityAnswer"
+                                                        value={recSecAns}
+                                                        onChange={(e) => setRecSecAns(e.target.value)}
+                                                        className="w-full px-4 py-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition-all font-medium"
+                                                        placeholder="Saisissez votre réponse"
+                                                        autoComplete="off"
+                                                        autoFocus
+                                                    />
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <div className="space-y-1.5">
+                                                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest ml-1">Nouveau mot de passe</label>
+                                                <div className="relative">
+                                                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                                        <Lock size={18} className="text-slate-400" />
+                                                    </div>
+                                                    <input
+                                                        type={showPassword ? "text" : "password"}
+                                                        required
+                                                        name="newPassword"
+                                                        id="newPassword"
+                                                        value={recNewPw}
+                                                        onChange={(e) => setRecNewPw(e.target.value)}
+                                                        className="w-full pl-11 pr-12 py-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition-all font-medium"
+                                                        placeholder="8 caractères minimum"
+                                                        minLength={8}
+                                                        autoComplete="new-password"
+                                                        autoFocus
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setShowPassword(!showPassword)}
+                                                        className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
+                                                        aria-label="Afficher le mot de passe"
+                                                    >
+                                                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        <div className="flex flex-col gap-3 mt-4">
+                                            <button
+                                                type="submit"
+                                                disabled={loading}
+                                                className="w-full py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-2xl font-black text-sm uppercase tracking-widest shadow-lg transition-all hover:-translate-y-0.5 disabled:opacity-70 flex justify-center items-center"
+                                            >
+                                                {loading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : (recStep === 1 ? 'SUIVANT' : 'RÉINITIALISER')}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={resetToCredentials}
+                                                className="w-full py-4 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white font-bold text-sm uppercase tracking-widest transition-colors"
+                                            >
+                                                Retour à la connexion
+                                            </button>
+                                        </div>
+                                    </form>
+                                )}
+
                             </div>
-
-                            {recStep === 1 ? (
-                                <form onSubmit={handleRecStep1} className="space-y-5">
-                                    <div className="p-4 rounded-xl bg-dark-bg border border-dark-border">
-                                        <p className="text-dark-text-secondary text-[10px] font-bold uppercase tracking-widest mb-1">Question de sécurité</p>
-                                        <p className="text-dark-text font-bold text-sm italic">"{recQuestion}"</p>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-semibold text-dark-text-secondary uppercase tracking-wider">Réponse OU Code d'urgence</label>
-                                        <input
-                                            type="text"
-                                            value={recInput}
-                                            onChange={(e) => setRecInput(e.target.value)}
-                                            className="w-full bg-dark-bg border border-dark-border rounded-[var(--radius-md)] py-3 px-4 text-dark-text focus:outline-none focus:ring-2 focus:ring-amber-500/40 transition-all placeholder:text-dark-text-muted text-center font-mono"
-                                            placeholder="Réponse ou XXXX-XXXX..."
-                                            required
-                                            autoFocus
-                                        />
-                                    </div>
-                                    <button type="submit" title="Vérifier l'identité" className="w-full btn-primary py-3.5 text-sm font-bold bg-amber-600 hover:bg-amber-500 text-black">
-                                        Vérifier l'identité →
-                                    </button>
-                                </form>
-                            ) : (
-                                <form onSubmit={handleRecStep2} className="space-y-5">
-                                    {/* Accessibility: hidden username field */}
-                                    <div className="sr-only" aria-hidden="true">
-                                        <input type="text" name="username" value={username} readOnly autoComplete="username" tabIndex={-1} />
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-semibold text-dark-text-secondary uppercase tracking-wider">Nouveau mot de passe</label>
-                                        <input
-                                            type="password"
-                                            value={recNewPw}
-                                            onChange={(e) => setRecNewPw(e.target.value)}
-                                            className="w-full bg-dark-bg border border-dark-border rounded-[var(--radius-md)] py-3 px-4 text-dark-text focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-all font-mono"
-                                            placeholder="Minimum 8 caractères"
-                                            required
-                                            autoFocus
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-semibold text-dark-text-secondary uppercase tracking-wider italic">Confirmation : {recQuestion}</label>
-                                        <input
-                                            type="text"
-                                            value={recSecAns}
-                                            onChange={(e) => setRecSecAns(e.target.value)}
-                                            className="w-full bg-dark-bg border border-dark-border rounded-[var(--radius-md)] py-3 px-4 text-dark-text focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-all"
-                                            placeholder="Réponse à la question"
-                                            required
-                                        />
-                                    </div>
-                                    <button type="submit" className="w-full btn-primary py-3.5 text-sm font-bold bg-emerald-600 hover:bg-emerald-500 text-white">
-                                        Réinitialiser l'accès
-                                    </button>
-                                </form>
-                            )}
-
-                            <button
-                                type="button"
-                                onClick={resetToCredentials}
-                                className="w-full text-dark-text-muted hover:text-dark-text-secondary text-xs font-medium transition-colors mt-2"
-                            >
-                                ← Retour à la connexion
-                            </button>
                         </div>
-                    )}
-
-                    <div className="mt-6 pt-5 border-t border-dark-border text-center">
-                        <p className="text-dark-text-muted text-xs">
-                            Plateforme centralisée d'électrification — GEM SaaS
-                        </p>
                     </div>
                 </div>
             </div>
-        </div>
+        </PageContainer>
     );
 }

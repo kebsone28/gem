@@ -57,7 +57,7 @@ export const MapRoutingPanel: React.FC<MapRoutingPanelProps> = ({
     routeDuration,
 }) => {
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
-    const [isExpanded, setIsExpanded] = useState(true);
+    const [isExpanded, setIsExpanded] = useState(false);
     const [searchQ, setSearchQ] = useState('');
     const [isOptimized, setIsOptimized] = useState(false);
 
@@ -113,7 +113,7 @@ export const MapRoutingPanel: React.FC<MapRoutingPanelProps> = ({
     const rowHover = isDarkMode ? 'hover:bg-slate-800' : 'hover:bg-slate-50';
 
     return (
-        <div className={`absolute top-16 left-4 md:left-4 right-4 md:right-auto z-[200] max-w-[calc(100vw-2rem)] md:w-80 rounded-2xl border shadow-2xl backdrop-blur-xl overflow-hidden transition-all ${base}`}>
+        <div className={`absolute top-0 right-0 z-[200] max-w-[calc(100vw-2rem)] md:w-80 rounded-2xl border shadow-2xl backdrop-blur-xl overflow-hidden transition-all ${base}`}>
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-inherit">
                 <div className="flex items-center gap-2">
@@ -126,7 +126,7 @@ export const MapRoutingPanel: React.FC<MapRoutingPanelProps> = ({
                     <button onClick={() => setIsExpanded(e => !e)} title={isExpanded ? 'Réduire' : 'Agrandir'} className={`p-1 rounded-md transition-colors ${rowHover}`}>
                         {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                     </button>
-                    <button onClick={onClose} title="Fermer" className={`p-1 rounded-md transition-colors ${rowHover}`}>
+                    <button onClick={onClose} aria-label="Fermer" className={`p-1 rounded-md transition-colors ${rowHover}`}>
                         <X size={14} />
                     </button>
                 </div>
@@ -148,22 +148,22 @@ export const MapRoutingPanel: React.FC<MapRoutingPanelProps> = ({
                                 {/* TSP Optimize Button */}
                                 <button
                                     onClick={optimizeRoute}
-                                    title="Optimiser l'ordre des arrêts (TSP Nearest-Neighbor)"
-                                    className={`flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg transition-colors ${isOptimized ? 'bg-emerald-500 text-white' : 'bg-indigo-500 hover:bg-indigo-600 text-white'}`}
+                                    aria-label="Optimiser l'ordre des arrêts (TSP Nearest-Neighbor)"
+                                    className={`flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-lg transition-colors ${isOptimized ? 'bg-emerald-500 text-white' : 'bg-indigo-500 hover:bg-indigo-600 text-white'}`}
                                 >
                                     {isOptimized ? <CheckCircle2 size={9} /> : <Shuffle size={9} />}
                                     {isOptimized ? 'Optimisé' : 'Optimiser'}
                                 </button>
                                 <button
                                     onClick={openInGoogleMaps}
-                                    title="Ouvrir dans Google Maps"
-                                    className="flex items-center gap-1 bg-cyan-500 text-white text-[10px] font-bold px-2 py-1 rounded-lg hover:bg-cyan-600 transition-colors"
+                                    aria-label="Ouvrir dans Google Maps"
+                                    className="flex items-center gap-1 bg-cyan-500 text-white text-xs font-bold px-2 py-1 rounded-lg hover:bg-cyan-600 transition-colors"
                                 >
                                     Maps <ExternalLink size={9} />
                                 </button>
                             </div>
                             {isOptimized && (
-                                <p className="text-[9px] text-emerald-600 dark:text-emerald-400 font-bold mt-1.5">
+                                <p className="text-xs text-emerald-600 dark:text-emerald-400 font-bold mt-1.5">
                                     ✓ Itinéraire optimisé — algorithme Nearest-Neighbor
                                 </p>
                             )}
@@ -173,13 +173,13 @@ export const MapRoutingPanel: React.FC<MapRoutingPanelProps> = ({
                     {/* Selected stops */}
                     {selectedIds.length > 0 && (
                         <div className="px-4 pt-3 pb-1">
-                            <p className={`text-[9px] font-black uppercase tracking-widest mb-2 ${sub}`}>Arrêts ({selectedIds.length})</p>
+                            <p className={`text-xs font-black uppercase tracking-widest mb-2 ${sub}`}>Arrêts ({selectedIds.length})</p>
                             <div className="flex flex-col gap-1 max-h-28 overflow-auto">
                                 {selectedHouseholds.map((h, i) => (
                                     <div key={h.id} className={`flex items-center gap-2 text-xs px-2 py-1.5 rounded-lg ${isDarkMode ? 'bg-slate-800' : 'bg-slate-100'}`}>
-                                        <span className="w-4 h-4 rounded-full bg-cyan-500 text-white text-[9px] flex items-center justify-center font-bold flex-shrink-0">{i + 1}</span>
+                                        <span className="w-4 h-4 rounded-full bg-cyan-500 text-white text-xs flex items-center justify-center font-bold flex-shrink-0">{i + 1}</span>
                                         <span className="truncate flex-1 font-medium">{h.id}</span>
-                                        <button onClick={() => toggleHousehold(h.id)} title="Supprimer de la tournée" className="text-rose-400 hover:text-rose-500 flex-shrink-0">
+                                        <button onClick={() => toggleHousehold(h.id)} aria-label="Supprimer de la tournée" className="text-rose-400 hover:text-rose-500 flex-shrink-0">
                                             <Trash2 size={10} />
                                         </button>
                                     </div>
@@ -212,9 +212,9 @@ export const MapRoutingPanel: React.FC<MapRoutingPanelProps> = ({
                                     >
                                         <MapPin size={10} className={isSelected ? 'text-cyan-500' : sub} />
                                         <span className="flex-1 font-medium truncate">{h.id}</span>
-                                        {h.owner && <span className={`text-[9px] ${sub} truncate`}>{h.owner}</span>}
+                                        {h.owner && <span className={`text-xs ${sub} truncate`}>{h.owner}</span>}
                                         {isSelected && (
-                                            <span className="w-4 h-4 rounded-full bg-cyan-500 text-white text-[9px] flex items-center justify-center flex-shrink-0">
+                                            <span className="w-4 h-4 rounded-full bg-cyan-500 text-white text-xs flex items-center justify-center flex-shrink-0">
                                                 {selectedIds.indexOf(h.id) + 1}
                                             </span>
                                         )}
@@ -228,7 +228,7 @@ export const MapRoutingPanel: React.FC<MapRoutingPanelProps> = ({
                         <div className="px-4 pb-3">
                             <button
                                 onClick={openInGoogleMaps}
-                                title="Lancer la tournée dans Google Maps"
+                                aria-label="Lancer la tournée dans Google Maps"
                                 className="w-full flex items-center justify-center gap-2 bg-cyan-500 hover:bg-cyan-600 text-white font-bold text-xs py-2.5 rounded-xl transition-colors"
                             >
                                 <Navigation2 size={12} /> Lancer la tournée

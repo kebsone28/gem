@@ -1,0 +1,68 @@
+﻿node_modules/@types/babel__core/index.d.ts(2,31): error TS2792: Cannot find module '@babel/parser'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+node_modules/@types/babel__core/index.d.ts(5,20): error TS2792: Cannot find module '@babel/types'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+node_modules/@types/babel__core/index.d.ts(10,52): error TS2792: Cannot find module '@babel/parser'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+node_modules/@types/babel__generator/index.d.ts(1,20): error TS2792: Cannot find module '@babel/types'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+node_modules/@types/babel__template/index.d.ts(1,31): error TS2792: Cannot find module '@babel/parser'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+node_modules/@types/babel__template/index.d.ts(2,48): error TS2792: Cannot find module '@babel/types'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+node_modules/@types/babel__traverse/index.d.ts(1,20): error TS2792: Cannot find module '@babel/types'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+node_modules/@types/babel__traverse/index.d.ts(361,28): error TS2536: Type '"type"' cannot be used to index type 'T'.
+node_modules/@types/chai/index.d.ts(2,58): error TS2792: Cannot find module 'assertion-error'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+node_modules/@types/mdx/types.d.ts(23,38): error TS2503: Cannot find namespace 'JSX'.
+node_modules/@types/mdx/types.d.ts(28,23): error TS2503: Cannot find namespace 'JSX'.
+node_modules/@types/mdx/types.d.ts(47,28): error TS2503: Cannot find namespace 'JSX'.
+node_modules/@types/mdx/types.d.ts(73,46): error TS2503: Cannot find namespace 'JSX'.
+node_modules/@types/node/http.d.ts(2122,36): error TS2792: Cannot find module 'undici-types'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+node_modules/@types/node/http.d.ts(2126,37): error TS2792: Cannot find module 'undici-types'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+node_modules/@types/node/http.d.ts(2130,39): error TS2792: Cannot find module 'undici-types'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+node_modules/@types/node/web-globals/fetch.d.ts(3,25): error TS2792: Cannot find module 'undici-types'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+node_modules/@types/node/worker_threads.d.ts(66,34): error TS2792: Cannot find module 'undici-types'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+node_modules/@types/react/index.d.ts(7,22): error TS2792: Cannot find module 'csstype'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+node_modules/@types/trusted-types/index.d.ts(1,22): error TS2792: Cannot find module './lib'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+src/components/terrain/layers/BackgroundLayer.tsx(1,8): error TS1259: Module '"C:/Mes-Sites-Web/GEM_SAAS/frontend/node_modules/@types/react/index"' can only be default-imported using the 'allowSyntheticDefaultImports' flag
+src/components/terrain/layers/BackgroundLayer.tsx(2,24): error TS2792: Cannot find module 'maplibre-gl'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+src/components/terrain/layers/HouseholdLayer.tsx(1,8): error TS1259: Module '"C:/Mes-Sites-Web/GEM_SAAS/frontend/node_modules/@types/react/index"' can only be default-imported using the 'allowSyntheticDefaultImports' flag
+src/components/terrain/layers/HouseholdLayer.tsx(2,24): error TS2792: Cannot find module 'maplibre-gl'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+src/components/terrain/layers/HouseholdLayer.tsx(32,44): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/components/terrain/layers/InteractionLayer.tsx(1,8): error TS1259: Module '"C:/Mes-Sites-Web/GEM_SAAS/frontend/node_modules/@types/react/index"' can only be default-imported using the 'allowSyntheticDefaultImports' flag
+src/components/terrain/layers/InteractionLayer.tsx(2,24): error TS2792: Cannot find module 'maplibre-gl'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+src/components/terrain/layers/LogisticsLayer.tsx(1,8): error TS1259: Module '"C:/Mes-Sites-Web/GEM_SAAS/frontend/node_modules/@types/react/index"' can only be default-imported using the 'allowSyntheticDefaultImports' flag
+src/components/terrain/layers/LogisticsLayer.tsx(2,24): error TS2792: Cannot find module 'maplibre-gl'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+src/components/terrain/layers/ZoneLayer.tsx(1,8): error TS1259: Module '"C:/Mes-Sites-Web/GEM_SAAS/frontend/node_modules/@types/react/index"' can only be default-imported using the 'allowSyntheticDefaultImports' flag
+src/components/terrain/layers/ZoneLayer.tsx(2,24): error TS2792: Cannot find module 'maplibre-gl'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+src/components/terrain/MapComponent.tsx(8,8): error TS1259: Module '"C:/Mes-Sites-Web/GEM_SAAS/frontend/node_modules/@types/react/index"' can only be default-imported using the 'allowSyntheticDefaultImports' flag
+src/components/terrain/MapLibreVectorMap.tsx(1,8): error TS1259: Module '"C:/Mes-Sites-Web/GEM_SAAS/frontend/node_modules/@types/react/index"' can only be default-imported using the 'allowSyntheticDefaultImports' flag
+src/components/terrain/MapLibreVectorMap.tsx(2,24): error TS2792: Cannot find module 'maplibre-gl'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+src/components/terrain/MapStatsWidget.tsx(1,8): error TS1259: Module '"C:/Mes-Sites-Web/GEM_SAAS/frontend/node_modules/@types/react/index"' can only be default-imported using the 'allowSyntheticDefaultImports' flag
+src/components/terrain/MapStatsWidget.tsx(2,24): error TS2792: Cannot find module 'framer-motion'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+src/components/terrain/MapStatsWidget.tsx(3,67): error TS2792: Cannot find module 'lucide-react'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+src/components/terrain/MapTooltip.tsx(1,8): error TS1259: Module '"C:/Mes-Sites-Web/GEM_SAAS/frontend/node_modules/@types/react/index"' can only be default-imported using the 'allowSyntheticDefaultImports' flag
+src/components/terrain/MapTooltip.tsx(2,37): error TS2792: Cannot find module 'lucide-react'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+src/components/terrain/mapUtils.ts(10,24): error TS2792: Cannot find module 'maplibre-gl'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+src/components/terrain/useMapClustering.ts(12,24): error TS2792: Cannot find module 'maplibre-gl'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+src/components/terrain/useMapClustering.ts(13,8): error TS1259: Module '"C:/Mes-Sites-Web/GEM_SAAS/frontend/node_modules/@types/supercluster/index"' can only be default-imported using the 'allowSyntheticDefaultImports' flag
+src/components/terrain/useMapClustering.ts(16,20): error TS2792: Cannot find module '@turf/convex'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+src/components/terrain/useMapClustering.ts(17,42): error TS2792: Cannot find module '@turf/helpers'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+src/components/terrain/useMapInteractions.ts(2,24): error TS2792: Cannot find module 'maplibre-gl'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+src/components/terrain/useMapInteractions.ts(3,19): error TS2792: Cannot find module 'react-hot-toast'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+src/components/terrain/useMapLasso.ts(8,24): error TS2792: Cannot find module 'maplibre-gl'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+src/components/terrain/useMapMarkers.ts(8,24): error TS2792: Cannot find module 'maplibre-gl'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+src/components/terrain/useMapMeasure.ts(8,24): error TS2792: Cannot find module 'maplibre-gl'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+src/components/terrain/useMemorizedSupercluster.ts(11,8): error TS1259: Module '"C:/Mes-Sites-Web/GEM_SAAS/frontend/node_modules/@types/supercluster/index"' can only be default-imported using the 'allowSyntheticDefaultImports' flag
+src/contexts/ThemeContext.tsx(1,8): error TS1259: Module '"C:/Mes-Sites-Web/GEM_SAAS/frontend/node_modules/@types/react/index"' can only be default-imported using the 'allowSyntheticDefaultImports' flag
+src/services/map/MapSingleton.ts(1,24): error TS2792: Cannot find module 'maplibre-gl'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+src/services/map/tileCacheService.ts(1,24): error TS2792: Cannot find module 'maplibre-gl'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+src/store/db.ts(1,35): error TS2792: Cannot find module 'dexie'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+src/store/db.ts(120,10): error TS2339: Property 'version' does not exist on type 'ProquelecDatabase'.
+src/store/db.ts(131,10): error TS2339: Property 'version' does not exist on type 'ProquelecDatabase'.
+src/store/db.ts(144,10): error TS2339: Property 'version' does not exist on type 'ProquelecDatabase'.
+src/store/db.ts(159,10): error TS2339: Property 'version' does not exist on type 'ProquelecDatabase'.
+src/store/db.ts(175,10): error TS2339: Property 'version' does not exist on type 'ProquelecDatabase'.
+src/store/db.ts(192,10): error TS2339: Property 'version' does not exist on type 'ProquelecDatabase'.
+src/store/db.ts(210,10): error TS2339: Property 'version' does not exist on type 'ProquelecDatabase'.
+src/store/db.ts(228,10): error TS2339: Property 'version' does not exist on type 'ProquelecDatabase'.
+src/store/db.ts(248,10): error TS2339: Property 'version' does not exist on type 'ProquelecDatabase'.
+src/store/db.ts(269,10): error TS2339: Property 'version' does not exist on type 'ProquelecDatabase'.
+src/store/db.ts(295,19): error TS2339: Property 'transaction' does not exist on type 'ProquelecDatabase'.
+src/store/terrainUIStore.ts(1,24): error TS2792: Cannot find module 'zustand'. Did you mean to set the 'moduleResolution' option to 'nodenext', or to add aliases to the 'paths' option?
+src/utils/clusteringUtils.ts(8,8): error TS1259: Module '"C:/Mes-Sites-Web/GEM_SAAS/frontend/node_modules/@types/supercluster/index"' can only be default-imported using the 'allowSyntheticDefaultImports' flag
+src/utils/logger.ts(2,28): error TS2339: Property 'env' does not exist on type 'ImportMeta'.

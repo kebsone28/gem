@@ -60,7 +60,6 @@ export async function hybridCluster(households: SpatialPoint[], maxHouseholdsPer
     const macroClusters = dbscan(households, tree, config.eps, config.minPts);
 
     const result: ClusterResult[] = [];
-    let clusterCounter = 1;
 
     const processFinalGroup = (pts: SpatialPoint[], isIsochrone: boolean) => {
         if (pts.length > maxHouseholdsPerCluster) {
@@ -78,12 +77,12 @@ export async function hybridCluster(households: SpatialPoint[], maxHouseholdsPer
             });
 
             groups.forEach((g, idx) => {
-                if (g.length > 0) result.push({ id: `G-${clusterCounter++}`, type: 'kmeans', households: g, centroid: centroids[idx] });
+                if (g.length > 0) result.push({ id: '', type: 'kmeans', households: g, centroid: centroids[idx] });
             });
         } else if (pts.length > 0) {
             const centroidLat = pts.reduce((sum, p) => sum + p.lat, 0) / pts.length;
             const centroidLon = pts.reduce((sum, p) => sum + p.lon, 0) / pts.length;
-            result.push({ id: `G-${clusterCounter++}`, type: isIsochrone ? 'dense' : 'isolated', households: pts, centroid: { lat: centroidLat, lon: centroidLon } });
+            result.push({ id: '', type: isIsochrone ? 'dense' : 'isolated', households: pts, centroid: { lat: centroidLat, lon: centroidLon } });
         }
     };
 
@@ -105,8 +104,55 @@ export async function hybridCluster(households: SpatialPoint[], maxHouseholdsPer
         }
     }
 
+    // Déterminer la région majoritaire de chaque cluster pour le tri
+    result.forEach(c => {
+        let region = '';
+        for (const h of c.households) {
+            if (h.region) {
+                region = h.region;
+                break; // On prend la première région valide trouvée (les ménages d'un même cluster sont proches et généralement de la même région)
+            }
+        }
+        (c as any)._region = region;
+    });
+
+    // Trier les clusters par ordre alphabétique de la région
+    result.sort((a, b) => {
+        const rA = (a as any)._region || 'ZZZ';
+        const rB = (b as any)._region || 'ZZZ';
+        return rA.localeCompare(rB);
+    });
+
+    // Attribuer les ID de manière séquentielle, de Kaffrine à Tamba
+    let counter = 1;
+    result.forEach(c => {
+        c.id = `G-${counter++}`;
+    });
+
     return result;
 }
+
+export const getClusterName = (c: ClusterResult) => {
+    const villageCounts: Record<string, number> = {};
+    let dominantVillage = '';
+    let maxCount = 0;
+    let region = '';
+    for (const h of c.households) {
+        if (h.region) region = region || h.region; 
+        if (h.village) {
+            const vlName = h.village.trim().charAt(0).toUpperCase() + h.village.trim().slice(1).toLowerCase();
+            villageCounts[vlName] = (villageCounts[vlName] || 0) + 1;
+            if (villageCounts[vlName] > maxCount) {
+                maxCount = villageCounts[vlName];
+                dominantVillage = vlName;
+            }
+        }
+    }
+    const baseName = `G${c.id.replace('G-', '')}`;
+    if (dominantVillage) return region ? `${region} – ${dominantVillage} ${baseName}` : `${dominantVillage} ${baseName}`;
+    if (region) return `${region} – ${baseName}`;
+    return `Grappe ${c.id.replace('G-', '')}`;
+};
 
 export function clustersToGeoJSON(clusters: ClusterResult[]): any {
     const collection = featureCollection([]);
@@ -151,7 +197,7 @@ export function clustersToGeoJSON(clusters: ClusterResult[]): any {
             const intId = parseInt(c.id.replace(/\D/g, '')) || (1000 + i);
             buffered.properties = {
                 id: c.id,
-                name: `Grappe ${c.id.replace('G-', '')}`,
+                name: getClusterName(c),
                 count: c.households.length,
                 type: c.type,
                 centroidX: c.centroid.lon,
@@ -182,7 +228,7 @@ export function centroidsToGeoJSON(clusters: ClusterResult[]): any {
                 id: intId,
                 properties: {
                     id: c.id,
-                    name: `Grappe ${c.id.replace('G-', '')}`,
+                    name: getClusterName(c),
                     count: c.households.length
                 },
                 geometry: {

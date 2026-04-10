@@ -1,0 +1,16 @@
+src/components/layout/index.tsx(21,99): error TS2352: Conversion of type '(Iterable<ReactNode> | Promise<AwaitedReactNode>) & Record<"$$typeof", unknown>' to type 'ComponentType<any>' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type 'Promise<AwaitedReactNode> & Record<"$$typeof", unknown>' is not comparable to type 'ComponentType<any>'.
+src/components/layout/PageContainer.stories.tsx(2,56): error TS2307: Cannot find module './PageContainer' or its corresponding type declarations.
+src/components/terrain/MapToolbar.tsx(116,18): error TS2741: Property 'title' is missing in type '{ icon: Element; "aria-label": string; onClick: () => void; }' but required in type 'ToolbarButtonProps'.
+src/components/terrain/MapToolbar.tsx(154,18): error TS2741: Property 'title' is missing in type '{ icon: Element; "aria-label": string; onClick: () => void; active: boolean; }' but required in type 'ToolbarButtonProps'.
+src/components/UI/Button.stories.simple.tsx(2,24): error TS2307: Cannot find module './Button' or its corresponding type declarations.
+src/components/UI/Button.stories.tsx(2,24): error TS2307: Cannot find module './Button' or its corresponding type declarations.
+src/components/UI/Select.stories.tsx(2,24): error TS2307: Cannot find module './Select' or its corresponding type declarations.
+src/pages/Charges.tsx(6,5): error TS6133: 'Zap' is declared but its value is never read.
+src/pages/Charges.tsx(30,5): error TS6133: 'ContentArea' is declared but its value is never read.
+src/pages/Charges.tsx(59,17): error TS2322: Type '{ title: string; subtitle: string; icon: ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>; iconColor: string; actions: Element; }' is not assignable to type 'IntrinsicAttributes & PageHeaderProps'.
+  Property 'iconColor' does not exist on type 'IntrinsicAttributes & PageHeaderProps'.
+src/pages/Charges.tsx(159,188): error TS2339: Property 'indigo' does not exist on type '{ readonly primary: { readonly 50: "#F0F7FF"; readonly 100: "#E0EEFF"; readonly 200: "#C1DCFF"; readonly 300: "#A2CBFF"; readonly 400: "#83B9FF"; readonly 500: "#1E90FF"; readonly 600: "#0066FF"; readonly 700: "#004FCC"; readonly 800: "#003B99"; readonly 900: "#002766"; readonly 950: "#001433"; }; readonly accent: {...'.
+src/pages/Charges.tsx(159,223): error TS2339: Property 'slate' does not exist on type '{ readonly primary: { readonly 50: "#F0F7FF"; readonly 100: "#E0EEFF"; readonly 200: "#C1DCFF"; readonly 300: "#A2CBFF"; readonly 400: "#83B9FF"; readonly 500: "#1E90FF"; readonly 600: "#0066FF"; readonly 700: "#004FCC"; readonly 800: "#003B99"; readonly 900: "#002766"; readonly 950: "#001433"; }; readonly accent: {...'.
+src/stories/Button.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/stories/Header.tsx(1,1): error TS6133: 'React' is declared but its value is never read.

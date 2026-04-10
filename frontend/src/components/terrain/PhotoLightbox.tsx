@@ -7,18 +7,13 @@
 import React, { useEffect } from 'react';
 import { X, ChevronLeft, ChevronRight, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTerrainUIStore } from '../../store/terrainUIStore';
 
-interface PhotoLightboxProps {
-    photos: { url: string; label: string }[];
-    initialIndex?: number;
-    onClose: () => void;
-}
-
-export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
-    photos,
-    initialIndex = 0,
-    onClose,
-}) => {
+export const PhotoLightbox: React.FC = () => {
+    const photos = useTerrainUIStore(s => s.lightboxPhotos);
+    const initialIndex = useTerrainUIStore(s => s.lightboxIndex);
+    const onClose = useTerrainUIStore(s => s.closeLightbox);
+    
     const [current, setCurrent] = React.useState(initialIndex);
 
     useEffect(() => {
@@ -33,6 +28,8 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
 
     const photo = photos[current];
 
+    if (!photo) return null;
+
     return (
         <motion.div
             initial={{ opacity: 0 }}
@@ -44,8 +41,8 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
             {/* Close button */}
             <button
                 onClick={onClose}
-                title="Fermer"
-                className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors z-10"
+                aria-label="Fermer"
+                className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white dark:bg-slate-900/10 hover:bg-white dark:bg-slate-900/20 flex items-center justify-center text-white transition-colors z-10"
             >
                 <X size={18} />
             </button>
@@ -56,8 +53,8 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={e => e.stopPropagation()}
-                title="Télécharger"
-                className="absolute top-4 right-16 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors z-10"
+                aria-label="Télécharger"
+                className="absolute top-4 right-16 w-10 h-10 rounded-full bg-white dark:bg-slate-900/10 hover:bg-white dark:bg-slate-900/20 flex items-center justify-center text-white transition-colors z-10"
             >
                 <Download size={16} />
             </a>
@@ -66,8 +63,8 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
             {current > 0 && (
                 <button
                     onClick={e => { e.stopPropagation(); setCurrent(c => c - 1); }}
-                    title="Photo précédente"
-                    className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors z-10"
+                    aria-label="Photo précédente"
+                    className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white dark:bg-slate-900/10 hover:bg-white dark:bg-slate-900/20 flex items-center justify-center text-white transition-colors z-10"
                 >
                     <ChevronLeft size={24} />
                 </button>
@@ -77,8 +74,8 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
             {current < photos.length - 1 && (
                 <button
                     onClick={e => { e.stopPropagation(); setCurrent(c => c + 1); }}
-                    title="Photo suivante"
-                    className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors z-10"
+                    aria-label="Photo suivante"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white dark:bg-slate-900/10 hover:bg-white dark:bg-slate-900/20 flex items-center justify-center text-white transition-colors z-10"
                 >
                     <ChevronRight size={24} />
                 </button>

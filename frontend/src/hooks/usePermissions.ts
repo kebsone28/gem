@@ -1,5 +1,5 @@
 import { useAuth } from '../contexts/AuthContext';
-import { ROLE_PERMISSIONS, PERMISSIONS } from '../utils/permissions';
+import { PERMISSIONS, hasPermission } from '../utils/permissions';
 
 /**
  * Hook personnalisé pour gérer les permissions de manière centralisée dans le UI.
@@ -7,15 +7,12 @@ import { ROLE_PERMISSIONS, PERMISSIONS } from '../utils/permissions';
 export const usePermissions = () => {
     const { user } = useAuth();
 
-    // Récupérer la liste des permissions associées au rôle de l'utilisateur
-    const rolesPermissions = user ? ROLE_PERMISSIONS[user.role] || [] : [];
-
     /**
      * Vérifie si l'utilisateur possède une permission spécifique.
      * @param permission - La permission à vérifier (extraite de PERMISSIONS)
      */
     const peut = (permission: string): boolean => {
-        return rolesPermissions.includes(permission);
+        return hasPermission(user, permission);
     };
 
     /**

@@ -217,7 +217,7 @@ export default function WorkshopTab() {
                              <button
                                 onClick={(e) => { e.stopPropagation(); handleDeleteWarehouse(wh.id, wh.name); }}
                                 className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
-                                title="Supprimer ce magasin"
+                                aria-label="Supprimer ce magasin"
                              >
                                 <X size={10} />
                              </button>
@@ -257,7 +257,7 @@ export default function WorkshopTab() {
                             <div>
                                 <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Région</label>
                                 <select 
-                                    title="Région du nouveau magasin"
+                                    aria-label="Région du nouveau magasin"
                                     value={newWhForm.region} 
                                     onChange={e => setNewWhForm(p => ({...p, region: e.target.value}))}
                                     className="mt-2 w-full bg-slate-950 border border-slate-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500"
@@ -288,7 +288,7 @@ export default function WorkshopTab() {
                             <div>
                                 <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">De (Source)</label>
                                 <select 
-                                    title="Magasin source"
+                                    aria-label="Magasin source"
                                     value={transferForm.from} onChange={e => setTransferForm(p => ({...p, from: e.target.value}))}
                                     className="mt-2 w-full bg-slate-950 border border-slate-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500">
                                     <option value="">Source...</option>
@@ -343,22 +343,22 @@ export default function WorkshopTab() {
                                     <div className="bg-slate-950 border border-slate-800 rounded-2xl p-6">
                                         <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1">Stock Pivot</p>
                                         <p className="text-3xl font-black text-white">{globalStats.totalAvailable}</p>
-                                        <p className="text-[10px] text-slate-400 mt-2 font-bold uppercase">Kits Disponibles</p>
+                                        <p className="text-xs text-slate-400 mt-2 font-bold uppercase">Kits Disponibles</p>
                                     </div>
                                     <div className="bg-slate-950 border border-slate-800 rounded-2xl p-6">
                                         <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1">Chargements / Jour</p>
                                         <p className="text-3xl font-black text-white">{globalStats.todayLoaded}</p>
-                                        <p className="text-[10px] text-indigo-400 mt-2 font-bold uppercase">Tous Magasins</p>
+                                        <p className="text-xs text-indigo-400 mt-2 font-bold uppercase">Tous Magasins</p>
                                     </div>
                                     <div className="bg-slate-950 border border-slate-800 rounded-2xl p-6">
                                         <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1">En Transit</p>
                                         <p className="text-3xl font-black text-amber-500">{globalStats.inTransit}</p>
-                                        <p className="text-[10px] text-slate-400 mt-2 font-bold uppercase">Livraisons Terrain</p>
+                                        <p className="text-xs text-slate-400 mt-2 font-bold uppercase">Livraisons Terrain</p>
                                     </div>
                                     <div className="bg-slate-950 border border-slate-800 rounded-2xl p-6">
                                         <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1">Installations</p>
                                         <p className="text-3xl font-black text-emerald-500">{globalStats.totalConsumed}</p>
-                                        <p className="text-[10px] text-slate-400 mt-2 font-bold uppercase">Foyers Conformes</p>
+                                        <p className="text-xs text-slate-400 mt-2 font-bold uppercase">Foyers Conformes</p>
                                     </div>
                                 </div>
 
@@ -373,11 +373,11 @@ export default function WorkshopTab() {
                                                     </div>
                                                     <div>
                                                         <p className="font-bold text-white text-sm">{ws.name}</p>
-                                                        <p className="text-[10px] text-slate-500 font-bold uppercase">{ws.region}</p>
+                                                        <p className="text-xs text-slate-500 font-bold uppercase">{ws.region}</p>
                                                     </div>
                                                 </div>
                                                 <div className="text-right">
-                                                    <p className="font-black text-white">{Math.max(0, ws.kitsLoadedToday - ws.kitsConsumed)} <span className="text-[10px] text-slate-500">KITS</span></p>
+                                                    <p className="font-black text-white">{Math.max(0, ws.kitsLoadedToday - ws.kitsConsumed)} <span className="text-xs text-slate-500">KITS</span></p>
                                                     <div className="flex items-center gap-2 mt-1">
                                                         <div className="w-24 h-1 bg-slate-800 rounded-full">
                                                             <motion.div 
@@ -386,7 +386,7 @@ export default function WorkshopTab() {
                                                                 animate={{ width: `${Math.min(100, (ws.kitsLoadedAllTime / (totalHouses / warehouses.length)) * 100)}%` }} 
                                                             />
                                                         </div>
-                                                        <span className="text-[9px] font-bold text-slate-500">{Math.round((ws.kitsLoadedAllTime / (totalHouses / warehouses.length)) * 100)}%</span>
+                                                        <span className="text-xs font-bold text-slate-500">{Math.round((ws.kitsLoadedAllTime / (totalHouses / warehouses.length)) * 100)}%</span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -503,7 +503,7 @@ export default function WorkshopTab() {
                                                 {activeWh.address && <p className="text-slate-400 text-sm">{activeWh.address}</p>}
                                             </>
                                         ) : (
-                                            <p className="text-slate-600 text-sm italic">Cliquez "Modifier" pour géolocaliser ce magasin.</p>
+                                            <p className="text-slate-600 dark:text-slate-400 text-sm italic">Cliquez "Modifier" pour géolocaliser ce magasin.</p>
                                         )}
                                     </div>
                                 )}
@@ -516,7 +516,7 @@ export default function WorkshopTab() {
                                     <h4 className="font-black text-white uppercase tracking-tight text-sm">Équipes de Préparation : {activeWh.region}</h4>
                                 </div>
                                 <div className="px-6 py-3 bg-blue-900/10 border-b border-blue-900/30">
-                                    <p className="text-blue-400 text-[10px] leading-relaxed font-black uppercase tracking-widest">
+                                    <p className="text-blue-400 text-xs leading-relaxed font-black uppercase tracking-widest">
                                         Isolation ERP : Seules les équipes de rôle "PRÉPARATION" assignées à cette zone sont affichées.
                                     </p>
                                 </div>
@@ -532,9 +532,9 @@ export default function WorkshopTab() {
                                                     <div className="flex-1">
                                                         <p className="font-bold text-white text-sm">{team.name}</p>
                                                         <div className="flex items-center gap-2 mt-1">
-                                                             <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-400 uppercase tracking-widest">{team.tradeKey || 'EQUIPE'}</span>
+                                                             <span className="text-xs font-black px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-400 uppercase tracking-widest">{team.tradeKey || 'EQUIPE'}</span>
                                                              {team.children && team.children.length > 0 && (
-                                                                 <span className="text-[10px] text-slate-500 font-bold uppercase">{team.children.length} UNITÉS</span>
+                                                                 <span className="text-xs text-slate-500 font-bold uppercase">{team.children.length} UNITÉS</span>
                                                              )}
                                                         </div>
                                                     </div>
@@ -546,17 +546,17 @@ export default function WorkshopTab() {
                                                         )}
                                                         <div className="flex items-center gap-1 bg-slate-950/60 p-1 rounded-xl border border-slate-800">
                                                             <select 
-                                                                title="Type de Kit"
+                                                                aria-label="Type de Kit"
                                                                 value={loadingVariants[team.id] || 'standard'}
                                                                 onChange={e => setLoadingVariants(p => ({...p, [team.id]: e.target.value}))}
-                                                                className="bg-transparent text-[10px] font-black text-slate-400 outline-none border-r border-slate-800 pr-1 mr-1 uppercase"
+                                                                className="bg-transparent text-xs font-black text-slate-400 outline-none border-r border-slate-800 pr-1 mr-1 uppercase"
                                                             >
                                                                 {KIT_VARIANTS.map(v => (
                                                                     <option key={v.id} value={v.id}>{v.id.split('_')[0]}</option>
                                                                 ))}
                                                             </select>
                                                             <button
-                                                                title="Diminuer"
+                                                                aria-label="Diminuer"
                                                                 onClick={() => setLoadingInputs(p => ({...p, [team.id]: String(Math.max(0, parseInt(p[team.id] || '0') - 1))}))}
                                                                 className="w-8 h-8 hover:bg-slate-800 rounded-lg flex items-center justify-center text-slate-500 hover:text-white transition-all">
                                                                 <Minus size={14} />
@@ -567,14 +567,14 @@ export default function WorkshopTab() {
                                                                 placeholder="0"
                                                                 className="w-12 text-center bg-transparent text-white text-sm font-black outline-none" />
                                                             <button
-                                                                title="Augmenter"
+                                                                aria-label="Augmenter"
                                                                 onClick={() => setLoadingInputs(p => ({...p, [team.id]: String(parseInt(p[team.id] || '0') + 1)}))}
                                                                 className="w-8 h-8 hover:bg-slate-800 rounded-lg flex items-center justify-center text-slate-500 hover:text-white transition-all">
                                                                 <Plus size={14} />
                                                             </button>
                                                         </div>
                                                         <button
-                                                            title="Enregistrer les chargements"
+                                                            aria-label="Enregistrer les chargements"
                                                             onClick={() => handleSaveLoading(activeWh!.id, team.id, team.name)}
                                                             className="flex items-center justify-center w-10 h-10 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition-all shadow-lg active:scale-95">
                                                             <Save size={16} />
@@ -586,9 +586,9 @@ export default function WorkshopTab() {
                                     </div>
                                 ) : (
                                     <div className="p-12 text-center">
-                                        <Users size={40} className="text-slate-800 mx-auto mb-4" />
+                                        <Users size={40} className="text-slate-800 dark:text-slate-100 mx-auto mb-4" />
                                         <p className="text-slate-500 text-sm font-bold uppercase tracking-tight">Aucune équipe de préparation trouvée pour "{activeWh.region}"</p>
-                                        <p className="text-[10px] text-slate-600 mt-2 font-medium">Configurez le rôle ERP et la région dans <Link to="/settings" className="text-blue-500 hover:underline">Settings {'>'} Équipes</Link>.</p>
+                                        <p className="text-xs text-slate-600 dark:text-slate-400 mt-2 font-medium">Configurez le rôle ERP et la région dans <Link to="/settings" className="text-blue-500 hover:underline">Settings {'>'} Équipes</Link>.</p>
                                     </div>
                                 )}
                             </div>
@@ -607,7 +607,7 @@ export default function WorkshopTab() {
                                                     <div className={`w-2 h-2 rounded-full ${move.type === 'ENTRY' ? 'bg-emerald-500' : move.type === 'TRANSFER' ? 'bg-amber-500' : 'bg-blue-500'}`} />
                                                     <div>
                                                         <p className="text-xs font-bold text-slate-200">{move.label}</p>
-                                                        <p className="text-[10px] text-slate-500 font-medium">
+                                                        <p className="text-xs text-slate-500 font-medium">
                                                             {new Date(move.timestamp).toLocaleDateString('fr-FR')} à {new Date(move.timestamp).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
                                                         </p>
                                                     </div>
@@ -616,12 +616,12 @@ export default function WorkshopTab() {
                                                     <p className={`text-xs font-black ${move.type === 'ENTRY' ? 'text-emerald-400' : move.type === 'TRANSFER' ? 'text-amber-400' : 'text-blue-400'}`}>
                                                         {move.type === 'ENTRY' ? '+' : '-'}{move.quantity} KITS
                                                     </p>
-                                                    {move.variantId && <p className="text-[9px] text-slate-500 font-bold uppercase">{move.variantId}</p>}
+                                                    {move.variantId && <p className="text-xs text-slate-500 font-bold uppercase">{move.variantId}</p>}
                                                 </div>
                                             </div>
                                         ))
                                     ) : (
-                                        <div className="p-8 text-center text-slate-600 text-[10px] font-bold uppercase tracking-widest">Aucun historique disponible</div>
+                                        <div className="p-8 text-center text-slate-600 dark:text-slate-400 text-xs font-bold uppercase tracking-widest">Aucun historique disponible</div>
                                     )}
                                 </div>
                             </div>
@@ -639,12 +639,12 @@ export default function WorkshopTab() {
                             
                             <div className="space-y-4">
                                 <div>
-                                    <label htmlFor="receive_qty" className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Quantité (Kits)</label>
-                                    <input id="receive_qty" type="number" title="Quantité" value={receiveForm.quantity} onChange={e => setReceiveForm(p => ({...p, quantity: e.target.value}))}
+                                    <label htmlFor="receive_qty" className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2">Quantité (Kits)</label>
+                                    <input id="receive_qty" type="number" aria-label="Quantité" value={receiveForm.quantity} onChange={e => setReceiveForm(p => ({...p, quantity: e.target.value}))}
                                         className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white font-bold focus:outline-none focus:border-emerald-500" />
                                 </div>
                                 <div>
-                                    <label htmlFor="receive_source" className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Source / Fournisseur</label>
+                                    <label htmlFor="receive_source" className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2">Source / Fournisseur</label>
                                     <input id="receive_source" type="text" title="Source" value={receiveForm.source} onChange={e => setReceiveForm(p => ({...p, source: e.target.value}))}
                                         className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white font-bold focus:outline-none focus:border-emerald-500"
                                         placeholder="Ex: Arrivage Dakar Central" />
@@ -669,22 +669,22 @@ export default function WorkshopTab() {
                         </div>
 
                         <div className="mb-8">
-                            <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1">Date d'Achèvement Cible</p>
+                            <p className="text-slate-500 text-xs font-black uppercase tracking-widest mb-1">Date d'Achèvement Cible</p>
                             <p className="text-2xl font-black text-white">
                                 {daysRemaining < 9999
                                     ? estimatedDate.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
                                     : 'Recueillez plus de données'}
                             </p>
                             <div className="flex items-center gap-2 mt-2">
-                                <span className="px-2 py-0.5 rounded-md bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-[10px] font-black uppercase">
+                                <span className="px-2 py-0.5 rounded-md bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-black uppercase">
                                     J-{daysRemaining}
                                 </span>
-                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">à la vitesse actuelle</p>
+                                <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">à la vitesse actuelle</p>
                             </div>
                         </div>
 
                         <div className="mb-8">
-                            <div className="flex items-center justify-between text-[10px] font-black uppercase mb-3">
+                            <div className="flex items-center justify-between text-xs font-black uppercase mb-3">
                                 <span className="text-slate-500 tracking-widest">Progressions Travaux ({totalHouses} ménages)</span>
                                 <span className="text-indigo-400">{progress}%</span>
                             </div>
@@ -698,14 +698,14 @@ export default function WorkshopTab() {
                         </div>
 
                         <div className="space-y-4 mb-8">
-                            <p className="text-[10px] text-indigo-200/40 font-black uppercase tracking-widest">Cadence Globale</p>
+                            <p className="text-xs text-indigo-200/40 font-black uppercase tracking-widest">Cadence Globale</p>
                             <div className="flex items-center gap-4 p-5 bg-slate-950/50 rounded-2xl border border-slate-800 group-hover:border-indigo-500/30 transition-colors">
                                 <div className="p-3 rounded-xl bg-indigo-500/10 text-indigo-400">
                                     <TrendingUp size={24} />
                                 </div>
                                 <div>
                                     <p className="text-3xl font-black text-white">{velocity}</p>
-                                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Installations / Jour (Moy 7j)</p>
+                                    <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">Installations / Jour (Moy 7j)</p>
                                 </div>
                             </div>
                         </div>
@@ -714,7 +714,7 @@ export default function WorkshopTab() {
                             <div className="p-2 bg-indigo-500/10 rounded-lg text-indigo-400 shrink-0">
                                 <Calculator size={18} />
                             </div>
-                            <p className="text-[10px] text-indigo-300 font-black leading-relaxed uppercase tracking-wider">
+                            <p className="text-xs text-indigo-300 font-black leading-relaxed uppercase tracking-wider">
                                 Les prévisions d'intelligence artificielle "GEM" s'ajustent en temps réel aux performances des équipes de terrain et aux capacités logistiques des magasins.
                             </p>
                         </div>

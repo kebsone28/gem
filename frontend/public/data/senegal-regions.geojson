@@ -1,0 +1,201 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Dakar",
+        "latitude": 14.7167,
+        "longitude": -17.4677
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[
+          [-17.5677, 14.6167], [-17.5677, 14.8167], [-17.3677, 14.8167], [-17.3677, 14.6167], [-17.5677, 14.6167]
+        ]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Diourbel",
+        "latitude": 14.6500,
+        "longitude": -16.2333
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[
+          [-16.3333, 14.5500], [-16.3333, 14.7500], [-16.1333, 14.7500], [-16.1333, 14.5500], [-16.3333, 14.5500]
+        ]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Fatick",
+        "latitude": 14.3333,
+        "longitude": -16.4000
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[
+          [-16.5000, 14.2333], [-16.5000, 14.4333], [-16.3000, 14.4333], [-16.3000, 14.2333], [-16.5000, 14.2333]
+        ]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Kaffrine",
+        "latitude": 14.1059,
+        "longitude": -15.5508
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[
+          [-15.6508, 14.0059], [-15.6508, 14.2059], [-15.4508, 14.2059], [-15.4508, 14.0059], [-15.6508, 14.0059]
+        ]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Kaolack",
+        "latitude": 14.1833,
+        "longitude": -16.0833
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[
+          [-16.1833, 14.0833], [-16.1833, 14.2833], [-15.9833, 14.2833], [-15.9833, 14.0833], [-16.1833, 14.0833]
+        ]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Kédougou",
+        "latitude": 12.5500,
+        "longitude": -12.1833
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[
+          [-12.2833, 12.4500], [-12.2833, 12.6500], [-12.0833, 12.6500], [-12.0833, 12.4500], [-12.2833, 12.4500]
+        ]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Kolda",
+        "latitude": 12.8833,
+        "longitude": -14.9500
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[
+          [-15.0500, 12.7833], [-15.0500, 12.9833], [-14.8500, 12.9833], [-14.8500, 12.7833], [-15.0500, 12.7833]
+        ]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Louga",
+        "latitude": 15.6167,
+        "longitude": -16.2167
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[
+          [-16.3167, 15.5167], [-16.3167, 15.7167], [-16.1167, 15.7167], [-16.1167, 15.5167], [-16.3167, 15.5167]
+        ]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Matam",
+        "latitude": 15.6559,
+        "longitude": -13.2554
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[
+          [-13.3554, 15.5559], [-13.3554, 15.7559], [-13.1554, 15.7559], [-13.1554, 15.5559], [-13.3554, 15.5559]
+        ]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Saint-Louis",
+        "latitude": 16.0167,
+        "longitude": -16.5000
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[
+          [-16.6000, 15.9167], [-16.6000, 16.1167], [-16.4000, 16.1167], [-16.4000, 15.9167], [-16.6000, 15.9167]
+        ]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Sédhiou",
+        "latitude": 12.7081,
+        "longitude": -15.5569
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[
+          [-15.6569, 12.6081], [-15.6569, 12.8081], [-15.4569, 12.8081], [-15.4569, 12.6081], [-15.6569, 12.6081]
+        ]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Tambacounda",
+        "latitude": 13.7667,
+        "longitude": -13.6667
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[
+          [-13.7667, 13.6667], [-13.7667, 13.8667], [-13.5667, 13.8667], [-13.5667, 13.6667], [-13.7667, 13.6667]
+        ]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Thiès",
+        "latitude": 14.7833,
+        "longitude": -16.9167
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[
+          [-17.0167, 14.6833], [-17.0167, 14.8833], [-16.8167, 14.8833], [-16.8167, 14.6833], [-17.0167, 14.6833]
+        ]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Ziguinchor",
+        "latitude": 12.5833,
+        "longitude": -16.2667
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[
+          [-16.3667, 12.4833], [-16.3667, 12.6833], [-16.1667, 12.6833], [-16.1667, 12.4833], [-16.3667, 12.4833]
+        ]]]
+      }
+    }
+  ]
+}

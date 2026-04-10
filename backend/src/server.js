@@ -47,14 +47,54 @@ async function bootstrap() {
 
       // Shared services initialization
       socketService.init(server);
-      initSimulationWorker();
+
+      // ✅ Declare cleanup registry BEFORE using it
+      const cleanupFunctions = [];
+
+      const simulationCleanup = initSimulationWorker();
+      if (simulationCleanup) cleanupFunctions.push(simulationCleanup);
+
+      // Démarrage de la synchronisation automatique KoboToolbox en arrière-plan
+      const { startKoboAutoSync } = await import('./services/kobo.cron.js');
+      const koboCleanup = startKoboAutoSync();
+      if (koboCleanup) cleanupFunctions.push(koboCleanup);
+
+      // Démarrage du système de rappels automatiques (Missions)
+      const { startMissionCron } = await import('./services/mission.cron.js');
+      const missionCleanup = startMissionCron();
+      if (missionCleanup) cleanupFunctions.push(missionCleanup);
+
+      // Démarrage du Superviseur Silencieux (Délais Équipes)
+      const { startSilentSupervisor } = await import('./core/workers/supervisor.worker.js');
+      const supervisorCleanup = startSilentSupervisor();
+      if (supervisorCleanup) cleanupFunctions.push(supervisorCleanup);
 
       console.log('💎 PROQUELEC Server is now fully operational.');
 
-      // Graceful shutdown
+      // ✅ IMPROVED: Complete graceful shutdown
       process.on('SIGTERM', async () => {
-        console.log('📥 SIGTERM received. Closing resources...');
+        console.log('📥 SIGTERM received. Closing all resources...');
+        
+        // Stop all background services
+        for (const cleanup of cleanupFunctions) {
+          try {
+            await cleanup();
+          } catch (e) {
+            console.error('❌ Error during cleanup:', e.message);
+          }
+        }
+        
+        // Close Socket.IO connections
+        try {
+          socketService.close();
+        } catch (e) {
+          console.error('❌ Error closing Socket.IO:', e.message);
+        }
+        
+        // Disconnect from database
         await prisma.$disconnect();
+        
+        console.log('✅ All resources closed. Exiting gracefully.');
         process.exit(0);
       });
 

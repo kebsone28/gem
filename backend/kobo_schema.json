@@ -1,0 +1,418 @@
+[
+  {
+    "name": "start",
+    "type": "start"
+  },
+  {
+    "name": "end",
+    "type": "end"
+  },
+  {
+    "name": "today",
+    "type": "today"
+  },
+  {
+    "name": "username",
+    "type": "username"
+  },
+  {
+    "name": "phonenumber",
+    "type": "phonenumber"
+  },
+  {
+    "name": "Numero_ordre",
+    "type": "integer"
+  },
+  {
+    "name": "C1",
+    "type": "calculate"
+  },
+  {
+    "name": "C3",
+    "type": "calculate"
+  },
+  {
+    "name": "C2",
+    "type": "calculate"
+  },
+  {
+    "name": "C4",
+    "type": "calculate"
+  },
+  {
+    "name": "C5",
+    "type": "calculate"
+  },
+  {
+    "name": "TYPE_DE_VISITE",
+    "type": "begin_group"
+  },
+  {
+    "name": "nom_key",
+    "type": "text"
+  },
+  {
+    "name": "telephone_key",
+    "type": "text"
+  },
+  {
+    "name": "latitude_key",
+    "type": "text"
+  },
+  {
+    "name": "longitude_key",
+    "type": "text"
+  },
+  {
+    "name": "region_key",
+    "type": "text"
+  },
+  {
+    "name": "LOCALISATION_CLIENT",
+    "type": "geopoint"
+  },
+  {
+    "name": "role",
+    "type": "select_one roles"
+  },
+  {
+    "name": "group_ue42j94",
+    "type": "begin_group"
+  },
+  {
+    "name": "_TAPE_1_6_PREPARATION_DES_KITS",
+    "type": "note"
+  },
+  {
+    "name": "Nombre_de_KIT_pr_par",
+    "type": "integer"
+  },
+  {
+    "name": "Nombre_de_KIT_Charg_pour_livraison",
+    "type": "integer"
+  },
+  {
+    "name": "group_wu8kv54",
+    "type": "begin_group"
+  },
+  {
+    "name": "note_Livreur",
+    "type": "note"
+  },
+  {
+    "name": "Situation_du_M_nage",
+    "type": "select_one cj3rh91"
+  },
+  {
+    "name": "justificatif",
+    "type": "select_multiple pr4rq21"
+  },
+  {
+    "name": "group_sy9vj14",
+    "type": "begin_group"
+  },
+  {
+    "name": "Longueur_Cable_2_5mm_Int_rieure",
+    "type": "integer"
+  },
+  {
+    "name": "Longueur_Cable_1_5mm_Int_rieure",
+    "type": "integer"
+  },
+  {
+    "name": "Longueur_Tranch_e_Cable_arm_4mm",
+    "type": "integer"
+  },
+  {
+    "name": "Longueur_Tranch_e_C_ble_arm_1_5mm",
+    "type": "integer"
+  },
+  {
+    "name": "Je_confirme_la_remis_u_materiel_au_m_nage",
+    "type": "acknowledge"
+  },
+  {
+    "name": "Je_confirme_le_marqu_osition_des_coffrets",
+    "type": "acknowledge"
+  },
+  {
+    "name": "Presence_de_Mur",
+    "type": "select_one pg7bi79"
+  },
+  {
+    "name": "Je_confirme_le_marqu_coffrets_lectriques",
+    "type": "acknowledge"
+  },
+  {
+    "name": "Photo",
+    "type": "image"
+  },
+  {
+    "name": "etape_macon",
+    "type": "begin_group"
+  },
+  {
+    "name": "note_macon_1",
+    "type": "note"
+  },
+  {
+    "name": "kit_disponible_macon",
+    "type": "select_one kit_disponible"
+  },
+  {
+    "name": "problemes_kit_macon",
+    "type": "select_multiple problemes_kit_macon"
+  },
+  {
+    "name": "type_mur_realise_macon",
+    "type": "select_one type_mur"
+  },
+  {
+    "name": "problemes_travail_macon",
+    "type": "select_multiple problemes_travail_macon"
+  },
+  {
+    "name": "validation_macon_final",
+    "type": "acknowledge"
+  },
+  {
+    "name": "etape_reseau",
+    "type": "begin_group"
+  },
+  {
+    "name": "note_reseau_1",
+    "type": "note"
+  },
+  {
+    "name": "verification_mur_reseau",
+    "type": "select_one verification_mur"
+  },
+  {
+    "name": "problemes_mur_reseau",
+    "type": "select_multiple problemes_mur_reseau"
+  },
+  {
+    "name": "etat_branchement_reseau",
+    "type": "select_one etat_branchement"
+  },
+  {
+    "name": "problemes_branchement_reseau",
+    "type": "select_multiple problemes_branchement_reseau"
+  },
+  {
+    "name": "validation_reseau_final",
+    "type": "acknowledge"
+  },
+  {
+    "name": "etape_interieur",
+    "type": "begin_group"
+  },
+  {
+    "name": "note_interieur_1",
+    "type": "note"
+  },
+  {
+    "name": "verification_branchement_interieur",
+    "type": "select_one verification_branchement"
+  },
+  {
+    "name": "problemes_branchement_interieur",
+    "type": "select_multiple problemes_branchement_interieur"
+  },
+  {
+    "name": "etat_installation_interieur",
+    "type": "select_one etat_installation"
+  },
+  {
+    "name": "problemes_installation_interieur",
+    "type": "select_multiple problemes_installation_interieur"
+  },
+  {
+    "name": "validation_interieur_final",
+    "type": "acknowledge"
+  },
+  {
+    "name": "etape_controleur",
+    "type": "begin_group"
+  },
+  {
+    "name": "ETAT_DE_L_INSTALLATION",
+    "type": "select_one rr4dg37"
+  },
+  {
+    "name": "controleurPROB",
+    "type": "select_multiple oo84j36"
+  },
+  {
+    "name": "Phase_de_controle",
+    "type": "select_one ga7rh54"
+  },
+  {
+    "name": "group_zw7xz94",
+    "type": "begin_group"
+  },
+  {
+    "name": "ETAT_BRANCHEMENT",
+    "type": "select_one sv3tg34"
+  },
+  {
+    "name": "OBSERVATION",
+    "type": "select_multiple kx9fr02"
+  },
+  {
+    "name": "group_wr05k35",
+    "type": "begin_group"
+  },
+  {
+    "name": "Position_du_branchement",
+    "type": "select_one lo9ia24"
+  },
+  {
+    "name": "Observations_sur_la_ition_du_branchement",
+    "type": "select_multiple la7vc77"
+  },
+  {
+    "name": "Hauteur_branchement",
+    "type": "select_one nk1mo89"
+  },
+  {
+    "name": "Observations",
+    "type": "text"
+  },
+  {
+    "name": "Hauteur_coffret",
+    "type": "select_one nk1mo89"
+  },
+  {
+    "name": "Observations_001",
+    "type": "text"
+  },
+  {
+    "name": "Etat_du_coupe_circuit",
+    "type": "select_one ur9iq73"
+  },
+  {
+    "name": "OBSERVATION_001",
+    "type": "select_multiple rz78v01"
+  },
+  {
+    "name": "Continuit_PVC",
+    "type": "select_one nk1mo89"
+  },
+  {
+    "name": "OBSERVATION_002",
+    "type": "select_multiple fv5uq33"
+  },
+  {
+    "name": "Mise_en_oeuvre",
+    "type": "select_one nk1mo89"
+  },
+  {
+    "name": "OBSERVATION_003",
+    "type": "select_multiple ey6uw71"
+  },
+  {
+    "name": "_1_photo_anomalie_si_possible",
+    "type": "image"
+  },
+  {
+    "name": "group_hx7ae46",
+    "type": "begin_group"
+  },
+  {
+    "name": "DISJONCTEUR_GENERAL_EN_TETE_D_",
+    "type": "select_one el0wa18"
+  },
+  {
+    "name": "OBSERVATIONS_",
+    "type": "select_multiple zs4mw04"
+  },
+  {
+    "name": "TYPE_DE_DISJONCTEUR_GENERAL",
+    "type": "select_one nr78z46"
+  },
+  {
+    "name": "ENSEMBLE_DE_L_INSTALLATION_PRO",
+    "type": "select_one gk2qz88"
+  },
+  {
+    "name": "OBSERVATIONS__001",
+    "type": "select_multiple py9cc56"
+  },
+  {
+    "name": "PROTECTION_L_ORIGINE_DE_CHAQ",
+    "type": "select_one nm4md59"
+  },
+  {
+    "name": "OBSERVATIONS_002",
+    "type": "select_multiple nr8tv95"
+  },
+  {
+    "name": "S_PARATION_DES_CIRCUITS_Lumi_",
+    "type": "select_one nm4md59"
+  },
+  {
+    "name": "OBSERVATIONS__002",
+    "type": "text"
+  },
+  {
+    "name": "PROTECTION_CONTACT_D_TOUTE_L_INSTALLATION",
+    "type": "note"
+  },
+  {
+    "name": "PROTECTION_CONTRE_LES_CONTACTS",
+    "type": "select_one bm2rn03"
+  },
+  {
+    "name": "OBSERVATIONS__003",
+    "type": "select_multiple ps4nb23"
+  },
+  {
+    "name": "MISE_EN_OEUVRE_MAT_RIEL_ET_APP",
+    "type": "select_one nm4md59"
+  },
+  {
+    "name": "OBSERVATIONS__004",
+    "type": "select_multiple jm8qy41"
+  },
+  {
+    "name": "CONTINUITE_DE_LA_PROTECTION_ME",
+    "type": "select_one nm4md59"
+  },
+  {
+    "name": "OBSERVATIONS__005",
+    "type": "select_multiple vo5kj15"
+  },
+  {
+    "name": "RESEAU_DE_TERRE_A_VE_TOUTE_L_INSTALLATION",
+    "type": "note"
+  },
+  {
+    "name": "MISE_EN_UVRE_DU_R_SEAU_DE_TER",
+    "type": "select_one nm4md59"
+  },
+  {
+    "name": "OBSERVATIONS__006",
+    "type": "select_multiple pi0xx78"
+  },
+  {
+    "name": "ETAT_DE_LA_BARRETTE_DE_TERRE",
+    "type": "select_one lk4xz51"
+  },
+  {
+    "name": "VALEUR_DE_LA_RESISTANCE_DE_TER",
+    "type": "select_one nm4md59"
+  },
+  {
+    "name": "OBSERVATIONS__007",
+    "type": "integer"
+  },
+  {
+    "name": "validation_controleur_final",
+    "type": "acknowledge"
+  },
+  {
+    "name": "notes_generales",
+    "type": "text"
+  }
+]

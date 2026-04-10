@@ -23,11 +23,57 @@ export const getStatusColor = (status?: string): string => {
     return match ? match[1] : '#94a3b8';
 };
 
-const defaultStyle = import.meta.env.VITE_MAP_STYLE || 'https://tiles.openfreemap.org/styles/positron';
+const rasterOsmStyle = {
+    version: 8,
+    sources: {
+        'osm': {
+            type: 'raster',
+            tiles: ['cached://https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+            tileSize: 256,
+            attribution: '&copy; OpenStreetMap Contributors'
+        }
+    },
+    layers: [
+        {
+            id: 'osm-theme',
+            type: 'raster',
+            source: 'osm',
+            minzoom: 0,
+            maxzoom: 19
+        }
+    ]
+};
 
-export const MAP_STYLE_DARK = 'https://tiles.openfreemap.org/styles/dark';
-export const MAP_STYLE_LIGHT = defaultStyle;
-export const MAP_STYLE_SATELLITE = 'https://tiles.openfreemap.org/styles/bright';
+const defaultStyle = rasterOsmStyle as any; // Force raster bypass for now
+
+export const MAP_STYLE_DARK = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
+export const MAP_STYLE_LIGHT = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
+export const MAP_STYLE_SATELLITE = {
+    version: 8,
+    sources: {
+        esri: {
+            type: 'raster',
+            tiles: [
+                'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+            ],
+            tileSize: 256,
+            attribution: '&copy; Esri, Earthstar Geographics'
+        }
+    },
+    layers: [
+        {
+            id: 'satellite',
+            type: 'raster',
+            source: 'esri',
+            minzoom: 0,
+            maxzoom: 20
+        }
+    ]
+};
+
+// Backward compatibility & aliases
+export const MAP_STYLE_LIGHT_VECTOR = MAP_STYLE_LIGHT;
+export const MAP_STYLE_LIGHT_RASTER = rasterOsmStyle;
 
 export const ICON_SVGS = {
     'check': `<path fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" d="M20 6L9 17l-5-5"/>`,

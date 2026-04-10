@@ -5,124 +5,135 @@
  * Ne contient que le composant MapLibreVectorMap.
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import type { Household } from '../../utils/types';
 import { getHouseholdDerivedStatus } from '../../utils/statusUtils';
 import MapLibreVectorMap from './MapLibreVectorMap';
 import { MapStatsWidget } from './MapStatsWidget';
 import './MapComponent.css';
+import { useTerrainUIStore } from '../../store/terrainUIStore';
 
 interface MapComponentProps {
     households: Household[];
-    onSelect: (household: Household) => void;
-    mapCommand: { center: [number, number]; zoom: number; timestamp: number } | null;
-    showHeatmap?: boolean;
     isFilteringActive?: boolean;
-    activeHouseholdId?: string | null;
-    selectedPhases?: string[];
-    onToggleStatus?: (status: string) => void;
     showLegend?: boolean;
-    showZones?: boolean;
     onZoneClick?: (center: [number, number], zoom: number) => void;
     grappesConfig?: any;
     className?: string;
-    routingEnabled?: boolean;
-    onRoutingClose?: () => void;
-    routingStart?: [number, number] | null;
-    routingDest?: [number, number] | null;
     onRouteFound?: (stats: { distance: number; duration: number; instructions?: any[] } | null) => void;
     userLocation?: [number, number] | null;
     readOnly?: boolean;
-    isMeasuring?: boolean;
-    isSelecting?: boolean;
-    showDatabaseStats?: boolean;
-    mapStyle?: 'streets' | 'satellite';
     grappeZonesData?: any;
     grappeCentroidsData?: any;
-    activeGrappeId?: string | null;
     onHouseholdDrop?: (id: string, lat: number, lng: number) => void;
     favorites?: any[];
     projectId?: string;
-    followUser?: boolean;
     onMove?: (center: [number, number], zoom: number) => void;
-    visibleHouseholds?: Household[];
     onBoundsChange?: (bounds: [number, number, number, number]) => void;
     warehouses?: any[];
     onLassoSelection?: (ids: string[]) => void;
-    isDrawing?: boolean;
-    pendingPoints?: [number, number][];
     onAddPoint?: (point: [number, number]) => void;
+    selectedHouseholdId?: string | null;
     drawnZones?: any[];
 }
 
 const MapComponent: React.FC<MapComponentProps> = ({
     households,
-    onSelect,
-    mapCommand,
-    showHeatmap = false,
+    selectedHouseholdId = null,
     isFilteringActive = false,
-    selectedPhases = [],
-    onToggleStatus,
     showLegend = true,
-    showZones = false,
     onZoneClick,
     grappesConfig,
-    routingEnabled,
-    routingStart,
-    routingDest,
     onRouteFound,
     userLocation,
     readOnly = false,
-    isMeasuring = false,
-    isSelecting = false,
-    showDatabaseStats = false,
-    mapStyle = 'streets',
     grappeZonesData,
     grappeCentroidsData,
-    activeGrappeId,
     onHouseholdDrop,
     favorites = [],
     projectId,
-    followUser = false,
     onMove,
-    visibleHouseholds = [],
     onBoundsChange,
     warehouses = [],
     onLassoSelection,
-    isDrawing = false,
-    pendingPoints = [],
     onAddPoint,
     drawnZones = []
 }) => {
+
+    // Zustand Selectors
+    const mapCommand = useTerrainUIStore(s => s.mapCommand);
+    const selectedPhases = useTerrainUIStore(s => s.selectedPhases);
+    const togglePhase = useTerrainUIStore(s => s.togglePhase);
+    
+    const showDatabaseStats = useTerrainUIStore(s => s.showDatabaseStats);
+    const routingStart = useTerrainUIStore(s => s.routingStart);
+    const routingDest = useTerrainUIStore(s => s.routingDest);
+    const isDrawing = useTerrainUIStore(s => s.isDrawing);
+    const pendingPoints = useTerrainUIStore(s => s.pendingPoints);
+    const activeGrappeId = useTerrainUIStore(s => s.activeGrappeId);
+    const mapMode = useTerrainUIStore(s => s.mapMode);
+
+    const safeHouseholds = React.useMemo(() => {
+        // ✅ Use all households for complete map display (no viewport or filter restriction)
+        const sourceHouseholds = households || [];
+        
+        return sourceHouseholds.filter(h => {
+            const coords = h.location?.coordinates;
+            return (
+                Array.isArray(coords) &&
+                coords.length === 2 &&
+                typeof coords[0] === 'number' &&
+                typeof coords[1] === 'number' &&
+                !isNaN(coords[0]) &&
+                !isNaN(coords[1])
+            );
+        });
+    }, [households]);
+
+    const [mapError] = React.useState<string | null>(null);
+    const showNoDataOverlay = safeHouseholds.length === 0;
+
+    if (mapError) {
+        return (
+            <div className="flex w-full h-full items-center justify-center bg-red-50 text-red-600 p-6 flex-col gap-4">
+                <span className="text-4xl">⚠️</span>
+                <span className="text-xl font-bold">Le rendu cartographique a échoué</span>
+                <span className="text-sm bg-white p-2 rounded shadow">{mapError}</span>
+            </div>
+        );
+    }
+
     return (
         <div className="h-full w-full relative bg-slate-100 dark:bg-slate-900 overflow-hidden">
+            {showNoDataOverlay && (
+                <div className="absolute inset-0 z-20 flex items-center justify-center bg-slate-950/40 text-white p-6 text-center pointer-events-none">
+                    <div className="max-w-md">
+                        <div className="text-5xl mb-3">🗺️</div>
+                        <div className="text-lg font-bold">Aucune donnée géographique valide à afficher dans cette vue</div>
+                        <p className="mt-2 text-sm text-slate-200">La carte s’affiche, mais il n’existe aucun ménage avec des coordonnées GPS valides dans le périmètre actuel.</p>
+                    </div>
+                </div>
+            )}
             {/* Seul et unique layer de carte pour éviter les superpositions grises */}
             <MapLibreVectorMap
-                households={households}
+                households={safeHouseholds}
+                selectedHouseholdId={selectedHouseholdId}
                 mapCommand={mapCommand}
-                onSelectHousehold={onSelect}
-                showHeatmap={showHeatmap}
                 isFilteringActive={isFilteringActive}
-                showZones={showZones}
                 onZoneClick={onZoneClick}
                 grappesConfig={grappesConfig}
                 className="w-full h-full"
                 readOnly={readOnly}
-                isMeasuring={isMeasuring}
-                isSelecting={isSelecting}
-                mapStyle={mapStyle}
                 grappeZonesData={grappeZonesData}
                 grappeCentroidsData={grappeCentroidsData}
                 activeGrappeId={activeGrappeId}
                 userLocation={userLocation}
                 onHouseholdDrop={onHouseholdDrop}
-                routingEnabled={routingEnabled}
                 routingStart={routingStart}
                 routingDest={routingDest}
                 onRouteFound={onRouteFound}
                 favorites={favorites}
                 projectId={projectId}
-                followUser={followUser}
                 onMove={onMove}
                 onBoundsChange={onBoundsChange}
                 warehouses={warehouses}
@@ -134,16 +145,18 @@ const MapComponent: React.FC<MapComponentProps> = ({
             />
 
             {showDatabaseStats && <MapStatsWidget stats={{
-                visible: visibleHouseholds.length,
-                completed: visibleHouseholds.filter((h: Household) => getHouseholdDerivedStatus(h) === 'Contrôle conforme' || getHouseholdDerivedStatus(h) === 'Intérieur terminé').length,
-                problems: visibleHouseholds.filter((h: Household) => getHouseholdDerivedStatus(h) === 'Non conforme').length,
-                pending: visibleHouseholds.filter((h: Household) => getHouseholdDerivedStatus(h) === 'Non encore commencé').length
+                visible: safeHouseholds.length,
+                completed: safeHouseholds.filter((h: Household) => getHouseholdDerivedStatus(h) === 'Contrôle conforme' || getHouseholdDerivedStatus(h) === 'Intérieur terminé').length,
+                problems: safeHouseholds.filter((h: Household) => getHouseholdDerivedStatus(h) === 'Non conforme').length,
+                pending: safeHouseholds.filter((h: Household) => getHouseholdDerivedStatus(h) === 'Non encore commencé').length
             }} />}
+
+            {/* Viewport Loading Indicator - REMOVED: misleading when only showing visible households */}
 
             {/* Légende améliorée avec icônes */}
             {showLegend && (
-                <div className="absolute bottom-8 left-4 z-[100] px-5 py-4 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200/80 dark:border-white/10 shadow-2xl">
-                    <h4 className="text-[9px] font-black uppercase tracking-widest mb-3 text-slate-500 dark:text-slate-400">Légende / Étapes</h4>
+                <div className="absolute bottom-8 left-4 z-[100] px-5 py-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 shadow-2xl">
+                    <h4 className="text-xs font-black uppercase tracking-widest mb-3 text-slate-500 dark:text-slate-400">Légende / Étapes</h4>
                     <div className="flex flex-col gap-2">
                         {[
                             { label: 'Contrôle conforme', tailwindClass: 'bg-[#10b981]', icon: '✓', status: 'Contrôle conforme' },
@@ -156,16 +169,16 @@ const MapComponent: React.FC<MapComponentProps> = ({
                         ].map((item) => (
                             <div
                                 key={item.status}
-                                onClick={() => onToggleStatus?.(item.status)}
+                                onClick={() => togglePhase(item.status)}
                                 title={`Filtrer: ${item.label}`}
                                 className={`flex items-center gap-2.5 cursor-pointer transition-all duration-200 hover:translate-x-1 select-none ${selectedPhases.includes(item.status) ? 'opacity-100' : 'opacity-30'}`}
                             >
                                 <div
-                                    className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold shadow-md flex-shrink-0 ${item.tailwindClass}`}
+                                    className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-md flex-shrink-0 ${item.tailwindClass}`}
                                 >
                                     {item.icon}
                                 </div>
-                                <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">{item.label}</span>
+                                <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">{item.label}</span>
                             </div>
                         ))}
                     </div>

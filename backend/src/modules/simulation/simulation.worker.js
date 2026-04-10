@@ -40,7 +40,7 @@ export const initSimulationWorker = () => {
 
     if (!worker) {
         console.warn('[WORKER] Redis non disponible, Simulation Worker est désactivé.');
-        return;
+        return () => {}; // Return empty cleanup function
     }
 
     worker.on('failed', (job, err) => {
@@ -48,4 +48,14 @@ export const initSimulationWorker = () => {
     });
 
     console.log('[WORKER] Simulation Worker initialisé et prêt.');
+
+    // Return cleanup function
+    return async () => {
+        console.log('[WORKER] Arrêt du Simulation Worker...');
+        try {
+            await worker.close();
+        } catch (e) {
+            console.error('❌ Error closing simulation worker:', e.message);
+        }
+    };
 };

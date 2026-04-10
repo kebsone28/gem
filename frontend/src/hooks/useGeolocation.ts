@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import toast from 'react-hot-toast';
 import logger from '../utils/logger';
 
@@ -6,26 +6,34 @@ export const useGeolocation = (onLocationFound?: (loc: [number, number]) => void
     const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
     const [geolocationError, setGeolocationError] = useState<string | null>(null);
 
-    // Initial check
+    // Garde la ref à jour sans déclencher de re-render
+    const onLocationFoundRef = useRef(onLocationFound);
+    useEffect(() => {
+        onLocationFoundRef.current = onLocationFound;
+    });
+
+    // Initial check — déclenché UNE SEULE FOIS au montage
     useEffect(() => {
         if (!navigator.geolocation) {
             setGeolocationError('Géolocalisation non disponible sur ce navigateur');
             logger.warn('Geolocation not available');
-        } else if (!userLocation) {
-            navigator.geolocation.getCurrentPosition(
-                (pos) => {
-                    const loc: [number, number] = [pos.coords.longitude, pos.coords.latitude];
-                    setUserLocation(loc);
-                    if (onLocationFound) onLocationFound(loc);
-                    logger.log('📍 Auto-location detected:', loc);
-                },
-                (err) => {
-                    logger.warn('⚠️ Auto-location failed:', err);
-                },
-                { enableHighAccuracy: false, timeout: 5000 }
-            );
+            return;
         }
-    }, [userLocation, onLocationFound]);
+
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                const loc: [number, number] = [pos.coords.longitude, pos.coords.latitude];
+                setUserLocation(loc);
+                onLocationFoundRef.current?.(loc);
+                logger.log('📍 Auto-location detected:', loc);
+            },
+            (err) => {
+                logger.warn('⚠️ Auto-location failed:', err);
+            },
+            { enableHighAccuracy: false, timeout: 5000 }
+        );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // Intentionnellement vide : exécuté une seule fois au montage
 
     const handleRequestGeolocation = useCallback(() => {
         if (!navigator.geolocation) {

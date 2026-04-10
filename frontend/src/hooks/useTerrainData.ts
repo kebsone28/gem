@@ -7,16 +7,24 @@ import logger from '../utils/logger';
 import apiClient from '../api/client';
 
 export function mapToApiPayload(household: Partial<Household>, overrides: any = {}) {
+    // CRITICAL: Ensure ID is always present for sync
+    const id = household.backendId || household.id || crypto.randomUUID();
+    
     return {
-        // ⚠️ projectId does NOT exist on Household model in Prisma.
-        // It links via zoneId → Zone → projectId.
+        // Critical Sync Fields ID/Keys
+        id,
+        projectId: household.projectId, // Requis par pushSchema
         zoneId: household.zoneId,
+        organizationId: household.organizationId,
+
+        // Data Fields
         status: household.status || 'planned',
         owner: household.owner || {},
         location: household.location,
         koboData: household.koboData || {},
         koboSync: household.koboSync || {},
         assignedTeams: household.assignedTeams?.length ? household.assignedTeams : [],
+        
         // Scalar fields
         name: household.name,
         phone: household.phone,
@@ -27,105 +35,121 @@ export function mapToApiPayload(household: Partial<Household>, overrides: any = 
     };
 }
 
-// 🔧 Fonction pour normaliser les coordonnées GPS (convertir virgules en points)
-const normalizeCoordinates = (household: any): Household => {
-    if (!household) return household;
-    
+// 🔧 VERSION PRO : Normalisation GPS multi-source ultra-robuste
+const getNormalizedCoords = (h: any): [number, number] | null => {
     try {
-        // Case 1: location.coordinates exists — normalize comma-separated strings
-        if (household.location?.coordinates) {
-            const coordinates = household.location.coordinates;
-            if (Array.isArray(coordinates) && coordinates.length === 2) {
-                const [lon, lat] = coordinates;
-                
-                let normalizedLon: number;
-                let normalizedLat: number;
-                
-                if (typeof lon === 'string') {
-                    normalizedLon = parseFloat((lon as string).replace(',', '.'));
-                } else if (typeof lon === 'number') {
-                    normalizedLon = lon;
-                } else {
-                    return household;
-                }
+        let lat: any = null;
+        let lng: any = null;
 
-                if (typeof lat === 'string') {
-                    normalizedLat = parseFloat((lat as string).replace(',', '.'));
-                } else if (typeof lat === 'number') {
-                    normalizedLat = lat;
-                } else {
-                    return household;
-                }
-
-                if (isNaN(normalizedLon) || isNaN(normalizedLat)) return household;
-                if (Math.abs(normalizedLon) > 180 || Math.abs(normalizedLat) > 90) {
-                    logger.warn(`⚠️ Coordonnées hors limites pour ${household.id}: [${normalizedLon}, ${normalizedLat}]`);
-                    return household;
-                }
-
-                return {
-                    ...household,
-                    location: {
-                        ...household.location,
-                        coordinates: [normalizedLon, normalizedLat] as [number, number]
-                    }
-                } as Household;
+        // 1. Format standard GeoJSON (déjà présent ou partiel)
+        if (h.location?.coordinates && Array.isArray(h.location.coordinates) && h.location.coordinates.length === 2) {
+            const [cLng, cLat] = h.location.coordinates.map((val: any) => 
+                typeof val === 'string' ? parseFloat(val.replace(',', '.')) : Number(val)
+            );
+            if (!isNaN(cLng) && !isNaN(cLat) && Math.abs(cLng) <= 180 && Math.abs(cLat) <= 90) {
+                lng = cLng;
+                lat = cLat;
             }
         }
 
-        // Case 2: No location.coordinates — try scalar latitude/longitude fields
-        const rawLon = household.longitude ?? household.koboData?.longitude ?? household.koboSync?.longitude;
-        const rawLat = household.latitude ?? household.koboData?.latitude ?? household.koboSync?.latitude;
-
-        if (rawLon != null && rawLat != null) {
-            const lon = typeof rawLon === 'string' ? parseFloat(rawLon.replace(',', '.')) : Number(rawLon);
-            const lat = typeof rawLat === 'string' ? parseFloat(rawLat.replace(',', '.')) : Number(rawLat);
-
-            if (!isNaN(lon) && !isNaN(lat) && Math.abs(lon) <= 180 && Math.abs(lat) <= 90) {
-                return {
-                    ...household,
-                    location: {
-                        type: 'Point',
-                        coordinates: [lon, lat] as [number, number]
-                    }
-                } as Household;
+        // 2. Kobo _geolocation (souvent un tableau [lat, lon]) fallback
+        if (!lat || !lng) {
+            const geo = h._geolocation || h.koboData?._geolocation;
+            if (Array.isArray(geo) && geo.length >= 2) {
+                lat = geo[0];
+                lng = geo[1];
             }
         }
 
-        return household;
-    } catch (e) {
-        logger.warn(`❌ Erreur normalisation coords for ${household?.id}:`, e);
-        return household;
+        // 3. Champs directs latitude/longitude (Kobo ou API fallback)
+        if (!lat || !lng) {
+            lat = h.latitude ?? h.koboData?.latitude ?? h.koboSync?.latitude;
+            lng = h.longitude ?? h.koboData?.longitude ?? h.koboSync?.longitude;
+        }
+
+        // 4. Champs imbriqués TYPE_DE_VISITE
+        if (!lat || !lng) {
+            const tv = h.TYPE_DE_VISITE || h.koboData?.TYPE_DE_VISITE;
+            if (tv) {
+                lat = tv.latitude_key || tv.latitude;
+                lng = tv.longitude_key || tv.longitude;
+            }
+        }
+
+        // 5. KoboData raw fallbacks
+        if (!lat || !lng && h.koboData) {
+            lat = h.koboData['gps/latitude'] || h.koboData.Latitude;
+            lng = h.koboData['gps/longitude'] || h.koboData.Longitude;
+        }
+
+        // Convert to strict numbers
+        const numLat = typeof lat === 'string' ? parseFloat(lat.replace(',', '.')) : Number(lat);
+        const numLng = typeof lng === 'string' ? parseFloat(lng.replace(',', '.')) : Number(lng);
+
+        if (
+            !isNaN(numLat) && !isNaN(numLng) && 
+            numLat !== 0 && numLng !== 0 &&
+            Math.abs(numLat) <= 90 && Math.abs(numLng) <= 180
+        ) {
+            return [numLng, numLat]; // MapLibre expects [lng, lat]
+        }
+
+        return null;
+    } catch (err) {
+        logger.warn('⚠️ Error normalizing coords for household:', h.id, err);
+        return null;
     }
+};
+
+/**
+ * ✅ Normalisation complète d'un ménage
+ */
+const normalizeHousehold = (h: Household): Household => {
+    const coords = getNormalizedCoords(h);
+    
+    // Injection forcée du format GeoJSON standard pour la carte
+    if (coords) {
+        h.location = {
+            type: 'Point',
+            coordinates: coords
+        };
+        // Sync direct lat/lng fields for legacy components
+        h.longitude = coords[0];
+        h.latitude = coords[1];
+    }
+
+    return h;
 };
 
 
 export function useTerrainData() {
-    const { activeProjectId } = useProject();
+    const { activeProjectId, project } = useProject();
+    const currentProjectId = project?.id || activeProjectId;
+    
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
 
     const households = useLiveQuery(async () => {
-        if (!activeProjectId) return [];
+        if (!currentProjectId) return [];
 
-        let all = await db.households.where('projectId').equals(activeProjectId).toArray();
+        let all = await db.households.where('projectId').equals(currentProjectId).toArray();
 
         // Fallback
         if (all.length === 0) {
-            const zones = await db.zones.where('projectId').equals(activeProjectId).toArray();
+            const zones = await db.zones.where('projectId').equals(currentProjectId).toArray();
             const zoneIds = zones.map((z: any) => z.id);
             if (zoneIds.length > 0) {
                 const byZone = await db.households.where('zoneId').anyOf(zoneIds).toArray();
                 for (const h of byZone) {
                     if (!h.projectId) {
-                        db.households.update(h.id, { projectId: activeProjectId }).catch(() => {});
+                        db.households.update(h.id, { projectId: currentProjectId }).catch(() => {});
                     }
                 }
                 all = byZone;
             }
         }
 
-        const normalized = all.map(h => normalizeCoordinates(h as Household));
+        const normalized = all.map(h => normalizeHousehold(h as Household));
 
         return normalized.filter(h => {
             const matchesSearch = searchTerm === '' ||
@@ -321,12 +345,68 @@ export function useTerrainData() {
     const importHouseholds = useCallback(async (data: Household[]) => {
         const existingHouseholds = await db.households.toArray();
         const existingMap = new Map(existingHouseholds.map(h => [h.id, h]));
+        
         const mergedData = data.map(newItem => {
             const existingItem = existingMap.get(newItem.id);
             if (existingItem) return { ...existingItem, ...newItem };
             return newItem;
         });
+
+        // 1. Bulk Put in Households table
         await db.households.bulkPut(mergedData);
+
+        // 2. Queue for Sync (if they don't have a backendId yet)
+        const toSync = mergedData.filter(h => {
+            const existing = existingMap.get(h.id);
+            // If it's a new household (no existing) or it was previously unsynced
+            return !existing || !existing.backendId;
+        });
+
+        if (toSync.length > 0) {
+            logger.log(`📥 [IMPORT] Queuing ${toSync.length} new/local households for sync...`);
+            const outboxItems = toSync.map(h => ({
+                action: `Sync POST on households/${h.id}`,
+                endpoint: `households`,
+                method: 'POST' as const,
+                payload: mapToApiPayload(h),
+                timestamp: Date.now(),
+                status: 'pending' as const,
+                retryCount: 0
+            }));
+            await db.syncOutbox.bulkAdd(outboxItems);
+        }
+    }, []);
+
+    const repairSyncQueue = useCallback(async () => {
+        const allHouseholds = await db.households.toArray();
+        const outbox = await db.syncOutbox.toArray();
+        
+        // Find households that are NEITHER on server (backendId) NOR in outbox
+        const outboxKeys = new Set(outbox.map(item => {
+            if (item.endpoint.includes('households')) {
+                const segments = item.endpoint.split('/');
+                return segments[segments.length - 1] || item.payload.id;
+            }
+            return null;
+        }).filter(Boolean));
+
+        const orphans = allHouseholds.filter(h => !h.backendId && !outboxKeys.has(h.id));
+
+        if (orphans.length > 0) {
+            logger.log(`🔧 [REPAIR] Found ${orphans.length} orphan households. Adding to sync queue...`);
+            const outboxItems = orphans.map(h => ({
+                action: `Repair: Sync POST on households/${h.id}`,
+                endpoint: `households`,
+                method: 'POST' as const,
+                payload: mapToApiPayload(h),
+                timestamp: Date.now(),
+                status: 'pending' as const,
+                retryCount: 0
+            }));
+            await db.syncOutbox.bulkAdd(outboxItems);
+            return orphans.length;
+        }
+        return 0;
     }, []);
 
     const detectDuplicates = useCallback(async (data: Household[]) => {
@@ -352,6 +432,28 @@ export function useTerrainData() {
 
     const simulateKoboSync = useCallback(async () => {
         const all = await db.households.toArray();
+        
+        if (all.length === 0) {
+            // S'il n'y a rien localement, simulons un import depuis Kobo (5 ménages)
+            const mockData = Array.from({ length: 5 }).map((_, i) => ({
+                id: `kobo_sim_${Date.now()}_${i}`,
+                projectId: currentProjectId || 'default_project',
+                zoneId: 'zone_sim',
+                organizationId: 'org_sim',
+                owner: `Client Kobo ${i + 1}`,
+                location: {
+                    type: 'Point' as const,
+                    coordinates: [-17.44 + (Math.random() * 0.1), 14.71 + (Math.random() * 0.1)] as [number, number]
+                },
+                status: ['Murs', 'Réseau', 'Intérieur', 'Terminé'][Math.floor(Math.random() * 4)],
+                version: 1,
+                lastModified: Date.now(),
+                source: 'kobo' as const
+            }));
+            await db.households.bulkPut(mockData as any[]);
+            return;
+        }
+
         const updates = all.map(h => {
             const rand = Math.random();
             const isStarted = rand > 0.3;
@@ -366,10 +468,10 @@ export function useTerrainData() {
                 };
                 newStatus = phases[phaseIndex];
             }
-            return { ...h, status: newStatus, koboData };
+            return { ...h, status: newStatus, koboData, lastModified: Date.now(), source: 'kobo' as const };
         });
         await db.households.bulkPut(updates);
-    }, []);
+    }, [currentProjectId]);
 
     const getHouseholdLogs = async (id: string) => {
         return await db.sync_logs
@@ -389,6 +491,7 @@ export function useTerrainData() {
         updateHouseholdLocation,
         uploadHouseholdPhoto,
         importHouseholds,
+        repairSyncQueue,
         detectDuplicates,
         clearHouseholds,
         simulateKoboSync,

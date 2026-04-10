@@ -22,8 +22,8 @@ export function kMeansClustering(points: any[], k: number, maxIterations = 50) {
     }
 
     // Initialize centroids randomly from existing points
-    let centroids = [];
-    let usedIndices = new Set();
+    const centroids: { lat: number; lon: number }[] = [];
+    const usedIndices = new Set();
     while (centroids.length < k) {
         const idx = Math.floor(Math.random() * points.length);
         if (!usedIndices.has(idx)) {
@@ -106,7 +106,7 @@ export function generateDynamicGrappes(households: any[], regionTargetSizes = { 
         const targetSize = (regionTargetSizes as any)[region] || 500;
 
         // Determine k for main grappes (e.g., Target ~500 households per grappe)
-        let kMain = Math.max(1, Math.round(points.length / targetSize));
+        const kMain = Math.max(1, Math.round(points.length / targetSize));
 
         const mainClusters = kMeansClustering(points, kMain);
 
@@ -138,7 +138,7 @@ export function generateDynamicGrappes(households: any[], regionTargetSizes = { 
             });
 
             // For each main grappe, cluster into sub-grappes (e.g., Target ~100 households per sub-grappe)
-            let kSub = Math.max(1, Math.round(mainCluster.points.length / 100));
+            const kSub = Math.max(1, Math.round(mainCluster.points.length / 100));
             const subClusters = kMeansClustering(mainCluster.points, kSub);
 
             subClusters.forEach((subCluster, subIdx) => {

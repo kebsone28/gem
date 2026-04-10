@@ -129,14 +129,14 @@ export function TeamTrackingPanel({ isDarkMode = true, onSelectPosition }: Props
                             {isOnline
                                 ? <Wifi size={9} className="text-emerald-400" />
                                 : <WifiOff size={9} className="text-amber-400" />}
-                            <p className={`text-[10px] ${sub}`}>
+                            <p className={`text-xs ${sub}`}>
                                 {isOnline ? 'Données réelles' : 'Simulation locale'} · {positions.length} agent{positions.length !== 1 ? 's' : ''}
                             </p>
                         </div>
                     </div>
                 </div>
                 <button
-                    title="Rafraîchir les positions"
+                    aria-label="Rafraîchir les positions"
                     onClick={fetchPositions}
                     disabled={loading}
                     className={`p-2 rounded-xl transition-colors ${isDarkMode ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}
@@ -149,7 +149,7 @@ export function TeamTrackingPanel({ isDarkMode = true, onSelectPosition }: Props
             <div className="p-3 space-y-2 max-h-72 overflow-y-auto">
                 {!isOnline && (
                     <div className="bg-amber-500/10 rounded-xl px-3 py-2 mb-1">
-                        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-black/60 text-white text-[10px] px-3 py-1.5 rounded-full flex items-center gap-2">
+                        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-black/60 text-white text-xs px-3 py-1.5 rounded-full flex items-center gap-2">
                             ℹ️ Endpoint <code>/api/teams/positions</code> non disponible — données simulées affichées.
                         </div>
                     </div>
@@ -166,7 +166,7 @@ export function TeamTrackingPanel({ isDarkMode = true, onSelectPosition }: Props
                         >
                             {/* Avatar */}
                             <div
-                                className="w-9 h-9 rounded-xl flex items-center justify-center text-white text-[11px] font-black flex-shrink-0"
+                                className="w-9 h-9 rounded-xl flex items-center justify-center text-white text-xs font-black flex-shrink-0"
                                 style={{ backgroundColor: color }}
                                 /* eslint-disable-line no-inline-styles */
                             >
@@ -174,12 +174,12 @@ export function TeamTrackingPanel({ isDarkMode = true, onSelectPosition }: Props
                             </div>
                             <div className="flex-1 min-w-0">
                                 <p className={`text-xs font-bold truncate ${text}`}>{pos.name}</p>
-                                <p className={`text-[10px] ${sub}`}>{label}</p>
+                                <p className={`text-xs ${sub}`}>{label}</p>
                             </div>
                             <div className="flex flex-col items-end gap-1 flex-shrink-0">
                                 <div className="flex items-center gap-1">
                                     <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                                    <span className={`text-[9px] font-bold ${sub}`}>{timeAgo(pos.updatedAt)}</span>
+                                    <span className={`text-xs font-bold ${sub}`}>{timeAgo(pos.updatedAt)}</span>
                                 </div>
                                 <MapPin size={10} style={{ color }} />
                             </div>
@@ -194,7 +194,7 @@ export function TeamTrackingPanel({ isDarkMode = true, onSelectPosition }: Props
 
             {/* Note GPS */}
             <div className={`px-4 py-2 border-t border-slate-700/20 ${isDarkMode ? 'bg-slate-800/30' : 'bg-slate-50'}`}>
-                <p className={`text-[9px] ${sub}`}>
+                <p className={`text-xs ${sub}`}>
                     🔄 Mise à jour auto toutes les 30s · Cliquez sur un agent pour centrer la carte
                 </p>
             </div>

@@ -14,7 +14,7 @@ import {
     ChevronDown
 } from 'lucide-react';
 import { useFinances } from '../../hooks/useFinances';
-import { useTheme } from '../../context/ThemeContext';
+import { useTheme } from '../../contexts/ThemeContext';
 import { useProject } from '../../hooks/useProject';
 import { motion, AnimatePresence } from 'framer-motion';
 import * as XLSX from 'xlsx';
@@ -202,7 +202,7 @@ export default function MaterialDatabase() {
                         </div>
                         <div>
                             <h4 className="text-lg font-bold tracking-tight italic">Catalogue & Tarification</h4>
-                            <p className="text-[11px] text-slate-500 font-medium">Gérez vos références et prix unitaires HT</p>
+                            <p className="text-xs text-slate-500 font-medium">Gérez vos références et prix unitaires HT</p>
                         </div>
                     </div>
 
@@ -220,8 +220,8 @@ export default function MaterialDatabase() {
                         <div className="relative group">
                             <Filter className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors" size={14} />
                             <select
-                                title="Filtrer par catégorie"
-                                className={`bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl py-3 pl-11 pr-8 text-[11px] font-bold uppercase tracking-wider outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 cursor-pointer appearance-none min-w-[180px] ${isDarkMode ? 'text-white' : 'text-slate-900'}`}
+                                aria-label="Filtrer par catégorie"
+                                className={`bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl py-3 pl-11 pr-8 text-xs font-bold uppercase tracking-wider outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 cursor-pointer appearance-none min-w-[180px] ${isDarkMode ? 'text-white' : 'text-slate-900'}`}
                                 value={categoryFilter}
                                 onChange={e => setCategoryFilter(e.target.value)}
                             >
@@ -248,8 +248,8 @@ export default function MaterialDatabase() {
                         {inventory.length === 0 && (
                             <button
                                 onClick={handleImport}
-                                title="Charger le catalogue standard"
-                                className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 px-5 py-3 rounded-2xl text-[10px] font-bold uppercase tracking-widest transition-all border border-slate-200 dark:border-slate-700"
+                                aria-label="Charger le catalogue standard"
+                                className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 px-5 py-3 rounded-2xl text-xs font-bold uppercase tracking-widest transition-all border border-slate-200 dark:border-slate-700"
                             >
                                 <DownloadCloud size={14} /> CATALOGUE TYPE
                             </button>
@@ -257,23 +257,23 @@ export default function MaterialDatabase() {
 
                         <button
                             onClick={() => fileInputRef.current?.click()}
-                            title="Importer Excel"
-                            className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 hover:text-primary hover:border-primary transition-all shadow-sm"
+                            aria-label="Importer Excel"
+                            className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 hover:text-primary hover:border-primary transition-all shadow-sm dark:shadow-none"
                         >
                             <FileSpreadsheet size={18} />
                         </button>
 
                         <button
                             onClick={handleExportExcel}
-                            title="Exporter Excel"
-                            className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 hover:text-primary hover:border-primary transition-all shadow-sm"
+                            aria-label="Exporter Excel"
+                            className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 hover:text-primary hover:border-primary transition-all shadow-sm dark:shadow-none"
                         >
                             <DownloadCloud size={18} />
                         </button>
 
                         <button
                             onClick={() => setIsAdding(true)}
-                            className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white px-6 py-3 rounded-2xl text-[11px] font-bold uppercase tracking-widest transition-all shadow-lg shadow-primary/20"
+                            className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white px-6 py-3 rounded-2xl text-xs font-bold uppercase tracking-widest transition-all shadow-lg shadow-primary/20"
                         >
                             <Plus size={16} /> NOUVEAU
                         </button>
@@ -284,8 +284,8 @@ export default function MaterialDatabase() {
                     <table className="w-full text-left">
                         <thead>
                             <tr className={`border-b ${isDarkMode ? 'bg-slate-950/30 border-slate-800/50' : 'bg-slate-50 border-slate-100'}`}>
-                                <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-slate-400">Sél.</th>
-                                <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                                <th className="px-8 py-5 text-xs font-bold uppercase tracking-widest text-slate-400">Sél.</th>
+                                <th className="px-8 py-5 text-xs font-bold uppercase tracking-widest text-slate-400">
                                     <button
                                         onClick={toggleSort}
                                         className="flex items-center gap-2 hover:text-primary transition-colors"
@@ -294,11 +294,11 @@ export default function MaterialDatabase() {
                                         {sortOrder === 'asc' ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
                                     </button>
                                 </th>
-                                <th className="px-6 py-5 text-[10px] font-bold uppercase tracking-widest text-slate-400">Domaine</th>
-                                <th className="px-6 py-5 text-[10px] font-bold uppercase tracking-widest text-slate-400 text-right">Qte / Stock</th>
-                                <th className="px-6 py-5 text-[10px] font-bold uppercase tracking-widest text-slate-400 text-right">P.U (HT)</th>
-                                <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-slate-400 text-right">Valorisation</th>
-                                <th className="px-6 py-5 text-[10px] font-bold uppercase tracking-widest text-slate-400 text-center">Actions</th>
+                                <th className="px-6 py-5 text-xs font-bold uppercase tracking-widest text-slate-400">Domaine</th>
+                                <th className="px-6 py-5 text-xs font-bold uppercase tracking-widest text-slate-400 text-right">Qte / Stock</th>
+                                <th className="px-6 py-5 text-xs font-bold uppercase tracking-widest text-slate-400 text-right">P.U (HT)</th>
+                                <th className="px-8 py-5 text-xs font-bold uppercase tracking-widest text-slate-400 text-right">Valorisation</th>
+                                <th className="px-6 py-5 text-xs font-bold uppercase tracking-widest text-slate-400 text-center">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-800/20">
@@ -312,7 +312,7 @@ export default function MaterialDatabase() {
                                         <td className="px-8 py-4"></td>
                                         <td className="px-8 py-4">
                                             <input
-                                                title='Nom du matériel'
+                                                aria-label='Nom du matériel'
                                                 placeholder="ex: Coffret Senelec"
                                                 className="bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs w-full focus:border-indigo-500 outline-none"
                                                 value={newItem.name}
@@ -322,7 +322,7 @@ export default function MaterialDatabase() {
                                         <td className="px-6 py-4">
                                             <select
                                                 title='Catégorie'
-                                                className="bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs w-full focus:border-indigo-500 outline-none uppercase font-black tracking-widest text-[9px]"
+                                                className="bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs w-full focus:border-indigo-500 outline-none uppercase font-black tracking-widest text-xs"
                                                 value={newItem.category}
                                                 onChange={e => setNewItem({ ...newItem, category: e.target.value })}
                                             >
@@ -355,7 +355,7 @@ export default function MaterialDatabase() {
                                         <td className="px-8 py-4 text-right"></td>
                                         <td className="px-6 py-4 text-center">
                                             <button
-                                                title="Enregistrer le matériel"
+                                                aria-label="Enregistrer le matériel"
                                                 onClick={handleAdd}
                                                 className="bg-emerald-600 text-white p-2 rounded-lg hover:bg-emerald-500 transition-colors"
                                             >
@@ -380,7 +380,7 @@ export default function MaterialDatabase() {
                                                 <input
                                                     type="checkbox"
                                                     checked={item.isActive !== false}
-                                                    title="Inclure dans le calcul"
+                                                    aria-label="Inclure dans le calcul"
                                                     onChange={() => updateInventoryItem(item.id, { isActive: item.isActive === false })}
                                                     className="w-4 h-4 rounded-md border-slate-700 bg-slate-900 text-indigo-600 focus:ring-indigo-500/50 cursor-pointer"
                                                 />
@@ -397,7 +397,7 @@ export default function MaterialDatabase() {
                                                 <div className="relative">
                                                     <select
                                                         title='Catégorie'
-                                                        className={`bg-transparent border-none text-[8px] font-black uppercase tracking-widest focus:bg-slate-800/50 rounded p-1 outline-none appearance-none pr-4 cursor-pointer
+                                                        className={`bg-transparent border-none text-xs font-black uppercase tracking-widest focus:bg-slate-800/50 rounded p-1 outline-none appearance-none pr-4 cursor-pointer
                                                             ${categoryColor === 'indigo' ? 'text-indigo-400' :
                                                                 categoryColor === 'blue' ? 'text-blue-400' :
                                                                     categoryColor === 'emerald' ? 'text-emerald-400' :
@@ -447,11 +447,11 @@ export default function MaterialDatabase() {
                                             </td>
                                             <td className="px-6 py-5 text-center">
                                                 <button
-                                                    title="Supprimer définitivement"
+                                                    aria-label="Supprimer définitivement"
                                                     onClick={() => {
                                                         if (confirm('Supprimer cet article ?')) deleteInventoryItem(item.id);
                                                     }}
-                                                    className="text-slate-600 hover:text-rose-500 transition-all p-2 hover:bg-rose-500/10 rounded-lg active:scale-90"
+                                                    className="text-slate-600 dark:text-slate-400 hover:text-rose-500 transition-all p-2 hover:bg-rose-500/10 rounded-lg active:scale-90"
                                                 >
                                                     <Trash2 size={14} />
                                                 </button>
@@ -463,7 +463,7 @@ export default function MaterialDatabase() {
                         </tbody>
                         <tfoot>
                             <tr className="bg-slate-950/30">
-                                <td colSpan={5} className="px-8 py-6 text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">VALORISATION TOTALE DU STOCK (APPROVISIONNEMENT)</td>
+                                <td colSpan={5} className="px-8 py-6 text-xs font-black uppercase tracking-[0.3em] text-slate-500">VALORISATION TOTALE DU STOCK (APPROVISIONNEMENT)</td>
                                 <td className="px-8 py-6 text-right text-2xl font-black italic tracking-tighter text-white">
                                     {fmtFCFA(stats.supplyCost)}
                                 </td>
@@ -478,7 +478,7 @@ export default function MaterialDatabase() {
             <div className={`p-6 rounded-3xl border flex gap-4 ${isDarkMode ? 'bg-amber-500/5 border-amber-500/20' : 'bg-amber-50 border-amber-100'}`}>
                 <Info size={24} className="text-amber-500 shrink-0" />
                 <div className="space-y-1">
-                    <p className="text-[11px] font-bold text-amber-600 uppercase tracking-widest">Informations sur les coûts</p>
+                    <p className="text-xs font-bold text-amber-600 uppercase tracking-widest">Informations sur les coûts</p>
                     <p className="text-xs text-slate-500 leading-relaxed font-medium">
                         Les prix saisis ici sont utilisés pour calculer la part "Achat/Approvisionnement" du projet.
                         Si le maître d'ouvrage fournit lui-même ces équipements, désactivez le calcul en haut de page pour

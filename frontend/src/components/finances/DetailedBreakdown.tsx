@@ -1,6 +1,6 @@
 import { ArrowDownRight } from 'lucide-react';
 import { useFinances } from '../../hooks/useFinances';
-import { useTheme } from '../../context/ThemeContext';
+import { useTheme } from '../../contexts/ThemeContext';
 import { fmtFCFA } from '../../utils/format';
 
 export default function DetailedBreakdown({ stats }: { stats: any }) {
@@ -10,8 +10,8 @@ export default function DetailedBreakdown({ stats }: { stats: any }) {
     return (
         <div className={`border rounded-[2.5rem] overflow-hidden shadow-2xl h-full flex flex-col transition-all ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100'}`}>
             <div className={`p-8 border-b flex items-center justify-between backdrop-blur-md sticky top-0 z-10 transition-all ${isDarkMode ? 'bg-slate-900/50 border-slate-800' : 'bg-white/50 border-slate-100'}`}>
-                <h3 className={`text-[10px] font-black uppercase tracking-[0.3em] ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Postes de Dépense Détaillés</h3>
-                <div className="text-[9px] font-black text-indigo-600 bg-indigo-600/10 px-3 py-1 rounded-full uppercase border border-indigo-600/20 tracking-widest">
+                <h3 className={`text-xs font-black uppercase tracking-[0.3em] ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Postes de Dépense Détaillés</h3>
+                <div className="text-xs font-black text-indigo-600 bg-indigo-600/10 px-3 py-1 rounded-full uppercase border border-indigo-600/20 tracking-widest">
                     Estimation Pro
                 </div>
             </div>
@@ -20,9 +20,9 @@ export default function DetailedBreakdown({ stats }: { stats: any }) {
                 <table className="w-full text-left border-collapse">
                     <thead>
                         <tr className={`${isDarkMode ? 'border-b border-slate-800/50' : 'border-b border-slate-100'}`}>
-                            <th className={`px-8 py-5 text-[9px] font-black uppercase tracking-[0.2em] ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Désignation</th>
-                            <th className={`px-8 py-5 text-[9px] font-black uppercase tracking-[0.2em] text-right ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Base / Unité</th>
-                            <th className={`px-8 py-5 text-[9px] font-black uppercase tracking-[0.2em] text-right ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Montant (FCFA)</th>
+                            <th className={`px-8 py-5 text-xs font-black uppercase tracking-[0.2em] ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Désignation</th>
+                            <th className={`px-8 py-5 text-xs font-black uppercase tracking-[0.2em] text-right ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Base / Unité</th>
+                            <th className={`px-8 py-5 text-xs font-black uppercase tracking-[0.2em] text-right ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Montant (FCFA)</th>
                         </tr>
                     </thead>
                     <tbody className={`divide-y ${isDarkMode ? 'divide-slate-800/30' : 'divide-slate-50'}`}>
@@ -62,8 +62,8 @@ export default function DetailedBreakdown({ stats }: { stats: any }) {
 
 function SectionHeader({ title, total, isDarkMode }: { title: string, total: number, isDarkMode: boolean }) {
     return (
-        <tr className={isDarkMode ? 'bg-slate-950/50' : 'bg-slate-50/50'}>
-            <td className={`px-8 py-4 font-black text-[10px] uppercase tracking-widest ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>{title}</td>
+        <tr className={isDarkMode ? 'bg-slate-950/50' : 'bg-slate-50 dark:bg-slate-800/50/50'}>
+            <td className={`px-8 py-4 font-black text-xs uppercase tracking-widest ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>{title}</td>
             <td className="px-8 py-4 text-right"></td>
             <td className={`px-8 py-4 text-right font-black text-xs ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{fmtFCFA(total)}</td>
         </tr>
@@ -77,7 +77,7 @@ function DataItem({ label, base, val, isDarkMode }: { label: string, base: strin
                 <ArrowDownRight size={12} className={`transition-colors ${isDarkMode ? 'text-slate-600 group-hover:text-indigo-500' : 'text-slate-300 group-hover:text-indigo-600'}`} />
                 <span className={`font-bold text-xs tracking-tight transition-colors ${isDarkMode ? 'text-slate-400 group-hover:text-slate-200' : 'text-slate-500 group-hover:text-slate-900'}`}>{label}</span>
             </td>
-            <td className={`px-8 py-4 text-right font-medium text-[10px] ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>{base}</td>
+            <td className={`px-8 py-4 text-right font-medium text-xs ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>{base}</td>
             <td className={`px-8 py-4 text-right font-bold text-xs tabular-nums ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>{fmtFCFA(val)}</td>
         </tr>
     );

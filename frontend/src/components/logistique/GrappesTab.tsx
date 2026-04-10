@@ -163,7 +163,7 @@ export default function GrappesTab() {
                                             >
                                                 <div className="flex items-center gap-1">
                                                     <Icon size={14} />
-                                                    {isAssigned && <span className="text-[10px] font-bold">{assignedTeams.length}</span>}
+                                                    {isAssigned && <span className="text-xs font-bold">{assignedTeams.length}</span>}
                                                 </div>
                                             </div>
                                         );
@@ -228,7 +228,7 @@ export default function GrappesTab() {
                                             {currentBulk.map(val => {
                                                 if (val === 'UNASSIGN') {
                                                     return (
-                                                        <div key={val} className="flex items-center gap-1 text-[10px] bg-red-500/20 text-red-300 font-bold px-2 py-1 rounded">
+                                                        <div key={val} className="flex items-center gap-1 text-xs bg-red-500/20 text-red-300 font-bold px-2 py-1 rounded">
                                                             <span>Désassignation</span>
                                                             <button onClick={() => setBulkAssignments({ ...bulkAssignments, [key]: [] })} className="hover:text-white ml-1">✕</button>
                                                         </div>
@@ -236,7 +236,7 @@ export default function GrappesTab() {
                                                 }
                                                 const stName = teams?.flatMap(t => t.children || []).find(st => st.id === val)?.name || val;
                                                 return (
-                                                    <div key={val} className="flex items-center gap-1 text-[10px] bg-indigo-500/20 text-indigo-300 font-bold px-2 py-1 rounded">
+                                                    <div key={val} className="flex items-center gap-1 text-xs bg-indigo-500/20 text-indigo-300 font-bold px-2 py-1 rounded">
                                                         <span className="truncate max-w-[100px]">{stName}</span>
                                                         <button onClick={() => setBulkAssignments({ ...bulkAssignments, [key]: currentBulk.filter(v => v !== val) })} className="hover:text-white ml-1">✕</button>
                                                     </div>
@@ -292,7 +292,7 @@ export default function GrappesTab() {
                                                 <Icon size={20} className="text-slate-400 group-hover:text-blue-400 transition-colors" />
                                                 <span className="text-slate-200 font-bold">{tradeLabel}</span>
                                             </div>
-                                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{currentAssignments.length} affectée(s)</span>
+                                            <span className="text-xs font-black text-slate-500 uppercase tracking-widest">{currentAssignments.length} affectée(s)</span>
                                         </div>
 
                                         {/* Render existing assignments as chips */}

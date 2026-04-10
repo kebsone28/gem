@@ -28,7 +28,10 @@ router.get('/mvt/households/:z/:x/:y', async (req, res) => {
       WITH mvtgeom AS (
         SELECT 
           h.id as household_id, 
+          h.numeroordre,
           h.status,
+          h."constructionData",
+          h.alerts,
           ST_AsMVTGeom(ST_Transform(h.location_gis, 3857), ST_TileEnvelope($1::int, $2::int, $3::int)) AS geom
         FROM "Household" h
         JOIN "Zone" z ON h."zoneId" = z.id

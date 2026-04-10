@@ -71,7 +71,7 @@ export default function DataManagement({ onImport, onClear, totalCount }: DataMa
             >
                 <input {...getInputProps()} />
                 <Upload className={`w-8 h-8 mx-auto mb-3 ${isDragActive ? 'text-emerald-500' : 'text-slate-600'}`} />
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
                     {isDragActive ? 'Déposez ici' : 'Import Excel / JSON'}
                 </p>
             </div>
@@ -82,19 +82,19 @@ export default function DataManagement({ onImport, onClear, totalCount }: DataMa
                     className="flex flex-col items-center justify-center p-4 rounded-2xl bg-emerald-600/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-600/20 transition-all gap-2"
                 >
                     <FileDown size={20} />
-                    <span className="text-[10px] font-black uppercase tracking-widest">Export</span>
+                    <span className="text-xs font-black uppercase tracking-widest">Export</span>
                 </button>
                 <button
                     onClick={() => { if (confirm('Vider la base ?')) onClear(); }}
                     className="flex flex-col items-center justify-center p-4 rounded-2xl bg-red-600/10 border border-red-500/20 text-red-400 hover:bg-red-600/20 transition-all gap-2"
                 >
                     <Trash2 size={20} />
-                    <span className="text-[10px] font-black uppercase tracking-widest">Réinitialiser</span>
+                    <span className="text-xs font-black uppercase tracking-widest">Réinitialiser</span>
                 </button>
             </div>
 
             <div className="flex justify-between items-center p-4 bg-slate-950/50 rounded-xl border border-slate-800/50">
-                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Ménages en base</span>
+                <span className="text-xs font-black text-slate-500 uppercase tracking-widest">Ménages en base</span>
                 <span className="text-white font-black">{totalCount}</span>
             </div>
         </div>

@@ -1,0 +1,125 @@
+﻿Question: Comment créer une nouvelle mission OM ?
+Coherent: true | Length: 2941
+## Création d’une nouvelle Mission OM dans GEM‑MINT  | Étape | Action | Détails | Référence/Norme | |-------|--------|---------|-----------------| | **1. Accès au module OM** | Se connecter à l’application GEM‑MINT et ouvrir le tableau de bord “Missi 
+---
+Question: Qui valide une mission ?
+Coherent: true | Length: 1137
+**Validation d’une mission dans le système GEM‑MINT – PROQUELEC**  | Étape du cycle | Acteur | Rôle spécifique | |----------------|--------|-----------------| | **Création de la mission** | Opérateur ou coordinateur | Rédaction et saisie de la missio 
+---
+Question: Comment la DG certifie une mission ?
+Coherent: true | Length: 1818
+**Certification de mission par la DG – procédure conforme au GEM‑MINT**  1. **Finalisation du dossier mission**      - Le Chef de Projet valide le cahier des charges et signale l’achèvement de la phase terrain.      - Le document est importé dans GEM 
+---
+Question: Comment corriger une mission rejetée ?
+Coherent: true | Length: 2621
+**Procedure – Correction d’une mission rejetée (GEM‑MINT / PROQUELEC)**    | Étape | Action | Références | Propriétés clés | |-------|--------|------------|-----------------| | **1 : Analyse du réjection** | • Ouvrir le rapport d’erreur dans GEM‑MINT 
+---
+Question: Comment calculer les indemnités de mission ?
+Coherent: true | Length: 548
+Je suis désolé, mais les informations relatives au calcul des indemnités de mission ne se trouvent pas dans la base de connaissances que vous avez fournie. Je n’ai donc pas de données fiables auxquelles pouvoir m’appuyer pour répondre à votre questio 
+---
+Question: Que faire en cas de dépassement budgétaire ?
+Coherent: false | Length: 2834
+**Réponse structurée – Gestion d’un dépassement budgétaire dans le cadre du système GEM‑MINT**  | Étape | Action à réaliser | Personne / entité impliquée | Document / référence | |-------|-------------------|-----------------------------|------------ 
+---
+Question: Comment suivre le budget des projets ?
+Coherent: true | Length: 2166
+**Suivi du budget des projets – cadre général dans GEM‑MINT**  | Étape | Action | Outil / Rôle | Référence de la base de connaissances | |-------|--------|--------------|----------------------------------------| | **1. Création de la mission OM** | D 
+---
+Question: Comment synchroniser Kobo Collect avec GEM-MINT ?
+Coherent: true | Length: 2587
+## Synchronisation de Kobo Collect vers GEM‑MINT  | Étape | Action | Particularités / références | |-------|--------|----------------------------| | 1. **Création de la mission OM** | Dans GEM‑MINT, créez la Mission OM (création > validation par le C 
+---
+Question: Comment éviter les doublons Kobo ?
+Coherent: true | Length: 2618
+**Éviter les doublons dans Kobo Collect (GEM‑MINT – PROQUELEC)**    | Étape | Action | Référence dans la base de connaissances | |-------|--------|-------------------------------------------| | **1. Attribution d’un ID unique** | Chaque mission OM (c 
+---
+Question: Quels champs Kobo sont obligatoires ?
+Coherent: true | Length: 3039
+**Champs obligatoires dans Kobo Collect pour une mission GEM‑MINT**    | # | Champ (libellé attendu dans l’app Kobo) | Raison / Norme associée | |---|----------------------------------------|--------------------------| | 1 | **Numeroordre** | Identif 
+---
+Question: Quelles installations couvre la norme NS 01-001 ?
+Coherent: true | Length: 2071
+### NS 01‑001 – Domain d’application  > **Norme** : NS 01‑001   > **Applicable** : Installations en basse tension (BT) **≤ 1 000 V**  La norme NS 01‑001 s’applique à **toutes les installations électriques de basse tension** prévues par le système qui 
+---
+Question: Quelle tension est permise par la norme NS 01-001 ?
+Coherent: true | Length: 246
+**Réponse :**  - **Norme applicable :** NS 01‑001   - **Plage de tension permise :** **BT (basse tension) jusqu’à 1000 V**.    Ainsi, toute installation électrique réalisée dans le cadre du GEM‑MINT doit respecter cette limite maximale de 1000 V. 
+---
+Question: Quelles sont les exclusions de la norme NS 01-001 ?
+Coherent: true | Length: 291
+La base de connaissances ne précise pas d’exclusions spécifiques à la norme **NS 01‑001** pour les installations BT ≤ 1000 V.   Pour connaître les exclusions, il est conseillé de consulter directement le texte officiel de la norme ou de se référer à  
+---
+Question: Où installer le coffret compteur Senelec ?
+Coherent: true | Length: 2508
+**Installation du coffret compteur Senelec (coffret limite)**   **Références : NS 01‑001 (BT ≤ 1000 V) – GEM‑MINT – Kobo Collect (numéroordre)**    | Étape | Consigne | Détails / Mesures | |-------|----------|--------------------| | 1 | **Emplacement 
+---
+Question: Quelle est la hauteur réglementaire du hublot ?
+Coherent: false | Length: 237
+**Hauteur réglementaire du hublot**    - **Hauteur** : **1,60 m**   - **Référence** : BRANCHEMENT SENELEC – coffret limite propriété.    C’est la valeur prescrite pour tous les branchements G EM‑MINT afin de respecter la norme NS 01‑001. 
+---
+Question: Comment protéger le câble de branchement ?
+Coherent: false | Length: 1978
+**Protection du câble de branchement – rappel des bonnes pratiques :**  | Étape | Action | Référence / Norme | |-------|--------|-------------------| | 1. **Traçage** | Déterminer le parcours le plus linéaire entre le point de côté Senelec et la born 
+---
+Question: Quelles protections doivent être installées ?
+Coherent: true | Length: 2434
+**Protections requises pour une installation SMT‑BT (≤ 1000 V)**    | Étape | Action à réaliser | Référence / Note | |-------|-------------------|------------------| | 1 | **Protection contre les surintensités (DDR)** | La norme NS 01‑001 impose l’em 
+---
+Question: Qu est-ce qu un DDR et pourquoi est-il obligatoire ?
+Coherent: false | Length: 3108
+**DDR : Disjoncteur Différentiel de Déconnexion (DDR)**   *En bref*: c’est l’appareil qui coupe immédiatement un circuit lorsqu’il détecte une différence de courant entre les conducteurs actifs et le conducteur de terre (détection de fuite). Il sert  
+---
+Question: Quelle est la couleur standard du conducteur de protection ?
+Coherent: true | Length: 772
+**Couleur standard du conducteur de protection (PE)**    | Élément | Couleur du conducteur | Référence | |---------|-----------------------|-----------| | Conducteur de protection (PE) | Vert / Jaune (vert avec bande jaune) | Sécurité électrique – DD 
+---
+Question: Qu est-ce qu une partie active ?
+Coherent: true | Length: 2094
+Dans la base de connaissances fournie, le terme **« partie active »** n’est pas explicitement défini ni référencé dans les documents ou procédures décrits (gouvernance de GEM‑MINT, synchronisation via Kobo Collect, norme NS 01‑001, règles de branchem 
+---
+Question: Qu est-ce qu une masse électrique ?
+Coherent: true | Length: 1740
+**Masse électrique (ou terre de protection)**    | Élément | Description | Référence | |---------|-------------|-----------| | **Fonction** | Point de référence zéro voltage pour l’alimentation de l’installation BT (≤ 1000 V). Elle garantit la protec 
+---
+Question: Quelle est la section standard d un câble ?
+Coherent: false | Length: 388
+Il n’y a aucune indication dans la base de connaissances fournie concernant la section standard d’un câble.   Si vous avez besoin d’une référence précise, il faudrait consulter la documentation technique détaillée de PROQUELEC ou la norme NS 01‑001 ( 
+---
+Question: Comment vérifier la conformité d un branchement Senelec ?
+Coherent: true | Length: 2574
+**Vérification de la conformité d’un branchement Senelec : Méthode structurée**  | Étape | Action principale | Détails / Consignes | |-------|--------------------|---------------------| | **1. Pré‑intervention** | *Collecte documentaire* |  - Récupér 
+---
+Question: Comment corriger une anomalie d installation ?
+Coherent: false | Length: 3337
+**Correction d’une anomalie d’installation (exemple : fils visibles, courroies à l’air libre, barrette de terre extérieure, poteau bois fissuré)**    | Étape | Action | Référence / Justification | |-------|--------|---------------------------| | **1. 
+---
+Question: Quels sont les types de défauts à éviter ?
+Coherent: false | Length: 3272
+**Défauts techniques majeurs à éviter (conformément à la base de connaissances PROQUELEC – GEM‑MINT)**    | # | Défaut | Raisonnement (norme ou consigne) | Conséquence potentielle | |---|--------|----------------------------------|------------------- 
+---
+Question: Comment générer un rapport stratégique DG ?
+Coherent: false | Length: 3995
+**Guide de génération du rapport stratégique DG (Directeur Général)**   *(Conformément aux procédures GEM‑MINT et aux exigences de la norme NS 01‑001)*  | Étape | Action | Détails spécifiques | Documents / outils | |------|--------|------------------ 
+---
+Question: Comment utiliser les données Kobo pour le pilotage ?
+Coherent: true | Length: 4030
+**Pilotage des missions OM via les données Kobo Collect – Guide de mise en œuvre**  | Étape | Description | Outils / Documents | Remarques | |-------|-------------|--------------------|-----------| | 1. **Initialisation de la mission** | Créer la mis 
+---
+Question: Quels sont les statuts d un menage dans GEM-MINT ?
+Coherent: true | Length: 144
+Je suis désolé, mais je ne trouve aucune information dans la base de connaissances fournie concernant les « statuts d’un ménage » dans GEM‑MINT. 
+---
+Question: Comment fonctionne le workflow OM ?
+Coherent: false | Length: 4116
+**Workflow des Missions OM (GEM‑MINT – PROQUELEC)**    | Étape | Action | Responsables | Documentation / Interface | Points de conformité | |-------|--------|--------------|----------------------------|----------------------| | **1. Création de la Mi 
+---
+Question: Comment trouver les missions non certifiees ?
+Coherent: true | Length: 1846
+**Rechercher les missions non certifiées dans GEM‑MINT**    | Étape | Action | Détails | |-------|--------|---------| | 1 | Accéder à l’interface GEM‑MINT | Connectez‑vous sur l’application web ou mobile avec votre compte. | | 2 | Sélectionner l’ongl 
+---
+Question: Que faire si l on n a pas de connexion terrain pour Kobo ?
+Coherent: true | Length: 3903
+**En l’absence de connexion internet mobile ou Wi‑Fi pour Kobo Collect**   > *Points de référence :*   > • **Kobo Collect** – collecte terrain, synchronisation par numeroordre.   > • **NS 01‑001** – norme d’installation BT ≤ 1000 V (pour le transport 
+---
+Report saved to ai_public_knowledge_report.json

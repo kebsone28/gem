@@ -12,6 +12,22 @@ const num = (n: number): string => {
     return parts.join('.');
 };
 
+/**
+ * Robustly resolves the name of a household (shared logic for reports)
+ */
+const resolveName = (h: any): string => {
+    if (h.name && h.name.trim()) return h.name.trim();
+    if (h.owner) {
+        if (typeof h.owner === 'string' && h.owner.trim()) return h.owner.trim();
+        if (h.owner.nom && h.owner.nom.trim()) return h.owner.nom.trim();
+        if (h.owner.name && h.owner.name.trim()) return h.owner.name.trim();
+    }
+    const kobo = h.koboData || h.koboSync || {};
+    if (kobo.nom_complet) return kobo.nom_complet;
+    if (kobo.nom) return kobo.nom;
+    return 'Inconnu';
+};
+
 // Format a number with dots as thousands separator (FCFA)
 const fmt = (n: number): string => {
     return num(n) + ' FCFA';
@@ -236,12 +252,12 @@ export function generateRapportAvancement(data: {
 
     // Recent actions table
     y = drawSectionTitle(doc, 'Dernières Validations', y);
-    const tableRows = households.slice(0, 12).map((h, i) => [
+    const tableRows = households.slice(0, 50).map((h, i) => [
         (i + 1).toString(),
-        h.id?.toString().substring(0, 10) || `MEN-${1000 + i}`,
-        h.region || 'Kaffrine',
+        h.numeroordre || h.id?.toString().substring(0, 10) || `MEN-${1000 + i}`,
+        h.region || '—',
         h.status || 'En cours',
-        h.owner || '—',
+        resolveName(h),
     ]);
     if (tableRows.length === 0) {
         for (let i = 0; i < 8; i++) {

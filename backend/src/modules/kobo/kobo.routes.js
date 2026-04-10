@@ -8,10 +8,15 @@
 
 import { Router } from 'express';
 import { authProtect } from '../../api/middlewares/auth.js';
-import { triggerKoboSync, getKoboStatus } from './kobo.controller.js';
+import { verifyKoboWebhook } from '../../api/middlewares/koboWebhookAuth.js';
+import { triggerKoboSync, getKoboStatus, handleKoboWebhook } from './kobo.controller.js';
 
 const router = Router();
 
+// Webhooks don't have JWT Authorization header, so we protect it with HMAC
+router.post('/webhook', verifyKoboWebhook, handleKoboWebhook);
+
+// Protected manual endpoints
 router.use(authProtect);
 
 router.post('/sync',   triggerKoboSync);

@@ -3,14 +3,17 @@ import maplibregl from 'maplibre-gl';
 import toast from 'react-hot-toast';
 import { generatePopupHTML } from './mapUtils';
 
+import { useTerrainUIStore } from '../../store/terrainUIStore';
+
 export const useMapInteractions = (
     readOnly: boolean,
     householdsRef: React.MutableRefObject<any[]>,
-    onSelectRef: React.MutableRefObject<(h: any) => void>,
     onZoneClickRef: React.MutableRefObject<(coord: [number, number], zoom: number) => void>,
     onDropRef: React.MutableRefObject<(id: string, lat: number, lng: number) => void>
 ) => {
+    const setSelectedHouseholdId = useTerrainUIStore(s => s.setSelectedHouseholdId);
     const dragStateRef = useRef({ isDragging: false, draggedFeatureId: null as string | null });
+
     const popupRef = useRef<maplibregl.Popup | null>(null);
 
     // ✅ Clean up popup on unmount
@@ -37,9 +40,8 @@ export const useMapInteractions = (
         // ✅ Handle the 'Voir les détails' button click from inside the native HTML popup
         const handleSelectEvent = (e: any) => {
             const hId = e.detail;
-            const h = householdsRef.current?.find((item: any) => item.id === hId);
-            if (h) {
-                onSelectRef.current(h);
+            if (hId) {
+                setSelectedHouseholdId(hId);
                 popupRef.current?.remove();
             }
         };
@@ -117,7 +119,6 @@ export const useMapInteractions = (
 
             // Wait a few ms to distinguish between click (for popup) and drag
             // Simple threshold: if mouse stays down and moves, it's a drag
-            e.preventDefault();
             map.dragPan.disable();
             dragStateRef.current = { isDragging: true, draggedFeatureId: feature.properties.household_id || feature.properties.id || String(feature.id) };
             map.getCanvas().style.cursor = 'grabbing';
@@ -129,7 +130,6 @@ export const useMapInteractions = (
             const feature = e.features?.[0];
             if (!feature) return;
 
-            e.preventDefault();
             map.dragPan.disable();
             dragStateRef.current = { isDragging: true, draggedFeatureId: feature.properties.household_id || feature.properties.id || String(feature.id) };
             map.getCanvas().style.cursor = 'grabbing';
@@ -196,13 +196,18 @@ export const useMapInteractions = (
                 if (centroidX != null && centroidY != null) {
                     onZoneClickRef.current([centroidX, centroidY], 12);
                 }
+                const id = feature.properties?.id;
+                if (id) {
+                    useTerrainUIStore.getState().setActiveGrappeId(id);
+                    useTerrainUIStore.getState().setPanel('grappe_allocation');
+                }
             }
         });
 
         return () => {
             window.removeEventListener('map:select-household', handleSelectEvent);
         };
-    }, [readOnly, householdsRef, onSelectRef, onZoneClickRef, onDropRef]);
+    }, [readOnly, householdsRef, setSelectedHouseholdId, onZoneClickRef, onDropRef]);
 
     return { setupInteractions };
 };

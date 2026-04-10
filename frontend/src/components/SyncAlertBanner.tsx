@@ -52,14 +52,14 @@ export default function SyncAlertBanner() {
             </span>
             <button
                 onClick={() => { navigate('/dashboard'); setDismissed(true); }}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded-lg transition-all text-xs"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-900/20 hover:bg-white dark:bg-slate-900/30 rounded-lg transition-all text-xs"
             >
                 <RefreshCw size={12} /> Sync maintenant
             </button>
             <button
                 onClick={() => setDismissed(true)}
-                className="p-1 hover:bg-white/20 rounded-lg transition-all"
-                title="Fermer"
+                className="p-1 hover:bg-white dark:bg-slate-900/20 rounded-lg transition-all"
+                aria-label="Fermer"
             >
                 <X size={14} />
             </button>

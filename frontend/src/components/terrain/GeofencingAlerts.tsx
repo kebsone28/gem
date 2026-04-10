@@ -76,7 +76,7 @@ export const GeofencingAlerts: React.FC<GeofencingAlertsProps> = ({ households, 
                         <p className="text-xs font-bold text-rose-600 dark:text-rose-400">
                             {anomalies.length} Alerte{anomalies.length > 1 ? 's' : ''} GPS
                         </p>
-                        <p className="text-[9px] text-rose-500/70 dark:text-rose-500/50">
+                        <p className="text-xs text-rose-500/70 dark:text-rose-500/50">
                             Positions hors zone (≥{GEOFENCE_THRESHOLD_KM}km)
                         </p>
                     </div>
@@ -91,7 +91,7 @@ export const GeofencingAlerts: React.FC<GeofencingAlertsProps> = ({ households, 
                     </button>
                     <button
                         onClick={() => setIsVisible(false)}
-                        title="Masquer les alertes"
+                        aria-label="Masquer les alertes"
                         className="p-1 rounded-md text-rose-400 hover:text-rose-600 transition-colors"
                     >
                         <X size={14} />
@@ -114,7 +114,7 @@ export const GeofencingAlerts: React.FC<GeofencingAlertsProps> = ({ households, 
                                 <div className="flex-1 min-w-0">
                                     <p className="text-xs font-bold text-rose-700 dark:text-rose-300 truncate">{h.id}</p>
                                     {h.owner && (
-                                        <p className="text-[9px] text-rose-500/70 truncate">{h.owner}</p>
+                                        <p className="text-xs text-rose-500/70 truncate">{h.owner}</p>
                                     )}
                                 </div>
                                 <a
@@ -130,7 +130,7 @@ export const GeofencingAlerts: React.FC<GeofencingAlertsProps> = ({ households, 
                         );
                     })}
                     {anomalies.length > 10 && (
-                        <div className="px-4 py-2 text-center text-[10px] text-rose-500/60 dark:text-rose-500/40">
+                        <div className="px-4 py-2 text-center text-xs text-rose-500/60 dark:text-rose-500/40">
                             + {anomalies.length - 10} autres anomalies
                         </div>
                     )}

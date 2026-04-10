@@ -2,6 +2,7 @@ services:
   # ============ NGINX REVERSE PROXY ============
   nginx:
     image: nginx:alpine
+    container_name: gem-saas-proxy
     ports:
       - "80:80"
       - "443:443"
@@ -23,8 +24,9 @@ services:
   # ============ NODE.JS APPLICATION ============
   app:
     build:
-      context: .
+      context: ./backend
       dockerfile: Dockerfile
+    container_name: gem-saas-api
     environment:
       NODE_ENV: ${NODE_ENV:-production}
       PORT: 3001
@@ -51,6 +53,7 @@ services:
   # ============ POSTGRESQL DATABASE ============
   postgres:
     image: postgis/postgis:16-3.4-alpine
+    container_name: gem-saas-db
     environment:
       POSTGRES_USER: ${DB_USER:-proquelec}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-securepassword}
@@ -89,11 +92,20 @@ services:
   # ============ OSRM ROUTING ENGINE ============
   osrm:
     image: osrm/osrm-backend
+    container_name: gem-saas-gps
     volumes:
       - ./backend/osrm_data:/data
     ports:
       - "5000:5000"
     command: osrm-routed --algorithm mld --max-table-size 100000 /data/senegal-latest.osrm
+    restart: unless-stopped
+    networks:
+      - proquelec
+
+  # ============ REDIS CACHE ============
+  redis:
+    image: redis:alpine
+    container_name: gem-saas-cache
     restart: unless-stopped
     networks:
       - proquelec

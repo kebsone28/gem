@@ -10,11 +10,12 @@ interface ClusterPanelData {
     bbox: [[number, number], [number, number]];
 }
 
+import { useTerrainUIStore } from '../../store/terrainUIStore';
+
 interface Props {
     isDarkMode?: boolean;
     onClose: () => void;
     clusters: ClusterPanelData[];
-    activeGrappeId: string | null;
     onSelectGrappe: (id: string | null, bbox?: [[number, number], [number, number]]) => void;
     isLoading?: boolean;
 }
@@ -25,7 +26,9 @@ const COLORS = [
     '#ec4899', '#06b6d4', '#14b8a6', '#f43f5e', '#6366f1'
 ];
 
-export function GrappeSelectorPanel({ isDarkMode = true, onClose, clusters, activeGrappeId, onSelectGrappe, isLoading = false }: Props) {
+export function GrappeSelectorPanel({ isDarkMode = true, onClose, clusters, onSelectGrappe, isLoading = false }: Props) {
+    const activeGrappeId = useTerrainUIStore(s => s.activeGrappeId);
+    const setActiveGrappeId = useTerrainUIStore(s => s.setActiveGrappeId);
     const [search, setSearch] = useState('');
 
     const bg = isDarkMode ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-200';
@@ -62,7 +65,7 @@ export function GrappeSelectorPanel({ isDarkMode = true, onClose, clusters, acti
                         </p>
                     </div>
                 </div>
-                <button onClick={onClose} className={`p-1.5 rounded-lg hover:bg-slate-500/10 ${subText}`} title="Fermer le panneau">
+                <button onClick={onClose} className={`p-1.5 rounded-lg hover:bg-slate-500/10 ${subText}`} aria-label="Fermer le panneau">
                     <X size={16} />
                 </button>
             </div>
@@ -94,7 +97,7 @@ export function GrappeSelectorPanel({ isDarkMode = true, onClose, clusters, acti
                         <p className={`text-sm font-bold ${activeGrappeId === null ? (isDarkMode ? 'text-indigo-400' : 'text-indigo-700') : text}`}>
                             🌍 Toutes les zones
                         </p>
-                        <p className={`text-[10px] ${subText}`}>Afficher l'ensemble du territoire</p>
+                        <p className={`text-xs ${subText}`}>Afficher l'ensemble du territoire</p>
                     </div>
                     {activeGrappeId === null && <CheckCircle2 size={16} className="text-indigo-500" />}
                 </button>
@@ -122,7 +125,10 @@ export function GrappeSelectorPanel({ isDarkMode = true, onClose, clusters, acti
                     return (
                         <button
                             key={c.id}
-                            onClick={() => onSelectGrappe(c.id, c.bbox)}
+                            onClick={() => {
+                                setActiveGrappeId(c.id);
+                                onSelectGrappe(c.id, c.bbox);
+                            }}
                             className={`w-full flex items-center gap-3 p-3 rounded-xl border text-left transition-all hover:scale-[1.01] ${isActive
                                 ? (isDarkMode ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400' : 'bg-emerald-50 border-emerald-300 text-emerald-800')
                                 : (isDarkMode ? 'bg-slate-800/40 border-slate-700/50 hover:bg-slate-800' : 'bg-white border-slate-200 hover:bg-slate-50')
@@ -137,7 +143,7 @@ export function GrappeSelectorPanel({ isDarkMode = true, onClose, clusters, acti
                                     {c.name}
                                 </p>
                                 <div className="flex items-center gap-2 mt-1">
-                                    <p className={`text-[10px] font-medium ${subText}`}>{c.count} ménages</p>
+                                    <p className={`text-xs font-medium ${subText}`}>{c.count} ménages</p>
                                     <div className="flex-1 h-1.5 rounded-full overflow-hidden bg-slate-200 dark:bg-slate-700">
                                         <div className="h-full bg-emerald-500 w-0" /> {/* % placeholder status */}
                                     </div>

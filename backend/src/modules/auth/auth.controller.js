@@ -25,15 +25,28 @@ export const registerOrganization = async (req, res) => {
                 data: { name: orgName }
             });
 
+            // Trouver le rôle ADMIN_PROQUELEC
+            const adminRole = await tx.role.findUnique({ where: { name: 'ADMIN_PROQUELEC' } });
+
             const user = await tx.user.create({
                 data: {
-                    email: email.toLowerCase(), // Changed to lowercase
+                    email: email.toLowerCase(),
                     passwordHash: hashedPassword,
                     name,
-                    role: 'admin',
+                    roleLegacy: 'ADMIN_PROQUELEC',
+                    roleId: adminRole?.id,
                     organizationId: organization.id
                 },
-                include: { organization: true } // Added include for organization
+                include: { 
+                    organization: true,
+                    role: {
+                        include: {
+                            permissions: {
+                                include: { permission: true }
+                            }
+                        }
+                    }
+                }
             });
 
             return { user, organization };
@@ -92,13 +105,27 @@ export const login = async (req, res) => {
 
         const user = await prisma.user.findUnique({
             where: { email: email.trim().toLowerCase() },
-            include: { organization: true }
+            include: { 
+                organization: true,
+                role: {
+                    include: {
+                        permissions: {
+                            include: { permission: true }
+                        }
+                    }
+                }
+            }
         });
 
         if (!user) {
             console.log('❌ User not found for email:', email);
         } else {
-            console.log('✅ User found in DB. Role:', user.role);
+            // Fusion des permissions (Rôle + Overrides)
+            const rolePermissions = user.role?.permissions.map(p => p.permission.key) || [];
+            const userOverrides = Array.isArray(user.permissions) ? user.permissions : [];
+            user.mergedPermissions = [...new Set([...rolePermissions, ...userOverrides])];
+            
+            console.log('✅ User found in DB. Role:', user.role?.name || user.roleLegacy);
             const isMatch = await bcrypt.compare(password, user.passwordHash);
             console.log('🔑 Password match result:', isMatch);
         }
@@ -128,7 +155,19 @@ export const login = async (req, res) => {
             }
 
             console.log('✅ Passing 2FA check...');
-            const { accessToken, refreshToken } = generateTokens(user);
+            
+            // On s'assure que generateTokens reçoit les données minimales et propres
+            const tokenPayload = {
+                id: user.id,
+                email: user.email,
+                organizationId: user.organizationId,
+                role: user.role?.name || user.roleLegacy || 'user',
+                permissions: user.mergedPermissions || []
+            };
+
+            console.log('🗝️ Token Payload Logic:', { role: tokenPayload.role, email: tokenPayload.email });
+
+            const { accessToken, refreshToken } = generateTokens(tokenPayload);
             console.log('✅ Tokens generated');
 
             // Set refresh token in cookie
@@ -138,15 +177,21 @@ export const login = async (req, res) => {
                 sameSite: 'strict',
                 maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
             });
-            console.log('✅ Cookie set');
+            console.log('✅ Final User Data for Frontend:', { 
+                id: user.id, 
+                email: user.email, 
+                role: user.role?.name || user.roleLegacy 
+            });
 
             res.json({
                 user: {
                     id: user.id,
                     email: user.email,
-                    role: user.role,
+                    role: user.role?.name || user.roleLegacy,
                     name: user.name,
-                    organization: user.organization ? user.organization.name : 'N/A'
+                    permissions: user.mergedPermissions,
+                    organization: user.organization ? user.organization.name : 'N/A',
+                    organizationConfig: user.organization?.config || {}
                 },
                 accessToken
             });
@@ -197,12 +242,34 @@ export const refreshToken = async (req, res) => {
         const decoded = verifyRefreshToken(token);
         const user = await prisma.user.findUnique({
             where: { id: decoded.id },
-            include: { organization: true }
+            include: { 
+                organization: true,
+                role: {
+                    include: {
+                        permissions: {
+                            include: { permission: true }
+                        }
+                    }
+                }
+            }
         });
 
         if (!user) return res.status(401).json({ error: 'User not found' });
 
-        const tokens = generateTokens(user);
+        // Fusion des permissions pour le refresh
+        const rolePermissions = user.role?.permissions.map(p => p.permission.key) || [];
+        const userOverrides = Array.isArray(user.permissions) ? user.permissions : [];
+        const mergedPermissions = [...new Set([...rolePermissions, ...userOverrides])];
+
+        const tokenPayload = {
+            id: user.id,
+            email: user.email,
+            organizationId: user.organizationId,
+            role: user.role?.name || user.roleLegacy || 'user',
+            permissions: mergedPermissions || []
+        };
+
+        const tokens = generateTokens(tokenPayload);
 
         res.json({ accessToken: tokens.accessToken });
     } catch (error) {
@@ -417,7 +484,8 @@ export const verify2FA = async (req, res) => {
                 email: user.email,
                 role: user.role,
                 name: user.name,
-                organization: user.organization ? user.organization.name : 'N/A'
+                organization: user.organization ? user.organization.name : 'N/A',
+                organizationConfig: user.organization?.config || {}
             },
             accessToken: tokens.accessToken
         });

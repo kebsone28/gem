@@ -18,7 +18,7 @@ import {
     Moon,
     RefreshCw
 } from 'lucide-react';
-import { useTheme } from '../context/ThemeContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { useSync } from '../hooks/useSync';
 import { usePermissions } from '../hooks/usePermissions';
 
@@ -147,7 +147,7 @@ export default function CommandPalette() {
                         placeholder="Chercher une page, une commande... (Ex: 'sync')"
                         className="flex-1 bg-transparent border-none outline-none text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400"
                     />
-                    <kbd className={`hidden sm:inline-flex px-2 py-1 ml-2 text-[10px] font-medium rounded border ${isDarkMode ? 'bg-slate-800 border-slate-700 text-slate-400' : 'bg-slate-100 border-slate-200 text-slate-500'}`}>
+                    <kbd className={`hidden sm:inline-flex px-2 py-1 ml-2 text-xs font-medium rounded border ${isDarkMode ? 'bg-slate-800 border-slate-700 text-slate-400' : 'bg-slate-100 border-slate-200 text-slate-500'}`}>
                         ESC
                     </kbd>
                 </div>
@@ -180,7 +180,7 @@ export default function CommandPalette() {
                                         )}
                                     </div>
                                     {isSelected && (
-                                        <kbd className={`ml-auto hidden sm:inline-flex px-2 py-1 text-[10px] font-medium rounded border ${isDarkMode ? 'bg-indigo-500/30 border-indigo-500/30 text-indigo-300' : 'bg-indigo-200 border-indigo-200 text-indigo-800'}`}>
+                                        <kbd className={`ml-auto hidden sm:inline-flex px-2 py-1 text-xs font-medium rounded border ${isDarkMode ? 'bg-indigo-500/30 border-indigo-500/30 text-indigo-300' : 'bg-indigo-200 border-indigo-200 text-indigo-800'}`}>
                                             Enter
                                         </kbd>
                                     )}

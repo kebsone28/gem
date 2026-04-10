@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ComponentType, type ReactNode } from 'react';
 import {
     ShieldCheck, KeyRound, HelpCircle, QrCode,
     Eye, EyeOff, Save, RefreshCw, Copy, Check,
@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { appSecurity } from '../services/appSecurity';
 import apiClient from '../api/client';
+import { PageContainer, PageHeader, ContentArea } from '../components';
 
 type ToastType = 'success' | 'error' | 'info' | 'warning';
 interface Toast { id: number; msg: string; type: ToastType }
@@ -25,7 +26,7 @@ function PasswordField({ value, onChange, placeholder, title: fieldTitle }: {
                 onChange={e => onChange(e.target.value)}
                 placeholder={placeholder}
                 title={fieldTitle}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 pr-12 text-white font-mono font-medium placeholder:text-slate-600 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 pr-12 text-white font-mono font-medium placeholder:text-slate-600 dark:text-slate-400 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
             />
             <button type="button" title={show ? 'Masquer' : 'Afficher'} onClick={() => setShow(v => !v)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-200 transition-colors">
@@ -37,7 +38,11 @@ function PasswordField({ value, onChange, placeholder, title: fieldTitle }: {
 
 // ─── Section card ──────────────────────────────────────────────────────────────
 function Section({ icon: Icon, title, subtitle, children, color = 'indigo' }: {
-    icon: any; title: string; subtitle: string; children: React.ReactNode; color?: string;
+    icon: ComponentType<{ size?: number }>;
+    title: string;
+    subtitle: string;
+    children: ReactNode;
+    color?: string;
 }) {
     const colors: Record<string, string> = {
         indigo: 'bg-indigo-500/10 border-indigo-500/30 text-indigo-400',
@@ -203,8 +208,7 @@ export default function SecuritySettings() {
     };
 
     return (
-        <div className="min-h-screen bg-slate-950 p-4 md:p-8">
-
+        <div className="min-h-screen bg-slate-950">
             {/* ── Toast Stack ── */}
             <div className="fixed top-6 right-6 z-[9999] flex flex-col gap-2 pointer-events-none">
                 {toasts.map(t => (
@@ -220,100 +224,96 @@ export default function SecuritySettings() {
             </div>
 
             {/* ── Recovery Modal ── */}
-            {recMode && (
-                <div className="fixed inset-0 z-[5000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-                    <div className="bg-slate-900 border border-slate-700 rounded-3xl p-8 max-w-md w-full shadow-2xl">
-                        <div className="flex items-center gap-3 mb-6">
-                            <div className="w-10 h-10 bg-amber-500/15 rounded-xl flex items-center justify-center">
-                                <Unlock size={18} className="text-amber-400" />
+            <PageContainer className="py-8">
+                {recMode && (
+                    <div className="fixed inset-0 z-[5000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+                        <div className="bg-slate-900 border border-slate-700 rounded-3xl p-8 max-w-md w-full shadow-2xl">
+                            <div className="flex items-center gap-3 mb-6">
+                                <div className="w-10 h-10 bg-amber-500/15 rounded-xl flex items-center justify-center">
+                                    <Unlock size={18} className="text-amber-400" />
+                                </div>
+                                <div>
+                                    <h3 className="text-white font-black text-xl">Récupération d'accès admin</h3>
+                                    <p className="text-slate-500 text-sm">Étape {recStep}/2</p>
+                                </div>
                             </div>
-                            <div>
-                                <h3 className="text-white font-black text-xl">Récupération d'accès admin</h3>
-                                <p className="text-slate-500 text-sm">Étape {recStep}/2</p>
+
+                            {/* Progress */}
+                            <div className="flex gap-2 mb-6">
+                                {[1, 2].map(s => (
+                                    <div key={s} className={`flex-1 h-1.5 rounded-full transition-all ${s < recStep ? 'bg-emerald-500' : s === recStep ? 'bg-amber-400' : 'bg-slate-700'
+                                        }`} />
+                                ))}
                             </div>
+
+                            {recStep === 1 && (
+                                <form onSubmit={(e) => { e.preventDefault(); recStep1(); }} className="space-y-4">
+                                    <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20">
+                                        <p className="text-amber-300 text-xs font-black uppercase tracking-widest mb-1">Question de sécurité</p>
+                                        <p className="text-white font-bold text-sm">{recQuestion || 'Non configurée'}</p>
+                                    </div>
+                                    <div className="sr-only" aria-hidden="true">
+                                        <input type="text" name="username" value="admin" readOnly autoComplete="username" tabIndex={-1} />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2">
+                                            Réponse à la question OR code de récupération
+                                        </label>
+                                        <input type="text" value={recInput} onChange={e => setRecInput(e.target.value)}
+                                            placeholder="Réponse ou XXXX-XXXX-XXXX-XXXX"
+                                            aria-label="Réponse ou code de récupération"
+                                            autoFocus
+                                            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white font-mono font-medium placeholder:text-slate-600 dark:text-slate-400 focus:ring-2 focus:ring-amber-500 outline-none" />
+                                    </div>
+                                    <div className="flex gap-3">
+                                        <button type="button" onClick={() => setRecMode(false)} className="flex-1 py-3 bg-slate-800 text-slate-300 rounded-xl font-bold hover:bg-slate-700 transition-all">Annuler</button>
+                                        <button type="submit" className="flex-1 py-3 bg-amber-500 hover:bg-amber-400 text-black rounded-xl font-black transition-all active:scale-95">Vérifier →</button>
+                                    </div>
+                                </form>
+                            )}
+
+                            {recStep === 2 && (
+                                <form onSubmit={(e) => { e.preventDefault(); recStep2(); }} className="space-y-4">
+                                    <p className="text-emerald-400 font-bold text-sm flex items-center gap-2">
+                                        <CheckCircle2 size={16} /> Identité vérifiée. Définissez votre nouveau mot de passe.
+                                    </p>
+                                    <div className="sr-only" aria-hidden="true">
+                                        <input type="text" name="username" value="admin" readOnly autoComplete="username" tabIndex={-1} />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2">Nouveau mot de passe (min. 8 car.)</label>
+                                        <PasswordField value={recNewPw} onChange={setRecNewPw} placeholder="Nouveau mot de passe" title="Nouveau mot de passe admin" />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2">
+                                            Confirmer avec la réponse à la question de sécurité
+                                        </label>
+                                        <div className="p-3 rounded-xl bg-slate-800 text-slate-400 text-xs mb-2">{recQuestion}</div>
+                                        <input type="text" value={recSecAns} onChange={e => setRecSecAns(e.target.value)}
+                                            placeholder="Votre réponse"
+                                            title="Réponse à la question de sécurité"
+                                            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white font-medium placeholder:text-slate-600 dark:text-slate-400 focus:ring-2 focus:ring-amber-500 outline-none" />
+                                    </div>
+                                    <div className="flex gap-3">
+                                        <button type="button" onClick={() => setRecStep(1)} className="flex-1 py-3 bg-slate-800 text-slate-300 rounded-xl font-bold hover:bg-slate-700 transition-all">← Retour</button>
+                                        <button type="submit" className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-black transition-all active:scale-95 flex items-center justify-center gap-2">
+                                            <Save size={14} /> Réinitialiser
+                                        </button>
+                                    </div>
+                                </form>
+                            )}
                         </div>
-
-                        {/* Progress */}
-                        <div className="flex gap-2 mb-6">
-                            {[1, 2].map(s => (
-                                <div key={s} className={`flex-1 h-1.5 rounded-full transition-all ${s < recStep ? 'bg-emerald-500' : s === recStep ? 'bg-amber-400' : 'bg-slate-700'
-                                    }`} />
-                            ))}
-                        </div>
-
-                        {recStep === 1 && (
-                            <form onSubmit={(e) => { e.preventDefault(); recStep1(); }} className="space-y-4">
-                                <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20">
-                                    <p className="text-amber-300 text-xs font-black uppercase tracking-widest mb-1">Question de sécurité</p>
-                                    <p className="text-white font-bold text-sm">{recQuestion || 'Non configurée'}</p>
-                                </div>
-                                <div className="sr-only" aria-hidden="true">
-                                    <input type="text" name="username" value="admin" readOnly autoComplete="username" tabIndex={-1} />
-                                </div>
-                                <div>
-                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">
-                                        Réponse à la question OR code de récupération
-                                    </label>
-                                    <input type="text" value={recInput} onChange={e => setRecInput(e.target.value)}
-                                        placeholder="Réponse ou XXXX-XXXX-XXXX-XXXX"
-                                        title="Réponse ou code de récupération"
-                                        autoFocus
-                                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white font-mono font-medium placeholder:text-slate-600 focus:ring-2 focus:ring-amber-500 outline-none" />
-                                </div>
-                                <div className="flex gap-3">
-                                    <button type="button" onClick={() => setRecMode(false)} className="flex-1 py-3 bg-slate-800 text-slate-300 rounded-xl font-bold hover:bg-slate-700 transition-all">Annuler</button>
-                                    <button type="submit" className="flex-1 py-3 bg-amber-500 hover:bg-amber-400 text-black rounded-xl font-black transition-all active:scale-95">Vérifier →</button>
-                                </div>
-                            </form>
-                        )}
-
-                        {recStep === 2 && (
-                            <form onSubmit={(e) => { e.preventDefault(); recStep2(); }} className="space-y-4">
-                                <p className="text-emerald-400 font-bold text-sm flex items-center gap-2">
-                                    <CheckCircle2 size={16} /> Identité vérifiée. Définissez votre nouveau mot de passe.
-                                </p>
-                                <div className="sr-only" aria-hidden="true">
-                                    <input type="text" name="username" value="admin" readOnly autoComplete="username" tabIndex={-1} />
-                                </div>
-                                <div>
-                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">Nouveau mot de passe (min. 8 car.)</label>
-                                    <PasswordField value={recNewPw} onChange={setRecNewPw} placeholder="Nouveau mot de passe" title="Nouveau mot de passe admin" />
-                                </div>
-                                <div>
-                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">
-                                        Confirmer avec la réponse à la question de sécurité
-                                    </label>
-                                    <div className="p-3 rounded-xl bg-slate-800 text-slate-400 text-xs mb-2">{recQuestion}</div>
-                                    <input type="text" value={recSecAns} onChange={e => setRecSecAns(e.target.value)}
-                                        placeholder="Votre réponse"
-                                        title="Réponse à la question de sécurité"
-                                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white font-medium placeholder:text-slate-600 focus:ring-2 focus:ring-amber-500 outline-none" />
-                                </div>
-                                <div className="flex gap-3">
-                                    <button type="button" onClick={() => setRecStep(1)} className="flex-1 py-3 bg-slate-800 text-slate-300 rounded-xl font-bold hover:bg-slate-700 transition-all">← Retour</button>
-                                    <button type="submit" className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-black transition-all active:scale-95 flex items-center justify-center gap-2">
-                                        <Save size={14} /> Réinitialiser
-                                    </button>
-                                </div>
-                            </form>
-                        )}
                     </div>
-                </div>
-            )}
+                )}
 
-            {/* ── Main content ─────────────────────────────── */}
-            <div className="max-w-3xl mx-auto space-y-6">
+                <PageHeader
+                    title="Paramètres de Sécurité"
+                    subtitle="Gestion des mots de passe et de l'authentification — Admin seulement"
+                    icon={<ShieldCheck size={24} className="text-white" />}
+                />
 
-                {/* Header */}
-                <div className="flex items-center gap-4 mb-8">
-                    <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-[0_0_20px_rgba(99,102,241,0.4)]">
-                        <ShieldCheck className="text-white w-6 h-6" />
-                    </div>
-                    <div>
-                        <h1 className="text-3xl font-black text-white tracking-tight">Paramètres de Sécurité</h1>
-                        <p className="text-slate-500">Gestion des mots de passe et de l'authentification — Admin seulement</p>
-                    </div>
-                </div>
+                <ContentArea className="space-y-6 p-8">
+                    <div className="max-w-3xl mx-auto space-y-6">
 
                 {/* 1. Mot de passe suppression projet */}
                 <Section icon={Lock} title="Mot de passe — Suppression de projet" color="rose"
@@ -323,15 +323,15 @@ export default function SecuritySettings() {
                             <input type="text" name="username" value="admin" readOnly autoComplete="username" tabIndex={-1} />
                         </div>
                         <div>
-                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1.5">Mot de passe actuel</label>
+                            <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-1.5">Mot de passe actuel</label>
                             <PasswordField value={projDelCur} onChange={setProjDelCur} placeholder="Mot de passe actuel" title="Mot de passe actuel de suppression" />
                         </div>
                         <div>
-                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1.5">Nouveau mot de passe</label>
+                            <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-1.5">Nouveau mot de passe</label>
                             <PasswordField value={projDelNew} onChange={setProjDelNew} placeholder="Nouveau mot de passe (min. 6 car.)" title="Nouveau mot de passe" />
                         </div>
                         <div>
-                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1.5">Confirmer</label>
+                            <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-1.5">Confirmer</label>
                             <PasswordField value={projDelConf} onChange={setProjDelConf} placeholder="Répétez le nouveau mot de passe" title="Confirmation" />
                         </div>
                         <button type="submit"
@@ -349,15 +349,15 @@ export default function SecuritySettings() {
                             <input type="text" name="username" value="admin" readOnly autoComplete="username" tabIndex={-1} />
                         </div>
                         <div>
-                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1.5">Mot de passe actuel</label>
+                            <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-1.5">Mot de passe actuel</label>
                             <PasswordField value={adminPwCur} onChange={setAdminPwCur} placeholder="Mot de passe actuel" title="Mot de passe admin actuel" />
                         </div>
                         <div>
-                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1.5">Nouveau mot de passe (min. 8 car.)</label>
+                            <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-1.5">Nouveau mot de passe (min. 8 car.)</label>
                             <PasswordField value={adminPwNew} onChange={setAdminPwNew} placeholder="Minimum 8 caractères" title="Nouveau mot de passe admin" />
                         </div>
                         <div>
-                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1.5">Confirmer</label>
+                            <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-1.5">Confirmer</label>
                             <PasswordField value={adminPwConf} onChange={setAdminPwConf} placeholder="Répétez" title="Confirmation" />
                         </div>
                         <button type="submit"
@@ -375,19 +375,19 @@ export default function SecuritySettings() {
                             <input type="text" name="username" value="admin" readOnly autoComplete="username" tabIndex={-1} />
                         </div>
                         <div>
-                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1.5">Nouvelle question</label>
+                            <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-1.5">Nouvelle question</label>
                             <input type="text" value={secQ} onChange={e => setSecQ(e.target.value)}
                                 placeholder="Ex: Quelle est la ville de naissance de..." title="Question de sécurité"
-                                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white font-medium placeholder:text-slate-600 focus:ring-2 focus:ring-amber-500 outline-none" />
+                                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white font-medium placeholder:text-slate-600 dark:text-slate-400 focus:ring-2 focus:ring-amber-500 outline-none" />
                         </div>
                         <div>
-                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1.5">Réponse (insensible à la casse)</label>
+                            <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-1.5">Réponse (insensible à la casse)</label>
                             <input type="text" value={secA} onChange={e => setSecA(e.target.value)}
                                 placeholder="Votre réponse secrète" title="Réponse à la question de sécurité"
-                                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white font-medium placeholder:text-slate-600 focus:ring-2 focus:ring-amber-500 outline-none" />
+                                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white font-medium placeholder:text-slate-600 dark:text-slate-400 focus:ring-2 focus:ring-amber-500 outline-none" />
                         </div>
                         <div>
-                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1.5">Confirmer avec le mot de passe admin</label>
+                            <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-1.5">Confirmer avec le mot de passe admin</label>
                             <PasswordField value={secQConf} onChange={setSecQConf} placeholder="Mot de passe admin" title="Mot de passe admin pour confirmer" />
                         </div>
                         <button type="submit"
@@ -442,6 +442,8 @@ export default function SecuritySettings() {
                     </button>
                 </div>
             </div>
+        </ContentArea>
+            </PageContainer>
         </div>
     );
 }

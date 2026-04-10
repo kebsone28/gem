@@ -60,7 +60,7 @@ export default function PWAPrompt() {
                                 </p>
                             </div>
                         </div>
-                        <button onClick={close} title="Fermer la notification" className="p-1 text-dark-text-muted hover:text-dark-text-secondary">
+                        <button onClick={close} aria-label="Fermer la notification" className="p-1 text-dark-text-muted hover:text-dark-text-secondary">
                             <X size={16} />
                         </button>
                     </div>
@@ -76,7 +76,7 @@ export default function PWAPrompt() {
                         )}
                         <button
                             onClick={close}
-                            className="flex-1 px-4 py-2 border border-dark-border rounded-[var(--radius-md)] text-xs text-dark-text-secondary hover:bg-white/5 font-medium transition-all"
+                            className="flex-1 px-4 py-2 border border-dark-border rounded-[var(--radius-md)] text-xs text-dark-text-secondary hover:bg-white dark:bg-slate-900/5 font-medium transition-all"
                         >
                             {needUpdate ? 'Plus tard' : 'Fermer'}
                         </button>

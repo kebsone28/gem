@@ -1,190 +1,310 @@
 import Dexie, { type Table } from 'dexie';
+import type { AuditLog } from '../utils/types';
 
 export interface Project {
-    id: string;
-    organizationId: string;
-    name: string;
-    status: string;
-    version: number;
-    config?: Record<string, any>;
-    deletedAt?: Date | null;
+  id: string;
+  organizationId: string;
+  name: string;
+  status: string;
+  version: number;
+  config?: Record<string, any>;
+  deletedAt?: Date | null;
 }
 
 export interface Household {
-    id: string;
-    projectId?: string;
-    zoneId: string;
-    organizationId: string;
-    updatedAt?: string;
-    grappeId?: string;
-    grappeName?: string;
-    deliveryStatus?: string;
-    delivery?: any;
-    assignedTeams?: string[];
-    workTime?: any;
-    latitude?: number;
-    longitude?: number;
-    name?: string;
-    phone?: string;
-    region?: string;
-    departement?: string;
-    village?: string;
-    status: string;
-    version: number;
-    location?: any;
-    owner?: any;
-    koboData?: any;
-    deletedAt?: Date | null;
+  id: string;
+  projectId?: string;
+  zoneId: string;
+  organizationId: string;
+  updatedAt?: string;
+  grappeId?: string;
+  grappeName?: string;
+  deliveryStatus?: string;
+  delivery?: any;
+  assignedTeams?: string[];
+  workTime?: any;
+  latitude?: number;
+  longitude?: number;
+  name?: string;
+  phone?: string;
+  region?: string;
+  departement?: string;
+  village?: string;
+  status: string;
+  version: number;
+  location?: any;
+  owner?: any;
+  koboData?: any;
+  deletedAt?: Date | null;
+  backendId?: string;
+  syncStatus?: 'pending' | 'synced' | 'error';
 }
 
 export interface SyncLog {
-    id?: number;
-    timestamp: Date;
-    action: string;
-    details?: any;
+  id?: number;
+  timestamp: Date;
+  action: string;
+  details?: any;
 }
 
 export interface SyncQueueItem {
-    id?: number;
-    action: string;
-    endpoint: string;
-    method: 'POST' | 'PUT' | 'DELETE' | 'PATCH';
-    payload: any;
-    timestamp: number;
-    status: 'pending' | 'failed';
-    retryCount: number;
-    lastError?: string;
+  id?: number;
+  action: string;
+  endpoint: string;
+  method: 'POST' | 'PUT' | 'DELETE' | 'PATCH';
+  payload: any;
+  timestamp: number;
+  status: 'pending' | 'failed';
+  retryCount: number;
+  lastError?: string;
+}
+
+export interface MissionNotification {
+  id: string;
+  projectId?: string;
+  missionId?: string;
+  type: 'approval' | 'rejection' | 'system';
+  title: string;
+  message: string;
+  sender: string;
+  createdAt: string;
+  read: boolean;
+  archived: boolean;
 }
 
 // Paramètres de sécurité applicatifs (persistés localement)
 export interface AppSecurity {
-    key: string;   // identifier: 'projectDeletePassword' | 'adminPassword' | 'securityQuestion' | 'securityAnswer' | 'recoveryCode'
-    value: string;
-    updatedAt: string;
+  key: string; // identifier: 'projectDeletePassword' | 'adminPassword' | 'securityQuestion' | 'securityAnswer' | 'recoveryCode'
+  value: string;
+  updatedAt: string;
 }
 
 export class ProquelecDatabase extends Dexie {
-    organizations!: Table<{ id: string; name: string }>;
-    users!: Table<any>;
-    /** projects stored locally using the Project interface above */
-    projects!: Table<Project>;
-    zones!: Table<any>;
-    households!: Table<any>;
-    teams!: Table<any>;
-    missions!: Table<any>;
-    sync_logs!: Table<SyncLog>;
-    app_security!: Table<AppSecurity>;
-    syncOutbox!: Table<SyncQueueItem>;
-    favorites!: Table<{
-        id?: number;
-        projectId: string;
-        householdId: string;
-        createdAt: string;
-    }>;
+  organizations!: Table<{ id: string; name: string }>;
+  users!: Table<any>;
+  /** projects stored locally using the Project interface above */
+  projects!: Table<Project>;
+  zones!: Table<any>;
+  households!: Table<Household>;
+  grappes!: Table<any>; // Add grappes table for bordereau caching
+  teams!: Table<any>;
+  missions!: Table<any>;
+  notifications!: Table<MissionNotification>;
+  sync_logs!: Table<SyncLog>;
+  app_security!: Table<AppSecurity>;
+  syncOutbox!: Table<SyncQueueItem>;
+  favorites!: Table<{
+    id?: number;
+    projectId: string;
+    householdId: string;
+    createdAt: string;
+  }>;
+  map_tiles!: Table<{
+    url: string;
+    blob: Blob; // Or ArrayBuffer
+    timestamp: number;
+    zoom: number;
+  }>;
+  audit_logs!: Table<AuditLog>;
+  ai_learning_logs!: Table<{
+    id?: number;
+    query: string;
+    userId: string;
+    role: string;
+    timestamp: Date;
+    context?: string;
+  }>;
 
-    constructor() {
-        super('ProquelecDB');
-        this.version(3).stores({
-            organizations: 'id, name',
-            users: 'id, organizationId, email, role',
-            projects: 'id, organizationId, name, status, version',
-            zones: 'id, projectId, organizationId, name, version',
-            households: 'id, projectId, zoneId, organizationId, status, version',
-            teams: 'id, organizationId, name, type, specialty',
-            sync_logs: '++id, timestamp, action'
-        });
-        // Version 4 — table sécurité
-        this.version(4).stores({
-            organizations: 'id, name',
-            users: 'id, organizationId, email, role',
-            projects: 'id, organizationId, name, status, version',
-            zones: 'id, projectId, organizationId, name, version',
-            households: 'id, projectId, zoneId, organizationId, status, version',
-            teams: 'id, organizationId, name, type, specialty',
-            sync_logs: '++id, timestamp, action',
-            app_security: 'key, updatedAt'
-        });
+  constructor() {
+    super('ProquelecDB');
+    this.version(3).stores({
+      organizations: 'id, name',
+      users: 'id, organizationId, email, role',
+      projects: 'id, organizationId, name, status, version',
+      zones: 'id, projectId, organizationId, name, version',
+      households: 'id, projectId, zoneId, organizationId, status, version',
+      grappes: 'id, projectId, region',
+      teams: 'id, organizationId, name, type, specialty',
+      sync_logs: '++id, timestamp, action',
+    });
+    // Version 4 — table sécurité
+    this.version(4).stores({
+      organizations: 'id, name',
+      users: 'id, organizationId, email, role',
+      projects: 'id, organizationId, name, status, version',
+      zones: 'id, projectId, organizationId, name, version',
+      households: 'id, projectId, zoneId, organizationId, status, version',
+      grappes: 'id, projectId, region',
+      teams: 'id, organizationId, name, type, specialty',
+      sync_logs: '++id, timestamp, action',
+      app_security: 'key, updatedAt',
+    });
 
-        // Version 5 — logistique et finances
-        this.version(5).stores({
-            inventory: 'id, projectId, category, name',
-            expenses: 'id, projectId, category, date',
-            organizations: 'id, name',
-            users: 'id, organizationId, email, role',
-            projects: 'id, organizationId, name, status, version',
-            zones: 'id, projectId, organizationId, name, version',
-            households: 'id, projectId, zoneId, organizationId, status, version',
-            teams: 'id, organizationId, name, type, specialty',
-            sync_logs: '++id, timestamp, action',
-            app_security: 'key, updatedAt'
-        });
+    // Version 5 — logistique et finances
+    this.version(5).stores({
+      inventory: 'id, projectId, category, name',
+      expenses: 'id, projectId, category, date',
+      organizations: 'id, name',
+      users: 'id, organizationId, email, role',
+      projects: 'id, organizationId, name, status, version',
+      zones: 'id, projectId, organizationId, name, version',
+      households: 'id, projectId, zoneId, organizationId, status, version',
+      grappes: 'id, projectId, region',
+      teams: 'id, organizationId, name, type, specialty',
+      sync_logs: '++id, timestamp, action',
+      app_security: 'key, updatedAt',
+    });
 
-        // Version 6 — missions
-        this.version(6).stores({
-            missions: 'id, projectId, orderNumber, startDate, endDate',
-            inventory: 'id, projectId, category, name',
-            expenses: 'id, projectId, category, date',
-            organizations: 'id, name',
-            users: 'id, organizationId, email, role',
-            projects: 'id, organizationId, name, status, version',
-            zones: 'id, projectId, organizationId, name, version',
-            households: 'id, projectId, zoneId, organizationId, status, version',
-            teams: 'id, organizationId, name, type, specialty',
-            sync_logs: '++id, timestamp, action',
-            app_security: 'key, updatedAt'
-        });
+    // Version 6 — missions
+    this.version(6).stores({
+      missions: 'id, projectId, orderNumber, startDate, endDate',
+      inventory: 'id, projectId, category, name',
+      expenses: 'id, projectId, category, date',
+      organizations: 'id, name',
+      users: 'id, organizationId, email, role',
+      projects: 'id, organizationId, name, status, version',
+      zones: 'id, projectId, organizationId, name, version',
+      households: 'id, projectId, zoneId, organizationId, status, version',
+      grappes: 'id, projectId, region',
+      teams: 'id, organizationId, name, type, specialty',
+      sync_logs: '++id, timestamp, action',
+      app_security: 'key, updatedAt',
+    });
 
-        // Version 7 — File d'attente de synchronisation hors-ligne
-        this.version(7).stores({
-            missions: 'id, projectId, orderNumber, startDate, endDate',
-            inventory: 'id, projectId, category, name',
-            expenses: 'id, projectId, category, date',
-            organizations: 'id, name',
-            users: 'id, organizationId, email, role',
-            projects: 'id, organizationId, name, status, version',
-            zones: 'id, projectId, organizationId, name, version',
-            households: 'id, projectId, zoneId, organizationId, status, version',
-            teams: 'id, organizationId, name, type, specialty',
-            sync_logs: '++id, timestamp, action',
-            app_security: 'key, updatedAt',
-            syncOutbox: '++id, status, timestamp'
-        });
+    // Version 7 — File d'attente de synchronisation hors-ligne
+    this.version(7).stores({
+      missions: 'id, projectId, orderNumber, startDate, endDate',
+      inventory: 'id, projectId, category, name',
+      expenses: 'id, projectId, category, date',
+      organizations: 'id, name',
+      users: 'id, organizationId, email, role',
+      projects: 'id, organizationId, name, status, version',
+      zones: 'id, projectId, organizationId, name, version',
+      households: 'id, projectId, zoneId, organizationId, status, version',
+      grappes: 'id, projectId, region',
+      teams: 'id, organizationId, name, type, specialty',
+      sync_logs: '++id, timestamp, action',
+      app_security: 'key, updatedAt',
+      syncOutbox: '++id, status, timestamp',
+    });
 
-        // Version 8 — Favoris et Bookmarks
-        this.version(8).stores({
-            missions: 'id, projectId, orderNumber, startDate, endDate',
-            inventory: 'id, projectId, category, name',
-            expenses: 'id, projectId, category, date',
-            organizations: 'id, name',
-            users: 'id, organizationId, email, role',
-            projects: 'id, organizationId, name, status, version',
-            zones: 'id, projectId, organizationId, name, version',
-            households: 'id, projectId, zoneId, organizationId, status, version',
-            teams: 'id, organizationId, name, type, specialty',
-            sync_logs: '++id, timestamp, action',
-            app_security: 'key, updatedAt',
-            syncOutbox: '++id, status, timestamp',
-            favorites: '++id, projectId, householdId, createdAt'
-        });
-    }
+    // Version 8 — Favoris et Bookmarks
+    this.version(8).stores({
+      missions: 'id, projectId, orderNumber, startDate, endDate',
+      inventory: 'id, projectId, category, name',
+      expenses: 'id, projectId, category, date',
+      organizations: 'id, name',
+      users: 'id, organizationId, email, role',
+      projects: 'id, organizationId, name, status, version',
+      zones: 'id, projectId, organizationId, name, version',
+      households: 'id, projectId, zoneId, organizationId, status, version',
+      grappes: 'id, projectId, region',
+      teams: 'id, organizationId, name, type, specialty',
+      sync_logs: '++id, timestamp, action',
+      app_security: 'key, updatedAt',
+      syncOutbox: '++id, status, timestamp',
+      favorites: '++id, projectId, householdId, createdAt',
+    });
+
+    // Version 9 — Cache Tuiles Hybride Offline MapLibre
+    this.version(9).stores({
+      missions: 'id, projectId, orderNumber, startDate, endDate',
+      inventory: 'id, projectId, category, name',
+      expenses: 'id, projectId, category, date',
+      organizations: 'id, name',
+      users: 'id, organizationId, email, role',
+      projects: 'id, organizationId, name, status, version',
+      zones: 'id, projectId, organizationId, name, version',
+      households: 'id, projectId, zoneId, organizationId, status, version',
+      grappes: 'id, projectId, region',
+      teams: 'id, organizationId, name, type, specialty',
+      sync_logs: '++id, timestamp, action',
+      app_security: 'key, updatedAt',
+      favorites: '++id, projectId, householdId, createdAt',
+      map_tiles: 'url, timestamp, zoom', // Clé primaire: url
+    });
+
+    // Version 10 — Notifications d'approbation et alertes
+    this.version(10).stores({
+      notifications: 'id, type, projectId, missionId, archived, read, createdAt',
+      missions: 'id, projectId, orderNumber, startDate, endDate',
+      inventory: 'id, projectId, category, name',
+      expenses: 'id, projectId, category, date',
+      organizations: 'id, name',
+      users: 'id, organizationId, email, role',
+      projects: 'id, organizationId, name, status, version',
+      zones: 'id, projectId, organizationId, name, version',
+      households: 'id, projectId, zoneId, organizationId, status, version',
+      grappes: 'id, projectId, region',
+      teams: 'id, organizationId, name, type, specialty',
+      sync_logs: '++id, timestamp, action',
+      app_security: 'key, updatedAt',
+      syncOutbox: '++id, status, timestamp',
+      favorites: '++id, projectId, householdId, createdAt',
+      map_tiles: 'url, timestamp, zoom',
+    });
+
+    // Version 11 — Audit logs pour la sécurité
+    this.version(11).stores({
+      audit_logs: 'id, userId, action, timestamp',
+      notifications: 'id, type, projectId, missionId, archived, read, createdAt',
+      missions: 'id, projectId, orderNumber, startDate, endDate',
+      inventory: 'id, projectId, category, name',
+      expenses: 'id, projectId, category, date',
+      organizations: 'id, name',
+      users: 'id, organizationId, email, role',
+      projects: 'id, organizationId, name, status, version',
+      zones: 'id, projectId, organizationId, name, version',
+      households: 'id, projectId, zoneId, organizationId, status, version',
+      grappes: 'id, projectId, region',
+      teams: 'id, organizationId, name, type, specialty',
+      sync_logs: '++id, timestamp, action',
+      app_security: 'key, updatedAt',
+      syncOutbox: '++id, status, timestamp',
+      favorites: '++id, projectId, householdId, createdAt',
+      map_tiles: 'url, timestamp, zoom',
+    });
+
+    // Version 12 — IA Learning Logs (GEM-MINT Evolution)
+    this.version(12).stores({
+      ai_learning_logs: '++id, query, userId, role, timestamp',
+      audit_logs: 'id, userId, action, timestamp',
+      notifications: 'id, type, projectId, missionId, archived, read, createdAt',
+      missions: 'id, projectId, orderNumber, startDate, endDate',
+      inventory: 'id, projectId, category, name',
+      expenses: 'id, projectId, category, date',
+      organizations: 'id, name',
+      users: 'id, organizationId, email, role',
+      projects: 'id, organizationId, name, status, version',
+      zones: 'id, projectId, organizationId, name, version',
+      households: 'id, projectId, zoneId, organizationId, status, version',
+      grappes: 'id, projectId, region',
+      teams: 'id, organizationId, name, type, specialty',
+      sync_logs: '++id, timestamp, action',
+      app_security: 'key, updatedAt',
+      syncOutbox: '++id, status, timestamp',
+      favorites: '++id, projectId, householdId, createdAt',
+      map_tiles: 'url, timestamp, zoom',
+    });
+  }
 }
 
 export const db = new ProquelecDatabase();
 
 export const syncData = async (table: string, items: any[]) => {
-    return await db.transaction('rw', table, async () => {
-        const dbTable = (db as any)[table];
-        
-        const toDelete = items.filter(item => item.deletedAt).map(item => item.id);
-        const toPut = items.filter(item => !item.deletedAt);
+  return await db.transaction('rw', table, async () => {
+    const dbTable = (db as any)[table];
 
-        if (toDelete.length > 0) {
-            await dbTable.bulkDelete(toDelete);
-        }
-        
-        if (toPut.length > 0) {
-            // Use bulkPut to handle both creation and updates efficiently
-            await dbTable.bulkPut(toPut);
-        }
-    });
+    const toDelete = items.filter((item) => item.deletedAt).map((item) => item.id);
+    const toPut = items.filter((item) => !item.deletedAt);
+
+    if (toDelete.length > 0) {
+      await dbTable.bulkDelete(toDelete);
+    }
+
+    if (toPut.length > 0) {
+      // Use bulkPut to handle both creation and updates efficiently
+      await dbTable.bulkPut(toPut);
+    }
+  });
 };

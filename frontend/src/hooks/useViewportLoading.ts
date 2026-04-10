@@ -4,122 +4,189 @@ import apiClient from '../api/client';
 import logger from '../utils/logger';
 
 interface UseViewportLoadingOptions {
-    enabled?: boolean;
-    projectId?: string;
-    debounceMs?: number;
-    onHouseholdsLoaded?: (households: any[]) => void;
+  enabled?: boolean;
+  projectId?: string;
+  debounceMs?: number;
+  onHouseholdsLoaded?: (households: any[]) => void;
+}
+
+const MAX_CACHE_SIZE = 50;
+const OVERLAP_THRESHOLD = 0.6;
+
+function normalizeBbox(bounds: BoundingBox): BoundingBox {
+  return {
+    lng1: Number(bounds.lng1.toFixed(3)),
+    lat1: Number(bounds.lat1.toFixed(3)),
+    lng2: Number(bounds.lng2.toFixed(3)),
+    lat2: Number(bounds.lat2.toFixed(3)),
+  };
+}
+
+function bboxArea(bbox: BoundingBox): number {
+  return Math.abs((bbox.lng2 - bbox.lng1) * (bbox.lat2 - bbox.lat1));
+}
+
+function bboxIntersection(a: BoundingBox, b: BoundingBox): number {
+  const minLng = Math.max(a.lng1, b.lng1);
+  const minLat = Math.max(a.lat1, b.lat1);
+  const maxLng = Math.min(a.lng2, b.lng2);
+  const maxLat = Math.min(a.lat2, b.lat2);
+
+  if (minLng >= maxLng || minLat >= maxLat) return 0;
+
+  return (maxLng - minLng) * (maxLat - minLat);
+}
+
+function getOverlapRatio(a: BoundingBox, b: BoundingBox): number {
+  const intersection = bboxIntersection(a, b);
+  const minArea = Math.min(bboxArea(a), bboxArea(b));
+  if (!minArea) return 0;
+  return intersection / minArea;
+}
+
+function isHouseholdEqual(a: any, b: any) {
+  return (
+    a.id === b.id &&
+    a.status === b.status &&
+    a.updatedAt === b.updatedAt &&
+    a.location?.coordinates?.[0] === b.location?.coordinates?.[0] &&
+    a.location?.coordinates?.[1] === b.location?.coordinates?.[1]
+  );
+}
+
+function mergeStable(prev: any[], next: any[]) {
+  const prevMap = new Map(prev.map((item) => [item.id, item]));
+
+  return next.map((item) => {
+    const old = prevMap.get(item.id);
+    if (!old) return item;
+
+    return isHouseholdEqual(old, item) ? old : item;
+  });
 }
 
 export function useViewportLoading(options: UseViewportLoadingOptions = {}) {
-    const {
-        enabled = true,
-        projectId,
-        debounceMs = 300,
-        onHouseholdsLoaded
-    } = options;
+  const { enabled = true, projectId, debounceMs = 500, onHouseholdsLoaded } = options;
 
-    const [visibleHouseholds, setVisibleHouseholds] = useState<any[]>([]);
-    const [isLoadingViewport, setIsLoadingViewport] = useState(false);
-    const viewportBoundsRef = useRef<BoundingBox | null>(null);
-    const lastBboxRef = useRef<string | null>(null);
-    const lastHouseholdsRef = useRef<any[]>([]); // ✅ Keep last known data to avoid blanking
-    const abortControllerRef = useRef<AbortController | null>(null);
-    const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [visibleHouseholds, setVisibleHouseholds] = useState<any[]>([]);
+  const [isLoadingViewport, setIsLoadingViewport] = useState(false);
 
-    const onHouseholdsLoadedRef = useRef(onHouseholdsLoaded);
-    useEffect(() => {
-        onHouseholdsLoadedRef.current = onHouseholdsLoaded;
-    }, [onHouseholdsLoaded]);
+  const lastBoundsRef = useRef<BoundingBox | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-    // Debounced viewport loader
-    const loadPointsForViewport = useCallback(async (bounds: BoundingBox) => {
-        if (!enabled || !projectId) return;
+  const cacheRef = useRef<Map<string, any[]>>(new Map());
 
-        try {
-            setIsLoadingViewport(true);
-            
-            // Cancel previous request if any
-            if (abortControllerRef.current) {
-                abortControllerRef.current.abort();
-            }
-            abortControllerRef.current = new AbortController();
+  const onHouseholdsLoadedRef = useRef(onHouseholdsLoaded);
 
-            // Format bbox for API: lng1,lat1,lng2,lat2
-            const bboxString = formatBboxForAPI(bounds);
-            
-            // Only load if viewport significantly changed
-            if (lastBboxRef.current === bboxString) {
-                return;
-            }
+  useEffect(() => {
+    onHouseholdsLoadedRef.current = onHouseholdsLoaded;
+  }, [onHouseholdsLoaded]);
 
-            logger.debug(`📍 Loading households for viewport: ${bboxString}`);
+  const loadPointsForViewport = useCallback(
+    async (rawBounds: BoundingBox) => {
+      if (!enabled || !projectId) return;
 
-            // Call API with bbox query
-            const response = await apiClient.get(
-                `households?project_id=${projectId}&bbox=${bboxString}&limit=5000`,
-                { signal: abortControllerRef.current.signal }
-            );
+      const bounds = normalizeBbox(rawBounds);
+      const bboxString = formatBboxForAPI(bounds);
 
-            const households = response.data?.households || response.data || [];
-            
-            // ✅ Only update if we actually got data OR this is a different viewport
-            // This prevents blanking the map when API returns empty for a transitional bbox
-            if (households.length > 0) {
-                lastHouseholdsRef.current = households;
-                setVisibleHouseholds(households);
-                lastBboxRef.current = bboxString;
+      // Skip if viewport overlap very high
+      if (
+        lastBoundsRef.current &&
+        getOverlapRatio(lastBoundsRef.current, bounds) >= OVERLAP_THRESHOLD
+      ) {
+        logger.debug('⏭️ Viewport overlap high → skipping reload');
+        return;
+      }
 
-                if (onHouseholdsLoadedRef.current) {
-                    onHouseholdsLoadedRef.current(households);
-                }
-            } else if (lastHouseholdsRef.current.length === 0) {
-                // Only pass empty array if we never had data (fresh load)
-                lastBboxRef.current = bboxString;
-                if (onHouseholdsLoadedRef.current) {
-                    onHouseholdsLoadedRef.current([]);
-                }
-            }
-            // If new result is empty but we had previous data → keep previous data on map
+      // Cache hit
+      const cached = cacheRef.current.get(bboxString);
+      if (cached) {
+        // LRU: Move to end (most recently used)
+        cacheRef.current.delete(bboxString);
+        cacheRef.current.set(bboxString, cached);
 
-            logger.debug(`✅ Loaded ${households.length} households for viewport (kept: ${lastHouseholdsRef.current.length})`);
-        } catch (error: any) {
-            if (error.name !== 'AbortError') {
-                logger.error('Failed to load viewport households:', error);
-            }
-        } finally {
-            setIsLoadingViewport(false);
-        }
-    }, [enabled, projectId]); // Removed onHouseholdsLoaded from dependencies
+        logger.debug(`📦 Cache hit viewport: ${bboxString}`);
+        setVisibleHouseholds((prev) => mergeStable(prev, cached));
+        lastBoundsRef.current = bounds;
+        onHouseholdsLoadedRef.current?.(cached);
+        return;
+      }
 
-    const updateViewport = useCallback((bounds: BoundingBox) => {
-        viewportBoundsRef.current = bounds;
-        
-        // Debounce the actual load
-        if (debounceTimerRef.current) {
-            clearTimeout(debounceTimerRef.current);
+      try {
+        setIsLoadingViewport(true);
+
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
         }
 
-        debounceTimerRef.current = setTimeout(() => {
-            loadPointsForViewport(bounds);
-        }, debounceMs);
-    }, [loadPointsForViewport, debounceMs]);
+        abortControllerRef.current = new AbortController();
 
-    // Cleanup abort controller and timers on unmount
-    useEffect(() => {
-        return () => {
-            if (abortControllerRef.current) {
-                abortControllerRef.current.abort();
-            }
-            if (debounceTimerRef.current) {
-                clearTimeout(debounceTimerRef.current);
-            }
-        };
-    }, []);
+        logger.debug(`🌍 Loading viewport: ${bboxString}`);
 
-    return {
-        visibleHouseholds,
-        isLoadingViewport,
-        viewportBoundsRef,
-        updateViewport
+        const response = await apiClient.get(
+          `households?project_id=${projectId || ''}&bbox=${bboxString}&limit=10000`,
+          { signal: abortControllerRef.current.signal }
+        );
+
+        const households = response.data?.households || response.data || [];
+
+        // LRU Cache management
+        if (cacheRef.current.size >= MAX_CACHE_SIZE) {
+          const oldestKey = cacheRef.current.keys().next().value;
+          if (oldestKey) {
+            cacheRef.current.delete(oldestKey);
+          }
+        }
+
+        cacheRef.current.set(bboxString, households);
+
+        setVisibleHouseholds((prev) => mergeStable(prev, households));
+
+        lastBoundsRef.current = bounds;
+
+        onHouseholdsLoadedRef.current?.(households);
+
+        logger.debug(`✅ Loaded ${households.length} households`);
+      } catch (error: any) {
+        if (error.name !== 'AbortError') {
+          logger.error('Viewport load failed:', error);
+        }
+      } finally {
+        setIsLoadingViewport(false);
+      }
+    },
+    [enabled, projectId]
+  );
+
+  const updateViewport = useCallback(
+    (bounds: BoundingBox) => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+
+      debounceTimerRef.current = setTimeout(() => {
+        loadPointsForViewport(bounds);
+      }, debounceMs);
+    },
+    [loadPointsForViewport, debounceMs]
+  );
+
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+
+      cacheRef.current.clear();
     };
+  }, []);
+
+  return {
+    visibleHouseholds,
+    isLoadingViewport,
+    updateViewport,
+  };
 }

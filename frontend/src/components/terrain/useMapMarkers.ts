@@ -27,9 +27,15 @@ export const useMapMarkers = (userLocation: [number, number] | null) => {
         if (!userMarkerRef.current) {
             const el = document.createElement('div');
             el.className = 'user-location-marker';
+            el.style.width = '16px';
+            el.style.height = '16px';
+            el.style.zIndex = '9999';
             el.innerHTML = `<div class="w-4 h-4 bg-blue-500 border-2 border-white rounded-full shadow-[0_0_0_3px_rgba(59,130,246,0.5)] animate-[pulse_2s_cubic-bezier(0.4,0,0.6,1)_infinite]"></div>`;
 
-            userMarkerRef.current = new maplibregl.Marker({ element: el })
+            userMarkerRef.current = new maplibregl.Marker({ 
+                element: el,
+                anchor: 'center'
+            })
                 .setLngLat([location[0], location[1]])
                 .addTo(map);
         } else {

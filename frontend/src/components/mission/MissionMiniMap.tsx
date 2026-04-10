@@ -34,12 +34,12 @@ export function MissionMiniMap({ region, households = [] }: MissionMiniMapProps)
                     <MapIcon size={18} className="text-indigo-500" />
                 </div>
                 <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md px-4 py-2 rounded-xl shadow-xl border border-slate-200/50 dark:border-white/10">
-                    <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-800 dark:text-white">Aperçu SIG : {region}</h3>
+                    <h3 className="text-xs font-black uppercase tracking-widest text-slate-800 dark:text-white">Aperçu SIG : {region}</h3>
                 </div>
             </div>
 
             <button 
-                title="Agrandir la carte"
+                aria-label="Agrandir la carte"
                 className="absolute top-6 right-6 z-10 p-2 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md rounded-xl shadow-xl border border-slate-200/50 dark:border-white/10 text-slate-600 dark:text-slate-400 hover:text-indigo-500 transition-colors"
                 onClick={() => window.location.href = '/terrain'}
             >
@@ -57,7 +57,7 @@ export function MissionMiniMap({ region, households = [] }: MissionMiniMapProps)
             </div>
 
             <div className="absolute bottom-6 left-6 right-6 z-10 flex justify-center">
-                <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md px-6 py-2 rounded-full shadow-lg border border-slate-200/50 dark:border-white/10 text-[9px] font-bold text-slate-500 uppercase tracking-widest text-center">
+                <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md px-6 py-2 rounded-full shadow-lg border border-slate-200/50 dark:border-white/10 text-xs font-bold text-slate-500 uppercase tracking-widest text-center">
                     Ceci est un aperçu statique. Utilisez l'onglet « Terrain » pour la navigation interactive.
                 </div>
             </div>

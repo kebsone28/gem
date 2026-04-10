@@ -4,6 +4,16 @@ import { socketService } from '../../services/socket.service.js';
 import { tracerAction } from '../../services/audit.service.js';
 import { recalculateProjectGrappes } from '../../services/project_config.service.js';
 import { logPerformance } from '../../services/performance.service.js';
+import fs from 'fs';
+import path from 'path';
+
+// Force absolute path for reliable debugging
+const DEBUG_LOG = 'c:/Mes-Sites-Web/GEM_SAAS/backend/sync_debug.log';
+
+// 🛠️ BIGINT SERIALIZATION FIX
+// JSON.stringify doesn't support BigInt by default, which causes 500 errors
+// when sending households from Kobo that have a numeric submission ID.
+BigInt.prototype.toJSON = function() { return this.toString(); };
 
 // @desc    Pull changes from server
 // @route   GET /api/sync/pull
@@ -11,6 +21,14 @@ export const pullChanges = async (req, res) => {
     try {
         const { since } = req.query; // timestamp ISO string
         const { organizationId } = req.user;
+
+        console.log(`[SYNC PULL] sync endpoint called - since: ${since}, organizationId: ${organizationId}`);
+
+        if (!organizationId) {
+            console.error('[SYNC PULL] ERROR: organizationId is undefined or null in req.user');
+            console.error('[SYNC PULL] req.user:', JSON.stringify(req.user));
+            return res.status(400).json({ error: 'organizationId missing' });
+        }
 
         const lastSync = since ? new Date(since) : new Date(0);
 
@@ -34,12 +52,21 @@ export const pullChanges = async (req, res) => {
             }
         });
 
-        // Flatten projectId for frontend compatibility
-        const households = rawHouseholds.map(h => ({
-            ...h,
-            projectId: h.zone?.projectId,
-            zone: undefined // Remove nested object to save bandwidth
-        }));
+        // Flatten projectId for frontend compatibility & SANITIZE coordinates for Mapbox
+        const households = rawHouseholds.map(h => {
+            // Mapbox crashes if coordinates are null. If we have a point but no coords, or vice-versa,
+            // we ensure the frontend gets something it can handle or we skip the location part.
+            const hasCoords = h.latitude !== null && h.longitude !== null && !isNaN(h.latitude) && !isNaN(h.longitude);
+            
+            return {
+                ...h,
+                projectId: h.zone?.projectId,
+                zone: undefined, // Remove nested object to save bandwidth
+                // Ensure koboSubmissionId is a string if it's a BigInt (handled by BigInt.prototype.toJSON too)
+                latitude: h.latitude || 0,
+                longitude: h.longitude || 0
+            };
+        });
 
         const zones = await prisma.zone.findMany({
             where: {
@@ -77,6 +104,11 @@ export const pushChanges = async (req, res) => {
         const { changes } = req.body;
 
         console.log(`[SYNC-DEBUG] 🔄 Start Push for Organization: ${organizationId} (User: ${userId})`);
+        console.log(`[SYNC-DEBUG] Changes received:`, {
+            projects: changes?.projects?.length || 0,
+            zones: changes?.zones?.length || 0,
+            households: changes?.households?.length || 0
+        });
 
         // Log payload summary for diagnostic
         const payloadSize = JSON.stringify(req.body || {}).length;
@@ -87,6 +119,9 @@ export const pushChanges = async (req, res) => {
             conflicts: [],
             errors: []
         };
+
+        const logMsg = `\n[${new Date().toISOString()}] Push start: H=${changes.households?.length || 0}, Z=${changes.zones?.length || 0}, P=${changes.projects?.length || 0}\n`;
+        fs.appendFileSync(DEBUG_LOG, logMsg);
 
         if (!changes) {
             return res.status(400).json({ error: 'No changes provided' });
@@ -103,11 +138,12 @@ export const pushChanges = async (req, res) => {
 
         // 0. Sync Projects
         if (changes.projects?.length > 0) {
-            console.log(`[SYNC-DEBUG] Processing ${changes.projects.length} projects...`);
+            console.log(`[SYNC-DEBUG] ✅ Starting project sync (${changes.projects.length} projects)...`);
             for (const p of changes.projects) {
                 if (!p || !p.id) continue;
                 const { id, name, status, budget, duration, totalHouses, config: pConfig, version } = p;
                 try {
+                    console.log(`[SYNC-DEBUG] Processing project: ${id}`);
                     const serverProject = await prisma.project.findUnique({ where: { id } });
 
                     await prisma.project.upsert({
@@ -144,14 +180,16 @@ export const pushChanges = async (req, res) => {
 
         // 1. Sync Zones
         if (changes.zones?.length > 0) {
-            console.log(`[SYNC-DEBUG] Processing ${changes.zones.length} zones...`);
+            console.log(`[SYNC-DEBUG] ✅ Starting zone sync (${changes.zones.length} zones)...`);
             for (const z of changes.zones) {
                 if (!z || !z.id || !z.projectId) {
+                    console.log(`[SYNC-DEBUG] Skipping zone - missing ID or ProjectID`);
                     results.errors.push({ id: z?.id, type: 'zone', error: 'Missing ID or ProjectID' });
                     continue;
                 }
                 const { id, name, projectId, metadata } = z;
                 try {
+                    console.log(`[SYNC-DEBUG] Processing zone: ${id}`);
                     await prisma.zone.upsert({
                         where: { id },
                         update: { name, metadata: metadata || {}, updatedAt: new Date() },
@@ -168,31 +206,118 @@ export const pushChanges = async (req, res) => {
         // 2. Sync Households
         if (changes.households?.length > 0) {
             console.log(`[SYNC-DEBUG] Processing ${changes.households.length} households...`);
+
             for (const h of changes.households) {
-                if (!h || !h.id || !h.zoneId) {
+                // SAFETY FALLBACKS (as per diagnostic)
+                if (h && !h.id) {
+                    const { v4: uuidv4 } = await import('uuid');
+                    h.id = uuidv4();
+                    console.log(`[SYNC-DEBUG] 🛡️ Generated fallback ID for household: ${h.id}`);
+                }
+                if (h && (h.zoneId === undefined || h.zoneId === null || h.zoneId === '')) {
+                    // Try to find a default zone for the organization/project
+                    const defaultZone = await prisma.zone.findFirst({ 
+                        where: { organizationId, deletedAt: null } 
+                    });
+                    h.zoneId = defaultZone?.id || 'default_zone_not_found';
+                    console.log(`[SYNC-DEBUG] 🛡️ Assigned fallback ZoneID for household ${h.id}: ${h.zoneId}`);
+                }
+
+                if (!h || !h.id || !h.zoneId || h.zoneId === 'default_zone_not_found') {
+                    const errMsg = `[${new Date().toISOString()}] [SYNC-SKIP] Missing required fields. ID: ${h?.id}, zoneId: ${h?.zoneId}, payload keys: ${h ? Object.keys(h).join(',') : 'null'}\n`;
+                    fs.appendFileSync(DEBUG_LOG, errMsg);
                     results.errors.push({ id: h?.id, type: 'household', error: 'Missing ID or ZoneID' });
                     continue;
                 }
                 const { 
                     id, zoneId, status, location, owner, koboData, version,
-                    name, phone, region, departement, village, latitude, longitude, source
+                    name, phone, region, departement, village, source,
+                    constructionData, alerts
                 } = h;
-                try {
-                    const serverH = await prisma.household.findUnique({ 
-                        where: { id },
-                        include: { zone: { select: { projectId: true } } }
-                    });
+
+                // Explicitly cast latitude/longitude to Float if they are valid numbers, or null if invalid/empty
+                const latitude = (h.latitude !== undefined && h.latitude !== null && h.latitude !== '') ? parseFloat(h.latitude) : null;
+                const longitude = (h.longitude !== undefined && h.longitude !== null && h.longitude !== '') ? parseFloat(h.longitude) : null;
+
+                // Ensure location GeoJSON is properly formatted with coordinates
+                let normalizedLocation = location;
+                if ((!normalizedLocation || !normalizedLocation.coordinates) && latitude !== null && longitude !== null) {
+                    // Reconstruct location from latitude/longitude if missing
+                    normalizedLocation = {
+                        type: 'Point',
+                        coordinates: [longitude, latitude]
+                    };
+                }
+
+                    // Accept both UUID and custom ID formats (e.g., MEN-0001 from imports)
+                    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+                    const customIdRegex = /^[A-Z0-9-]+$/; // Accepts alphanumeric IDs like 4526 or MEN-0001
+                    
+                    if (id && !uuidRegex.test(id) && !customIdRegex.test(id)) {
+                        const skipMsg = `[${new Date().toISOString()}] [SYNC-SKIP] Household ID [${id}] is not a valid UUID or custom format. Skipping.\n`;
+                        fs.appendFileSync(DEBUG_LOG, skipMsg);
+                        results.errors.push({ id, type: 'household', error: 'Invalid ID format' });
+                        continue;
+                    }
+
+                    try {
+                        const serverH = await prisma.household.findUnique({ 
+                            where: { id },
+                            include: { zone: { select: { projectId: true } } }
+                        });
                     if (serverH && serverH.version > (parseInt(version) || 0)) {
                         results.conflicts.push({ id, type: 'household', server: serverH });
                         continue;
                     }
 
+                    // CRITICAL: Verify zone exists before upserting household (foreign key constraint)
+                    let zoneExists = await prisma.zone.findUnique({ where: { id: zoneId } });
+                    
+                    if (!zoneExists) {
+                        console.log(`[SYNC-HEAL] 🏗️ Zone ${zoneId} not found for household ${id}. Attempting to heal...`);
+                        
+                        // Try to find ANY zone in the same organization to avoid foreign key failure
+                        const fallbackZone = await prisma.zone.findFirst({ 
+                            where: { organizationId, deletedAt: null } 
+                        });
+
+                        if (fallbackZone) {
+                            console.log(`[SYNC-HEAL] 🩹 Reassigning household ${id} to existing zone ${fallbackZone.id}`);
+                            h.zoneId = fallbackZone.id;
+                            zoneExists = fallbackZone;
+                        } else {
+                            // Last resort: Create a default zone
+                            console.log(`[SYNC-HEAL] 🏗️ Creating emergency default zone for org ${organizationId}`);
+                            const project = await prisma.project.findFirst({ where: { organizationId } });
+                            if (project) {
+                                zoneExists = await prisma.zone.create({
+                                    data: {
+                                        id: zoneId.startsWith('zone_') ? zoneId : undefined, // Keep local ID if it looks like one
+                                        name: 'Zone Auto-Créée',
+                                        projectId: project.id,
+                                        organizationId
+                                    }
+                                });
+                            }
+                        }
+                    }
+
+                    if (!zoneExists) {
+                        const errMsg = `[${new Date().toISOString()}] [SYNC-ERROR-ZONE] Zone [${zoneId}] does not exist and could not be healed. Skipping household [${id}].\n`;
+                        fs.appendFileSync(DEBUG_LOG, errMsg);
+                        results.errors.push({ id, type: 'household', error: `Zone ${zoneId} not found` });
+                        continue;
+                    }
+
+                    // Use the potentially updated zoneId
+                    const finalZoneId = zoneExists.id;
+
                     await prisma.household.upsert({
                         where: { id },
                         update: {
-                            zoneId,
+                            zoneId: finalZoneId,
                             status: status || serverH?.status || 'planned',
-                            location: (location && Object.keys(location).length > 0) ? location : (serverH?.location || {}),
+                            location: (normalizedLocation && Object.keys(normalizedLocation).length > 0) ? normalizedLocation : (serverH?.location || {}),
                             owner: (owner && Object.keys(owner).length > 0) ? owner : (serverH?.owner || {}),
                             koboData: koboData || serverH?.koboData || {},
                             
@@ -204,16 +329,18 @@ export const pushChanges = async (req, res) => {
                             latitude: latitude !== undefined ? latitude : undefined,
                             longitude: longitude !== undefined ? longitude : undefined,
                             source: source ?? undefined,
-
+                            constructionData: constructionData || serverH?.constructionData || {},
+                            alerts: alerts || serverH?.alerts || [],
+ 
                             version: (parseInt(version) || 0) + 1,
                             updatedAt: new Date()
                         },
                         create: {
                             id,
-                            zoneId,
+                            zoneId: finalZoneId,
                             organizationId,
                             status: status || 'planned',
-                            location: location || {},
+                            location: normalizedLocation || {},
                             owner: owner || {},
                             koboData: koboData || {},
                             
@@ -230,11 +357,13 @@ export const pushChanges = async (req, res) => {
                         }
                     });
 
-                    // Sync PostGIS point for new households
-                    if (location && Array.isArray(location.coordinates) && location.coordinates.length === 2) {
+                    // Sync PostGIS point for new households - Only if coordinates are valid numbers and NOT NaN
+                    if (normalizedLocation && Array.isArray(normalizedLocation.coordinates) && normalizedLocation.coordinates.length === 2 && 
+                        typeof normalizedLocation.coordinates[0] === 'number' && !isNaN(normalizedLocation.coordinates[0]) &&
+                        typeof normalizedLocation.coordinates[1] === 'number' && !isNaN(normalizedLocation.coordinates[1])) {
                         await prisma.$executeRaw`
                             UPDATE "Household"
-                            SET location_gis = ST_SetSRID(ST_MakePoint(${location.coordinates[0]}, ${location.coordinates[1]}), 4326)
+                            SET location_gis = ST_SetSRID(ST_MakePoint(${normalizedLocation.coordinates[0]}, ${normalizedLocation.coordinates[1]}), 4326)
                             WHERE id = ${id}
                         `;
                     }
@@ -265,8 +394,16 @@ export const pushChanges = async (req, res) => {
                         }
                     }
                 } catch (e) {
-                    console.error(`[SYNC-ERROR] Household [${id}]:`, e.message);
-                    results.errors.push({ id, type: 'household', error: e.message });
+                    const errorDetails = `[${new Date().toISOString()}] [SYNC-ERROR] Household [${id}] Org [${organizationId}]: ${e.message} (Code: ${e.code}, Target: ${JSON.stringify(e.meta?.target)})\n`;
+                    fs.appendFileSync(DEBUG_LOG, errorDetails);
+                    console.error(errorDetails);
+                    
+                    results.errors.push({ 
+                        id, 
+                        type: 'household', 
+                        error: e.message,
+                        details: { code: e.code, meta: e.meta } 
+                    });
                 }
             }
         }
@@ -351,23 +488,34 @@ export const pushChanges = async (req, res) => {
                 
                 // 2. From updated households (need to find their project via zone)
                 if (changes.households?.length > 0) {
-                    const zoneIds = Array.from(new Set(changes.households.map(h => h.zoneId).filter(Boolean)));
-                    const zones = await prisma.zone.findMany({
-                        where: { id: { in: zoneIds } },
-                        select: { projectId: true }
-                    });
-                    zones.forEach(z => affectedProjectIds.add(z.projectId));
+                    // CRITICAL: Filter to ensure only valid UUIDs are passed to Prisma to avoid 500 errors
+                    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+                    const zoneIds = Array.from(new Set(changes.households.map(h => h.zoneId).filter(id => id && uuidRegex.test(id))));
+                    
+                    if (zoneIds.length > 0) {
+                        const zones = await prisma.zone.findMany({
+                            where: { id: { in: zoneIds } },
+                            select: { projectId: true }
+                        });
+                        zones.forEach(z => affectedProjectIds.add(z.projectId));
+                    }
                 }
 
                 // Trigger recalculation for each affected project
                 for (const projectId of affectedProjectIds) {
                     if (projectId) {
-                        await recalculateProjectGrappes(projectId, organizationId);
+                        // DESACTIVE pour eviter une surcharge CPU lors de sync massive.
+                        // L'utilisateur cliquera sur "Recalculer" depuis la page Bordereau.
+                        // await recalculateProjectGrappes(projectId, organizationId, true);
                     }
                 }
             } catch (recalcError) {
                 console.error('[SYNC-PROJECT-CONFIG-ERROR] Error during post-sync grappe recalculation:', recalcError.message);
             }
+        }
+
+        if (results.errors.length > 0) {
+            console.log(`[SYNC-DEBUG-DUMP] Top 5 errors passed to frontend:\n`, JSON.stringify(results.errors.slice(0, 5), null, 2));
         }
 
         res.json({
@@ -381,9 +529,123 @@ export const pushChanges = async (req, res) => {
         });
     } catch (globalError) {
         console.error('[SYNC-GLOBAL-FATAL] Uncaught error in pushChanges:', globalError);
+        fs.appendFileSync(DEBUG_LOG, `\n[${new Date().toISOString()}] [SYNC-GLOBAL-FATAL] ${globalError.message}\n${globalError.stack}\n`);
         res.status(500).json({
             error: 'Internal Server Error during sync push',
             message: globalError.message
         });
     }
 };
+
+// @desc    Trigger specialized Kobo synchronization (background sync)
+// @route   POST /api/sync/kobo
+export const syncKobo = async (req, res) => {
+    try {
+        const { organizationId } = req.user;
+        console.log(`[SYNC-KOBO] 🚀 Triggered by User: ${req.user.id} for Org: ${organizationId}`);
+
+        // --- RESOLVE TARGET PROJECT & ZONE ---
+        let defaultZoneId = req.body.zoneId || null;
+        const targetProjectId = req.body.projectId;
+        let targetProject = null;
+
+        if (targetProjectId) {
+            targetProject = await prisma.project.findUnique({ where: { id: targetProjectId } });
+            if (!targetProject) {
+                const msg = `Project ${targetProjectId} not found for organization ${organizationId}. Please refresh your project selection and retry.`;
+                console.error(`[SYNC-KOBO] ${msg}`);
+                return res.status(400).json({ error: msg, message: msg });
+            }
+        }
+        
+        if (!targetProject) {
+            targetProject = await prisma.project.findFirst({ where: { organizationId, deletedAt: null } });
+        }
+
+        if (!targetProject) {
+            targetProject = await prisma.project.create({
+                data: { name: 'Projet Kobo Global', organizationId, status: 'active', budget: '0', duration: 0, totalHouses: 0, config: {} }
+            });
+        }
+
+        if (!defaultZoneId) {
+            const existingZone = await prisma.zone.findFirst({ 
+                where: { projectId: targetProject.id, organizationId } 
+            });
+            if (existingZone) {
+                defaultZoneId = existingZone.id;
+            } else {
+                const newZone = await prisma.zone.create({
+                    data: { name: 'Zone Kobo A', projectId: targetProject.id, organizationId }
+                });
+                defaultZoneId = newZone.id;
+            }
+        }
+
+        // Use the proper kobo.service (has KOBO_TOKEN from .env)
+        const { syncKoboToDatabase } = await import('../../services/kobo.service.js');
+        const results = await syncKoboToDatabase(organizationId, defaultZoneId, null);
+
+        // Sync Log
+        try {
+            await prisma.syncLog.create({
+                data: {
+                    organizationId,
+                    source: 'kobo',
+                    applied: results.applied || 0,
+                    skipped: results.skipped || 0,
+                    errors: results.errors || 0,
+                    total: results.total || 0,
+                    syncedAt: new Date()
+                }
+            });
+        } catch (e) {
+            console.warn('[SYNC-KOBO] SyncLog not available:', e.message);
+        }
+
+        res.json({
+            message: 'Kobo synchronization successful',
+            result: results,
+            lastResult: { applied: results.applied, skipped: results.skipped, errors: results.errors }
+        });
+    } catch (error) {
+        console.error('[SYNC-KOBO-ERROR]:', error.message);
+        res.status(500).json({ error: 'Kobo synchronization failed', message: error.message });
+    }
+};
+
+// @desc    Clear specific entity data (Admin utility)
+// @route   DELETE /api/sync/clear/:entity
+export const clearEntityData = async (req, res) => {
+    try {
+        const { organizationId } = req.user;
+        const { entity } = req.params;
+
+        let result;
+        if (entity === 'households') {
+            result = await prisma.household.deleteMany({ where: { organizationId } });
+        } else if (entity === 'grappes') {
+            result = await prisma.grappe.deleteMany({ where: { organizationId } });
+        } else if (entity === 'zones') {
+            await prisma.household.deleteMany({ where: { organizationId } });
+            result = await prisma.zone.deleteMany({ where: { organizationId } });
+        } else if (entity === 'teams') {
+            result = await prisma.team.deleteMany({ where: { organizationId } });
+        } else if (entity === 'all') {
+             await prisma.household.deleteMany({ where: { organizationId } });
+             await prisma.grappe.deleteMany({ where: { organizationId } });
+             await prisma.team.deleteMany({ where: { organizationId } });
+             await prisma.zone.deleteMany({ where: { organizationId } });
+             result = { count: 'all' };
+        } else {
+             return res.status(400).json({ error: 'Entité inconnue' });
+        }
+
+        console.log(`[SYNC-CLEAR] Cleared ${entity} for Org ${organizationId}`);
+        res.json({ success: true, deletedCount: result?.count || 0, entity });
+    } catch (e) {
+        console.error('[SYNC-CLEAR] Error:', e);
+        res.status(500).json({ error: 'Failed to clear data', details: e.message });
+    }
+};
+

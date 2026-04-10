@@ -1,1381 +1,363 @@
-/**
- * MapLibreVectorMap.tsx
- * 
- * Version ULTRA-INTERACTIVE avec :
- * - Clic sur points et clusters (zoom automatique)
- * - Calques de Zones (Grappes) et Sous-Grappes avec couleurs distinctes
- * - Curseurs 'pointer' sur les zones actives
- * - Correction des bugs de rendu MapLibre
- */
-
-import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
-// ✅ Optimize worker threads for tablet/mobile terrain use
+// ✅ Optimize worker threads for terrain use
 maplibregl.setWorkerCount(2);
-import { RefreshCw } from 'lucide-react';
-import { getHouseholdDerivedStatus } from '../../utils/statusUtils';
-import { householdsToGeoJSON } from '../../utils/clusteringUtils';
-import { useViewportLoading } from '../../hooks/useViewportLoading';
-import logger from '../../utils/logger';
-import { senegalRegions } from '../../data/senegal-regions';
 
-// Import refactored modules
-import { 
-    getStatusColor, MAP_STYLE_DARK, MAP_STYLE_LIGHT, 
-    MAP_STYLE_SATELLITE, getIconId
+import {
+    MAP_STYLE_DARK,
+    MAP_STYLE_LIGHT_VECTOR, MAP_STYLE_SATELLITE
 } from './mapConfig';
-import { loadMapImages, isValidCoordinate } from './mapUtils';
-import { useMemoDeep } from './useMapMemoization';
-import { fetchOSRMRoute, buildRouteGeoJSON } from './mapRouting';
 import { useMapInteractions } from './useMapInteractions';
 import { useMapClustering } from './useMapClustering';
 import { useMemorizedSupercluster } from './useMemorizedSupercluster';
 import { useMapMarkers } from './useMapMarkers';
 import { useMapMeasure } from './useMapMeasure';
-import { useMapVisibility } from './useMapVisibility';
 import { useMapLasso } from './useMapLasso';
+import { useTerrainUIStore } from '../../store/terrainUIStore';
+import { useTheme } from '../../contexts/ThemeContext';
+import { globalSingletonMap } from '../../services/map/MapSingleton';
+import { registerTileCacheProtocol } from '../../services/map/tileCacheService';
+import { useViewportLoading } from '../../hooks/useViewportLoading';
 
-// ── Configuration Visuelle ──
-// (All configurations moved to mapConfig.ts - imported above)
+// Import Modular Layers
+import BackgroundLayer from './layers/BackgroundLayer';
+import HouseholdLayer from './layers/HouseholdLayer';
+import ZoneLayer from './layers/ZoneLayer';
+import LogisticsLayer from './layers/LogisticsLayer';
+import InteractionLayer from './layers/InteractionLayer';
+import MapTooltip from './MapTooltip';
 
-// ── Helpers ──
-const toLngLat = (coords: [number, number]): [number, number] => {
-    // Senegal context: Lng is negative (~-17 to -11), Lat is positive (~12 to 17)
-    // If coords[0] is positive and coords[1] is negative, it's [lat, lng] -> SWAP to [lng, lat]
-    if (coords[0] > 0 && coords[1] < 0) return [coords[1], coords[0]];
-    return coords;
-};
+registerTileCacheProtocol();
 
 const toLatLng = (coords: [number, number]): [number, number] => {
-    // If coords[0] is negative and coords[1] is positive, it's [lng, lat] -> SWAP to [lat, lng]
     if (coords[0] < 0 && coords[1] > 0) return [coords[1], coords[0]];
     return coords;
 };
-const SLOW_JITTER_EPSILON = 0.00008; // Ultra-fast jitter for 50k+ performance
 
-export default function MapLibreVectorMap({
+const sameHouseholdIds = (a: any[], b: any[]) => {
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) {
+        if (a[i].id !== b[i].id) return false;
+    }
+    return true;
+};
+
+const MapLibreVectorMap: React.FC<any> = ({
     households,
+    selectedHouseholdId,
     mapCommand,
-    isDarkMode,
-    onSelectHousehold,
-    showHeatmap = false,
-    isFilteringActive = false,
-    showZones = false,
     onZoneClick,
-    grappesConfig,
+    // grappesConfig, // Omitted to fix unused warning
     readOnly = false,
-    isMeasuring = false,
-    isSelecting = false,
-    mapStyle = 'streets',
     grappeZonesData,
     grappeCentroidsData,
-    activeGrappeId,
     userLocation,
     onHouseholdDrop,
-    routingEnabled,
-    routingStart,
-    routingDest,
-    onRouteFound,
     onMove,
     onBoundsChange,
-    followUser = false,
-    favorites = [],
     projectId,
     warehouses = [],
     onLassoSelection,
-    isDrawing = false,
-    pendingPoints = [],
-    onAddPoint,
-    drawnZones = []
-}: any) {
+}) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const mapRef = useRef<maplibregl.Map | null>(null);
+    const hasInitialized = useRef(false);
     const [styleIsReady, setStyleIsReady] = useState(false);
-    const [isRoutingLoading, setIsRoutingLoading] = useState(false);
-    const [isStyleSwitching, setIsStyleSwitching] = useState(false); // ✅ Prevents blank-map flash
+    const [mapInstance, setMapInstance] = useState<maplibregl.Map | null>(null);
 
-    // Refs pour éviter les closures périmées (stale closures) dans les event listeners de MapLibre
+    const showHeatmap = useTerrainUIStore(s => s.showHeatmap);
+    const showZones = useTerrainUIStore(s => s.showZones);
+    const isSelecting = useTerrainUIStore(s => s.isSelecting);
+    const mapStyle = useTerrainUIStore(s => s.mapStyle);
+    const { isDarkMode } = useTheme();
+
+    // ── Interactive State (Tooltips) ──
+    const [hoverData, setHoverData] = useState<any>(null);
+    const [hoverPos, setHoverPos] = useState<{ x: number, y: number } | null>(null);
+
+    // Refs pour éviter les closures périmées
     const householdsRef = useRef(households);
-    const onSelectRef = useRef(onSelectHousehold);
     const onZoneClickRef = useRef(onZoneClick);
     const onDropRef = useRef(onHouseholdDrop);
-    const onMoveRef = useRef(onMove);
-    const favoritesRef = useRef(favorites);
-    const grappesConfigRef = useRef(grappesConfig);
-    const grappeZonesDataRef = useRef(grappeZonesData);
-    const grappeCentroidsDataRef = useRef(grappeCentroidsData);
     const onBoundsChangeRef = useRef(onBoundsChange);
-    const isDrawingRef = useRef(isDrawing);
-    const onAddPointRef = useRef(onAddPoint);
+    const onMoveRef = useRef(onMove);
 
-    // ✅ Shared event handler refs for perfect map.off() cleanup
-    const handlersRef = useRef<Record<string, Function>>({});
+    useEffect(() => { householdsRef.current = households; }, [households]);
+    useEffect(() => { onZoneClickRef.current = onZoneClick; }, [onZoneClick]);
+    useEffect(() => { onDropRef.current = onHouseholdDrop; }, [onHouseholdDrop]);
+    useEffect(() => { onBoundsChangeRef.current = onBoundsChange; }, [onBoundsChange]);
+    useEffect(() => { onMoveRef.current = onMove; }, [onMove]);
 
-    // Supercluster ref for high-performance clustering
-    const superclusterRef = useMemorizedSupercluster(households);
-
-    // ✅ Hook extraction for modularity
-    const { setupInteractions } = useMapInteractions(readOnly, householdsRef, onSelectRef, onZoneClickRef, onDropRef);
-    const { setupClusteringEvents } = useMapClustering(superclusterRef);
-    const { setupUserMarker, cleanup: cleanupMarker } = useMapMarkers(userLocation);
-    const { setupMeasureTool } = useMapMeasure();
-    const { setupLasso } = useMapLasso(isSelecting, householdsRef, onLassoSelection);
-    const { setupVisibility } = useMapVisibility(showHeatmap, showZones, styleIsReady);
-
-    // Active/Desactive la couche serveur en fonction des filtres
-    useEffect(() => {
-        if (!mapRef.current || !styleIsReady) return;
-        if (mapRef.current.getLayer('households-server-layer')) {
-            mapRef.current.setLayoutProperty('households-server-layer', 'visibility', isFilteringActive ? 'none' : 'visible');
-        }
-    }, [isFilteringActive, styleIsReady]);
-
-    // ✅ Viewport loading - Enabled for large datasets
-    // Allows loading only visible households based on map viewport
-    // Reduces bandwidth by ~95% for large datasets (50k+ points)
-    // ✅ Viewport loading - Disabled since we now use MVT for high-perf and Dexie for local filtered data
-    const { updateViewport, isLoadingViewport } = useViewportLoading({
-        enabled: false,
+    // ── VIEWPORT LOADING ──
+    // ❌ Désactivé : peut tromper l'utilisateur en ne montrant que les ménages visibles
+    // On garde le chargement complet de tous les ménages pour une vue d'ensemble fidèle
+    const { visibleHouseholds, isLoadingViewport, updateViewport } = useViewportLoading({
+        enabled: false, // Désactivé pour éviter la confusion utilisateur
         projectId,
         debounceMs: 300,
-        onHouseholdsLoaded: (households) => {
-            if (mapRef.current && households.length > 0) {
-                const geoJSON = householdsToGeoJSON(households);
-                (mapRef.current.getSource('households') as any)?.setData(geoJSON);
-                logger.debug(`📍 Viewport loaded ${households.length} households`);
-            }
-            // ✅ If households is EMPTY, we intentionally do NOT call setData([])
-            // The map keeps the previous frame's data until the next successful load
+        onHouseholdsLoaded: (loadedHouseholds) => {
+            logger.debug(`📍 Viewport loaded ${loadedHouseholds.length} households`);
         }
     });
 
-    useEffect(() => { householdsRef.current = households; }, [households]);
-    useEffect(() => { onSelectRef.current = onSelectHousehold; }, [onSelectHousehold]);
-    useEffect(() => { onZoneClickRef.current = onZoneClick; }, [onZoneClick]);
-    useEffect(() => { onDropRef.current = onHouseholdDrop; }, [onHouseholdDrop]);
-    useEffect(() => { onMoveRef.current = (coords: [number, number], zoom: number) => onMove?.(toLatLng(coords), zoom); }, [onMove]);
-    useEffect(() => { favoritesRef.current = favorites; }, [favorites]);
-    useEffect(() => { grappesConfigRef.current = grappesConfig; }, [grappesConfig]);
-    useEffect(() => { grappeZonesDataRef.current = grappeZonesData; }, [grappeZonesData]);
-    useEffect(() => { grappeCentroidsDataRef.current = grappeCentroidsData; }, [grappeCentroidsData]);
-    useEffect(() => { onBoundsChangeRef.current = onBoundsChange; }, [onBoundsChange]);
-    
-    const warehousesRef = useRef(warehouses);
-    useEffect(() => { warehousesRef.current = warehouses; }, [warehouses]);
-    useEffect(() => { isDrawingRef.current = isDrawing; }, [isDrawing]);
-    useEffect(() => { onAddPointRef.current = onAddPoint; }, [onAddPoint]);
+    // ✅ Utiliser TOUS les ménages chargés pour une vue complète et fidèle
+    const activeHouseholds = households;
 
-    // GéoJSON des Ménages avec correction jitter (décalage spirale pour coordonnées dupliquées)
-    // ✅ Using useMemoDeep for deep memoization - prevents recalculation on 50k+ points
-    const householdGeoJSON = useMemoDeep(() => {
-        const valid = (households || []).filter((h: any) => isValidCoordinate(h.location?.coordinates));
+    // Workers & supercluster
+    const superclusterRef = useMemorizedSupercluster(activeHouseholds);
+    const geoJsonWorker = useMemo(() => new Worker(new URL('../../workers/mapGeoJsonWorker.ts', import.meta.url), { type: 'module' }), []);
+    const selectedHousehold = React.useMemo(() => {
+        if (!selectedHouseholdId) return null;
+        return households?.find((h: any) => h.id === selectedHouseholdId) || null;
+    }, [households, selectedHouseholdId]);
 
-        // Compter les doublons de coordonnées et appliquer un offset spirale
-        const coordCount: Record<string, number> = {};
+    const selectedHouseholdCoords: [number, number] | null = selectedHousehold?.location?.coordinates || null;
+    const [householdGeoJSON, setHouseholdGeoJSON] = useState<any>(null);
 
-        return {
-            type: 'FeatureCollection',
-            features: valid.map((h: any) => {
-                let coordinates = h.location.coordinates as [number, number];
-                const key = `${coordinates[0].toFixed(5)}_${coordinates[1].toFixed(5)}`;
-                const n = coordCount[key] ?? 0;
-                coordCount[key] = n + 1;
+    // ✅ Sync GeoJSON via worker with debouncing and smart diffing
+    const geoJsonDebounceRef = useRef<NodeJS.Timeout | null>(null);
+    const prevHouseholdsRef = useRef<any[]>([]);
 
-                // Apply jitter for duplicate coordinates
-                if (n > 0) {
-                    // ✅ FAST JITTER: use simple random offset for 50k+ performance
-                    coordinates = [
-                        coordinates[0] + (Math.random() - 0.5) * SLOW_JITTER_EPSILON * Math.sqrt(n),
-                        coordinates[1] + (Math.random() - 0.5) * SLOW_JITTER_EPSILON * Math.sqrt(n)
-                    ];
-                }
-
-                let lng = coordinates[0];
-                let lat = coordinates[1];
-
-                // Auto-correction : Au Sénégal, Lng est négatif (~-17) et Lat positif (~14).
-                // Si lat est négatif et lng positif, on intervertit.
-                if (lng > 0 && lat < 0) {
-                    const temp = lng;
-                    lng = lat;
-                    lat = temp;
-                    coordinates = [lng, lat]; // update geometry
-                }
-
-                return {
-                    type: 'Feature',
-                    geometry: { type: 'Point', coordinates },
-                    properties: {
-                        id: h.id ?? '',
-                        household_id: h.id ?? '',
-                        status: getHouseholdDerivedStatus(h) ?? 'planned',
-                        color: getStatusColor(getHouseholdDerivedStatus(h)) ?? '#94a3b8',
-                        iconId: getIconId(getHouseholdDerivedStatus(h)) ?? 'icon-default',
-                        longitude: typeof lng === 'number' && isFinite(lng) ? lng : 0,
-                        latitude: typeof lat === 'number' && isFinite(lat) ? lat : 0
-                    }
-                };
-            })
-        };
-    }, [households]);
-
-    // ✅ SYNCHRONISATION JS -> CARTE : Applique instantanément le filtrage local sur la couche 'households'
     useEffect(() => {
-        if (!mapRef.current || !styleIsReady) return;
-        const source = mapRef.current.getSource('households') as maplibregl.GeoJSONSource | undefined;
-        if (source?.setData) {
-            source.setData(householdGeoJSON as any);
-        }
-    }, [householdGeoJSON, styleIsReady]);
-
-    // GéoJSON des Favoris
-    const favoritesGeoJSON = useMemo(() => {
-        const favoriteIds = (favorites || []).map((f: any) => f.householdId);
-        const favHouseholds = (households || []).filter((h: any) => favoriteIds.includes(h.id));
-
-        return {
-            type: 'FeatureCollection',
-            features: favHouseholds.map((h: any) => ({
-                type: 'Feature',
-                geometry: { type: 'Point', coordinates: [h.location.coordinates[0], h.location.coordinates[1]] },
-                properties: { id: h.id, type: 'favorite' }
-            }))
-        };
-    }, [households, favorites]);
-
-    // GéoJSON des Grappes (Zones)
-    const grappesGeoJSON = useMemo(() => ({
-        type: 'FeatureCollection',
-        features: (grappesConfig?.grappes || [])
-            .filter((g: any) => g.centroide_lon != null && g.centroide_lat != null)
-            .map((g: any) => ({
-                type: 'Feature',
-                geometry: { type: 'Point', coordinates: [Number(g.centroide_lon), Number(g.centroide_lat)] },
-                properties: { id: g.id, nom: g.nom, type: 'grappe' }
-            }))
-    }), [grappesConfig]);
-
-    // GéoJSON des Warehouses (Magasins)
-    const warehousesGeoJSON = useMemo(() => {
-        return {
-            type: 'FeatureCollection',
-            features: (warehouses || [])
-                .filter((w: any) => w.latitude && w.longitude)
-                .map((w: any) => ({
-                    type: 'Feature',
-                    geometry: { type: 'Point', coordinates: [Number(w.longitude), Number(w.latitude)] },
-                    properties: { 
-                        id: w.id, 
-                        name: w.name, 
-                        address: w.address || '', 
-                        type: 'warehouse',
-                        stockStatus: w.hasAlert ? 'alert' : 'ok',
-                        daysLeft: w.daysBeforeBreakout
-                    }
-                }))
-        };
-    }, [warehouses]);
-
-    // GéoJSON des Sous-Grappes
-    const sousGrappesGeoJSON = useMemo(() => ({
-        type: 'FeatureCollection',
-        features: (grappesConfig?.sous_grappes || [])
-            .filter((sg: any) => sg.centroide_lon != null && sg.centroide_lat != null)
-            .map((sg: any) => ({
-                type: 'Feature',
-                geometry: { type: 'Point', coordinates: [Number(sg.centroide_lon), Number(sg.centroide_lat)] },
-                properties: { id: sg.id, nom: sg.nom, grappe_id: sg.grappe_id, type: 'sous_grappe' }
-            }))
-    }), [grappesConfig]);
-
-    const setupLayersLock = useRef(false);
-
-    const setupLayers = useCallback(async (map: maplibregl.Map) => {
-        if (!map || setupLayersLock.current) return;
-
-        try {
-            setupLayersLock.current = true;
-            
-            // ✅ Ensure style is fully loaded before loading images
-            if (!map.isStyleLoaded?.()) {
-                logger.log('⏳ Waiting for style to load before loading images...');
-                setupLayersLock.current = false;
-                return;
-            }
-            
-            await loadMapImages(map);
-
-            // --- SOURCES ---
-            // Source MVT pour les performances (PostGIS)
-            const apiUrl = import.meta.env.VITE_API_URL || '/api';
-            const mvtBaseUrl = apiUrl.startsWith('http') ? apiUrl : `${window.location.origin}${apiUrl}`;
-            
-            if (!map.getSource('households-mvt')) {
-                const tilesUrl = (projectId && projectId !== 'undefined')
-                    ? `${mvtBaseUrl}/geo/mvt/households/{z}/{x}/{y}?projectId=${projectId}&t=${Date.now()}`
-                    : `${mvtBaseUrl}/geo/mvt/households/{z}/{x}/{y}?projectId=none`;
-                    
-                map.addSource('households-mvt', {
-                    type: 'vector',
-                    tiles: [tilesUrl],
-                    minzoom: 0,
-                    maxzoom: 14
-                });
-            }
-
-            // Fallback GeoJSON pour le offline / petits datasets
-            if (!map.getSource('households')) {
-                map.addSource('households', {
-                    type: 'geojson',
-                    data: householdGeoJSON as any,
-                    cluster: false
-                });
-            }
-
-            if (!map.getSource('grappes')) {
-                map.addSource('grappes', { type: 'geojson', data: grappesGeoJSON as any });
-            }
-            if (!map.getSource('warehouses-source')) {
-                map.addSource('warehouses-source', { type: 'geojson', data: warehousesGeoJSON as any });
-            }
-            if (!map.getSource('sous-grappes')) {
-                map.addSource('sous-grappes', { type: 'geojson', data: sousGrappesGeoJSON as any });
-            }
-
-            if (!map.getSource('auto-grappes')) {
-                if (grappeZonesDataRef.current) {
-                    map.addSource('auto-grappes', { type: 'geojson', data: grappeZonesDataRef.current });
-                } else {
-                    map.addSource('auto-grappes', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-                }
-            }
-
-            if (!map.getSource('auto-grappes-centroids')) {
-                if (grappeCentroidsDataRef.current) {
-                    map.addSource('auto-grappes-centroids', { type: 'geojson', data: grappeCentroidsDataRef.current });
-                } else {
-                    map.addSource('auto-grappes-centroids', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-                }
-            }
-
-            // Source pour les favoris
-            if (!map.getSource('favorites-source')) {
-                map.addSource('favorites-source', {
-                    type: 'geojson',
-                    data: (favoritesRef.current || []) as any
-                });
-            }
-
-            // ✅ Source pour les clusters générés par Supercluster (mise à jour dynamique au zoom)
-            if (!map.getSource('supercluster-generated')) {
-                map.addSource('supercluster-generated', {
-                    type: 'geojson',
-                    data: { type: 'FeatureCollection', features: [] }
-                });
-            }
-
-            // Source pour le dessin de zone en cours
-            if (!map.getSource('pending-zone')) {
-                map.addSource('pending-zone', {
-                    type: 'geojson',
-                    data: { type: 'FeatureCollection', features: [] }
-                });
-            }
-
-            // Source pour les zones enregistrées (drawnZones)
-            if (!map.getSource('drawn-zones')) {
-                map.addSource('drawn-zones', {
-                    type: 'geojson',
-                    data: { type: 'FeatureCollection', features: [] }
-                });
-            }
-
-            // --- LAYERS ---
-            if (!map.getLayer('warehouses-geofence')) {
-                map.addLayer({
-                    id: 'warehouses-geofence',
-                    type: 'circle',
-                    source: 'warehouses-source',
-                    paint: {
-                        'circle-radius': [
-                            'interpolate', ['exponential', 2], ['zoom'],
-                            10, ['/', ['to-number', ['coalesce', ['get', 'geofencingRadius'], 500]], 100],
-                            20, ['/', ['to-number', ['coalesce', ['get', 'geofencingRadius'], 500]], 0.1]
-                        ],
-                        'circle-color': '#10b981',
-                        'circle-opacity': 0.15,
-                        'circle-stroke-width': 1,
-                        'circle-stroke-color': '#059669',
-                        'circle-stroke-opacity': 0.3
-                    }
-                });
-            }
-
-            if (!map.getLayer('warehouses-layer')) {
-                map.addLayer({
-                    id: 'warehouses-layer',
-                    type: 'circle',
-                    source: 'warehouses-source',
-                    paint: {
-                        'circle-radius': 12,
-                        'circle-color': [
-                            'match',
-                            ['get', 'stockStatus'],
-                            'alert', '#ef4444', // Red for alert
-                            '#3b82f6' // Blue for ok
-                        ],
-                        'circle-stroke-width': 3,
-                        'circle-stroke-color': '#ffffff',
-                        'circle-opacity': 0.9
-                    }
-                });
-            }
-
-            if (!map.getLayer('warehouses-labels')) {
-                map.addLayer({
-                    id: 'warehouses-labels',
-                    type: 'symbol',
-                    source: 'warehouses-source',
-                    minzoom: 8,
-                    layout: {
-                        'text-field': ['get', 'name'],
-                        'text-size': 14,
-                        'text-offset': [0, 1.5],
-                        'text-anchor': 'top'
-                    },
-                    paint: {
-                        'text-color': '#1e293b',
-                        'text-halo-color': '#ffffff',
-                        'text-halo-width': 2
-                    }
-                });
-            }
-
-            if (!map.getLayer('favorites-layer')) {
-                map.addLayer({
-                    id: 'favorites-layer',
-                    type: 'circle',
-                    source: 'favorites-source',
-                    paint: {
-                        'circle-radius': 8,
-                        'circle-color': '#fbbf24',
-                        'circle-opacity': 0.4,
-                        'circle-stroke-width': 2,
-                        'circle-stroke-color': '#fbbf24'
-                    }
-                });
-            }
-
-            if (!map.getLayer('favorites-outline')) {
-                map.addLayer({
-                    id: 'favorites-outline',
-                    type: 'circle',
-                    source: 'favorites-source',
-                    paint: {
-                        'circle-radius': 12,
-                        'circle-color': 'transparent',
-                        'circle-stroke-width': 1,
-                        'circle-stroke-color': '#fbbf24',
-                        'circle-stroke-opacity': 0.5
-                    }
-                });
-            }
-
-            // Source pour l'itinéraire de routage
-            if (!map.getSource('route-source')) {
-                map.addSource('route-source', {
-                    type: 'geojson',
-                    data: { type: 'FeatureCollection', features: [] }
-                });
-            }
-
-            // Source pour les régions du Sénégal
-            if (!map.getSource('senegal-regions')) {
-                map.addSource('senegal-regions', {
-                    type: 'geojson',
-                    data: senegalRegions as any
-                });
-            }
-
-            if (!map.getLayer('route-layer')) {
-                map.addLayer({
-                    id: 'route-layer',
-                    type: 'line',
-                    source: 'route-source',
-                    layout: {
-                        'line-join': 'round',
-                        'line-cap': 'round'
-                    },
-                    paint: {
-                        'line-color': '#10b981',
-                        'line-width': 5,
-                        'line-opacity': 0.8
-                    }
-                });
-            }
-
-            // Couche de highlight pour la route active
-            if (!map.getLayer('route-highlight-layer')) {
-                map.addLayer({
-                    id: 'route-highlight-layer',
-                    type: 'line',
-                    source: 'route-source',
-                    layout: {
-                        'line-join': 'round',
-                        'line-cap': 'round'
-                    },
-                    paint: {
-                        'line-color': '#fbbf24', // Amber pour mettre en évidence
-                        'line-width': 7,
-                        'line-opacity': ['interpolate', ['linear'], ['zoom'], 10, 0.6, 15, 0.9]
-                    }
-                }, 'route-layer'); // Placer au-dessus de la route principale
-            }
-
-            // --- LAYERS : RÉGIONS DU SÉNÉGAL ---
-            if (!map.getLayer('senegal-regions-fill')) {
-                map.addLayer({
-                    id: 'senegal-regions-fill',
-                    type: 'fill',
-                    source: 'senegal-regions',
-                    paint: {
-                        'fill-color': '#cbd5e1',
-                        'fill-opacity': 0.05
-                    }
-                });
-            }
-
-            if (!map.getLayer('senegal-regions-outline')) {
-                map.addLayer({
-                    id: 'senegal-regions-outline',
-                    type: 'line',
-                    source: 'senegal-regions',
-                    paint: {
-                        'line-color': '#64748b',
-                        'line-width': 1.5,
-                        'line-opacity': 0.4,
-                        'line-dasharray': [2, 2]
-                    }
-                });
-            }
-
-            if (!map.getLayer('senegal-regions-label')) {
-                map.addLayer({
-                    id: 'senegal-regions-label',
-                    type: 'symbol',
-                    source: 'senegal-regions',
-                    layout: {
-                        'text-field': ['to-string', ['coalesce', ['get', 'REGION'], 'Sénégal']],
-                        'text-size': 12,
-                        'text-offset': [0, 0],
-                        'text-anchor': 'center'
-                    },
-                    paint: {
-                        'text-color': '#475569',
-                        'text-opacity': 0.6
-                    }
-                });
-            }
-
-            // --- LAYERS : AUTO-GRAPPES (Régionalisation) - TOUJOURS AFFICHÉES ---
-            if (!map.getLayer('auto-grappes-fill')) {
-                map.addLayer({
-                    id: 'auto-grappes-fill',
-                    type: 'fill',
-                    source: 'auto-grappes',
-                    layout: { visibility: 'visible' },
-                    paint: {
-                        'fill-color': ['case',
-                            ['==', ['get', 'type'], 'dense'], '#10b981', // emerald
-                            ['==', ['get', 'type'], 'kmeans'], '#f59e0b', // amber
-                            '#3b82f6' // default
-                        ],
-                        'fill-opacity': [
-                            'case',
-                            ['boolean', ['feature-state', 'hover'], false], 0.5,
-                            0.15
-                        ]
-                    }
-                });
-            }
-
-            if (!map.getLayer('auto-grappes-outline')) {
-                map.addLayer({
-                    id: 'auto-grappes-outline',
-                    type: 'line',
-                    source: 'auto-grappes',
-                    layout: { visibility: 'visible' },
-                    paint: {
-                        'line-color': ['case',
-                            ['==', ['get', 'type'], 'dense'], '#059669',
-                            ['==', ['get', 'type'], 'kmeans'], '#d97706',
-                            '#2563eb'
-                        ],
-                        'line-width': 2.5,
-                        'line-opacity': 0.8
-                    }
-                });
-            }
-
-            if (map.getSource('auto-grappes-centroids') && !map.getLayer('auto-grappes-labels')) {
-                map.addLayer({
-                    id: 'auto-grappes-labels',
-                    type: 'symbol',
-                    source: 'auto-grappes-centroids',
-                    layout: {
-                        visibility: 'visible',
-                        'text-field': [
-                            'concat', 
-                            ['to-string', ['coalesce', ['get', 'name'], 'Zone']], 
-                            '\n', 
-                            ['to-string', ['to-number', ['get', 'count'], 0]], 
-                            ' pts'
-                        ],
-                        'text-size': 12,
-                        'text-offset': [0, 0],
-                        'text-anchor': 'center'
-                    },
-                    paint: {
-                        'text-color': '#1e293b',
-                        'text-halo-color': '#ffffff',
-                        'text-halo-width': 2
-                    }
-                });
-            }
-
-            // --- LAYERS : ZONES (Grappes Manuelles/Anciennes) - MASQUÉES ---
-            // Ces couches sont désactivées - utiliser les auto-grappes à la place
-            if (!map.getLayer('grappes-layer')) {
-                map.addLayer({
-                    id: 'grappes-layer',
-                    type: 'circle',
-                    source: 'grappes',
-                    layout: { visibility: 'none' },
-                    paint: {
-                        'circle-radius': 25,
-                        'circle-color': '#4f46e5',
-                        'circle-opacity': 0.2,
-                        'circle-stroke-width': 2,
-                        'circle-stroke-color': '#4f46e5'
-                    }
-                });
-            }
-
-            if (!map.getLayer('grappes-labels')) {
-                map.addLayer({
-                    id: 'grappes-labels',
-                    type: 'symbol',
-                    source: 'grappes',
-                    layout: {
-                        visibility: 'none',
-                        'text-field': ['to-string', ['coalesce', ['get', 'nom'], '']],
-                        'text-size': 10,
-                        'text-offset': [0, 3],
-                        'text-anchor': 'top'
-                    },
-                    paint: { 'text-color': '#4f46e5', 'text-halo-color': '#fff', 'text-halo-width': 1 }
-                });
-            }
-
-            // --- LAYERS : SOUS-GRAPPES - MASQUÉES ---
-            if (!map.getLayer('sous-grappes-layer')) {
-                map.addLayer({
-                    id: 'sous-grappes-layer',
-                    type: 'circle',
-                    source: 'sous-grappes',
-                    layout: { visibility: 'none' },
-                    paint: {
-                        'circle-radius': 12,
-                        'circle-color': '#10b981',
-                        'circle-opacity': 0.3,
-                        'circle-stroke-width': 1.5,
-                        'circle-stroke-color': '#10b981'
-                    }
-                });
-            }
-
-            // --- LAYERS : MVT HOUSEHOLDS (Heatmap) ---
-            if (!map.getLayer('heatmap')) {
-                map.addLayer({
-                    id: 'heatmap',
-                    type: 'heatmap',
-                    source: 'households',
-                    layout: { visibility: 'none' }, // toujours commencer caché
-                    paint: {
-                        'heatmap-weight': [
-                            'interpolate', ['linear'], ['zoom'],
-                            0, 0.3,
-                            15, 1
-                        ],
-                        'heatmap-intensity': [
-                            'interpolate', ['linear'], ['zoom'],
-                            0, 0.5,
-                            15, 3
-                        ],
-                        'heatmap-radius': [
-                            'interpolate', ['linear'], ['zoom'],
-                            0, 8,
-                            15, 30
-                        ],
-                        'heatmap-opacity': 0.7,
-                        'heatmap-color': [
-                            'interpolate', ['linear'], ['heatmap-density'],
-                            0, 'rgba(0,0,0,0)',
-                            0.1, '#4f46e5',
-                            0.3, '#7c3aed',
-                            0.5, '#ef4444',
-                            0.8, '#f97316',
-                            1, '#fbbf24'
-                        ]
-                    }
-                });
-            }
-
-            // ✅ 1. SERVER LAYER (High performance MVT foundation)
-            if (!map.getLayer('households-server-layer')) {
-                map.addLayer({
-                    id: 'households-server-layer',
-                    type: 'symbol',
-                    source: 'households-mvt',
-                    'source-layer': 'households',
-                    minzoom: 0,
-                    layout: {
-                        'icon-image': [
-                            'match',
-                            ['coalesce', ['get', 'status'], 'default'],
-                            'Contrôle conforme', 'icon-Contrôle conforme',
-                            'Non conforme', 'icon-Non conforme',
-                            'Intérieur terminé', 'icon-Intérieur terminé',
-                            'Réseau terminé', 'icon-Réseau terminé',
-                            'Murs terminés', 'icon-Murs terminés',
-                            'Livraison effectuée', 'icon-Livraison effectuée',
-                            'Non encore commencé', 'icon-Non encore commencé',
-                            'icon-default'
-                        ],
-                        'icon-size': [
-                            'interpolate', ['linear'], ['zoom'],
-                            3, 0.15, 6, 0.25, 10, 0.4, 14, 0.7, 18, 1
-                        ],
-                        'icon-allow-overlap': true,
-                        'icon-ignore-placement': true,
-                        'visibility': 'visible'
-                    },
-                    paint: {
-                        'icon-opacity': [
-                            'interpolate', ['linear'], ['zoom'],
-                            10, 0.6, // Faded when zipped out to avoid visual noise
-                            14, 1.0
-                        ]
-                    }
-                });
-            }
-
-            // ✅ 2. LOCAL LAYER (Highly reactive GeoJSON for Outbox/Recent edits)
-            if (!map.getLayer('households-local-layer')) {
-                map.addLayer({
-                    id: 'households-local-layer',
-                    type: 'symbol',
-                    source: 'households',
-                    minzoom: 0,
-                    layout: {
-                        'icon-image': [
-                            'match',
-                            ['coalesce', ['get', 'status'], 'default'],
-                            'Contrôle conforme', 'icon-Contrôle conforme',
-                            'Non conforme', 'icon-Non conforme',
-                            'Intérieur terminé', 'icon-Intérieur terminé',
-                            'Réseau terminé', 'icon-Réseau terminé',
-                            'Murs terminés', 'icon-Murs terminés',
-                            'Livraison effectuée', 'icon-Livraison effectuée',
-                            'Non encore commencé', 'icon-Non encore commencé',
-                            'icon-default'
-                        ],
-                        'icon-size': [
-                            'interpolate', ['linear'], ['zoom'],
-                            3, 0.20, // Slightly larger to highlight local changes
-                            6, 0.35, 
-                            10, 0.5, 
-                            14, 0.8, 
-                            18, 1.1
-                        ],
-                        'icon-allow-overlap': true,
-                        'icon-ignore-placement': true,
-                        'visibility': 'visible'
-                    },
-                    paint: {
-                        // Slight halo effect for local points to distinguish them
-                        'icon-halo-color': '#ffffff',
-                        'icon-halo-width': 1
-                    }
-                });
-            }
-
-            // ✅ 3. SYNC FEEDBACK LAYER (Shows red/orange dot for offline/pending households)
-            if (!map.getLayer('households-sync-indicator')) {
-                map.addLayer({
-                    id: 'households-sync-indicator',
-                    type: 'circle',
-                    source: 'households',
-                    filter: ['in', ['coalesce', ['get', 'syncStatus'], ''], ['literal', ['pending', 'error']]],
-                    minzoom: 12, // Only show when zoomed in to avoid clutter
-                    paint: {
-                        'circle-radius': 5,
-                        'circle-color': [
-                            'match',
-                            ['get', 'syncStatus'],
-                            'pending', '#f59e0b', // amber
-                            'error', '#ef4444', // red
-                            'transparent'
-                        ],
-                        'circle-stroke-width': 1.5,
-                        'circle-stroke-color': '#ffffff',
-                        'circle-translate': [8, -8] // offset to top right of the pin
-                    }
-                });
-            }
-
-            // ✅ Cluster circles layer (visible when ZOOMED OUT < zoom 12)
-            if (!map.getLayer('cluster-circles')) {
-                map.addLayer({
-                    id: 'cluster-circles',
-                    type: 'circle',
-                    source: 'supercluster-generated',
-                    maxzoom: 12,  // ✅ Only show clusters when zoomed OUT
-                    filter: ['has', 'point_count'],
-                    paint: {
-                        'circle-color': '#3b82f6',
-                        'circle-radius': [
-                            'step', 
-                            ['to-number', ['get', 'point_count'], 0], 
-                            18, 50, 24, 200, 30
-                        ],
-                        'circle-stroke-width': 3,
-                        'circle-stroke-color': '#1e40af',
-                        'circle-opacity': [
-                            'interpolate',
-                            ['linear'],
-                            ['zoom'],
-                            5, 0.8,
-                            10, 0.4,
-                            12, 0
-                        ]
-                    }
-                });
-            }
-
-            // ✅ Cluster count labels (visible when zoomed out)
-            if (!map.getLayer('cluster-counts')) {
-                map.addLayer({
-                    id: 'cluster-counts',
-                    type: 'symbol',
-                    source: 'supercluster-generated',
-                    maxzoom: 12,  // ✅ Only show at low zoom like clusters
-                    filter: ['has', 'point_count'],
-                    layout: {
-                        'text-field': ['coalesce', ['to-string', ['get', 'point_count_abbreviated']], ['to-string', ['get', 'point_count']], '0'],
-                        'text-size': 14
-                    },
-                    paint: {
-                        'text-color': '#ffffff'
-                    }
-                });
-            }
-
-            // --- LAYERS : DESSIN DE ZONE ---
-            if (!map.getLayer('pending-zone-fill')) {
-                map.addLayer({
-                    id: 'pending-zone-fill',
-                    type: 'fill',
-                    source: 'pending-zone',
-                    paint: { 'fill-color': '#6366f1', 'fill-opacity': 0.2 }
-                });
-            }
-            if (!map.getLayer('pending-zone-line')) {
-                map.addLayer({
-                    id: 'pending-zone-line',
-                    type: 'line',
-                    source: 'pending-zone',
-                    paint: { 'line-color': '#6366f1', 'line-width': 2, 'line-dasharray': [2, 1] }
-                });
-            }
-            if (!map.getLayer('pending-zone-points')) {
-                map.addLayer({
-                    id: 'pending-zone-points',
-                    type: 'circle',
-                    source: 'pending-zone',
-                    paint: { 'circle-radius': 4, 'circle-color': '#fff', 'circle-stroke-width': 2, 'circle-stroke-color': '#6366f1' }
-                });
-            }
-
-            // Couches pour les zones enregistrées
-            if (!map.getLayer('drawn-zones-fill')) {
-                map.addLayer({
-                    id: 'drawn-zones-fill',
-                    type: 'fill',
-                    source: 'drawn-zones',
-                    paint: {
-                        'fill-color': ['get', 'color'],
-                        'fill-opacity': 0.15
-                    }
-                });
-            }
-            if (!map.getLayer('drawn-zones-outline')) {
-                map.addLayer({
-                    id: 'drawn-zones-outline',
-                    type: 'line',
-                    source: 'drawn-zones',
-                    paint: {
-                        'line-color': ['get', 'color'],
-                        'line-width': 2
-                    }
-                });
-            }
-
-            // Source temporaire pour le drag & drop (visual feedback)
-            if (!map.getSource('drag-point')) {
-                map.addSource('drag-point', {
-                    type: 'geojson',
-                    data: { type: 'FeatureCollection', features: [] }
-                });
-            }
-
-            if (!map.getLayer('drag-point-layer')) {
-                map.addLayer({
-                    id: 'drag-point-layer',
-                    type: 'circle',
-                    source: 'drag-point',
-                    paint: {
-                        'circle-radius': 7,
-                        'circle-color': '#ef4444',
-                        'circle-stroke-width': 2,
-                        'circle-stroke-color': '#ffffff'
-                    }
-                });
-            }
-
-            // ✅ Setup interactions with the new layer IDs
-            setupInteractions(map);
-
-            // --- FINALIZATION ---
-            logger.debug('✅ Layers setup complete. Unlocking data sync.');
-            setStyleIsReady(true);
-            setIsStyleSwitching(false); // ✅ Hide skeleton overlay once layers are back
-        } catch (error) {
-            logger.error('❌ Error setting up MapLibre layers:', error);
-        } finally {
-            setupLayersLock.current = false;
-        }
-    }, [householdGeoJSON, favoritesGeoJSON, grappesGeoJSON, warehousesGeoJSON, sousGrappesGeoJSON, showHeatmap, showZones, setupInteractions, setupClusteringEvents]);
-
-    // ✅ REFS for stability - prevents map re-initialization when these change
-    const setupLayersRef = useRef(setupLayers);
-    const updateViewportRef = useRef(updateViewport);
-    useEffect(() => { setupLayersRef.current = setupLayers; }, [setupLayers]);
-    useEffect(() => { updateViewportRef.current = updateViewport; }, [updateViewport]);
-
-    // Initialisation
-    useEffect(() => {
-        if (!containerRef.current || mapRef.current) return; // ✅ Robust double-init guard
-        
-        const map = new maplibregl.Map({
-            container: containerRef.current,
-            style: isDarkMode ? MAP_STYLE_DARK : MAP_STYLE_LIGHT,
-            center: [-14.4563, 14.4563], // Default Senegal center
-            zoom: 7,
-            localIdeographFontFamily: 'sans-serif',
-            trackResize: false, // Improved performance
-            // ✅ Fix glyph 404: intercept openfreemap font requests and redirect to stable CDN
-            transformRequest: (url, resourceType) => {
-                if (resourceType === 'Glyphs' && url.includes('openfreemap')) {
-                    return { url: url.replace('https://tiles.openfreemap.org/fonts', 'https://demotiles.maplibre.org/font') };
-                }
-            }
-        });
-
-        const onLoad = () => {
-            logger.debug('🗺️ Map load event triggered');
-            setupLayers(map);
-        };
-        
-        const handleMoveEnd = () => {
-            if (onMoveRef.current) {
-                const c = map.getCenter();
-                onMoveRef.current([c.lng, c.lat], map.getZoom());
-            }
-
-            // ✅ Emit bounds for real-time statistics
-            if (onBoundsChangeRef.current && map) {
-                const b = map.getBounds();
-                onBoundsChangeRef.current([
-                    b.getWest(),
-                    b.getSouth(),
-                    b.getEast(),
-                    b.getNorth()
-                ]);
-            }
-
-            // ✅ Trigger viewport loading on map move - use ref for stability
-            if (updateViewportRef.current && map) {
-                const bounds = map.getBounds();
-                updateViewportRef.current({
-                    lng1: bounds.getWest(),
-                    lat1: bounds.getSouth(),
-                    lng2: bounds.getEast(),
-                    lat2: bounds.getNorth()
-                });
-            }
-        };
-
-        const handleStyleData = () => {
-            // This is called when the style starts loading (e.g. after setStyle)
-            // We wait for it to be ready before setupLayers
-            if (map.isStyleLoaded()) {
-                logger.debug('🎨 Style fully loaded, setting up layers...');
-                setupLayers(map);
-            }
-        };
-
-        // Store handlers for persistent cleanup
-        handlersRef.current = { onLoad, handleMoveEnd, handleStyleData };
-
-        map.on('load', onLoad);
-        map.on('moveend', handleMoveEnd);
-        map.on('styledata', handleStyleData);
-
-        // ✅ Drawing click handler
-        const handleMapClick = (e: maplibregl.MapMouseEvent) => {
-            // Check if tool is active and we are NOT clicking on a point/household
-            // (Standard map clicks only)
-            const features = map.queryRenderedFeatures(e.point, { 
-                layers: ['households-server-layer', 'households-local-layer'] 
-            });
-            if (features.length > 0) return;
-
-            if (isDrawingRef.current && onAddPointRef.current) {
-                onAddPointRef.current([e.lngLat.lng, e.lngLat.lat]);
-            }
-        };
-        map.on('click', handleMapClick);
-
-        // ✅ Setup clustering events via hook (zoomend + moveend for supercluster updates)
-        const clusteringCleanup = setupClusteringEvents(map);
-
-        mapRef.current = map;
-        return () => {
-            if (clusteringCleanup) clusteringCleanup();
-            map.off('click', handleMapClick);
-
-            // ✅ Use exact same references for perfect map.off()
-            const h = handlersRef.current;
-            map.off('load', h.onLoad as any);
-            map.off('moveend', h.handleMoveEnd as any);
-            map.off('styledata', h.handleStyleData as any);
-            
-            map.remove();
-            mapRef.current = null;
-        };
-    }, [setupClusteringEvents]); // updateViewport removed from dependencies for stability
-
-
-    // Sync Données
-    useEffect(() => {
-        const map = mapRef.current;
-        if (!map || !styleIsReady) return;
-
-        // Mettre à jour les ménages avec les données filtrées/actuelles
-        (map.getSource('households') as any)?.setData(householdGeoJSON);
-        (map.getSource('grappes') as any)?.setData(grappesGeoJSON);
-        (map.getSource('warehouses-source') as any)?.setData(warehousesGeoJSON);
-        (map.getSource('sous-grappes') as any)?.setData(sousGrappesGeoJSON);
-        if (grappeZonesData) (map.getSource('auto-grappes') as any)?.setData(grappeZonesData);
-        if (grappeCentroidsData) (map.getSource('auto-grappes-centroids') as any)?.setData(grappeCentroidsData);
-        if (favoritesGeoJSON) (map.getSource('favorites-source') as any)?.setData(favoritesGeoJSON);
-
-        // ✅ Sync Drawing Zones
-        const pendingGeoJSON = {
-            type: 'FeatureCollection',
-            features: pendingPoints.length > 0 ? [
-                {
-                    type: 'Feature',
-                    geometry: {
-                        type: pendingPoints.length > 2 ? 'Polygon' : (pendingPoints.length > 1 ? 'LineString' : 'Point'),
-                        coordinates: pendingPoints.length > 2 ? [[...pendingPoints, pendingPoints[0]]] : pendingPoints
-                    },
-                    properties: {}
-                }
-            ] : []
-        };
-        (map.getSource('pending-zone') as any)?.setData(pendingGeoJSON);
-
-        // Drawn zones persistence
-        const drawnZonesGeoJSON = {
-            type: 'FeatureCollection',
-            features: (drawnZones || []).map((z: any) => ({
-                type: 'Feature',
-                geometry: {
-                    type: 'Polygon',
-                    coordinates: [z.coordinates.length > 2 ? [...z.coordinates, z.coordinates[0]] : z.coordinates]
-                },
-                properties: {
-                    id: z.id,
-                    name: z.name,
-                    team: z.team,
-                    color: z.color
-                }
-            }))
-        };
-        (map.getSource('drawn-zones') as any)?.setData(drawnZonesGeoJSON);
-    }, [householdGeoJSON, grappesGeoJSON, warehousesGeoJSON, sousGrappesGeoJSON, styleIsReady, grappeZonesData, grappeCentroidsData, favoritesGeoJSON, pendingPoints, drawnZones]);
-
-    // Sync Map View (Reactivity to center/zoom props)
-    // To prevent the map from freezing during drag, we only flyTo if the user isn't interacting
-    // AND if the distance is significant enough to mean "the user clicked Recenter".
-    // ✅ Command-based view syncing (Programmatic movements)
-    useEffect(() => {
-        const map = mapRef.current;
-        if (!map || !mapCommand) return;
-
-        const { center, zoom } = mapCommand;
-        
-        logger.debug('🚀 Executing map command:', mapCommand);
-        map.flyTo({
-            center: toLngLat(center), // Clear explicit conversion [lat, lng] -> [lng, lat]
-            zoom: zoom || map.getZoom(),
-            duration: 1200,
-            essential: true
-        });
-    }, [mapCommand]);
-
-
-    // 🔄 Dynamic source update when projectId changes (without style reload)
-    useEffect(() => {
-        const map = mapRef.current;
-        if (!map || !styleIsReady || !map.isStyleLoaded?.()) return;
-
-        const source = map.getSource('households-mvt');
-        if (source && 'setTiles' in source) {
-            const apiUrl = import.meta.env.VITE_API_URL || '/api';
-            const mvtBaseUrl = apiUrl.startsWith('http') ? apiUrl : `${window.location.origin}${apiUrl}`;
-            
-            const tilesUrl = (projectId && projectId !== 'undefined')
-                ? `${mvtBaseUrl}/geo/mvt/households/{z}/{x}/{y}?projectId=${projectId}&t=${Date.now()}`
-                : `${mvtBaseUrl}/geo/mvt/households/{z}/{x}/{y}?projectId=none`;
-            
-            (source as any).setTiles([tilesUrl]);
-            logger.log(`🔄 MVT tiles source updated for project: ${projectId}`);
-        }
-    }, [projectId, styleIsReady]);
-
-    // Update active auto-grappe filter
-    useEffect(() => {
-        const map = mapRef.current;
-        // ✅ Enhanced guards: check map exists, style is ready, AND layers exist
-        if (!map || !styleIsReady || !map.isStyleLoaded?.()) {
+        if (!activeHouseholds || activeHouseholds.length === 0) {
+            setHouseholdGeoJSON({ type: 'FeatureCollection', features: [] });
             return;
         }
 
-        try {
-            const layersToFilter = ['auto-grappes-fill', 'auto-grappes-outline', 'auto-grappes-labels'];
-            const filter = activeGrappeId ? ['==', ['get', 'id'], activeGrappeId] : null;
-            
-            layersToFilter.forEach(layerId => {
-                if (map.getLayer(layerId)) {
-                    map.setFilter(layerId, filter as any);
-                }
-            });
-        } catch (err) {
-            logger.warn('⚠️ Error setting grappes filters:', err instanceof Error ? err.message : err);
+        // Skip if households are essentially the same
+        if (sameHouseholdIds(prevHouseholdsRef.current, activeHouseholds)) {
+            return;
         }
-    }, [activeGrappeId, styleIsReady]);
 
-    // ✅ User location marker setup
-    useEffect(() => {
-        const map = mapRef.current;
-        if (!map) return;
-        setupUserMarker(map, userLocation);
+        // Debounce the worker call
+        if (geoJsonDebounceRef.current) {
+            clearTimeout(geoJsonDebounceRef.current);
+        }
 
-        return () => { cleanupMarker(); };
-    }, [userLocation, setupUserMarker, cleanupMarker]);
-
-    // ✅ Real-time Follow Mode
-    useEffect(() => {
-        const map = mapRef.current;
-        if (!map || !followUser || !userLocation) return;
-        
-        // Immediate center
-        map.flyTo({
-            center: userLocation,
-            zoom: 17,
-            speed: 1.2,
-            curve: 1.4,
-            essential: true
-        });
-        
-    }, [followUser, userLocation]);
-
-    // Gestion de l'itinéraire OSRM (avec debounce)
-    useEffect(() => {
-        const map = mapRef.current;
-        if (!map || !styleIsReady) return;
-
-        const handleRouting = async () => {
-            if (!routingEnabled || !routingStart || !routingDest) {
-                if (map.getSource('route-source')) {
-                    (map.getSource('route-source') as any)?.setData({ type: 'FeatureCollection', features: [] });
+        geoJsonDebounceRef.current = setTimeout(() => {
+            geoJsonWorker.onmessage = (e) => {
+                if (e.data.type === 'GEOJSON_RESULT') {
+                    setHouseholdGeoJSON(e.data.data);
+                    prevHouseholdsRef.current = [...activeHouseholds]; // Update prev after successful processing
                 }
-                return;
+            };
+            geoJsonWorker.postMessage({ households: activeHouseholds });
+        }, 150);
+
+        return () => {
+            if (geoJsonDebounceRef.current) {
+                clearTimeout(geoJsonDebounceRef.current);
             }
+        };
+    }, [activeHouseholds, geoJsonWorker]);
 
-            setIsRoutingLoading(true);
+    useEffect(() => { return () => geoJsonWorker.terminate(); }, [geoJsonWorker]);
 
-            try {
-                const routeResult = await fetchOSRMRoute({
-                    start: routingStart,
-                    destination: routingDest
-                });
+    // Hooks
+    const { setupInteractions } = useMapInteractions(readOnly, householdsRef, onZoneClickRef, onDropRef);
+    const { setupClusteringEvents, updateClusterDisplay } = useMapClustering(superclusterRef);
+    const { setupUserMarker, cleanup: cleanupMarkers } = useMapMarkers(userLocation);
+    const { setupMeasureTool } = useMapMeasure();
+    const { setupLasso } = useMapLasso(isSelecting, householdsRef, onLassoSelection);
 
-                if (routeResult) {
-                    const routeGeoJSON = buildRouteGeoJSON(routeResult.geometry);
-                    (map.getSource('route-source') as any).setData(routeGeoJSON);
+    // ── INITIALIZATION ──
+    useEffect(() => {
+        if (!containerRef.current || hasInitialized.current) return;
 
-                    if (onRouteFound) {
-                        onRouteFound({
-                            distance: routeResult.distance,
-                            duration: routeResult.duration,
-                            instructions: routeResult.instructions
-                        });
+        let isMounted = true;
+
+        const initGlobalMap = async () => {
+            const { map, container } = await globalSingletonMap.getMap(isDarkMode);
+            if (!isMounted) return;
+
+            hasInitialized.current = true;
+
+            // 🔄 Emboîter le Singleton dans le composant React (DOM Injection)
+            containerRef.current!.appendChild(container);
+            map.resize(); // Force recalculation des marges
+
+            mapRef.current = map;
+            setMapInstance(map);
+            setStyleIsReady(!!map.isStyleLoaded());
+
+            // ✅ TOOLTIP HOVER HANDLERS
+            const handleMouseMove = (e: any) => {
+                if (!map.isStyleLoaded()) return;
+                try {
+                    const existingStyle = map.getStyle();
+                    const targetLayers = ['households-local-layer', 'households-server-layer', 'supercluster-generated']
+                        .filter(id => existingStyle.layers?.some((l: any) => l.id === id));
+
+                    if (targetLayers.length === 0) return;
+
+                    const features = map.queryRenderedFeatures(e.point, { layers: targetLayers });
+
+                    if (features.length > 0) {
+                        map.getCanvas().style.cursor = 'pointer';
+                        const f = features[0];
+                        setHoverData(f.properties);
+                        setHoverPos({ x: e.point.x, y: e.point.y });
+                    } else {
+                        map.getCanvas().style.cursor = '';
+                        setHoverData(null);
+                        setHoverPos(null);
                     }
-                } else {
-                    if (onRouteFound) onRouteFound(null);
+                } catch (err: any) {
+                    console.debug('Map query skipping:', err.message);
                 }
-            } finally {
-                setIsRoutingLoading(false);
-            }
+            };
+
+            const handleMouseLeave = () => {
+                setHoverData(null);
+                setHoverPos(null);
+            };
+
+            const handleStyleLoad = () => setStyleIsReady(true);
+            const handleMove = () => {
+                if (onMoveRef.current) {
+                    const center = map.getCenter();
+                    onMoveRef.current(toLatLng([center.lng, center.lat]), map.getZoom());
+                }
+            };
+            const handleMoveEnd = () => {
+                // Notifier Terrain.tsx des nouvelles bornes (filtre local)
+                onBoundsChangeRef.current?.(map.getBounds().toArray().flat() as any);
+            };
+
+            map.on('mousemove', handleMouseMove);
+            map.on('mouseleave', handleMouseLeave);
+            map.on('style.load', handleStyleLoad);
+            map.on('move', handleMove);
+            map.on('moveend', handleMoveEnd);
+
+            return () => {
+                map.off('mousemove', handleMouseMove);
+                map.off('mouseleave', handleMouseLeave);
+                map.off('style.load', handleStyleLoad);
+                map.off('move', handleMove);
+                map.off('moveend', handleMoveEnd);
+
+                if (container.parentNode === containerRef.current) {
+                    containerRef.current?.removeChild(container);
+                }
+                mapRef.current = null;
+            };
         };
 
-        const timer = setTimeout(handleRouting, 300);
-        return () => clearTimeout(timer);
-    }, [routingEnabled, routingStart, routingDest, styleIsReady, onRouteFound]);
+        const cleanupPromise = initGlobalMap();
 
-    // Custom UI fit bounds event
-    useEffect(() => {
-        const handleFitBounds = (e: any) => {
-            if (!mapRef.current) return;
-            const bbox = e.detail;
-            if (bbox && bbox.length === 2 && bbox[0].length === 2 && bbox[1].length === 2) {
-                mapRef.current.fitBounds(bbox, { padding: 50, duration: 1000 });
-            }
+        return () => {
+            isMounted = false;
+            cleanupMarkers();
+
+            // Le cleanup doit retirer les Listeners et détacher le DIV sans détruire le Worker
+            cleanupPromise.then(cleanup => cleanup && cleanup());
         };
-
-        window.addEventListener('fit-bounds', handleFitBounds);
-        return () => window.removeEventListener('fit-bounds', handleFitBounds);
     }, []);
 
-    // ✅ Ruler/Measure tool setup
+    const lastTargetSourceRef = useRef<string | null>(null);
+
+    // ✅ Unified Style switcher (via Singleton)
     useEffect(() => {
-        const map = mapRef.current;
-        if (!map || !styleIsReady) return;
-        const cleanup = setupMeasureTool(map, isMeasuring);
-        return cleanup;
-    }, [isMeasuring, styleIsReady, setupMeasureTool]);
+        if (!mapInstance || (mapInstance as any)._removed) return;
 
-    // ✅ Lasso/Selection tool setup
-    useEffect(() => {
-        const map = mapRef.current;
-        if (!map || !styleIsReady) return;
-        const cleanup = setupLasso(map);
-        return cleanup;
-    }, [isSelecting, styleIsReady, setupLasso]);
+        const targetSource = mapStyle; // 'light', 'dark', or 'satellite'
 
-    // ✅ Consolidated Map Style Switching (Dynamic & Surgical)
-    useEffect(() => {
-        const map = mapRef.current;
-        if (!map) return;
+        if (lastTargetSourceRef.current === targetSource) return;
 
-        let style = isDarkMode ? MAP_STYLE_DARK : MAP_STYLE_LIGHT;
-        if (mapStyle === 'satellite') style = MAP_STYLE_SATELLITE;
-        
-        // Use a simpler approach that forces MapLibre to completely swap styles
-        const currentStyleUrl = (map.getStyle() as any)?.sprite?.replace?.(/(\/sprite)$/, "") || "unknown";
-        if (currentStyleUrl.includes(style.replace?.(/(\/sprite)$/, ""))) return;
-
-        logger.debug('🔄 Switching map style to:', style);
+        console.log(`[Terrain] 🚀 Singleton switching style to: ${targetSource}`);
+        lastTargetSourceRef.current = targetSource;
         setStyleIsReady(false);
-        setIsStyleSwitching(true); // ✅ Show skeleton overlay instead of blank map
-        
-        const handleStyleLoad = () => {
-            if (map.isStyleLoaded()) {
-                // Ensure layers are always re-added when style changes
-                if (setupLayersRef.current) setupLayersRef.current(map);
-            }
-        };
-        
-        // It's safe to listen to styledata. MapLibre automatically drops our custom
-        // non-style layers when sweeping styles, so setupLayers handles recreation correctly.
-        map.on('styledata', handleStyleLoad);
-        map.setStyle(style);
-        
-        return () => {
-            if (map) map.off('styledata', handleStyleLoad);
-        };
-    }, [isDarkMode, mapStyle]);
 
-    // ✅ Layer visibility setup
+        globalSingletonMap.switchStyle(targetSource, isDarkMode).then(() => {
+            setStyleIsReady(true);
+        });
+    }, [mapStyle, isDarkMode, mapInstance]);
+
+    // ✅ Commands handler
     useEffect(() => {
-        const map = mapRef.current;
-        if (!map) return;
-        setupVisibility(map);
-    }, [showHeatmap, showZones, styleIsReady, setupVisibility]);
+        if (!mapRef.current || !mapCommand || !styleIsReady) return;
+        const { center, zoom, bounds } = mapCommand;
+        if (bounds) {
+            mapRef.current.fitBounds(bounds, { padding: 50, maxZoom: 18 });
+        } else if (center) {
+            mapRef.current.flyTo({ center, zoom: zoom || mapRef.current.getZoom(), duration: 2000, essential: true });
+        }
+    }, [mapCommand, styleIsReady]);
 
-    // Commenting out conflicting flyTo that forces constant recentering
-    // useEffect(() => {
-    //     if (mapRef.current && styleIsReady) {
-    //         mapRef.current.easeTo({ center: [Number(center[1]), Number(center[0])], zoom: zoom || 11, duration: 800 });
-    //     }
-    // }, [center, zoom, styleIsReady]);
+    const initializedToolsRef = useRef<string | null>(null);
+
+    // ✅ Legacy Tools Initialization
+    useEffect(() => {
+        if (!mapInstance || !styleIsReady || !mapInstance.isStyleLoaded()) return;
+
+        // Token for double-init prevention (style + geojson features count + projectId)
+        const initToken = `${lastTargetSourceRef.current}-${householdGeoJSON?.features?.length || 0}-${projectId}`;
+        if (initializedToolsRef.current === initToken) return;
+        initializedToolsRef.current = initToken;
+
+        console.log(`[Terrain] 🛠️ Initializing map tools (${initToken})...`);
+        try {
+            setupInteractions(mapInstance);
+            setupClusteringEvents(mapInstance);
+            setupUserMarker(mapInstance, userLocation);
+            setupMeasureTool(mapInstance, false); // Initial state
+            setupLasso(mapInstance);
+        } catch (e) {
+            console.error("[Terrain] ❌ Failed to initialize tools:", e);
+        }
+    }, [mapInstance, styleIsReady, setupInteractions, setupClusteringEvents, setupUserMarker, setupMeasureTool, setupLasso, userLocation, households]);
+
+    // Force cluster update when households change (OR style reload)
+    useEffect(() => {
+        if (mapInstance && styleIsReady && households.length > 0) {
+            updateClusterDisplay(mapInstance, true); // ✅ Force update on style change/data sync
+        }
+    }, [households, mapInstance, styleIsReady, updateClusterDisplay]);
 
     return (
-        <div ref={containerRef} className="w-full h-full overflow-hidden bg-black relative">
-            {/* ✅ Style-switch skeleton: hides the blank-map flash during tile reload */}
-            {isStyleSwitching && (
-                <div className="absolute inset-0 z-40 bg-slate-800/60 backdrop-blur-[2px] flex items-center justify-center pointer-events-none transition-opacity duration-300">
-                    <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-slate-900/80 text-white text-xs font-semibold shadow-lg">
-                        <RefreshCw size={12} className="animate-spin" />
-                        Changement de carte...
-                    </div>
-                </div>
-            )}
+        <div ref={containerRef} className="w-full h-full relative outline-none bg-slate-900 overflow-hidden">
+            {/* Modular Layers */}
+            <BackgroundLayer map={mapInstance} />
 
-            {/* ✅ Viewport Loading Indicator - non-intrusive pill, map stays visible */}
-            {isLoadingViewport && !isStyleSwitching && (
-                <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 bg-slate-900/80 backdrop-blur-sm text-white px-3 py-1.5 rounded-full shadow-lg flex items-center gap-2 text-[11px] font-semibold pointer-events-none">
-                    <div className="w-2 h-2 rounded-full bg-blue-400 animate-ping" />
-                    Chargement des données...
-                </div>
-            )}
+            <HouseholdLayer
+                map={mapInstance}
+                householdGeoJSON={householdGeoJSON}
+                households={activeHouseholds}
+                projectId={projectId}
+                selectedHouseholdCoords={selectedHouseholdCoords}
+                showHeatmap={showHeatmap}
+                styleIsReady={styleIsReady}
+            />
+            <ZoneLayer
+                map={mapInstance}
+                styleIsReady={styleIsReady}
+                grappeZonesData={grappeZonesData}
+                grappeCentroidsData={grappeCentroidsData}
+                showZones={showZones}
+            />
 
-            {isRoutingLoading && (
-                <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 bg-indigo-600 text-white px-4 py-2 rounded-full shadow-lg flex items-center gap-2 text-xs font-bold animate-pulse">
-                    <RefreshCw size={14} className="animate-spin" />
-                    Calcul de l'itinéraire...
-                </div>
-            )}
+            <LogisticsLayer
+                map={mapInstance}
+                styleIsReady={styleIsReady}
+                warehouses={warehouses}
+            />
 
-            {/* ✅ GPS Accuracy Indicator */}
-            {userLocation && (
-                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[2000] flex items-center gap-3 px-4 py-2 rounded-2xl map-widget-glass border border-white/10 shadow-2xl backdrop-blur-xl">
-                    <div className="relative flex items-center justify-center">
-                        <div className="w-2 h-2 rounded-full bg-emerald-500 animate-ping absolute"></div>
-                        <div className="w-2 h-2 rounded-full bg-emerald-500 relative"></div>
-                    </div>
-                    <div className="flex flex-col">
-                        <span className="text-[10px] font-black text-white uppercase tracking-widest leading-none mb-0.5">GPS Haute Précision</span>
-                        <span className="text-[8px] font-bold text-emerald-400 uppercase tracking-tighter opacity-80 italic">Précision &lt; 5 mètres</span>
-                    </div>
-                </div>
+            <InteractionLayer
+                map={mapInstance}
+                styleIsReady={styleIsReady}
+                drawnZones={[]}
+                pendingPoints={[]}
+            />
+
+            {/* PREMIUN HOVER TOOLTIP */}
+            {hoverData && hoverPos && (
+                <MapTooltip data={hoverData} x={hoverPos.x} y={hoverPos.y} />
             )}
         </div>
     );
-}
+};
+
+export default React.memo(MapLibreVectorMap);

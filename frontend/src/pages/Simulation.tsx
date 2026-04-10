@@ -12,6 +12,14 @@ import {
 import { useFinances } from '../hooks/useFinances';
 import { fmtFCFA } from '../utils/format';
 
+// Import centralized design system
+import {
+    PageContainer,
+    PageHeader,
+    ContentArea,
+    ActionBar
+} from '../components';
+
 const ROLE_LABELS = {
     macon: 'Maçons',
     network: 'Réseau',
@@ -74,7 +82,7 @@ export default function Simulation() {
         };
 
         const minDailyCapacity = Math.min(...Object.values(capacities).filter(c => c > 0));
-        const bottleneck = Object.entries(capacities).find(([_, cap]) => cap === minDailyCapacity)?.[0] || 'macon';
+        const bottleneck = Object.entries(capacities).find(([, cap]) => cap === minDailyCapacity)?.[0] || 'macon';
 
         // Adjust households for reject rate
         const baseHouseholds = householdsCount;
@@ -203,7 +211,7 @@ export default function Simulation() {
     const activeConfigs = isOptimized && optimizedConfigs ? optimizedConfigs : teamConfigs;
     const activeScenario = isOptimized && optScenario ? optScenario : currentScenario;
 
-    const updateTeamConfig = (role: string, field: keyof TeamConfig, value: any) => {
+    const updateTeamConfig = <K extends keyof TeamConfig>(role: string, field: K, value: TeamConfig[K]) => {
         setTeamConfigs(prev => ({
             ...prev,
             [role]: { ...prev[role], [field]: value }
@@ -211,493 +219,495 @@ export default function Simulation() {
     };
 
     return (
-        <div className="min-h-screen p-4 md:p-8 pb-32">
-            <div className="max-w-7xl mx-auto space-y-8">
-                {/* Header */}
-                <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="flex items-center gap-4">
-                        <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-[0_0_30px_rgba(99,102,241,0.3)]">
-                            <Activity className="text-slate-900 dark:text-white w-8 h-8" />
+        <PageContainer>
+            <PageHeader
+                title="Moteur d'Optimisation"
+                subtitle="Réduisez les coûts de revient et maximisez la marge nette à l'aide de l'IA."
+                icon={<Activity size={24} className="text-purple-600" />}
+                actions={
+                    <ActionBar>
+                        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-purple-100 dark:bg-purple-900/50 border border-purple-600 dark:border-purple-600">
+                            <div className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse" />
+                            <span className="text-xs font-black text-purple-900 dark:text-purple-100 uppercase tracking-widest leading-none">IA Active</span>
                         </div>
-                        <div>
-                            <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight italic uppercase">Moteur d'Optimisation</h1>
-                            <p className="text-indigo-600 dark:text-indigo-300/70 font-medium">Réduisez les coûts de revient et maximisez la marge nette à l'aide de l'IA.</p>
-                        </div>
-                    </div>
+                        <button
+                            onClick={handleOptimize}
+                            className="flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-emerald-500 to-emerald-700 hover:from-emerald-400 hover:to-emerald-600 text-slate-900 dark:text-white font-black rounded-2xl transition-all shadow-xl shadow-emerald-600/20 active:scale-95 group"
+                        >
+                            <Zap className="group-hover:animate-pulse" size={20} />
+                            LANCER L'IA D'OPTIMISATION
+                        </button>
+                    </ActionBar>
+                }
+            />
 
-                    <button
-                        onClick={handleOptimize}
-                        className="flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-emerald-500 to-emerald-700 hover:from-emerald-400 hover:to-emerald-600 text-slate-900 dark:text-white font-black rounded-2xl transition-all shadow-xl shadow-emerald-600/20 active:scale-95 group"
-                    >
-                        <Zap className="group-hover:animate-pulse" size={20} />
-                        LANCER L'IA D'OPTIMISATION
-                    </button>
-                </header>
+            <ContentArea className="p-0">
+                <div className="max-w-7xl mx-auto p-8">
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                        {/* Controls Sidebar */}
+                        <aside className="lg:col-span-4 space-y-6">
+                            <div className="bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-xl">
+                                <h3 className="text-sm font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.2em] flex items-center justify-between">
+                                    Paramètres Actuels
+                                    {isOptimized && (
+                                        <button onClick={() => setIsOptimized(false)} className="text-amber-500 bg-amber-500/10 px-3 py-1 rounded-full text-xs hover:bg-amber-500/20 transition-all">
+                                            RÉTABLIR
+                                        </button>
+                                    )}
+                                </h3>
 
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                    {/* Controls Sidebar */}
-                    <aside className="lg:col-span-4 space-y-6">
-                        <div className="glass-card space-y-8">
-                            <h3 className="text-sm font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.2em] flex items-center justify-between">
-                                Paramètres Actuels
-                                {isOptimized && (
-                                    <button onClick={() => setIsOptimized(false)} className="text-amber-500 bg-amber-500/10 px-3 py-1 rounded-full text-[10px] hover:bg-amber-500/20 transition-all">
-                                        RÉTABLIR
-                                    </button>
-                                )}
-                            </h3>
+                                <div className="space-y-6 mt-6">
+                                    {/* Teams Counter */}
+                                    <div className="space-y-4">
+                                        <label className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest block">Effectifs & Rémunérations</label>
+                                        {(Object.entries(activeConfigs) as [keyof typeof teamConfigs, TeamConfig][]).map(([role, config]) => {
+                                            const originalCount = teamConfigs[role].count;
+                                            const diff = isOptimized ? config.count - originalCount : 0;
 
-                            <div className="space-y-6">
-                                {/* Teams Counter */}
-                                <div className="space-y-4">
-                                    <label className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest block">Effectifs & Rémunérations</label>
-                                    {Object.entries(activeConfigs).map(([role, config]) => {
-                                        const originalCount = teamConfigs[role].count;
-                                        const diff = isOptimized ? config.count - originalCount : 0;
+                                            return (
+                                                <div key={role} className={`flex flex-col gap-3 p-4 rounded-2xl border transition-all ${isOptimized ? 'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-500/30' : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800/50'}`}>
 
-                                        return (
-                                            <div key={role} className={`flex flex-col gap-3 p-4 rounded-2xl border transition-all ${isOptimized ? 'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-500/30' : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800/50'}`}>
-
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex flex-col">
-                                                        <span className="text-slate-800 dark:text-slate-200 font-bold">{ROLE_LABELS[role as keyof typeof ROLE_LABELS]}</span>
-                                                        <span className="text-[10px] text-slate-500 dark:text-slate-400 font-black tracking-widest uppercase">{ROLE_CAPACITY[role as keyof typeof ROLE_CAPACITY]}/j</span>
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex flex-col">
+                                                            <span className="text-slate-800 dark:text-slate-200 font-bold">{ROLE_LABELS[role as keyof typeof ROLE_LABELS]}</span>
+                                                            <span className="text-xs text-slate-500 dark:text-slate-400 font-black tracking-widest uppercase">{ROLE_CAPACITY[role as keyof typeof ROLE_CAPACITY]}/j</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-3">
+                                                            {!isOptimized && (
+                                                                <button aria-label="Retirer" onClick={() => updateTeamConfig(role, 'count', Math.max(1, config.count - 1))} className="w-8 h-8 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-900 dark:text-white hover:bg-slate-800 transition-colors">-</button>
+                                                            )}
+                                                            <span className={`text-xl font-black w-6 text-center ${isOptimized ? 'text-emerald-400' : 'text-slate-900 dark:text-white'}`}>{config.count}</span>
+                                                            {!isOptimized && (
+                                                                <button aria-label="Ajouter" onClick={() => updateTeamConfig(role, 'count', config.count + 1)} className="w-8 h-8 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-900 dark:text-white hover:bg-slate-800 transition-colors">+</button>
+                                                            )}
+                                                            {isOptimized && diff !== 0 && (
+                                                                <span className={`text-xs font-black ml-2 ${diff > 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                                                    {diff > 0 ? `+${diff}` : diff}
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                     </div>
-                                                    <div className="flex items-center gap-3">
-                                                        {!isOptimized && (
-                                                            <button title="Retirer" onClick={() => updateTeamConfig(role, 'count', Math.max(1, config.count - 1))} className="w-8 h-8 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-900 dark:text-white hover:bg-slate-800 transition-colors">-</button>
-                                                        )}
-                                                        <span className={`text-xl font-black w-6 text-center ${isOptimized ? 'text-emerald-400' : 'text-slate-900 dark:text-white'}`}>{config.count}</span>
-                                                        {!isOptimized && (
-                                                            <button title="Ajouter" onClick={() => updateTeamConfig(role, 'count', config.count + 1)} className="w-8 h-8 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-900 dark:text-white hover:bg-slate-800 transition-colors">+</button>
-                                                        )}
-                                                        {isOptimized && diff !== 0 && (
-                                                            <span className={`text-[10px] font-black ml-2 ${diff > 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                                                                {diff > 0 ? `+${diff}` : diff}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </div>
 
-                                                {/* Advanced Params (only if not optimized globally to keep it clean, or always show but disabled) */}
-                                                <div className="grid grid-cols-2 gap-2 mt-2 pt-3 border-t border-slate-200 dark:border-slate-200 dark:border-slate-800/50">
-                                                    <div className="flex flex-col gap-1">
-                                                        <label className="text-[9px] text-slate-500 dark:text-slate-400 uppercase tracking-widest font-black">Paiement</label>
-                                                        <select
-                                                            title="Mode de paiement"
-                                                            disabled={isOptimized}
-                                                            value={config.paymentMode}
-                                                            onChange={(e) => updateTeamConfig(role, 'paymentMode', e.target.value)}
-                                                            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
-                                                        >
-                                                            <option value="task">À la Tâche</option>
-                                                            <option value="day">Par Jour</option>
-                                                        </select>
-                                                    </div>
-                                                    <div className="flex flex-col gap-1">
-                                                        <label className="text-[9px] text-slate-500 dark:text-slate-400 uppercase tracking-widest font-black">Tarif ({config.paymentMode === 'task' ? '/Foyer' : '/Jour'})</label>
-                                                        <input
-                                                            title="Tarif"
-                                                            disabled={isOptimized}
-                                                            type="number"
-                                                            value={config.rate}
-                                                            onChange={(e) => updateTeamConfig(role, 'rate', parseInt(e.target.value) || 0)}
-                                                            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
-                                                        />
-                                                    </div>
-                                                    <div className="flex flex-col gap-1 col-span-2">
-                                                        <label className="text-[9px] text-slate-500 dark:text-slate-400 uppercase tracking-widest font-black flex items-center justify-between">
-                                                            Véhicules alloués (par équipe)
-                                                            <span className="text-blue-400">{config.vehiclesPerTeam}</span>
-                                                        </label>
-                                                        <input
-                                                            title="Véhicules"
-                                                            disabled={isOptimized}
-                                                            type="range"
-                                                            min="0" max="3"
-                                                            value={config.vehiclesPerTeam}
-                                                            onChange={(e) => updateTeamConfig(role, 'vehiclesPerTeam', parseInt(e.target.value) || 0)}
-                                                            className="w-full accent-blue-500"
-                                                        />
-                                                    </div>
-                                                </div>
-
-                                            </div>
-                                        )
-                                    })}
-                                </div>
-
-                                {/* Advanced Contexts (Weather, Rejects, Cashflow) */}
-                                <div className="space-y-4 pt-6 border-t border-slate-200 dark:border-slate-200 dark:border-slate-800/50">
-                                    <label className="text-xs font-black text-rose-400 uppercase tracking-widest flex items-center gap-2">
-                                        <AlertTriangle size={14} /> Contraintes & Risques
-                                    </label>
-
-                                    {/* Weather Toggle */}
-                                    <div className="flex flex-col gap-3 p-4 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800">
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex flex-col">
-                                                <span className="text-slate-900 dark:text-white text-sm font-bold">Saison des Pluies (Hivernage)</span>
-                                                <span className="text-[10px] text-slate-500 dark:text-slate-400">Baisse des cadences Maçons/Réseau</span>
-                                            </div>
-                                            <button
-                                                title="Activer/Désactiver l'hivernage"
-                                                onClick={() => setIsHivernage(!isHivernage)}
-                                                className={`w-12 h-6 rounded-full transition-colors relative ${isHivernage ? 'bg-indigo-500' : 'bg-slate-700'}`}
-                                            >
-                                                <div className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform ${isHivernage ? 'translate-x-6' : ''}`} />
-                                            </button>
-                                        </div>
-
-                                        {/* Hivernage Modifiable Parameters */}
-                                        <AnimatePresence>
-                                            {isHivernage && (
-                                                <motion.div
-                                                    initial={{ opacity: 0, height: 0 }}
-                                                    animate={{ opacity: 1, height: 'auto' }}
-                                                    exit={{ opacity: 0, height: 0 }}
-                                                    className="origin-top overflow-hidden"
-                                                >
-                                                    <div className="space-y-4 pt-3 mt-1 border-t border-slate-200 dark:border-slate-800/50">
-                                                        <div className="space-y-2">
-                                                            <div className="flex justify-between text-xs">
-                                                                <span className="text-slate-600 dark:text-slate-400">Pénalité Maçons</span>
-                                                                <span className="text-rose-400 font-bold">-{hivernagePenaltyMacon}%</span>
-                                                            </div>
+                                                    {/* Advanced Params (only if not optimized globally to keep it clean, or always show but disabled) */}
+                                                    <div className="grid grid-cols-2 gap-2 mt-2 pt-3 border-t border-slate-200 dark:border-slate-200 dark:border-slate-800/50">
+                                                        <div className="flex flex-col gap-1">
+                                                            <label className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-widest font-black">Paiement</label>
+                                                            <select
+                                                                aria-label="Mode de paiement"
+                                                                disabled={isOptimized}
+                                                                value={config.paymentMode}
+                                                                onChange={(e) => updateTeamConfig(role, 'paymentMode', e.target.value as 'task' | 'day')}
+                                                                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
+                                                            >
+                                                                <option value="task">À la Tâche</option>
+                                                                <option value="day">Par Jour</option>
+                                                            </select>
+                                                        </div>
+                                                        <div className="flex flex-col gap-1">
+                                                            <label className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-widest font-black">Tarif ({config.paymentMode === 'task' ? '/Foyer' : '/Jour'})</label>
                                                             <input
-                                                                title="Pénalité Maçons"
-                                                                type="range"
-                                                                min="0"
-                                                                max="80"
-                                                                step="5"
-                                                                value={hivernagePenaltyMacon}
-                                                                onChange={(e) => setHivernagePenaltyMacon(parseInt(e.target.value))}
-                                                                className="w-full accent-rose-500"
+                                                                title="Tarif"
+                                                                disabled={isOptimized}
+                                                                type="number"
+                                                                value={config.rate}
+                                                                onChange={(e) => updateTeamConfig(role, 'rate', parseInt(e.target.value) || 0)}
+                                                                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
                                                             />
                                                         </div>
-                                                        <div className="space-y-2">
-                                                            <div className="flex justify-between text-xs">
-                                                                <span className="text-slate-600 dark:text-slate-400">Pénalité Réseau</span>
-                                                                <span className="text-rose-400 font-bold">-{hivernagePenaltyNetwork}%</span>
-                                                            </div>
+                                                        <div className="flex flex-col gap-1 col-span-2">
+                                                            <label className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-widest font-black flex items-center justify-between">
+                                                                Véhicules alloués (par équipe)
+                                                                <span className="text-blue-400">{config.vehiclesPerTeam}</span>
+                                                            </label>
                                                             <input
-                                                                title="Pénalité Réseau"
+                                                                title="Véhicules"
+                                                                disabled={isOptimized}
                                                                 type="range"
-                                                                min="0"
-                                                                max="80"
-                                                                step="5"
-                                                                value={hivernagePenaltyNetwork}
-                                                                onChange={(e) => setHivernagePenaltyNetwork(parseInt(e.target.value))}
-                                                                className="w-full accent-rose-500"
+                                                                min="0" max="3"
+                                                                value={config.vehiclesPerTeam}
+                                                                onChange={(e) => updateTeamConfig(role, 'vehiclesPerTeam', parseInt(e.target.value) || 0)}
+                                                                className="w-full accent-blue-500"
                                                             />
                                                         </div>
                                                     </div>
-                                                </motion.div>
-                                            )}
-                                        </AnimatePresence>
+
+                                                </div>
+                                            )
+                                        })}
                                     </div>
 
-                                    {/* Reject Rate */}
-                                    <div className="space-y-2 p-4 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800">
-                                        <div className="flex justify-between text-sm">
-                                            <label htmlFor="reject-rate" className="text-slate-600 dark:text-slate-400">Taux de Rejet & Reprises</label>
-                                            <span className="text-slate-900 dark:text-white font-bold">{rejectRate}%</span>
+                                    {/* Advanced Contexts (Weather, Rejects, Cashflow) */}
+                                    <div className="space-y-4 pt-6 border-t border-slate-200 dark:border-slate-200 dark:border-slate-800/50">
+                                        <label className="text-xs font-black text-rose-400 uppercase tracking-widest flex items-center gap-2">
+                                            <AlertTriangle size={14} /> Contraintes & Risques
+                                        </label>
+
+                                        {/* Weather Toggle */}
+                                        <div className="flex flex-col gap-3 p-4 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex flex-col">
+                                                    <span className="text-slate-900 dark:text-white text-sm font-bold">Saison des Pluies (Hivernage)</span>
+                                                    <span className="text-xs text-slate-500 dark:text-slate-400">Baisse des cadences Maçons/Réseau</span>
+                                                </div>
+                                                <button
+                                                    aria-label="Activer/Désactiver l'hivernage"
+                                                    onClick={() => setIsHivernage(!isHivernage)}
+                                                    className={`w-12 h-6 rounded-full transition-colors relative ${isHivernage ? 'bg-indigo-500' : 'bg-slate-700'}`}
+                                                >
+                                                    <div className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white dark:bg-slate-900 transition-transform ${isHivernage ? 'translate-x-6' : ''}`} />
+                                                </button>
+                                            </div>
+
+                                            {/* Hivernage Modifiable Parameters */}
+                                            <AnimatePresence>
+                                                {isHivernage && (
+                                                    <motion.div
+                                                        initial={{ opacity: 0, height: 0 }}
+                                                        animate={{ opacity: 1, height: 'auto' }}
+                                                        exit={{ opacity: 0, height: 0 }}
+                                                        className="origin-top overflow-hidden"
+                                                    >
+                                                        <div className="space-y-4 pt-3 mt-1 border-t border-slate-200 dark:border-slate-800/50">
+                                                            <div className="space-y-2">
+                                                                <div className="flex justify-between text-xs">
+                                                                    <span className="text-slate-600 dark:text-slate-400">Pénalité Maçons</span>
+                                                                    <span className="text-rose-400 font-bold">-{hivernagePenaltyMacon}%</span>
+                                                                </div>
+                                                                <input
+                                                                    aria-label="Pénalité Maçons"
+                                                                    type="range"
+                                                                    min="0"
+                                                                    max="80"
+                                                                    step="5"
+                                                                    value={hivernagePenaltyMacon}
+                                                                    onChange={(e) => setHivernagePenaltyMacon(parseInt(e.target.value))}
+                                                                    className="w-full accent-rose-500"
+                                                                />
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <div className="flex justify-between text-xs">
+                                                                    <span className="text-slate-600 dark:text-slate-400">Pénalité Réseau</span>
+                                                                    <span className="text-rose-400 font-bold">-{hivernagePenaltyNetwork}%</span>
+                                                                </div>
+                                                                <input
+                                                                    title="Pénalité Réseau"
+                                                                    type="range"
+                                                                    min="0"
+                                                                    max="80"
+                                                                    step="5"
+                                                                    value={hivernagePenaltyNetwork}
+                                                                    onChange={(e) => setHivernagePenaltyNetwork(parseInt(e.target.value))}
+                                                                    className="w-full accent-rose-500"
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    </motion.div>
+                                                )}
+                                            </AnimatePresence>
+                                        </div>
+
+                                        {/* Reject Rate */}
+                                        <div className="space-y-2 p-4 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800">
+                                            <div className="flex justify-between text-sm">
+                                                <label htmlFor="reject-rate" className="text-slate-600 dark:text-slate-400">Taux de Rejet & Reprises</label>
+                                                <span className="text-slate-900 dark:text-white font-bold">{rejectRate}%</span>
+                                            </div>
+                                            <input
+                                                id="reject-rate"
+                                                title="Taux de rejet"
+                                                type="range"
+                                                min="0"
+                                                max="30"
+                                                step="1"
+                                                value={rejectRate}
+                                                onChange={(e) => setRejectRate(parseInt(e.target.value))}
+                                                className="w-full accent-rose-500"
+                                            />
+                                            <div className="text-xs text-slate-500 dark:text-slate-400 text-center">Affecte le volume de travail Réseau/Intérieur</div>
+                                        </div>
+                                    </div>
+
+                                    {/* Cashflow Context */}
+                                    <div className="space-y-4 pt-6 border-t border-slate-200 dark:border-slate-800/50">
+                                        <label className="text-xs font-black text-emerald-400 uppercase tracking-widest flex items-center gap-2">
+                                            <DollarSign size={14} /> Trésorerie Client
+                                        </label>
+                                        <div className="space-y-2 p-4 rounded-xl bg-white/50 dark:bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800">
+                                            <div className="flex justify-between text-sm">
+                                                <label htmlFor="acompte-rate" className="text-slate-600 dark:text-slate-400">Acompte à la commande</label>
+                                                <span className="text-slate-900 dark:text-white font-bold">{acompteRate}%</span>
+                                            </div>
+                                            <input
+                                                id="acompte-rate"
+                                                title="Taux d'acompte"
+                                                type="range"
+                                                min="0"
+                                                max="100"
+                                                step="5"
+                                                value={acompteRate}
+                                                onChange={(e) => setAcompteRate(parseInt(e.target.value))}
+                                                className="w-full accent-emerald-500"
+                                            />
+                                            <div className="text-xs text-slate-500 dark:text-slate-400 text-center">Fonds disponibles avant acompte suivant</div>
+                                        </div>
+                                    </div>
+
+                                    {/* Logistics */}
+                                    <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-800">
+                                        <div className="flex justify-between items-center">
+                                            <label className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest block" title="Véhicules mutualisés (Base logistique)">Logistique (Base)</label>
+                                            <span className="text-blue-400 font-black">{baseVehicleCount}</span>
+                                        </div>
+                                        {!isOptimized && (
+                                            <input
+                                                title="Logistique Base"
+                                                type="range"
+                                                min="0"
+                                                max="10"
+                                                value={baseVehicleCount}
+                                                onChange={(e) => setBaseVehicleCount(parseInt(e.target.value))}
+                                                className="w-full accent-blue-600"
+                                            />
+                                        )}
+                                    </div>
+
+                                    {/* Unforeseen */}
+                                    <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-800">
+                                        <div className="flex justify-between items-center">
+                                            <label className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest block">Taux d'aléas estimé</label>
+                                            <span className="text-amber-400 font-black">{unforeseenRate}%</span>
                                         </div>
                                         <input
-                                            id="reject-rate"
-                                            title="Taux de rejet"
+                                            title="Aléas"
                                             type="range"
                                             min="0"
                                             max="30"
-                                            step="1"
-                                            value={rejectRate}
-                                            onChange={(e) => setRejectRate(parseInt(e.target.value))}
-                                            className="w-full accent-rose-500"
+                                            value={unforeseenRate}
+                                            onChange={(e) => setUnforeseenRate(parseInt(e.target.value))}
+                                            className="w-full accent-amber-600"
                                         />
-                                        <div className="text-[10px] text-slate-500 dark:text-slate-400 text-center">Affecte le volume de travail Réseau/Intérieur</div>
                                     </div>
-                                </div>
+                                    {/* Calendar Settings */}
+                                    <div className="space-y-4 pt-6 border-t border-slate-200 dark:border-slate-800/50">
+                                        <label className="text-xs font-black text-indigo-400 uppercase tracking-widest flex items-center gap-2">
+                                            <Clock size={14} /> Calendrier & Jours Fériés
+                                        </label>
 
-                                {/* Cashflow Context */}
-                                <div className="space-y-4 pt-6 border-t border-slate-200 dark:border-slate-800/50">
-                                    <label className="text-xs font-black text-emerald-400 uppercase tracking-widest flex items-center gap-2">
-                                        <DollarSign size={14} /> Trésorerie Client
-                                    </label>
-                                    <div className="space-y-2 p-4 rounded-xl bg-white/50 dark:bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800">
-                                        <div className="flex justify-between text-sm">
-                                            <label htmlFor="acompte-rate" className="text-slate-600 dark:text-slate-400">Acompte à la commande</label>
-                                            <span className="text-slate-900 dark:text-white font-bold">{acompteRate}%</span>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="flex flex-col gap-2 p-3 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800">
+                                                <label htmlFor="work-days" className="text-xs text-slate-600 dark:text-slate-400 uppercase tracking-widest font-bold">Jours/Semaine</label>
+                                                <select
+                                                    id="work-days"
+                                                    title="Jours travaillés par semaine"
+                                                    value={workDaysPerWeek}
+                                                    onChange={(e) => setWorkDaysPerWeek(parseInt(e.target.value))}
+                                                    className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
+                                                >
+                                                    <option value="5">5 Jours (Lun-Ven)</option>
+                                                    <option value="6">6 Jours (Lun-Sam)</option>
+                                                    <option value="7">7 Jours (Continu)</option>
+                                                </select>
+                                            </div>
+
+                                            <div className="flex flex-col gap-2 p-3 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800">
+                                                <label htmlFor="holidays" className="text-xs text-slate-600 dark:text-slate-400 uppercase tracking-widest font-bold">Jours Fériés</label>
+                                                <input
+                                                    id="holidays"
+                                                    title="Jours fériés estimés"
+                                                    type="number"
+                                                    min="0"
+                                                    max="30"
+                                                    value={holidaysCount}
+                                                    onChange={(e) => setHolidaysCount(parseInt(e.target.value) || 0)}
+                                                    className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-2 text-sm text-slate-900 dark:text-white font-mono focus:outline-none focus:border-indigo-500"
+                                                />
+                                            </div>
                                         </div>
-                                        <input
-                                            id="acompte-rate"
-                                            title="Taux d'acompte"
-                                            type="range"
-                                            min="0"
-                                            max="100"
-                                            step="5"
-                                            value={acompteRate}
-                                            onChange={(e) => setAcompteRate(parseInt(e.target.value))}
-                                            className="w-full accent-emerald-500"
-                                        />
-                                        <div className="text-[10px] text-slate-500 dark:text-slate-400 text-center">Fonds disponibles avant acompte suivant</div>
+                                        <div className="text-xs text-slate-500 dark:text-slate-400 text-center">Affecte la durée calendaire et le coût logistique</div>
                                     </div>
-                                </div>
-
-                                {/* Logistics */}
-                                <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-800">
-                                    <div className="flex justify-between items-center">
-                                        <label className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest block" title="Véhicules mutualisés (Base logistique)">Logistique (Base)</label>
-                                        <span className="text-blue-400 font-black">{baseVehicleCount}</span>
-                                    </div>
-                                    {!isOptimized && (
-                                        <input
-                                            title="Logistique Base"
-                                            type="range"
-                                            min="0"
-                                            max="10"
-                                            value={baseVehicleCount}
-                                            onChange={(e) => setBaseVehicleCount(parseInt(e.target.value))}
-                                            className="w-full accent-blue-600"
-                                        />
-                                    )}
-                                </div>
-
-                                {/* Unforeseen */}
-                                <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-800">
-                                    <div className="flex justify-between items-center">
-                                        <label className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest block">Taux d'aléas estimé</label>
-                                        <span className="text-amber-400 font-black">{unforeseenRate}%</span>
-                                    </div>
-                                    <input
-                                        title="Aléas"
-                                        type="range"
-                                        min="0"
-                                        max="30"
-                                        value={unforeseenRate}
-                                        onChange={(e) => setUnforeseenRate(parseInt(e.target.value))}
-                                        className="w-full accent-amber-600"
-                                    />
-                                </div>
-                                {/* Calendar Settings */}
-                                <div className="space-y-4 pt-6 border-t border-slate-200 dark:border-slate-800/50">
-                                    <label className="text-xs font-black text-indigo-400 uppercase tracking-widest flex items-center gap-2">
-                                        <Clock size={14} /> Calendrier & Jours Fériés
-                                    </label>
-
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="flex flex-col gap-2 p-3 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800">
-                                            <label htmlFor="work-days" className="text-[10px] text-slate-600 dark:text-slate-400 uppercase tracking-widest font-bold">Jours/Semaine</label>
-                                            <select
-                                                id="work-days"
-                                                title="Jours travaillés par semaine"
-                                                value={workDaysPerWeek}
-                                                onChange={(e) => setWorkDaysPerWeek(parseInt(e.target.value))}
-                                                className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
-                                            >
-                                                <option value="5">5 Jours (Lun-Ven)</option>
-                                                <option value="6">6 Jours (Lun-Sam)</option>
-                                                <option value="7">7 Jours (Continu)</option>
-                                            </select>
-                                        </div>
-
-                                        <div className="flex flex-col gap-2 p-3 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800">
-                                            <label htmlFor="holidays" className="text-[10px] text-slate-600 dark:text-slate-400 uppercase tracking-widest font-bold">Jours Fériés</label>
-                                            <input
-                                                id="holidays"
-                                                title="Jours fériés estimés"
-                                                type="number"
-                                                min="0"
-                                                max="30"
-                                                value={holidaysCount}
-                                                onChange={(e) => setHolidaysCount(parseInt(e.target.value) || 0)}
-                                                className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-2 text-sm text-slate-900 dark:text-white font-mono focus:outline-none focus:border-indigo-500"
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="text-[10px] text-slate-500 dark:text-slate-400 text-center">Affecte la durée calendaire et le coût logistique</div>
                                 </div>
                             </div>
-                        </div>
-                    </aside>
+                        </aside>
 
-                    {/* Results Display */}
-                    <main className="lg:col-span-8 space-y-8">
-                        {/* Quick Stats Grid */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <AnimatePresence mode="popLayout">
-                                <motion.div
-                                    key={activeScenario.duration}
-                                    initial={{ opacity: 0, scale: 0.9 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    className={`p-8 rounded-2xl border-t-4 shadow-xl ${isOptimized ? 'bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-500 border-x border-b border-x-emerald-500/20 border-b-emerald-500/20' : 'bg-white dark:bg-slate-900/50 border-blue-500 border-x border-b border-slate-200 dark:border-slate-800'}`}
-                                >
-                                    <div className="flex items-center gap-4 mb-4">
-                                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${isOptimized ? 'bg-emerald-500/20 text-emerald-400' : 'bg-blue-500/10 text-blue-500'}`}>
-                                            <Clock size={24} />
+                        {/* Results Display */}
+                        <main className="lg:col-span-8 space-y-8">
+                            {/* Quick Stats Grid */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <AnimatePresence mode="popLayout">
+                                    <motion.div
+                                        key={activeScenario.duration}
+                                        initial={{ opacity: 0, scale: 0.9 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        className={`p-8 rounded-2xl border-t-4 shadow-xl ${isOptimized ? 'bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-500 border-x border-b border-x-emerald-500/20 border-b-emerald-500/20' : 'bg-white dark:bg-slate-900/50 border-blue-500 border-x border-b border-slate-200 dark:border-slate-800'}`}
+                                    >
+                                        <div className="flex items-center gap-4 mb-4">
+                                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${isOptimized ? 'bg-emerald-500/20 text-emerald-400' : 'bg-blue-500/10 text-blue-500'}`}>
+                                                <Clock size={24} />
+                                            </div>
+                                            <span className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Durée Globale</span>
                                         </div>
-                                        <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Durée Globale</span>
-                                    </div>
-                                    <div className="flex flex-col gap-1">
-                                        <div className="flex items-end gap-3">
-                                            <p className="text-4xl font-black text-slate-900 dark:text-white">{activeScenario.calendarDuration} <span className="text-lg text-slate-500 dark:text-slate-400 font-bold">Jours</span></p>
-                                            {isOptimized && currentScenario.calendarDuration !== activeScenario.calendarDuration && (
-                                                <span className="text-emerald-400 font-black mb-1 p-1 bg-emerald-500/10 rounded">
-                                                    {currentScenario.calendarDuration - activeScenario.calendarDuration}j gagnés
-                                                </span>
-                                            )}
+                                        <div className="flex flex-col gap-1">
+                                            <div className="flex items-end gap-3">
+                                                <p className="text-4xl font-black text-slate-900 dark:text-white">{activeScenario.calendarDuration} <span className="text-lg text-slate-500 dark:text-slate-400 font-bold">Jours</span></p>
+                                                {isOptimized && currentScenario.calendarDuration !== activeScenario.calendarDuration && (
+                                                    <span className="text-emerald-400 font-black mb-1 p-1 bg-emerald-500/10 rounded">
+                                                        {currentScenario.calendarDuration - activeScenario.calendarDuration}j gagnés
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <p className="text-xs font-bold text-slate-600 dark:text-slate-400 mt-1">
+                                                Soit {activeScenario.duration} jours de travail effectif
+                                            </p>
                                         </div>
-                                        <p className="text-[11px] font-bold text-slate-600 dark:text-slate-400 mt-1">
-                                            Soit {activeScenario.duration} jours de travail effectif
+                                    </motion.div>
+
+                                    <motion.div
+                                        key={activeScenario.cost}
+                                        initial={{ opacity: 0, scale: 0.9 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        transition={{ delay: 0.1 }}
+                                        className={`p-8 rounded-2xl border-t-4 shadow-xl ${isOptimized ? 'bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-500 border-x border-b border-x-emerald-500/20 border-b-emerald-500/20' : 'bg-white dark:bg-slate-900/50 border-indigo-500 border-x border-b border-slate-200 dark:border-slate-800'}`}
+                                    >
+                                        <div className="flex items-center gap-4 mb-4">
+                                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${isOptimized ? 'bg-emerald-500/20 text-emerald-400' : 'bg-indigo-500/10 text-indigo-500'}`}>
+                                                <DollarSign size={24} />
+                                            </div>
+                                            <span className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Coût de Revient</span>
+                                        </div>
+                                        <p className="text-2xl font-black text-slate-900 dark:text-white">{fmtFCFA(activeScenario.cost)}</p>
+                                        <p className="text-xs font-bold text-slate-600 dark:text-slate-400 mt-2">Vs Devis: {fmtFCFA(devis.totalPlanned)}</p>
+                                    </motion.div>
+
+                                    <motion.div
+                                        key={activeScenario.margin}
+                                        initial={{ opacity: 0, scale: 0.9 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        transition={{ delay: 0.2 }}
+                                        className={`p-8 rounded-2xl border-t-4 shadow-xl ${activeScenario.margin >= 0 ? 'bg-white dark:bg-slate-900/50 border-emerald-500 border-x border-b border-slate-200 dark:border-slate-800' : 'bg-rose-50/50 dark:bg-rose-950/20 border-rose-500 border-x border-b border-rose-500/20'}`}
+                                    >
+                                        <div className="flex items-center gap-4 mb-4">
+                                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${activeScenario.margin >= 0 ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}>
+                                                <TrendingUp size={24} />
+                                            </div>
+                                            <span className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Marge Simulée</span>
+                                        </div>
+                                        <p className={`text-2xl font-black ${activeScenario.margin >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                            {fmtFCFA(activeScenario.margin)}
                                         </p>
-                                    </div>
-                                </motion.div>
-
-                                <motion.div
-                                    key={activeScenario.cost}
-                                    initial={{ opacity: 0, scale: 0.9 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    transition={{ delay: 0.1 }}
-                                    className={`p-8 rounded-2xl border-t-4 shadow-xl ${isOptimized ? 'bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-500 border-x border-b border-x-emerald-500/20 border-b-emerald-500/20' : 'bg-white dark:bg-slate-900/50 border-indigo-500 border-x border-b border-slate-200 dark:border-slate-800'}`}
-                                >
-                                    <div className="flex items-center gap-4 mb-4">
-                                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${isOptimized ? 'bg-emerald-500/20 text-emerald-400' : 'bg-indigo-500/10 text-indigo-500'}`}>
-                                            <DollarSign size={24} />
-                                        </div>
-                                        <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Coût de Revient</span>
-                                    </div>
-                                    <p className="text-2xl font-black text-slate-900 dark:text-white">{fmtFCFA(activeScenario.cost)}</p>
-                                    <p className="text-[11px] font-bold text-slate-600 dark:text-slate-400 mt-2">Vs Devis: {fmtFCFA(devis.totalPlanned)}</p>
-                                </motion.div>
-
-                                <motion.div
-                                    key={activeScenario.margin}
-                                    initial={{ opacity: 0, scale: 0.9 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    transition={{ delay: 0.2 }}
-                                    className={`p-8 rounded-2xl border-t-4 shadow-xl ${activeScenario.margin >= 0 ? 'bg-white dark:bg-slate-900/50 border-emerald-500 border-x border-b border-slate-200 dark:border-slate-800' : 'bg-rose-50/50 dark:bg-rose-950/20 border-rose-500 border-x border-b border-rose-500/20'}`}
-                                >
-                                    <div className="flex items-center gap-4 mb-4">
-                                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${activeScenario.margin >= 0 ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}>
-                                            <TrendingUp size={24} />
-                                        </div>
-                                        <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Marge Simulée</span>
-                                    </div>
-                                    <p className={`text-2xl font-black ${activeScenario.margin >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                        {fmtFCFA(activeScenario.margin)}
-                                    </p>
-                                    {isOptimized && activeScenario.margin > currentScenario.margin && (
-                                        <p className="text-[11px] font-black text-emerald-500 mt-2 flex items-center gap-1">
-                                            <TrendingUp size={12} />
-                                            +{fmtFCFA(activeScenario.margin - currentScenario.margin)} optimisés !
-                                        </p>
-                                    )}
-                                </motion.div>
-                            </AnimatePresence>
-                        </div>
-
-                        {/* Cashflow Display */}
-                        <div className="glass-card space-y-8">
-                            <div>
-                                <h3 className="text-2xl font-black text-slate-900 dark:text-white italic uppercase tracking-tighter">Profil de Trésorerie</h3>
-                                <p className="text-sm font-medium text-slate-600 dark:text-slate-400 mt-1">Risque de rupture de liquidité avant la fin du projet.</p>
+                                        {isOptimized && activeScenario.margin > currentScenario.margin && (
+                                            <p className="text-xs font-black text-emerald-500 mt-2 flex items-center gap-1">
+                                                <TrendingUp size={12} />
+                                                +{fmtFCFA(activeScenario.margin - currentScenario.margin)} optimisés !
+                                            </p>
+                                        )}
+                                    </motion.div>
+                                </AnimatePresence>
                             </div>
 
-                            <div className="space-y-4">
-                                <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
-                                    <span className="text-slate-600 dark:text-slate-400">Acompte perçu ({acompteRate}%)</span>
-                                    <span className="text-slate-900 dark:text-white font-mono font-bold">{fmtFCFA(activeScenario.initialCash)}</span>
-                                </div>
-                                <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
-                                    <span className="text-slate-600 dark:text-slate-400">Besoin FdR (Salaires + Logistique)</span>
-                                    <span className="text-rose-400 font-mono font-bold">{fmtFCFA(activeScenario.maxOutflow)}</span>
+                            {/* Cashflow Display */}
+                            <div className="bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 shadow-xl">
+                                <div>
+                                    <h3 className="text-2xl font-black text-slate-900 dark:text-white italic uppercase tracking-tighter">Profil de Trésorerie</h3>
+                                    <p className="text-sm font-medium text-slate-600 dark:text-slate-400 mt-1">Risque de rupture de liquidité avant la fin du projet.</p>
                                 </div>
 
-                                {activeScenario.hasCashflowRisk ? (
-                                    <div className="bg-rose-500/10 border border-rose-500/20 p-4 rounded-xl flex items-start gap-4">
-                                        <AlertTriangle className="text-rose-500 shrink-0 mt-1" size={24} />
-                                        <div>
-                                            <h4 className="text-rose-400 font-black">Risque de Rupture de Trésorerie</h4>
-                                            <p className="text-rose-400/80 text-xs mt-1">Le paiement des équipes et des locations de véhicules dépassera l'acompte perçu de {fmtFCFA(activeScenario.maxOutflow - activeScenario.initialCash)}. Prévoyez un fond de roulement.</p>
-                                        </div>
+                                <div className="space-y-4 mt-6">
+                                    <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
+                                        <span className="text-slate-600 dark:text-slate-400">Acompte perçu ({acompteRate}%)</span>
+                                        <span className="text-slate-900 dark:text-white font-mono font-bold">{fmtFCFA(activeScenario.initialCash)}</span>
                                     </div>
-                                ) : (
-                                    <div className="bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-xl flex items-start gap-4">
-                                        <DollarSign className="text-emerald-500 shrink-0 mt-1" size={24} />
+                                    <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
+                                        <span className="text-slate-600 dark:text-slate-400">Besoin FdR (Salaires + Logistique)</span>
+                                        <span className="text-rose-400 font-mono font-bold">{fmtFCFA(activeScenario.maxOutflow)}</span>
+                                    </div>
+
+                                    {activeScenario.hasCashflowRisk ? (
+                                        <div className="bg-rose-500/10 border border-rose-500/20 p-4 rounded-xl flex items-start gap-4">
+                                            <AlertTriangle className="text-rose-500 shrink-0 mt-1" size={24} />
+                                            <div>
+                                                <h4 className="text-rose-400 font-black">Risque de Rupture de Trésorerie</h4>
+                                                <p className="text-rose-400/80 text-xs mt-1">Le paiement des équipes et des locations de véhicules dépassera l'acompte perçu de {fmtFCFA(activeScenario.maxOutflow - activeScenario.initialCash)}. Prévoyez un fond de roulement.</p>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-xl flex items-start gap-4">
+                                            <DollarSign className="text-emerald-500 shrink-0 mt-1" size={24} />
+                                            <div>
+                                                <h4 className="text-emerald-400 font-black">Trésorerie Sécurisée</h4>
+                                                <p className="text-emerald-400/80 text-xs mt-1">L'acompte est suffisant pour couvrir les opérations courantes (hors matériel).</p>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Analysis & Bottlenecks */}
+                            <div className="bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 shadow-xl">
+                                <div>
+                                    <h3 className="text-2xl font-black text-slate-900 dark:text-white italic uppercase tracking-tighter">Planning & Flux</h3>
+                                    <p className="text-sm font-medium text-slate-600 dark:text-slate-400 mt-1">L'IA décale les équipes plus rapides pour éviter l'attente et le surcoût.</p>
+                                </div>
+
+                                <div className="space-y-6 mt-6">
+                                    {Object.entries(activeConfigs).map(([role, config]) => {
+                                        const sched = activeScenario.schedule[role] || { start: 0, duration: 0, end: 0 };
+                                        const isBottleneck = role === activeScenario.bottleneck;
+
+                                        // Visual percentage based on global duration
+                                        const startPct = (sched.start / activeScenario.duration) * 100;
+                                        const widthPct = (sched.duration / activeScenario.duration) * 100;
+
+                                        return (
+                                            <div key={role} className="space-y-2">
+                                                <div className="flex justify-between items-end">
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="text-slate-900 dark:text-white font-bold">{ROLE_LABELS[role as keyof typeof ROLE_LABELS]}</span>
+                                                        {isBottleneck && (
+                                                            <span className="px-2 py-0.5 bg-rose-500/20 text-rose-400 text-xs font-black uppercase rounded flex items-center gap-1">
+                                                                <AlertTriangle size={10} /> Facteur Limitant
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex flex-col items-end">
+                                                        <span className="text-xs font-black text-slate-500 dark:text-slate-400">{config.count * ROLE_CAPACITY[role as keyof typeof ROLE_CAPACITY]} Foyers/j</span>
+                                                        <span className="text-xs text-indigo-400 font-bold">Jour {sched.start} à {sched.end} ({sched.duration}j)</span>
+                                                    </div>
+                                                </div>
+                                                <div className="h-6 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full overflow-hidden relative">
+                                                    <motion.div
+                                                        initial={{ width: 0, left: 0 }}
+                                                        animate={{ width: `${widthPct}%`, left: `${startPct}%` }}
+                                                        transition={{ duration: 1, type: "spring" }}
+                                                        className={`absolute top-0 h-full rounded-full transition-all flex justify-center items-center ${isBottleneck ? 'bg-rose-500/80 shadow-[0_0_15px_rgba(244,63,94,0.5)]' : 'bg-indigo-500/60 shadow-[0_0_15px_rgba(99,102,241,0.3)]'}`}
+                                                    >
+                                                        {sched.duration > 15 && <span className="text-xs font-black text-slate-900 dark:text-white/80">{sched.duration}j</span>}
+                                                    </motion.div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+
+                                {activeScenario.bottleneck && (
+                                    <div className="p-6 bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-500/20 rounded-2xl flex items-start gap-4 mt-6">
+                                        <div className="p-2 bg-indigo-500/20 text-indigo-400 rounded-lg shrink-0">
+                                            <Users size={20} />
+                                        </div>
                                         <div>
-                                            <h4 className="text-emerald-400 font-black">Trésorerie Sécurisée</h4>
-                                            <p className="text-emerald-400/80 text-xs mt-1">L'acompte est suffisant pour couvrir les opérations courantes (hors matériel).</p>
+                                            <h4 className="text-slate-900 dark:text-white font-bold mb-1">Impact sur la rentabilité</h4>
+                                            <p className="text-sm text-indigo-200/70 font-medium">
+                                                Les autres équipes produisent plus vite que l'équipe "{ROLE_LABELS[activeScenario.bottleneck as keyof typeof ROLE_LABELS]}". Elles connaîtront des temps d'attente qui vous coûtent en salaires et en location de véhicules sans avancement.
+                                                {isOptimized ? " L'IA a lissé ces écarts au maximum !" : " Cliquez sur 'Lancer l'IA d'optimisation' pour équilibrer la chaîne de production."}
+                                            </p>
                                         </div>
                                     </div>
                                 )}
                             </div>
-                        </div>
 
-                        {/* Analysis & Bottlenecks */}
-                        <div className="glass-card space-y-8">
-                            <div>
-                                <h3 className="text-2xl font-black text-slate-900 dark:text-white italic uppercase tracking-tighter">Planning & Flux</h3>
-                                <p className="text-sm font-medium text-slate-600 dark:text-slate-400 mt-1">L'IA décale les équipes plus rapides pour éviter l'attente et le surcoût.</p>
-                            </div>
-
-                            <div className="space-y-6">
-                                {Object.entries(activeConfigs).map(([role, config]) => {
-                                    const sched = activeScenario.schedule[role] || { start: 0, duration: 0, end: 0 };
-                                    const isBottleneck = role === activeScenario.bottleneck;
-
-                                    // Visual percentage based on global duration
-                                    const startPct = (sched.start / activeScenario.duration) * 100;
-                                    const widthPct = (sched.duration / activeScenario.duration) * 100;
-
-                                    return (
-                                        <div key={role} className="space-y-2">
-                                            <div className="flex justify-between items-end">
-                                                <div className="flex items-center gap-3">
-                                                    <span className="text-slate-900 dark:text-white font-bold">{ROLE_LABELS[role as keyof typeof ROLE_LABELS]}</span>
-                                                    {isBottleneck && (
-                                                        <span className="px-2 py-0.5 bg-rose-500/20 text-rose-400 text-[9px] font-black uppercase rounded flex items-center gap-1">
-                                                            <AlertTriangle size={10} /> Facteur Limitant
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                <div className="flex flex-col items-end">
-                                                    <span className="text-xs font-black text-slate-500 dark:text-slate-400">{config.count * ROLE_CAPACITY[role as keyof typeof ROLE_CAPACITY]} Foyers/j</span>
-                                                    <span className="text-[10px] text-indigo-400 font-bold">Jour {sched.start} à {sched.end} ({sched.duration}j)</span>
-                                                </div>
-                                            </div>
-                                            <div className="h-6 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full overflow-hidden relative">
-                                                <motion.div
-                                                    initial={{ width: 0, left: 0 }}
-                                                    animate={{ width: `${widthPct}%`, left: `${startPct}%` }}
-                                                    transition={{ duration: 1, type: "spring" }}
-                                                    className={`absolute top-0 h-full rounded-full transition-all flex justify-center items-center ${isBottleneck ? 'bg-rose-500/80 shadow-[0_0_15px_rgba(244,63,94,0.5)]' : 'bg-indigo-500/60 shadow-[0_0_15px_rgba(99,102,241,0.3)]'}`}
-                                                >
-                                                    {sched.duration > 15 && <span className="text-[9px] font-black text-slate-900 dark:text-white/80">{sched.duration}j</span>}
-                                                </motion.div>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-
-                            {activeScenario.bottleneck && (
-                                <div className="p-6 bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-500/20 rounded-2xl flex items-start gap-4">
-                                    <div className="p-2 bg-indigo-500/20 text-indigo-400 rounded-lg shrink-0">
-                                        <Users size={20} />
-                                    </div>
-                                    <div>
-                                        <h4 className="text-slate-900 dark:text-white font-bold mb-1">Impact sur la rentabilité</h4>
-                                        <p className="text-sm text-indigo-200/70 font-medium">
-                                            Les autres équipes produisent plus vite que l'équipe "{ROLE_LABELS[activeScenario.bottleneck as keyof typeof ROLE_LABELS]}". Elles connaîtront des temps d'attente qui vous coûtent en salaires et en location de véhicules sans avancement.
-                                            {isOptimized ? " L'IA a lissé ces écarts au maximum !" : " Cliquez sur 'Lancer l'IA d'optimisation' pour équilibrer la chaîne de production."}
-                                        </p>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-
-                    </main>
+                        </main>
+                    </div>
                 </div>
-            </div >
-        </div >
+            </ContentArea>
+        </PageContainer>
     );
 }

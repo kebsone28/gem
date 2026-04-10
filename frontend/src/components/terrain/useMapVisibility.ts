@@ -9,12 +9,17 @@
 
 import maplibregl from 'maplibre-gl';
 
+import { useTerrainUIStore } from '../../store/terrainUIStore';
+
 export const useMapVisibility = (
-    showHeatmap: boolean,
-    showZones: boolean,
     styleIsReady: boolean
 ) => {
+    const showHeatmap = useTerrainUIStore(s => s.showHeatmap);
+    const showZones = useTerrainUIStore(s => s.showZones);
+    const showWarehouses = useTerrainUIStore(s => s.showWarehouses);
+
     const setupVisibility = (map: maplibregl.Map) => {
+
         if (!map || !styleIsReady) return;
 
         const setLayerVisibility = (layerIds: string[], visibility: 'visible' | 'none') => {
@@ -40,6 +45,9 @@ export const useMapVisibility = (
             ['auto-grappes-fill', 'auto-grappes-outline', 'auto-grappes-labels', 'cluster-circles', 'cluster-counts'],
             zonesVisibility
         );
+
+        // Warehouses visibility
+        setLayerVisibility(['warehouses-layer', 'warehouses-labels'], showWarehouses ? 'visible' : 'none');
     };
 
     return { setupVisibility };

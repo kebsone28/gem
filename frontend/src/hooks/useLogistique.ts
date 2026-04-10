@@ -343,7 +343,7 @@ export function useLogistique() {
         const updated = warehouses.map(wh => {
             if (wh.id !== warehouseId) return wh;
             
-            let teams = [...(wh.preparatorTeams || [])];
+            const teams = [...(wh.preparatorTeams || [])];
             const teamIdx = teams.findIndex((t: any) => t.teamId === teamId);
             const loading = { date: today, kitsLoaded, variantId };
             
@@ -373,7 +373,7 @@ export function useLogistique() {
         const today = new Date().toISOString().split('T')[0];
         const updated = warehouses.map(wh => {
             if (wh.id !== warehouseId) return wh;
-            let teams = [...(wh.preparatorTeams || [])];
+            const teams = [...(wh.preparatorTeams || [])];
             const sysIdx = teams.findIndex((t: any) => t.teamId === 'supply_system');
             const loading = { date: today, kitsLoaded: kitsCount, isEntry: true };
             
@@ -421,7 +421,7 @@ export function useLogistique() {
         const updated = configured.map(wh => {
             if (wh.id === fromId) {
                 const loading = { date: new Date().toISOString().split('T')[0], kitsLoaded: -kitsCount, isTransfer: true };
-                let teams = [...(wh.preparatorTeams || [])];
+                const teams = [...(wh.preparatorTeams || [])];
                 const teamIdx = teams.findIndex((t: any) => t.teamId === 'transfer_system');
                 if (teamIdx >= 0) {
                     teams[teamIdx] = { ...teams[teamIdx], loadings: [...(teams[teamIdx].loadings || []), loading] };
@@ -432,7 +432,7 @@ export function useLogistique() {
             }
             if (wh.id === toId) {
                 const loading = { date: new Date().toISOString().split('T')[0], kitsLoaded: kitsCount, isTransfer: true };
-                let teams = [...(wh.preparatorTeams || [])];
+                const teams = [...(wh.preparatorTeams || [])];
                 const teamIdx = teams.findIndex((t: any) => t.teamId === 'transfer_system');
                 if (teamIdx >= 0) {
                     teams[teamIdx] = { ...teams[teamIdx], loadings: [...(teams[teamIdx].loadings || []), loading] };

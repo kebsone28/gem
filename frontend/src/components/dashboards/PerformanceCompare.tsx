@@ -16,7 +16,7 @@ export default function PerformanceCompare({ data }: { data: PerformanceCompareD
         <div className="space-y-8">
             <div className="flex items-center justify-between">
                 <div>
-                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Validation Quotidienne (7j)</h4>
+                    <h4 className="text-xs font-black uppercase tracking-[0.2em] text-slate-500">Validation Quotidienne (7j)</h4>
                     <p className="text-xl font-black text-slate-800 dark:text-white tracking-tighter mt-1 flex items-center gap-2">
                         +12% <TrendingUp size={16} className="text-emerald-500" />
                     </p>
@@ -32,7 +32,7 @@ export default function PerformanceCompare({ data }: { data: PerformanceCompareD
                     <div key={i} className="flex-1 flex flex-col items-center gap-2 group">
                         <div className="relative w-full">
                             {/* Tooltip on hover */}
-                            <div className="absolute top-[-30px] left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[9px] font-black px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                            <div className="absolute top-[-30px] left-1/2 -translate-x-1/2 bg-slate-800 text-white text-xs font-black px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
                                 {val} unités
                             </div>
                             <motion.div
@@ -42,17 +42,17 @@ export default function PerformanceCompare({ data }: { data: PerformanceCompareD
                                 className={`w-full rounded-t-lg bg-gradient-to-t ${i === 4 ? 'from-emerald-600 to-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.3)]' : 'from-indigo-600 to-indigo-400 opacity-60 group-hover:opacity-100'} transition-all`}
                             />
                         </div>
-                        <span className="text-[9px] font-black uppercase tracking-tighter text-slate-400">{days[i]}</span>
+                        <span className="text-xs font-black uppercase tracking-tighter text-slate-400">{days[i]}</span>
                     </div>
                 ))}
             </div>
 
             <div className="pt-4 border-t border-slate-100 dark:border-white/5">
-                <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-widest text-slate-400">
+                <div className="flex justify-between items-center text-xs font-black uppercase tracking-widest text-slate-400">
                     <span>Performance Moyenne</span>
                     <span className="text-indigo-500">{avgScoreValue}%</span>
                 </div>
-                <div className="mt-2 h-1 bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden">
+                <div className="mt-2 h-1 bg-slate-100 dark:bg-white dark:bg-slate-900/5 rounded-full overflow-hidden">
                     <motion.div
                         initial={{ width: 0 }}
                         animate={{ width: `${avgScoreValue}%` }}

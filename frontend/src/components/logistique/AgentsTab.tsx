@@ -6,7 +6,7 @@ import {
     Timer
 } from 'lucide-react';
 import { useLogistique } from '../../hooks/useLogistique';
-import { useTheme } from '../../context/ThemeContext';
+import { useTheme } from '../../contexts/ThemeContext';
 
 interface AgentsTabProps {
     searchQuery?: string;
@@ -98,7 +98,7 @@ export default function AgentsTab({ searchQuery = '' }: AgentsTabProps) {
                     </div>
                     <div className="overflow-x-auto">
                         <table className={`w-full text-sm ${isDarkMode ? 'divide-slate-800' : 'divide-slate-200'}`}>
-                            <thead className={isDarkMode ? 'bg-slate-950' : 'bg-slate-50'}>
+                            <thead className={isDarkMode ? 'bg-slate-950' : 'bg-slate-50 dark:bg-slate-800/50'}>
                                 <tr>
                                     <th className={`px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>Agent</th>
                                     <th className={`px-6 py-3 text-center text-xs font-semibold uppercase tracking-wider ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>Visites</th>
@@ -109,7 +109,7 @@ export default function AgentsTab({ searchQuery = '' }: AgentsTabProps) {
                             </thead>
                             <tbody className={isDarkMode ? 'divide-y divide-slate-800' : 'divide-y divide-slate-200'}>
                                 {filteredAgents.length > 0 ? filteredAgents.map((a, i) => (
-                                    <tr key={i} className={isDarkMode ? 'hover:bg-slate-800/30' : 'hover:bg-slate-50'}>
+                                    <tr key={i} className={isDarkMode ? 'hover:bg-slate-800/50' : 'hover:bg-slate-50'}>
                                         <td className={`px-6 py-4 font-semibold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                                             {a.name}
                                         </td>

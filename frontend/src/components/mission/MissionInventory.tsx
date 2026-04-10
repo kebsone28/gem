@@ -62,10 +62,10 @@ export function MissionInventory({ inventory = [], onChange }: MissionInventoryP
                         <div className="p-1.5 bg-amber-500/10 rounded-lg"><ListChecks size={16} className="text-amber-500" /></div> 
                         Inventaire & Préparatifs
                     </h2>
-                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1 opacity-60">Vérification du matériel avant départ</p>
+                    <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-1 opacity-60">Vérification du matériel avant départ</p>
                 </div>
                 
-                <div className={`flex items-center gap-2 px-4 py-2 rounded-xl font-black text-[11px] uppercase tracking-widest transition-all ${
+                <div className={`flex items-center gap-2 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest transition-all ${
                     allChecked ? 'bg-emerald-500/10 text-emerald-600 shadow-inner' : 'bg-amber-500/10 text-amber-600 shadow-inner'
                 }`}>
                     {allChecked ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
@@ -75,9 +75,9 @@ export function MissionInventory({ inventory = [], onChange }: MissionInventoryP
 
             <div className="space-y-4">
                 <div className="grid grid-cols-12 gap-4 px-4 mb-2">
-                    <div className="col-span-6 text-[9px] font-black uppercase text-slate-400 tracking-widest">Article / Désignation</div>
-                    <div className="col-span-3 text-[9px] font-black uppercase text-slate-400 tracking-widest text-center">Qté Sortie</div>
-                    <div className="col-span-2 text-[9px] font-black uppercase text-slate-400 tracking-widest text-center">Check</div>
+                    <div className="col-span-6 text-xs font-black uppercase text-slate-400 tracking-widest">Article / Désignation</div>
+                    <div className="col-span-3 text-xs font-black uppercase text-slate-400 tracking-widest text-center">Qté Sortie</div>
+                    <div className="col-span-2 text-xs font-black uppercase text-slate-400 tracking-widest text-center">Check</div>
                     <div className="col-span-1"></div>
                 </div>
 
@@ -96,7 +96,7 @@ export function MissionInventory({ inventory = [], onChange }: MissionInventoryP
                                         onChange(newInv);
                                     }}
                                     title="Désignation de l'article"
-                                    className="bg-transparent border-none text-[11px] font-black text-slate-800 dark:text-white focus:ring-0 w-full p-0"
+                                    className="bg-transparent border-none text-xs font-black text-slate-800 dark:text-white focus:ring-0 w-full p-0"
                                 />
                             </div>
                             
@@ -106,7 +106,7 @@ export function MissionInventory({ inventory = [], onChange }: MissionInventoryP
                                     value={item.quantityTaken}
                                     onChange={e => handleUpdateQuantity(item.id, 'quantityTaken', Number(e.target.value))}
                                     title="Quantité prélevée"
-                                    className="w-16 bg-slate-100 dark:bg-slate-800 border-none rounded-lg text-center text-[11px] font-black py-1 focus:ring-2 focus:ring-indigo-500/20"
+                                    className="w-16 bg-slate-100 dark:bg-slate-800 border-none rounded-lg text-center text-xs font-black py-1 focus:ring-2 focus:ring-indigo-500/20"
                                 />
                             </div>
 
@@ -125,7 +125,7 @@ export function MissionInventory({ inventory = [], onChange }: MissionInventoryP
                             <div className="col-span-1 flex justify-end">
                                 <button 
                                     onClick={() => handleRemoveItem(item.id)}
-                                    title="Supprimer l'article"
+                                    aria-label="Supprimer l'article"
                                     className="p-1.5 text-slate-300 hover:text-rose-500 transition-colors"
                                 >
                                     <Trash2 size={14} />
@@ -137,7 +137,7 @@ export function MissionInventory({ inventory = [], onChange }: MissionInventoryP
 
                 <button 
                     onClick={handleAddItem}
-                    className="w-full py-4 border-2 border-dashed border-slate-200 dark:border-white/5 rounded-2xl flex items-center justify-center gap-2 text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900/50 hover:text-indigo-500 hover:border-indigo-500/30 transition-all font-black text-[10px] uppercase tracking-widest"
+                    className="w-full py-4 border-2 border-dashed border-slate-200 dark:border-white/5 rounded-2xl flex items-center justify-center gap-2 text-slate-400 hover:bg-slate-50 dark:bg-slate-800/50 dark:hover:bg-slate-900/50 hover:text-indigo-500 hover:border-indigo-500/30 transition-all font-black text-xs uppercase tracking-widest"
                 >
                     <Plus size={16} />
                     Ajouter un article à la checklist

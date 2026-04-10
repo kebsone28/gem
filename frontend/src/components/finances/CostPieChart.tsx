@@ -1,4 +1,4 @@
-import { useTheme } from '../../context/ThemeContext';
+import { useTheme } from '../../contexts/ThemeContext';
 
 export default function CostPieChart({ stats }: { stats: any }) {
     const { isDarkMode } = useTheme();
@@ -15,7 +15,7 @@ export default function CostPieChart({ stats }: { stats: any }) {
         <div className={`border rounded-[2.5rem] p-10 h-full flex flex-col shadow-2xl relative overflow-hidden group transition-all ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100'}`}>
             <div className={`absolute -top-10 -right-10 w-40 h-40 rounded-full blur-3xl transition-all ${isDarkMode ? 'bg-indigo-500/5 group-hover:bg-indigo-500/10' : 'bg-indigo-50 group-hover:bg-indigo-100'}`} />
 
-            <h3 className={`text-[10px] font-black uppercase tracking-[0.3em] mb-12 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Répartition des Coûts</h3>
+            <h3 className={`text-xs font-black uppercase tracking-[0.3em] mb-12 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Répartition des Coûts</h3>
 
             <div className="flex-1 flex flex-col items-center justify-center relative scale-110">
                 <svg viewBox="0 0 100 100" className="w-64 h-64 transform -rotate-90">
@@ -44,7 +44,7 @@ export default function CostPieChart({ stats }: { stats: any }) {
                 </svg>
 
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                    <span className={`text-[10px] font-black uppercase tracking-widest ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Global</span>
+                    <span className={`text-xs font-black uppercase tracking-widest ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Global</span>
                     <span className={`text-2xl font-black tracking-tighter ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>100%</span>
                 </div>
             </div>
@@ -54,7 +54,7 @@ export default function CostPieChart({ stats }: { stats: any }) {
                     <div key={i} className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${isDarkMode ? 'bg-slate-950/50 border-slate-800/50 group-hover:border-slate-800' : 'bg-slate-50 border-slate-100 group-hover:border-slate-200'}`}>
                         <div className="flex items-center gap-3">
                             <div
-                                className="w-3 h-3 rounded-full shadow-sm"
+                                className="w-3 h-3 rounded-full shadow-sm dark:shadow-none"
                                 data-color={item.color}
                                 ref={(el) => { if (el) el.style.backgroundColor = item.color; }}
                             />

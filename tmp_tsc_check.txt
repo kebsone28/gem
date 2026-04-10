@@ -1,0 +1,57 @@
+﻿node_modules/@types/mdx/types.d.ts(23,38): error TS2503: Cannot find namespace 'JSX'.
+node_modules/@types/mdx/types.d.ts(28,23): error TS2503: Cannot find namespace 'JSX'.
+node_modules/@types/mdx/types.d.ts(47,28): error TS2503: Cannot find namespace 'JSX'.
+node_modules/@types/mdx/types.d.ts(73,46): error TS2503: Cannot find namespace 'JSX'.
+src/components/terrain/MapComponent.tsx(8,8): error TS1259: Module '"C:/Mes-Sites-Web/GEM_SAAS/frontend/node_modules/@types/react/index"' can only be default-imported using the 'esModuleInterop' flag
+src/components/terrain/MapComponent.tsx(11,31): error TS6142: Module './MapLibreVectorMap' was resolved to 'C:/Mes-Sites-Web/GEM_SAAS/frontend/src/components/terrain/MapLibreVectorMap.tsx', but '--jsx' is not set.
+src/components/terrain/MapComponent.tsx(12,32): error TS6142: Module './MapStatsWidget' was resolved to 'C:/Mes-Sites-Web/GEM_SAAS/frontend/src/components/terrain/MapStatsWidget.tsx', but '--jsx' is not set.
+src/components/terrain/MapComponent.tsx(96,13): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/terrain/MapComponent.tsx(97,17): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/terrain/MapComponent.tsx(98,17): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/terrain/MapComponent.tsx(99,17): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/terrain/MapComponent.tsx(105,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/terrain/MapComponent.tsx(107,17): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/terrain/MapComponent.tsx(108,21): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/terrain/MapComponent.tsx(109,25): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/terrain/MapComponent.tsx(110,25): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/terrain/MapComponent.tsx(111,25): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/terrain/MapComponent.tsx(116,13): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/terrain/MapComponent.tsx(145,35): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/terrain/MapComponent.tsx(154,17): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/terrain/MapComponent.tsx(155,21): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/terrain/MapComponent.tsx(162,17): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/terrain/MapComponent.tsx(163,21): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/terrain/MapComponent.tsx(164,21): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/terrain/MapComponent.tsx(174,29): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/terrain/MapComponent.tsx(180,33): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/terrain/MapComponent.tsx(185,33): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/terrain/MapLibreVectorMap.tsx(1,8): error TS1259: Module '"C:/Mes-Sites-Web/GEM_SAAS/frontend/node_modules/@types/react/index"' can only be default-imported using the 'esModuleInterop' flag
+src/components/terrain/MapLibreVectorMap.tsx(2,8): error TS1192: Module '"C:/Mes-Sites-Web/GEM_SAAS/frontend/node_modules/maplibre-gl/dist/maplibre-gl"' has no default export.
+src/components/terrain/MapLibreVectorMap.tsx(19,26): error TS6142: Module '../../contexts/ThemeContext' was resolved to 'C:/Mes-Sites-Web/GEM_SAAS/frontend/src/contexts/ThemeContext.tsx', but '--jsx' is not set.
+src/components/terrain/MapLibreVectorMap.tsx(24,29): error TS6142: Module './layers/BackgroundLayer' was resolved to 'C:/Mes-Sites-Web/GEM_SAAS/frontend/src/components/terrain/layers/BackgroundLayer.tsx', but '--jsx' is not set.
+src/components/terrain/MapLibreVectorMap.tsx(25,28): error TS6142: Module './layers/HouseholdLayer' was resolved to 'C:/Mes-Sites-Web/GEM_SAAS/frontend/src/components/terrain/layers/HouseholdLayer.tsx', but '--jsx' is not set.
+src/components/terrain/MapLibreVectorMap.tsx(26,23): error TS6142: Module './layers/ZoneLayer' was resolved to 'C:/Mes-Sites-Web/GEM_SAAS/frontend/src/components/terrain/layers/ZoneLayer.tsx', but '--jsx' is not set.
+src/components/terrain/MapLibreVectorMap.tsx(27,28): error TS6142: Module './layers/LogisticsLayer' was resolved to 'C:/Mes-Sites-Web/GEM_SAAS/frontend/src/components/terrain/layers/LogisticsLayer.tsx', but '--jsx' is not set.
+src/components/terrain/MapLibreVectorMap.tsx(28,30): error TS6142: Module './layers/InteractionLayer' was resolved to 'C:/Mes-Sites-Web/GEM_SAAS/frontend/src/components/terrain/layers/InteractionLayer.tsx', but '--jsx' is not set.
+src/components/terrain/MapLibreVectorMap.tsx(29,24): error TS6142: Module './MapTooltip' was resolved to 'C:/Mes-Sites-Web/GEM_SAAS/frontend/src/components/terrain/MapTooltip.tsx', but '--jsx' is not set.
+src/components/terrain/MapLibreVectorMap.tsx(86,97): error TS1343: The 'import.meta' meta-property is only allowed when the '--module' option is 'es2020', 'es2022', 'esnext', 'system', 'node16', 'node18', 'node20', or 'nodenext'.
+src/components/terrain/MapLibreVectorMap.tsx(273,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/terrain/MapLibreVectorMap.tsx(275,13): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/terrain/MapLibreVectorMap.tsx(277,13): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/terrain/MapLibreVectorMap.tsx(285,13): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/terrain/MapLibreVectorMap.tsx(293,13): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/terrain/MapLibreVectorMap.tsx(299,13): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/terrain/MapLibreVectorMap.tsx(308,17): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/terrain/mapUtils.ts(10,8): error TS1192: Module '"C:/Mes-Sites-Web/GEM_SAAS/frontend/node_modules/maplibre-gl/dist/maplibre-gl"' has no default export.
+src/components/terrain/useMapClustering.ts(12,8): error TS1192: Module '"C:/Mes-Sites-Web/GEM_SAAS/frontend/node_modules/maplibre-gl/dist/maplibre-gl"' has no default export.
+src/components/terrain/useMapClustering.ts(13,8): error TS1259: Module '"C:/Mes-Sites-Web/GEM_SAAS/frontend/node_modules/@types/supercluster/index"' can only be default-imported using the 'esModuleInterop' flag
+src/components/terrain/useMapInteractions.ts(2,8): error TS1192: Module '"C:/Mes-Sites-Web/GEM_SAAS/frontend/node_modules/maplibre-gl/dist/maplibre-gl"' has no default export.
+src/components/terrain/useMapLasso.ts(8,8): error TS1192: Module '"C:/Mes-Sites-Web/GEM_SAAS/frontend/node_modules/maplibre-gl/dist/maplibre-gl"' has no default export.
+src/components/terrain/useMapMarkers.ts(8,8): error TS1192: Module '"C:/Mes-Sites-Web/GEM_SAAS/frontend/node_modules/maplibre-gl/dist/maplibre-gl"' has no default export.
+src/components/terrain/useMapMeasure.ts(8,8): error TS1192: Module '"C:/Mes-Sites-Web/GEM_SAAS/frontend/node_modules/maplibre-gl/dist/maplibre-gl"' has no default export.
+src/components/terrain/useMemorizedSupercluster.ts(11,8): error TS1259: Module '"C:/Mes-Sites-Web/GEM_SAAS/frontend/node_modules/@types/supercluster/index"' can only be default-imported using the 'esModuleInterop' flag
+src/services/map/MapSingleton.ts(1,8): error TS1192: Module '"C:/Mes-Sites-Web/GEM_SAAS/frontend/node_modules/maplibre-gl/dist/maplibre-gl"' has no default export.
+src/services/map/tileCacheService.ts(1,8): error TS1192: Module '"C:/Mes-Sites-Web/GEM_SAAS/frontend/node_modules/maplibre-gl/dist/maplibre-gl"' has no default export.
+src/utils/clusteringUtils.ts(8,8): error TS1259: Module '"C:/Mes-Sites-Web/GEM_SAAS/frontend/node_modules/@types/supercluster/index"' can only be default-imported using the 'esModuleInterop' flag
+src/utils/logger.ts(2,16): error TS1343: The 'import.meta' meta-property is only allowed when the '--module' option is 'es2020', 'es2022', 'esnext', 'system', 'node16', 'node18', 'node20', or 'nodenext'.
+src/utils/logger.ts(2,28): error TS2339: Property 'env' does not exist on type 'ImportMeta'.

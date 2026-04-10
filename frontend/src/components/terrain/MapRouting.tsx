@@ -4,7 +4,7 @@ import logger from '../../utils/logger';
 import L from 'leaflet';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Navigation, Info, Car, Footprints } from 'lucide-react';
-import { useTheme } from '../../context/ThemeContext';
+import { useTheme } from '../../contexts/ThemeContext';
 
 interface MapRoutingProps {
     enabled: boolean;
@@ -130,7 +130,7 @@ export const MapRouting: React.FC<MapRoutingProps> = ({ enabled, onClose, startP
                                 <Navigation size={16} className="text-white" />
                                 <span className="text-xs font-black text-white italic uppercase tracking-widest">Itinéraire</span>
                             </div>
-                            <button title="Fermer" onClick={onClose} className="text-white/50 hover:text-white transition-colors">
+                            <button aria-label="Fermer" onClick={onClose} className="text-white/50 hover:text-white transition-colors">
                                 <X size={14} />
                             </button>
                         </div>
@@ -138,16 +138,16 @@ export const MapRouting: React.FC<MapRoutingProps> = ({ enabled, onClose, startP
                         <div className="p-4 space-y-4">
                             <div className="flex gap-1 p-1 rounded-lg bg-slate-100 dark:bg-slate-800">
                                 <button
-                                    title="Mode Voiture"
+                                    aria-label="Mode Voiture"
                                     onClick={() => setMode('driving')}
-                                    className={`flex-1 flex items-center justify-center gap-2 py-1.5 rounded-md text-[10px] font-bold transition-all ${mode === 'driving' ? 'bg-white dark:bg-slate-700 shadow-sm text-indigo-600' : 'text-slate-500'}`}
+                                    className={`flex-1 flex items-center justify-center gap-2 py-1.5 rounded-md text-xs font-bold transition-all ${mode === 'driving' ? 'bg-white dark:bg-slate-700 shadow-sm text-indigo-600' : 'text-slate-500'}`}
                                 >
                                     <Car size={12} /> Auto
                                 </button>
                                 <button
-                                    title="Mode Piéton"
+                                    aria-label="Mode Piéton"
                                     onClick={() => setMode('walking')}
-                                    className={`flex-1 flex items-center justify-center gap-2 py-1.5 rounded-md text-[10px] font-bold transition-all ${mode === 'walking' ? 'bg-white dark:bg-slate-700 shadow-sm text-emerald-600' : 'text-slate-500'}`}
+                                    className={`flex-1 flex items-center justify-center gap-2 py-1.5 rounded-md text-xs font-bold transition-all ${mode === 'walking' ? 'bg-white dark:bg-slate-700 shadow-sm text-emerald-600' : 'text-slate-500'}`}
                                 >
                                     <Footprints size={12} /> Pied
                                 </button>
@@ -156,7 +156,7 @@ export const MapRouting: React.FC<MapRoutingProps> = ({ enabled, onClose, startP
                             {!route ? (
                                 <div className="text-center py-6">
                                     <Info size={24} className="mx-auto text-slate-400 mb-2 opacity-20" />
-                                    <p className={`text-[10px] font-bold ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
+                                    <p className={`text-xs font-bold ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
                                         {points.length === 0 ? 'Cliquez sur la carte pour définir le départ' :
                                             points.length === 1 ? 'Cliquez pour définir la destination ou le départ' : 'Calcul en cours...'}
                                     </p>
@@ -164,8 +164,8 @@ export const MapRouting: React.FC<MapRoutingProps> = ({ enabled, onClose, startP
                             ) : (
                                 <div className="space-y-3">
                                     <div className="flex justify-between items-center px-1">
-                                        <span className="text-[10px] font-black uppercase text-slate-500">Détails</span>
-                                        <div className="flex gap-3 text-[10px] font-black text-indigo-600">
+                                        <span className="text-xs font-black uppercase text-slate-500">Détails</span>
+                                        <div className="flex gap-3 text-xs font-black text-indigo-600">
                                             <span>{(route.distance / 1000).toFixed(1)} km</span>
                                             <span>{Math.round(route.duration / 60)} min</span>
                                         </div>
@@ -173,10 +173,10 @@ export const MapRouting: React.FC<MapRoutingProps> = ({ enabled, onClose, startP
                                     <div className="max-h-64 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
                                         {route.legs[0].steps.map((step: any, i: number) => (
                                             <div key={i} className={`p-3 rounded-xl border transition-all ${isDarkMode ? 'bg-slate-800/50 border-slate-700 hover:bg-slate-800' : 'bg-slate-50 border-slate-100 hover:bg-white'}`}>
-                                                <p className={`text-[10px] font-bold ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                                                <p className={`text-xs font-bold ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
                                                     {step.maneuver.instruction}
                                                 </p>
-                                                <p className="text-[8px] text-slate-500 font-black uppercase mt-1">
+                                                <p className="text-xs text-slate-500 font-black uppercase mt-1">
                                                     {step.distance < 1000 ? `${Math.round(step.distance)} m` : `${(step.distance / 1000).toFixed(1)} km`}
                                                 </p>
                                             </div>

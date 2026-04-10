@@ -1,0 +1,101 @@
+18: import { getHouseholdDerivedStatus } from '../../utils/statusUtils';
+26: getStatusColor, MAP_STYLE_DARK, MAP_STYLE_LIGHT,
+27: MAP_STYLE_SATELLITE, getIconId
+131: if (mapRef.current.getLayer('households-server-layer')) {
+147: (mapRef.current.getSource('households') as any)?.setData(geoJSON);
+214: status: getHouseholdDerivedStatus(h) ?? 'planned',
+215: color: getStatusColor(getHouseholdDerivedStatus(h)) ?? '#94a3b8',
+216: iconId: getIconId(getHouseholdDerivedStatus(h)) ?? 'icon-default',
+228: const source = mapRef.current.getSource('households') as maplibregl.GeoJSONSource | undefined;
+317: if (!map.getSource('households-mvt')) {
+331: if (!map.getSource('households')) {
+339: if (!map.getSource('grappes')) {
+342: if (!map.getSource('warehouses-source')) {
+345: if (!map.getSource('sous-grappes')) {
+349: if (!map.getSource('auto-grappes')) {
+357: if (!map.getSource('auto-grappes-centroids')) {
+366: if (!map.getSource('favorites-source')) {
+374: if (!map.getSource('supercluster-generated')) {
+382: if (!map.getSource('pending-zone')) {
+390: if (!map.getSource('drawn-zones')) {
+398: if (!map.getLayer('warehouses-geofence')) {
+406: 10, ['/', ['to-number', ['coalesce', ['get', 'geofencingRadius'], 500], 500], 100],
+407: 20, ['/', ['to-number', ['coalesce', ['get', 'geofencingRadius'], 500], 500], 0.1]
+418: if (!map.getLayer('warehouses-layer')) {
+427: ['coalesce', ['get', 'stockStatus'], 'ok'],  // ✅ CRITICAL: coalesce from null
+438: if (!map.getLayer('warehouses-labels')) {
+445: 'text-field': ['coalesce', ['get', 'name'], 'Warehouse'],  // ✅ Default if name is null
+458: if (!map.getLayer('favorites-layer')) {
+473: if (!map.getLayer('favorites-outline')) {
+489: if (!map.getSource('route-source')) {
+497: if (!map.getSource('senegal-regions')) {
+504: if (!map.getLayer('route-layer')) {
+522: if (!map.getLayer('route-highlight-layer')) {
+540: if (!map.getLayer('senegal-regions-fill')) {
+552: if (!map.getLayer('senegal-regions-outline')) {
+566: if (!map.getLayer('senegal-regions-label')) {
+572: 'text-field': ['to-string', ['coalesce', ['get', 'REGION'], 'Sénégal']],
+585: if (!map.getLayer('auto-grappes-fill')) {
+593: ['==', ['get', 'type'], 'dense'], '#10b981', // emerald
+594: ['==', ['get', 'type'], 'kmeans'], '#f59e0b', // amber
+606: if (!map.getLayer('auto-grappes-outline')) {
+614: ['==', ['get', 'type'], 'dense'], '#059669',
+615: ['==', ['get', 'type'], 'kmeans'], '#d97706',
+624: if (map.getSource('auto-grappes-centroids') && !map.getLayer('auto-grappes-labels')) {
+633: ['to-string', ['coalesce', ['get', 'name'], 'Zone']],
+635: ['to-string', ['to-number', ['coalesce', ['get', 'count'], 0], 0]],
+652: if (!map.getLayer('grappes-layer')) {
+668: if (!map.getLayer('grappes-labels')) {
+675: 'text-field': ['to-string', ['coalesce', ['get', 'nom'], '']],
+685: if (!map.getLayer('sous-grappes-layer')) {
+702: if (!map.getLayer('heatmap')) {
+739: if (!map.getLayer('households-server-layer')) {
+749: ['coalesce', ['get', 'status'], 'default'],
+765: 'text-field': ['to-string', ['coalesce', ['get', 'numeroordre'], ['get', 'household_id']]],
+783: if (!map.getLayer('households-local-layer')) {
+792: ['coalesce', ['get', 'status'], 'default'],
+823: if (!map.getLayer('households-sync-indicator')) {
+828: filter: ['in', ['coalesce', ['get', 'syncStatus'], ''], ['literal', ['pending', 'error']]],
+834: ['coalesce', ['get', 'syncStatus'], 'synced'],  // ✅ CRITICAL: coalesce protects from null
+847: if (!map.getLayer('cluster-circles')) {
+858: ['to-number', ['coalesce', ['get', 'point_count'], 0], 0],
+876: if (!map.getLayer('cluster-counts')) {
+884: 'text-field': ['coalesce', ['to-string', ['get', 'point_count_abbreviated']], ['to-string', ['get', 'point_count']], '0'],
+894: if (!map.getLayer('pending-zone-fill')) {
+902: if (!map.getLayer('pending-zone-line')) {
+910: if (!map.getLayer('pending-zone-points')) {
+920: if (!map.getLayer('drawn-zones-fill')) {
+926: 'fill-color': ['coalesce', ['get', 'color'], '#3b82f6'],
+931: if (!map.getLayer('drawn-zones-outline')) {
+937: 'line-color': ['coalesce', ['get', 'color'], '#1e40af'],
+944: if (!map.getSource('drag-point')) {
+951: if (!map.getLayer('drag-point-layer')) {
+1012: const c = map.getCenter();
+1013: onMoveRef.current([c.lng, c.lat], map.getZoom());
+1018: const b = map.getBounds();
+1020: b.getWest(),
+1021: b.getSouth(),
+1022: b.getEast(),
+1023: b.getNorth()
+1029: const bounds = map.getBounds();
+1031: lng1: bounds.getWest(),
+1032: lat1: bounds.getSouth(),
+1033: lng2: bounds.getEast(),
+1034: lat2: bounds.getNorth()
+1096: (map.getSource('households') as any)?.setData(householdGeoJSON);
+1097: (map.getSource('grappes') as any)?.setData(grappesGeoJSON);
+1098: (map.getSource('warehouses-source') as any)?.setData(warehousesGeoJSON);
+1099: (map.getSource('sous-grappes') as any)?.setData(sousGrappesGeoJSON);
+1100: if (grappeZonesData) (map.getSource('auto-grappes') as any)?.setData(grappeZonesData);
+1101: if (grappeCentroidsData) (map.getSource('auto-grappes-centroids') as any)?.setData(grappeCentroidsData);
+1102: if (favoritesGeoJSON) (map.getSource('favorites-source') as any)?.setData(favoritesGeoJSON);
+1118: (map.getSource('pending-zone') as any)?.setData(pendingGeoJSON);
+1137: (map.getSource('drawn-zones') as any)?.setData(drawnZonesGeoJSON);
+1153: zoom: zoom || map.getZoom(),
+1165: const source = map.getSource('households-mvt');
+1189: const filter = activeGrappeId ? ['==', ['get', 'id'], activeGrappeId] : null;
+1192: if (map.getLayer(layerId)) {
+1233: if (map.getSource('route-source')) {
+1234: (map.getSource('route-source') as any)?.setData({ type: 'FeatureCollection', features: [] });
+1249: (map.getSource('route-source') as any).setData(routeGeoJSON);
+1375: <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[2000] flex items-center gap-3 px-4 py-2 rounded-2xl map-widget-glass border border-white/10 shadow-2xl backdrop-blur-xl">

@@ -12,7 +12,7 @@ import {
     Smartphone
 } from 'lucide-react';
 import { useLogistique } from '../../hooks/useLogistique';
-import { useTheme } from '../../context/ThemeContext';
+import { useTheme } from '../../contexts/ThemeContext';
 
 interface DeliveriesTabProps {
     searchQuery?: string;
@@ -90,7 +90,7 @@ export default function DeliveriesTab({ searchQuery = '' }: DeliveriesTabProps) 
             <div className={`${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'} border rounded-2xl overflow-hidden transition-all hover:shadow-lg`}>
                 <div className="overflow-x-auto">
                     <table className={`w-full text-sm ${isDarkMode ? 'divide-slate-800' : 'divide-slate-200'}`}>
-                        <thead className={isDarkMode ? 'bg-slate-950' : 'bg-slate-50'}>
+                        <thead className={isDarkMode ? 'bg-slate-950' : 'bg-slate-50 dark:bg-slate-800/50'}>
                             <tr>
                                 <th className={`px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>Ménage</th>
                                 <th className={`px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>Livreur</th>
@@ -111,11 +111,11 @@ export default function DeliveriesTab({ searchQuery = '' }: DeliveriesTabProps) 
                                 const finalOk = d.koboSync?.controleOk || d.status === 'Conforme';
 
                                 return (
-                                    <tr key={i} className={isDarkMode ? 'hover:bg-slate-800/30' : 'hover:bg-slate-50'}>
+                                    <tr key={i} className={isDarkMode ? 'hover:bg-slate-800/50' : 'hover:bg-slate-50'}>
                                         <td className={`px-6 py-4 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                                             <div className="flex flex-col">
                                                 <span className={`font-mono text-xs font-bold ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`}>{d.id}</span>
-                                                <span className={`text-[10px] ${isDarkMode ? 'text-slate-500' : 'text-slate-600'}`}>{d.region}</span>
+                                                <span className={`text-xs ${isDarkMode ? 'text-slate-500' : 'text-slate-600'}`}>{d.region}</span>
                                             </div>
                                         </td>
                                         <td className={`px-6 py-4 ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
@@ -145,17 +145,17 @@ export default function DeliveriesTab({ searchQuery = '' }: DeliveriesTabProps) 
                                         <td className={`px-6 py-4`}>
                                             <div className="flex flex-col gap-1">
                                                 {(d.koboSync?.cableInt25 || 0) > 0 && (
-                                                    <span className={`text-[10px] px-2 py-1 rounded font-mono w-fit ${isDarkMode ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-700'}`}>
+                                                    <span className={`text-xs px-2 py-1 rounded font-mono w-fit ${isDarkMode ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-700'}`}>
                                                         2.5: {d.koboSync?.cableInt25}m
                                                     </span>
                                                 )}
                                                 {(d.koboSync?.tranchee4 || 0) > 0 && (
-                                                    <span className={`text-[10px] px-2 py-1 rounded font-mono w-fit ${isDarkMode ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-700'}`}>
+                                                    <span className={`text-xs px-2 py-1 rounded font-mono w-fit ${isDarkMode ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-700'}`}>
                                                         Tr: {d.koboSync?.tranchee4}m
                                                     </span>
                                                 )}
                                                 {!(d.koboSync?.cableInt25) && !(d.koboSync?.tranchee4) && (
-                                                    <span className={`text-[10px] ${isDarkMode ? 'text-slate-600' : 'text-slate-400'}`}>—</span>
+                                                    <span className={`text-xs ${isDarkMode ? 'text-slate-600' : 'text-slate-400'}`}>—</span>
                                                 )}
                                             </div>
                                         </td>
@@ -172,7 +172,7 @@ export default function DeliveriesTab({ searchQuery = '' }: DeliveriesTabProps) 
                                     <td colSpan={5} className={`px-6 py-20 text-center`}>
                                         <div className="flex flex-col items-center justify-center gap-4">
                                             <div className={`p-4 rounded-full ${isDarkMode ? 'bg-slate-800' : 'bg-slate-100'}`}>
-                                                <History size={32} className={isDarkMode ? 'text-slate-600' : 'text-slate-400'} />
+                                                <History size={32} className={isDarkMode ? 'text-slate-600 dark:text-slate-400' : 'text-slate-400'} />
                                             </div>
                                             <div>
                                                 <p className={`font-semibold ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>Aucune livraison</p>

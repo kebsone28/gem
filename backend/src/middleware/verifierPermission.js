@@ -12,15 +12,25 @@ export const verifierPermission = (permission) => {
             return res.status(401).json({ error: 'Non authentifié' });
         }
 
+        // 1. Les Admins ont un accès total systématique
+        if (req.user.role === 'ADMIN_PROQUELEC' || req.user.role === 'ADMIN') {
+            return next();
+        }
+
+        // 2. Vérifier d'abord les permissions granulaires personnalisées (si présentes dans le token/user)
+        if (req.user.permissions && Array.isArray(req.user.permissions) && req.user.permissions.includes(permission)) {
+            return next();
+        }
+
+        // 3. Fallback sur les permissions par défaut du rôle (Legacy/Standard)
         const roleUtilisateur = req.user.role;
         const permissionsAutorisees = ROLE_PERMISSIONS[roleUtilisateur] || [];
 
-        // Vérifier si la permission est dans la liste ou si l'utilisateur a un accès total
-        // (Dans un système pro, on pourrait aussi gérer une permission wildcard '*')
         if (!permissionsAutorisees.includes(permission)) {
-            console.warn(`[SECURITE] Accès refusé : ${req.user.email} (${roleUtilisateur}) a tenté d'accéder à une ressource nécessitant : ${permission}`);
+            console.warn(`[SECURITE] Accès refusé : ${req.user.email} (${roleUtilisateur}) | Requiert: ${permission} | Perms du rôle: ${JSON.stringify(permissionsAutorisees)} | Perms de l'user: ${JSON.stringify(req.user.permissions || [])}`);
             return res.status(403).json({
-                error: 'Accès interdit : Vous ne possédez pas les permissions nécessaires pour cette action.'
+                error: 'Accès interdit : Vous ne possédez pas les permissions nécessaires pour cette action.',
+                debug: { role: roleUtilisateur, required: permission }
             });
         }
 

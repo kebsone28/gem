@@ -21,13 +21,12 @@ const LAYER_COLORS = ['#06b6d4', '#a855f7', '#f59e0b', '#10b981', '#f43f5e'];
 
 
 
-interface Props {
-    layers: ExternalLayer[];
-    onLayersChange: (layers: ExternalLayer[]) => void;
-    isDarkMode?: boolean;
-}
+import { useTerrainUIStore } from '../../store/terrainUIStore';
 
-export function GeoJsonOverlayPanel({ layers, onLayersChange, isDarkMode = true }: Props) {
+export function GeoJsonOverlayPanel({ isDarkMode = true }: { isDarkMode?: boolean }) {
+    const layers = useTerrainUIStore(s => s.externalLayers);
+    const onLayersChange = useTerrainUIStore(s => s.setExternalLayers);
+
     const fileRef = useRef<HTMLInputElement>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -92,8 +91,8 @@ export function GeoJsonOverlayPanel({ layers, onLayersChange, isDarkMode = true 
         setLoading(true);
         setError('');
         try {
-            // Utilisation d'une couche GeoJSON légère Sénégal depuis source publique
-            const res = await fetch('https://raw.githubusercontent.com/datasets/geo-admin1-senegal/master/data/senegal-regions.geojson');
+            // Utilisation d'une couche GeoJSON légère Sénégal depuis ressource locale
+            const res = await fetch('/data/senegal-regions.geojson');
             if (!res.ok) throw new Error('Indisponible');
             const geojson = await res.json();
             addLayer('Régions du Sénégal', geojson, 'admin');
@@ -155,7 +154,7 @@ export function GeoJsonOverlayPanel({ layers, onLayersChange, isDarkMode = true 
                     onChange={handleFileImport}
                 />
                 <button
-                    title="Importer un fichier GeoJSON ou KML"
+                    aria-label="Importer un fichier GeoJSON ou KML"
                     onClick={() => fileRef.current?.click()}
                     disabled={loading}
                     className="w-full flex items-center justify-center gap-2 bg-cyan-600 hover:bg-cyan-700 text-white text-sm font-bold rounded-xl py-2.5 transition-colors disabled:opacity-50"
@@ -166,7 +165,7 @@ export function GeoJsonOverlayPanel({ layers, onLayersChange, isDarkMode = true 
 
                 {/* Limites admin */}
                 <button
-                    title="Charger les régions du Sénégal"
+                    aria-label="Charger les régions du Sénégal"
                     onClick={loadAdminBoundaries}
                     disabled={loading}
                     className={`w-full flex items-center justify-center gap-2 text-sm font-bold rounded-xl py-2.5 transition-colors disabled:opacity-50 ${isDarkMode ? 'bg-slate-700 hover:bg-slate-600 text-slate-200' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'}`}
@@ -195,7 +194,7 @@ export function GeoJsonOverlayPanel({ layers, onLayersChange, isDarkMode = true 
                                 />
                                 <div className="flex-1 min-w-0">
                                     <p className={`text-xs font-bold truncate ${text}`}>{layer.name}</p>
-                                    <p className={`text-[10px] ${sub}`}>
+                                    <p className={`text-xs ${sub}`}>
                                         {layer.type === 'admin' ? '🗺️ Admin' : '📂 Import'} ·{' '}
                                         {layer.geojson?.features?.length ?? '?'} entité{(layer.geojson?.features?.length ?? 0) !== 1 ? 's' : ''}
                                     </p>

@@ -20,7 +20,7 @@ export default function LiveActivityFeed({ activities }: { activities: ActivityI
         return (
             <div className="flex flex-col items-center justify-center py-10 opacity-30">
                 <Activity size={32} className="mb-2" />
-                <p className="text-[10px] font-black uppercase tracking-widest">Aucune activité récente</p>
+                <p className="text-xs font-black uppercase tracking-widest">Aucune activité récente</p>
             </div>
         );
     }
@@ -68,23 +68,23 @@ export default function LiveActivityFeed({ activities }: { activities: ActivityI
                             {/* Dot */}
                             <div className={`absolute left-[-5px] top-1 w-2.5 h-2.5 rounded-full ${accentColor} shadow-lg`} />
 
-                            <div className="bg-white dark:bg-white/5 border border-slate-100 dark:border-white/5 rounded-2xl p-4 hover:shadow-lg transition-all group">
+                            <div className="bg-white dark:bg-white dark:bg-slate-900/5 border border-slate-100 dark:border-white/5 rounded-2xl p-4 hover:shadow-lg transition-all group">
                                 <div className="flex justify-between items-start mb-2">
                                     <div className="flex items-center gap-2">
                                         <div className={`w-6 h-6 rounded-lg ${iconBg} ${iconColor} flex items-center justify-center`}>
                                             <Zap size={12} />
                                         </div>
-                                        <span className={`text-[11px] font-black uppercase tracking-tight ${iconColor}`}>
+                                        <span className={`text-xs font-black uppercase tracking-tight ${iconColor}`}>
                                             {actionLabel}
                                         </span>
                                     </div>
-                                    <span className="text-[9px] font-bold text-slate-400 flex items-center gap-1">
+                                    <span className="text-xs font-bold text-slate-400 flex items-center gap-1">
                                         <Clock size={10} />
                                         {formatDistanceToNow(new Date(act.timestamp), { addSuffix: true, locale: fr })}
                                     </span>
                                 </div>
 
-                                <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
+                                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
                                     <span className="font-black text-slate-700 dark:text-slate-200">{act.user.name}</span> a synchronisé <span className="text-indigo-400 font-bold">{act.details?.householdsUpdated || 0}</span> mises à jour de terrain.
                                 </p>
 
@@ -92,7 +92,7 @@ export default function LiveActivityFeed({ activities }: { activities: ActivityI
                                     <div className={`w-4 h-4 rounded-full ${iconBg} ${iconColor} flex items-center justify-center text-[7px] font-black italic shadow-sm`}>
                                         {act.user.name[0]}
                                     </div>
-                                    <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">
+                                    <span className="text-xs font-black uppercase tracking-widest text-slate-400">
                                         Agent Terrain
                                     </span>
                                 </div>

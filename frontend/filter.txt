@@ -1,0 +1,13 @@
+139: // ✅ Viewport loading - Disabled since we now use MVT for high-perf and Dexie for local filtered data
+174: const valid = (households || []).filter((h: any) => isValidCoordinate(h.location?.coordinates));
+237: const favHouseholds = (households || []).filter((h: any) => favoriteIds.includes(h.id));
+253: .filter((g: any) => g.centroide_lon != null && g.centroide_lat != null)
+266: .filter((w: any) => w.latitude != null && w.longitude != null)
+287: .filter((sg: any) => sg.centroide_lon != null && sg.centroide_lat != null)
+828: filter: ['in', ['coalesce', ['get', 'syncStatus'], ''], ['literal', ['pending', 'error']]],
+853: filter: ['has', 'point_count'],
+882: filter: ['has', 'point_count'],
+1179: // Update active auto-grappe filter
+1189: const filter = activeGrappeId ? ['==', ['get', 'id'], activeGrappeId] : null;
+1193: map.setFilter(layerId, filter as any);
+1197: logger.warn('⚠️ Error setting grappes filters:', err instanceof Error ? err.message : err);

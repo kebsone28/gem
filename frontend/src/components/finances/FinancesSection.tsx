@@ -1,0 +1,209 @@
+import { useState } from 'react';
+import {
+    FileSpreadsheet,
+    Download,
+    Upload,
+    Trash2,
+    Save,
+    Plus,
+    AlertTriangle,
+    CheckCircle2
+} from 'lucide-react';
+import { useFinances } from '../../hooks/useFinances';
+import { fmtFCFA } from '../../utils/format';
+
+interface Props {
+    project: any;
+    onUpdate: (patch: any) => Promise<void>;
+}
+
+export function FinancesSection({ project, onUpdate }: Props) {
+    const { devis, addDevisItem, deleteDevisItem, importDevisList } = useFinances();
+    const [isSaving, setIsSaving] = useState(false);
+    const [success, setSuccess] = useState(false);
+    const [importErrors, setImportErrors] = useState<string[]>([]);
+
+    const devisItems: any[] = devis.report || [];
+
+    const handleExcel = async () => {
+        const { utils, writeFile } = await import('xlsx');
+        const data = devisItems.map((item: any) => ({
+            ID: item.id,
+            Poste_de_Depense: item.label,
+            Region: item.region,
+            Prevision_Qte: item.qty,
+            Prevision_PU: item.unit,
+            Total_Prevu: item.planned,
+            Reel_Qte: item.rq,
+            Reel_PU: item.ru,
+            Total_Reel: item.realTotal,
+            Ecart_Marge: item.margin
+        }));
+        const wb = utils.book_new();
+        utils.book_append_sheet(wb, utils.json_to_sheet(data.length ? data : [{ info: 'Aucun poste' }]), 'Devis vs Reel');
+        writeFile(wb, `devis_${project?.name || 'projet'}.xlsx`);
+    };
+
+    const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setImportErrors([]);
+        try {
+            let rawData: any[] = [];
+            if (file.name.endsWith('.csv')) {
+                const text = await file.text();
+                const lines = text.split('\n').filter((l: string) => l.trim());
+                if (lines.length > 1) {
+                    const headers = lines[0].split(',').map((h: string) => h.replace(/^"|"$/g, '').trim());
+                    for (let i = 1; i < lines.length; i++) {
+                        const cols = lines[i].split(',').map((c: string) => c.replace(/^"|"$/g, '').trim());
+                        const row: any = {};
+                        headers.forEach((h: string, j: number) => { row[h] = cols[j]; });
+                        rawData.push(row);
+                    }
+                }
+            } else {
+                const { read, utils } = await import('xlsx');
+                const wb = read(await file.arrayBuffer(), { type: 'array' });
+                rawData = utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+            }
+            const errors: string[] = [];
+            rawData.forEach((row: any, i: number) => {
+                if (!row.Poste_de_Depense && !row.Label && !row.label) {
+                    errors.push(`Ligne ${i + 2}: Colonne 'Poste_de_Depense' manquante.`);
+                }
+            });
+            if (errors.length > 0) { setImportErrors(errors); e.target.value = ''; return; }
+            await importDevisList(rawData);
+            setSuccess(true);
+            setTimeout(() => setSuccess(false), 3000);
+        } catch (err: any) {
+            setImportErrors([`Erreur: ${err?.message || 'Format invalide'}`]);
+        }
+        e.target.value = '';
+    };
+
+    const handleSaveToServer = async () => {
+        setIsSaving(true);
+        try {
+            await onUpdate({ config: { ...project.config } });
+            setSuccess(true);
+            setTimeout(() => setSuccess(false), 3000);
+        } finally { setIsSaving(false); }
+    };
+
+    return (
+        <div className="space-y-10">
+            {/* Header */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div>
+                    <h2 className="text-xl font-black text-white flex items-center gap-3 uppercase tracking-tight mb-1">
+                        <FileSpreadsheet className="text-indigo-500" />
+                        Postes Budgetaires (Devis)
+                    </h2>
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+                        {devisItems.length} postes — sauvegarde PostgreSQL via bouton
+                    </p>
+                </div>
+                <div className="flex items-center gap-3 flex-wrap">
+                    <button onClick={handleExcel} className="flex items-center gap-2 px-5 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl transition-all active:scale-95">
+                        <Download size={15} /> EXPORTER EXCEL
+                    </button>
+                    <label className="flex items-center gap-2 px-5 py-3 bg-slate-700 hover:bg-slate-600 text-white font-black text-xs rounded-xl transition-all cursor-pointer active:scale-95">
+                        <Upload size={15} /> IMPORTER
+                        <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleImport} />
+                    </label>
+                    <button onClick={handleSaveToServer} disabled={isSaving} className="flex items-center gap-2 px-5 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs rounded-xl transition-all active:scale-95 disabled:opacity-50">
+                        <Save size={15} /> {isSaving ? 'Sauvegarde...' : 'SAUVEGARDER SERVEUR'}
+                    </button>
+                </div>
+            </div>
+
+            {/* Alerts */}
+            {success && (
+                <div className="flex items-center gap-3 p-4 bg-emerald-900/20 border border-emerald-800 text-emerald-300 rounded-2xl text-sm font-bold">
+                    <CheckCircle2 size={16} /> Operation reussie !
+                </div>
+            )}
+            {importErrors.length > 0 && (
+                <div className="p-4 bg-rose-900/20 border border-rose-800 text-rose-300 rounded-2xl">
+                    <div className="flex items-center gap-2 font-black text-xs uppercase mb-2"><AlertTriangle size={14} /> Erreurs d'import</div>
+                    <ul className="list-disc list-inside text-xs space-y-1">{importErrors.map((err, i) => <li key={i}>{err}</li>)}</ul>
+                </div>
+            )}
+
+            {/* Table */}
+            <div className="bg-white/5 rounded-[2rem] border border-white/5 overflow-hidden">
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                        <thead className="bg-slate-950/50 border-b border-white/5">
+                            <tr>
+                                {['Poste de Depense', 'Region', 'Qte', 'P.U', 'Total Prevu', 'Total Reel', 'Marge', ''].map(h => (
+                                    <th key={h} className={`px-4 py-4 text-xs font-black text-slate-500 uppercase tracking-widest ${h === '' ? '' : 'text-right first:text-left'}`}>{h}</th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5">
+                            {devisItems.length === 0 ? (
+                                <tr><td colSpan={8} className="py-16 text-center text-slate-600 font-bold text-sm">Aucun poste. Ajoutez-en ci-dessous ou importez un Excel.</td></tr>
+                            ) : devisItems.map((item: any) => (
+                                <tr key={item.id} className="group hover:bg-white/5 transition-all">
+                                    <td className="px-4 py-4 text-sm font-bold text-white">{item.label}</td>
+                                    <td className="px-4 py-4 text-xs font-black text-indigo-400 uppercase text-right">{item.region}</td>
+                                    <td className="px-4 py-4 text-right text-sm text-slate-300">{item.qty}</td>
+                                    <td className="px-4 py-4 text-right text-sm text-slate-300">{fmtFCFA(item.unit)}</td>
+                                    <td className="px-4 py-4 text-right text-sm font-bold text-blue-400">{fmtFCFA(item.planned)}</td>
+                                    <td className="px-4 py-4 text-right text-sm font-bold text-slate-300">{fmtFCFA(item.realTotal)}</td>
+                                    <td className={`px-4 py-4 text-right text-sm font-black ${item.margin >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{fmtFCFA(item.margin)}</td>
+                                    <td className="px-4 py-4">
+                                        <button onClick={() => deleteDevisItem(item.id)} title="Supprimer ce poste" className="p-2 opacity-0 group-hover:opacity-100 text-rose-500 hover:bg-rose-500/10 rounded-lg transition-all">
+                                            <Trash2 size={14} />
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                        {devisItems.length > 0 && (
+                            <tfoot className="bg-slate-950/50 border-t border-white/10">
+                                <tr>
+                                    <td colSpan={4} className="px-4 py-4 text-xs font-black text-slate-500 uppercase tracking-widest">TOTAL ({devisItems.length} postes)</td>
+                                    <td className="px-4 py-4 text-right text-base font-black text-blue-400">{fmtFCFA(devisItems.reduce((s: number, i: any) => s + (i.planned || 0), 0))}</td>
+                                    <td className="px-4 py-4 text-right text-base font-black text-white">{fmtFCFA(devisItems.reduce((s: number, i: any) => s + (i.realTotal || 0), 0))}</td>
+                                    <td className={`px-4 py-4 text-right text-base font-black ${devis.globalMargin >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{fmtFCFA(devis.globalMargin)}</td>
+                                    <td />
+                                </tr>
+                            </tfoot>
+                        )}
+                    </table>
+                </div>
+            </div>
+
+            {/* Quick Add */}
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-5 flex flex-col sm:flex-row items-stretch gap-4">
+                <input id="fin_label" placeholder="Libelle du poste (ex: Transport materiel)" title="Libelle" className="flex-1 bg-slate-950 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:ring-2 focus:ring-indigo-500 outline-none" />
+                <select id="fin_region" title="Region" className="bg-slate-950 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:ring-2 focus:ring-indigo-500 outline-none">
+                    <option value="Global">Global</option>
+                    <option value="Kaffrine">Kaffrine</option>
+                    <option value="Tambacounda">Tambacounda</option>
+                </select>
+                <input id="fin_qty" type="number" placeholder="Qte" title="Quantite" defaultValue={1} className="w-24 bg-slate-950 border border-white/10 rounded-xl px-3 py-3 text-sm text-white focus:ring-2 focus:ring-indigo-500 outline-none" />
+                <input id="fin_unit" type="number" placeholder="P.U" title="Prix unitaire FCFA" defaultValue={0} className="w-32 bg-slate-950 border border-white/10 rounded-xl px-3 py-3 text-sm text-white focus:ring-2 focus:ring-indigo-500 outline-none" />
+                <button
+                    onClick={() => {
+                        const lbl = (document.getElementById('fin_label') as HTMLInputElement)?.value;
+                        const reg = (document.getElementById('fin_region') as HTMLSelectElement)?.value;
+                        const qty = Number((document.getElementById('fin_qty') as HTMLInputElement)?.value) || 1;
+                        const unit = Number((document.getElementById('fin_unit') as HTMLInputElement)?.value) || 0;
+                        if (lbl) {
+                            addDevisItem({ label: lbl, region: reg || 'Global', qty, unit });
+                            (document.getElementById('fin_label') as HTMLInputElement).value = '';
+                        }
+                    }}
+                    className="flex items-center justify-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs rounded-xl transition-all active:scale-95"
+                >
+                    <Plus size={15} /> AJOUTER
+                </button>
+            </div>
+        </div>
+    );
+}

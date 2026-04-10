@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { TrendingUp, TrendingDown, Calendar } from 'lucide-react';
-import { useTheme } from '../../context/ThemeContext';
+import { useTheme } from '../../contexts/ThemeContext';
 
 interface DataPoint {
     week: string;
@@ -82,7 +82,7 @@ export default function SparklineChart() {
                         <h3 className={`font-black text-base tracking-tight uppercase italic ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                             Évolution des Coûts — 12 Semaines
                         </h3>
-                        <p className={`text-[11px] font-medium ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
+                        <p className={`text-xs font-medium ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
                             Prévisionnel vs Réel (M FCFA)
                         </p>
                     </div>
@@ -92,11 +92,11 @@ export default function SparklineChart() {
                     {/* Legend */}
                     <div className="flex items-center gap-2">
                         <div className="w-6 h-0.5 bg-indigo-400/60 border-dashed border-t border-indigo-400/60" />
-                        <span className={`text-[10px] font-black uppercase tracking-widest ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Prévisionnel</span>
+                        <span className={`text-xs font-black uppercase tracking-widest ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Prévisionnel</span>
                     </div>
                     <div className="flex items-center gap-2">
                         <div className="w-6 h-0.5 bg-emerald-500" />
-                        <span className={`text-[10px] font-black uppercase tracking-widest ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Réel</span>
+                        <span className={`text-xs font-black uppercase tracking-widest ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Réel</span>
                     </div>
 
                     {/* Delta badge */}
@@ -238,16 +238,16 @@ export default function SparklineChart() {
 
             {/* Footer summary */}
             <div className={`flex items-center justify-between mt-4 pt-4 border-t ${isDarkMode ? 'border-slate-800' : 'border-slate-100'}`}>
-                <span className={`text-[11px] font-medium ${isDarkMode ? 'text-slate-600' : 'text-slate-400'}`}>
+                <span className={`text-xs font-medium ${isDarkMode ? 'text-slate-600' : 'text-slate-400'}`}>
                     Données hebdomadaires cumulées · Mise à jour automatique
                 </span>
                 <div className="flex items-center gap-4">
                     <div>
-                        <span className={`text-[10px] font-black uppercase tracking-widest ${isDarkMode ? 'text-slate-600' : 'text-slate-400'}`}>Total Prévu</span>
+                        <span className={`text-xs font-black uppercase tracking-widest ${isDarkMode ? 'text-slate-600' : 'text-slate-400'}`}>Total Prévu</span>
                         <p className={`text-sm font-black ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{lastPlanned}M FCFA</p>
                     </div>
                     <div>
-                        <span className={`text-[10px] font-black uppercase tracking-widest ${isDarkMode ? 'text-slate-600' : 'text-slate-400'}`}>Total Réel</span>
+                        <span className={`text-xs font-black uppercase tracking-widest ${isDarkMode ? 'text-slate-600' : 'text-slate-400'}`}>Total Réel</span>
                         <p className={`text-sm font-black ${deltaSign === 'positive' ? 'text-emerald-500' : 'text-rose-500'}`}>{lastActual}M FCFA</p>
                     </div>
                 </div>

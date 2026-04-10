@@ -26,7 +26,7 @@ export function MissionSettings({ features, onToggle }: MissionSettingsProps) {
                 </div>
                 <div>
                     <h3 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-wider">Configuration de la Mission</h3>
-                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-0.5 opacity-60">Activer ou désactiver les modules experts</p>
+                    <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-0.5 opacity-60">Activer ou désactiver les modules experts</p>
                 </div>
             </div>
 
@@ -45,14 +45,14 @@ export function MissionSettings({ features, onToggle }: MissionSettingsProps) {
                         </div>
                         <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between mb-1">
-                                <span className={`text-[11px] font-black uppercase tracking-wider ${features[f.id as keyof typeof features] ? 'text-slate-900 dark:text-white' : 'text-slate-500'}`}>
+                                <span className={`text-xs font-black uppercase tracking-wider ${features[f.id as keyof typeof features] ? 'text-slate-900 dark:text-white' : 'text-slate-500'}`}>
                                     {f.label}
                                 </span>
                                 <div className={`w-8 h-4 rounded-full relative transition-colors ${features[f.id as keyof typeof features] ? 'bg-indigo-500' : 'bg-slate-300 dark:bg-slate-700'}`}>
-                                    <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${features[f.id as keyof typeof features] ? 'left-4.5' : 'left-0.5'}`} />
+                                    <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white dark:bg-slate-900 transition-all ${features[f.id as keyof typeof features] ? 'left-4.5' : 'left-0.5'}`} />
                                 </div>
                             </div>
-                            <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
+                            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
                                 {f.desc}
                             </p>
                         </div>

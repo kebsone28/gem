@@ -10,7 +10,7 @@ import {
     Info
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useTheme } from '../../context/ThemeContext';
+import { useTheme } from '../../contexts/ThemeContext';
 import './MapWidgets.css';
 
 interface WidgetBarProps {
@@ -31,7 +31,7 @@ export const WidgetBar: React.FC<WidgetBarProps> = ({ activeWidgets, onToggleWid
             <div className={`p-0.5 rounded-xl border shadow-2xl flex items-center gap-0.5 map-widget-glass ${isDarkMode ? 'border-slate-800' : 'border-slate-200'}`}>
                 <button
                     onClick={() => onToggleWidget('unified')}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${activeWidgets.unified
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black transition-all ${activeWidgets.unified
                         ? 'bg-primary text-white shadow-lg shadow-primary/30'
                         : isDarkMode ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
                         }`}
@@ -41,7 +41,7 @@ export const WidgetBar: React.FC<WidgetBarProps> = ({ activeWidgets, onToggleWid
                 </button>
                 <button
                     onClick={() => onToggleWidget('tools')}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${activeWidgets.tools
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black transition-all ${activeWidgets.tools
                         ? 'bg-primary text-white shadow-lg shadow-primary/30'
                         : isDarkMode ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
                         }`}
@@ -51,7 +51,7 @@ export const WidgetBar: React.FC<WidgetBarProps> = ({ activeWidgets, onToggleWid
                 </button>
                 <button
                     onClick={() => onToggleWidget('search')}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${activeWidgets.search
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black transition-all ${activeWidgets.search
                         ? 'bg-primary text-white shadow-lg shadow-primary/30'
                         : isDarkMode ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
                         }`}
@@ -62,7 +62,7 @@ export const WidgetBar: React.FC<WidgetBarProps> = ({ activeWidgets, onToggleWid
 
                 <button
                     onClick={() => onToggleWidget('legend')}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${activeWidgets.legend
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black transition-all ${activeWidgets.legend
                         ? 'bg-primary text-white shadow-lg shadow-primary/30'
                         : isDarkMode ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
                         }`}
@@ -75,7 +75,7 @@ export const WidgetBar: React.FC<WidgetBarProps> = ({ activeWidgets, onToggleWid
 
                 <button
                     onClick={toggleTheme}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${isDarkMode ? 'text-blue-400 hover:bg-blue-400/10' : 'text-primary hover:bg-primary/10'}`}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black transition-all ${isDarkMode ? 'text-blue-400 hover:bg-blue-400/10' : 'text-primary hover:bg-primary/10'}`}
                     title={isDarkMode ? 'Passer au mode clair' : 'Passer au mode sombre'}
                 >
                     {isDarkMode ? <Sun size={12} /> : <Moon size={12} />}
@@ -153,9 +153,9 @@ export const UnifiedStatusWidget: React.FC<UnifiedStatusWidgetProps> = ({
                 </div>
                 <div className="flex items-center gap-3">
                     <div className="drag-handle-dots flex items-center gap-0.5">
-                        <div className="w-0.5 h-0.5 bg-white rounded-full"></div>
-                        <div className="w-0.5 h-0.5 bg-white rounded-full"></div>
-                        <div className="w-0.5 h-0.5 bg-white rounded-full"></div>
+                        <div className="w-0.5 h-0.5 bg-white dark:bg-slate-900 rounded-full"></div>
+                        <div className="w-0.5 h-0.5 bg-white dark:bg-slate-900 rounded-full"></div>
+                        <div className="w-0.5 h-0.5 bg-white dark:bg-slate-900 rounded-full"></div>
                     </div>
                     <button onClick={() => setIsMinimized(!isMinimized)} className="text-white/50 hover:text-white transition-colors">
                         {isMinimized ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
@@ -181,7 +181,7 @@ export const UnifiedStatusWidget: React.FC<UnifiedStatusWidgetProps> = ({
                                 <button
                                     key={tab.id}
                                     onClick={() => setActiveTab(tab.id as any)}
-                                    className={`flex-1 py-3 text-[9px] font-black uppercase tracking-widest transition-all relative ${activeTab === tab.id
+                                    className={`flex-1 py-3 text-xs font-black uppercase tracking-widest transition-all relative ${activeTab === tab.id
                                         ? 'text-primary bg-primary/5'
                                         : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
                                 >
@@ -204,7 +204,7 @@ export const UnifiedStatusWidget: React.FC<UnifiedStatusWidgetProps> = ({
                                             >
                                                 <div className="flex items-center gap-3">
                                                     <div className={`w-1.5 h-1.5 rounded-full ${phase.color}`} />
-                                                    <span className="text-[11px] tracking-tight">{phase.label}</span>
+                                                    <span className="text-xs tracking-tight">{phase.label}</span>
                                                 </div>
                                                 <input
                                                     type="checkbox"
@@ -229,13 +229,13 @@ export const UnifiedStatusWidget: React.FC<UnifiedStatusWidgetProps> = ({
                                             { label: 'Bloqués', value: stats?.bloque || 0, color: 'text-red-500' }
                                         ].map((s, i) => (
                                             <div key={i} className={`p-3 rounded-xl border ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-slate-50 border-slate-100'}`}>
-                                                <p className="text-[8px] font-black uppercase opacity-50 mb-1">{s.label}</p>
+                                                <p className="text-xs font-black uppercase opacity-50 mb-1">{s.label}</p>
                                                 <p className={`text-sm font-black ${s.color}`}>{s.value}</p>
                                             </div>
                                         ))}
                                     </div>
                                     <div className={`pt-4 border-t transition-colors ${isDarkMode ? 'border-slate-800' : 'border-slate-100'}`}>
-                                        <div className="flex justify-between text-[10px] mb-2 font-black uppercase italic">
+                                        <div className="flex justify-between text-xs mb-2 font-black uppercase italic">
                                             <span className="text-slate-500">Progression Globale</span>
                                             <span className="text-indigo-600">{stats?.total ? Math.round((stats.termine / stats.total) * 100) : 0}%</span>
                                         </div>
@@ -254,7 +254,7 @@ export const UnifiedStatusWidget: React.FC<UnifiedStatusWidgetProps> = ({
                                 <div className="space-y-5">
                                     {teamRows.map((team, i) => (
                                         <div key={i} className="space-y-2">
-                                            <div className="flex justify-between items-center text-[10px] font-black uppercase">
+                                            <div className="flex justify-between items-center text-xs font-black uppercase">
                                                 <div
                                                     onClick={() => onToggleTeamFilter(team.id)}
                                                     className="flex items-center gap-2 cursor-pointer group"

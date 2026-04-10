@@ -12,6 +12,11 @@ import {
     BorderStyle,
     AlignmentType, 
     ImageRun,
+    PageBreak,
+    ShadingType,
+    VerticalAlign,
+    Header,
+    Footer,
 } from "docx";
 import { saveAs } from "file-saver";
 import logger from './logger';
@@ -23,6 +28,8 @@ export interface ExportData {
     materials: string[];
     hse: string[];
     subcontracting: string[];
+    finances: string[];
+    legal?: string[];
     startDate: string;
     endDate: string;
     responsible: string;
@@ -37,6 +44,19 @@ export interface ExportData {
     };
 }
 
+// Design Tokens (PROQUELEC Brand)
+const COLORS = {
+    PRIMARY: "2563eb",   // Blue 600
+    SECONDARY: "1e1b4b", // Indigo 950
+    ACCENT: "f97316",    // Orange 500
+    SUCCESS: "059669",   // Emerald 600
+    DANGER: "dc2626",    // Red 600
+    SLATE: "475569",     // Slate 600
+    BORDER: "cbd5e1",    // Slate 300
+    WHITE: "FFFFFF",
+    BG_LIGHT: "F8FAFC"
+};
+
 const fetchImageAsArrayBuffer = async (url: string): Promise<ArrayBuffer | null> => {
     try {
         const response = await fetch(url);
@@ -48,18 +68,187 @@ const fetchImageAsArrayBuffer = async (url: string): Promise<ArrayBuffer | null>
     }
 };
 
+const createSectionHeader = (text: string, color: string) => {
+    return new Paragraph({
+        shading: {
+            fill: color,
+            type: ShadingType.SOLID,
+            color: "auto",
+        },
+        padding: { top: 120, bottom: 120, left: 120 },
+        children: [
+            new TextRun({
+                text: text.toUpperCase(),
+                bold: true,
+                size: 24,
+                color: COLORS.WHITE,
+                font: "Calibri",
+            })
+        ],
+        spacing: { before: 400, after: 200 },
+        border: {
+            bottom: { style: BorderStyle.SINGLE, size: 6, color: COLORS.BORDER, space: 1 }
+        }
+    });
+};
+
+const createFrontPage = (title: string, subtitle?: string) => {
+    return [
+        new Paragraph({ text: "", spacing: { before: 2000 } }),
+        new Paragraph({
+            alignment: AlignmentType.CENTER,
+            children: [
+                new TextRun({
+                    text: "REPUBLIQUE DU SENEGAL",
+                    bold: true,
+                    size: 28,
+                    color: COLORS.SECONDARY,
+                })
+            ]
+        }),
+        new Paragraph({
+            alignment: AlignmentType.CENTER,
+            children: [
+                new TextRun({
+                    text: "Un Peuple - Un But - Une Foi",
+                    italics: true,
+                    size: 20,
+                    color: COLORS.SLATE,
+                })
+            ]
+        }),
+        new Paragraph({ text: "", spacing: { before: 1000 } }),
+        new Paragraph({
+            alignment: AlignmentType.CENTER,
+            children: [
+                new TextRun({
+                    text: "CAHIER DES CHARGES OPÉRATIONNEL",
+                    bold: true,
+                    size: 48,
+                    color: COLORS.PRIMARY,
+                })
+            ]
+        }),
+        new Paragraph({
+            alignment: AlignmentType.CENTER,
+            children: [
+                new TextRun({
+                    text: "PROJET D'ÉLECTRIFICATION RURALE & CONTRATS DE PERFORMANCE",
+                    size: 24,
+                    color: COLORS.SECONDARY,
+                })
+            ]
+        }),
+        new Paragraph({ text: "", spacing: { before: 1500 } }),
+        new Paragraph({
+            alignment: AlignmentType.CENTER,
+            children: [
+                new TextRun({
+                    text: title.toUpperCase(),
+                    bold: true,
+                    size: 72,
+                    color: COLORS.ACCENT,
+                })
+            ],
+            border: {
+                top: { style: BorderStyle.SINGLE, size: 12, color: COLORS.ACCENT, space: 10 },
+                bottom: { style: BorderStyle.SINGLE, size: 12, color: COLORS.ACCENT, space: 10 },
+            },
+            spacing: { before: 400, after: 400 }
+        }),
+        new Paragraph({ text: "", spacing: { before: 3000 } }),
+        new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            borders: {
+                top: { style: BorderStyle.NONE },
+                bottom: { style: BorderStyle.NONE },
+                left: { style: BorderStyle.NONE },
+                right: { style: BorderStyle.NONE },
+                insideHorizontal: { style: BorderStyle.NONE },
+                insideVertical: { style: BorderStyle.NONE },
+            },
+            rows: [
+                new TableRow({
+                    children: [
+                        new TableCell({
+                            children: [
+                                new Paragraph({
+                                    children: [
+                                        new TextRun({ text: "Généré par : ", bold: true }),
+                                        new TextRun({ text: "Système GEM-SAAS PROQUELEC" })
+                                    ]
+                                }),
+                                new Paragraph({
+                                    children: [
+                                        new TextRun({ text: "Date d'émission : ", bold: true }),
+                                        new TextRun({ text: new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' }) })
+                                    ]
+                                })
+                            ]
+                        }),
+                        new TableCell({
+                            children: [
+                                new Paragraph({
+                                    alignment: AlignmentType.RIGHT,
+                                    children: [
+                                        new TextRun({ text: "RÉFÉRENCE MARCHÉ : ", bold: true }),
+                                        new TextRun({ text: `PRQ-2026-${Math.random().toString(36).substring(7).toUpperCase()}` })
+                                    ]
+                                })
+                            ]
+                        })
+                    ]
+                })
+            ]
+        }),
+        new Paragraph({ children: [new PageBreak()] })
+    ];
+};
+
 const createRoleSection = async (data: ExportData) => {
-    const { role, introduction, missions, materials, hse, subcontracting, responsible, imagePath, startDate, endDate, contact, pricing } = data;
+    const { role, introduction, missions, materials, hse, subcontracting, finances, legal, responsible, imagePath, startDate, endDate, contact, pricing } = data;
     
     const children: any[] = [];
 
-    // Header stylized
+    // Title Section
     children.push(
         new Paragraph({
-            text: `CAHIER DES CHARGES & CONTRAT : ${role.toUpperCase()}`,
+            text: `BORDEREAU DÉTAILLÉ DU LOT : ${role.toUpperCase()}`,
             heading: HeadingLevel.HEADING_1,
-            alignment: AlignmentType.CENTER,
+            alignment: AlignmentType.LEFT,
             spacing: { before: 400, after: 400 },
+        })
+    );
+
+    // Metadata Table
+    children.push(
+        new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            rows: [
+                new TableRow({
+                    children: [
+                        new TableCell({
+                            shading: { fill: COLORS.BG_LIGHT },
+                            children: [new Paragraph({ children: [new TextRun({ text: "RESPONSABLE", bold: true, size: 18 })] })],
+                            width: { size: 25, type: WidthType.PERCENTAGE }
+                        }),
+                        new TableCell({
+                            children: [new Paragraph({ text: responsible || "Non assigné", size: 18 })],
+                            width: { size: 25, type: WidthType.PERCENTAGE }
+                        }),
+                        new TableCell({
+                            shading: { fill: COLORS.BG_LIGHT },
+                            children: [new Paragraph({ children: [new TextRun({ text: "PÉRIODE", bold: true, size: 18 })] })],
+                            width: { size: 25, type: WidthType.PERCENTAGE }
+                        }),
+                        new TableCell({
+                            children: [new Paragraph({ text: `${startDate} au ${endDate}`, size: 18 })],
+                            width: { size: 25, type: WidthType.PERCENTAGE }
+                        })
+                    ]
+                })
+            ],
+            spacing: { after: 400 }
         })
     );
 
@@ -69,220 +258,200 @@ const createRoleSection = async (data: ExportData) => {
         if (buffer) {
             children.push(
                 new Paragraph({
-                    alignment: AlignmentType.CENTER,
+                    alignment: AlignmentType.LEFT,
                     children: [
                         new ImageRun({
                             data: buffer,
-                            transformation: { width: 300, height: 220 },
+                            transformation: { width: 500, height: 350 },
                         } as any),
                     ],
-                    spacing: { after: 300 }
+                    spacing: { after: 400, before: 200 }
                 })
             );
         }
     }
 
     // Introduction
+    children.push(createSectionHeader("1. Objet du Contrat et Obligations de Résultat", COLORS.SECONDARY));
     children.push(
         new Paragraph({
             children: [
-                new TextRun({ text: "1. INTRODUCTION", bold: true, size: 28, color: "0f172a" }),
+                new TextRun({ text: introduction, color: COLORS.SECONDARY, italics: true }),
             ],
-            spacing: { before: 200, after: 100 },
-        }),
-        new Paragraph({
-            children: [
-                new TextRun({ text: introduction, italics: true, color: "334155" }),
-            ],
-            spacing: { after: 300 },
+            spacing: { after: 300, before: 100 },
+            indent: { left: 240 }
         })
     );
 
-    // Missions (Bleu)
-    if (missions.length) {
+    // Missions
+    children.push(createSectionHeader("2. Descriptif des Missions Techniques", COLORS.PRIMARY));
+    missions.forEach(m => {
         children.push(
             new Paragraph({
-                children: [new TextRun({ text: "2. MISSIONS TECHNIQUES", bold: true, size: 26, color: "1d4ed8" })],
-                spacing: { before: 200, after: 100 },
+                children: [new TextRun({ text: m, color: COLORS.SECONDARY })],
+                bullet: { level: 0 },
+                spacing: { before: 80, after: 80 },
+                indent: { left: 480 }
             })
         );
-        missions.forEach(m => {
+    });
+
+    // Material
+    children.push(createSectionHeader("3. Matériel et Moyens Logistiques", COLORS.ACCENT));
+    const materialRows = materials.map(m => new TableRow({
+        children: [
+            new TableCell({
+                children: [new Paragraph({ text: `• ${m}`, spacing: { before: 40, after: 40 } })],
+                width: { size: 100, type: WidthType.PERCENTAGE },
+                borders: {
+                    top: { style: BorderStyle.NONE },
+                    bottom: { style: BorderStyle.SINGLE, size: 1, color: COLORS.BORDER },
+                    left: { style: BorderStyle.NONE },
+                    right: { style: BorderStyle.NONE },
+                }
+            })
+        ]
+    }));
+    children.push(new Table({
+        rows: materialRows,
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        borders: {
+            top: { style: BorderStyle.NONE },
+            bottom: { style: BorderStyle.NONE },
+            left: { style: BorderStyle.NONE },
+            right: { style: BorderStyle.NONE },
+            insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: COLORS.BORDER },
+        }
+    }));
+
+    // HSE
+    children.push(createSectionHeader("4. Sécurité, Santé et Environnement (HSE)", COLORS.SUCCESS));
+    hse.forEach(h => {
+        children.push(
+            new Paragraph({
+                children: [new TextRun({ text: h, color: COLORS.SUCCESS, bold: true })],
+                bullet: { level: 0 },
+                spacing: { after: 60 },
+                indent: { left: 480 }
+            })
+        );
+    });
+
+    // Subcontracting
+    children.push(createSectionHeader("5. Dispositions de Sous-traitance", COLORS.SLATE));
+    subcontracting.forEach(c => {
+        children.push(
+            new Paragraph({
+                children: [new TextRun({ text: c, color: COLORS.SLATE })],
+                bullet: { level: 0 },
+                spacing: { after: 60 },
+                indent: { left: 480 }
+            })
+        );
+    });
+
+    // Finances
+    children.push(createSectionHeader("6. Dispositions Financières et Garanties", COLORS.ACCENT));
+    finances.forEach(f => {
+        children.push(
+            new Paragraph({
+                children: [new TextRun({ text: f, bold: true })],
+                bullet: { level: 0 },
+                spacing: { after: 60 },
+                indent: { left: 480 }
+            })
+        );
+    });
+
+    // Legal
+    if (legal && legal.length > 0) {
+        children.push(createSectionHeader("7. Cadre Juridique et Responsabilité", COLORS.DANGER));
+        legal.forEach(l => {
             children.push(
                 new Paragraph({
-                    children: [new TextRun({ text: m, color: "1e3a8a" })],
+                    children: [new TextRun({ text: l, color: COLORS.DANGER, size: 20 })],
                     bullet: { level: 0 },
-                    spacing: { after: 80 }
+                    spacing: { after: 60 },
+                    indent: { left: 480 }
                 })
             );
         });
     }
 
-    // Matériel (Tableau simple)
-    if (materials.length) {
-        children.push(
-            new Paragraph({
-                children: [new TextRun({ text: "3. MATÉRIEL & LOGISTIQUE", bold: true, size: 26, color: "ea580c" })],
-                spacing: { before: 300, after: 150 },
-            })
-        );
-        
-        const rows = materials.map(m => new TableRow({
-            children: [
-                new TableCell({
-                    children: [new Paragraph({ text: m })],
-                    width: { size: 100, type: WidthType.PERCENTAGE }
-                })
-            ]
-        }));
-
-        children.push(new Table({
-            rows,
-            width: { size: 100, type: WidthType.PERCENTAGE },
-        }));
-    }
-
-    // HSE (Vert)
-    if (hse.length) {
-        children.push(
-            new Paragraph({
-                children: [new TextRun({ text: "4. SÉCURITÉ & HSE", bold: true, size: 26, color: "16a34a" })],
-                spacing: { before: 300, after: 150 },
-            })
-        );
-        
-        hse.forEach(h => {
-            children.push(
-                new Paragraph({
-                    children: [new TextRun({ text: `• ${h}`, color: "14532d", bold: true })],
-                    spacing: { after: 100 },
-                    indent: { left: 400 }
-                })
-            );
-        });
-    }
-
-    // Sous-traitance (Ambre)
-    if (subcontracting.length) {
-        children.push(
-            new Paragraph({
-                children: [new TextRun({ text: "5. CLAUSES DE SOUS-TRAITANCE (LSE COMPLIANCE)", bold: true, size: 26, color: "b45309" })],
-                spacing: { before: 300, after: 150 },
-            })
-        );
-        
-        subcontracting.forEach(c => {
-            children.push(
-                new Paragraph({
-                    children: [new TextRun({ text: `• ${c}`, color: "78350f" })],
-                    spacing: { after: 80 },
-                    indent: { left: 400 }
-                })
-            );
-        });
-    }
-
-    // Tarification (Emerald / Green)
+    // Pricing Table
     if (pricing) {
-        children.push(
-            new Paragraph({
-                children: [new TextRun({ text: "6. BARÈMES & TARIFICATION CONTRACTUELLE", bold: true, size: 26, color: "059669" })],
-                spacing: { before: 400, after: 150 },
-            })
-        );
-
-        const tableHeader = new TableRow({
+        children.push(createSectionHeader("8. Bordereau de Prix Unitaire (BPU)", COLORS.PRIMARY));
+        
+        const headerRow = new TableRow({
             children: [
-                new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Désignation", bold: true })] })], width: { size: 30, type: WidthType.PERCENTAGE } }),
-                new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Unité", bold: true })] })], width: { size: 10, type: WidthType.PERCENTAGE } }),
-                new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Qté/Effectif", bold: true })] })], width: { size: 15, type: WidthType.PERCENTAGE } }),
-                new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Durée (j)", bold: true })] })], width: { size: 15, type: WidthType.PERCENTAGE } }),
-                new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "P.U journalier", bold: true })] })], width: { size: 15, type: WidthType.PERCENTAGE } }),
-                new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Total Lot", bold: true })] })], width: { size: 15, type: WidthType.PERCENTAGE } }),
-            ],
+                "Désignation", "Qté", "Durée (j)", "P.U (FCFA)", "TOTAL (FCFA)"
+            ].map(h => new TableCell({
+                shading: { fill: COLORS.BG_LIGHT },
+                verticalAlign: VerticalAlign.CENTER,
+                children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: h, bold: true, color: COLORS.SECONDARY })] })]
+            }))
         });
 
-        const tableBody = new TableRow({
+        const totalValue = pricing.dailyRate * pricing.personnelCount * pricing.durationDays;
+        
+        const dataRow = new TableRow({
             children: [
-                new TableCell({ children: [new Paragraph(role)] }),
-                new TableCell({ children: [new Paragraph("Prestation")] }),
-                new TableCell({ children: [new Paragraph(pricing.personnelCount.toString())] }),
-                new TableCell({ children: [new Paragraph(pricing.durationDays.toString())] }),
-                new TableCell({ children: [new Paragraph(`${pricing.dailyRate.toLocaleString()} ${pricing.currency}`)] }),
+                new TableCell({ children: [new Paragraph({ text: role })] }),
+                new TableCell({ alignment: AlignmentType.CENTER, children: [new Paragraph({ text: pricing.personnelCount.toString(), alignment: AlignmentType.CENTER })] }),
+                new TableCell({ alignment: AlignmentType.CENTER, children: [new Paragraph({ text: pricing.durationDays.toString(), alignment: AlignmentType.CENTER })] }),
+                new TableCell({ alignment: AlignmentType.CENTER, children: [new Paragraph({ text: pricing.dailyRate.toLocaleString(), alignment: AlignmentType.CENTER })] }),
                 new TableCell({ 
-                    children: [new Paragraph({ children: [new TextRun({ text: `${(pricing.dailyRate * pricing.personnelCount * pricing.durationDays).toLocaleString()} ${pricing.currency}`, bold: true })] })],
+                    shading: { fill: COLORS.PRIMARY, type: ShadingType.SOLID, color: "auto" },
+                    children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: totalValue.toLocaleString(), bold: true, color: COLORS.WHITE })] })] 
                 }),
-            ],
+            ]
         });
 
         children.push(new Table({
-            rows: [tableHeader, tableBody],
             width: { size: 100, type: WidthType.PERCENTAGE },
+            rows: [headerRow, dataRow]
         }));
 
         children.push(
             new Paragraph({
-                children: [new TextRun({ text: "Clauses pénales : ", bold: true, color: "dc2626" }), new TextRun({ text: pricing.penalties, italics: true })],
-                spacing: { before: 200, after: 200 },
+                alignment: AlignmentType.RIGHT,
+                children: [
+                    new TextRun({ text: "MONTANT TOTAL DU LOT : ", bold: true, size: 28 }),
+                    new TextRun({ text: `${totalValue.toLocaleString()} ${pricing.currency}`, bold: true, size: 32, color: COLORS.PRIMARY })
+                ],
+                spacing: { before: 300, after: 400 }
             })
         );
     }
 
-    // Infos complémentaires
+    // Execution Table (Drafting terms)
     children.push(
-        new Paragraph({
-            children: [new TextRun({ text: "7. DÉTAILS D'EXÉCUTION", bold: true, size: 26, color: "475569" })],
-            spacing: { before: 400, after: 150 },
-        }),
-        new Paragraph({ text: `Période prévue : du ${startDate} au ${endDate}` }),
-        new Paragraph({ text: `Responsable assigné : ${responsible || "N/A"}` }),
-        new Paragraph({ text: `Contact direct : ${contact || "N/A"}` })
-    );
-
-    // Signatures (Tableau sans bordures complexes)
-    children.push(
-        new Paragraph({ text: "", spacing: { before: 600 } }),
+        new Paragraph({ text: "", spacing: { before: 800 } }),
         new Table({
             width: { size: 100, type: WidthType.PERCENTAGE },
             rows: [
                 new TableRow({
+                    height: { value: 2000, rule: "atLeast" },
                     children: [
                         new TableCell({
                             children: [
                                 new Paragraph({ 
-                                    children: [new TextRun({ text: "VISA DIRECTION PROQUELEC", bold: true })],
-                                    alignment: AlignmentType.CENTER 
+                                    alignment: AlignmentType.CENTER,
+                                    children: [new TextRun({ text: "VISA DIRECTION GENERALE PROQUELEC", bold: true, size: 20 })]
                                 }),
-                                new Paragraph({ text: "", spacing: { before: 800 } }),
-                                new Paragraph({ 
-                                    children: [new TextRun({ text: `Fait le ${new Date().toLocaleDateString()}`, size: 18 })],
-                                    alignment: AlignmentType.CENTER 
-                                })
-                            ],
-                            borders: {
-                                top: { style: BorderStyle.SINGLE, size: 1 },
-                                bottom: { style: BorderStyle.SINGLE, size: 1 },
-                                left: { style: BorderStyle.SINGLE, size: 1 },
-                                right: { style: BorderStyle.SINGLE, size: 1 },
-                            }
+                                new Paragraph({ text: "", spacing: { before: 1000 } }),
+                                new Paragraph({ alignment: AlignmentType.CENTER, text: "Cachet et Signature" })
+                            ]
                         }),
                         new TableCell({
                             children: [
                                 new Paragraph({ 
-                                    children: [new TextRun({ text: `VISA PRESTATAIRE (${role.toUpperCase()})`, bold: true })],
-                                    alignment: AlignmentType.CENTER 
+                                    alignment: AlignmentType.CENTER,
+                                    children: [new TextRun({ text: `VISA TITULAIRE (${role.toUpperCase()})`, bold: true, size: 20 })]
                                 }),
-                                new Paragraph({ text: "", spacing: { before: 800 } }),
-                                new Paragraph({ 
-                                    children: [new TextRun({ text: "Signature et Cachet", size: 18 })],
-                                    alignment: AlignmentType.CENTER 
-                                })
-                            ],
-                            borders: {
-                                top: { style: BorderStyle.SINGLE, size: 1 },
-                                bottom: { style: BorderStyle.SINGLE, size: 1 },
-                                left: { style: BorderStyle.SINGLE, size: 1 },
-                                right: { style: BorderStyle.SINGLE, size: 1 },
-                            }
+                                new Paragraph({ text: "", spacing: { before: 1000 } }),
+                                new Paragraph({ alignment: AlignmentType.CENTER, text: "Cachet et Signature" })
+                            ]
                         })
                     ]
                 })
@@ -293,34 +462,74 @@ const createRoleSection = async (data: ExportData) => {
     return children;
 };
 
-export const exportCahiersToWord = async (dataList: ExportData[], isMultiple: boolean = false) => {
-    const sections: any[] = [];
+export const exportCahiersToWord = async (tasks: ExportData[], isMultiple: boolean, generalClauses?: string[]) => {
+    const allSections: any[] = [];
     
-    for (const data of dataList) {
-        const roleChildren = await createRoleSection(data);
+    // 1. Front Page
+    const mainTitle = isMultiple ? "Cahiers des Charges Complets" : tasks[0].role;
+    allSections.push({
+        children: createFrontPage(mainTitle)
+    });
+
+    // 2. Dispositions Générales
+    if (generalClauses && generalClauses.length > 0) {
+        const generalChildren: any[] = [
+            new Paragraph({
+                text: "ANNEXE 0 : DISPOSITIONS GÉNÉRALES DU MARCHÉ",
+                heading: HeadingLevel.HEADING_1,
+                alignment: AlignmentType.CENTER,
+                spacing: { before: 400, after: 400 },
+            })
+        ];
         
-        sections.push({
+        generalClauses.forEach(clause => {
+            generalChildren.push(
+                new Paragraph({
+                    text: clause,
+                    border: {
+                        bottom: { color: COLORS.BORDER, space: 1, style: BorderStyle.SINGLE, size: 1 },
+                    },
+                    spacing: { before: 150, after: 150 },
+                })
+            );
+        });
+        
+        generalChildren.push(new Paragraph({ children: [new PageBreak()] }));
+        
+        allSections.push({
+            children: generalChildren
+        });
+    }
+
+    // 3. Trade Specific Sections
+    for (const task of tasks) {
+        const children = await createRoleSection(task);
+        if (tasks.indexOf(task) < tasks.length - 1) {
+            children.push(new Paragraph({ children: [new PageBreak()] }));
+        }
+        
+        allSections.push({
             properties: {
                 page: {
                     margin: {
-                        top: 720,
-                        right: 720,
-                        bottom: 720,
-                        left: 720,
+                        top: 1000,
+                        right: 1000,
+                        bottom: 1000,
+                        left: 1000,
                     },
                 },
             },
-            children: roleChildren,
+            children
         });
     }
 
     const doc = new Document({
-        title: isMultiple ? "Cahier des Charges & Contrat Complet" : `Cahier des Charges ${dataList[0].role}`,
-        description: "Généré par GEM-SAAS",
-        sections: sections
+        creator: "GEM-SAAS PROQUELEC",
+        title: isMultiple ? "Cahiers des Charges Complets" : `Cahier des Charges ${tasks[0].role}`,
+        sections: allSections,
     });
 
     const blob = await Packer.toBlob(doc);
-    const fileName = isMultiple ? "CDC_CONTRAT_COMPLET_PROQUELEC.docx" : `CDC_CONTRAT_${dataList[0].role.replace(/\s+/g, '_')}.docx`;
+    const fileName = isMultiple ? "BORDEREAU_CONTRACTUEL_COMPLET_PROQUELEC.docx" : `BORDEREAU_${tasks[0].role.replace(/\s+/g, '_')}_PRQ.docx`;
     saveAs(blob, fileName);
 };

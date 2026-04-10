@@ -4,30 +4,54 @@ import prisma from '../core/utils/prisma.js';
  * Service d'Audit - PROQUELEC SaaS
  * Permet de tracer toutes les actions critiques effectuées sur la plateforme.
  */
-export const tracerAction = async ({
-    userId,
-    organizationId,
-    action,
-    resource,
-    resourceId = null,
-    details = {},
-    req = null
-}) => {
+export const tracerAction = async (dataOrOrgId, userId, action, resource, resourceId, details, req = null) => {
     try {
-        await prisma.auditLog.create({
-            data: {
+        let finalData = {};
+
+        // Si le premier argument est un objet (nouveau format)
+        if (typeof dataOrOrgId === 'object' && !Array.isArray(dataOrOrgId) && dataOrOrgId !== null) {
+            finalData = dataOrOrgId;
+        } 
+        // Sinon, on reconstruit l'objet à partir des arguments positionnels (ancien format)
+        else {
+            finalData = {
+                organizationId: dataOrOrgId,
                 userId,
-                organizationId,
                 action,
                 resource,
-                resourceId,
+                resourceId: resourceId || null,
                 details: details || {},
-                ipAddress: req ? req.ip : null,
-                userAgent: req ? req.headers['user-agent'] : null
-            }
-        });
+                req: req || null
+            };
+        }
 
-        console.log(`[AUDIT] Action tracée : ${action} sur ${resource} (ID: ${resourceId}) par l'utilisateur ${userId}`);
+        const { 
+            organizationId: orgId, 
+            userId: uId, 
+            action: act, 
+            resource: resrc, 
+            resourceId: resId, 
+            details: det, 
+            req: request 
+        } = finalData;
+
+        // Utiliser une exécution asynchrone non-bloquante totale
+        prisma.auditLog.create({
+            data: {
+                userId: uId,
+                organizationId: orgId,
+                action: act,
+                resource: resrc,
+                resourceId: resId,
+                details: det || {},
+                ipAddress: request ? request.ip : null,
+                userAgent: request ? request.headers['user-agent'] : null
+            }
+        }).then(() => {
+            console.log(`[AUDIT] Action tracée : ${act} sur ${resrc}`);
+        }).catch(err => {
+            console.error('[ERREUR AUDIT] Échec silencieux :', err.message);
+        });
     } catch (error) {
         // On ne bloque pas l'application si l'audit échoue, mais on log l'erreur
         console.error('[ERREUR AUDIT] Impossible d\'enregistrer le log d\'audit :', error);

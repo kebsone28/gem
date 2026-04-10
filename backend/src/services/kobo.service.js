@@ -12,10 +12,44 @@
 
 import prisma from '../core/utils/prisma.js';
 import { recalculateProjectGrappes } from './project_config.service.js';
+import { transformRowToHousehold } from './kobo.mapping.js';
 
 const KOBO_API_URL = process.env.KOBO_API_URL || 'https://kf.kobotoolbox.org';
-const KOBO_TOKEN   = process.env.KOBO_TOKEN || '';
+const KOBO_TOKEN = process.env.KOBO_TOKEN || '';
 const KOBO_FORM_ID = process.env.KOBO_FORM_ID || '';
+
+// Region GPS bounds for validation (lat, lon in decimal degrees)
+const REGION_GPS_BOUNDS = {
+    'Dakar': { latMin: 14.5, latMax: 15.0, lonMin: -17.8, lonMax: -17.3 },
+    'Thiès': { latMin: 14.0, latMax: 15.0, lonMin: -16.8, lonMax: -15.8 },
+    'Tambacounda': { latMin: 13.7, latMax: 14.9, lonMin: -13.7, lonMax: -12.5 },
+    'Matam': { latMin: 14.2, latMax: 15.9, lonMin: -12.8, lonMax: -11.5 },
+    'Kolda': { latMin: 12.9, latMax: 13.9, lonMin: -15.3, lonMax: -14.0 },
+    'Ziguinchor': { latMin: 13.0, latMax: 13.8, lonMin: -15.6, lonMax: -15.0 },
+    'Kaffrine': { latMin: 13.1, latMax: 14.2, lonMin: -15.0, lonMax: -14.1 },
+    'Louga': { latMin: 14.8, latMax: 15.9, lonMin: -15.4, lonMax: -14.2 }
+};
+
+function validateGPSRegion(latitude, longitude, region, submissionId = null) {
+    if (!latitude || !longitude || !region) return true; // Skip if missing data
+
+    const bounds = REGION_GPS_BOUNDS[region.trim()];
+    if (!bounds) return true; // Unknown region, can't validate
+
+    const isValid = (
+        latitude >= bounds.latMin && latitude <= bounds.latMax &&
+        longitude >= bounds.lonMin && longitude <= bounds.lonMax
+    );
+
+    if (!isValid) {
+        console.warn(
+            `[KOBO-SYNC] ⚠️ GPS-REGION MISMATCH - ID: ${submissionId}, ` +
+            `Region: ${region}, GPS: [${latitude}, ${longitude}]`
+        );
+    }
+
+    return isValid;
+}
 
 /**
  * Fetches submissions from KoboToolbox API since a given date.
@@ -53,90 +87,59 @@ export async function fetchKoboSubmissions(since = null) {
 
 /**
  * Maps a Kobo submission object to a household update object.
- * Customize the field mapping to match your Kobo form.
+ * Uses kobo.mapping.js for standard field extraction + Kobo-specific enrichment
  *
  * @param {object} submission - Raw Kobo submission
  * @param {string} organizationId
  * @param {string} defaultZoneId
  */
-function mapSubmissionToHousehold(submission, organizationId, defaultZoneId) {
-    const data = submission; // Kobo directly provides fields at root in kobo-v2 results
-    
-    const id = submission['_id']
-            || submission['numeroordre']
-            || submission['id_menage']
-            || String(submission['_id']);
+function mapSubmissionToHousehold(submission, organizationId, defaultZoneId, projectId) {
+    // Use professional mapping function
+    const household = transformRowToHousehold(submission, organizationId, defaultZoneId, projectId);
 
-    const lat = parseFloat(submission['_geolocation']?.[0] || submission['latitude'] || submission['TYPE_DE_VISITE/latitude_key'] || 0);
-    const lon = parseFloat(submission['_geolocation']?.[1] || submission['longitude'] || submission['TYPE_DE_VISITE/longitude_key'] || 0);
+    if (!household) {
+        return null; // Skip if mapping failed (missing numeroOrdre)
+    }
 
-    const region = submission['region'] || 
-                   submission['region_administrative'] || 
-                   submission['region_key'] || 
-                   submission['TYPE_DE_VISITE/region_key'] || 
-                   '';
+    // Add Kobo-specific enrichment
+    household.assignedTeams = submission['TYPE_DE_VISITE/role'] ? [
+        {
+            'macon': 'Maçon',
+            'livreur': 'Livreur',
+            'reseau': 'Réseau',
+            'interieur': 'Intérieur',
+            'controleur': 'Contrôleur'
+        }[String(submission['TYPE_DE_VISITE/role']).toLowerCase()] || submission['TYPE_DE_VISITE/role']
+    ] : (submission['Votre Role'] ? [
+        {
+            'macon': 'Maçon',
+            'livreur': 'Livreur',
+            'reseau': 'Réseau',
+            'interieur': 'Intérieur',
+            'controleur': 'Contrôleur'
+        }[String(submission['Votre Role']).toLowerCase()] || submission['Votre Role']
+    ] : []);
 
-    return {
-        id: String(id),
-        organizationId,
-        zoneId: submission['zone_id'] || defaultZoneId,
-        
-        // 🛠️ Alignement sur les clés XLSForm de l'utilisateur (v1 et v2)
-        status: submission['ETAT_DE_L_INSTALLATION'] || 
-                submission['etat_installation_interieur'] ||
-                submission['statut_installation'] || 
-                submission['statut'] || 
-                submission['status'] || 
-                'Non débuté',
-        
-        name: submission['nom_prenom'] || submission['chef_menage'] || submission['nom_chef_menage'] || submission['TYPE_DE_VISITE/nom_key'] || '',
-        phone: submission['telephone'] || submission['phone'] || submission['numero'] || submission['TYPE_DE_VISITE/telephone_key'] || '',
-        region: region.trim(),
-        departement: submission['departement'] || submission['dept'] || '',
-        village: submission['village'] || submission['localite'] || '',
-        
-        latitude: lat || null,
-        longitude: lon || null,
-        source: 'Kobo',
-
-        owner: {
-            nom: submission['nom_prenom'] || submission['chef_menage'] || submission['TYPE_DE_VISITE/nom_key'] || '',
-            telephone: submission['telephone'] || submission['TYPE_DE_VISITE/telephone_key'] || ''
-        },
-        koboData: {
-            ...submission,
-            // 📸 Photos references (basenames in Kobo)
-            photo_compteur: submission['photo_compteur'] || submission['Photo_compteur_install'],
-            photo_installation: submission['photo_installation'] || 
-                                submission['Photo'] || 
-                                submission['Photo_installation_terminee'] ||
-                                submission['_1_photo_anomalie_si_possible']
-        },
-        assignedTeams: submission['role'] ? [
-            {
-                'macon': 'Maçon',
-                'livreur': 'Livreur',
-                'reseau': 'Réseau',
-                'interieur': 'Intérieur',
-                'controleur': 'Contrôleur'
-            }[submission['role'].toLowerCase()] || submission['role']
-        ] : [],
-        koboSync: {
-            maconOk: !!submission['validation_macon_final'],
-            reseauOk: !!submission['validation_reseau_final'],
-            interieurOk: !!submission['validation_interieur_final'],
-            controleOk: !!submission['validation_controleur_final'],
-            livreurDate: submission['Numero_ordre'] ? submission['_submission_time'] : null,
-            village: submission['village_key'] || submission['TYPE_DE_VISITE/village_key'],
-            tel: submission['telephone_key'] || submission['TYPE_DE_VISITE/telephone_key']
-        },
-        location: (lat && lon) ? {
-            type: 'Point',
-            coordinates: [lon, lat]
-        } : null,
-        version: 1,
-        updatedAt: new Date(submission['_submission_time'] || Date.now())
+    // Track installation progression via form validation checkpoints
+    household.koboSync = {
+        maconOk: submission['✅ Je valide que le mur est terminé et conforme'] === 'true',
+        reseauOk: submission['✅ Je valide que le branchement est terminé et conforme'] === 'true',
+        interieurOk: submission['✅ Je valide que l\'installation intérieure est terminée et conforme'] === 'true',
+        controleOk: submission['✅ Je valide le contrôle et l\'installation est conforme'] === 'true',
+        livreurDate: submission['_submission_time'] || null
     };
+
+    // Store complete submission for audit trail
+    household.koboData = submission;
+    household.source = 'Kobo';
+    household.updatedAt = new Date(submission['_submission_time'] || Date.now());
+
+    // Validate GPS coordinates match region
+    if (household.latitude && household.longitude && household.region) {
+        validateGPSRegion(household.latitude, household.longitude, household.region, submission['_id']);
+    }
+
+    return household;
 }
 
 /**
@@ -153,7 +156,7 @@ export async function syncKoboToDatabase(organizationId, fallbackZoneId, since =
 
     let applied = 0;
     let skipped = 0;
-    let errors  = 0;
+    let errors = 0;
 
     // Local cache for zones to avoid hitting DB for every household
     const zoneCache = {};
@@ -172,13 +175,13 @@ export async function syncKoboToDatabase(organizationId, fallbackZoneId, since =
             // Extract region to use as zone name
             // Common keys: 'TYPE_DE_VISITE/region_key', 'region_key', 'region', 'region_administrative'
             const regionName = (
-                submission['TYPE_DE_VISITE/region_key'] || 
-                submission['region_key'] || 
-                submission['region'] || 
-                submission['region_administrative'] || 
+                submission['TYPE_DE_VISITE/region_key'] ||
+                submission['region_key'] ||
+                submission['region'] ||
+                submission['region_administrative'] ||
                 ''
             ).trim();
-            
+
             let zoneId = fallbackZoneId;
 
             if (regionName && targetProjectId) {
@@ -187,7 +190,7 @@ export async function syncKoboToDatabase(organizationId, fallbackZoneId, since =
                 } else {
                     // Find or create zone by name for this project
                     let zone = await prisma.zone.findFirst({
-                        where: { 
+                        where: {
                             name: regionName,
                             projectId: targetProjectId,
                             organizationId
@@ -204,62 +207,128 @@ export async function syncKoboToDatabase(organizationId, fallbackZoneId, since =
                             }
                         });
                     }
-                    
+
                     zoneCache[regionName] = zone.id;
                     zoneId = zone.id;
                 }
             }
 
-            const household = mapSubmissionToHousehold(submission, organizationId, zoneId);
+            // Map Kobo submission to unified Household format
+            const household = mapSubmissionToHousehold(submission, organizationId, zoneId, targetProjectId);
 
-            if (!household.id || household.id === 'undefined') {
+            // Skip if mapping failed (happens when numeroOrdre is missing)
+            if (!household) {
                 skipped++;
                 continue;
             }
 
-            // Upsert into database
-            await prisma.household.upsert({
-                where: { id: household.id },
-                update: {
-                    status: household.status,
-                    koboData: household.koboData,
-                    zoneId: household.zoneId,
-                    region: household.region,
-                    name: household.name,
-                    phone: household.phone,
-                    departement: household.departement,
-                    village: household.village,
-                    latitude: household.latitude,
-                    longitude: household.longitude,
-                    source: household.source,
-                    assignedTeams: {
-                        set: household.assignedTeams 
-                    },
-                    koboSync: household.koboSync,
-                    updatedAt: new Date()
-                },
-                create: {
-                    id: household.id,
-                    organizationId: household.organizationId,
-                    zoneId: household.zoneId,
-                    status: household.status,
-                    region: household.region,
-                    owner: household.owner,
-                    koboData: household.koboData,
-                    location: household.location || {},
-                    assignedTeams: household.assignedTeams,
-                    koboSync: household.koboSync,
-                    source: household.source,
-                    version: 1
+            // 🔑 RECHERCHE PRÉALABLE: Chercher le ménage existant par numeroordre (clé métier unique)
+            // numeroOrdre comes from the mapping module and is guaranteed to exist if household is not null
+            const numeroDemande = household.numeroOrdre;
+            let existingHousehold = null;
+
+            if (numeroDemande) {
+                try {
+                    existingHousehold = await prisma.household.findFirst({
+                        where: {
+                            organizationId: organizationId,
+                            numeroordre: String(numeroDemande),
+                            deletedAt: null
+                        }
+                    });
+                } catch (e) {
+                    console.warn(`[KOBO-SYNC] Could not search for existing household by numeroordre:`, e.message);
                 }
-            });
+            }
+
+            // 🔑 UPSERT STRATEGY: Match by koboSubmissionId OR by existing N° Demande
+            // This ensures same Kobo submission is UPDATED, not duplicated
+            const koboSubmissionId = BigInt(submission['_id']);
+
+            // For new households, generate a UUID (not using Kobo _id as household id)
+            // This avoids conflicts since Kobo _ids are numeric, not UUIDs
+            const { v4: uuidv4 } = await import('uuid');
+            const newHouseholdId = uuidv4();
+
+            if (existingHousehold) {
+                // ✅ MISE À JOUR: Ménage existant trouvé par N° Demande ou ID métier
+                console.log(`[KOBO-SYNC] 🔄 UPDATE existing household: ${existingHousehold.id} with Kobo submission ${submission['_id']}`);
+                await prisma.household.update({
+                    where: { id: existingHousehold.id },
+                    data: {
+                        status: household.status,
+                        koboData: household.koboData,
+                        zoneId: household.zoneId,
+                        region: household.region,
+                        name: household.name,
+                        phone: household.phone,
+                        departement: household.departement,
+                        village: household.village,
+                        latitude: household.latitude,
+                        longitude: household.longitude,
+                        source: 'Kobo',
+                        assignedTeams: {
+                            set: household.assignedTeams
+                        },
+                        koboSync: household.koboSync,
+                        koboSubmissionId: koboSubmissionId,  // Link Kobo ID for future syncs
+                        numeroordre: String(household.numeroOrdre),  // Save business identifier
+                        updatedAt: new Date()
+                    }
+                });
+            } else {
+                // 🆕 CRÉATION: Nouveau ménage (upsert par koboSubmissionId)
+                await prisma.household.upsert({
+                    where: { koboSubmissionId: koboSubmissionId },
+                    update: {
+                        status: household.status,
+                        koboData: household.koboData,
+                        zoneId: household.zoneId,
+                        region: household.region,
+                        name: household.name,
+                        phone: household.phone,
+                        departement: household.departement,
+                        village: household.village,
+                        latitude: household.latitude,
+                        longitude: household.longitude,
+                        source: 'Kobo',  // Mark as Kobo-synced
+                        assignedTeams: {
+                            set: household.assignedTeams
+                        },
+                        koboSync: household.koboSync,
+                        updatedAt: new Date()
+                    },
+                    create: {
+                        id: newHouseholdId,  // Generate UUID for new household
+                        organizationId: household.organizationId,
+                        zoneId: household.zoneId,
+                        status: household.status,
+                        region: household.region,
+                        name: household.name,
+                        phone: household.phone,
+                        departement: household.departement,
+                        village: household.village,
+                        latitude: household.latitude,
+                        longitude: household.longitude,
+                        owner: household.owner,
+                        koboData: household.koboData,
+                        location: household.location || {},
+                        assignedTeams: household.assignedTeams,
+                        koboSync: household.koboSync,
+                        koboSubmissionId: koboSubmissionId,  // Store for future matching
+                        numeroordre: String(household.numeroOrdre),  // Save business identifier
+                        source: 'Kobo',
+                        version: 1
+                    }
+                });
+            }
 
             // Sync PostGIS point
             if (household.location && Array.isArray(household.location.coordinates) && household.location.coordinates.length === 2) {
                 await prisma.$executeRaw`
                     UPDATE "Household"
                     SET location_gis = ST_SetSRID(ST_MakePoint(${household.location.coordinates[0]}, ${household.location.coordinates[1]}), 4326)
-                    WHERE id = ${household.id}
+                    WHERE "koboSubmissionId" = ${koboSubmissionId}
                 `;
             }
 

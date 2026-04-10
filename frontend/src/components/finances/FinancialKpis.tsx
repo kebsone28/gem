@@ -7,7 +7,7 @@ import {
     Target,
     ArrowUpRight
 } from 'lucide-react';
-import { useTheme } from '../../context/ThemeContext';
+import { useTheme } from '../../contexts/ThemeContext';
 import { fmtFCFA } from '../../utils/format';
 import './FinancialKpis.css';
 
@@ -65,15 +65,15 @@ export default function FinancialKpis({ stats, devis }: { stats: any, devis: any
                         </div>
                         <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full border transition-all ${isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-100 shadow-sm'}`}>
                             <TrendingUp size={12} className={item.trend.startsWith('+') ? 'text-emerald-500' : 'text-slate-400'} />
-                            <span className={`text-[10px] font-black ${item.trend.startsWith('+') ? 'text-emerald-500' : 'text-slate-400'}`}>{item.trend}</span>
+                            <span className={`text-xs font-black ${item.trend.startsWith('+') ? 'text-emerald-500' : 'text-slate-400'}`}>{item.trend}</span>
                         </div>
                     </div>
 
-                    <h4 className={`text-[10px] font-black uppercase tracking-[0.2em] mb-2 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>{item.label}</h4>
+                    <h4 className={`text-xs font-black uppercase tracking-[0.2em] mb-2 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>{item.label}</h4>
                     <div className="flex items-baseline gap-2">
                         <span className={`text-2xl font-black tracking-tighter transition-all ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{item.val}</span>
                     </div>
-                    <p className={`text-[11px] font-medium mt-4 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>{item.sub}</p>
+                    <p className={`text-xs font-medium mt-4 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>{item.sub}</p>
                 </div>
             ))}
 
@@ -90,21 +90,21 @@ export default function FinancialKpis({ stats, devis }: { stats: any, devis: any
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
                         <div>
-                            <span className={`text-[10px] font-black uppercase tracking-widest block mb-1 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Plafond Devis HT</span>
+                            <span className={`text-xs font-black uppercase tracking-widest block mb-1 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Plafond Devis HT</span>
                             <span className={`text-base font-bold tracking-tight ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{fmtFCFA(devis.ceiling)}</span>
                         </div>
                         <div>
-                            <span className={`text-[10px] font-black uppercase tracking-widest block mb-1 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Total Réel Saisi</span>
+                            <span className={`text-xs font-black uppercase tracking-widest block mb-1 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Total Réel Saisi</span>
                             <span className={`text-base font-bold tracking-tight ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{fmtFCFA(devis.totalReal)}</span>
                         </div>
                         <div>
-                            <span className={`text-[10px] font-black uppercase tracking-widest block mb-1 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Marge Globale</span>
+                            <span className={`text-xs font-black uppercase tracking-widest block mb-1 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Marge Globale</span>
                             <span className={`text-base font-bold tracking-tight ${devis.globalMargin >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
                                 {fmtFCFA(devis.globalMargin)}
                             </span>
                         </div>
                         <div>
-                            <span className={`text-[10px] font-black uppercase tracking-widest block mb-1 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Objectif Marge</span>
+                            <span className={`text-xs font-black uppercase tracking-widest block mb-1 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Objectif Marge</span>
                             <div className="flex items-center gap-2">
                                 <span className="text-2xl font-black text-indigo-600 tracking-tighter">{devis.marginPct.toFixed(1)}%</span>
                                 <ArrowUpRight className="text-emerald-500" size={20} />
@@ -115,8 +115,8 @@ export default function FinancialKpis({ stats, devis }: { stats: any, devis: any
 
                 <div className="w-full lg:w-64 space-y-4">
                     <div className="flex justify-between items-end mb-2">
-                        <span className={`text-[11px] font-bold ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Progression Budget</span>
-                        <span className={`text-[11px] font-black ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{Math.min(Math.round((devis.totalReal / devis.ceiling) * 100), 100)}%</span>
+                        <span className={`text-xs font-bold ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Progression Budget</span>
+                        <span className={`text-xs font-black ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{Math.min(Math.round((devis.totalReal / devis.ceiling) * 100), 100)}%</span>
                     </div>
                     <div className={`h-4 border rounded-full overflow-hidden p-1 shadow-inner transition-all ${isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-100'}`}>
                         <div

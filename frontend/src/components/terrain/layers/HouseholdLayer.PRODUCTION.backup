@@ -1,0 +1,524 @@
+import React, { useEffect, useRef, useMemo } from 'react';
+import maplibregl from 'maplibre-gl';
+import { useTerrainUIStore } from '../../../store/terrainUIStore';
+
+interface HouseholdLayerProps {
+    map: maplibregl.Map | null;
+    householdGeoJSON: any;
+    households?: any[];
+    projectId?: string;
+    selectedHouseholdCoords?: [number, number] | null;
+    showHeatmap?: boolean;
+    styleIsReady: boolean;
+}
+
+/**
+ * PRODUCTION-GRADE HouseholdLayer
+ * 
+ * Architecture:
+ * - Event-driven (style.load / load)
+ * - Zero polling / timeout
+ * - Deterministic lifecycle
+ * - Separated concerns (sources → layers → data → visibility)
+ * - Safe for mobile / offline
+ * - Proper cleanup on unmount
+ */
+const HouseholdLayer: React.FC<HouseholdLayerProps> = ({
+    map,
+    householdGeoJSON,
+    households = [],
+    projectId,
+    selectedHouseholdCoords = null,
+    showHeatmap = false,
+    styleIsReady,
+}) => {
+    const selectedPhases = useTerrainUIStore(s => s.selectedPhases);
+    const selectedTeam = useTerrainUIStore(s => s.selectedTeam);
+    
+    // ── REFS ──
+    const lastDataHashRef = useRef<string>('');
+    const setupCompleteRef = useRef<boolean>(false);
+
+    // ══════════════════════════════════════════════════════════════
+    // PHASE 1: STYLE LIFECYCLE MANAGEMENT
+    // ══════════════════════════════════════════════════════════════
+
+    /**
+     * Sync style lifecycle: listen to style.load / load events
+     * This is the SOURCE OF TRUTH for when we can safely create sources/layers
+     */
+    useEffect(() => {
+        if (!map || !styleIsReady) return;
+
+        const handleStyleLoad = () => {
+            console.log('✅ [HouseholdLayer] Style loaded, resetting setup flag');
+            setupCompleteRef.current = false; // Reset so sources/layers get recreated
+        };
+
+        // Listen for style changes
+        map.on('style.load', handleStyleLoad);
+        map.on('load', handleStyleLoad);
+
+        return () => {
+            map.off('style.load', handleStyleLoad);
+            map.off('load', handleStyleLoad);
+        };
+    }, [map, styleIsReady]);
+
+    // ══════════════════════════════════════════════════════════════
+    // PHASE 2: CREATE SOURCES (idempotent, one-time per style)
+    // ══════════════════════════════════════════════════════════════
+
+    useEffect(() => {
+        if (!map || !styleIsReady) {
+            console.log('🔵 [HouseholdLayer] Waiting for map and styleIsReady');
+            return;
+        }
+
+        // Only create sources once per style
+        if (setupCompleteRef.current) {
+            console.log('✅ [HouseholdLayer] Sources already created, skipping');
+            return;
+        }
+
+        console.log('🔵 [HouseholdLayer] Creating all sources...');
+
+        try {
+            // ── MVT Source
+            if (!map.getSource('households-mvt')) {
+                const apiUrl = import.meta.env.VITE_API_URL || '/api';
+                const mvtBaseUrl = apiUrl.startsWith('http') ? apiUrl : `${window.location.origin}${apiUrl}`;
+                const tilesUrl = (projectId && projectId !== 'undefined')
+                    ? `${mvtBaseUrl}/geo/mvt/households/{z}/{x}/{y}?projectId=${projectId}&t=${Date.now()}`
+                    : `${mvtBaseUrl}/geo/mvt/households/{z}/{x}/{y}?projectId=none`;
+
+                map.addSource('households-mvt', {
+                    type: 'vector',
+                    tiles: [tilesUrl],
+                    minzoom: 0,
+                    maxzoom: 14,
+                });
+                console.log('✅ Created source: households-mvt');
+            }
+
+            // ── GeoJSON Local Source
+            if (!map.getSource('households')) {
+                map.addSource('households', {
+                    type: 'geojson',
+                    data: { type: 'FeatureCollection', features: [] },
+                });
+                console.log('✅ Created source: households');
+            }
+
+            // ── Cluster Source
+            if (!map.getSource('supercluster-generated')) {
+                map.addSource('supercluster-generated', {
+                    type: 'geojson',
+                    data: { type: 'FeatureCollection', features: [] }
+                });
+                console.log('✅ Created source: supercluster-generated');
+            }
+
+            // ── Cluster Hull Source
+            if (!map.getSource('cluster-hulls')) {
+                map.addSource('cluster-hulls', {
+                    type: 'geojson',
+                    data: { type: 'FeatureCollection', features: [] }
+                });
+                console.log('✅ Created source: cluster-hulls');
+            }
+
+            // ── Selected Household Source
+            if (!map.getSource('selected-household')) {
+                map.addSource('selected-household', {
+                    type: 'geojson',
+                    data: { type: 'FeatureCollection', features: [] }
+                });
+                console.log('✅ Created source: selected-household');
+            }
+
+            console.log('✅ [HouseholdLayer] All sources created successfully');
+        } catch (err) {
+            console.error('🔴 [HouseholdLayer] Failed to create sources:', err);
+            return;
+        }
+
+        setupCompleteRef.current = true;
+    }, [map, styleIsReady, projectId]);
+
+    // ══════════════════════════════════════════════════════════════
+    // PHASE 3: CREATE LAYERS (structural, decoupled from UI state)
+    // ══════════════════════════════════════════════════════════════
+
+    useEffect(() => {
+        if (!map || !styleIsReady) return;
+        if (!setupCompleteRef.current) return; // Wait for sources first
+
+        console.log('🔵 [HouseholdLayer] Creating all layers...');
+
+        try {
+            // ── HEATMAP LAYER
+            if (!map.getLayer('heatmap')) {
+                map.addLayer({
+                    id: 'heatmap',
+                    type: 'heatmap',
+                    source: 'households',
+                    layout: { visibility: 'none' }, // Control with Phase 5
+                    paint: {
+                        'heatmap-weight': ['interpolate', ['linear'], ['zoom'], 0, 0.3, 15, 1],
+                        'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 0, 1, 15, 3],
+                        'heatmap-color': [
+                            'interpolate', ['linear'], ['heatmap-density'],
+                            0, 'rgba(33,102,172,0)',
+                            0.2, 'rgb(103,169,207)',
+                            0.4, 'rgb(209,229,240)',
+                            0.6, 'rgb(253,219,199)',
+                            0.8, 'rgb(239,138,98)',
+                            1, 'rgb(178,24,43)'
+                        ],
+                        'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 0, 2, 15, 20],
+                        'heatmap-opacity': ['interpolate', ['linear'], ['zoom'], 14, 1, 16, 0],
+                    },
+                });
+                console.log('✅ Created layer: heatmap');
+            }
+
+            // ── CLUSTER HULLS
+            if (!map.getLayer('cluster-hulls')) {
+                map.addLayer({
+                    id: 'cluster-hulls',
+                    type: 'fill',
+                    source: 'cluster-hulls',
+                    paint: {
+                        'fill-color': '#10b981',
+                        'fill-opacity': 0.15,
+                        'fill-outline-color': '#10b981'
+                    }
+                });
+                console.log('✅ Created layer: cluster-hulls');
+            }
+
+            // ── CLUSTER CIRCLES
+            if (!map.getLayer('cluster-circles')) {
+                map.addLayer({
+                    id: 'cluster-circles',
+                    type: 'circle',
+                    source: 'supercluster-generated',
+                    layout: { visibility: 'none' }, // Control with zoom in Phase 5
+                    paint: {
+                        'circle-color': [
+                            'step',
+                            ['to-number', ['coalesce', ['get', 'point_count'], 0]],
+                            '#3b82f6',
+                            10, '#818cf8',
+                            50, '#10b981',
+                            100, '#f59e0b'
+                        ],
+                        'circle-radius': [
+                            'step',
+                            ['to-number', ['coalesce', ['get', 'point_count'], 0]],
+                            15,
+                            100, 20,
+                            750, 25
+                        ],
+                        'circle-opacity': 0.85,
+                        'circle-stroke-width': 2,
+                        'circle-stroke-color': '#ffffff'
+                    }
+                });
+                console.log('✅ Created layer: cluster-circles');
+            }
+
+            // ── RED CIRCLE FALLBACK (guaranteed visible)
+            if (!map.getLayer('households-circles-simple')) {
+                map.addLayer({
+                    id: 'households-circles-simple',
+                    type: 'circle',
+                    source: 'households',
+                    paint: {
+                        'circle-radius': ['interpolate', ['linear'], ['zoom'], 3, 4, 10, 8, 15, 12],
+                        'circle-color': '#ef4444',
+                        'circle-opacity': 0.8,
+                        'circle-stroke-color': '#ffffff',
+                        'circle-stroke-width': 2
+                    },
+                    layout: { visibility: 'visible' }
+                });
+                console.log('✅ Created layer: households-circles-simple');
+            }
+
+            // ── HOUSEHOLD LABELS
+            if (!map.getLayer('households-labels-simple')) {
+                map.addLayer({
+                    id: 'households-labels-simple',
+                    type: 'symbol',
+                    source: 'households',
+                    layout: {
+                        'text-field': ['coalesce', ['get', 'numeroordre'], ['get', 'name'], 'HH'],
+                        'text-font': ['Open Sans Bold', 'Inter Bold'],
+                        'text-size': 12,
+                        'text-offset': [0, 1.8],
+                        'text-anchor': 'top',
+                        'visibility': 'visible'
+                    },
+                    paint: {
+                        'text-color': '#ffffff',
+                        'text-halo-color': '#000000',
+                        'text-halo-width': 2
+                    }
+                });
+                console.log('✅ Created layer: households-labels-simple');
+            }
+
+            // ── CLUSTER COUNTS
+            if (!map.getLayer('cluster-counts')) {
+                map.addLayer({
+                    id: 'cluster-counts',
+                    type: 'symbol',
+                    source: 'supercluster-generated',
+                    layout: {
+                        'text-field': ['to-string', ['coalesce', ['get', 'point_count_abbreviated'], ['get', 'point_count'], 0]],
+                        'text-font': ['Open Sans Bold', 'Inter Bold'],
+                        'text-size': 14,
+                        'visibility': 'none' // Control with zoom in Phase 5
+                    },
+                    paint: { 'text-color': '#ffffff' }
+                });
+                console.log('✅ Created layer: cluster-counts');
+            }
+
+            // ── LOCAL LAYER (Household markers)
+            if (!map.getLayer('households-local-layer')) {
+                map.addLayer({
+                    id: 'households-local-layer',
+                    type: 'symbol',
+                    source: 'households',
+                    layout: {
+                        'icon-image': [
+                            'match',
+                            ['coalesce', ['get', 'status'], 'default'],
+                            'Contrôle conforme', 'icon-Contrôle conforme',
+                            'Non conforme', 'icon-Non conforme',
+                            'Intérieur terminé', 'icon-Intérieur terminé',
+                            'Réseau terminé', 'icon-Réseau terminé',
+                            'Murs terminés', 'icon-Murs terminés',
+                            'Livraison effectuée', 'icon-Livraison effectuée',
+                            'Non encore commencé', 'icon-Non encore commencé',
+                            'icon-default'
+                        ],
+                        'icon-size': ['interpolate', ['linear'], ['zoom'], 3, 0.12, 6, 0.25, 10, 0.45, 14, 0.65, 18, 1],
+                        'icon-allow-overlap': true,
+                        'text-field': ['to-string', ['coalesce', ['get', 'numeroordre'], ['get', 'household_id'], '']],
+                        'text-font': ['Open Sans Bold', 'Inter Bold'],
+                        'text-size': 11,
+                        'text-offset': [0, 1.5],
+                        'text-anchor': 'top',
+                        'text-allow-overlap': false,
+                        'visibility': 'none' // Control with zoom in Phase 5
+                    },
+                    paint: {
+                        'icon-opacity': 1.0,
+                        'text-color': '#60a5fa',
+                        'text-halo-color': '#0f172a',
+                        'text-halo-width': 2,
+                        'text-opacity': ['interpolate', ['linear'], ['zoom'], 15, 0, 16, 1]
+                    }
+                });
+                console.log('✅ Created layer: households-local-layer');
+            }
+
+            // ── SELECTED HOUSEHOLD
+            if (!map.getLayer('selected-household-layer')) {
+                map.addLayer({
+                    id: 'selected-household-layer',
+                    type: 'circle',
+                    source: 'selected-household',
+                    paint: {
+                        'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 12, 14, 18, 18, 26],
+                        'circle-color': '#f59e0b',
+                        'circle-stroke-color': '#ffffff',
+                        'circle-stroke-width': 4,
+                        'circle-opacity': 0.95
+                    }
+                });
+                console.log('✅ Created layer: selected-household-layer');
+            }
+
+            console.log('✅ [HouseholdLayer] All layers created successfully');
+        } catch (err) {
+            console.error('🔴 [HouseholdLayer] Failed to create layers:', err);
+        }
+    }, [map, styleIsReady]);
+
+    // ══════════════════════════════════════════════════════════════
+    // PHASE 4: SYNC GEOJSON DATA (lightweight hash-based)
+    // ══════════════════════════════════════════════════════════════
+
+    /**
+     * Compute lightweight hash instead of JSON.stringify
+     * Hash = count:id1|id2|id3
+     */
+    const dataHash = useMemo(() => {
+        if (householdGeoJSON?.features?.length > 0) {
+            const ids = householdGeoJSON.features.map((f: any) => f.properties?.id).join('|');
+            return `worker:${householdGeoJSON.features.length}:${ids}`;
+        }
+        if (households?.length > 0) {
+            const ids = households.map((h: any) => h.id).join('|');
+            return `fallback:${households.length}:${ids}`;
+        }
+        return 'empty:0';
+    }, [householdGeoJSON, households]);
+
+    useEffect(() => {
+        if (!map) return;
+
+        const source = map.getSource('households') as maplibregl.GeoJSONSource | undefined;
+        if (!source) {
+            console.log('⏳ [HouseholdLayer] Source not yet available, skipping data sync');
+            return;
+        }
+
+        // Hash unchanged = no update needed
+        if (dataHash === lastDataHashRef.current) {
+            console.log('📊 [HouseholdLayer] Data hash unchanged, skipping setData()');
+            return;
+        }
+
+        console.log('🔵 [HouseholdLayer] Data changed, updating GeoJSON...');
+        lastDataHashRef.current = dataHash;
+
+        // Prepare data
+        let dataToApply: any;
+
+        if (householdGeoJSON?.features?.length > 0) {
+            dataToApply = householdGeoJSON;
+        } else if (households?.length > 0) {
+            dataToApply = {
+                type: 'FeatureCollection',
+                features: households.map((h: any) => ({
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Point',
+                        coordinates: h.location?.coordinates || [0, 0]
+                    },
+                    properties: {
+                        id: h.id,
+                        name: h.name || h.owner?.name || 'HH',
+                        numeroordre: h.numeroordre || h.id,
+                        status: h.status || 'unknown'
+                    }
+                }))
+            };
+        } else {
+            dataToApply = { type: 'FeatureCollection', features: [] };
+        }
+
+        source.setData(dataToApply);
+        console.log(`✅ [HouseholdLayer] Updated with ${dataToApply.features?.length || 0} features`);
+    }, [map, dataHash]);
+
+    // ── Selected Household Data ──
+    useEffect(() => {
+        if (!map) return;
+
+        const source = map.getSource('selected-household') as maplibregl.GeoJSONSource | undefined;
+        if (!source) return;
+
+        source.setData({
+            type: 'FeatureCollection',
+            features: selectedHouseholdCoords ? [{
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: selectedHouseholdCoords
+                },
+                properties: { selected: true }
+            }] : []
+        });
+    }, [map, selectedHouseholdCoords]);
+
+    // ══════════════════════════════════════════════════════════════
+    // PHASE 5: VISIBILITY & FILTERS (reactive state only)
+    // ══════════════════════════════════════════════════════════════
+
+    useEffect(() => {
+        if (!map) return;
+
+        const updateVisibility = () => {
+            const zoom = map.getZoom();
+            const clusterVisible = zoom < 14;
+            const markerVisible = zoom >= 14;
+
+            // Cluster visibility
+            if (map.getLayer('cluster-circles')) {
+                map.setLayoutProperty('cluster-circles', 'visibility', clusterVisible ? 'visible' : 'none');
+                map.setLayoutProperty('cluster-counts', 'visibility', clusterVisible ? 'visible' : 'none');
+            }
+
+            // Marker visibility
+            if (map.getLayer('households-local-layer')) {
+                map.setLayoutProperty('households-local-layer', 'visibility', markerVisible ? 'visible' : 'none');
+            }
+        };
+
+        // Initial update
+        updateVisibility();
+
+        // Listen to zoom changes
+        map.on('zoomend', updateVisibility);
+
+        return () => {
+            map.off('zoomend', updateVisibility);
+        };
+    }, [map]);
+
+    // ── Heatmap Visibility (from prop) ──
+    useEffect(() => {
+        if (!map) return;
+
+        if (map.getLayer('heatmap')) {
+            map.setLayoutProperty('heatmap', 'visibility', showHeatmap ? 'visible' : 'none');
+        }
+    }, [map, showHeatmap]);
+
+    // ── Filters (phases & teams) ──
+    useEffect(() => {
+        if (!map) return;
+
+        const buildFilter = () => {
+            const filters: any[] = ['all'];
+
+            if (selectedPhases.length > 0) {
+                filters.push([
+                    'in',
+                    ['coalesce', ['get', 'status'], ''],
+                    ['literal', selectedPhases]
+                ]);
+            }
+
+            if (selectedTeam !== 'all') {
+                filters.push([
+                    'in',
+                    selectedTeam,
+                    ['coalesce', ['get', 'assignedTeams'], ['literal', []]]
+                ]);
+            }
+
+            return filters.length > 1 ? filters : null;
+        };
+
+        const filter = buildFilter();
+
+        // Apply to affected layers
+        ['heatmap', 'households-local-layer'].forEach(layerId => {
+            if (map.getLayer(layerId)) {
+                map.setFilter(layerId, filter as any);
+            }
+        });
+    }, [map, selectedPhases, selectedTeam]);
+
+    return null;
+};
+
+export default React.memo(HouseholdLayer);

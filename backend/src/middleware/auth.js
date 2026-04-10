@@ -1,5 +1,7 @@
 import jwt from 'jsonwebtoken';
 import logger from '../utils/logger.js';
+import { checkPermission } from '../core/constants/permissions.js';
+import { runWithContext } from '../core/context/storage.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
@@ -19,7 +21,17 @@ export const authenticate = (req, res, next) => {
     try {
       const decoded = jwt.verify(token, JWT_SECRET);
       req.user = decoded;
-      next();
+      
+      // On lance le reste de la requête dans un "Context Wrapper"
+      // Cela permet à Prisma (via AsyncLocalStorage) de connaître l'organisation sans la passer d'argument en argument.
+      runWithContext({ 
+        userId: decoded.id, 
+        organizationId: decoded.organizationId,
+        role: decoded.role
+      }, () => {
+        next();
+      });
+
     } catch (error) {
       logger.warn(`❌ Token invalide: ${error.message}`);
       
@@ -36,7 +48,25 @@ export const authenticate = (req, res, next) => {
 };
 
 /**
- * Middleware d'autorisation par rôle
+ * Middleware d'autorisation par permission (Granulaire)
+ */
+export const can = (permission) => {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Non authentifié' });
+    }
+
+    if (!checkPermission(req.user, permission)) {
+      logger.warn(`🚫 Accès refusé: ${req.user.email} (${req.user.role}) tentait d'effectuer une action nécessitant '${permission}' sur ${req.path}`);
+      return res.status(403).json({ error: `Permission refusée : ${permission} requise.` });
+    }
+
+    next();
+  };
+};
+
+/**
+ * Middleware d'autorisation par rôle (Legacy)
  */
 export const authorize = (requiredRoles = []) => {
   return (req, res, next) => {

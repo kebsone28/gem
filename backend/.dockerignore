@@ -1,0 +1,7 @@
+node_modules/
+dist/
+prisma/client/
+*.log
+.env
+.env.*
+!.env.example

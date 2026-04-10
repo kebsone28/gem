@@ -1,20 +1,9 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useMemo, useCallback } from 'react';
 import debounce from 'lodash.debounce';
 import logger from '../utils/logger';
 import { getHouseholdDerivedStatus } from '../utils/statusUtils';
 import type { Household } from '../utils/types';
-
-export const ALL_STATUSES = [
-    'Contrôle conforme',
-    'Non conforme',
-    'Intérieur terminé',
-    'Réseau terminé',
-    'Murs terminés',
-    'Livraison effectuée',
-    'Non encore commencé',
-    'En attente',
-    'Non débuté'
-];
+import { useTerrainUIStore } from '../store/terrainUIStore';
 
 export type SearchResult = {
     type: 'household';
@@ -29,6 +18,15 @@ export type SearchResult = {
     lon: number;
 };
 
+export const ALL_STATUSES = [
+  'Eligible',
+  'Non éligible',
+  'Désistement',
+  'Installé',
+  'En attente',
+  'Refusé'
+];
+
 export const hasValidCoordinates = (h: Household): boolean => {
     return !!(h.location?.coordinates && 
               Array.isArray(h.location.coordinates) &&
@@ -42,25 +40,37 @@ export const hasValidCoordinates = (h: Household): boolean => {
 };
 
 export const useMapFilters = (households: Household[] = [], mapBounds: [number, number, number, number] | null) => {
-    const [selectedPhases, setSelectedPhases] = useState<string[]>(ALL_STATUSES);
-    const [selectedTeamFilters] = useState<string[]>(['livraison', 'maconnerie', 'reseau', 'installation', 'controle']);
-    const [selectedTeam, setSelectedTeam] = useState<string>('all');
+    const selectedPhases = useTerrainUIStore(s => s.selectedPhases);
+    const selectedTeam = useTerrainUIStore(s => s.selectedTeam);
+    const togglePhase = useTerrainUIStore(s => s.togglePhase);
+    const setSelectedTeam = useTerrainUIStore(s => s.setSelectedTeam);
     
-    const [searchQuery, setSearchQuery] = useState('');
-    const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
-    const [isSearching, setIsSearching] = useState(false);
+    const searchQuery = useTerrainUIStore(s => s.searchQuery);
+    const searchResults = useTerrainUIStore(s => s.searchResults);
+    const isSearching = useTerrainUIStore(s => s.isSearching);
+    const setSearchQuery = useTerrainUIStore(s => s.setSearchQuery);
+    const setSearchResults = useTerrainUIStore(s => s.setSearchResults);
+    const setIsSearching = useTerrainUIStore(s => s.setIsSearching);
+
+    // ✅ Background Indexing initialization & updates
+    const searchWorker = useMemo(() => new Worker(new URL('../workers/searchWorker.ts', import.meta.url), { type: 'module' }), []);
+
+    useMemo(() => {
+        if (households && households.length > 0) {
+            searchWorker.postMessage({ type: 'INDEX', payload: { households } });
+        }
+    }, [households, searchWorker]);
+
+    // Cleanup worker
+    useMemo(() => () => {
+        searchWorker.postMessage({ type: 'TERMINATE' });
+    }, [searchWorker]);
+
+    const selectedTeamFilters = useMemo(() => ['livraison', 'maconnerie', 'reseau', 'installation', 'controle'], []);
 
     const handleTogglePhase = useCallback((phase: string) => {
-        if (phase === 'all') {
-            setSelectedPhases(prev => prev.length === ALL_STATUSES.length ? [] : ALL_STATUSES);
-            return;
-        }
-        setSelectedPhases(prev =>
-            prev.includes(phase)
-                ? prev.filter(p => p !== phase)
-                : [...prev, phase]
-        );
-    }, []);
+        togglePhase(phase);
+    }, [togglePhase]);
 
     const filteredHouseholds = useMemo(() => {
         return households.filter(h => {
@@ -116,41 +126,37 @@ export const useMapFilters = (households: Household[] = [], mapBounds: [number, 
         }
 
         setIsSearching(true);
-        const results: SearchResult[] = [];
-        const qLower = query.toLowerCase();
-        
-        households.forEach((h: Household) => {
-            const ownerObj = h.owner;
-            const ownerStr = String(typeof ownerObj === 'object' && ownerObj !== null ? ((ownerObj as any).nom || '') : (ownerObj || ''));
-            if (h.id.toLowerCase().includes(qLower) || ownerStr.toLowerCase().includes(qLower)) {
-                results.push({
-                    type: 'household',
-                    id: h.id,
-                    label: h.id + (ownerStr ? ` — ${ownerStr}` : ''),
-                    data: h
-                });
+
+        // 1. Worker Search (Fuzzy & Multi-field)
+        searchWorker.onmessage = async (e) => {
+            if (e.data.type === 'SEARCH_RESULTS' && e.data.query === query) {
+                const householdResults = e.data.results;
+                
+                // 2. Nominatim Search (Geographical) - Continue to merge with household results
+                const geoResults: SearchResult[] = [];
+                try {
+                    const resp = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=3&q=${encodeURIComponent(query)}`);
+                    const geoData = await resp.json();
+                    geoData.forEach((r: { place_id: string; display_name: string; lat: string; lon: string; }) => {
+                        geoResults.push({
+                            type: 'geo',
+                            id: r.place_id,
+                            label: r.display_name,
+                            lat: parseFloat(r.lat),
+                            lon: parseFloat(r.lon)
+                        });
+                    });
+                } catch (e) {
+                    logger.error('Nominatim error:', e);
+                }
+
+                setSearchResults([...householdResults, ...geoResults]);
+                setIsSearching(false);
             }
-        });
+        };
 
-        try {
-            const resp = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=5&q=${encodeURIComponent(query)}`);
-            const geoData = await resp.json();
-            geoData.forEach((r: { place_id: string; display_name: string; lat: string; lon: string; }) => {
-                results.push({
-                    type: 'geo',
-                    id: r.place_id,
-                    label: r.display_name,
-                    lat: parseFloat(r.lat),
-                    lon: parseFloat(r.lon)
-                });
-            });
-        } catch (e) {
-            logger.error('Search error:', e);
-        }
-
-        setSearchResults(results);
-        setIsSearching(false);
-    }, [households]);
+        searchWorker.postMessage({ type: 'SEARCH', payload: { query } });
+    }, [households, searchWorker, setSearchResults, setIsSearching]);
 
     const debouncedSearch = useMemo(() => debounce(performSearch, 300), [performSearch]);
 

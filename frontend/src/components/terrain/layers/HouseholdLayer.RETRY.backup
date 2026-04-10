@@ -1,0 +1,571 @@
+import React, { useEffect, useRef } from 'react';
+import maplibregl from 'maplibre-gl';
+import { useTerrainUIStore } from '../../../store/terrainUIStore';
+
+interface HouseholdLayerProps {
+    map: maplibregl.Map | null;
+    householdGeoJSON: any;
+    households?: any[];
+    projectId?: string;
+    selectedHouseholdCoords?: [number, number] | null;
+    showHeatmap?: boolean;
+    styleIsReady: boolean;
+}
+
+const HouseholdLayer: React.FC<HouseholdLayerProps> = ({
+    map,
+    householdGeoJSON,
+    households = [],
+    projectId,
+    selectedHouseholdCoords = null,
+    showHeatmap = false,
+    styleIsReady,
+}) => {
+    const selectedPhases = useTerrainUIStore(s => s.selectedPhases);
+    const selectedTeam = useTerrainUIStore(s => s.selectedTeam);
+    
+    // ✅ Cache last GeoJSON to avoid redundant setData() calls
+    const lastGeoJSONRef = useRef<string>('');
+    
+    // DEBUG: Log component mount
+    console.log('🔵 [HouseholdLayer] Component mounted/rendered', {
+        mapExists: !!map,
+        styleReady: styleIsReady,
+        householdsCount: households.length,
+        householdGeoJSONFeatures: householdGeoJSON?.features?.length || 0
+    });
+
+    // ── 1. SYNC SOURCES ──
+    useEffect(() => {
+        console.log('🔵 [HouseholdLayer] useEffect #1 (syncSources) triggered', {
+            map: !!map,
+            styleReady: styleIsReady
+        });
+        
+        if (!map) {
+            console.warn('🔴 [HouseholdLayer] Early return from syncSources: map does not exist');
+            return;
+        }
+
+        let retryCount = 0;
+        const maxRetries = 10;
+        const retryDelay = 100; // ms
+
+        const syncSources = () => {
+            try {
+                // Check if style is loaded before attempting to add sources
+                if (!map.isStyleLoaded()) {
+                    if (retryCount < maxRetries) {
+                        retryCount++;
+                        console.log(`⏳ [HouseholdLayer] Style not ready yet, retry ${retryCount}/${maxRetries}`);
+                        setTimeout(() => syncSources(), retryDelay * retryCount); // Exponential backoff
+                        return;
+                    } else {
+                        console.error('🔴 [HouseholdLayer] Max retries exceeded, style never loaded');
+                        return;
+                    }
+                }
+
+                // ✅ Style is now loaded, create sources
+                // MVT Source
+                if (!map.getSource('households-mvt')) {
+                    const apiUrl = import.meta.env.VITE_API_URL || '/api';
+                    const mvtBaseUrl = apiUrl.startsWith('http') ? apiUrl : `${window.location.origin}${apiUrl}`;
+                    const tilesUrl = (projectId && projectId !== 'undefined')
+                        ? `${mvtBaseUrl}/geo/mvt/households/{z}/{x}/{y}?projectId=${projectId}&t=${Date.now()}`
+                        : `${mvtBaseUrl}/geo/mvt/households/{z}/{x}/{y}?projectId=none`;
+
+                    map.addSource('households-mvt', {
+                        type: 'vector',
+                        tiles: [tilesUrl],
+                        minzoom: 0,
+                        maxzoom: 14,
+                    });
+                }
+
+                // GeoJSON Local Source
+                if (!map.getSource('households')) {
+                    map.addSource('households', {
+                        type: 'geojson',
+                        data: householdGeoJSON || { type: 'FeatureCollection', features: [] },
+                    });
+                }
+
+                // Cluster Source (Manual)
+                if (!map.getSource('supercluster-generated')) {
+                    map.addSource('supercluster-generated', {
+                        type: 'geojson',
+                        data: { type: 'FeatureCollection', features: [] }
+                    });
+                }
+
+                // Cluster Hull Source
+                if (!map.getSource('cluster-hulls')) {
+                    map.addSource('cluster-hulls', {
+                        type: 'geojson',
+                        data: { type: 'FeatureCollection', features: [] }
+                    });
+                }
+
+                // Selected Household Highlight
+                if (!map.getSource('selected-household')) {
+                    map.addSource('selected-household', {
+                        type: 'geojson',
+                        data: { type: 'FeatureCollection', features: [] }
+                    });
+                }
+
+                console.log('✅ [HouseholdLayer] All household sources created successfully');
+            } catch (err) {
+                console.warn('⚠️ Failed to add household sources:', err);
+                if (retryCount < maxRetries) {
+                    retryCount++;
+                    console.log(`⏳ [HouseholdLayer] Retrying after error, attempt ${retryCount}/${maxRetries}`);
+                    setTimeout(() => syncSources(), retryDelay * retryCount);
+                }
+            }
+        };
+
+        syncSources();
+    }, [map, projectId]);
+
+    // ── 2. SYNC GEOJSON DATA ──
+    useEffect(() => {
+        console.log('🔵 [HouseholdLayer] useEffect #2 (syncGeoJSON) triggered', {
+            map: !!map,
+            households: households.length,
+            householdGeoJSON: householdGeoJSON?.features?.length || 0
+        });
+        
+        if (!map) {
+            console.warn('🔴 [HouseholdLayer] Early return from syncGeoJSON: map does not exist');
+            return;
+        }
+        
+        let retryCount = 0;
+        const maxRetries = 20;
+        const retryDelay = 50; // ms
+
+        const syncGeoJSON = () => {
+            const source = map.getSource('households') as maplibregl.GeoJSONSource | undefined;
+            
+            if (!source?.setData) {
+                if (retryCount < maxRetries) {
+                    retryCount++;
+                    console.log(`⏳ [HouseholdLayer] Source not ready, retry ${retryCount}/${maxRetries}`);
+                    setTimeout(() => syncGeoJSON(), retryDelay * (1 + retryCount * 0.1)); // Progressive backoff
+                    return;
+                } else {
+                    console.error('🔴 [HouseholdLayer] Max retries exceeded, source never created');
+                    return;
+                }
+            }
+        
+            // ✅ Source exists and has setData, proceed with GeoJSON update
+            let dataToApply: any = null;
+            
+            // Apply householdGeoJSON if available from worker
+            if (householdGeoJSON && householdGeoJSON.features && householdGeoJSON.features.length > 0) {
+                dataToApply = householdGeoJSON;
+            } 
+            // Fallback: construct GeoJSON directly from households array if worker didn't deliver
+            else if (households && households.length > 0) {
+                dataToApply = {
+                    type: 'FeatureCollection',
+                    features: households.map((h: any) => ({
+                        type: 'Feature',
+                        geometry: {
+                            type: 'Point',
+                            coordinates: h.location?.coordinates || [0, 0]
+                        },
+                        properties: {
+                            id: h.id,
+                            name: h.name || h.owner?.name || 'HH',
+                            numeroordre: h.numeroordre || h.id,
+                            status: h.status || 'unknown'
+                        }
+                    }))
+                };
+            } 
+            // No data available
+            else {
+                dataToApply = { type: 'FeatureCollection', features: [] };
+            }
+            
+            // ✅ Cache hash: only update if data changed
+            const dataHash = JSON.stringify(dataToApply);
+            if (dataHash === lastGeoJSONRef.current) {
+                return; // Data unchanged, skip setData() call
+            }
+            
+            // Data changed, update the source
+            lastGeoJSONRef.current = dataHash;
+            source.setData(dataToApply);
+            console.log('✅ [HouseholdLayer] Successfully updated source with', dataToApply.features?.length || 0, 'features from', householdGeoJSON ? 'worker' : 'fallback');
+        };
+
+        syncGeoJSON();
+    }, [map, householdGeoJSON, households]);
+
+    useEffect(() => {
+        if (!map || !styleIsReady) return;
+        const selectedSource = map.getSource('selected-household') as maplibregl.GeoJSONSource | undefined;
+        if (selectedSource?.setData) {
+            selectedSource.setData({
+                type: 'FeatureCollection',
+                features: selectedHouseholdCoords ? [{
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Point',
+                        coordinates: selectedHouseholdCoords
+                    },
+                    properties: { selected: true }
+                }] : []
+            });
+        }
+    }, [map, selectedHouseholdCoords, styleIsReady]);
+
+    // ── 3. SYNC LAYERS ──
+    useEffect(() => {
+        if (!map) return;
+
+        let retryCount = 0;
+        const maxRetries = 15;
+        const retryDelay = 100; // ms
+
+        const setupLayers = () => {
+            // ✅ Layers MUST have style loaded
+            if (!map.isStyleLoaded()) {
+                if (retryCount < maxRetries) {
+                    retryCount++;
+                    console.log(`⏳ [HouseholdLayer] Style not loaded for layers, retry ${retryCount}/${maxRetries}`);
+                    setTimeout(() => setupLayers(), retryDelay * (1 + retryCount * 0.2));
+                    return;
+                } else {
+                    console.error('🔴 [HouseholdLayer] Max retries exceeded, style never loaded for layers');
+                    return;
+                }
+            }
+
+            console.log('✅ [HouseholdLayer] Style loaded, creating layers');
+
+            try {
+            // 🏷️ HEATMAP
+            if (!map.getLayer('heatmap')) {
+                map.addLayer({
+                    id: 'heatmap',
+                    type: 'heatmap',
+                    source: 'households',
+                    layout: { visibility: showHeatmap ? 'visible' : 'none' },
+                    paint: {
+                        'heatmap-weight': ['interpolate', ['linear'], ['zoom'], 0, 0.3, 15, 1],
+                        'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 0, 1, 15, 3],
+                        'heatmap-color': [
+                            'interpolate', ['linear'], ['heatmap-density'],
+                            0, 'rgba(33,102,172,0)',
+                            0.2, 'rgb(103,169,207)',
+                            0.4, 'rgb(209,229,240)',
+                            0.6, 'rgb(253,219,199)',
+                            0.8, 'rgb(239,138,98)',
+                            1, 'rgb(178,24,43)'
+                        ],
+                        'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 0, 2, 15, 20],
+                        'heatmap-opacity': ['interpolate', ['linear'], ['zoom'], 14, 1, 16, 0],
+                    },
+                });
+            }
+
+            // 🏷️ CLUSTER HULLS (Convex Hulls on hover)
+            if (!map.getLayer('cluster-hulls')) {
+                map.addLayer({
+                    id: 'cluster-hulls',
+                    type: 'fill',
+                    source: 'cluster-hulls',
+                    paint: {
+                        'fill-color': '#10b981',
+                        'fill-opacity': 0.15,
+                        'fill-outline-color': '#10b981'
+                    }
+                });
+            }
+
+            // 🏷️ CLUSTER CIRCLES
+            if (!map.getLayer('cluster-circles')) {
+                const zoom = map.getZoom();
+                map.addLayer({
+                    id: 'cluster-circles',
+                    type: 'circle',
+                    source: 'supercluster-generated',
+                    layout: {
+                        'visibility': zoom < 14 ? 'visible' : 'none'
+                    },
+                    paint: {
+                        'circle-color': [
+                            'step',
+                            ['to-number', ['coalesce', ['get', 'point_count'], 0]],
+                            '#3b82f6',
+                            10, '#818cf8',
+                            50, '#10b981',
+                            100, '#f59e0b'
+                        ],
+                        'circle-radius': [
+                            'step',
+                            ['to-number', ['coalesce', ['get', 'point_count'], 0]],
+                            15,
+                            100, 20,
+                            750, 25
+                        ],
+                        'circle-opacity': 0.85,
+                        'circle-stroke-width': 2,
+                        'circle-stroke-color': '#ffffff'
+                    }
+                });
+            }
+
+            // ────────────────────────────────────
+            // 🏷️ SIMPLE CIRCLE LAYER (Basic fallback)
+            // ────────────────────────────────────
+            if (!map.getLayer('households-circles-simple')) {
+                try {
+                    map.addLayer({
+                        id: 'households-circles-simple',
+                        type: 'circle',
+                        source: 'households',
+                        paint: {
+                            'circle-radius': ['interpolate', ['linear'], ['zoom'], 3, 4, 10, 8, 15, 12],
+                            'circle-color': '#ef4444',  // Red
+                            'circle-opacity': 0.8,
+                            'circle-stroke-color': '#ffffff',
+                            'circle-stroke-width': 2
+                        },
+                        layout: {
+                            'visibility': 'visible'
+                        }
+                    }, 'heatmap');  // Add before heatmap
+                    console.log('✅ [HouseholdLayer] Created households-circles-simple layer');
+                } catch (e) {
+                    console.warn('⚠️ Failed to create households-circles-simple:', e);
+                }
+            }
+
+            // 🏷️ HOUSEHOLD LABELS (Simple text)
+            if (!map.getLayer('households-labels-simple')) {
+                try {
+                    map.addLayer({
+                        id: 'households-labels-simple',
+                        type: 'symbol',
+                        source: 'households',
+                        layout: {
+                            'text-field': ['coalesce', ['get', 'numeroordre'], ['get', 'name'], 'HH'],
+                            'text-font': ['Open Sans Bold', 'Inter Bold'],
+                            'text-size': 12,
+                            'text-offset': [0, 1.8],
+                            'text-anchor': 'top',
+                            'visibility': 'visible'
+                        },
+                        paint: {
+                            'text-color': '#ffffff',
+                            'text-halo-color': '#000000',
+                            'text-halo-width': 2
+                        }
+                    });
+                    console.log('✅ [HouseholdLayer] Created households-labels-simple layer');
+                } catch (e) {
+                    console.warn('⚠️ Failed to create households-labels-simple:', e);
+                }
+            }
+
+            // 🏷️ CLUSTER COUNTS
+            if (!map.getLayer('cluster-counts')) {
+                const zoom = map.getZoom();
+                map.addLayer({
+                    id: 'cluster-counts',
+                    type: 'symbol',
+                    source: 'supercluster-generated',
+                    layout: {
+                        'text-field': ['to-string', ['coalesce', ['get', 'point_count_abbreviated'], ['get', 'point_count'], 0]],
+                        'text-font': ['Open Sans Bold', 'Inter Bold'],
+                        'text-size': 14,
+                        'visibility': zoom < 14 ? 'visible' : 'none'
+                    },
+                    paint: {
+                        'text-color': '#ffffff'
+                    }
+                });
+            }
+
+            /* 🏷️ SERVER LAYER (MVT) - DISABLED TO TROUBLESHOOT DATA DISCREPANCY
+            if (!map.getLayer('households-server-layer')) {
+                const zoom = map.getZoom();
+                map.addLayer({
+                    id: 'households-server-layer',
+                    type: 'symbol',
+                    source: 'households-mvt',
+                    'source-layer': 'households',
+                    layout: {
+                        'icon-image': [
+                            'match',
+                            ['coalesce', ['get', 'status'], 'default'],
+                            'Contrôle conforme', 'icon-Contrôle conforme',
+                            'Non conforme', 'icon-Non conforme',
+                            'Intérieur terminé', 'icon-Intérieur terminé',
+                            'Réseau terminé', 'icon-Réseau terminé',
+                            'Murs terminés', 'icon-Murs terminés',
+                            'Livraison effectuée', 'icon-Livraison effectuée',
+                            'Non encore commencé', 'icon-Non encore commencé',
+                            'icon-default'
+                        ],
+                        'icon-size': ['interpolate', ['linear'], ['zoom'], 3, 0.08, 6, 0.15, 10, 0.35, 14, 0.55, 18, 0.8],
+                        'icon-allow-overlap': false,
+                        'icon-ignore-placement': false,
+                        'text-field': ['to-string', ['coalesce', ['get', 'numeroordre'], ['get', 'household_id'], '']],
+                        'text-font': ['Open Sans Bold', 'Inter Bold'],
+                        'text-size': ['interpolate', ['linear'], ['zoom'], 12, 0, 14, 10, 16, 12],
+                        'text-offset': [0, 1.8],
+                        'text-anchor': 'top',
+                        'text-allow-overlap': false,
+                        'visibility': zoom >= 14 ? 'visible' : 'none'
+                    },
+                    paint: {
+                        'icon-opacity': ['interpolate', ['linear'], ['zoom'], 8, 0.3, 11, 0.7, 14, 1.0],
+                        'text-color': '#ffffff',
+                        'text-halo-color': '#111827',
+                        'text-halo-width': 1.5,
+                        'text-opacity': ['interpolate', ['linear'], ['zoom'], 15, 0, 16, 1]
+                    }
+                });
+            } */
+
+            // 🏷️ LOCAL LAYER (GeoJSON for active edits)
+            if (!map.getLayer('households-local-layer')) {
+                const zoom = map.getZoom();
+                map.addLayer({
+                    id: 'households-local-layer',
+                    type: 'symbol',
+                    source: 'households',
+                    layout: {
+                        'icon-image': [
+                            'match',
+                            ['coalesce', ['get', 'status'], 'default'],
+                            'Contrôle conforme', 'icon-Contrôle conforme',
+                            'Non conforme', 'icon-Non conforme',
+                            'Intérieur terminé', 'icon-Intérieur terminé',
+                            'Réseau terminé', 'icon-Réseau terminé',
+                            'Murs terminés', 'icon-Murs terminés',
+                            'Livraison effectuée', 'icon-Livraison effectuée',
+                            'Non encore commencé', 'icon-Non encore commencé',
+                            'icon-default'
+                        ],
+                        'icon-size': ['interpolate', ['linear'], ['zoom'], 3, 0.12, 6, 0.25, 10, 0.45, 14, 0.65, 18, 1],
+                        'icon-allow-overlap': true,
+                        'text-field': ['to-string', ['coalesce', ['get', 'numeroordre'], ['get', 'household_id'], '']],
+                        'text-font': ['Open Sans Bold', 'Inter Bold'],
+                        'text-size': 11,
+                        'text-offset': [0, 1.5],
+                        'text-anchor': 'top',
+                        'text-allow-overlap': false,
+                        'visibility': zoom >= 14 ? 'visible' : 'none'
+                    },
+                    paint: {
+                        'icon-opacity': 1.0,
+                        'text-color': '#60a5fa',
+                        'text-halo-color': '#0f172a',
+                        'text-halo-width': 2,
+                        'text-opacity': ['interpolate', ['linear'], ['zoom'], 15, 0, 16, 1]
+                    }
+                });
+            }
+
+            if (!map.getLayer('selected-household-layer')) {
+                map.addLayer({
+                    id: 'selected-household-layer',
+                    type: 'circle',
+                    source: 'selected-household',
+                    paint: {
+                        'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 12, 14, 18, 18, 26],
+                        'circle-color': '#f59e0b',
+                        'circle-stroke-color': '#ffffff',
+                        'circle-stroke-width': 4,
+                        'circle-opacity': 0.95
+                    }
+                });
+            }
+            } catch (err) {
+                console.warn('⚠️ Failed to add household layers - style may not be ready:', err);
+            }
+        };
+
+        setupLayers();
+    }, [map, styleIsReady, showHeatmap]);
+
+    // ── 4. REACTIVE FILTERS & ZOOM VISIBILITY ──
+    useEffect(() => {
+        if (!map || !styleIsReady) return;
+
+        const applyFiltersAndVisibility = () => {
+            const filters: any[] = ['all'];
+
+            // 🛡️ SAFE PHASE FILTER
+            if (selectedPhases.length > 0) {
+                filters.push([
+                    'in',
+                    ['coalesce', ['get', 'status'], ''],
+                    ['literal', selectedPhases]
+                ]);
+            }
+
+            // 🛡️ SAFE TEAM FILTER
+            if (selectedTeam !== 'all') {
+                filters.push([
+                    'in',
+                    selectedTeam,
+                    ['coalesce', ['get', 'assignedTeams'], ['literal', []]]
+                ]);
+            }
+
+            // Apply to all household-related layers
+            const layers = [
+                'heatmap',
+                'households-server-layer',
+                'households-local-layer'
+            ];
+
+            layers.forEach(layerId => {
+                if (map.getLayer(layerId)) {
+                    map.setFilter(layerId, (filters.length > 1 ? filters : null) as any);
+                }
+            });
+
+            // ZOOM-BASED VISIBILITY SYNC
+            const zoom = map.getZoom();
+            const clusterVisibility = zoom < 14 ? 'visible' : 'none';
+            const markerVisibility = zoom >= 14 ? 'visible' : 'none';
+
+            if (map.getLayer('cluster-circles')) {
+                map.setLayoutProperty('cluster-circles', 'visibility', clusterVisibility);
+                map.setLayoutProperty('cluster-counts', 'visibility', clusterVisibility);
+            }
+            if (map.getLayer('households-server-layer')) {
+                map.setLayoutProperty('households-server-layer', 'visibility', markerVisibility);
+            }
+            if (map.getLayer('households-local-layer')) {
+                map.setLayoutProperty('households-local-layer', 'visibility', markerVisibility);
+            }
+        };
+
+        applyFiltersAndVisibility();
+
+        const handleViewportChange = () => applyFiltersAndVisibility();
+        map.on('zoomend', handleViewportChange);
+        map.on('styledata', handleViewportChange); // CRITICAL for style reloads
+
+        return () => {
+            map.off('zoomend', handleViewportChange);
+            map.off('styledata', handleViewportChange);
+        };
+    }, [map, styleIsReady, selectedPhases, selectedTeam]);
+
+    return null;
+};
+
+export default React.memo(HouseholdLayer);

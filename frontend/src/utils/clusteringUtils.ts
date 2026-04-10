@@ -67,21 +67,54 @@ export function getClusterExpansionZoom(
 }
 
 /**
+ * Transform and sanitize household data for MapLibre (CRITICAL for null safety)
+ * Ensures ALL numeric fields have valid numbers, never null
+ * @param household Raw household object from database
+ * @returns Cleaned object safe for MapLibre expressions
+ */
+function sanitizeHouseholdForMap(h: any): any {
+    // Extract coordinates safely
+    let lng = Number(h.location?.coordinates?.[0]) || 0;
+    let lat = Number(h.location?.coordinates?.[1]) || 0;
+
+    // Auto-correction: Au Sénégal, Lng est négatif (~-17) et Lat positif (~14).
+    if (lng > 0 && lat < 0) {
+        const temp = lng;
+        lng = lat;
+        lat = temp;
+    }
+
+    return {
+        // Technical fields (strings)
+        id: String(h.id || ''),
+        household_id: String(h.id || ''),
+        status: String(h.status || 'Non débuté'),
+        syncStatus: String(h.syncStatus || 'synced'), // <-- CRITICAL: Always a string, never null
+        name: String(h.owner?.name || h.name || 'N/A'),
+        
+        // Numeric fields (CRITICAL: Never null for MapLibre expressions)
+        longitude: Number.isFinite(lng) ? lng : 0,
+        latitude: Number.isFinite(lat) ? lat : 0,
+        
+        // Additional metadata (with defaults)
+        region: String(h.region || 'Unknown'),
+        departement: String(h.departement || ''),
+        village: String(h.village || ''),
+        phone: String(h.phone || ''),
+        source: String(h.source || 'manual'),
+        version: Number(h.version || 1)
+    };
+}
+
+/**
  * Convert household data to GeoJSON points for clustering
  */
 export function householdsToGeoJSON(households: any[]): Feature<Point>[] {
     return households
         .filter((h) => h.location?.coordinates && h.location.coordinates.length === 2)
         .map((h) => {
-            let lng = Number(h.location.coordinates[0]);
-            let lat = Number(h.location.coordinates[1]);
-
-            // Auto-correction : Au Sénégal, Lng est négatif (~-17) et Lat positif (~14).
-            if (lng > 0 && lat < 0) {
-                const temp = lng;
-                lng = lat;
-                lat = temp;
-            }
+            const cleaned = sanitizeHouseholdForMap(h);
+            const { longitude: lng, latitude: lat } = cleaned;
 
             return {
                 type: 'Feature' as const,
@@ -89,14 +122,7 @@ export function householdsToGeoJSON(households: any[]): Feature<Point>[] {
                     type: 'Point' as const,
                     coordinates: [lng, lat] as [number, number]
                 },
-                properties: {
-                    id: h.id,
-                    household_id: h.id,
-                    status: h.status,
-                    name: h.owner?.name || 'N/A',
-                    longitude: lng,
-                    latitude: lat
-                }
+                properties: cleaned  // ✅ All properties are now cleaned and safe
             };
         });
 }

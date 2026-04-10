@@ -46,7 +46,7 @@ export const useMemorizedSupercluster = (households: any[]) => {
             lastHashRef.current = currentHash;
             const geoJSON = householdsToGeoJSON(households);
             superclusterRef.current = initializeSupercluster(geoJSON);
-            logger.log(`📍 Supercluster rebuilt for ${households.length} households`);
+            logger.log(`📍 Supercluster rebuilt with ${geoJSON.length} valid points (Source: ${households.length} households)`);
         } catch (error) {
             logger.error('Failed to initialize Supercluster:', error);
             superclusterRef.current = null;

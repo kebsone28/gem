@@ -33,6 +33,14 @@ export const getTeams = async (req, res) => {
         const { organizationId } = req.user;
         const { projectId, role } = req.query;
 
+        console.log(`[TEAMS API] Fetching teams for organizationId: ${organizationId}, projectId: ${projectId}`);
+
+        if (!organizationId) {
+            console.error('[TEAMS API] ERROR: organizationId is undefined or null in req.user');
+            console.error('[TEAMS API] req.user:', JSON.stringify(req.user));
+            return res.status(400).json({ error: 'organizationId missing' });
+        }
+
         const where = {
             organizationId,
             deletedAt: null
@@ -51,10 +59,16 @@ export const getTeams = async (req, res) => {
             }
         });
 
+        console.log(`[TEAMS API] Success: found ${teams.length} teams`);
         res.json({ teams });
     } catch (error) {
-        console.error('Get teams error:', error);
-        res.status(500).json({ error: 'Server error while fetching teams' });
+        console.error('[TEAMS API] ERROR:', {
+            message: error.message,
+            code: error.code,
+            stack: error.stack,
+            organizationId: req.user?.organizationId
+        });
+        res.status(500).json({ error: 'Server error while fetching teams', details: error.message });
     }
 };
 
@@ -95,7 +109,7 @@ export const getTeamsTree = async (req, res) => {
 // @route   POST /api/teams
 export const createTeam = async (req, res) => {
     try {
-        const { name, role, tradeKey, capacity, parentTeamId, projectId, regionId, offlineId } = req.body;
+        const { name, role, tradeKey, capacity, parentTeamId, projectId, regionId, grappeId, offlineId } = req.body;
         const { organizationId } = req.user;
 
         if (!projectId) return res.status(400).json({ error: 'projectId is required' });
@@ -166,7 +180,7 @@ export const createTeam = async (req, res) => {
         res.status(201).json(updatedTeam);
     } catch (error) {
         console.error('Create team error:', error);
-        res.status(500).json({ error: 'Server error while creating team' });
+        res.status(500).json({ error: 'Server error while creating team', message: error.message });
     }
 };
 
@@ -323,19 +337,23 @@ export const deleteTeam = async (req, res) => {
     }
 };
 
-// @desc    Assign team to zone (Legacy support)
+// @desc    Assign team to zone (Legacy) or grappe
 export const assignTeamToZone = async (req, res) => {
     try {
         const { id } = req.params;
-        const { zoneId } = req.body;
+        const { zoneId, grappeId } = req.body;
         const { organizationId } = req.user;
+
+        const data = {};
+        if (zoneId !== undefined) data.zoneId = zoneId;
+        if (grappeId !== undefined) data.grappeId = grappeId;
 
         const updatedTeam = await prisma.team.update({
             where: { id, organizationId },
-            data: { zoneId }
+            data
         });
 
-        res.json({ message: 'Team assigned to zone successfully', team: updatedTeam });
+        res.json({ message: 'Team assigned successfully', team: updatedTeam });
     } catch (error) {
         console.error('Assign team error:', error);
         res.status(500).json({ error: 'Server error while assigning team' });

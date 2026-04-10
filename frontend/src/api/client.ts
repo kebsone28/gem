@@ -38,20 +38,38 @@ apiClient.interceptors.response.use(
 
         if (error.response?.status === 401 && !originalRequest._retry && !isAuthRoute) {
             originalRequest._retry = true;
+            logger.warn(`🔐 [AUTH] 401 detected on ${url}. Attempting token refresh...`);
+
             try {
                 const hasToken = !!safeStorage.getItem('access_token');
-                if (!hasToken) throw new Error('No token to refresh');
+                if (!hasToken) {
+                    logger.error('❌ [AUTH] No access token found in storage. Redirecting...');
+                    throw new Error('No token to refresh');
+                }
 
+                // Call refresh endpoint
                 const { data } = await apiClient.post('auth/refresh');
-                safeStorage.setItem('access_token', data.accessToken);
-                return apiClient(originalRequest);
-            } catch (refreshError) {
+                
+                if (data.accessToken) {
+                    logger.log('✅ [AUTH] Token refreshed successfully');
+                    safeStorage.setItem('access_token', data.accessToken);
+                    // Re-run the original request with the new token
+                    originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
+                    return apiClient(originalRequest);
+                } else {
+                    throw new Error('No token in refresh response');
+                }
+            } catch (refreshError: any) {
+                logger.error('❌ [AUTH] Refresh failed, clearing session:', refreshError.message);
                 safeStorage.removeItem('access_token');
+                safeStorage.removeItem('user');
+                
                 // Only notify logout if NOT already on login page (avoid event loops)
                 if (!isAlreadyAtLogin) {
-                    logger.warn('🔐 [AUTH] Force logout: token refresh failed, clearing session');
                     window.dispatchEvent(new CustomEvent('auth:logout'));
-                    window.location.href = '/login';
+                    setTimeout(() => {
+                        window.location.href = '/login';
+                    }, 100);
                 }
                 return Promise.reject(refreshError);
             }

@@ -1,11 +1,22 @@
-import { hybridCluster, clustersToGeoJSON, centroidsToGeoJSON } from '../geo/hybridCluster';
+import { hybridCluster, clustersToGeoJSON, centroidsToGeoJSON, getClusterName } from '../geo/hybridCluster';
 
 self.onmessage = async (event) => {
     try {
         const { households, maxPerCluster } = event.data;
 
+        // ✅ Ultra-robust filtering for WebWorker: only proceed with perfectly valid numeric coordinates
+        const validHouseholds = (households || []).filter((h: any) => {
+            const lat = Number(h.lat);
+            const lng = Number(h.lon);
+            return (
+                !isNaN(lat) && !isNaN(lng) &&
+                lat !== 0 && lng !== 0 &&
+                Math.abs(lat) <= 90 && Math.abs(lng) <= 180
+            );
+        });
+
         // Éxecuter le pipeline lourd Isochrone + Géométrique
-        const rawClusters = await hybridCluster(households, maxPerCluster || 80);
+        const rawClusters = await hybridCluster(validHouseholds, maxPerCluster || 80);
 
         // Transformer en structures propres pour MapLibre GL
         const zonesGeoJSON = clustersToGeoJSON(rawClusters);
@@ -14,7 +25,7 @@ self.onmessage = async (event) => {
         // Extraire la liste brute pour le panneau React UI (GrappeSelectorPanel)
         const panelData = rawClusters.map(c => ({
             id: c.id,
-            name: `Grappe ${c.id.replace('G-', '')}`,
+            name: getClusterName(c),
             count: c.households.length,
             type: c.type,
             bbox: computeBBox(c.households)

@@ -27,8 +27,7 @@
     justify-content: center;
     font-weight: 900;
     border-radius: 50%;
-    -webkit-backdrop-filter: blur(12px) saturate(180%);
-    backdrop-filter: blur(12px) saturate(180%);
+    background: rgba(30, 144, 255, 0.9);
     color: white;
 }
 
@@ -116,7 +115,6 @@
     }
 }
 
-/* ── MAP LEGEND (PREMIUM GLASS) ── */
 .map-legend-container {
     position: absolute;
     bottom: 48px;
@@ -124,10 +122,8 @@
     z-index: 1000;
     padding: 24px;
     border-radius: 32px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     box-shadow: 0 25px 60px rgba(0, 0, 0, 0.3);
-    -webkit-backdrop-filter: blur(32px);
-    backdrop-filter: blur(32px);
     transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
@@ -137,11 +133,13 @@
 }
 
 .dark .map-legend-container {
-    background: rgba(15, 23, 42, 0.7);
+    background: #1e293b;
+    border-color: rgba(255, 255, 255, 0.05);
 }
 
 .light .map-legend-container {
-    background: rgba(255, 255, 255, 0.75);
+    background: #ffffff;
+    border-color: rgba(0, 0, 0, 0.05);
 }
 
 /* ── MARKER STYLES ── */
@@ -168,6 +166,21 @@
     font-weight: bold !important;
     padding: 6px 12px !important;
     box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3) !important;
+}
+
+.premium-map-popup .mapboxgl-popup-content {
+    padding: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+.premium-map-popup .mapboxgl-popup-tip {
+    display: none !important;
+}
+
+.premium-map-popup .popup-card {
+    border-radius: 1.25rem;
+    overflow: hidden;
 }
 
 /* ── Hybrid MapLibre + Leaflet layout helpers ── */

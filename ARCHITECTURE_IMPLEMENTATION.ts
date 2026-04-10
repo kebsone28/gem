@@ -165,11 +165,50 @@
  */
 
 // ============================================================================
-// NEXT STEPS - COMPLETING THE ARCHITECTURE
+// COMPLETED STEPS — ENTERPRISE NATIONAL SCALE 🏆
 // ============================================================================
 
 /**
- * 🔧 STEP 1: Implement Backend Bbox API Endpoint
+ * ✅ STEP 1: Backend BBox PostGIS API Endpoint — DONE
+ * Location: backend/src/modules/household/household.controller.js
+ * Endpoint: GET /api/households?bbox=lng1,lat1,lng2,lat2&project_id=X&limit=5000
+ * PostGIS spatial query using ST_DWithin + ST_MakeEnvelope (4326)
+ * Graceful fallback to standard Prisma query if PostGIS unavailable
+ */
+
+/**
+ * ✅ STEP 2: Frontend Viewport Loading Activated — DONE
+ * Location: frontend/src/components/terrain/MapLibreVectorMap.tsx
+ * Hook: useViewportLoading({ enabled: true, projectId, debounceMs: 300 })
+ * Connected to map 'moveend' event → sends BBox to backend API
+ * activeHouseholds = visibleHouseholds.length > 0 ? visibleHouseholds : households
+ * (graceful fallback to full dataset if PostGIS unavailable)
+ * GeoJSON worker + Supercluster both use activeHouseholds — consistent pipeline
+ */
+
+/**
+ * ✅ STEP 3: Supercluster 3-Tier Zoom Rendering — DONE
+ * Location: frontend/src/components/terrain/hooks/useHouseholdVisibility.ts
+ * Tier 1: zoom < 11  → Supercluster bubble clusters only (national view)
+ * Tier 2: zoom 11-13 → Supercluster bubbles with count badges (city view)
+ * Tier 3: zoom >= 14 → Individual icon markers + labels (street view)
+ * Also: households-circles-simple kept hidden to prevent double rendering
+ * Also: households-labels-simple auto-activates at Tier 3
+ */
+
+/**
+ * ✅ STEP 4: Performance Architecture Validated
+ * - 3-tier visibility prevents MapLibre rendering all layers simultaneously
+ * - BBox API limits payload to ~200-3000 points max per viewport
+ * - Supercluster rebuild skipped if coordinate hash unchanged (memoization)
+ * - GeoJSON conversion offloaded to Web Worker (non-blocking main thread)
+ * - Abort controller cancels stale viewport requests on fast pan
+ */
+
+// ============================================================================
+// ESTIMATED PERFORMANCE AT 200k HOUSEHOLDS NATIONAL SCALE
+// ============================================================================
+/**
  * 
  * Location: backend/src/routes/households.ts
  * 

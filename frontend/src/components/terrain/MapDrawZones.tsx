@@ -65,29 +65,29 @@ export function useDrawnZones() {
     return { zones, saveZones, addZone, deleteZone };
 }
 
+import { useTerrainUIStore } from '../../store/terrainUIStore';
+
 /**
  * Panneau de gestion des zones dessinées (liste + suppression).
  * Le dessin réel est géré dans MapLibreVectorMap via les events de clic.
  */
 export function MapDrawZonesPanel({
-    isDrawing,
     onStartDraw,
-    pendingPoints,
     onConfirmZone,
     onCancelDraw,
-    zones,
-    onDeleteZone,
     isDarkMode = true
 }: {
-    isDrawing: boolean;
     onStartDraw: () => void;
-    pendingPoints: [number, number][];
     onConfirmZone: (name: string, team: string, color: string) => void;
     onCancelDraw: () => void;
-    zones: DrawnZone[];
-    onDeleteZone: (id: string) => void;
     isDarkMode?: boolean;
 }) {
+    // Zustand selectors
+    const isDrawing = useTerrainUIStore(s => s.isDrawing);
+    const pendingPoints = useTerrainUIStore(s => s.pendingPoints);
+    const zones = useTerrainUIStore(s => s.drawnZones);
+    const deleteZone = useTerrainUIStore(s => s.deleteZone);
+
     const [name, setName] = useState('Zone ' + (zones.length + 1));
     const [team, setTeam] = useState(TEAMS[0]);
     const [colorObj, setColorObj] = useState(ZONE_COLORS[zones.length % ZONE_COLORS.length]);
@@ -159,14 +159,14 @@ export function MapDrawZonesPanel({
                             </div>
                             <div className="flex gap-2 pt-1">
                                 <button
-                                    title="Confirmer la zone"
+                                    aria-label="Confirmer la zone"
                                     onClick={() => onConfirmZone(name, team, colorObj.hex)}
                                     className="flex-1 flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl py-2 transition-colors"
                                 >
                                     <CheckCircle2 size={14} /> Confirmer
                                 </button>
                                 <button
-                                    title="Annuler le dessin"
+                                    aria-label="Annuler le dessin"
                                     onClick={onCancelDraw}
                                     className={`px-3 rounded-xl text-xs font-bold transition-colors ${isDarkMode ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
                                 >
@@ -177,7 +177,7 @@ export function MapDrawZonesPanel({
                     )}
                     {pendingPoints.length < 3 && (
                         <button
-                            title="Annuler le dessin"
+                            aria-label="Annuler le dessin"
                             onClick={onCancelDraw}
                             className="w-full text-xs font-bold text-slate-400 hover:text-slate-200 transition-colors py-2"
                         >
@@ -189,7 +189,7 @@ export function MapDrawZonesPanel({
                 <div className="p-4 space-y-3">
                     {/* Bouton démarrer */}
                     <button
-                        title="Dessiner une nouvelle zone"
+                        aria-label="Dessiner une nouvelle zone"
                         onClick={onStartDraw}
                         className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-xl py-2.5 transition-colors"
                     >
@@ -206,16 +206,16 @@ export function MapDrawZonesPanel({
                                     key={z.id}
                                     className={`flex items-center gap-3 p-3 rounded-xl border ${isDarkMode ? 'bg-slate-800/50 border-slate-700' : 'bg-slate-50 border-slate-200'}`}
                                 >
-                                    <div className={`w-3 h-3 rounded-full flex-shrink-0 bg-[${z.color}]`} />
+                                    <div className={`w-3 h-3 rounded-full flex-shrink-0 bg-[${z.color}]`} style={{ backgroundColor: z.color }} />
                                     <div className="flex-1 min-w-0">
                                         <p className={`text-xs font-bold truncate ${text}`}>{z.name}</p>
-                                        <p className={`text-[10px] flex items-center gap-1 ${sub}`}>
+                                        <p className={`text-xs flex items-center gap-1 ${sub}`}>
                                             <Users size={9} /> {z.team} · {z.coordinates.length} pts
                                         </p>
                                     </div>
                                     <button
                                         title={`Supprimer ${z.name}`}
-                                        onClick={() => onDeleteZone(z.id)}
+                                        onClick={() => deleteZone(z.id)}
                                         className="text-rose-400 hover:text-rose-300 transition-colors p-1"
                                     >
                                         <Trash2 size={13} />
@@ -229,3 +229,5 @@ export function MapDrawZonesPanel({
         </motion.div>
     );
 }
+
+// Supprimé: useDrawnZones (maintenant intégré au terrainUIStore)

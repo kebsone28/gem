@@ -12,7 +12,7 @@ import {
     AlertTriangle
 } from 'lucide-react';
 import { useLogistique } from '../../hooks/useLogistique';
-import { useTheme } from '../../context/ThemeContext';
+import { useTheme } from '../../contexts/ThemeContext';
 import { KIT_CATEGORIES, CATEGORY_COLORS } from '../../utils/config';
 import { fmtNum } from '../../utils/format';
 import toast from 'react-hot-toast';
@@ -161,7 +161,7 @@ export default function StockTab({ searchQuery = '' }: StockTabProps) {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {categoriesMap.length === 0 ? (
                     <div className={`lg:col-span-2 flex flex-col items-center justify-center py-16 ${isDarkMode ? 'bg-slate-900/30 border-slate-800' : 'bg-slate-100 border-slate-200'} border rounded-2xl`}>
-                        <Box size={48} className={isDarkMode ? 'text-slate-700 mb-4' : 'text-slate-400 mb-4'} />
+                        <Box size={48} className={isDarkMode ? 'text-slate-700 dark:text-slate-300 mb-4' : 'text-slate-400 mb-4'} />
                         <p className={isDarkMode ? 'text-slate-500' : 'text-slate-600'}>Aucun article trouvé</p>
                     </div>
                 ) : (
@@ -174,7 +174,7 @@ export default function StockTab({ searchQuery = '' }: StockTabProps) {
                                 </div>
                                 <div className="overflow-x-auto">
                                     <table className={`w-full text-sm ${isDarkMode ? 'divide-slate-800' : 'divide-slate-200'}`}>
-                                        <thead className={isDarkMode ? 'bg-slate-950' : 'bg-slate-50'}>
+                                        <thead className={isDarkMode ? 'bg-slate-950' : 'bg-slate-50 dark:bg-slate-800/50'}>
                                             <tr>
                                                 <th className={`px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>Article</th>
                                                 <th className={`px-6 py-3 text-center text-xs font-semibold uppercase tracking-wider ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>Chargé</th>
@@ -192,7 +192,7 @@ export default function StockTab({ searchQuery = '' }: StockTabProps) {
                                                         <td className={`px-6 py-4 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                                                             <div className="flex flex-col">
                                                                 <span className="font-semibold">{item.label}</span>
-                                                                <span className={`text-[10px] font-mono ${isDarkMode ? 'text-slate-500' : 'text-slate-600'}`}>{item.unit} | {item.qty} par kit</span>
+                                                                <span className={`text-xs font-mono ${isDarkMode ? 'text-slate-500' : 'text-slate-600'}`}>{item.unit} | {item.qty} par kit</span>
                                                             </div>
                                                         </td>
                                                         <td className={`px-6 py-4 text-center font-mono ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
@@ -207,7 +207,7 @@ export default function StockTab({ searchQuery = '' }: StockTabProps) {
                                                                     {fmtNum(item.remaining)}
                                                                 </span>
                                                                 {teamVelocity > 0 && (
-                                                                    <span className={`text-[10px] font-bold uppercase mt-1 ${isCritical ? 'text-red-500' : isWarning ? 'text-amber-500' : 'text-slate-500'}`}>
+                                                                    <span className={`text-xs font-bold uppercase mt-1 ${isCritical ? 'text-red-500' : isWarning ? 'text-amber-500' : 'text-slate-500'}`}>
                                                                         ~ {Math.round(daysLeft)} jours ref.
                                                                     </span>
                                                                 )}
@@ -238,7 +238,7 @@ export default function StockTab({ searchQuery = '' }: StockTabProps) {
                                 </div>
                                 <button
                                     onClick={() => setIsAdminMode(false)}
-                                    title="Close"
+                                    aria-label="Close"
                                     className={`p-2 rounded-lg transition-all ${isDarkMode ? 'text-slate-500 hover:text-white hover:bg-slate-800' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'}`}
                                 >
                                     <X size={24} />

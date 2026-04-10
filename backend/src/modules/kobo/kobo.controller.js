@@ -22,15 +22,26 @@ export const triggerKoboSync = async (req, res) => {
     const { organizationId } = req.user;
 
     try {
-        // Find default zone for this organization
+        // 1. Prefer provided zoneId or projectId
         let defaultZoneId = req.body.zoneId || null;
+        const targetProjectId = req.body.projectId;
 
         if (!defaultZoneId) {
-            // AUTO-INITIALIZATION: Create a default project and zone if none exist
-            const existingProject = await prisma.project.findFirst({ where: { organizationId } });
-            if (!existingProject) {
+            // Find a suitable project: provided one, or the first existing one
+            let project = null;
+            if (targetProjectId) {
+                project = await prisma.project.findUnique({ where: { id: targetProjectId } });
+            if (!project) {
+                const msg = `Project ${targetProjectId} not found for organization ${organizationId}. Please refresh your project selection and retry.`;
+                console.error(`[KOBO] ${msg}`);
+                return res.status(400).json({ success: false, error: msg });
+            }
+        }
+
+
+            if (!project) {
                 console.log(`[KOBO] 💡 Auto-creating default project for org ${organizationId}`);
-                const newProject = await prisma.project.create({
+                project = await prisma.project.create({
                     data: {
                         name: 'Projet Kobo Global',
                         organizationId,
@@ -41,29 +52,25 @@ export const triggerKoboSync = async (req, res) => {
                         config: {}
                     }
                 });
+            }
+
+            // Find a zone for THIS project
+            const existingZone = await prisma.zone.findFirst({ 
+                where: { projectId: project.id, organizationId } 
+            });
+
+            if (existingZone) {
+                defaultZoneId = existingZone.id;
+            } else {
+                console.log(`[KOBO] 💡 Auto-creating default zone for project ${project.id}`);
                 const newZone = await prisma.zone.create({
                     data: {
                         name: 'Zone Kobo A',
-                        projectId: newProject.id,
+                        projectId: project.id,
                         organizationId
                     }
                 });
                 defaultZoneId = newZone.id;
-            } else {
-                const existingZone = await prisma.zone.findFirst({ where: { organizationId } });
-                if (existingZone) {
-                    defaultZoneId = existingZone.id;
-                } else {
-                    console.log(`[KOBO] 💡 Auto-creating default zone for project ${existingProject.id}`);
-                    const newZone = await prisma.zone.create({
-                        data: {
-                            name: 'Zone Kobo A',
-                            projectId: existingProject.id,
-                            organizationId
-                        }
-                    });
-                    defaultZoneId = newZone.id;
-                }
             }
         }
 
@@ -136,4 +143,38 @@ export const getKoboStatus = async (req, res) => {
             total: lastSync.total
         } : null
     });
+};
+
+/**
+ * POST /api/kobo/webhook
+ * Receives automated push notifications from KoboToolbox.
+ */
+export const handleKoboWebhook = async (req, res) => {
+    try {
+        console.log('[WEBHOOK] Kobo data push received.');
+        
+        // As webhooks aren't authenticated via JWT, we must rely on a system/service account
+        // or a default fallback organization since Kobo doesn't know about `req.user.organizationId`
+        const sysOrg = await prisma.organization.findFirst();
+        if (!sysOrg) {
+            console.error('[WEBHOOK] System has no organizations to sync to.');
+            return res.status(500).json({ error: 'System unconfigured' });
+        }
+
+        const project = await prisma.project.findFirst({ where: { organizationId: sysOrg.id } });
+        const objZone = await prisma.zone.findFirst({ where: { projectId: project?.id } });
+
+        if (!project || !objZone) {
+            return res.status(500).json({ error: 'No default target found for auto-sync' });
+        }
+
+        // Delegate cleanly to existing manual sync mechanism!
+        // We will pass the exact object Kobo sent to avoid re-fetching!
+        const result = await syncKoboToDatabase(sysOrg.id, objZone.id, null, [req.body]);
+
+        return res.json({ success: true, message: 'Webhook processed', result });
+    } catch (e) {
+        console.error('[WEBHOOK-ERROR] Error handling webhook:', e.message);
+        return res.status(500).json({ error: 'Processing error' });
+    }
 };

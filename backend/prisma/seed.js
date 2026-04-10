@@ -60,6 +60,18 @@ async function main() {
             password: adminPassword,
             name: 'DG PROQUELEC',
             role: 'DG_PROQUELEC'
+        },
+        {
+            email: 'cp_gem',
+            password: 'password123',
+            name: 'Chef de Projet Vision',
+            role: 'CHEF_PROJET'
+        },
+        {
+            email: 'compta_gem',
+            password: 'password123',
+            name: 'Responsable Comptabilité',
+            role: 'COMPTABLE'
         }
     ];
 
@@ -71,7 +83,7 @@ async function main() {
             where: { email: u.email },
             update: {
                 passwordHash: hashedPassword,
-                role: u.role,
+                roleLegacy: u.role,
                 name: u.name,
                 requires2FA: u.requires2FA || false,
                 securityQuestion: u.secret2FAQuestion || null,
@@ -81,7 +93,7 @@ async function main() {
                 email: u.email,
                 name: u.name,
                 passwordHash: hashedPassword,
-                role: u.role,
+                roleLegacy: u.role,
                 organizationId: org.id,
                 requires2FA: u.requires2FA || false,
                 securityQuestion: u.secret2FAQuestion || null,

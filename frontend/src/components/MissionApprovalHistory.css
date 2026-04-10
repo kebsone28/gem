@@ -1,0 +1,236 @@
+/* MissionApprovalHistory.css - COMPACT VERSION */
+
+.mission-approval-container {
+  background: var(--bg-card, #ffffff);
+  border-radius: 12px;
+  border: 1px solid var(--border-color, #e2e8f0);
+  padding: 1rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.approval-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.approval-header h3 {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #1e293b;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.order-number-badge {
+  background: #f1f5f9;
+  padding: 0.25rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+}
+
+.approval-error {
+  background: #fef2f2;
+  border: 1px solid #fee2e2;
+  color: #b91c1c;
+  padding: 0.5rem;
+  border-radius: 6px;
+  margin-bottom: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.7rem;
+}
+
+.admin-super-power {
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  padding: 0.75rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  color: white;
+}
+
+.btn-admin-approve-all {
+  width: 100%;
+  background: white;
+  color: #4f46e5;
+  border: none;
+  padding: 0.5rem;
+  border-radius: 6px;
+  font-weight: 800;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  cursor: pointer;
+  margin-bottom: 0.25rem;
+}
+
+.approval-workflow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.approval-step {
+  border-radius: 8px;
+  border: 1px solid #f1f5f9;
+  padding: 0.75rem;
+  background: #fff;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.approval-step.bg-green-50 { background: #f0fdf4; border-color: #dcfce7; }
+.approval-step.bg-red-50 { background: #fef2f2; border-color: #fee2e2; }
+.approval-step.bg-yellow-50 { background: #fffbeb; border-color: #fef3c7; }
+
+.current-step {
+  border-color: #4f46e5 !important;
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
+}
+
+.step-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.step-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.step-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.step-details h4 {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.status-badge {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+}
+
+.step-comment {
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background: rgba(0,0,0,0.03);
+  border-radius: 4px;
+  font-size: 0.75rem;
+  color: #475569;
+}
+
+.step-comment small {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.65rem;
+  color: #94a3b8;
+}
+
+.step-actions {
+  margin-top: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.comment-input {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  resize: none;
+}
+
+.button-group {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.btn {
+  flex: 1;
+  padding: 0.4rem;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+}
+
+.btn-approve { background: #10b981; color: white; }
+.btn-reject { background: #ef4444; color: white; }
+
+.step-completed {
+  margin-top: 0.25rem;
+  font-size: 0.7rem;
+  color: #10b981;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.approval-footer {
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #f1f5f9;
+}
+
+.status-approved, .status-rejected, .status-pending {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border-radius: 8px;
+}
+
+.status-approved { background: #f0fdf4; color: #166534; }
+.status-rejected { background: #fef2f2; color: #991b1b; }
+.status-pending { background: #fefce8; color: #854d0e; }
+
+.status-approved h4, .status-rejected h4, .status-pending h4 {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+.status-approved p, .status-rejected p, .status-pending p {
+  margin: 0;
+  font-size: 0.75rem;
+  opacity: 0.9;
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 1rem;
+  width: 90%;
+  max-width: 400px;
+}

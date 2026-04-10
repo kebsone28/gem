@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import toast from 'react-hot-toast';
 import { db } from '../../store/db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import apiClient from '../../api/client';
@@ -15,14 +16,19 @@ import {
     Calendar,
     ArrowRight,
     CheckCircle2,
-    BarChart3
+    BarChart3,
+    Database,
+    Download
 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import { PageContainer, PageHeader, ContentArea } from '../../components';
 import { useNavigate } from 'react-router-dom';
 import { fmtNum } from '../../utils/format';
 import { useProject } from '../../hooks/useProject';
 import { useSync } from '../../hooks/useSync';
+import { usePermissions } from '../../hooks/usePermissions';
 import logger from '../../utils/logger';
+import { useLabels } from '../../contexts/LabelsContext';
 import {
     KPICard,
     StatusBadge,
@@ -32,18 +38,29 @@ import {
     AlertPanel
 } from '../../components/dashboards/DashboardComponents';
 import { TeamPerformance } from '../../components/dashboards/TeamPerformance';
+import { auditService } from '../../services/auditService';
+import { missionStatsService } from '../../services/missionStatsService';
+import type { MissionStats } from '../../services/missionStatsService';
+import { useAuth } from '../../contexts/AuthContext';
+import { MissionMentor } from '../../components/ia/MissionMentor';
+import type { AuditLog } from '../../utils/types';
 
 export default function AdminDashboard() {
+    const { user } = useAuth();
     const [metrics, setMetrics] = useState<any>(null);
+    const [missionStats, setMissionStats] = useState<MissionStats | null>(null);
+    const [isSyncing, setIsSyncing] = useState(false);
     const navigate = useNavigate();
     const { project } = useProject();
     const { forceSync } = useSync();
-    const isSyncing = false;
+    const { peut, PERMISSIONS } = usePermissions();
+    const { getLabel } = useLabels();
 
     const [activities, setActivities] = useState<any[]>([]);
-    const [perfData, setPerfData] = useState<any>(null);
+    const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+    // MONITORING DATA FETCHED BELOW
+    const canViewReports = peut(PERMISSIONS.VOIR_RAPPORTS);
 
-    // Use primitive string to avoid object identity issues in deps
     const projId = project?.id || '';
 
     const households = useLiveQuery(
@@ -61,7 +78,7 @@ export default function AdminDashboard() {
 
     useEffect(() => {
         const fetchRemoteMetrics = async () => {
-            if (!project?.id) return;
+            if (!project?.id || !canViewReports) return;
             try {
                 const response = await apiClient.get(`kpi/${project.id}`);
                 if (response.status === 200 && response.data?.metrics) {
@@ -72,30 +89,90 @@ export default function AdminDashboard() {
             }
         };
         const fetchMonitoringData = async () => {
+            if (!canViewReports) return;
             try {
-                const [actRes, perfRes] = await Promise.all([
+                const [actRes] = await Promise.all([
                     apiClient.get('monitoring/activity'),
                     apiClient.get('monitoring/performance')
                 ]);
                 setActivities(actRes.data.activities);
-                setPerfData(perfRes.data);
-            } catch (err) {
-                logger.error('Failed to fetch monitoring data', err);
+                // setPerfData(perfRes.data); // Reserved for future visualization
+            } catch (err: any) {
+                if (err.response?.status !== 401) logger.error('Failed to fetch monitoring data', err);
             }
         };
+
+        const fetchMissionStats = async () => {
+            if (!user) return;
+            const isMaster = user.email === 'admingem' || user.role === 'ADMIN_PROQUELEC';
+            const stats = isMaster 
+                ? await missionStatsService.getGlobalStats()
+                : await missionStatsService.getUserStats(user.email, user.id);
+            setMissionStats(stats);
+        };
+
         fetchRemoteMetrics();
         fetchMonitoringData();
-    }, [project?.id]);
+        loadAuditLogs();
+        fetchMissionStats();
+
+        // Refresh logs every 30s or on focus
+        const interval = setInterval(() => {
+            loadAuditLogs();
+            fetchMissionStats();
+        }, 30000);
+        window.addEventListener('focus', loadAuditLogs);
+
+        return () => {
+            clearInterval(interval);
+            window.removeEventListener('focus', loadAuditLogs);
+        };
+    }, [project?.id, canViewReports]);
+
+    const loadAuditLogs = async () => {
+        const logs = await auditService.getLastLogs(5);
+        setAuditLogs(logs);
+    };
+
+    const refreshMetrics = useCallback(async () => {
+        if (!project?.id || !canViewReports) return;
+        try {
+            const [kpiRes, actRes] = await Promise.all([
+                apiClient.get(`kpi/${project.id}`),
+                apiClient.get('monitoring/activity')
+            ]);
+            if (kpiRes.data?.metrics) setMetrics(kpiRes.data.metrics);
+            if (actRes.data?.activities) setActivities(actRes.data.activities);
+        } catch (err: any) {
+            if (err.response?.status !== 401) logger.error('Failed to refresh metrics', err);
+        }
+    }, [project?.id, canViewReports]);
 
     const handleSync = async () => {
-        await forceSync();
-        if (project?.id) {
-            try {
-                const { data } = await apiClient.get(`kpi/${project.id}`);
-                setMetrics(data.metrics);
-            } catch (err) {
-                console.error('Failed to refresh metrics after sync', err);
-            }
+        if (isSyncing) return;
+        setIsSyncing(true);
+        const toastId = toast.loading('Synchronisation en cours...');
+        try {
+            await forceSync();
+            // Attend 1.5s que le backend finisse le pull
+            await new Promise(r => setTimeout(r, 1500));
+            await refreshMetrics();
+            toast.success('Synchronisation réussie !', { id: toastId });
+        } catch (err) {
+            logger.error('handleSync failed', err);
+            toast.error('Erreur de synchronisation', { id: toastId });
+        } finally {
+            setIsSyncing(false);
+        }
+    };
+
+    const handleExportCompta = async () => {
+        const tid = toast.loading("Préparation de l'export comptable...");
+        try {
+            await missionStatsService.exportCertifiedMissionsToExcel();
+            toast.success("Excel généré avec succès !", { id: tid });
+        } catch (err: any) {
+            toast.error(err.message || "Erreur lors de l'export", { id: tid });
         }
     };
 
@@ -112,295 +189,368 @@ export default function AdminDashboard() {
         breakdown: { byZone: [], byTeam: [] }
     };
 
-    // Prepare activities for ActivityFeed component
-    const feedActivities = activities.slice(0, 5).map(a => ({
-        id: a.id || Math.random().toString(),
-        type: (a.type === 'error' ? 'danger' : a.type === 'warning' ? 'warning' : 'success') as any,
-        message: a.message,
-        time: a.timestamp || 'À l\'instant'
+    const feedActivities = auditLogs.map(log => ({
+        id: log.id,
+        type: (log.severity === 'critical' ? 'danger' : log.severity === 'warning' ? 'warning' : 'success') as any,
+        message: `${log.userName}: ${log.action} - ${log.details}`,
+        time: new Date(log.timestamp).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
     }));
 
-    // Silence lint for unused vars if they are intended for future use or part of the larger plan
-    // But since I'm fixing lints, I'll use them or comment them.
-    // perfData is fetched but not yet visualised in a specific chart here (ActivityFeed uses feedActivities).
-    // zones is used for localTotal etc but maybe display breakdown later.
+    // Fallback if no audit logs
+    if (feedActivities.length === 0) {
+        feedActivities.push(...activities.slice(0, 5).map(a => ({
+            id: a.id || Math.random().toString(),
+            type: (a.type === 'error' ? 'danger' : a.type === 'warning' ? 'warning' : 'success') as any,
+            message: a.message,
+            time: a.timestamp || 'À l\'instant'
+        })));
+    }
 
     return (
-        <div className="p-6 lg:p-10 space-y-10 bg-[#F8FAFC] min-h-full">
+        <PageContainer className="min-h-screen bg-slate-950 text-white selection:bg-blue-500/30">
+            <div className="absolute top-0 left-0 w-full h-[500px] bg-gradient-to-b from-blue-600/10 via-blue-600/5 to-transparent pointer-events-none" />
 
-            {/* ── HEADER & ACTIONS ── */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                <div>
-                    <div className="flex items-center gap-2 mb-1">
-                        <StatusBadge status="info" label="Expert Dashboard" />
-                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">• {project?.name || 'Proquelec GEM'}</span>
-                    </div>
-                    <h1 className="text-3xl font-black text-gray-900 tracking-tight italic uppercase">
-                        Console de <span className="text-blue-600">Pilotage</span>
-                    </h1>
-                </div>
-
-                <ActionBar>
-                    <button
-                        onClick={handleSync}
-                        disabled={isSyncing}
-                        className="flex items-center gap-2 px-4 py-2 bg-white rounded-lg border border-gray-200 text-[11px] font-bold uppercase tracking-wider text-gray-600 hover:border-blue-500 hover:text-blue-600 transition-all disabled:opacity-50"
-                    >
-                        <RefreshCw size={14} className={isSyncing ? 'animate-spin' : ''} />
-                        {isSyncing ? 'Synchronisation...' : 'Synchroniser'}
-                    </button>
-                    <button
-                        onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true }))}
-                        className="flex items-center gap-2 px-5 py-2 bg-blue-600 rounded-lg text-[11px] font-bold uppercase tracking-wider text-white hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/20"
-                    >
-                        Centre d'Actions
-                        <ArrowRight size={14} />
-                    </button>
-                </ActionBar>
-            </div>
-
-            {/* ── LEVEL 1: GLOBAL PROGRESS ── */}
-            <div className="bg-white rounded-[20px] p-8 border border-gray-100 shadow-sm relative overflow-hidden group">
-                <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-blue-50/50 to-transparent pointer-events-none" />
-                <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
-                    <div>
-                        <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                            <Compass size={14} className="text-blue-600" /> Progression Globale du Projet
-                        </h3>
-                        <div className="flex items-baseline gap-2 mb-2">
-                            <span className="text-6xl font-black text-gray-900 tracking-tighter">{displayStats.progressPercent}%</span>
-                            <span className={`text-sm font-bold ${displayStats.progressPercent > 50 ? 'text-emerald-500' : 'text-blue-500'}`}>ÉLECTRIFIÉ</span>
-                        </div>
-                        <p className="text-sm text-gray-500 font-medium mb-8 max-w-md">
-                            Le déploiement national progresse conformément aux objectifs techniques.
-                            Le score de performance IGPP est actuellement de <span className="font-bold text-gray-900">{displayStats.igppScore}%</span>.
-                        </p>
-
-                        <div className="h-4 w-full bg-gray-100 rounded-full overflow-hidden p-1 border border-gray-50">
-                            <motion.div
-                                initial={{ width: 0 }}
-                                animate={{ width: `${displayStats.progressPercent}%` }}
-                                className="h-full bg-blue-600 rounded-full shadow-[0_0_15px_rgba(0,102,255,0.4)]"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-gray-50/50 p-6 rounded-2xl border border-gray-100">
-                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Ménages Terminés</p>
-                            <p className="text-2xl font-black text-gray-900">{fmtNum(displayStats.electrifiedHouseholds)}</p>
-                            <div className="mt-2 h-1 w-12 bg-emerald-500 rounded-full" />
-                        </div>
-                        <div className="bg-gray-50/50 p-6 rounded-2xl border border-gray-100">
-                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Objectif Total</p>
-                            <p className="text-2xl font-black text-gray-900">{fmtNum(displayStats.totalHouseholds)}</p>
-                            <div className="mt-2 h-1 w-blue-500 bg-blue-500 rounded-full" />
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* ── LEVEL 1.5: TEAM PERFORMANCE ── */}
-            <TeamPerformance 
-                teamStats={displayStats.breakdown.byTeam} 
-                productionRates={project?.config?.productionRates}
+            <PageHeader
+                title="CONSOLE D'ADMINISTRATION"
+                subtitle="Système de pilotage stratégique Haute-Performance"
+                icon={<ShieldCheck size={28} className="text-blue-400 drop-shadow-[0_0_8px_rgba(96,165,250,0.5)]" />}
+                className="relative z-10 pt-12 pb-10"
             />
 
-            {/* ── LEVEL 2: STRATEGIC KPIs ── */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                <KPICard
-                    title="Ménages"
-                    value={fmtNum(displayStats.totalHouseholds)}
-                    icon={<Users size={20} />}
-                    trend={{ value: 8, isUp: true, label: "vs mois dernier" }}
-                    sparkline={[30, 45, 35, 60, 55, 80, 70]}
-                />
-                <KPICard
-                    title="Ciblés"
-                    value={fmtNum(displayStats.electrifiedHouseholds)}
-                    icon={<ShieldCheck size={20} />}
-                    trend={{ value: 12, isUp: true, label: "Points validés" }}
-                    sparkline={[20, 30, 40, 50, 45, 65, 85]}
-                />
-                <KPICard
-                    title="Alertes"
-                    value={displayStats.problemHouseholds}
-                    icon={<AlertCircle size={20} />}
-                    trend={{ value: 4, isUp: false, label: "Anomalies terrain" }}
-                    sparkline={[10, 20, 15, 5, 8, 12, 4]}
-                />
-                <KPICard
-                    title="Productivité"
-                    value={`${displayStats.performance?.efficiencyRate || 0}%`}
-                    icon={<Zap size={20} />}
-                    trend={{ value: 2, isUp: true, label: "Efficacité globale" }}
-                    sparkline={[60, 65, 62, 70, 68, 75, 72]}
-                />
-            </div>
+            <ContentArea padding="none" className="bg-transparent border-none shadow-none relative z-10">
+                <div className="px-6 lg:px-12 pb-24 space-y-12">
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                {/* ── LEVEL 3: OPERATIONAL METRICS (Left) ── */}
-                <div className="lg:col-span-8 space-y-8">
-                    <div className="bg-white p-8 rounded-[20px] border border-gray-100 shadow-sm transition-all hover:shadow-md">
-                        <div className="flex items-center justify-between mb-8 border-b border-gray-50 pb-4">
-                            <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                                <LayoutGrid size={14} className="text-blue-600" /> Flux Technique Terrain {zones.length > 0 && `(${zones.length} Zones)`}
-                            </h3>
-                            <button onClick={() => navigate('/bordereau')} className="text-[10px] font-bold text-blue-600 hover:underline px-3 py-1 bg-blue-50 rounded-full tracking-wider uppercase">
-                                Détails par zone
+                    {/* ── HEADER & ACTIONS ── */}
+                    <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 pb-4">
+                        <div>
+                            <div className="flex items-center gap-3 mb-3">
+                                <StatusBadge status="info" label="Expert Console V.2" />
+                                <span className="h-4 w-[1px] bg-white/10" />
+                                <span className="text-[10px] font-black text-blue-400/40 uppercase tracking-[0.3em] font-mono">{project?.name || 'INITIALIZING...'}</span>
+                            </div>
+                            <h1 className="text-5xl md:text-6xl font-black tracking-tighter italic uppercase leading-[0.8] mb-1">
+                                PILOTAGE <span className="text-blue-500 drop-shadow-[0_0_15px_rgba(59,130,246,0.3)]">STRATÉGIQUE</span>
+                            </h1>
+                        </div>
+
+                        <ActionBar>
+                            <button
+                                onClick={handleSync}
+                                disabled={isSyncing}
+                                className="h-14 px-6 bg-slate-900/50 hover:bg-slate-800 border border-white/5 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-white hover:border-blue-500/30 transition-all flex items-center gap-3 disabled:opacity-30 group"
+                            >
+                                <RefreshCw size={16} className={`${isSyncing ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-700'}`} />
+                                {isSyncing ? 'SYNC IN PROGRESS' : 'SYNC CLOUD'}
                             </button>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
-                            <ProgressBar
-                                label="Maçonnerie (Préparation Murs)"
-                                count={`${displayStats.pipeline?.murs || 0} sites`}
-                                percentage={Math.round(((displayStats.pipeline?.murs || 0) / (displayStats.totalHouseholds || 1)) * 100)}
-                                status="info"
-                            />
-                            <ProgressBar
-                                label="Réseaux Extérieurs & Distribution"
-                                count={`${displayStats.pipeline?.reseau || 0} sites`}
-                                percentage={Math.round(((displayStats.pipeline?.reseau || 0) / (displayStats.totalHouseholds || 1)) * 100)}
-                                status="info"
-                            />
-                            <ProgressBar
-                                label="Installations Intérieures / Kits"
-                                count={`${displayStats.pipeline?.interieur || 0} sites`}
-                                percentage={Math.round(((displayStats.pipeline?.interieur || 0) / (displayStats.totalHouseholds || 1)) * 100)}
-                                status="info"
-                            />
-                            <ProgressBar
-                                label="Mise en Service & Réception"
-                                count={`${displayStats.electrifiedHouseholds} sites`}
-                                percentage={displayStats.progressPercent}
-                                status="success"
-                            />
-                        </div>
+                            <button
+                                onClick={() => navigate('/admin/kobo-mapping')}
+                                className="h-14 px-6 bg-slate-900/50 hover:bg-slate-800 border border-white/5 rounded-2xl text-[10px] font-black uppercase tracking-widest text-blue-400 hover:text-white hover:border-blue-500/30 transition-all flex items-center gap-3 active:scale-95 group"
+                            >
+                                <Database size={16} className="text-blue-500 group-hover:scale-110 transition-transform" />
+                                KOBO ENGINE
+                            </button>
+                            <button
+                                onClick={handleExportCompta}
+                                className="h-14 px-6 bg-emerald-600/10 hover:bg-emerald-600 border border-emerald-500/20 rounded-2xl text-[10px] font-black uppercase tracking-widest text-emerald-400 hover:text-white transition-all flex items-center gap-3 group"
+                                title="Exporter les missions certifiées en Excel"
+                            >
+                                <Download size={16} className="text-emerald-500 group-hover:text-white group-hover:bounce" />
+                                EXPORTER COMPTA
+                            </button>
+                            <button
+                                onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', navigator: { platform: 'Win32' } } as any))}
+                                className="h-14 px-8 bg-blue-600 hover:bg-blue-500 rounded-2xl text-[10px] font-black uppercase tracking-widest text-white transition-all shadow-xl shadow-blue-600/30 active:scale-95 flex items-center gap-3 italic"
+                            >
+                                HUB ACTIONS
+                                <ArrowRight size={16} />
+                            </button>
+                        </ActionBar>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="bg-white p-6 rounded-[20px] border border-gray-100 shadow-sm">
-                            <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-6 flex items-center gap-2">
-                                <Box size={14} className="text-blue-600" /> Logistique & Kits
-                            </h3>
-                            <div className="space-y-6">
-                                <div className="flex justify-between items-center bg-gray-50 p-4 rounded-xl">
-                                    <span className="text-xs font-bold text-gray-600">KITS PRÉPARÉS</span>
-                                    <span className="text-lg font-black text-gray-900">{fmtNum(displayStats.logistics?.kitPrepared || 0)}</span>
+                    {/* ── LEVEL 1: GLOBAL PROGRESS PREMIUM CARD ── */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="p-10 md:p-14 rounded-[3.5rem] bg-slate-900/40 border border-white/10 shadow-3xl relative overflow-hidden backdrop-blur-3xl group"
+                    >
+                        <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-blue-600/[0.03] to-transparent pointer-events-none" />
+                        <div className="absolute bottom-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-blue-500/20 to-transparent" />
+
+                        <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+                            <div className="space-y-8">
+                                <div className="space-y-4">
+                                    <h3 className="text-[11px] font-black text-blue-400/40 uppercase tracking-[0.4em] flex items-center gap-3 italic">
+                                        <Compass size={18} className="text-blue-500" /> Progression des activités terrain
+                                    </h3>
+                                    <div className="flex items-baseline gap-4">
+                                        <span className="text-8xl md:text-9xl font-black text-white tracking-tighter italic leading-none drop-shadow-xl">{displayStats.progressPercent}%</span>
+                                        <span className={`px-4 py-1.5 rounded-xl text-[10px] font-black tracking-widest uppercase italic shadow-lg ${displayStats.progressPercent > 50 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-blue-600/10 text-blue-400 border border-blue-500/20'}`}>
+                                            MISE EN ŒUVRE EN COURS
+                                        </span>
+                                    </div>
+                                    <p className="text-base text-slate-400 font-medium max-w-md leading-relaxed">
+                                        Le programme de déploiement est lancé dans le respect du cadre technique, réglementaire et institutionnel.
+                                        Indice de performance opérationnelle (IPO): <span className="font-black text-blue-400 italic">{displayStats.igppScore}%</span>.
+                                    </p>
                                 </div>
-                                <div className="flex justify-between items-center bg-gray-50 p-4 rounded-xl">
-                                    <span className="text-xs font-bold text-gray-600">CÂBLE MOY. / MÉNAGE</span>
-                                    <span className="text-lg font-black text-gray-900">{displayStats.performance?.avgCablePerHouse || 0}m</span>
+
+                                <div className="space-y-4">
+                                    <div className="h-4 w-full bg-white/5 rounded-full overflow-hidden p-[2px] border border-white/5">
+                                        <motion.div
+                                            initial={{ width: 0 }}
+                                            animate={{ width: `${displayStats.progressPercent}%` }}
+                                            transition={{ duration: 1.5, ease: "easeOut" }}
+                                            className="h-full bg-gradient-to-r from-blue-700 to-blue-400 rounded-full shadow-[0_0_25px_rgba(59,130,246,0.5)]"
+                                        />
+                                    </div>
+                                    <div className="flex justify-between text-[9px] font-black text-slate-600 uppercase tracking-widest italic">
+                                        <span>PHASE INITIALE</span>
+                                        <span>NIVEAU DE RÉALISATION OPTIMAL</span>
+                                    </div>
                                 </div>
-                                <div className="flex justify-between items-center border border-rose-100 bg-rose-50/30 p-4 rounded-xl">
-                                    <span className="text-xs font-bold text-rose-600 uppercase tracking-wider">ÉCART LOGISTIQUE</span>
-                                    <span className="text-lg font-black text-rose-700">{displayStats.logistics?.gap || 0}</span>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-6">
+                                <div className="p-8 rounded-[2.5rem] bg-white/[0.03] border border-white/5 shadow-inner hover:bg-white/[0.05] transition-all">
+                                    <p className="text-[10px] font-black text-blue-400/30 uppercase tracking-[0.3em] mb-4 italic">COMPLETED ASSETS</p>
+                                    <p className="text-4xl font-black text-white italic tracking-tighter leading-none">{fmtNum(displayStats.electrifiedHouseholds)}</p>
+                                    <div className="mt-6 h-1 w-16 bg-emerald-500 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.5)]" />
+                                </div>
+                                <div className="p-8 rounded-[2.5rem] bg-white/[0.03] border border-white/5 shadow-inner hover:bg-white/[0.05] transition-all">
+                                    <p className="text-[10px] font-black text-blue-400/30 uppercase tracking-[0.3em] mb-4 italic">TOTAL PROJECT TARGET</p>
+                                    <p className="text-4xl font-black text-white italic tracking-tighter leading-none">{fmtNum(displayStats.totalHouseholds)}</p>
+                                    <div className="mt-6 h-1 w-16 bg-blue-600 rounded-full shadow-[0_0_15px_rgba(37,99,235,0.5)]" />
+                                </div>
+                            </div>
+                        </div>
+                    </motion.div>
+
+                    {/* ── LEVEL 1.5: TEAM PERFORMANCE ── */}
+                    <div className="pt-6">
+                        <TeamPerformance
+                            teamStats={displayStats.breakdown.byTeam}
+                            productionRates={project?.config?.productionRates}
+                        />
+                    </div>
+
+                    {/* ── LEVEL 2: STRATEGIC KPIs ── */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+                        <KPICard
+                            title={`TOTAL ${getLabel('household.plural').toUpperCase()}`}
+                            value={fmtNum(displayStats.totalHouseholds)}
+                            icon={<Users size={22} />}
+                            trend={{ value: 8, isUp: true, label: "VS PREVIOUS PERIOD" }}
+                            sparkline={[30, 45, 35, 60, 55, 80, 70]}
+                        />
+                        <KPICard
+                            title="TOTAL INDEMNITÉS (FCFA)"
+                            value={missionStats ? fmtNum(missionStats.totalIndemnities) : "0"}
+                            icon={<Zap size={22} className="text-amber-400" />}
+                            trend={missionStats ? { 
+                                value: Math.round((missionStats.totalCertified / (missionStats.totalMissions || 1)) * 100), 
+                                isUp: true, 
+                                label: 'Certification Rate' 
+                            } : undefined}
+                        />
+                        <KPICard
+                            title="MISSIONS CERTIFIÉES"
+                            value={missionStats ? missionStats.totalCertified : "0"}
+                            icon={<CheckCircle2 size={22} className="text-emerald-400" />}
+                            sparkline={[40, 70, 45, 90, 65, 80, 95]}
+                        />
+                        <KPICard
+                            title="AGENTS DÉPLOYÉS"
+                            value={missionStats ? missionStats.totalMembersDeployed : "0"}
+                            icon={<LayoutGrid size={22} className="text-blue-400" />}
+                            trend={{ value: 5, isUp: true, label: 'Ressources actives' }}
+                        />
+                    </div>
+
+                    {/* ── LEVEL 3: OPERATIONAL GRID ── */}
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+                        {/* ── OPERATIONAL METRICS (Left) ── */}
+                        <div className="lg:col-span-8 space-y-10">
+                            <div className="p-10 rounded-[3rem] bg-slate-900/40 border border-white/5 backdrop-blur-3xl shadow-2xl">
+                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12 pb-8 border-b border-white/5">
+                                    <div className="space-y-1">
+                                        <h3 className="text-[11px] font-black text-blue-400/40 uppercase tracking-[0.4em] flex items-center gap-3 italic">
+                                            <LayoutGrid size={18} className="text-blue-500" /> ENGINEERING PIPELINE FLOW
+                                        </h3>
+                                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{zones.length > 0 ? `SYNCED WITH ${zones.length} OPERATIONAL ZONES` : 'AWAITING ZONE MAPPING'}</p>
+                                    </div>
+                                    <button
+                                        onClick={() => navigate('/bordereau')}
+                                        className="h-10 px-6 bg-blue-600/10 hover:bg-blue-600 border border-blue-500/20 text-blue-400 hover:text-white rounded-full text-[9px] font-black uppercase tracking-widest transition-all italic active:scale-95"
+                                    >
+                                        ZONE DEEP-DIVE →
+                                    </button>
+                                </div>
+
+                                <div className="space-y-8">
+                                    <ProgressBar
+                                        label="Maçonnerie Structurelle"
+                                        count={`${displayStats.pipeline?.murs || 0} SITES`}
+                                        percentage={Math.round(((displayStats.pipeline?.murs || 0) / (displayStats.totalHouseholds || 1)) * 100)}
+                                    />
+                                    <ProgressBar
+                                        label="Réseaux & Infrastructures"
+                                        count={`${displayStats.pipeline?.reseau || 0} SITES`}
+                                        percentage={Math.round(((displayStats.pipeline?.reseau || 0) / (displayStats.totalHouseholds || 1)) * 100)}
+                                    />
+                                    <ProgressBar
+                                        label="Installations Intérieures"
+                                        count={`${displayStats.pipeline?.interieur || 0} SITES`}
+                                        percentage={Math.round(((displayStats.pipeline?.interieur || 0) / (displayStats.totalHouseholds || 1)) * 100)}
+                                    />
+                                    <ProgressBar
+                                        label="Mise en Service Finale"
+                                        count={`${displayStats.electrifiedHouseholds} SITES`}
+                                        percentage={displayStats.progressPercent}
+                                        status="success"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div className="p-10 rounded-[3rem] bg-slate-900/40 border border-white/5 backdrop-blur-3xl shadow-xl">
+                                    <h3 className="text-[11px] font-black text-blue-400/40 uppercase tracking-[0.4em] mb-8 italic flex items-center gap-3">
+                                        <Box size={18} className="text-blue-500" /> LOGISTICS TRACKER
+                                    </h3>
+                                    <div className="space-y-4">
+                                        <div className="flex justify-between items-center bg-white/[0.03] p-6 rounded-2xl border border-white/5 group hover:bg-white/[0.05] transition-all">
+                                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic group-hover:text-blue-400 transition-colors">KITS DEPLOYED</span>
+                                            <span className="text-2xl font-black text-white italic">{fmtNum(displayStats.logistics?.kitPrepared || 0)}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center bg-white/[0.03] p-6 rounded-2xl border border-white/5 group hover:bg-white/[0.05] transition-all">
+                                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic group-hover:text-blue-400 transition-colors">AVG CABLE / HOUSE</span>
+                                            <span className="text-2xl font-black text-white italic">{displayStats.performance?.avgCablePerHouse || 0}m</span>
+                                        </div>
+                                        <div className="flex justify-between items-center bg-rose-500/5 p-6 rounded-2xl border border-rose-500/10">
+                                            <span className="text-[10px] font-black text-rose-500/60 uppercase tracking-widest italic">LOGISTICS GAP</span>
+                                            <span className="text-2xl font-black text-rose-500 italic">-{displayStats.logistics?.gap || 0}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="p-10 rounded-[3rem] bg-slate-900/40 border border-white/5 backdrop-blur-3xl shadow-xl flex flex-col">
+                                    <h3 className="text-[11px] font-black text-blue-400/40 uppercase tracking-[0.4em] mb-4 italic flex items-center gap-3">
+                                        <Activity size={18} className="text-blue-500" /> DAILY RENDERING
+                                    </h3>
+                                    <div className="flex-1 flex flex-col items-center justify-center py-6">
+                                        <div className="text-7xl font-black text-white italic tracking-tighter drop-shadow-xl">{displayStats.performance?.avgPerDay || 0}</div>
+                                        <p className="text-[10px] font-black text-blue-500/40 uppercase tracking-[0.3em] mt-2 italic">AVERAGE YIELD / DAY</p>
+                                        <div className="w-full h-24 flex items-end justify-between px-4 gap-2 mt-10">
+                                            {[40, 60, 45, 75, 80, 95, 85].map((h, i) => (
+                                                <motion.div
+                                                    key={i}
+                                                    initial={{ height: 0 }}
+                                                    animate={{ height: `${h}%` }}
+                                                    className="flex-1 bg-blue-600/30 rounded-t-lg hover:bg-blue-500 transition-colors cursor-pointer"
+                                                />
+                                            ))}
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="bg-white p-6 rounded-[20px] border border-gray-100 shadow-sm">
-                            <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-6 flex items-center gap-2">
-                                <Activity size={14} className="text-blue-600" /> Rendement Quotidien
-                            </h3>
-                            <div className="flex flex-col items-center justify-center h-full pb-8">
-                                <div className="text-5xl font-black text-gray-900 mb-1">{displayStats.performance?.avgPerDay || 0}</div>
-                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-6">Ménages / Jour (Moyenne)</p>
-                                <div className="w-full h-24 flex items-end justify-between px-2 gap-1">
-                                    {perfData?.dailyYield?.map((h: number, i: number) => (
-                                        <div key={i} className="flex-1 bg-blue-100 rounded-t-lg group relative" style={{ height: `${h}%` }} /* eslint-disable-line no-inline-styles */>​
-                                            <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-[9px] font-bold opacity-0 group-hover:opacity-100 transition-opacity bg-black text-white px-1 rounded">J{i + 1}</div>
+                        {/* ── CONTROL & ACTIVITY (Right) ── */}
+                        <div className="lg:col-span-4 space-y-10">
+                            <div className="p-10 rounded-[3rem] bg-slate-900/40 border border-white/5 backdrop-blur-3xl shadow-xl">
+                                <AlertPanel>
+                                    <AnimatePresence>
+                                        {displayStats.problemHouseholds > 0 && (
+                                            <motion.div
+                                                initial={{ opacity: 0, scale: 0.9 }}
+                                                animate={{ opacity: 1, scale: 1 }}
+                                                className="flex gap-4 p-6 bg-rose-500/10 rounded-3xl border border-rose-500/20 mb-4"
+                                            >
+                                                <AlertCircle size={22} className="text-rose-500 shrink-0" />
+                                                <div>
+                                                    <p className="text-xs font-black text-rose-500 uppercase tracking-[0.1em] italic">CRITICAL INCIDENTS</p>
+                                                    <p className="text-[11px] text-slate-400 mt-2 leading-relaxed font-bold">{displayStats.problemHouseholds} UNITS REQUIRE IMMEDIATE ACTION.</p>
+                                                </div>
+                                            </motion.div>
+                                        )}
+                                        {displayStats.syncHealth !== 'healthy' && (
+                                            <motion.div
+                                                initial={{ opacity: 0, scale: 0.9 }}
+                                                animate={{ opacity: 1, scale: 1 }}
+                                                className="flex gap-4 p-6 bg-amber-500/10 rounded-3xl border border-amber-500/20"
+                                            >
+                                                <RefreshCw size={22} className="text-amber-500 shrink-0" />
+                                                <div>
+                                                    <p className="text-xs font-black text-amber-500 uppercase tracking-[0.1em] italic">SYNC WARNING</p>
+                                                    <p className="text-[11px] text-slate-400 mt-2 leading-relaxed font-bold">LATENCY DETECTED IN CLOUD UPLINK.</p>
+                                                </div>
+                                            </motion.div>
+                                        )}
+                                        {displayStats.problemHouseholds === 0 && displayStats.syncHealth === 'healthy' && (
+                                            <div className="py-14 text-center bg-white/[0.02] rounded-[2.5rem] border border-dashed border-white/10">
+                                                <CheckCircle2 size={48} className="text-emerald-500 mx-auto mb-4 opacity-20" />
+                                                <p className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] italic">ALL SYSTEMS NOMINAL</p>
+                                            </div>
+                                        )}
+                                    </AnimatePresence>
+                                </AlertPanel>
+                            </div>
+
+                            <div className="p-10 rounded-[3.5rm] bg-slate-900/40 border border-white/5 backdrop-blur-3xl shadow-2xl h-[500px] flex flex-col overflow-hidden">
+                                <ActivityFeed activities={feedActivities} />
+                            </div>
+
+                            <div className="p-10 rounded-[3rem] bg-indigo-600/10 border border-indigo-500/20 backdrop-blur-3xl shadow-xl relative overflow-hidden group">
+                                <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-indigo-500/20 blur-[80px] rounded-full group-hover:bg-indigo-500/30 transition-all duration-1000" />
+                                <h3 className="text-[11px] font-black text-indigo-400 uppercase tracking-[0.4em] mb-8 italic flex items-center gap-3">
+                                    <Calendar size={18} /> MISSION SCHEDULER
+                                </h3>
+                                <div className="space-y-5 relative z-10">
+                                    {missions.length > 0 ? missions.slice(0, 3).map((m, i) => (
+                                        <div key={i} className="p-6 rounded-3xl bg-white/[0.03] border border-white/5 hover:bg-white/[0.06] transition-all cursor-pointer group">
+                                            <div className="flex justify-between items-start mb-3">
+                                                <p className="text-sm font-black tracking-tight text-white italic uppercase">{m.purpose}</p>
+                                                <StatusBadge status={m.isCertified ? 'success' : 'info'} label={m.isCertified ? 'CERT' : 'LIVE'} />
+                                            </div>
+                                            <p className="text-[10px] text-indigo-300 font-black uppercase tracking-widest opacity-60">{m.startDate} › {m.endDate}</p>
                                         </div>
-                                    )) || [40, 60, 45, 75, 80, 95, 85].map((h, i) => (
-                                        <div key={i} className="flex-1 bg-blue-100 rounded-t-lg group relative" style={{ height: `${h}%` }} /* eslint-disable-line no-inline-styles */>
-                                            <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-[9px] font-bold opacity-0 group-hover:opacity-100 transition-opacity bg-black text-white px-1 rounded">J{i + 1}</div>
+                                    )) : (
+                                        <div className="py-14 text-center opacity-20 flex flex-col items-center border border-dashed border-white/10 rounded-2xl">
+                                            <Calendar size={32} className="mb-4" />
+                                            <p className="text-[10px] font-black uppercase tracking-[0.2em]">NO UPCOMING MISSIONS</p>
                                         </div>
-                                    ))}
+                                    )}
                                 </div>
                             </div>
                         </div>
                     </div>
+
+                    {/* ── FOOTER ── */}
+                    <div className="flex flex-col sm:flex-row gap-8 pt-16 border-t border-white/5 relative z-10">
+                        <button onClick={() => navigate('/rapports')} className="flex-1 flex items-center gap-6 px-10 py-8 bg-slate-900/40 rounded-[2.5rem] border border-white/5 hover:border-blue-500/40 transition-all group backdrop-blur-xl">
+                            <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center border border-white/5 group-hover:bg-blue-600 group-hover:text-white transition-all shadow-lg">
+                                <BarChart3 size={24} className="text-blue-400 group-hover:text-white transition-colors" />
+                            </div>
+                            <div className="text-left">
+                                <p className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-500 italic group-hover:text-blue-400">DATA CENTER</p>
+                                <p className="text-sm font-black text-white italic uppercase tracking-tighter mt-1">Export Global Report</p>
+                            </div>
+                        </button>
+                        <button onClick={() => navigate('/admin/users')} className="flex-1 flex items-center gap-6 px-10 py-8 bg-slate-900/40 rounded-[2.5rem] border border-white/5 hover:border-blue-500/40 transition-all group backdrop-blur-xl">
+                            <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center border border-white/5 group-hover:bg-blue-600 group-hover:text-white transition-all shadow-lg">
+                                <Users size={24} className="text-blue-400 group-hover:text-white transition-colors" />
+                            </div>
+                            <div className="text-left">
+                                <p className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-500 italic group-hover:text-blue-400">IDENTITY ACCESS</p>
+                                <p className="text-sm font-black text-white italic uppercase tracking-tighter mt-1">User Management Console</p>
+                            </div>
+                        </button>
+                    </div>
+
                 </div>
-
-                {/* ── LEVEL 4: CONTROL & ACTIVITY (Right) ── */}
-                <div className="lg:col-span-4 space-y-8">
-                    <div className="bg-white p-6 rounded-[20px] border border-gray-100 shadow-sm">
-                        <AlertPanel>
-                            {displayStats.problemHouseholds > 0 && (
-                                <div className="flex gap-3 p-4 bg-rose-50 rounded-xl border border-rose-100 mb-3">
-                                    <AlertCircle size={18} className="text-rose-600 shrink-0" />
-                                    <div>
-                                        <p className="text-xs font-bold text-rose-900 tracking-tight">Anomalies Détectées</p>
-                                        <p className="text-[10px] text-rose-700 mt-0.5">{displayStats.problemHouseholds} ménages nécessitent une intervention immédiate.</p>
-                                    </div>
-                                </div>
-                            )}
-                            {displayStats.syncHealth !== 'healthy' && (
-                                <div className="flex gap-3 p-4 bg-amber-50 rounded-xl border border-amber-100">
-                                    <RefreshCw size={18} className="text-amber-600 shrink-0" />
-                                    <div>
-                                        <p className="text-xs font-bold text-amber-900 tracking-tight">Synchronisation Requise</p>
-                                        <p className="text-[10px] text-amber-700 mt-0.5">Le faisceau Cloud GEM présente un retard de synchronisation.</p>
-                                    </div>
-                                </div>
-                            )}
-                            {displayStats.problemHouseholds === 0 && displayStats.syncHealth === 'healthy' && (
-                                <div className="py-8 text-center bg-gray-50 rounded-xl border border-dashed border-gray-200">
-                                    <CheckCircle2 size={32} className="text-emerald-500 mx-auto mb-3 opacity-30" />
-                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Aucune alerte critique</p>
-                                </div>
-                            )}
-                        </AlertPanel>
-                    </div>
-
-                    <div className="bg-white p-6 rounded-[20px] border border-gray-100 shadow-sm h-[400px] overflow-hidden flex flex-col">
-                        <ActivityFeed activities={feedActivities} />
-                    </div>
-
-                    <div className="bg-[#0D1E35] p-6 rounded-[20px] shadow-xl text-white relative overflow-hidden group">
-                        <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-blue-500/20 blur-3xl rounded-full" />
-                        <h3 className="text-[10px] font-bold text-blue-300 uppercase tracking-widest mb-4 flex items-center gap-2">
-                            <Calendar size={14} /> Planning Missions
-                        </h3>
-                        <div className="space-y-4">
-                            {missions.length > 0 ? missions.slice(0, 2).map((m, i) => (
-                                <div key={i} className="bg-white/5 p-4 rounded-xl border border-white/5 hover:bg-white/10 transition-colors cursor-pointer group">
-                                    <div className="flex justify-between items-start mb-2">
-                                        <p className="text-xs font-bold tracking-tight text-white mb-0.5">{m.purpose}</p>
-                                        <StatusBadge status={m.isCertified ? 'success' : 'info'} label={m.isCertified ? 'Certifié' : 'Actif'} />
-                                    </div>
-                                    <p className="text-[10px] text-blue-200/60 font-medium uppercase tracking-wider">{m.startDate} au {m.endDate}</p>
-                                    <div className="mt-3 flex items-center gap-2">
-                                        <div className="flex-1 h-1 bg-white/10 rounded-full overflow-hidden">
-                                            <div className="h-full bg-blue-400" style={{ width: '65%' }} /* eslint-disable-line no-inline-styles *//>
-                                        </div>
-                                        <span className="text-[9px] font-black">65%</span>
-                                    </div>
-                                </div>
-                            )) : (
-                                <div className="py-10 text-center opacity-30 flex flex-col items-center">
-                                    <Calendar size={24} className="mb-2" />
-                                    <p className="text-[10px] font-bold uppercase tracking-widest tracking-widest">Aucune mission</p>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* ── FOOTER ── */}
-            <div className="flex flex-col sm:flex-row gap-4 pt-10 border-t border-gray-100">
-                <button onClick={() => navigate('/rapports')} className="flex items-center gap-3 px-6 py-4 bg-white rounded-2xl border border-gray-200 text-[11px] font-black uppercase tracking-[0.2em] text-gray-500 hover:border-blue-500 hover:text-blue-600 transition-all hover:shadow-lg hover:shadow-blue-500/5 group">
-                    <BarChart3 size={16} className="text-gray-400 group-hover:text-blue-600 transition-colors" />
-                    Exporter Rapport Global
-                </button>
-                <button onClick={() => navigate('/admin/users')} className="flex items-center gap-3 px-6 py-4 bg-white rounded-2xl border border-gray-200 text-[11px] font-black uppercase tracking-[0.2em] text-gray-500 hover:border-blue-500 hover:text-blue-600 transition-all hover:shadow-lg hover:shadow-blue-500/5 group">
-                    <Users size={16} className="text-gray-400 group-hover:text-blue-600 transition-colors" />
-                    Console Utilisateurs
-                </button>
-            </div>
-
-        </div>
+            </ContentArea>
+            
+            {/* L'IA SAGE GEM-MINT (OMNISCIENTE & SÉCURE) */}
+            <MissionMentor stats={missionStats} />
+        </PageContainer>
     );
 }
