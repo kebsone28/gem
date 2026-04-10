@@ -37,7 +37,7 @@ export const useHouseholdDataSync = (
         seenNumeros.set(identifier, feature);
       } else {
         console.log(
-          `🔄 [Dedup] Ménage ${numeroordre}: removing newer GPS [${feature.geometry.coordinates}], keeping old [${seenNumeros.get(numeroordre).geometry.coordinates}]`
+          `🔄 [Dedup] Ménage ${identifier}: removing newer GPS [${feature.geometry.coordinates}], keeping old [${seenNumeros.get(identifier).geometry.coordinates}]`
         );
       }
     });
