@@ -534,14 +534,30 @@ export const DataHubModal: React.FC<DataHubModalProps> = ({ isOpen, onClose }) =
                             )}
 
                             {activeTab === 'kobo' && (
-                                <div className="flex flex-col items-center justify-center p-4 md:p-10 text-center">
                                     <RefreshCcw size={48} className={`text-indigo-500 mb-4 md:mb-6 ${isProcessing ? 'animate-spin' : ''}`} />
                                     <h3 className="text-white font-black italic uppercase text-base md:text-lg mb-2">Synchronisation Kobo</h3>
                                     
                                     {!isProcessing && koboStep === 0 && (
                                         <>
                                             <p className="text-slate-500 text-xs mb-8 uppercase tracking-widest">Récupérez les nouveaux ménages du serveur</p>
-                                            <button onClick={handleKoboSync} disabled={isProcessing} className="px-10 py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-indigo-500 transition-all shadow-xl shadow-indigo-500/20">Lancer la Sync</button>
+                                            <div className="w-full max-w-xs space-y-4">
+                                                <button 
+                                                    disabled={isProcessing}
+                                                    onClick={() => handleKoboSync(false)}
+                                                    className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-lg hover:shadow-indigo-500/25 flex items-center justify-center gap-3"
+                                                >
+                                                    <RefreshCcw className={`w-4 h-4 ${isProcessing ? 'animate-spin' : ''}`} />
+                                                    {isProcessing ? 'Synchronisation...' : 'Lancer la Synchronisation'}
+                                                </button>
+
+                                                <button 
+                                                    disabled={isProcessing}
+                                                    onClick={() => handleKoboSync(true)}
+                                                    className="w-full py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-400 hover:text-white rounded-2xl font-bold text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2"
+                                                >
+                                                    Forcer une synchronisation totale
+                                                </button>
+                                            </div>
                                         </>
                                     )}
 

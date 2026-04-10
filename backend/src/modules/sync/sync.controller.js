@@ -584,7 +584,12 @@ export const syncKobo = async (req, res) => {
 
         // Use the proper kobo.service (has KOBO_TOKEN from .env)
         const { syncKoboToDatabase } = await import('../../services/kobo.service.js');
-        const results = await syncKoboToDatabase(organizationId, defaultZoneId, null);
+        
+        // --- FORCE FULL SYNC IF REQUESTED ---
+        const force = req.body.force === true;
+        const lastSyncDate = force ? new Date(0) : null; // Date(0) = 1970, force tout reprendre
+
+        const results = await syncKoboToDatabase(organizationId, defaultZoneId, lastSyncDate);
 
         // Sync Log
         try {
