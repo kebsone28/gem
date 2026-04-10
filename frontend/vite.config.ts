@@ -160,30 +160,19 @@ export default defineConfig({
     chunkSizeWarningLimit: 2500,
     rollupOptions: {
       output: {
-        manualChunks(id) {
-          // MapLibre GL + WASM → isolated chunk (heavy WebGL)
-          if (id.includes('maplibre-gl')) return 'maplibre';
-          // Leaflet ecosystem
-          if (id.includes('leaflet')) return 'leaflet';
-          // PDF generation
-          if (id.includes('jspdf') || id.includes('jspdf-autotable') || id.includes('html2canvas'))
-            return 'pdf';
-          // Spreadsheet
-          if (id.includes('xlsx')) return 'xlsx';
-          // Framer Motion animations
-          if (id.includes('framer-motion')) return 'animation';
-          // Dexie offline DB
-          if (id.includes('dexie')) return 'dexie';
-          // Core React ecosystem in one stable chunk
-          if (
-            id.includes('node_modules/react') ||
-            id.includes('node_modules/react-dom') ||
-            id.includes('node_modules/react-router-dom')
-          )
-            return 'vendor-react';
-          // General vendor (axios, lucide, etc.)
-          if (id.includes('node_modules')) return 'vendor';
-        },
+          // Core dependencies (React, Router, Axios, Lucide, etc.) in one stable chunk
+          if (id.includes('node_modules')) {
+             // Keep internal bulky libs isolated as planned
+             if (id.includes('maplibre-gl')) return 'maplibre';
+             if (id.includes('leaflet')) return 'leaflet';
+             if (id.includes('jspdf') || id.includes('jspdf-autotable') || id.includes('html2canvas')) return 'pdf';
+             if (id.includes('xlsx')) return 'xlsx';
+             if (id.includes('framer-motion')) return 'animation';
+             if (id.includes('dexie')) return 'dexie';
+             
+             // Everything else in a single vendor chunk to avoid circularity
+             return 'vendor';
+          }
       },
     },
   },
