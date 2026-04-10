@@ -518,6 +518,8 @@ export const DataHubModal: React.FC<DataHubModalProps> = ({ isOpen, onClose }) =
                                             </div>
                                             <button 
                                                 onClick={() => setUseServerImport(!useServerImport)}
+                                                title="Basculer entre l'import local et l'import direct serveur"
+                                                aria-label="Basculer le mode d'importation"
                                                 className={`relative w-12 h-6 rounded-full transition-colors ${useServerImport ? 'bg-indigo-600' : 'bg-slate-700'}`}
                                             >
                                                 <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${useServerImport ? 'translate-x-6' : ''}`} />

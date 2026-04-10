@@ -5,10 +5,6 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 // ✅ Optimize worker threads for terrain use
 maplibregl.setWorkerCount(2);
 
-import {
-    MAP_STYLE_DARK,
-    MAP_STYLE_LIGHT_VECTOR, MAP_STYLE_SATELLITE
-} from './mapConfig';
 import { useMapInteractions } from './useMapInteractions';
 import { useMapClustering } from './useMapClustering';
 import { useMemorizedSupercluster } from './useMemorizedSupercluster';
@@ -20,6 +16,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { globalSingletonMap } from '../../services/map/MapSingleton';
 import { registerTileCacheProtocol } from '../../services/map/tileCacheService';
 import { useViewportLoading } from '../../hooks/useViewportLoading';
+import { logger } from '../../utils/logger';
 
 // Import Modular Layers
 import BackgroundLayer from './layers/BackgroundLayer';
@@ -93,7 +90,7 @@ const MapLibreVectorMap: React.FC<any> = ({
     // ── VIEWPORT LOADING ──
     // ❌ Désactivé : peut tromper l'utilisateur en ne montrant que les ménages visibles
     // On garde le chargement complet de tous les ménages pour une vue d'ensemble fidèle
-    const { visibleHouseholds, isLoadingViewport, updateViewport } = useViewportLoading({
+    useViewportLoading({
         enabled: false, // Désactivé pour éviter la confusion utilisateur
         projectId,
         debounceMs: 300,

@@ -357,11 +357,14 @@ export const MissionMentor: React.FC<MissionMentorProps> = ({ stats, auditLogs, 
                         <div className="p-6 bg-slate-900 border-t border-white/5">
                             <div className="relative group">
                                 <input 
+                                    id="ai-camera-upload"
                                     type="file" 
                                     accept="image/*" 
                                     capture="environment" 
                                     className="hidden" 
                                     ref={fileInputRef}
+                                    title="Capturer une photo pour analyse IA"
+                                    aria-label="Charger une image ou prendre une photo"
                                     onChange={handleCameraUpload}
                                 />
                                 <input 

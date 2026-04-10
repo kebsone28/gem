@@ -177,7 +177,10 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
                         
                         <div className="relative pt-4 pb-2">
                             <div className="absolute left-0 top-6 bottom-0 w-1 bg-white/10 rounded-full" />
-                            <div className="absolute left-0 top-6 w-1 bg-gradient-to-b from-emerald-400 to-blue-500 rounded-full transition-all duration-1000" style={{ height: `${progressPercent}%` }} />
+                            <div 
+                                className="absolute left-0 top-6 w-1 bg-gradient-to-b from-emerald-400 to-blue-500 rounded-full transition-all duration-1000" 
+                                style={{ height: `${progressPercent}%` } as React.CSSProperties} 
+                            />
                             
                             <div className="space-y-6">
                                 {timelineStages.map((stage, idx) => {
@@ -218,12 +221,21 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
                                     <label className="aspect-[4/3] rounded-[1.5rem] border-2 border-dashed border-white/10 bg-slate-900/40 hover:bg-white/5 transition-all flex flex-col items-center justify-center p-6 text-slate-500 hover:border-blue-500/30 group cursor-pointer shadow-inner">
                                         <Plus size={24} className="mb-2 group-hover:text-blue-400 group-hover:scale-110 transition-all opacity-40 group-hover:opacity-100" />
                                         <span className="text-[9px] font-black uppercase tracking-[0.1em] text-center">Preuve Photo</span>
-                                        <input type="file" className="hidden" accept="image/*" capture="environment" title="Uploader une photo" onChange={async (e) => {
-                                            const file = e.target.files?.[0]; if (!file) return;
-                                            const tid = toast.loading('Upload...'); 
-                                            try { await onPhotoUpload(file); toast.success('Upload OK ✓', { id: tid }); } 
-                                            catch { toast.error('Erreur', { id: tid }); }
-                                        }} />
+                                        <input 
+                                            id="household-photo-upload"
+                                            type="file" 
+                                            className="hidden" 
+                                            accept="image/*" 
+                                            capture="environment" 
+                                            title="Uploader une photo de preuve terrain" 
+                                            aria-label="Charger une photo de preuve"
+                                            onChange={async (e) => {
+                                                const file = e.target.files?.[0]; if (!file) return;
+                                                const tid = toast.loading('Upload...'); 
+                                                try { await onPhotoUpload(file); toast.success('Upload OK ✓', { id: tid }); } 
+                                                catch { toast.error('Erreur', { id: tid }); }
+                                            }} 
+                                        />
                                     </label>
                                 ) : (
                                     <div className="aspect-[4/3] rounded-[1.5rem] border border-white/5 bg-slate-900/20 flex flex-col items-center justify-center p-6 text-slate-600 shadow-inner">
