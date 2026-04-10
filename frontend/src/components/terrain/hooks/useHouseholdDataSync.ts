@@ -28,13 +28,13 @@ export const useHouseholdDataSync = (
     const seenNumeros = new Map<string, any>();
 
     features.forEach((feature) => {
-      // Use numeroordre as the immutable household identifier
-      const numeroordre = feature.properties?.numeroordre;
-      if (!numeroordre) return;
+      // Use numeroordre as the identifier, fallback to ID if missing
+      const identifier = feature.properties?.numeroordre || feature.properties?.id || feature.id;
+      if (!identifier) return;
 
       // Keep only first occurrence (oldest GPS)
-      if (!seenNumeros.has(numeroordre)) {
-        seenNumeros.set(numeroordre, feature);
+      if (!seenNumeros.has(identifier)) {
+        seenNumeros.set(identifier, feature);
       } else {
         console.log(
           `🔄 [Dedup] Ménage ${numeroordre}: removing newer GPS [${feature.geometry.coordinates}], keeping old [${seenNumeros.get(numeroordre).geometry.coordinates}]`
@@ -51,12 +51,12 @@ export const useHouseholdDataSync = (
    */
   const dataHash = useMemo(() => {
     if (householdGeoJSON?.features?.length > 0) {
-      const deduplicated = deduplicateKeepOldestGPS(householdGeoJSON.features);
-      const numeroordres = deduplicated
-        .map((f: any) => f.properties?.numeroordre)
+      const deduplicatedFeatures = deduplicateKeepOldestGPS(householdGeoJSON.features);
+      const identifiers = deduplicatedFeatures
+        .map((f: any) => f.properties?.numeroordre || f.properties?.id || f.id)
         .sort()
         .join('|');
-      return `worker:${deduplicated.length}:${numeroordres}`;
+      return `worker:${deduplicatedFeatures.length}:${identifiers}`;
     }
     if (households && households.length > 0) {
       const numeroordres = households
@@ -121,7 +121,7 @@ export const useHouseholdDataSync = (
         // Log first few features for inspection
         householdGeoJSON.features.slice(0, 3).forEach((f: any, i: number) => {
           console.log(
-            `  Feature ${i}: id=${f.properties?.id}, coords=${f.geometry.coordinates}, numeroordre=${f.properties?.numeroordre}`
+            `  Feature ${i}: id=${f.properties?.id || f.id}, coords=${f.geometry.coordinates}, numeroordre=${f.properties?.numeroordre || 'N/A'}`
           );
         });
 
