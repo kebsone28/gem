@@ -28,7 +28,11 @@ export const config = {
                 'http://localhost:3000',
                 'http://localhost:5173',
                 'http://localhost:5174',
-                'http://localhost:5175'
+                'http://localhost:5175',
+                'http://gem.proquelec.sn',
+                'https://gem.proquelec.sn',
+                'http://www.gem.proquelec.sn',
+                'https://www.gem.proquelec.sn'
             ];
             // Allow requests with no origin (like mobile apps or curl) or if origin is in allowed list
             if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
