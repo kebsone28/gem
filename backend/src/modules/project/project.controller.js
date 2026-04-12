@@ -3,6 +3,8 @@ import prisma from '../../core/utils/prisma.js';
 import { tracerAction } from '../../services/audit.service.js';
 import { socketService } from '../../services/socket.service.js';
 import { recalculateProjectGrappes } from '../../services/project_config.service.js';
+import { exec } from 'child_process';
+import path from 'path';
 
 const DONE_STATUSES = new Set(['completed', 'Terminé', 'Réception: Validée', 'Conforme']);
 
@@ -504,5 +506,60 @@ export const resetProjectData = async (req, res) => {
     } catch (error) {
         console.error('Project reset error:', error);
         res.status(500).json({ error: 'Failed to reset project data' });
+    }
+};
+
+/**
+ * 🚀 DEPLOY: Lance la mise à jour du VPS depuis l'interface
+ */
+export const deployServerUpdate = async (req, res) => {
+    try {
+        const { email, organizationId } = req.user;
+
+        // 🛡️ SÉCURITÉ : Seul l'administrateur principal (admingem) peut déployer
+        if (email !== 'admingem') {
+            return res.status(403).json({ error: 'Privilèges insuffisants pour le déploiement système.' });
+        }
+
+        const projectPath = '/var/www/proquelec/gem-saas';
+        const command = `cd ${projectPath} && git pull origin main && cd frontend && npx vite build`;
+
+        console.log(`[SYSTEM] Déploiement initié par ${email}`);
+
+        // On lance en arrière-plan pour ne pas bloquer la requête HTTP
+        exec(command, (error, stdout, stderr) => {
+            if (error) {
+                console.error(`[DEPLOY ERROR]: ${error.message}`);
+                return;
+            }
+            console.log(`[DEPLOY SUCCESS]: ${stdout}`);
+            
+            // Notification via Socket.io quand c'est fini
+            socketService.emit('notification', {
+                type: 'SUCCESS',
+                message: 'Le serveur a été mis à jour avec succès !',
+                data: { action: 'DEPLOY_COMPLETED' }
+            });
+        });
+
+        // Audit Log
+        await tracerAction({
+            userId: req.user.id,
+            organizationId,
+            action: 'DEPLOY_SYSTEME',
+            resource: 'Serveur',
+            resourceId: 'PROD',
+            details: { initiator: email },
+            req
+        });
+
+        res.json({ 
+            message: 'Déploiement lancé avec succès.', 
+            details: 'L\'opération dure environ 60 secondes en arrière-plan.' 
+        });
+
+    } catch (error) {
+        console.error('Deploy route error:', error);
+        res.status(500).json({ error: 'Erreur lors de l\'initialisation du déploiement' });
     }
 };

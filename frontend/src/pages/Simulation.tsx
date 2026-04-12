@@ -232,7 +232,7 @@ export default function Simulation() {
                         </div>
                         <button
                             onClick={handleOptimize}
-                            className="flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-emerald-500 to-emerald-700 hover:from-emerald-400 hover:to-emerald-600 text-slate-900 dark:text-white font-black rounded-2xl transition-all shadow-xl shadow-emerald-600/20 active:scale-95 group"
+                            className="w-full sm:w-auto flex justify-center items-center gap-3 px-6 py-3 bg-gradient-to-r from-emerald-500 to-emerald-700 hover:from-emerald-400 hover:to-emerald-600 text-slate-900 dark:text-white font-black rounded-2xl transition-all shadow-xl shadow-emerald-600/20 active:scale-95 group"
                         >
                             <Zap className="group-hover:animate-pulse" size={20} />
                             LANCER L'IA D'OPTIMISATION

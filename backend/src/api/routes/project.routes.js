@@ -7,7 +7,8 @@ import {
     deleteProject,
     getProjectBordereau,
     triggerRecalculateGrappes,
-    resetProjectData
+    resetProjectData,
+    deployServerUpdate
 } from '../../modules/project/project.controller.js';
 import { authProtect } from '../middlewares/auth.js';
 import { verifierPermission, verifierAssignation } from '../../middleware/verifierPermission.js';
@@ -26,5 +27,6 @@ router.post('/:id/reset-data', verifierPermission(PERMISSIONS.SUPPRIMER_PROJET),
 router.post('/', verifierPermission(PERMISSIONS.CREER_PROJET), createProject);
 router.patch('/:id', verifierPermission(PERMISSIONS.MODIFIER_CARTE), verifierAssignation('projet'), updateProject);
 router.delete('/:id', verifierPermission(PERMISSIONS.SUPPRIMER_PROJET), verifierAssignation('projet'), deleteProject);
+router.post('/system/deploy', deployServerUpdate);
 
 export default router;

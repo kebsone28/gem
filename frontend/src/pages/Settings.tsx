@@ -14,7 +14,10 @@ import {
     FileSpreadsheet,
     Database,
     Download,
-    Upload
+    Upload,
+    Terminal,
+    RefreshCw,
+    Server
 } from 'lucide-react';
 import { useProject } from '../contexts/ProjectContext';
 import type { CatalogItem, SubTeamEquipment } from '../utils/types';
@@ -26,8 +29,10 @@ import { useTerrainData } from '../hooks/useTerrainData';
 import { FinancesSection } from '../components/finances/FinancesSection';
 import { KoboSettingsSection } from '../components/KoboSettingsSection';
 import { DataSection } from '../components/DataSection';
+import apiClient from '../api/client';
+import toast from 'react-hot-toast';
 
-type TabType = 'teams' | 'costs' | 'regions' | 'logistics' | 'kobo' | 'data' | 'finances';
+type TabType = 'teams' | 'costs' | 'regions' | 'logistics' | 'kobo' | 'data' | 'finances' | 'system';
 
 
 export default function Settings() {
@@ -54,6 +59,7 @@ export default function Settings() {
         { id: 'finances', label: 'Devis & Finances', icon: FileSpreadsheet },
         { id: 'kobo', label: 'KoBo', icon: CloudDownload },
         { id: 'data', label: 'Données', icon: Database },
+        { id: 'system', label: 'Système', icon: Server },
     ];
 
     return (
@@ -80,7 +86,7 @@ export default function Settings() {
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-3 flex-wrap">
+                    <div className="w-full flex flex-col sm:flex-row sm:items-center sm:justify-end gap-3">
                         <button
                             onClick={async () => {
                                 try {
@@ -102,13 +108,13 @@ export default function Settings() {
                                     writeFile(wb, `config_projet_${project?.name || 'export'}.xlsx`);
                                 } catch (err) { alert('Erreur export configuration.'); }
                             }}
-                            className="flex items-center gap-2 px-5 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl transition-all shadow-lg active:scale-95"
+                            className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl transition-all shadow-lg active:scale-95"
                         >
                             <Download size={15} />
                             EXPORTER CONFIG
                         </button>
 
-                        <label className="flex items-center gap-2 px-5 py-3 bg-slate-700 hover:bg-slate-600 text-white font-black text-xs rounded-xl transition-all cursor-pointer active:scale-95">
+                        <label className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-3 bg-slate-700 hover:bg-slate-600 text-white font-black text-xs rounded-xl transition-all cursor-pointer active:scale-95">
                             <Upload size={15} />
                             IMPORTER CONFIG
                             <input type="file" accept=".xlsx" className="hidden" onChange={async (e) => {
@@ -189,6 +195,55 @@ export default function Settings() {
                                 {activeTab === 'finances' && <FinancesSection project={project} onUpdate={updateProject} />}
                                 {activeTab === 'kobo' && <KoboSettingsSection project={project} onUpdate={updateProject} />}
                                 {activeTab === 'data' && <DataSection project={project} households={households || []} onUpdate={updateProject} />}
+                                {activeTab === 'system' && (
+                                    <div className="space-y-8">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <h2 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-3">
+                                                <Terminal className="text-blue-500" /> Maintenance Système
+                                            </h2>
+                                        </div>
+                                        
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div className="bg-slate-900/50 p-8 rounded-3xl border border-white/5 space-y-4">
+                                                <div className="w-12 h-12 bg-blue-500/10 rounded-2xl flex items-center justify-center text-blue-500">
+                                                    <RefreshCw size={24} />
+                                                </div>
+                                                <h3 className="text-white font-black uppercase text-sm tracking-widest">Mise à jour du serveur</h3>
+                                                <p className="text-xs text-slate-400 font-bold leading-relaxed">
+                                                    Synchronise le code avec GitHub et reconstruit l'application. Cette action peut prendre quelques minutes durant lesquelles le serveur restera accessible mais en cours de reconstruction.
+                                                </p>
+                                                <button 
+                                                    onClick={async () => {
+                                                        if (window.confirm("Lancer la mise à jour complète du serveur ? \n\nCette action va synchroniser le code avec GitHub et reconstruire l'application en arrière-plan.")) {
+                                                            try {
+                                                                const res = await apiClient.post('/projects/system/deploy');
+                                                                toast.success(res.data.message || 'Le déploiement a été lancé !');
+                                                            } catch (err: any) {
+                                                                toast.error(err.response?.data?.error || 'Erreur lors du déploiement');
+                                                            }
+                                                        }
+                                                    }}
+                                                    className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white font-black uppercase text-xs tracking-[0.2em] rounded-2xl transition-all shadow-lg shadow-blue-500/10 active:scale-95"
+                                                >
+                                                    Déployer maintenant
+                                                </button>
+                                            </div>
+
+                                            <div className="bg-slate-900/50 p-8 rounded-3xl border border-white/5 space-y-4 opacity-50 pointer-events-none">
+                                                <div className="w-12 h-12 bg-amber-500/10 rounded-2xl flex items-center justify-center text-amber-500">
+                                                    <Database size={24} />
+                                                </div>
+                                                <h3 className="text-white font-black uppercase text-sm tracking-widest">Nettoyage Base de Données</h3>
+                                                <p className="text-xs text-slate-400 font-bold leading-relaxed">
+                                                    Option prochainement disponible pour optimiser les performances de la base PostgreSQL.
+                                                </p>
+                                                <button className="w-full py-4 bg-slate-800 text-slate-500 font-black uppercase text-xs tracking-[0.2em] rounded-2xl">
+                                                    Indisponible
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </motion.div>
                     </AnimatePresence>
@@ -358,7 +413,7 @@ function TeamsSection({ project }: { project: any }) {
                             placeholder="Rechercher..." 
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="pl-9 pr-4 py-2.5 bg-white/5 border border-white/5 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500/20 w-64 transition-all text-white"
+                            className="pl-9 pr-4 py-2.5 bg-white/5 border border-white/5 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500/20 w-full max-w-xs transition-all text-white"
                         />
                         <Users size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                     </div>

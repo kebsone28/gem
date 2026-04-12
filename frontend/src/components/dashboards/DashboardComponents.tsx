@@ -150,7 +150,7 @@ interface ActionBarProps {
 }
 
 export const ActionBar: React.FC<ActionBarProps> = ({ children, className = '' }) => (
-    <div className={`flex flex-wrap gap-4 items-center bg-white/5 p-4 rounded-[2.2rem] border border-white/5 shadow-inner backdrop-blur-md ${className}`}>
+    <div className={`flex flex-col sm:flex-row flex-wrap gap-4 items-start sm:items-center bg-white/5 p-4 rounded-[2.2rem] border border-white/5 shadow-inner backdrop-blur-md ${className}`}>
         {children}
     </div>
 );

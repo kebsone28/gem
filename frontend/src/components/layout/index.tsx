@@ -74,8 +74,8 @@ export const PageHeader: React.FC<PageHeaderProps> = withAnalytics(({
   // Variant default
   return (
     <div className={`${COMMON_CLASSES.pageHeader} ${className}`}>
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3 min-w-0">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
           {icon && (
             <div
               className="
@@ -88,18 +88,18 @@ export const PageHeader: React.FC<PageHeaderProps> = withAnalytics(({
             </div>
           )}
           <div className="min-w-0">
-            <h1 className={`${COMMON_CLASSES.heading1} mb-0`}>
+            <h1 className={`${COMMON_CLASSES.heading1} mb-0 break-words`}>
               {title}
             </h1>
             {subtitle && (
-              <p className={`${COMMON_CLASSES.body} text-sm mt-0.5`}>
+              <p className={`${COMMON_CLASSES.body} text-sm mt-0.5 break-words`}>
                 {subtitle}
               </p>
             )}
           </div>
         </div>
         {actions && (
-          <div className="flex items-center gap-2 shrink-0 flex-wrap">
+          <div className="flex w-full md:w-auto flex-wrap justify-start md:justify-end gap-2">
             {actions}
           </div>
         )}
