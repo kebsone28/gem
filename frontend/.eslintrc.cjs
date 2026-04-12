@@ -19,5 +19,7 @@ module.exports = {
     'local-rules/flex-child-min-w-0': 'warn',
     'local-rules/icon-button-aria-label': 'warn',
     'local-rules/no-typos-jsx': 'error',
+    '@typescript-eslint/no-explicit-any': 'warn',
+    '@typescript-eslint/no-unused-vars': 'warn',
   },
 };

@@ -91,7 +91,7 @@ function fuzzyContains(query: string, keywords: string[], maxErrors = 2): boolea
     if (w.length < 5) continue;
     for (const k of keywords) {
       if (Math.abs(w.length - k.length) <= maxErrors) {
-        let matrix: number[][] = [];
+        const matrix: number[][] = [];
         for (let i = 0; i <= k.length; i++) matrix[i] = [i];
         for (let j = 0; j <= w.length; j++) matrix[0][j] = j;
         for (let i = 1; i <= k.length; i++) {

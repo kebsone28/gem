@@ -154,7 +154,7 @@ export function useFinances() {
         if (!newConfig.financials) newConfig.financials = {};
         if (!newConfig.financials.plannedCosts) newConfig.financials.plannedCosts = {};
         
-        let sourceItems = [...((newConfig.financials as any).devisItems ?? DEVIS_ITEMS)];
+        const sourceItems = [...((newConfig.financials as any).devisItems ?? DEVIS_ITEMS)];
         
         list.forEach((row, index) => {
             const rowId = row.ID || row.id || `import_${Date.now()}_${index}`;

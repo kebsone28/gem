@@ -12,7 +12,7 @@ export const registerTileCacheProtocol = () => {
     isProtocolRegistered = true;
 
     maplibregl.addProtocol('cached', (params: any, abortController) => {
-        let url = params.url.replace('cached://', '');
+        const url = params.url.replace('cached://', '');
         
         // Extraction approximative du zoom depuis l'url (souvent /{z}/{x}/{y}.png)
         const match = url.match(/\/(\d+)\/\d+\/\d+\.(png|jpeg|jpg)/);

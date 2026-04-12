@@ -123,7 +123,7 @@ export default function Settings() {
                                 try {
                                     const { read, utils } = await import('xlsx');
                                     const wb = read(await file.arrayBuffer(), { type: 'array' });
-                                    let newConfig = { ...(project?.config || {}) };
+                                    const newConfig = { ...(project?.config || {}) };
                                     if (wb.SheetNames.includes('Devis Items')) {
                                         const data: any[] = utils.sheet_to_json(wb.Sheets['Devis Items']);
                                         if (!newConfig.financials) (newConfig as any).financials = {};
@@ -235,16 +235,28 @@ export default function Settings() {
                                                 </button>
                                             </div>
 
-                                            <div className="bg-slate-900/50 p-8 rounded-3xl border border-white/5 space-y-4 opacity-50 pointer-events-none">
+                                            <div className="bg-slate-900/50 p-8 rounded-3xl border border-white/5 space-y-4">
                                                 <div className="w-12 h-12 bg-amber-500/10 rounded-2xl flex items-center justify-center text-amber-500">
                                                     <Database size={24} />
                                                 </div>
                                                 <h3 className="text-white font-black uppercase text-sm tracking-widest">Nettoyage Base de Données</h3>
                                                 <p className="text-xs text-slate-400 font-bold leading-relaxed">
-                                                    Option prochainement disponible pour optimiser les performances de la base PostgreSQL.
+                                                    Supprime définitivement les éléments dans la corbeille depuis plus de 30 jours et optimise les structures de la base PostgreSQL.
                                                 </p>
-                                                <button className="w-full py-4 bg-slate-800 text-slate-500 font-black uppercase text-xs tracking-[0.2em] rounded-2xl">
-                                                    Indisponible
+                                                <button 
+                                                    onClick={async () => {
+                                                        if (window.confirm("⚠️ Voulez-vous purger complètement la corbeille de la base de données ?\n\nCette action est irréversible et supprimera les données vieilles de +30 jours.")) {
+                                                            try {
+                                                                const res = await apiClient.post('/projects/system/db-maintenance');
+                                                                toast.success(res.data.details || 'Maintenance réussie', { duration: 5000, style: { background: '#22c55e', color: '#fff' } });
+                                                            } catch (err: any) {
+                                                                toast.error(err.response?.data?.error || 'Erreur lors de la maintenance');
+                                                            }
+                                                        }
+                                                    }}
+                                                    className="w-full py-4 bg-amber-600 hover:bg-amber-500 text-white font-black uppercase text-xs tracking-[0.2em] rounded-2xl transition-all shadow-lg shadow-amber-500/10 active:scale-95"
+                                                >
+                                                    OPTIMISER LA BASE
                                                 </button>
                                             </div>
                                         </div>

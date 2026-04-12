@@ -563,3 +563,71 @@ export const deployServerUpdate = async (req, res) => {
         res.status(500).json({ error: 'Erreur lors de l\'initialisation du déploiement' });
     }
 };
+
+/**
+ * 🗄️ DB MAINTENANCE: Nettoie les enregistrements supprimés (soft deletes) et optimise la base
+ */
+export const dbMaintenance = async (req, res) => {
+    try {
+        const { email, organizationId } = req.user;
+
+        // 🛡️ SÉCURITÉ : Seul l'administrateur principal (admingem) peut lancer la maintenance
+        if (email !== 'admingem') {
+            return res.status(403).json({ error: 'Privilèges insuffisants pour la maintenance de la base de données.' });
+        }
+
+        console.log(`[SYSTEM] Maintenance BD initiée par ${email}`);
+
+        // 1. Nettoyage des Soft Deletes (Vieux de plus de 30 jours)
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+        const deleteHouseholds = prisma.household.deleteMany({
+            where: { deletedAt: { lte: thirtyDaysAgo } }
+        });
+        const deleteZones = prisma.zone.deleteMany({
+            where: { deletedAt: { lte: thirtyDaysAgo } }
+        });
+        const deleteProjects = prisma.project.deleteMany({
+            where: { deletedAt: { lte: thirtyDaysAgo } }
+        });
+        const deleteGrappes = prisma.grappe.deleteMany({
+            where: { deletedAt: { lte: thirtyDaysAgo } }
+        });
+
+        // 2. Transaction pour garantir la cohérence
+        const [hCount, zCount, pCount, gCount] = await prisma.$transaction([
+            deleteHouseholds, deleteZones, deleteProjects, deleteGrappes
+        ]);
+
+        const totalCleaned = hCount.count + zCount.count + pCount.count + gCount.count;
+
+        // 3. Exécuter un VACUUM (Optimisation PostgreSQL) si natif
+        try {
+            await prisma.$executeRawUnsafe('VACUUM ANALYZE;');
+            console.log('[SYSTEM] DB Vacuum Analyze successful.');
+        } catch (dbErr) {
+            console.warn('[SYSTEM] DB Vacuum non supporté ou ignoré:', dbErr.message);
+        }
+
+        // Audit Log
+        await tracerAction({
+            userId: req.user.id,
+            organizationId,
+            action: 'MAINTENANCE_DB',
+            resource: 'Base de données',
+            resourceId: 'PROD',
+            details: { initiator: email, recordsCleaned: totalCleaned },
+            req
+        });
+
+        res.json({ 
+            message: 'Maintenance terminée avec succès !', 
+            details: `${totalCleaned} anciens enregistrements (corbeille) purgés. Base optimisée.` 
+        });
+
+    } catch (error) {
+        console.error('Database Maintenance error:', error);
+        res.status(500).json({ error: 'Erreur lors de la maintenance de la base de données' });
+    }
+};

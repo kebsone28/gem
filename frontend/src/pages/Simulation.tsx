@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     TrendingUp,
@@ -11,6 +11,16 @@ import {
 } from 'lucide-react';
 import { useFinances } from '../hooks/useFinances';
 import { fmtFCFA } from '../utils/format';
+import {
+    calculateScenario,
+    optimizeTeamConfigs,
+    buildRoleCapacities
+} from '../hooks/useSimulationModel';
+import type {
+    TeamConfig,
+    RoleKey,
+    OptimizationMode
+} from '../hooks/useSimulationModel';
 
 // Import centralized design system
 import {
@@ -30,13 +40,10 @@ const ROLE_LABELS = {
 export default function Simulation() {
     const { devis, householdsCount, project } = useFinances();
 
-    const productionRates = project?.config?.productionRates;
-    const ROLE_CAPACITY = {
-        macon: productionRates?.macons ?? 5,
-        network: productionRates?.reseau ?? 8,
-        interior: productionRates?.interieur_type1 ?? 6,
-        controller: productionRates?.controle ?? 15
-    };
+    const roleCapacities = useMemo(
+        () => buildRoleCapacities(project?.config?.productionRates),
+        [project?.config?.productionRates]
+    );
 
     // Simulation state
     const [unforeseenRate, setUnforeseenRate] = useState(10);
@@ -46,13 +53,14 @@ export default function Simulation() {
     const [hivernagePenaltyNetwork, setHivernagePenaltyNetwork] = useState(20); // 20% penalty
     const [rejectRate, setRejectRate] = useState(0); // 0 to 20%
     const [acompteRate, setAcompteRate] = useState(30); // 0 to 100%
+    const [targetDuration, setTargetDuration] = useState(150);
+    const [optimizationMode, setOptimizationMode] = useState<OptimizationMode>('duration');
 
     // Calendar state
     const [workDaysPerWeek, setWorkDaysPerWeek] = useState(6); // 5 or 6 days normally
     const [holidaysCount, setHolidaysCount] = useState(14); // Estimated Senegalese holidays
 
-    type TeamConfig = { count: number; paymentMode: 'task' | 'day'; rate: number; vehiclesPerTeam: number };
-    const [teamConfigs, setTeamConfigs] = useState<Record<string, TeamConfig>>({
+    const [teamConfigs, setTeamConfigs] = useState<Record<RoleKey, TeamConfig>>({
         macon: { count: 5, paymentMode: 'task', rate: 10000, vehiclesPerTeam: 0 },
         network: { count: 3, paymentMode: 'task', rate: 7500, vehiclesPerTeam: 0 },
         interior: { count: 4, paymentMode: 'task', rate: 30000, vehiclesPerTeam: 0 },
@@ -60,163 +68,108 @@ export default function Simulation() {
     });
 
     const [isOptimized, setIsOptimized] = useState(false);
-    const [optimizedConfigs, setOptimizedConfigs] = useState<Record<string, TeamConfig> | null>(null);
+    const [optimizedConfigs, setOptimizedConfigs] = useState<Record<RoleKey, TeamConfig> | null>(null);
 
-    // Calculate metrics for a given team configuration
-    const calculateScenario = (configs: Record<string, TeamConfig>, baseVehicles: number, unforeseen: number, hivernage: boolean, reject: number, acompte: number, workDays: number, holidays: number, penaltyMacon: number, penaltyNetwork: number) => {
-        let factor = 1 + unforeseen / 100;
-        if (hivernage) factor += 0.05; // Base unforeseen increases slightly due to bad weather
+    const currentScenario = useMemo(
+        () => calculateScenario({
+            householdsCount,
+            devisTotalPlanned: devis.totalPlanned,
+            projectConfig: project,
+            teamConfigs,
+            baseVehicleCount,
+            unforeseenRate,
+            isHivernage,
+            rejectRate,
+            acompteRate,
+            workDaysPerWeek,
+            holidaysCount,
+            hivernagePenaltyMacon,
+            hivernagePenaltyNetwork
+        }),
+        [
+            householdsCount,
+            devis.totalPlanned,
+            project,
+            teamConfigs,
+            baseVehicleCount,
+            unforeseenRate,
+            isHivernage,
+            rejectRate,
+            acompteRate,
+            workDaysPerWeek,
+            holidaysCount,
+            hivernagePenaltyMacon,
+            hivernagePenaltyNetwork
+        ]
+    );
 
-        // Adjust capacities for weather (Hivernage affects outside work)
-        const maconCap = ROLE_CAPACITY.macon * (hivernage ? (1 - penaltyMacon / 100) : 1);
-        const networkCap = ROLE_CAPACITY.network * (hivernage ? (1 - penaltyNetwork / 100) : 1);
-        const interiorCap = ROLE_CAPACITY.interior; // Indoor work less affected
-        const controllerCap = ROLE_CAPACITY.controller * (hivernage ? 0.9 : 1);
-
-        // Daily capacity and base theoretical duration per role
-        const capacities = {
-            macon: configs.macon.count * maconCap,
-            network: configs.network.count * networkCap,
-            interior: configs.interior.count * interiorCap,
-            controller: configs.controller.count * controllerCap
-        };
-
-        const minDailyCapacity = Math.min(...Object.values(capacities).filter(c => c > 0));
-        const bottleneck = Object.entries(capacities).find(([, cap]) => cap === minDailyCapacity)?.[0] || 'macon';
-
-        // Adjust households for reject rate
-        const baseHouseholds = householdsCount;
-        const rejectHouseholds = Math.ceil(baseHouseholds * (reject / 100));
-        const totalNetworkHouseholds = baseHouseholds + rejectHouseholds;
-        const totalInteriorHouseholds = baseHouseholds + rejectHouseholds;
-
-        // Durations with unforeseen rate
-        const durations = {
-            macon: Math.ceil((baseHouseholds / (capacities.macon || 1)) * factor),
-            network: Math.ceil((totalNetworkHouseholds / (capacities.network || 1)) * factor),
-            interior: Math.ceil((totalInteriorHouseholds / (capacities.interior || 1)) * factor),
-            controller: Math.ceil((baseHouseholds / (capacities.controller || 1)) * factor)
-        };
-
-        // Pipeline Logic
-        // Team N starts ideally 1 day after Team N-1 starts.
-        // But if Team N is faster, it must wait and start later so it finishes exactly 1 day after Team N-1 finishes.
-        const schedule: Record<string, { start: number, end: number, duration: number }> = {};
-
-        schedule.macon = { start: 0, duration: durations.macon, end: durations.macon };
-
-        schedule.network = {
-            end: Math.max(schedule.macon.end + 1, schedule.macon.start + 1 + durations.network),
-            duration: durations.network,
-            start: 0 // calculated below
-        };
-        schedule.network.start = schedule.network.end - schedule.network.duration;
-
-        schedule.interior = {
-            end: Math.max(schedule.network.end + 1, schedule.network.start + 1 + durations.interior),
-            duration: durations.interior,
-            start: 0
-        };
-        schedule.interior.start = schedule.interior.end - schedule.interior.duration;
-
-        schedule.controller = {
-            end: Math.max(schedule.interior.end + 1, schedule.interior.start + 1 + durations.controller),
-            duration: durations.controller,
-            start: 0
-        };
-        schedule.controller.start = schedule.controller.end - schedule.controller.duration;
-
-        const globalDuration = schedule.controller.end;
-
-        // Convert working days to calendar days
-        // (weeks * 7) + remainder + specific holidays
-        const getCalendarDays = (workingDays: number) => Math.ceil(workingDays * (7 / workDays)) + Math.ceil(workingDays / globalDuration * holidays);
-
-        const globalCalendarDuration = getCalendarDays(globalDuration);
-
-        // Cost Calculations
-        // Labor is usually paid per working day, logistics (vehicles) per calendar day
-        let laborCost = 0;
-        let teamsLogisticsCost = 0;
-
-        Object.entries(configs).forEach(([role, config]) => {
-            const teamDuration = schedule[role].duration;
-
-            let householdsTreated = baseHouseholds;
-            if (role === 'network' || role === 'interior') {
-                householdsTreated += rejectHouseholds;
-            }
-
-            if (config.paymentMode === 'task') {
-                laborCost += householdsTreated * config.rate;
-            } else {
-                laborCost += config.count * config.rate * teamDuration;
-            }
-
-            const teamCalendarDuration = getCalendarDays(teamDuration);
-            teamsLogisticsCost += (config.count * config.vehiclesPerTeam) * 60000 * teamCalendarDuration;
+    const handleOptimize = useCallback(() => {
+        const optimized = optimizeTeamConfigs({
+            teamConfigs,
+            ROLE_CAPACITY: roleCapacities,
+            targetDuration,
+            householdsCount,
+            devisTotalPlanned: devis.totalPlanned,
+            workDaysPerWeek,
+            holidaysCount,
+            projectConfig: project,
+            baseVehicleCount,
+            unforeseenRate,
+            isHivernage,
+            rejectRate,
+            acompteRate,
+            hivernagePenaltyMacon,
+            hivernagePenaltyNetwork,
+            mode: optimizationMode
         });
-
-        const baseLogisticsCost = baseVehicles * 60000 * globalCalendarDuration;
-        const logisticsCost = teamsLogisticsCost + baseLogisticsCost;
-
-        const materialsCost = devis.totalPlanned * 0.4; // rough estimate
-        const totalCost = laborCost + logisticsCost + materialsCost;
-        const margin = devis.totalPlanned - totalCost;
-
-        // Cash flow logic
-        const initialCash = devis.totalPlanned * (acompte / 100);
-        const maxOutflow = laborCost + logisticsCost; // Approximate cash needed before final payment
-        const hasCashflowRisk = maxOutflow > initialCash;
-
-        return {
-            duration: globalDuration,
-            calendarDuration: globalCalendarDuration,
-            schedule,
-            bottleneck,
-            capacity: minDailyCapacity,
-            cost: totalCost,
-            margin,
-            laborCost,
-            logisticsCost,
-            initialCash,
-            maxOutflow,
-            hasCashflowRisk
-        };
-    };
-
-    const currentScenario = calculateScenario(teamConfigs, baseVehicleCount, unforeseenRate, isHivernage, rejectRate, acompteRate, workDaysPerWeek, holidaysCount, hivernagePenaltyMacon, hivernagePenaltyNetwork);
-
-    // AI Optimization
-    const handleOptimize = () => {
-        const targetDuration = 150;
-        const targetDailyCapacity = Math.ceil(householdsCount / (targetDuration / (1 + unforeseenRate / 100)));
-
-        const optMacon = Math.max(1, Math.ceil(targetDailyCapacity / ROLE_CAPACITY.macon));
-        const optNetwork = Math.max(1, Math.ceil(targetDailyCapacity / ROLE_CAPACITY.network));
-        const optInterior = Math.max(1, Math.ceil(targetDailyCapacity / ROLE_CAPACITY.interior));
-        const optController = Math.max(1, Math.ceil(targetDailyCapacity / ROLE_CAPACITY.controller));
-
-        setOptimizedConfigs({
-            macon: { ...teamConfigs.macon, count: optMacon },
-            network: { ...teamConfigs.network, count: optNetwork },
-            interior: { ...teamConfigs.interior, count: optInterior },
-            controller: { ...teamConfigs.controller, count: optController }
-        });
+        setOptimizedConfigs(optimized);
         setIsOptimized(true);
-    };
+    }, [teamConfigs, roleCapacities, targetDuration, householdsCount, workDaysPerWeek, holidaysCount, project, baseVehicleCount, unforeseenRate, isHivernage, rejectRate, acompteRate, hivernagePenaltyMacon, hivernagePenaltyNetwork, optimizationMode]);
 
-    const optScenario = optimizedConfigs ? calculateScenario(optimizedConfigs, Math.max(1, optimizedConfigs.macon.count - 3), unforeseenRate, isHivernage, rejectRate, acompteRate, workDaysPerWeek, holidaysCount, hivernagePenaltyMacon, hivernagePenaltyNetwork) : null;
+    const optScenario = useMemo(
+        () => optimizedConfigs
+            ? calculateScenario({
+                householdsCount,
+                devisTotalPlanned: devis.totalPlanned,
+                projectConfig: project,
+                teamConfigs: optimizedConfigs,
+                baseVehicleCount,
+                unforeseenRate,
+                isHivernage,
+                rejectRate,
+                acompteRate,
+                workDaysPerWeek,
+                holidaysCount,
+                hivernagePenaltyMacon,
+                hivernagePenaltyNetwork
+            })
+            : null,
+        [
+            optimizedConfigs,
+            householdsCount,
+            devis.totalPlanned,
+            project,
+            baseVehicleCount,
+            unforeseenRate,
+            isHivernage,
+            rejectRate,
+            acompteRate,
+            workDaysPerWeek,
+            holidaysCount,
+            hivernagePenaltyMacon,
+            hivernagePenaltyNetwork
+        ]
+    );
 
     const activeConfigs = isOptimized && optimizedConfigs ? optimizedConfigs : teamConfigs;
     const activeScenario = isOptimized && optScenario ? optScenario : currentScenario;
 
-    const updateTeamConfig = <K extends keyof TeamConfig>(role: string, field: K, value: TeamConfig[K]) => {
+    const updateTeamConfig = useCallback(<K extends keyof TeamConfig>(role: RoleKey, field: K, value: TeamConfig[K]) => {
         setTeamConfigs(prev => ({
             ...prev,
             [role]: { ...prev[role], [field]: value }
         }));
-    };
+    }, []);
 
     return (
         <PageContainer>
@@ -270,21 +223,24 @@ export default function Simulation() {
                                                     <div className="flex items-center justify-between">
                                                         <div className="flex flex-col">
                                                             <span className="text-slate-800 dark:text-slate-200 font-bold">{ROLE_LABELS[role as keyof typeof ROLE_LABELS]}</span>
-                                                            <span className="text-xs text-slate-500 dark:text-slate-400 font-black tracking-widest uppercase">{ROLE_CAPACITY[role as keyof typeof ROLE_CAPACITY]}/j</span>
+                                                            <span className="text-xs text-slate-500 dark:text-slate-400 font-black tracking-widest uppercase">{roleCapacities[role as keyof typeof roleCapacities]}/j</span>
                                                         </div>
-                                                        <div className="flex items-center gap-3">
-                                                            {!isOptimized && (
-                                                                <button aria-label="Retirer" onClick={() => updateTeamConfig(role, 'count', Math.max(1, config.count - 1))} className="w-8 h-8 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-900 dark:text-white hover:bg-slate-800 transition-colors">-</button>
-                                                            )}
-                                                            <span className={`text-xl font-black w-6 text-center ${isOptimized ? 'text-emerald-400' : 'text-slate-900 dark:text-white'}`}>{config.count}</span>
-                                                            {!isOptimized && (
-                                                                <button aria-label="Ajouter" onClick={() => updateTeamConfig(role, 'count', config.count + 1)} className="w-8 h-8 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-900 dark:text-white hover:bg-slate-800 transition-colors">+</button>
-                                                            )}
-                                                            {isOptimized && diff !== 0 && (
-                                                                <span className={`text-xs font-black ml-2 ${diff > 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                                                                    {diff > 0 ? `+${diff}` : diff}
-                                                                </span>
-                                                            )}
+                                                        <div className="flex flex-col items-end gap-1">
+                                                            <div className="flex items-center gap-3">
+                                                                {!isOptimized && (
+                                                                    <button aria-label="Retirer" onClick={() => updateTeamConfig(role, 'count', Math.max(1, config.count - 1))} className="w-8 h-8 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-900 dark:text-white hover:bg-slate-800 transition-colors">-</button>
+                                                                )}
+                                                                <span className={`text-xl font-black w-8 text-center ${isOptimized ? 'text-emerald-400' : 'text-slate-900 dark:text-white'}`}>{config.count}</span>
+                                                                {!isOptimized && (
+                                                                    <button aria-label="Ajouter" onClick={() => updateTeamConfig(role, 'count', config.count + 1)} className="w-8 h-8 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-900 dark:text-white hover:bg-slate-800 transition-colors">+</button>
+                                                                )}
+                                                                {isOptimized && diff !== 0 && (
+                                                                    <span className={`text-xs font-black ml-2 ${diff > 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                                                        {diff > 0 ? `+${diff}` : diff}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <span className="text-base font-bold text-white dark:text-white">{config.count} équipes</span>
                                                         </div>
                                                     </div>
 
@@ -471,6 +427,39 @@ export default function Simulation() {
                                         )}
                                     </div>
 
+                                    <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-800">
+                                        <div className="flex justify-between items-center">
+                                            <label className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest block">Objectif durée</label>
+                                            <span className="text-slate-500 font-black">{targetDuration} jours</span>
+                                        </div>
+                                        <input
+                                            title="Objectif durée"
+                                            type="range"
+                                            min="120"
+                                            max="260"
+                                            step="5"
+                                            value={targetDuration}
+                                            onChange={(e) => setTargetDuration(parseInt(e.target.value))}
+                                            className="w-full accent-purple-500"
+                                        />
+                                        <div className="text-xs text-slate-500 dark:text-slate-400 text-center">Durée cible pour l'optimisation intelligente</div>
+
+                                        <div className="pt-4">
+                                            <label className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest block mb-2">Stratégie d'optimisation</label>
+                                            <select
+                                                title="Mode d'optimisation"
+                                                value={optimizationMode}
+                                                onChange={(e) => setOptimizationMode(e.target.value as OptimizationMode)}
+                                                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
+                                            >
+                                                <option value="duration">Durée cible</option>
+                                                <option value="cost">Coût minimal</option>
+                                                <option value="cashflow">Cashflow sécurisé</option>
+                                            </select>
+                                            <div className="text-xs text-slate-500 dark:text-slate-400 mt-2">Choisissez la stratégie de calcul de l'IA.</div>
+                                        </div>
+                                    </div>
+
                                     {/* Unforeseen */}
                                     <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-800">
                                         <div className="flex justify-between items-center">
@@ -604,6 +593,40 @@ export default function Simulation() {
                                 </AnimatePresence>
                             </div>
 
+                            {isOptimized && optScenario && (
+                                <div className="bg-slate-950/70 dark:bg-slate-900/60 border border-slate-800 rounded-3xl p-6 shadow-xl">
+                                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+                                        <div>
+                                            <h3 className="text-lg font-black text-white">Comparaison Scénarios</h3>
+                                            <p className="text-xs text-slate-500 mt-1">Scénario actuel vs scénario optimisé ({optimizationMode}).</p>
+                                        </div>
+                                        <span className="rounded-full px-3 py-1 bg-indigo-500/10 text-indigo-200 text-xs font-black uppercase tracking-[0.25em]">{optimizationMode === 'duration' ? 'Durée' : optimizationMode === 'cost' ? 'Coût' : 'Cashflow'}</span>
+                                    </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                        <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4">
+                                            <p className="text-xs uppercase tracking-[0.2em] text-slate-500 mb-2">Durée calendaire</p>
+                                            <p className="text-2xl font-black text-white">{activeScenario.calendarDuration}j</p>
+                                            <p className="text-xs text-slate-400 mt-1">{currentScenario.calendarDuration - activeScenario.calendarDuration > 0 ? `-${currentScenario.calendarDuration - activeScenario.calendarDuration}j` : `+${activeScenario.calendarDuration - currentScenario.calendarDuration}j`} vs actuel</p>
+                                        </div>
+                                        <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4">
+                                            <p className="text-xs uppercase tracking-[0.2em] text-slate-500 mb-2">Coût</p>
+                                            <p className="text-2xl font-black text-white">{fmtFCFA(activeScenario.cost)}</p>
+                                            <p className="text-xs text-slate-400 mt-1">{currentScenario.cost - activeScenario.cost >= 0 ? `-${fmtFCFA(currentScenario.cost - activeScenario.cost)}` : `+${fmtFCFA(activeScenario.cost - currentScenario.cost)}`} vs actuel</p>
+                                        </div>
+                                        <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4">
+                                            <p className="text-xs uppercase tracking-[0.2em] text-slate-500 mb-2">Marge</p>
+                                            <p className={`text-2xl font-black ${activeScenario.margin >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{fmtFCFA(activeScenario.margin)}</p>
+                                            <p className="text-xs text-slate-400 mt-1">{fmtFCFA(activeScenario.margin - currentScenario.margin)} vs actuel</p>
+                                        </div>
+                                        <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4">
+                                            <p className="text-xs uppercase tracking-[0.2em] text-slate-500 mb-2">Cashflow</p>
+                                            <p className="text-2xl font-black text-white">{activeScenario.hasCashflowRisk ? 'Risque' : 'OK'}</p>
+                                            <p className={`text-xs mt-1 ${currentScenario.hasCashflowRisk && !activeScenario.hasCashflowRisk ? 'text-emerald-300' : 'text-slate-400'}`}>{currentScenario.hasCashflowRisk && !activeScenario.hasCashflowRisk ? 'Risque réduit' : 'Pas de changement'}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Cashflow Display */}
                             <div className="bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 shadow-xl">
                                 <div>
@@ -669,7 +692,7 @@ export default function Simulation() {
                                                         )}
                                                     </div>
                                                     <div className="flex flex-col items-end">
-                                                        <span className="text-xs font-black text-slate-500 dark:text-slate-400">{config.count * ROLE_CAPACITY[role as keyof typeof ROLE_CAPACITY]} Foyers/j</span>
+                                                        <span className="text-xs font-black text-slate-500 dark:text-slate-400">{config.count * roleCapacities[role as keyof typeof roleCapacities]} Foyers/j</span>
                                                         <span className="text-xs text-indigo-400 font-bold">Jour {sched.start} à {sched.end} ({sched.duration}j)</span>
                                                     </div>
                                                 </div>

@@ -12,7 +12,7 @@ import { useOfflineStore } from '../../store/offlineStore';
 import { useAuthStore } from '../../store/authStore';
 import * as safeStorage from '../../utils/safeStorage';
 import { logger } from '../logger';
-import { fetchPendingBatch, markSynced, markFailed, getEntityType } from './queueService';
+import { fetchPendingBatch, markSynced, markFailed, getEntityType, countPending } from './queueService';
 import { handleServerConflicts } from './conflictResolver';
 
 // Module-level guard — prevents concurrent sync across the entire app lifetime
@@ -87,7 +87,7 @@ async function pushPendingItems(): Promise<void> {
         continue;
       }
 
-      let payload = { ...item.payload };
+      const payload = { ...item.payload };
 
       // Ensure payload has a valid ID
       if (!payload.id || payload.id === entityType) {
@@ -222,7 +222,6 @@ export async function performSync(): Promise<void> {
     await pullUpdates();
 
     // Update pending count after cycle
-    const { countPending } = await import('./queueService');
     const remaining = await countPending();
     syncStore.setPendingCount(remaining);
     syncStore.setSyncSuccess(Date.now());

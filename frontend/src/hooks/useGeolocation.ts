@@ -32,7 +32,7 @@ export const useGeolocation = (onLocationFound?: (loc: [number, number]) => void
             },
             { enableHighAccuracy: false, timeout: 5000 }
         );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
     }, []); // Intentionnellement vide : exécuté une seule fois au montage
 
     const handleRequestGeolocation = useCallback(() => {

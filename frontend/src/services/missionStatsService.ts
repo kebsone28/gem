@@ -40,7 +40,7 @@ export const missionStatsService = {
   processMissions(missions: any[]): MissionStats {
     let totalIndemnities = 0;
     let certifiedCount = 0;
-    let memberSet = new Set();
+    const memberSet = new Set();
     const months: Record<string, number> = {};
 
     missions.forEach(m => {

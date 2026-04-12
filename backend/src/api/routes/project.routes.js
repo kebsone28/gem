@@ -8,7 +8,8 @@ import {
     getProjectBordereau,
     triggerRecalculateGrappes,
     resetProjectData,
-    deployServerUpdate
+    deployServerUpdate,
+    dbMaintenance
 } from '../../modules/project/project.controller.js';
 import { authProtect } from '../middlewares/auth.js';
 import { verifierPermission, verifierAssignation } from '../../middleware/verifierPermission.js';
@@ -28,5 +29,7 @@ router.post('/', verifierPermission(PERMISSIONS.CREER_PROJET), createProject);
 router.patch('/:id', verifierPermission(PERMISSIONS.MODIFIER_CARTE), verifierAssignation('projet'), updateProject);
 router.delete('/:id', verifierPermission(PERMISSIONS.SUPPRIMER_PROJET), verifierAssignation('projet'), deleteProject);
 router.post('/system/deploy', deployServerUpdate);
+router.post('/system/db-maintenance', dbMaintenance);
+
 
 export default router;
