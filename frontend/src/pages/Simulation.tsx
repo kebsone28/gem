@@ -16,7 +16,7 @@ import { useFinances } from '../hooks/useFinances';
 import { fmtFCFA } from '../utils/format';
 import { toast } from 'react-hot-toast';
 import {
-    calculateScenario,
+    calculateScenarioV2,
     optimizeTeamConfigs,
     buildRoleCapacities
 } from '../hooks/useSimulationModel';
@@ -59,6 +59,8 @@ export default function Simulation() {
     const [rejectRate, setRejectRate] = useState(0); // 0 to 20%
     const [acompteRate, setAcompteRate] = useState(30); // 0 to 100%
     const [targetDuration, setTargetDuration] = useState(150);
+    const [budgetLimitPercent, setBudgetLimitPercent] = useState(95);
+    const [minMarginPercent, setMinMarginPercent] = useState(10);
     const [optimizationMode, setOptimizationMode] = useState<OptimizationMode>('duration');
 
     // Calendar state
@@ -85,7 +87,7 @@ export default function Simulation() {
     }, [optimizedConfigs]);
 
     const currentScenario = useMemo(
-        () => calculateScenario({
+        () => calculateScenarioV2({
             householdsCount,
             devisTotalPlanned: devis.totalPlanned,
             projectConfig: project,
@@ -122,6 +124,8 @@ export default function Simulation() {
             teamConfigs,
             ROLE_CAPACITY: roleCapacities,
             targetDuration,
+            budgetLimitPercent,
+            minMarginPercent,
             householdsCount,
             devisTotalPlanned: devis.totalPlanned,
             workDaysPerWeek,
@@ -138,11 +142,30 @@ export default function Simulation() {
         });
         setOptimizedConfigs(optimized);
         setIsOptimized(true);
-    }, [teamConfigs, roleCapacities, targetDuration, householdsCount, workDaysPerWeek, holidaysCount, project, baseVehicleCount, unforeseenRate, isHivernage, rejectRate, acompteRate, hivernagePenaltyMacon, hivernagePenaltyNetwork, optimizationMode]);
+    }, [
+        teamConfigs,
+        roleCapacities,
+        targetDuration,
+        budgetLimitPercent,
+        minMarginPercent,
+        householdsCount,
+        workDaysPerWeek,
+        holidaysCount,
+        project,
+        baseVehicleCount,
+        unforeseenRate,
+        isHivernage,
+        rejectRate,
+        acompteRate,
+        hivernagePenaltyMacon,
+        hivernagePenaltyNetwork,
+        optimizationMode,
+        devis.totalPlanned
+    ]);
 
     const optScenario = useMemo(
         () => optimizedConfigs
-            ? calculateScenario({
+            ? calculateScenarioV2({
                 householdsCount,
                 devisTotalPlanned: devis.totalPlanned,
                 projectConfig: project,
@@ -478,8 +501,46 @@ export default function Simulation() {
                                                 <option value="duration">Durée cible</option>
                                                 <option value="cost">Coût minimal</option>
                                                 <option value="cashflow">Cashflow sécurisé</option>
+                                                <option value="profit_max">Profit maximal</option>
+                                                <option value="risk_averse">Risque maîtrisé</option>
+                                                <option value="quick_start">Démarrage rapide</option>
+                                                <option value="low_logistics">Logistique optimisée</option>
                                             </select>
                                             <div className="text-xs text-slate-500 dark:text-slate-400 mt-2">Choisissez la stratégie de calcul de l'IA.</div>
+                                        </div>
+
+                                        <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-800">
+                                            <div className="flex justify-between items-center">
+                                                <label className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest block">Budget max</label>
+                                                <span className="text-emerald-400 font-black">{budgetLimitPercent}% du devis</span>
+                                            </div>
+                                            <input
+                                                title="Budget max"
+                                                type="range"
+                                                min="80"
+                                                max="100"
+                                                step="1"
+                                                value={budgetLimitPercent}
+                                                onChange={(e) => setBudgetLimitPercent(parseInt(e.target.value))}
+                                                className="w-full accent-emerald-600"
+                                            />
+                                            <div className="text-xs text-slate-500 dark:text-slate-400 text-center">Coût total cible par rapport au devis.</div>
+
+                                            <div className="flex justify-between items-center">
+                                                <label className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest block">Marge minimale</label>
+                                                <span className="text-amber-400 font-black">{minMarginPercent}%</span>
+                                            </div>
+                                            <input
+                                                title="Marge minimale"
+                                                type="range"
+                                                min="0"
+                                                max="30"
+                                                step="1"
+                                                value={minMarginPercent}
+                                                onChange={(e) => setMinMarginPercent(parseInt(e.target.value))}
+                                                className="w-full accent-amber-600"
+                                            />
+                                            <div className="text-xs text-slate-500 dark:text-slate-400 text-center">Marge nette minimale exigée pour le scénario optimisé.</div>
                                         </div>
                                     </div>
 
@@ -623,7 +684,9 @@ export default function Simulation() {
                                             <h3 className="text-lg font-black text-white">Comparaison Scénarios</h3>
                                             <p className="text-xs text-slate-500 mt-1">Scénario actuel vs scénario optimisé ({optimizationMode}).</p>
                                         </div>
-                                        <span className="rounded-full px-3 py-1 bg-indigo-500/10 text-indigo-200 text-xs font-black uppercase tracking-[0.25em]">{optimizationMode === 'duration' ? 'Durée' : optimizationMode === 'cost' ? 'Coût' : 'Cashflow'}</span>
+                                        <span className="rounded-full px-3 py-1 bg-indigo-500/10 text-indigo-200 text-xs font-black uppercase tracking-[0.25em]">
+                                            {optimizationMode === 'duration' ? 'Durée' : optimizationMode === 'cost' ? 'Coût' : optimizationMode === 'cashflow' ? 'Cashflow' : optimizationMode === 'profit_max' ? 'Profit max' : optimizationMode === 'risk_averse' ? 'Risque' : optimizationMode === 'quick_start' ? 'Quick start' : 'Logistique'}
+                                        </span>
                                     </div>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                                         <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4">

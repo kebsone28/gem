@@ -95,6 +95,22 @@ export default function OrganizationSettings() {
         }));
     };
 
+    const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            // Check file size (max 2MB to not overload db/payload)
+            if (file.size > 2 * 1024 * 1024) {
+                toast.error("Le fichier est trop volumineux. La taille maximale est de 2 Mo.");
+                return;
+            }
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                updateBranding('logo', reader.result as string);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
     const updateLabel = (type: 'household' | 'zone', field: 'singular' | 'plural', value: string) => {
         setConfig(prev => ({
             ...prev,
@@ -299,21 +315,37 @@ export default function OrganizationSettings() {
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                                         <div className="space-y-4">
-                                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Logo de l'organisation (URL)</label>
+                                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Logo de l'organisation (Fichier Image)</label>
                                             <div className="flex gap-4">
-                                                <input
-                                                    type="text"
-                                                    value={config.branding?.logo || ''}
-                                                    onChange={e => updateBranding('logo', e.target.value)}
-                                                    placeholder="https://..."
-                                                    className="flex-1 bg-slate-900 border border-white/5 rounded-2xl px-5 py-4 text-white text-sm focus:ring-2 focus:ring-blue-500/30 outline-none"
-                                                />
-                                                <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center p-2 border border-white/10 overflow-hidden shadow-Inner">
+                                                <div className="flex-1 relative cursor-pointer group">
+                                                    <input
+                                                        type="file"
+                                                        accept="image/*"
+                                                        title="Choisir un fichier image"
+                                                        onChange={handleLogoUpload}
+                                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                                    />
+                                                    <div className="absolute inset-0 flex items-center gap-3 bg-slate-900 border border-white/5 rounded-2xl px-5 text-slate-400 text-sm group-hover:border-blue-500/50 group-hover:bg-slate-800 transition-all pointer-events-none">
+                                                        <Upload size={18} className="text-blue-500" />
+                                                        <span className="truncate">Cliquer pour parcourir (Max 2Mo)...</span>
+                                                    </div>
+                                                </div>
+                                                <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center p-2 border border-white/10 overflow-hidden shadow-Inner shrink-0 relative z-20">
                                                     {config.branding?.logo ? (
                                                         <img src={config.branding.logo} alt="Preview" className="max-w-full max-h-full object-contain" />
-                                                    ) : <Upload className="text-slate-200" />}
+                                                    ) : <Palette className="text-slate-200" />}
                                                 </div>
                                             </div>
+                                            {config.branding?.logo && (
+                                                <div className="flex justify-end">
+                                                    <button 
+                                                        onClick={() => updateBranding('logo', '')}
+                                                        className="text-[10px] font-black text-rose-500 hover:text-rose-400 uppercase tracking-widest transition-colors"
+                                                    >
+                                                        Supprimer le logo actuel
+                                                    </button>
+                                                </div>
+                                            )}
                                         </div>
 
                                         <div className="space-y-4">
