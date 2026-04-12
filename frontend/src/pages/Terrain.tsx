@@ -41,6 +41,7 @@ import { useRouting } from '../hooks/useRouting';
 import TopBar from './Terrain/TopBar';
 import BottomBar from './Terrain/BottomBar';
 import ProjectModals from './Terrain/ProjectModals';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 
 import '../components/terrain/MapWidgets.css';
 
@@ -242,20 +243,43 @@ const Terrain: React.FC = () => {
     }
   }, [userLocation, geolocationError, handleRequestGeolocation, setMapCommand]);
 
+  // ✅ Safe coordinate validation function
+  const isValidCoordinate = (lng: unknown, lat: unknown): boolean => {
+    return (
+      typeof lng === 'number' &&
+      typeof lat === 'number' &&
+      !isNaN(lng) &&
+      !isNaN(lat) &&
+      Math.abs(lng) <= 180 &&
+      Math.abs(lat) <= 90
+    );
+  };
+
   const handleSelectResult = useCallback(
     (result: SearchResult) => {
       if (result.type === 'household') {
         setSelectedHouseholdId(result.data.id);
-        if (result.data.location?.coordinates) {
-          setMapCommand({
-            center: [result.data.location.coordinates[0], result.data.location.coordinates[1]],
-            zoom: 18,
-            timestamp: Date.now(),
-          });
+        // ✅ Safe coordinate access with full validation
+        const coords = result.data.location?.coordinates;
+        if (coords && Array.isArray(coords) && coords.length === 2) {
+          const [lng, lat] = coords;
+          if (isValidCoordinate(lng, lat)) {
+            setMapCommand({
+              center: [lng, lat],
+              zoom: 18,
+              timestamp: Date.now(),
+            });
+          } else {
+            logger.warn('Invalid coordinates received:', coords);
+          }
         }
       } else {
-        const center: [number, number] = [result.lon, result.lat];
-        setMapCommand({ center, zoom: 16, timestamp: Date.now() });
+        if (isValidCoordinate(result.lon, result.lat)) {
+          const center: [number, number] = [result.lon, result.lat];
+          setMapCommand({ center, zoom: 16, timestamp: Date.now() });
+        } else {
+          logger.warn('Invalid result coordinates:', { lon: result.lon, lat: result.lat });
+        }
       }
       setSearchQuery('');
       setSearchResults([]);
@@ -461,43 +485,63 @@ const Terrain: React.FC = () => {
                 exit={{ opacity: 0 }}
                 className="h-full w-full relative"
               >
-                <Suspense
+                <ErrorBoundary
                   fallback={
-                    <div className="h-full w-full flex flex-col items-center justify-center bg-slate-950">
-                      <div className="relative">
-                        <div className="w-16 h-16 border-4 border-blue-500/10 rounded-full" />
-                        <div className="absolute top-0 left-0 w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                    <div className="h-full w-full flex items-center justify-center bg-red-50/10 border border-red-500/20 rounded-lg">
+                      <div className="text-center">
+                        <div className="text-4xl mb-4">❌</div>
+                        <h3 className="text-red-600 font-semibold mb-2">Erreur loading carte</h3>
+                        <p className="text-red-500/70 text-sm mb-4">
+                          Un problème est survenu en chargeant la carte
+                        </p>
+                        <button
+                          onClick={() => window.location.reload()}
+                          className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded font-medium text-sm transition-colors"
+                        >
+                          Recharger
+                        </button>
                       </div>
-                      <p className="mt-6 text-[10px] font-black uppercase tracking-[0.3em] text-blue-500 animate-pulse">
-                        Initialisation Carte
-                      </p>
                     </div>
                   }
                 >
-                  <MapComponent
-                    households={households}
-                    isFilteringActive={
-                      selectedTeam !== 'all' || selectedPhases.length !== ALL_STATUSES.length
+                  <Suspense
+                    fallback={
+                      <div className="h-full w-full flex flex-col items-center justify-center bg-slate-950">
+                        <div className="relative">
+                          <div className="w-16 h-16 border-4 border-blue-500/10 rounded-full" />
+                          <div className="absolute top-0 left-0 w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                        </div>
+                        <p className="mt-6 text-[10px] font-black uppercase tracking-[0.3em] text-blue-500 animate-pulse">
+                          Initialisation Carte
+                        </p>
+                      </div>
                     }
-                    onZoneClick={(center, zoom) =>
-                      setMapCommand({ center, zoom, timestamp: Date.now() })
-                    }
-                    grappesConfig={grappesConfig}
-                    readOnly={!peut(PERMISSIONS.MODIFIER_CARTE)}
-                    userLocation={userLocation}
-                    onHouseholdDrop={updateHouseholdLocation}
-                    favorites={localFavorites}
-                    onMove={(_, zoom) => (mapZoomRef.current = zoom)}
-                    onBoundsChange={setMapBounds}
-                    warehouses={showWarehouses ? warehouseStats : []}
-                    projectId={project?.id}
-                    drawnZones={drawnZones}
-                    onAddPoint={addPendingPoint}
-                    grappeZonesData={grappeZonesData}
-                    grappeCentroidsData={grappeCentroidsData}
-                    showLegend={showLegend}
-                  />
-                </Suspense>
+                  >
+                    <MapComponent
+                      households={households || []}
+                      isFilteringActive={
+                        selectedTeam !== 'all' || selectedPhases.length !== ALL_STATUSES.length
+                      }
+                      onZoneClick={(center, zoom) =>
+                        setMapCommand({ center, zoom, timestamp: Date.now() })
+                      }
+                      grappesConfig={grappesConfig}
+                      readOnly={!peut(PERMISSIONS.MODIFIER_CARTE)}
+                      userLocation={userLocation}
+                      onHouseholdDrop={updateHouseholdLocation}
+                      favorites={localFavorites}
+                      onMove={(_, zoom) => (mapZoomRef.current = zoom)}
+                      onBoundsChange={setMapBounds}
+                      warehouses={showWarehouses ? warehouseStats : []}
+                      projectId={project?.id}
+                      drawnZones={drawnZones}
+                      onAddPoint={addPendingPoint}
+                      grappeZonesData={grappeZonesData}
+                      grappeCentroidsData={grappeCentroidsData}
+                      showLegend={showLegend}
+                    />
+                  </Suspense>
+                </ErrorBoundary>
               </motion.div>
             ) : (
               <motion.div

@@ -909,10 +909,14 @@ export default function Simulation() {
                     </div>
                     <div className="flex flex-col gap-1">
                       <div className="flex items-end gap-3">
-                        <p className="text-4xl font-black text-slate-900 dark:text-white">
-                          {activeScenario.calendarDuration}{' '}
+                        <p className="text-4xl font-black text-slate-900 dark:text-white flex items-baseline gap-2">
+                          <span>{activeScenario.calendarDuration}</span>
                           <span className="text-lg text-slate-500 dark:text-slate-400 font-bold">
                             Jours
+                          </span>
+                          <span className="text-base text-blue-500/80 dark:text-blue-400/80 font-medium ml-1">
+                            (~{(activeScenario.calendarDuration / 30).toFixed(1).replace('.0', '')}{' '}
+                            Mois)
                           </span>
                         </p>
                         {isOptimized &&
@@ -1016,8 +1020,9 @@ export default function Simulation() {
                       <p className="text-xs uppercase tracking-[0.2em] text-slate-500 mb-2">
                         Durée calendaire
                       </p>
-                      <p className="text-2xl font-black text-white">
-                        {activeScenario.calendarDuration}j
+                      <p className="text-2xl font-black text-white flex items-baseline gap-2">
+                        <span>{activeScenario.calendarDuration}j</span>
+                        <span className="text-sm text-blue-400/80 font-medium">(~{(activeScenario.calendarDuration / 30).toFixed(1).replace('.0', '')}m)</span>
                       </p>
                       <p className="text-xs text-slate-400 mt-1">
                         {currentScenario.calendarDuration - activeScenario.calendarDuration > 0
