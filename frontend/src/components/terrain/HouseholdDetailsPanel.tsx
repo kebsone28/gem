@@ -224,7 +224,6 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
                                             type="file" 
                                             className="hidden" 
                                             accept="image/*" 
-                                            capture="environment" 
                                             title="Uploader une photo de preuve terrain" 
                                             aria-label="Charger une photo de preuve"
                                             onChange={async (e) => {

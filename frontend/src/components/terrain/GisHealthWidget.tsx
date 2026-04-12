@@ -68,6 +68,7 @@ const GisHealthWidget: React.FC<GisHealthWidgetProps> = ({ result, onFlyTo, isDa
                             </div>
                             <button 
                                 onClick={() => setIsExpanded(false)}
+                                aria-label="Fermer le panneau d'audit GIS"
                                 className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-white/10 text-slate-400 font-bold' : 'hover:bg-slate-100 text-slate-500'}`}
                             >
                                 <X size={14} />

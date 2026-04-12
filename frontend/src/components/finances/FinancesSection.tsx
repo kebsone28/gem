@@ -10,15 +10,85 @@ import {
     CheckCircle2
 } from 'lucide-react';
 import { useFinances } from '../../hooks/useFinances';
-import { fmtFCFA } from '../../utils/format';
 
 interface Props {
     project: any;
     onUpdate: (patch: any) => Promise<void>;
 }
 
+/** Ligne autonome avec calcul en temps réel */
+function DevisRow({ item, onUpdatePlanned, onUpdateReal, onDelete }: {
+    item: any;
+    onUpdatePlanned: (id: string, field: 'qty' | 'unit', val: number) => void;
+    onUpdateReal: (id: string, field: 'qty' | 'unit', val: number) => void;
+    onDelete: (id: string) => void;
+}) {
+    const [pQty, setPQty] = useState<number>(item.qty ?? 0);
+    const [pUnit, setPUnit] = useState<number>(item.unit ?? 0);
+    const [rQty, setRQty] = useState<number>(item.rq ?? item.qty ?? 0);
+    const [rUnit, setRUnit] = useState<number>(item.ru ?? item.unit ?? 0);
+
+    const totalPrevu = pQty * pUnit;
+    const totalReel = rQty * rUnit;
+    const margin = totalPrevu - totalReel;
+
+    return (
+        <tr className="group hover:bg-white/5 transition-all">
+            {/* DONNÉE FINANCIÈRE */}
+            <td className="px-4 py-3 text-xs text-slate-500 border-r border-white/5">{item.id}</td>
+            <td className="px-4 py-3 text-sm font-bold text-white border-r border-white/5">{item.label}</td>
+            <td className="px-4 py-3 text-xs font-black text-indigo-400 uppercase text-center border-r border-white/10">{item.region}</td>
+
+            {/* COÛT PROJET — éditables */}
+            <td className="px-2 py-1 text-right">
+                <input type="number" value={pQty}
+                    onChange={e => setPQty(Number(e.target.value) || 0)}
+                    onBlur={e => onUpdatePlanned(item.id, 'qty', Number(e.target.value) || 0)}
+                    className="w-20 bg-transparent text-right text-sm text-blue-200 border border-transparent hover:border-blue-400/40 focus:border-blue-500 rounded px-2 py-1 outline-none transition-all" />
+            </td>
+            <td className="px-2 py-1 text-right">
+                <input type="number" value={pUnit}
+                    onChange={e => setPUnit(Number(e.target.value) || 0)}
+                    onBlur={e => onUpdatePlanned(item.id, 'unit', Number(e.target.value) || 0)}
+                    className="w-28 bg-transparent text-right text-sm text-blue-200 border border-transparent hover:border-blue-400/40 focus:border-blue-500 rounded px-2 py-1 outline-none transition-all" />
+            </td>
+            <td className="px-4 py-3 text-right text-sm font-bold text-blue-400 border-r border-white/10 whitespace-nowrap">
+                {totalPrevu.toLocaleString('fr-FR')}
+            </td>
+
+            {/* CHARGE RÉELLE — éditables et autonomes */}
+            <td className="px-2 py-1 text-right">
+                <input type="number" value={rQty}
+                    onChange={e => setRQty(Number(e.target.value) || 0)}
+                    onBlur={e => onUpdateReal(item.id, 'qty', Number(e.target.value) || 0)}
+                    className="w-20 bg-transparent text-right text-sm text-amber-200 border border-transparent hover:border-amber-400/40 focus:border-amber-500 rounded px-2 py-1 outline-none transition-all" />
+            </td>
+            <td className="px-2 py-1 text-right">
+                <input type="number" value={rUnit}
+                    onChange={e => setRUnit(Number(e.target.value) || 0)}
+                    onBlur={e => onUpdateReal(item.id, 'unit', Number(e.target.value) || 0)}
+                    className="w-28 bg-transparent text-right text-sm text-amber-200 border border-transparent hover:border-amber-400/40 focus:border-amber-500 rounded px-2 py-1 outline-none transition-all" />
+            </td>
+            <td className="px-4 py-3 text-right text-sm font-bold text-amber-300 border-r border-white/10 whitespace-nowrap">
+                {totalReel.toLocaleString('fr-FR')}
+            </td>
+
+            {/* MARGE */}
+            <td className={`px-4 py-3 text-right text-sm font-black whitespace-nowrap ${margin >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                {margin.toLocaleString('fr-FR')}
+            </td>
+            <td className="px-2 py-3">
+                <button onClick={() => onDelete(item.id)} title="Supprimer" className="p-2 opacity-0 group-hover:opacity-100 text-rose-500 hover:bg-rose-500/10 rounded-lg transition-all">
+                    <Trash2 size={14} />
+                </button>
+            </td>
+        </tr>
+    );
+}
+
+
 export function FinancesSection({ project, onUpdate }: Props) {
-    const { devis, addDevisItem, deleteDevisItem, importDevisList, resetToDefault, updatePlannedCost } = useFinances();
+    const { devis, addDevisItem, deleteDevisItem, importDevisList, resetToDefault, updatePlannedCost, updateRealCost } = useFinances();
     const [isSaving, setIsSaving] = useState(false);
     const [success, setSuccess] = useState(false);
     const [importErrors, setImportErrors] = useState<string[]>([]);
@@ -202,47 +272,15 @@ export function FinancesSection({ project, onUpdate }: Props) {
                             {devisItems.length === 0 ? (
                                 <tr><td colSpan={11} className="py-16 text-center text-slate-600 font-bold text-sm">Aucun poste. Ajoutez-en ci-dessous ou importez un Excel.</td></tr>
                             ) : devisItems.map((item: any) => (
-                                <tr key={item.id} className="group hover:bg-white/5 transition-all">
-                                    {/* DONNÉE FINANCIÈRE */}
-                                    <td className="px-4 py-3 text-xs text-slate-500 border-r border-white/5">{item.id}</td>
-                                    <td className="px-4 py-3 text-sm font-bold text-white border-r border-white/5">{item.label}</td>
-                                    <td className="px-4 py-3 text-xs font-black text-indigo-400 uppercase text-center border-r border-white/10">{item.region}</td>
-
-                                    {/* COÛT PROJET — éditables */}
-                                    <td className="px-2 py-1 text-right">
-                                        <input type="number" defaultValue={item.qty}
-                                            onBlur={e => updatePlannedCost(item.id, 'qty', Number(e.target.value) || 0)}
-                                            className="w-20 bg-transparent text-right text-sm text-blue-200 border border-transparent hover:border-blue-400/40 focus:border-blue-500 rounded px-2 py-1 outline-none transition-all" />
-                                    </td>
-                                    <td className="px-2 py-1 text-right">
-                                        <input type="number" defaultValue={item.unit}
-                                            onBlur={e => updatePlannedCost(item.id, 'unit', Number(e.target.value) || 0)}
-                                            className="w-28 bg-transparent text-right text-sm text-blue-200 border border-transparent hover:border-blue-400/40 focus:border-blue-500 rounded px-2 py-1 outline-none transition-all" />
-                                    </td>
-                                    <td className="px-4 py-3 text-right text-sm font-bold text-blue-400 border-r border-white/10">{item.planned.toLocaleString('fr-FR')}</td>
-
-                                    {/* CHARGE RÉELLE — éditables et autonomes */}
-                                    <td className="px-2 py-1 text-right">
-                                        <input type="number" defaultValue={item.rq ?? item.qty}
-                                            onBlur={e => updateRealCost(item.id, 'qty', Number(e.target.value) || 0)}
-                                            className="w-20 bg-transparent text-right text-sm text-amber-200 border border-transparent hover:border-amber-400/40 focus:border-amber-500 rounded px-2 py-1 outline-none transition-all" />
-                                    </td>
-                                    <td className="px-2 py-1 text-right">
-                                        <input type="number" defaultValue={item.ru ?? item.unit}
-                                            onBlur={e => updateRealCost(item.id, 'unit', Number(e.target.value) || 0)}
-                                            className="w-28 bg-transparent text-right text-sm text-amber-200 border border-transparent hover:border-amber-400/40 focus:border-amber-500 rounded px-2 py-1 outline-none transition-all" />
-                                    </td>
-                                    <td className="px-4 py-3 text-right text-sm font-bold text-amber-300 border-r border-white/10">{item.realTotal.toLocaleString('fr-FR')}</td>
-
-                                    {/* MARGE */}
-                                    <td className={`px-4 py-3 text-right text-sm font-black ${item.margin >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{item.margin.toLocaleString('fr-FR')}</td>
-                                    <td className="px-2 py-3">
-                                        <button onClick={() => deleteDevisItem(item.id)} title="Supprimer" className="p-2 opacity-0 group-hover:opacity-100 text-rose-500 hover:bg-rose-500/10 rounded-lg transition-all">
-                                            <Trash2 size={14} />
-                                        </button>
-                                    </td>
-                                </tr>
+                                <DevisRow
+                                    key={item.id}
+                                    item={item}
+                                    onUpdatePlanned={updatePlannedCost}
+                                    onUpdateReal={updateRealCost}
+                                    onDelete={deleteDevisItem}
+                                />
                             ))}
+
                         </tbody>
                         {devisItems.length > 0 && (
                             <tfoot className="bg-slate-950/60 border-t-2 border-white/10">

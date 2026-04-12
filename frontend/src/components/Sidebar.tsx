@@ -189,7 +189,7 @@ export default function Sidebar() {
             {/* Mobile Toggle */}
             <button
                 onClick={() => setMobileOpen(!mobileOpen)}
-                aria-expanded={mobileOpen}
+                aria-expanded={mobileOpen ? "true" : "false"}
                 aria-label={mobileOpen ? 'Fermer le menu' : 'Ouvrir le menu'}
                 className="lg:hidden fixed top-6 right-6 z-[60] w-12 h-12 bg-electric-gradient rounded-2xl flex items-center justify-center text-white shadow-electric transition-transform active:scale-95"
             >
