@@ -1,13 +1,13 @@
 .map-widget-glass {
-    background: #ffffff;
-    border: 1px solid rgba(0, 0, 0, 0.05);
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
 }
 
 .dark .map-widget-glass {
-    background: #0D1E35;
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    box-shadow: 0 15px 50px rgba(0, 0, 0, 0.4);
+  background: #0d1e35;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 15px 50px rgba(0, 0, 0, 0.4);
 }
 
 /* ─────────────────────────────
@@ -15,130 +15,131 @@
 ───────────────────────────── */
 
 .map-toolbar-horizontal {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    gap: 2px;
-    padding: 4px 8px;
-    border-radius: 14px;
-    background: #0D1E35;
-    border: 1px solid rgba(30, 144, 255, 0.2);
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5),
-                0 0 12px rgba(30, 144, 255, 0.1);
-    z-index: 100;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 8px;
+  border-radius: 14px;
+  background: #0d1e35;
+  border: 1px solid rgba(30, 144, 255, 0.2);
+  box-shadow:
+    0 10px 40px rgba(0, 0, 0, 0.5),
+    0 0 12px rgba(30, 144, 255, 0.1);
+  z-index: 100;
 }
 
 /* Groupes */
 .toolbar-group {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    gap: 2px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 2px;
 }
 
 /* Divider */
 .toolbar-divider {
-    width: 1px;
-    height: 16px;
-    background: rgba(30, 144, 255, 0.15);
-    margin: 0 2px;
+  width: 1px;
+  height: 16px;
+  background: rgba(30, 144, 255, 0.15);
+  margin: 0 2px;
 }
 
 /* Boutons */
 .toolbar-btn-lg {
-    width: 30px; 
-    height: 30px;
-    min-width: 30px;
-    min-height: 30px;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #050F1F;
-    color: #94A3B8;
-    border: 1px solid rgba(255, 255, 255, 0.03);
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    cursor: pointer;
-    position: relative;
-    overflow: hidden;
+  width: 30px;
+  height: 30px;
+  min-width: 30px;
+  min-height: 30px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #050f1f;
+  color: #94a3b8;
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
 }
 
 /* Hover */
 .toolbar-btn-lg:hover {
-    background: rgba(30, 144, 255, 0.12);
-    color: #60AFFF;
-    transform: scale(1.08);
-    border-color: rgba(30, 144, 255, 0.3);
+  background: rgba(30, 144, 255, 0.12);
+  color: #60afff;
+  transform: scale(1.08);
+  border-color: rgba(30, 144, 255, 0.3);
 }
 
 /* Active / Link */
 .toolbar-btn-lg.active {
-    background: linear-gradient(135deg, #0066FF, #00C6FF);
-    color: white;
-    border: none;
-    box-shadow: 0 8px 25px rgba(0, 102, 255, 0.4);
+  background: linear-gradient(135deg, #0066ff, #00c6ff);
+  color: white;
+  border: none;
+  box-shadow: 0 8px 25px rgba(0, 102, 255, 0.4);
 }
 
 /* Tab Underline Animation */
 .widget-tab-active {
-    position: relative;
-    color: #6366f1;
+  position: relative;
+  color: #6366f1;
 }
 
 .widget-tab-active::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 20%;
-    right: 20%;
-    height: 3px;
-    background: #6366f1;
-    border-radius: 10px 10px 0 0;
-    box-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 20%;
+  right: 20%;
+  height: 3px;
+  background: #6366f1;
+  border-radius: 10px 10px 0 0;
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
 }
 
 /* Hover scales */
 .map-widget-item {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .map-widget-item:hover {
-    transform: translateX(4px);
-    background: rgba(99, 102, 241, 0.05);
+  transform: translateX(4px);
+  background: rgba(99, 102, 241, 0.05);
 }
 
 .dark .map-widget-item:hover {
-    background: rgba(99, 102, 241, 0.1);
+  background: rgba(99, 102, 241, 0.1);
 }
 
 /* Draggable Handle Hint */
 .drag-handle-dots {
-    opacity: 0.3;
-    transition: opacity 0.3s;
+  opacity: 0.3;
+  transition: opacity 0.3s;
 }
 
 .map-widget-header:hover .drag-handle-dots {
-    opacity: 1;
+  opacity: 1;
 }
 
 /* Scrollbar for widgets */
 .widget-content-scroll::-webkit-scrollbar {
-    width: 4px;
+  width: 4px;
 }
 
 .widget-content-scroll::-webkit-scrollbar-track {
-    background: transparent;
+  background: transparent;
 }
 
 .widget-content-scroll::-webkit-scrollbar-thumb {
-    background: rgba(99, 102, 241, 0.3);
-    border-radius: 10px;
+  background: rgba(99, 102, 241, 0.3);
+  border-radius: 10px;
 }
 
 .widget-content-scroll::-webkit-scrollbar-thumb:hover {
-    background: rgba(99, 102, 241, 0.6);
+  background: rgba(99, 102, 241, 0.6);
 }
 
 .dynamic-progress-bar {
-    width: var(--progress-width, 0%);
+  width: var(--progress-width, 0%);
 }

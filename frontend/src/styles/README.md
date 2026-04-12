@@ -9,6 +9,7 @@ Ce design system centralise tous les styles, composants et patterns de l'applica
 ### 3 Niveaux de Centralisation
 
 #### Niveau 1 : Design Tokens (`src/styles/tokens.ts`)
+
 ```typescript
 import { DESIGN_TOKENS } from '../styles/tokens';
 
@@ -18,6 +19,7 @@ const spacing = DESIGN_TOKENS.spacing[4];
 ```
 
 #### Niveau 2 : Composants de Layout (`src/components/layout/`)
+
 ```tsx
 import { PageHeader, CardGrid, ContentArea } from '../components';
 
@@ -25,25 +27,20 @@ function MyPage() {
   return (
     <PageContainer>
       <PageHeader title="Mon Titre" icon={<Icon />} />
-      <CardGrid columns={3}>
-        {/* Contenu */}
-      </CardGrid>
+      <CardGrid columns={3}>{/* Contenu */}</CardGrid>
     </PageContainer>
   );
 }
 ```
 
 #### Niveau 3 : Pages Prédéfinies (`src/components/pages/`)
+
 ```tsx
 import { StatsPage, FilterPage } from '../components';
 
 function Dashboard() {
   return (
-    <StatsPage
-      title="Dashboard"
-      stats={statsData}
-      icon={<DashboardIcon />}
-    >
+    <StatsPage title="Dashboard" stats={statsData} icon={<DashboardIcon />}>
       {/* Contenu spécifique */}
     </StatsPage>
   );
@@ -53,6 +50,7 @@ function Dashboard() {
 ## 📦 Composants Disponibles
 
 ### Layout Components
+
 - `PageContainer` - Conteneur responsive principal
 - `PageHeader` - Header standardisé avec titre/actions
 - `Section` - Section avec titre et padding
@@ -62,12 +60,14 @@ function Dashboard() {
 - `SidebarLayout` - Layout avec sidebar
 
 ### Page Components
+
 - `StatsPage` - Page avec statistiques + contenu
 - `FilterPage` - Page avec filtres + liste filtrée
 - `FormPage` - Page avec formulaire
 - `DetailPage` - Page de détail avec breadcrumbs
 
 ### UI Components
+
 - `Button` - Boutons stylisés (variants: primary, secondary, outline, ghost, danger)
 - `Card` - Cartes avec elevation
 - `Badge` - Badges de statut
@@ -76,6 +76,7 @@ function Dashboard() {
 ## 🎯 Utilisation Rapide
 
 ### Import Centralisé
+
 ```tsx
 // ❌ Avant (déconseillé)
 import { Button } from './components/UI';
@@ -87,6 +88,7 @@ import { Button, PageHeader, DESIGN_TOKENS } from '../components';
 ```
 
 ### Page Simple
+
 ```tsx
 import { PageContainer, PageHeader, CardGrid, ContentArea } from '../components';
 
@@ -113,6 +115,7 @@ export default function MyPage() {
 ```
 
 ### Page avec Statistiques
+
 ```tsx
 import { StatsPage } from '../components';
 
@@ -122,17 +125,13 @@ export default function Dashboard() {
       label: 'Utilisateurs',
       value: '1,247',
       icon: <UsersIcon />,
-      trend: { value: 12.5, isPositive: true }
-    }
+      trend: { value: 12.5, isPositive: true },
+    },
     // Plus de stats...
   ];
 
   return (
-    <StatsPage
-      title="Dashboard"
-      stats={stats}
-      icon={<DashboardIcon />}
-    >
+    <StatsPage title="Dashboard" stats={stats} icon={<DashboardIcon />}>
       {/* Contenu spécifique du dashboard */}
     </StatsPage>
   );
@@ -142,28 +141,32 @@ export default function Dashboard() {
 ## 🎨 Design Tokens
 
 ### Couleurs
+
 ```typescript
-DESIGN_TOKENS.colors.primary[500]     // #0066FF
-DESIGN_TOKENS.colors.status.success   // #10B981
-DESIGN_TOKENS.colors.gray[100]        // #F1F5F9
+DESIGN_TOKENS.colors.primary[500]; // #0066FF
+DESIGN_TOKENS.colors.status.success; // #10B981
+DESIGN_TOKENS.colors.gray[100]; // #F1F5F9
 ```
 
 ### Espacement
+
 ```typescript
-DESIGN_TOKENS.spacing[4]   // 1rem
-DESIGN_TOKENS.spacing[8]   // 2rem
+DESIGN_TOKENS.spacing[4]; // 1rem
+DESIGN_TOKENS.spacing[8]; // 2rem
 ```
 
 ### Typographie
+
 ```typescript
-DESIGN_TOKENS.typography.sizes.lg   // 1.125rem
-DESIGN_TOKENS.typography.weights.bold // 700
+DESIGN_TOKENS.typography.sizes.lg; // 1.125rem
+DESIGN_TOKENS.typography.weights.bold; // 700
 ```
 
 ### Autres
+
 ```typescript
-DESIGN_TOKENS.radius.lg    // 0.5rem
-DESIGN_TOKENS.shadows.card // Ombre pour cartes
+DESIGN_TOKENS.radius.lg; // 0.5rem
+DESIGN_TOKENS.shadows.card; // Ombre pour cartes
 ```
 
 ## 🛠️ Classes Utiles (COMMON_CLASSES)
@@ -178,6 +181,7 @@ import { COMMON_CLASSES } from '../components';
 ```
 
 Classes disponibles :
+
 - `container` - Conteneur responsive
 - `card` - Carte stylisée
 - `btnPrimary` / `btnSecondary` / `btnDanger` - Boutons
@@ -188,6 +192,7 @@ Classes disponibles :
 ## 🔄 Migration depuis l'Ancien Système
 
 ### Étape 1 : Remplacer les Imports
+
 ```tsx
 // ❌ Ancien
 import Button from './components/UI/Button';
@@ -199,6 +204,7 @@ const primaryColor = DESIGN_TOKENS.colors.primary[500];
 ```
 
 ### Étape 2 : Utiliser les Composants de Layout
+
 ```tsx
 // ❌ Code dupliqué partout
 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -214,6 +220,7 @@ const primaryColor = DESIGN_TOKENS.colors.primary[500];
 ```
 
 ### Étape 3 : Remplacer les Classes Répétées
+
 ```tsx
 // ❌ Classes Tailwind dupliquées
 <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
@@ -235,6 +242,7 @@ Toutes les pages principales ont été migrées vers le système de layout parta
 ### 📖 Guide d'Utilisation des Layouts
 
 #### Structure Standard d'une Page
+
 ```tsx
 import { PageContainer, PageHeader, ContentArea } from '../components';
 
@@ -256,6 +264,7 @@ export default function MyPage() {
 ```
 
 #### Quand Utiliser Chaque Composant
+
 - **PageContainer** : Toujours le conteneur racine d'une page
 - **PageHeader** : Pour les titres, sous-titres, icônes et actions principales
 - **ContentArea** : Pour envelopper le contenu principal (cartes, grilles, etc.)
@@ -263,6 +272,7 @@ export default function MyPage() {
 - **CardGrid** : Pour afficher des éléments en grille responsive
 
 #### Exemple Complet - Dashboard
+
 ```tsx
 import { PageContainer, PageHeader, ContentArea, CardGrid } from '../components';
 
@@ -276,12 +286,8 @@ export default function Dashboard() {
         actions={<Button>Exporter</Button>}
       />
       <ContentArea>
-        <CardGrid columns={3}>
-          {/* KPIs Cards */}
-        </CardGrid>
-        <Section title="Activités Récentes">
-          {/* Recent activities */}
-        </Section>
+        <CardGrid columns={3}>{/* KPIs Cards */}</CardGrid>
+        <Section title="Activités Récentes">{/* Recent activities */}</Section>
       </ContentArea>
     </PageContainer>
   );
@@ -332,21 +338,25 @@ export default function Dashboard() {
 ## 📊 Avantages
 
 ### Cohérence
+
 - Toutes les pages utilisent les mêmes patterns
 - Changements globaux en un seul endroit
 - Design system évolutif
 
 ### Maintenance
+
 - Réduction de 60-80% du code dupliqué
 - Imports simplifiés
 - Documentation centralisée
 
 ### Performance
+
 - Moins de CSS dupliqué
 - Bundles plus petits
 - Chargement plus rapide
 
 ### DX (Developer Experience)
+
 - Auto-complétion TypeScript
 - Composants typés
 - Patterns établis
@@ -354,6 +364,7 @@ export default function Dashboard() {
 ## 🚀 Démarrage Rapide
 
 1. **Importer depuis l'index central** :
+
    ```tsx
    import { PageContainer, Button, DESIGN_TOKENS } from '../components';
    ```
@@ -367,12 +378,14 @@ export default function Dashboard() {
 ## 📝 Bonnes Pratiques
 
 ### ✅ À Faire
+
 - Utiliser les composants centralisés plutôt que du HTML personnalisé
 - Respecter les design tokens pour les valeurs
 - Étendre les composants plutôt que les réécrire
 - Documenter les nouveaux patterns
 
 ### ❌ À Éviter
+
 - Classes Tailwind en ligne répétées
 - Styles CSS personnalisés non centralisés
 - Composants qui ne suivent pas les patterns établis
@@ -403,10 +416,11 @@ Un dashboard dédié permet de visualiser l'usage des composants :
 import { DesignSystemAnalyticsDashboard } from '../components';
 
 // Intégration dans l'app pour les développeurs
-<DesignSystemAnalyticsDashboard />
+<DesignSystemAnalyticsDashboard />;
 ```
 
 **Métriques trackées :**
+
 - Utilisations par composant
 - Pages utilisant chaque composant
 - Fréquence d'usage
@@ -435,6 +449,7 @@ npm run build-storybook
 ### Structure des Stories
 
 Chaque composant dispose de stories complètes :
+
 - Variants (primary, secondary, etc.)
 - États (loading, disabled, etc.)
 - Tailles (sm, md, lg)
@@ -445,6 +460,7 @@ Chaque composant dispose de stories complètes :
 ### Nouveaux Composants Ajoutés
 
 #### Select Component
+
 ```tsx
 import { Select } from '../components';
 
@@ -452,23 +468,25 @@ import { Select } from '../components';
   label="Choisir une option"
   options={[
     { value: 'opt1', label: 'Option 1' },
-    { value: 'opt2', label: 'Option 2' }
+    { value: 'opt2', label: 'Option 2' },
   ]}
   value={selectedValue}
   onChange={setSelectedValue}
-/>
+/>;
 ```
 
 #### Alert Component
+
 ```tsx
 import { Alert } from '../components';
 
 <Alert variant="success" icon={<CheckCircle />}>
   Opération réussie !
-</Alert>
+</Alert>;
 ```
 
 #### Modal Component
+
 ```tsx
 import { Modal, Button } from '../components';
 
@@ -481,14 +499,12 @@ import { Modal, Button } from '../components';
       <Button variant="outline" onClick={() => setIsOpen(false)}>
         Annuler
       </Button>
-      <Button onClick={confirmAction}>
-        Confirmer
-      </Button>
+      <Button onClick={confirmAction}>Confirmer</Button>
     </>
   }
 >
   Êtes-vous sûr de vouloir continuer ?
-</Modal>
+</Modal>;
 ```
 
 ### Composants Existants Étendus
@@ -542,4 +558,4 @@ import { Modal, Button } from '../components';
 - **Phase 4** : Optimisations et performances
 - **Phase 5** : Composants avancés (DataTable, Charts)
 - **Phase 6** : Thème personnalisable par client</content>
-<parameter name="filePath">c:\Mes-Sites-Web\GEM_SAAS/frontend/DESIGN_SYSTEM_CENTRALISE.md
+  <parameter name="filePath">c:\Mes-Sites-Web\GEM_SAAS/frontend/DESIGN_SYSTEM_CENTRALISE.md

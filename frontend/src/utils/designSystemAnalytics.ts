@@ -42,9 +42,9 @@ class DesignSystemAnalytics {
     this.saveToStorage();
 
     // Log to console in development
-    console.debug(`🎨 [DS] ${component}`, { 
-      props: usage.props, 
-      page: usage.page 
+    console.debug(`🎨 [DS] ${component}`, {
+      props: usage.props,
+      page: usage.page,
     });
   }
 
@@ -107,9 +107,17 @@ class DesignSystemAnalytics {
     if (!props) return undefined;
 
     const sanitized: Record<string, any> = {};
-    
+
     // List of keys to always exclude
-    const excludeKeys = new Set(['children', 'onClick', 'onChange', 'ref', 'onBlur', 'onFocus', 'onKeyDown']);
+    const excludeKeys = new Set([
+      'children',
+      'onClick',
+      'onChange',
+      'ref',
+      'onBlur',
+      'onFocus',
+      'onKeyDown',
+    ]);
 
     Object.keys(props).forEach((key) => {
       if (excludeKeys.has(key)) return;
@@ -178,7 +186,7 @@ export function withAnalytics<P extends object>(
       analytics.trackUsage(componentName, props as Record<string, any>);
     }, []); // Track once per component instance
 
-    return React.createElement(Component, { ...props as any, ref });
+    return React.createElement(Component, { ...(props as any), ref });
   });
 }
 

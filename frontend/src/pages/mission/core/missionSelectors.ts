@@ -21,7 +21,7 @@ export const selectMissionCompleteness = (state: MissionState): number => {
   if (state.formData.orderNumber) score++;
   if (state.formData.region) score++;
   if (state.formData.purpose) score++;
-  
+
   // 2. RH (Au moins 1 membre valide)
   if (state.members.length > 0 && missionMemberSchema.safeParse(state.members[0]).success) {
     score++;
@@ -43,7 +43,7 @@ export const selectMissionCompleteness = (state: MissionState): number => {
 export const selectMissionHealthScore = (state: MissionState, projectBudget: number): number => {
   const currentTotal = selectTotalFrais(state);
   const completeness = selectMissionCompleteness(state);
-  
+
   let health = completeness;
 
   // Pénalité Budget (SI dépassement)
@@ -61,10 +61,13 @@ export const selectMissionHealthScore = (state: MissionState, projectBudget: num
 /**
  * Sélecteur de Status de Santé (Categoriel)
  */
-export const selectHealthStatus = (state: MissionState, projectBudget: number): 'optimal' | 'warning' | 'critical' => {
+export const selectHealthStatus = (
+  state: MissionState,
+  projectBudget: number
+): 'optimal' | 'warning' | 'critical' => {
   const score = selectMissionHealthScore(state, projectBudget);
   const currentTotal = selectTotalFrais(state);
-  
+
   if (score < 40 || (projectBudget > 0 && currentTotal > projectBudget * 1.2)) return 'critical';
   if (score < 75 || (projectBudget > 0 && currentTotal > projectBudget)) return 'warning';
   return 'optimal';

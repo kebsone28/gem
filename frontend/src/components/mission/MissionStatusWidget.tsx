@@ -1,5 +1,15 @@
 import React from 'react';
-import { AlertCircle, CheckCircle2, Clock, Zap, RefreshCw, Database, Activity, TrendingUp, TrendingDown } from 'lucide-react';
+import {
+  AlertCircle,
+  CheckCircle2,
+  Clock,
+  Zap,
+  RefreshCw,
+  Database,
+  Activity,
+  TrendingUp,
+  TrendingDown,
+} from 'lucide-react';
 import { getMissionReadiness } from '../../services/missionValidation';
 import type { MissionOrderData, MissionMember } from '../../pages/mission/core/missionTypes';
 
@@ -28,47 +38,70 @@ export const MissionStatusWidget: React.FC<MissionStatusWidgetProps> = ({
   isDirty = false,
   healthScore = 100,
   healthStatus = 'optimal',
-  budgetVariance = 0
+  budgetVariance = 0,
 }) => {
-  const { percentage, status, nextSteps } = getMissionReadiness(data, members, isCertified, isSubmitted);
+  const { percentage, status, nextSteps } = getMissionReadiness(
+    data,
+    members,
+    isCertified,
+    isSubmitted
+  );
 
-  const statusConfig: Record<string, { label: string; color: string; icon: React.ElementType; bgGlow: string }> = {
+  const statusConfig: Record<
+    string,
+    { label: string; color: string; icon: React.ElementType; bgGlow: string }
+  > = {
     draft: {
       label: 'BROUILLON',
       color: 'bg-slate-500',
       icon: Clock,
-      bgGlow: 'bg-slate-500/10'
+      bgGlow: 'bg-slate-500/10',
     },
     ready: {
       label: 'PRÊTE',
       color: 'bg-amber-500',
       icon: Zap,
-      bgGlow: 'bg-amber-500/10'
+      bgGlow: 'bg-amber-500/10',
     },
     certified: {
       label: 'SIGNÉE',
       color: 'bg-indigo-600',
       icon: CheckCircle2,
-      bgGlow: 'bg-indigo-500/10'
+      bgGlow: 'bg-indigo-500/10',
     },
     submitted: {
       label: 'EN ATTENTE',
       color: 'bg-amber-500',
       icon: Clock,
-      bgGlow: 'bg-amber-500/10'
+      bgGlow: 'bg-amber-500/10',
     },
     executed: {
       label: 'EXÉCUTÉE',
       color: 'bg-emerald-500',
       icon: CheckCircle2,
-      bgGlow: 'bg-emerald-500/10'
-    }
+      bgGlow: 'bg-emerald-500/10',
+    },
   };
 
   const healthUI = {
-    optimal: { color: 'text-emerald-500', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', label: 'Optimal' },
-    warning: { color: 'text-amber-500', bg: 'bg-amber-500/10', border: 'border-amber-500/20', label: 'Vigilance' },
-    critical: { color: 'text-rose-500', bg: 'bg-rose-500/10', border: 'border-rose-500/20', label: 'Critique' }
+    optimal: {
+      color: 'text-emerald-500',
+      bg: 'bg-emerald-500/10',
+      border: 'border-emerald-500/20',
+      label: 'Optimal',
+    },
+    warning: {
+      color: 'text-amber-500',
+      bg: 'bg-amber-500/10',
+      border: 'border-amber-500/20',
+      label: 'Vigilance',
+    },
+    critical: {
+      color: 'text-rose-500',
+      bg: 'bg-rose-500/10',
+      border: 'border-rose-500/20',
+      label: 'Critique',
+    },
   }[healthStatus];
 
   const config = statusConfig[status] || statusConfig.draft;
@@ -76,29 +109,34 @@ export const MissionStatusWidget: React.FC<MissionStatusWidgetProps> = ({
   return (
     <div className="glass-card !p-5 !rounded-[1.5rem] space-y-5 relative overflow-hidden group">
       {/* Background Glow */}
-      <div className={`absolute top-0 right-0 w-32 h-32 ${config.bgGlow} filter blur-3xl rounded-full -mr-16 -mt-16 transition-all group-hover:scale-110`} />
+      <div
+        className={`absolute top-0 right-0 w-32 h-32 ${config.bgGlow} filter blur-3xl rounded-full -mr-16 -mt-16 transition-all group-hover:scale-110`}
+      />
 
       {/* Sync Status Header */}
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
-          <Database size={12} className={isDirty ? "text-amber-500" : "text-emerald-500"} />
+          <Database size={12} className={isDirty ? 'text-amber-500' : 'text-emerald-500'} />
           <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none">
             {isDirty ? 'Modifié' : 'Synchronisé'}
           </span>
         </div>
-        {isSyncing && (
-          <RefreshCw size={12} className="text-indigo-500 animate-spin" />
-        )}
+        {isSyncing && <RefreshCw size={12} className="text-indigo-500 animate-spin" />}
       </div>
 
       {/* Health Score Central KPI */}
-      <div className={`p-3 rounded-[1.5rem] ${healthUI.bg} ${healthUI.border} border border-dashed flex flex-col items-center justify-center relative overflow-hidden`}>
+      <div
+        className={`p-3 rounded-[1.5rem] ${healthUI.bg} ${healthUI.border} border border-dashed flex flex-col items-center justify-center relative overflow-hidden`}
+      >
         <div className="absolute top-2 right-3">
           <Activity size={12} className={healthUI.color} />
         </div>
-        <span className="text-[8px] font-black text-slate-500 uppercase tracking-[0.2em] mb-0.5">Health Score</span>
+        <span className="text-[8px] font-black text-slate-500 uppercase tracking-[0.2em] mb-0.5">
+          Health Score
+        </span>
         <div className={`text-3xl font-black ${healthUI.color} tracking-tighter`}>
-          {healthScore}<span className="text-xs opacity-50 ml-0.5">%</span>
+          {healthScore}
+          <span className="text-xs opacity-50 ml-0.5">%</span>
         </div>
         <span className={`text-[8px] font-bold uppercase tracking-widest mt-0.5 ${healthUI.color}`}>
           Performance : {healthUI.label}
@@ -111,9 +149,13 @@ export const MissionStatusWidget: React.FC<MissionStatusWidgetProps> = ({
           <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
             Certification
           </h4>
-          <span className="text-[8px] font-bold text-slate-500 uppercase">v{version} • {lastSync}</span>
+          <span className="text-[8px] font-bold text-slate-500 uppercase">
+            v{version} • {lastSync}
+          </span>
         </div>
-        <div className={`px-2 py-1 rounded-full text-[9px] font-black uppercase tracking-widest text-white shadow-xl shadow-slate-500/10 ${config.color}`}>
+        <div
+          className={`px-2 py-1 rounded-full text-[9px] font-black uppercase tracking-widest text-white shadow-xl shadow-slate-500/10 ${config.color}`}
+        >
           {config.label}
         </div>
       </div>
@@ -121,8 +163,12 @@ export const MissionStatusWidget: React.FC<MissionStatusWidgetProps> = ({
       {/* Progress Bar */}
       <div className="space-y-3">
         <div className="flex justify-between items-center">
-          <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Préparation</span>
-          <span className="text-[11px] font-black text-slate-900 dark:text-white">{percentage.toFixed(0)}%</span>
+          <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">
+            Préparation
+          </span>
+          <span className="text-[11px] font-black text-slate-900 dark:text-white">
+            {percentage.toFixed(0)}%
+          </span>
         </div>
         <div className="w-full h-2 bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden">
           <div
@@ -139,9 +185,24 @@ export const MissionStatusWidget: React.FC<MissionStatusWidgetProps> = ({
             Indemnités
           </div>
           <div className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-1">
-            {budgetVariance === 0 ? '' : budgetVariance > 0 ? <TrendingUp size={12} className="text-rose-500" /> : <TrendingDown size={12} className="text-emerald-500" />}
-            <span className={budgetVariance > 0 ? 'text-rose-600' : budgetVariance < 0 ? 'text-emerald-600' : 'text-slate-900 dark:text-white'}>
-              {budgetVariance > 0 ? '+' : ''}{budgetVariance.toFixed(1)}%
+            {budgetVariance === 0 ? (
+              ''
+            ) : budgetVariance > 0 ? (
+              <TrendingUp size={12} className="text-rose-500" />
+            ) : (
+              <TrendingDown size={12} className="text-emerald-500" />
+            )}
+            <span
+              className={
+                budgetVariance > 0
+                  ? 'text-rose-600'
+                  : budgetVariance < 0
+                    ? 'text-emerald-600'
+                    : 'text-slate-900 dark:text-white'
+              }
+            >
+              {budgetVariance > 0 ? '+' : ''}
+              {budgetVariance.toFixed(1)}%
             </span>
           </div>
         </div>
@@ -150,7 +211,8 @@ export const MissionStatusWidget: React.FC<MissionStatusWidgetProps> = ({
             Effectif
           </div>
           <div className="text-sm font-black text-slate-900 dark:text-white">
-            {members.length} <span className="text-[9px] opacity-40 font-bold uppercase ml-0.5">Pers.</span>
+            {members.length}{' '}
+            <span className="text-[9px] opacity-40 font-bold uppercase ml-0.5">Pers.</span>
           </div>
         </div>
       </div>
@@ -166,7 +228,10 @@ export const MissionStatusWidget: React.FC<MissionStatusWidgetProps> = ({
           </div>
           <div className="space-y-1.5">
             {nextSteps.slice(0, 2).map((step: string, i: number) => (
-              <div key={i} className="flex items-start gap-1.5 text-[10px] text-slate-600 dark:text-slate-400 leading-tight">
+              <div
+                key={i}
+                className="flex items-start gap-1.5 text-[10px] text-slate-600 dark:text-slate-400 leading-tight"
+              >
                 <span className="text-indigo-500 font-bold">•</span>
                 <span className="font-semibold">{step}</span>
               </div>

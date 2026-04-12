@@ -22,13 +22,19 @@ html {
 }
 
 body {
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family:
+    'Inter',
+    system-ui,
+    -apple-system,
+    sans-serif;
   font-size: 1rem;
   line-height: 1.6;
   letter-spacing: -0.01em;
   background-color: var(--color-bg-primary);
   color: var(--color-text-primary);
-  transition: background-color var(--transition-base), color var(--transition-base);
+  transition:
+    background-color var(--transition-base),
+    color var(--transition-base);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
@@ -72,7 +78,12 @@ a:focus {
    TYPOGRAPHY
 ───────────────────────────────────────────────────────────────────────── */
 
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   font-family: 'Lexend', 'Inter', system-ui, sans-serif;
   font-weight: 700;
   line-height: 1.25;
@@ -134,7 +145,8 @@ small {
    LISTS
 ───────────────────────────────────────────────────────────────────────── */
 
-ul, ol {
+ul,
+ol {
   margin-bottom: 1rem;
   padding-left: 1.5rem;
 }
@@ -147,13 +159,13 @@ li {
    FORM ELEMENTS
 ───────────────────────────────────────────────────────────────────────── */
 
-input[type="text"],
-input[type="email"],
-input[type="password"],
-input[type="number"],
-input[type="date"],
-input[type="time"],
-input[type="search"],
+input[type='text'],
+input[type='email'],
+input[type='password'],
+input[type='number'],
+input[type='date'],
+input[type='time'],
+input[type='search'],
 textarea,
 select {
   width: 100%;
@@ -350,7 +362,8 @@ tbody tr:hover {
 }
 
 @keyframes pulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
   }
   50% {
@@ -396,15 +409,15 @@ tbody tr:hover {
    DARK MODE SPECIFIC
 ───────────────────────────────────────────────────────────────────────── */
 
-[data-theme="dark"] table thead {
+[data-theme='dark'] table thead {
   background-color: var(--color-gray-800);
 }
 
-[data-theme="dark"] tbody tr:hover {
+[data-theme='dark'] tbody tr:hover {
   background-color: var(--color-gray-800);
 }
 
-[data-theme="dark"] code {
+[data-theme='dark'] code {
   background-color: var(--color-gray-800);
   color: var(--color-primary-900);
 }

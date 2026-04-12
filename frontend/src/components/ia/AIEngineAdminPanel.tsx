@@ -29,25 +29,25 @@ const MODES: AIEngineMode[] = [
 ];
 
 const MODE_ICONS: Record<AIEngineMode, string> = {
-  RULES_ONLY:         '⚙️',
+  RULES_ONLY: '⚙️',
   HYBRID_RULES_FIRST: '🔀',
-  HYBRID_AI_FIRST:    '🤖',
-  CLAUDE_ONLY:        '✨',
+  HYBRID_AI_FIRST: '🤖',
+  CLAUDE_ONLY: '✨',
 };
 
 const MODE_COLORS: Record<AIEngineMode, string> = {
-  RULES_ONLY:         'border-blue-500 bg-blue-900/20',
+  RULES_ONLY: 'border-blue-500 bg-blue-900/20',
   HYBRID_RULES_FIRST: 'border-green-500 bg-green-900/20',
-  HYBRID_AI_FIRST:    'border-purple-500 bg-purple-900/20',
-  CLAUDE_ONLY:        'border-orange-500 bg-orange-900/20',
+  HYBRID_AI_FIRST: 'border-purple-500 bg-purple-900/20',
+  CLAUDE_ONLY: 'border-orange-500 bg-orange-900/20',
 };
 
 export default function AIEngineAdminPanel({ user, onClose }: Props) {
   const isMaster = user.role === 'ADMIN_PROQUELEC' || user.email === 'admingem';
 
-  const [config, setConfig]   = useState<AIEngineSettings>(getAIEngineConfig());
-  const [saved, setSaved]     = useState(false);
-  const [dirty, setDirty]     = useState(false);
+  const [config, setConfig] = useState<AIEngineSettings>(getAIEngineConfig());
+  const [saved, setSaved] = useState(false);
+  const [dirty, setDirty] = useState(false);
 
   if (!isMaster) {
     return (
@@ -55,15 +55,22 @@ export default function AIEngineAdminPanel({ user, onClose }: Props) {
         <div className="bg-gray-900 border border-red-900/50 rounded-2xl p-8 text-center max-w-sm">
           <p className="text-3xl mb-4">🔒</p>
           <h2 className="text-xl font-bold text-white mb-2">Accès restreint</h2>
-          <p className="text-gray-400 text-sm mb-6">Cette console de configuration est réservée à l'Administrateur du bastion.</p>
-          <button onClick={onClose} className="w-full py-3 bg-red-600/20 text-red-400 rounded-xl font-semibold border border-red-900/50 hover:bg-red-600/30 transition-all">Fermer</button>
+          <p className="text-gray-400 text-sm mb-6">
+            Cette console de configuration est réservée à l'Administrateur du bastion.
+          </p>
+          <button
+            onClick={onClose}
+            className="w-full py-3 bg-red-600/20 text-red-400 rounded-xl font-semibold border border-red-900/50 hover:bg-red-600/30 transition-all"
+          >
+            Fermer
+          </button>
         </div>
       </div>
     );
   }
 
   function update(patch: Partial<AIEngineSettings>) {
-    setConfig(c => ({ ...c, ...patch }));
+    setConfig((c) => ({ ...c, ...patch }));
     setDirty(true);
     setSaved(false);
   }
@@ -76,7 +83,7 @@ export default function AIEngineAdminPanel({ user, onClose }: Props) {
   }
 
   function handleReset() {
-    if (!confirm("Réinitialiser la configuration aux valeurs par défaut ?")) return;
+    if (!confirm('Réinitialiser la configuration aux valeurs par défaut ?')) return;
     const defaults = resetAIEngineConfig(user.email);
     setConfig(defaults);
     setDirty(false);
@@ -85,12 +92,11 @@ export default function AIEngineAdminPanel({ user, onClose }: Props) {
   }
 
   const claudeActive = isClaudeEnabled(config);
-  const rulesActive  = isRulesEnabled(config);
+  const rulesActive = isRulesEnabled(config);
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-md p-4 animate-in fade-in duration-300">
       <div className="bg-gray-950 border border-gray-800 rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col scale-in-center">
-
         {/* Header */}
         <div className="flex items-center justify-between p-6 bg-gray-900/50 border-b border-gray-800">
           <div>
@@ -98,18 +104,26 @@ export default function AIEngineAdminPanel({ user, onClose }: Props) {
               <span className="p-2 bg-blue-600/10 rounded-lg text-blue-400">⚙️</span>
               Configuration Moteur IA
             </h2>
-            <p className="text-xs text-gray-500 mt-1 uppercase tracking-widest font-semibold">GEM-MINT v8.0 Dual-Engine</p>
+            <p className="text-xs text-gray-500 mt-1 uppercase tracking-widest font-semibold">
+              GEM-MINT v8.0 Dual-Engine
+            </p>
           </div>
-          <button onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-xl bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white transition-all">×</button>
+          <button
+            onClick={onClose}
+            className="w-10 h-10 flex items-center justify-center rounded-xl bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white transition-all"
+          >
+            ×
+          </button>
         </div>
 
         <div className="p-6 space-y-8 overflow-y-auto custom-scrollbar">
-
           {/* Mode Selection */}
           <section>
-            <h3 className="text-xs font-bold text-blue-400 uppercase tracking-widest mb-4">Moteur Actif</h3>
+            <h3 className="text-xs font-bold text-blue-400 uppercase tracking-widest mb-4">
+              Moteur Actif
+            </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {MODES.map(mode => (
+              {MODES.map((mode) => (
                 <button
                   key={mode}
                   onClick={() => update({ mode })}
@@ -120,14 +134,20 @@ export default function AIEngineAdminPanel({ user, onClose }: Props) {
                   }`}
                 >
                   <div className="flex items-center gap-3 mb-2 relative z-10">
-                    <span className="text-2xl group-hover:scale-110 transition-transform">{MODE_ICONS[mode]}</span>
+                    <span className="text-2xl group-hover:scale-110 transition-transform">
+                      {MODE_ICONS[mode]}
+                    </span>
                     <div>
-                      <p className={`font-bold text-sm ${config.mode === mode ? 'text-white' : 'text-gray-400'}`}>
+                      <p
+                        className={`font-bold text-sm ${config.mode === mode ? 'text-white' : 'text-gray-400'}`}
+                      >
                         {getModeLabelFR(mode)}
                       </p>
                     </div>
                   </div>
-                  <p className="text-xs text-gray-500 leading-relaxed relative z-10">{getModeDescriptionFR(mode)}</p>
+                  <p className="text-xs text-gray-500 leading-relaxed relative z-10">
+                    {getModeDescriptionFR(mode)}
+                  </p>
                   {config.mode === mode && (
                     <div className="absolute top-0 right-0 p-2">
                       <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
@@ -140,52 +160,76 @@ export default function AIEngineAdminPanel({ user, onClose }: Props) {
 
           {/* Status Indicators */}
           <section className="flex gap-3">
-            <div className={`flex-1 rounded-xl p-4 text-center border transition-all ${rulesActive ? 'bg-blue-600/5 border-blue-500/30' : 'bg-gray-900/50 border-gray-800 grayscale opacity-50'}`}>
-              <p className="text-[10px] text-blue-400 font-bold uppercase tracking-tighter mb-1">Règles Métier</p>
-              <p className="text-xs font-medium text-white">{rulesActive ? '✅ OPÉRATIONNEL' : '⭕ HORS-LIGNE'}</p>
+            <div
+              className={`flex-1 rounded-xl p-4 text-center border transition-all ${rulesActive ? 'bg-blue-600/5 border-blue-500/30' : 'bg-gray-900/50 border-gray-800 grayscale opacity-50'}`}
+            >
+              <p className="text-[10px] text-blue-400 font-bold uppercase tracking-tighter mb-1">
+                Règles Métier
+              </p>
+              <p className="text-xs font-medium text-white">
+                {rulesActive ? '✅ OPÉRATIONNEL' : '⭕ HORS-LIGNE'}
+              </p>
             </div>
-            <div className={`flex-1 rounded-xl p-4 text-center border transition-all ${claudeActive ? 'bg-purple-600/5 border-purple-500/30' : 'bg-gray-900/50 border-gray-800 grayscale opacity-50'}`}>
-              <p className="text-[10px] text-purple-400 font-bold uppercase tracking-tighter mb-1">AI Claude (API)</p>
-              <p className="text-xs font-medium text-white">{claudeActive ? '✅ CONNECTÉ' : '⭕ DÉSACTIVÉ'}</p>
+            <div
+              className={`flex-1 rounded-xl p-4 text-center border transition-all ${claudeActive ? 'bg-purple-600/5 border-purple-500/30' : 'bg-gray-900/50 border-gray-800 grayscale opacity-50'}`}
+            >
+              <p className="text-[10px] text-purple-400 font-bold uppercase tracking-tighter mb-1">
+                AI Claude (API)
+              </p>
+              <p className="text-xs font-medium text-white">
+                {claudeActive ? '✅ CONNECTÉ' : '⭕ DÉSACTIVÉ'}
+              </p>
             </div>
           </section>
 
           {/* IA Source Selection */}
           <section>
-            <h3 className="text-xs font-bold text-blue-400 uppercase tracking-widest mb-4">Source de l'IA</h3>
+            <h3 className="text-xs font-bold text-blue-400 uppercase tracking-widest mb-4">
+              Source de l'IA
+            </h3>
             <div className="flex gap-2">
               {[
                 { id: 'CLAUDE_ANTHROPIC', label: 'Claude (Propriétaire)', icon: '✨' },
                 { id: 'PUBLIC_POLLINATIONS', label: 'Public (Gratuit)', icon: '🌍' },
                 { id: 'LOCAL_OLLAMA', label: 'Local (Ollama)', icon: '🏠' },
-              ].map(p => (
+              ].map((p) => (
                 <button
                   key={p.id}
                   onClick={() => update({ provider: p.id as any })}
                   className={`flex-1 p-3 rounded-xl border-2 transition-all flex flex-col items-center gap-1 ${
-                    config.provider === p.id 
-                      ? 'border-blue-500 bg-blue-900/20' 
+                    config.provider === p.id
+                      ? 'border-blue-500 bg-blue-900/20'
                       : 'border-gray-800 bg-gray-900/50 hover:bg-gray-800'
                   }`}
                 >
                   <span className="text-xl">{p.icon}</span>
-                  <span className={`text-[9px] font-bold ${config.provider === p.id ? 'text-white' : 'text-gray-500'}`}>{p.label}</span>
+                  <span
+                    className={`text-[9px] font-bold ${config.provider === p.id ? 'text-white' : 'text-gray-500'}`}
+                  >
+                    {p.label}
+                  </span>
                 </button>
               ))}
             </div>
             {config.provider === 'PUBLIC_POLLINATIONS' && (
-              <p className="text-[10px] text-green-500 mt-2 italic">✓ Mode Gratuit : Aucune clé ni inscription requise via Pollinations AI.</p>
+              <p className="text-[10px] text-green-500 mt-2 italic">
+                ✓ Mode Gratuit : Aucune clé ni inscription requise via Pollinations AI.
+              </p>
             )}
             {config.provider === 'LOCAL_OLLAMA' && (
-              <p className="text-[10px] text-orange-500 mt-2 italic">⚠ Nécessite Ollama fonctionnant sur localhost:11434.</p>
+              <p className="text-[10px] text-orange-500 mt-2 italic">
+                ⚠ Nécessite Ollama fonctionnant sur localhost:11434.
+              </p>
             )}
           </section>
 
           {/* Advanced Settings */}
           {claudeActive && (
             <div className="space-y-6 animate-in slide-in-from-top-4 duration-300">
-              <h3 className="text-xs font-bold text-purple-400 uppercase tracking-widest">Paramètres Claude AI</h3>
-              
+              <h3 className="text-xs font-bold text-purple-400 uppercase tracking-widest">
+                Paramètres Claude AI
+              </h3>
+
               <div className="grid grid-cols-1 gap-3">
                 {/* 🔑 API Key Field */}
                 {config.provider === 'CLAUDE_ANTHROPIC' && (
@@ -201,27 +245,47 @@ export default function AIEngineAdminPanel({ user, onClose }: Props) {
                       className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-3 text-sm font-mono text-purple-200 outline-none focus:border-purple-500 transition-all"
                     />
                     <p className="text-[9px] text-gray-500 mt-2 italic px-1">
-                      Attention: Conservez cette clé secrète. Elle est nécessaire pour les modes "HYBRID" et "CLAUDE_ONLY".
+                      Attention: Conservez cette clé secrète. Elle est nécessaire pour les modes
+                      "HYBRID" et "CLAUDE_ONLY".
                     </p>
                   </div>
                 )}
 
                 {/* Toggles */}
                 {[
-                  { key: 'enableConversationMemory', label: 'Mémoire contextuelle', desc: 'Claude retient les 10 derniers échanges.' },
-                  { key: 'claudeEnrichTechnical', label: 'Enrichissement Technique', desc: 'Claude approfondit les normes NS 01-001.' },
-                  { key: 'claudeEnrichDecision', label: 'Enrichissement DG', desc: 'Analyses stratégiques avancées.' },
+                  {
+                    key: 'enableConversationMemory',
+                    label: 'Mémoire contextuelle',
+                    desc: 'Claude retient les 10 derniers échanges.',
+                  },
+                  {
+                    key: 'claudeEnrichTechnical',
+                    label: 'Enrichissement Technique',
+                    desc: 'Claude approfondit les normes NS 01-001.',
+                  },
+                  {
+                    key: 'claudeEnrichDecision',
+                    label: 'Enrichissement DG',
+                    desc: 'Analyses stratégiques avancées.',
+                  },
                 ].map((opt) => (
-                  <label key={opt.key} className="flex items-center justify-between p-4 bg-gray-900/50 border border-gray-800 rounded-2xl cursor-pointer hover:border-gray-700 transition-all">
+                  <label
+                    key={opt.key}
+                    className="flex items-center justify-between p-4 bg-gray-900/50 border border-gray-800 rounded-2xl cursor-pointer hover:border-gray-700 transition-all"
+                  >
                     <div className="pr-4">
                       <p className="text-sm text-gray-200 font-bold">{opt.label}</p>
                       <p className="text-[10px] text-gray-500">{opt.desc}</p>
                     </div>
-                    <div 
+                    <div
                       className={`w-12 h-6 rounded-full transition-all relative ${config[opt.key as keyof AIEngineSettings] ? 'bg-purple-600 shadow-[0_0_12px_rgba(147,51,234,0.4)]' : 'bg-gray-800'}`}
-                      onClick={() => update({ [opt.key]: !config[opt.key as keyof AIEngineSettings] })}
+                      onClick={() =>
+                        update({ [opt.key]: !config[opt.key as keyof AIEngineSettings] })
+                      }
                     >
-                      <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${config[opt.key as keyof AIEngineSettings] ? 'left-7' : 'left-1'}`} />
+                      <div
+                        className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${config[opt.key as keyof AIEngineSettings] ? 'left-7' : 'left-1'}`}
+                      />
                     </div>
                   </label>
                 ))}
@@ -233,15 +297,22 @@ export default function AIEngineAdminPanel({ user, onClose }: Props) {
                   <div className="flex justify-between items-end mb-4">
                     <div>
                       <p className="text-sm font-bold text-white">Délai d'attente (Timeout)</p>
-                      <p className="text-[10px] text-gray-500">Basculement sur les règles si l'IA latence.</p>
+                      <p className="text-[10px] text-gray-500">
+                        Basculement sur les règles si l'IA latence.
+                      </p>
                     </div>
-                    <p className="text-lg font-black text-purple-400">{config.claudeTimeoutMs / 1000}s</p>
+                    <p className="text-lg font-black text-purple-400">
+                      {config.claudeTimeoutMs / 1000}s
+                    </p>
                   </div>
                   <input
-                    type="range" min={2000} max={15000} step={1000}
+                    type="range"
+                    min={2000}
+                    max={15000}
+                    step={1000}
                     title="Délai d'attente (Timeout)"
                     value={config.claudeTimeoutMs}
-                    onChange={e => update({ claudeTimeoutMs: Number(e.target.value) })}
+                    onChange={(e) => update({ claudeTimeoutMs: Number(e.target.value) })}
                     className="w-full accent-purple-500 bg-gray-800 rounded-full h-1.5 appearance-none cursor-pointer"
                   />
                 </div>
@@ -253,8 +324,11 @@ export default function AIEngineAdminPanel({ user, onClose }: Props) {
           {config.lastUpdatedBy && (
             <div className="p-4 bg-gray-900/30 rounded-xl text-center">
               <p className="text-[10px] text-gray-500">
-                Configuration maintenue par <span className="text-gray-300 font-bold">{config.lastUpdatedBy}</span>
-                {config.lastUpdatedAt ? ` • ${new Date(config.lastUpdatedAt).toLocaleString()}` : ''}
+                Configuration maintenue par{' '}
+                <span className="text-gray-300 font-bold">{config.lastUpdatedBy}</span>
+                {config.lastUpdatedAt
+                  ? ` • ${new Date(config.lastUpdatedAt).toLocaleString()}`
+                  : ''}
               </p>
             </div>
           )}
@@ -271,15 +345,14 @@ export default function AIEngineAdminPanel({ user, onClose }: Props) {
               onClick={handleSave}
               disabled={!dirty}
               className={`flex-1 py-4 px-8 rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-xl ${
-                dirty 
-                  ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-900/20 hover:scale-[1.02]' 
+                dirty
+                  ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-900/20 hover:scale-[1.02]'
                   : 'bg-gray-800 text-gray-600 grayscale cursor-not-allowed opacity-50'
               }`}
             >
               {saved ? '✨ Synchronisé !' : '🚀 Déployer la Config'}
             </button>
           </div>
-
         </div>
       </div>
     </div>

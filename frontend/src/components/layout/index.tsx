@@ -32,81 +32,65 @@ function renderIcon(icon?: React.ReactNode | React.ComponentType<any>) {
   return null;
 }
 
-export const PageHeader: React.FC<PageHeaderProps> = withAnalytics(({
-  title,
-  subtitle,
-  icon,
-  actions,
-  className = '',
-  variant = 'default',
-}) => {
-  if (variant === 'gradient') {
+export const PageHeader: React.FC<PageHeaderProps> = withAnalytics(
+  ({ title, subtitle, icon, actions, className = '', variant = 'default' }) => {
+    if (variant === 'gradient') {
+      return (
+        <div className={`page-header mb-6 ${className}`}>
+          <div className="flex items-center justify-between relative z-10">
+            <div className="flex items-center gap-3">
+              {icon && (
+                <div className="p-2.5 rounded-xl bg-white/20 text-white">{renderIcon(icon)}</div>
+              )}
+              <div>
+                <h1 className="text-2xl font-bold text-white leading-tight tracking-tight m-0">
+                  {title}
+                </h1>
+                {subtitle && (
+                  <p className="text-white/75 text-sm mt-0.5 leading-relaxed">{subtitle}</p>
+                )}
+              </div>
+            </div>
+            {actions && <div className="flex items-center gap-3 shrink-0">{actions}</div>}
+          </div>
+        </div>
+      );
+    }
+
+    // Variant default
     return (
-      <div className={`page-header mb-6 ${className}`}>
-        <div className="flex items-center justify-between relative z-10">
-          <div className="flex items-center gap-3">
+      <div className={`${COMMON_CLASSES.pageHeader} ${className}`}>
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
             {icon && (
-              <div className="p-2.5 rounded-xl bg-white/20 text-white">
+              <div
+                className="
+                p-2.5 rounded-xl shrink-0
+                bg-[rgba(30,144,255,0.10)] dark:bg-[rgba(30,144,255,0.15)]
+                text-[var(--color-primary)] dark:text-[#60AFFF]
+              "
+              >
                 {renderIcon(icon)}
               </div>
             )}
-            <div>
-              <h1 className="text-2xl font-bold text-white leading-tight tracking-tight m-0">
-                {title}
-              </h1>
+            <div className="min-w-0">
+              <h1 className={`${COMMON_CLASSES.heading1} mb-0 break-words`}>{title}</h1>
               {subtitle && (
-                <p className="text-white/75 text-sm mt-0.5 leading-relaxed">
-                  {subtitle}
-                </p>
+                <p className={`${COMMON_CLASSES.body} text-sm mt-0.5 break-words`}>{subtitle}</p>
               )}
             </div>
           </div>
           {actions && (
-            <div className="flex items-center gap-3 shrink-0">
+            <div className="flex w-full md:w-auto flex-wrap justify-start md:justify-end gap-2">
               {actions}
             </div>
           )}
         </div>
       </div>
     );
-  }
-
-  // Variant default
-  return (
-    <div className={`${COMMON_CLASSES.pageHeader} ${className}`}>
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div className="flex items-center gap-3 min-w-0 flex-1">
-          {icon && (
-            <div
-              className="
-                p-2.5 rounded-xl shrink-0
-                bg-[rgba(30,144,255,0.10)] dark:bg-[rgba(30,144,255,0.15)]
-                text-[var(--color-primary)] dark:text-[#60AFFF]
-              "
-            >
-              {renderIcon(icon)}
-            </div>
-          )}
-          <div className="min-w-0">
-            <h1 className={`${COMMON_CLASSES.heading1} mb-0 break-words`}>
-              {title}
-            </h1>
-            {subtitle && (
-              <p className={`${COMMON_CLASSES.body} text-sm mt-0.5 break-words`}>
-                {subtitle}
-              </p>
-            )}
-          </div>
-        </div>
-        {actions && (
-          <div className="flex w-full md:w-auto flex-wrap justify-start md:justify-end gap-2">
-            {actions}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}, 'PageHeader');
+  },
+  'PageHeader'
+);
 
 // ─────────────────────────────────────────────────────────────────────────
 // PAGE CONTAINER – Conteneur principal avec max-width optionnel
@@ -120,41 +104,39 @@ interface PageContainerProps {
   padding?: 'none' | 'sm' | 'md' | 'lg';
 }
 
-export const PageContainer: React.FC<PageContainerProps> = withAnalytics(({
-  children,
-  className = '',
-  maxWidth = 'full',
-  padding = 'none',
-}) => {
-  const maxWidthClasses: Record<string, string> = {
-    sm:   'max-w-2xl',
-    md:   'max-w-4xl',
-    lg:   'max-w-6xl',
-    xl:   'max-w-7xl',
-    '2xl':'max-w-screen-2xl',
-    full: 'max-w-full',
-  };
+export const PageContainer: React.FC<PageContainerProps> = withAnalytics(
+  ({ children, className = '', maxWidth = 'full', padding = 'none' }) => {
+    const maxWidthClasses: Record<string, string> = {
+      sm: 'max-w-2xl',
+      md: 'max-w-4xl',
+      lg: 'max-w-6xl',
+      xl: 'max-w-7xl',
+      '2xl': 'max-w-screen-2xl',
+      full: 'max-w-full',
+    };
 
-  const paddingClasses: Record<string, string> = {
-    none: '',
-    sm:   'p-4 sm:p-5',
-    md:   'p-4 sm:p-6 lg:p-8',
-    lg:   'p-6 sm:p-8 lg:p-10',
-  };
+    const paddingClasses: Record<string, string> = {
+      none: '',
+      sm: 'p-4 sm:p-5',
+      md: 'p-4 sm:p-6 lg:p-8',
+      lg: 'p-6 sm:p-8 lg:p-10',
+    };
 
-  return (
-    <div
-      className={[
-        'w-full mx-auto',
-        maxWidthClasses[maxWidth],
-        paddingClasses[padding],
-        className,
-      ].join(' ')}
-    >
-      {children}
-    </div>
-  );
-}, 'PageContainer');
+    return (
+      <div
+        className={[
+          'w-full mx-auto',
+          maxWidthClasses[maxWidth],
+          paddingClasses[padding],
+          className,
+        ].join(' ')}
+      >
+        {children}
+      </div>
+    );
+  },
+  'PageContainer'
+);
 
 // ─────────────────────────────────────────────────────────────────────────
 // SECTION – Bloc de contenu avec titre optionnel
@@ -179,9 +161,9 @@ export const Section: React.FC<SectionProps> = ({
 }) => {
   const paddingClasses: Record<string, string> = {
     none: '',
-    sm:   'py-4',
-    md:   'py-6',
-    lg:   'py-8',
+    sm: 'py-4',
+    md: 'py-6',
+    lg: 'py-8',
   };
 
   return (
@@ -220,9 +202,9 @@ export const ContentArea: React.FC<ContentAreaProps> = ({
 }) => {
   const paddingClasses: Record<string, string> = {
     none: '',
-    sm:   'p-4',
-    md:   'p-6',
-    lg:   'p-8',
+    sm: 'p-4',
+    md: 'p-6',
+    lg: 'p-8',
   };
 
   return (
@@ -270,9 +252,7 @@ export const CardGrid: React.FC<CardGridProps> = ({
   };
 
   return (
-    <div className={`grid ${gridClasses[columns]} ${gapClasses[gap]} ${className}`}>
-      {children}
-    </div>
+    <div className={`grid ${gridClasses[columns]} ${gapClasses[gap]} ${className}`}>{children}</div>
   );
 };
 
@@ -286,22 +266,14 @@ interface StatsGridProps {
   columns?: 2 | 3 | 4;
 }
 
-export const StatsGrid: React.FC<StatsGridProps> = ({
-  children,
-  className = '',
-  columns = 4,
-}) => {
+export const StatsGrid: React.FC<StatsGridProps> = ({ children, className = '', columns = 4 }) => {
   const gridClasses: Record<number, string> = {
     2: 'grid-cols-1 sm:grid-cols-2',
     3: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3',
     4: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4',
   };
 
-  return (
-    <div className={`grid ${gridClasses[columns]} gap-4 ${className}`}>
-      {children}
-    </div>
-  );
+  return <div className={`grid ${gridClasses[columns]} gap-4 ${className}`}>{children}</div>;
 };
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -335,9 +307,7 @@ export const SidebarLayout: React.FC<SidebarLayoutProps> = ({
       <aside className={`${widthClasses[sidebarWidth]} flex-shrink-0 hidden lg:block`}>
         {sidebar}
       </aside>
-      <main className="flex-1 min-w-0">
-        {main}
-      </main>
+      <main className="flex-1 min-w-0">{main}</main>
     </div>
   );
 };
@@ -369,11 +339,13 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
       ].join(' ')}
     >
       {icon && (
-        <div className="
+        <div
+          className="
           mb-4 p-4 rounded-2xl
           bg-[rgba(30,144,255,0.08)] dark:bg-[rgba(30,144,255,0.12)]
           text-[var(--color-primary)] dark:text-[#60AFFF]
-        ">
+        "
+        >
           {icon}
         </div>
       )}
@@ -408,9 +380,7 @@ export const LoadingState: React.FC<LoadingStateProps> = ({
   return (
     <div className={`flex flex-col items-center justify-center gap-3 ${minHeight} ${className}`}>
       <div className={COMMON_CLASSES.spinner} />
-      {text && (
-        <p className={COMMON_CLASSES.caption}>{text}</p>
-      )}
+      {text && <p className={COMMON_CLASSES.caption}>{text}</p>}
     </div>
   );
 };

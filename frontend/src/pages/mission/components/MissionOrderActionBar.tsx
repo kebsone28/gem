@@ -1,7 +1,20 @@
 import React from 'react';
-import { 
-  Plus, Copy, Sparkles, ChevronDown, Settings, Smartphone, 
-  DollarSign, RefreshCw, Archive, Trash2, Save, ListChecks, MapIcon, Fingerprint, Bell 
+import {
+  Plus,
+  Copy,
+  Sparkles,
+  ChevronDown,
+  Settings,
+  Smartphone,
+  DollarSign,
+  RefreshCw,
+  Archive,
+  Trash2,
+  Save,
+  ListChecks,
+  MapIcon,
+  Fingerprint,
+  Bell,
 } from 'lucide-react';
 import { ActionBar } from '../../../components';
 import { getTemplates } from '../../../services/missionTemplates';
@@ -75,7 +88,7 @@ export const MissionOrderActionBar: React.FC<MissionOrderActionBarProps> = ({
   onValidate,
   onSubmit,
   isCertified,
-  isSubmitted
+  isSubmitted,
 }) => {
   const isAdmin = ['ADMIN', 'ADMIN_PROQUELEC', 'DG_PROQUELEC'].includes(role || '');
 
@@ -106,7 +119,10 @@ export const MissionOrderActionBar: React.FC<MissionOrderActionBarProps> = ({
           >
             <Sparkles size={12} />
             MODELES
-            <ChevronDown size={12} className={`transition-transform duration-300 ${showTemplates ? 'rotate-180' : ''}`} />
+            <ChevronDown
+              size={12}
+              className={`transition-transform duration-300 ${showTemplates ? 'rotate-180' : ''}`}
+            />
           </button>
 
           {showTemplates && (
@@ -118,8 +134,12 @@ export const MissionOrderActionBar: React.FC<MissionOrderActionBarProps> = ({
                     onClick={() => onTemplateSelect(template.id)}
                     className="w-full p-3 text-left rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors group"
                   >
-                    <p className="text-[10px] font-black text-slate-800 dark:text-white uppercase tracking-widest group-hover:text-indigo-500 transition-colors">{template.name}</p>
-                    <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 leading-tight">{template.description}</p>
+                    <p className="text-[10px] font-black text-slate-800 dark:text-white uppercase tracking-widest group-hover:text-indigo-500 transition-colors">
+                      {template.name}
+                    </p>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 leading-tight">
+                      {template.description}
+                    </p>
                   </button>
                 ))}
               </div>
@@ -134,18 +154,33 @@ export const MissionOrderActionBar: React.FC<MissionOrderActionBarProps> = ({
           >
             <Settings size={12} />
             CONFIG
-            <ChevronDown size={12} className={`transition-transform duration-300 ${showConfig ? 'rotate-180' : ''}`} />
+            <ChevronDown
+              size={12}
+              className={`transition-transform duration-300 ${showConfig ? 'rotate-180' : ''}`}
+            />
           </button>
 
           {showConfig && (
             <div className="absolute top-full left-0 mt-2 w-72 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl z-[100] p-4 animate-in fade-in slide-in-from-top-2 duration-200">
-              <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Modules Experts</h4>
+              <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">
+                Modules Experts
+              </h4>
               <div className="space-y-3">
                 {[
                   { id: 'map', label: 'Mini-Carte SIG', icon: MapIcon, color: 'text-indigo-500' },
-                  { id: 'expenses', label: 'Gestion des Frais', icon: DollarSign, color: 'text-emerald-500' },
-                  { id: 'inventory', label: 'Inventaire & Checklist', icon: ListChecks, color: 'text-amber-500' },
-                  { id: 'ai', label: 'Outils IA', icon: Sparkles, color: 'text-purple-500' }
+                  {
+                    id: 'expenses',
+                    label: 'Gestion des Frais',
+                    icon: DollarSign,
+                    color: 'text-emerald-500',
+                  },
+                  {
+                    id: 'inventory',
+                    label: 'Inventaire & Checklist',
+                    icon: ListChecks,
+                    color: 'text-amber-500',
+                  },
+                  { id: 'ai', label: 'Outils IA', icon: Sparkles, color: 'text-purple-500' },
                 ].map((f) => (
                   <button
                     key={f.id}
@@ -154,10 +189,16 @@ export const MissionOrderActionBar: React.FC<MissionOrderActionBarProps> = ({
                   >
                     <div className="flex items-center gap-3">
                       <f.icon size={14} className={f.color} />
-                      <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">{f.label}</span>
+                      <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                        {f.label}
+                      </span>
                     </div>
-                    <div className={`w-8 h-4 rounded-full relative transition-colors ${formData.features?.[f.id] ? 'bg-indigo-600' : 'bg-slate-200 dark:bg-slate-700'}`}>
-                      <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${formData.features?.[f.id] ? 'left-4.5' : 'left-0.5'}`} />
+                    <div
+                      className={`w-8 h-4 rounded-full relative transition-colors ${formData.features?.[f.id] ? 'bg-indigo-600' : 'bg-slate-200 dark:bg-slate-700'}`}
+                    >
+                      <div
+                        className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${formData.features?.[f.id] ? 'left-4.5' : 'left-0.5'}`}
+                      />
                     </div>
                   </button>
                 ))}
@@ -197,7 +238,7 @@ export const MissionOrderActionBar: React.FC<MissionOrderActionBarProps> = ({
           <RefreshCw size={12} className={isSyncingServer ? 'animate-spin' : ''} />
           SYNC
         </button>
-        
+
         {isAdmin && (
           <div className="flex items-center gap-2">
             <button
@@ -220,7 +261,6 @@ export const MissionOrderActionBar: React.FC<MissionOrderActionBarProps> = ({
 
       <div className="flex gap-2 flex-wrap items-center">
         <div className="flex items-center gap-1.5">
-
           {/* Export Excel */}
           <button
             onClick={onExportExcel}
@@ -228,9 +268,17 @@ export const MissionOrderActionBar: React.FC<MissionOrderActionBarProps> = ({
             title="Exporter en Excel (.xlsx)"
           >
             <svg viewBox="0 0 24 24" className="w-4 h-4 flex-shrink-0" fill="currentColor">
-              <path d="M14.017 1.002H4.5A1.5 1.5 0 0 0 3 2.502v19a1.5 1.5 0 0 0 1.5 1.5h15a1.5 1.5 0 0 0 1.5-1.5V8.017l-7-7z" opacity="0.3"/>
-              <path d="M14 1v6a1 1 0 0 0 1 1h6"/>
-              <path d="m7 13 2.5 4 2.5-4m0 0 2.5 4 2.5-4" strokeWidth="1.5" stroke="currentColor" fill="none"/>
+              <path
+                d="M14.017 1.002H4.5A1.5 1.5 0 0 0 3 2.502v19a1.5 1.5 0 0 0 1.5 1.5h15a1.5 1.5 0 0 0 1.5-1.5V8.017l-7-7z"
+                opacity="0.3"
+              />
+              <path d="M14 1v6a1 1 0 0 0 1 1h6" />
+              <path
+                d="m7 13 2.5 4 2.5-4m0 0 2.5 4 2.5-4"
+                strokeWidth="1.5"
+                stroke="currentColor"
+                fill="none"
+              />
             </svg>
             <span className="text-[8px] font-black uppercase tracking-widest">XLS</span>
           </button>
@@ -242,9 +290,14 @@ export const MissionOrderActionBar: React.FC<MissionOrderActionBarProps> = ({
             title="Exporter en Word (.docx)"
           >
             <svg viewBox="0 0 24 24" className="w-4 h-4 flex-shrink-0" fill="currentColor">
-              <path d="M14.017 1.002H4.5A1.5 1.5 0 0 0 3 2.502v19a1.5 1.5 0 0 0 1.5 1.5h15a1.5 1.5 0 0 0 1.5-1.5V8.017l-7-7z" opacity="0.3"/>
-              <path d="M14 1v6a1 1 0 0 0 1 1h6"/>
-              <text x="6" y="19" fontSize="7" fontWeight="bold" fill="currentColor">W</text>
+              <path
+                d="M14.017 1.002H4.5A1.5 1.5 0 0 0 3 2.502v19a1.5 1.5 0 0 0 1.5 1.5h15a1.5 1.5 0 0 0 1.5-1.5V8.017l-7-7z"
+                opacity="0.3"
+              />
+              <path d="M14 1v6a1 1 0 0 0 1 1h6" />
+              <text x="6" y="19" fontSize="7" fontWeight="bold" fill="currentColor">
+                W
+              </text>
             </svg>
             <span className="text-[8px] font-black uppercase tracking-widest">WORD</span>
           </button>
@@ -256,14 +309,19 @@ export const MissionOrderActionBar: React.FC<MissionOrderActionBarProps> = ({
             title="Exporter en PDF (.pdf)"
           >
             <svg viewBox="0 0 24 24" className="w-4 h-4 flex-shrink-0" fill="currentColor">
-              <path d="M14.017 1.002H4.5A1.5 1.5 0 0 0 3 2.502v19a1.5 1.5 0 0 0 1.5 1.5h15a1.5 1.5 0 0 0 1.5-1.5V8.017l-7-7z" opacity="0.3"/>
-              <path d="M14 1v6a1 1 0 0 0 1 1h6"/>
-              <text x="5" y="19" fontSize="6" fontWeight="bold" fill="currentColor">PDF</text>
+              <path
+                d="M14.017 1.002H4.5A1.5 1.5 0 0 0 3 2.502v19a1.5 1.5 0 0 0 1.5 1.5h15a1.5 1.5 0 0 0 1.5-1.5V8.017l-7-7z"
+                opacity="0.3"
+              />
+              <path d="M14 1v6a1 1 0 0 0 1 1h6" />
+              <text x="5" y="19" fontSize="6" fontWeight="bold" fill="currentColor">
+                PDF
+              </text>
             </svg>
             <span className="text-[8px] font-black uppercase tracking-widest">PDF</span>
           </button>
         </div>
-        
+
         {isAdmin && !isCertified && (
           <button
             onClick={onValidate}
@@ -301,9 +359,13 @@ export const MissionOrderActionBar: React.FC<MissionOrderActionBarProps> = ({
               !isAdmin && (
                 <button
                   onClick={() => {
-                     if (window.confirm("Voulez-vous soumettre cette mission pour validation ? Elle ne sera plus modifiable.")) {
-                         onSubmit();
-                     }
+                    if (
+                      window.confirm(
+                        'Voulez-vous soumettre cette mission pour validation ? Elle ne sera plus modifiable.'
+                      )
+                    ) {
+                      onSubmit();
+                    }
                   }}
                   className="flex items-center gap-2 px-4 py-2.5 bg-indigo-500/20 text-indigo-500 border border-indigo-500/30 rounded-xl font-black shadow-xl hover:scale-105 transition-all text-[9px] uppercase tracking-widest"
                 >
@@ -319,7 +381,13 @@ export const MissionOrderActionBar: React.FC<MissionOrderActionBarProps> = ({
               className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-black shadow-xl hover:scale-105 transition-all text-[9px] uppercase tracking-widest ${isSubmitted || isCertified ? 'bg-slate-500/20 text-slate-500 cursor-not-allowed border-white/5' : isDirty ? 'bg-orange-500 hover:bg-orange-600 text-white' : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}
             >
               <Save size={12} className={isSyncing || isSyncingServer ? 'animate-pulse' : ''} />
-              {isSubmitted || isCertified ? 'LOCKED' : (isSyncing || isSyncingServer ? 'SYNC...' : isDirty ? 'ENREGISTRER*' : 'SAUVEGARDÉ')}
+              {isSubmitted || isCertified
+                ? 'LOCKED'
+                : isSyncing || isSyncingServer
+                  ? 'SYNC...'
+                  : isDirty
+                    ? 'ENREGISTRER*'
+                    : 'SAUVEGARDÉ'}
             </button>
           </div>
         )}

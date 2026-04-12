@@ -13,7 +13,7 @@ export function missionReducer(state: MissionState, action: MissionAction): Miss
         formData: { ...state.formData, ...action.payload },
         updatedAt: now,
         version: state.version + 1,
-        dirty: { ...state.dirty, form: true }
+        dirty: { ...state.dirty, form: true },
       };
 
     case 'UPDATE_FORM_FIELD':
@@ -22,7 +22,7 @@ export function missionReducer(state: MissionState, action: MissionAction): Miss
         formData: { ...state.formData, [action.payload.field]: action.payload.value },
         updatedAt: now,
         version: state.version + 1,
-        dirty: { ...state.dirty, form: true }
+        dirty: { ...state.dirty, form: true },
       };
 
     // ---------------------------------------------------------
@@ -34,7 +34,7 @@ export function missionReducer(state: MissionState, action: MissionAction): Miss
         members: [...state.members, action.payload],
         updatedAt: now,
         version: state.version + 1,
-        dirty: { ...state.dirty, members: true }
+        dirty: { ...state.dirty, members: true },
       };
 
     case 'UPDATE_MEMBER': {
@@ -45,17 +45,17 @@ export function missionReducer(state: MissionState, action: MissionAction): Miss
         members: newMembers,
         updatedAt: now,
         version: state.version + 1,
-        dirty: { ...state.dirty, members: true }
+        dirty: { ...state.dirty, members: true },
       };
     }
-    
+
     case 'SET_SUBMITTED':
       return {
         ...state,
         isSubmitted: action.payload,
         formData: { ...state.formData, isSubmitted: action.payload },
         updatedAt: now,
-        version: state.version + 1
+        version: state.version + 1,
       };
 
     case 'REMOVE_MEMBER':
@@ -64,7 +64,7 @@ export function missionReducer(state: MissionState, action: MissionAction): Miss
         members: state.members.filter((_, i) => i !== action.index),
         updatedAt: now,
         version: state.version + 1,
-        dirty: { ...state.dirty, members: true }
+        dirty: { ...state.dirty, members: true },
       };
 
     // ---------------------------------------------------------
@@ -83,7 +83,7 @@ export function missionReducer(state: MissionState, action: MissionAction): Miss
         syncStatus: 'synced',
         dirty: { form: false, members: false, planning: false },
         isCertified: !!action.payload.data.isCertified,
-        isSubmitted: !!action.payload.data.isSubmitted
+        isSubmitted: !!action.payload.data.isSubmitted,
       };
 
     case 'SET_SYNC_STATUS':
@@ -100,7 +100,7 @@ export function missionReducer(state: MissionState, action: MissionAction): Miss
           features: { map: true, expenses: false, inventory: false, ai: false },
           transport: 'Véhicule de service',
           createdBy: action.payload.createdBy,
-          creatorId: action.payload.creatorId
+          creatorId: action.payload.creatorId,
         },
         members: [],
         version: 1,
@@ -109,19 +109,19 @@ export function missionReducer(state: MissionState, action: MissionAction): Miss
         status: 'idle',
         dirty: { form: true, members: false, planning: true },
         isCertified: false,
-        isSubmitted: false
+        isSubmitted: false,
       };
 
     case 'CLEAR_DIRTY':
       if (action.payload) {
         return {
           ...state,
-          dirty: { ...state.dirty, [action.payload]: false }
+          dirty: { ...state.dirty, [action.payload]: false },
         };
       }
       return {
         ...state,
-        dirty: { form: false, members: false, planning: false }
+        dirty: { form: false, members: false, planning: false },
       };
 
     case 'SET_STATUS':
@@ -134,11 +134,11 @@ export function missionReducer(state: MissionState, action: MissionAction): Miss
       const entry: AuditEntry = {
         ...action.payload,
         id: crypto.randomUUID(),
-        timestamp: now
+        timestamp: now,
       };
       return {
         ...state,
-        auditTrail: [entry, ...state.auditTrail].slice(0, 50) // Garder les 50 derniers
+        auditTrail: [entry, ...state.auditTrail].slice(0, 50), // Garder les 50 derniers
       };
     }
 
@@ -151,23 +151,23 @@ export function missionReducer(state: MissionState, action: MissionAction): Miss
     case 'SET_CERTIFIED': {
       const isNowCertified = action.payload;
       let newOrderNumber = state.formData.orderNumber;
-      
+
       // Génération automatique du N° d'ordre si validation et manquant
       if (isNowCertified && !newOrderNumber) {
         const year = new Date().getFullYear();
         const random = Math.floor(Math.random() * 900) + 100;
         newOrderNumber = `MO-${year}-${random}`;
       }
-      return { 
-        ...state, 
+      return {
+        ...state,
         isCertified: isNowCertified,
         formData: {
           ...state.formData,
           orderNumber: newOrderNumber,
-          isCertified: isNowCertified
+          isCertified: isNowCertified,
         },
         updatedAt: now,
-        version: state.version + 1
+        version: state.version + 1,
       };
     }
 

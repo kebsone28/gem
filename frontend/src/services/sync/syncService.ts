@@ -12,7 +12,13 @@ import { useOfflineStore } from '../../store/offlineStore';
 import { useAuthStore } from '../../store/authStore';
 import * as safeStorage from '../../utils/safeStorage';
 import { logger } from '../logger';
-import { fetchPendingBatch, markSynced, markFailed, getEntityType, countPending } from './queueService';
+import {
+  fetchPendingBatch,
+  markSynced,
+  markFailed,
+  getEntityType,
+  countPending,
+} from './queueService';
 import { handleServerConflicts } from './conflictResolver';
 
 // Module-level guard — prevents concurrent sync across the entire app lifetime

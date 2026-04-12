@@ -1,7 +1,14 @@
 import React, { useState } from 'react';
 import { CheckCircle2, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
-import type { MissionApprovalWorkflow, MissionApprovalStep } from '../../constants/approvalConstants';
-import { calculateApprovalProgress, getNextPendingStep, ROLE_LABELS } from '../../constants/approvalConstants';
+import type {
+  MissionApprovalWorkflow,
+  MissionApprovalStep,
+} from '../../constants/approvalConstants';
+import {
+  calculateApprovalProgress,
+  getNextPendingStep,
+  ROLE_LABELS,
+} from '../../constants/approvalConstants';
 
 interface MissionWorkflowPanelProps {
   workflow: MissionApprovalWorkflow | null;
@@ -13,7 +20,7 @@ interface MissionWorkflowPanelProps {
 export const MissionWorkflowPanel: React.FC<MissionWorkflowPanelProps> = ({
   workflow,
   onSubmitForApproval,
-  isSubmitting
+  isSubmitting,
 }) => {
   const [expandedStep, setExpandedStep] = useState<string | null>(null);
 
@@ -65,14 +72,24 @@ export const MissionWorkflowPanel: React.FC<MissionWorkflowPanelProps> = ({
           <h3 className="text-xs font-black text-slate-600 dark:text-slate-400 uppercase tracking-[0.2em]">
             État Approbations
           </h3>
-          <span className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-widest text-white ${
-            workflow.overallStatus === 'approved' ? 'bg-emerald-500' : 
-            workflow.overallStatus === 'rejected' ? 'bg-rose-500' :
-            workflow.overallStatus === 'executed' ? 'bg-amber-500' : 'bg-slate-500'
-          }`}>
-            {workflow.overallStatus === 'approved' ? 'APPROUVÉE' :
-             workflow.overallStatus === 'rejected' ? 'REJETÉE' :
-             workflow.overallStatus === 'executed' ? 'EXÉCUTÉE' : 'EN ATTENTE'}
+          <span
+            className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-widest text-white ${
+              workflow.overallStatus === 'approved'
+                ? 'bg-emerald-500'
+                : workflow.overallStatus === 'rejected'
+                  ? 'bg-rose-500'
+                  : workflow.overallStatus === 'executed'
+                    ? 'bg-amber-500'
+                    : 'bg-slate-500'
+            }`}
+          >
+            {workflow.overallStatus === 'approved'
+              ? 'APPROUVÉE'
+              : workflow.overallStatus === 'rejected'
+                ? 'REJETÉE'
+                : workflow.overallStatus === 'executed'
+                  ? 'EXÉCUTÉE'
+                  : 'EN ATTENTE'}
           </span>
         </div>
 
@@ -81,8 +98,11 @@ export const MissionWorkflowPanel: React.FC<MissionWorkflowPanelProps> = ({
           <div className="w-full h-2 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
             <div
               className={`h-full transition-all duration-500 ${
-                workflow.overallStatus === 'approved' ? 'bg-emerald-500' :
-                workflow.overallStatus === 'rejected' ? 'bg-rose-500' : 'bg-amber-500'
+                workflow.overallStatus === 'approved'
+                  ? 'bg-emerald-500'
+                  : workflow.overallStatus === 'rejected'
+                    ? 'bg-rose-500'
+                    : 'bg-amber-500'
               }`}
               style={{ width: `${progress}%` }}
             />
@@ -147,12 +167,16 @@ export const MissionWorkflowPanel: React.FC<MissionWorkflowPanelProps> = ({
                       )}
                     </div>
                     <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">
-                      {step.status === 'approved' || step.status === 'APPROUVE' ? '✓ Approuvé' :
-                       step.status === 'rejected' || step.status === 'REJETE' ? '✗ Rejeté' : 'En attente'}
+                      {step.status === 'approved' || step.status === 'APPROUVE'
+                        ? '✓ Approuvé'
+                        : step.status === 'rejected' || step.status === 'REJETE'
+                          ? '✗ Rejeté'
+                          : 'En attente'}
                     </p>
                     {step.approvedAt && (
                       <p className="text-[10px] text-slate-500 dark:text-slate-400">
-                        Par: {step.approvedBy || 'Utilisateur'} • {new Date(step.approvedAt).toLocaleDateString('fr-FR')}
+                        Par: {step.approvedBy || 'Utilisateur'} •{' '}
+                        {new Date(step.approvedAt).toLocaleDateString('fr-FR')}
                       </p>
                     )}
                   </div>
@@ -161,13 +185,13 @@ export const MissionWorkflowPanel: React.FC<MissionWorkflowPanelProps> = ({
                 {/* Détails Expandus */}
                 {expandedStep === step.role && (
                   <div className="mt-4 pt-4 border-t border-slate-200 dark:border-white/5 space-y-3">
-                    {(step.comments) && (
+                    {step.comments && (
                       <div className="p-3 bg-slate-50 dark:bg-slate-900/50 rounded-lg">
                         <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase mb-1">
                           Commentaire / Raison
                         </p>
                         <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-bold">
-                            {step.comments}
+                          {step.comments}
                         </p>
                       </div>
                     )}
@@ -175,12 +199,13 @@ export const MissionWorkflowPanel: React.FC<MissionWorkflowPanelProps> = ({
                     {/* Actions Approbation (Si c'est l'étape courante on peut rediriger vers l'onglet Approbation) */}
                     {nextStep?.role === step.role && !isApproved && (
                       <div className="p-3 bg-indigo-500/5 rounded-2xl border border-indigo-500/10 text-center">
-                         <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase mb-3">
-                            Action Requise
-                         </p>
-                         <p className="text-[10px] font-medium text-slate-600 dark:text-slate-400 mb-4 px-4">
-                            Utilisez l'onglet 'APPROBATIONS' en haut de la page pour valider cette étape avec votre signature.
-                         </p>
+                        <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase mb-3">
+                          Action Requise
+                        </p>
+                        <p className="text-[10px] font-medium text-slate-600 dark:text-slate-400 mb-4 px-4">
+                          Utilisez l'onglet 'APPROBATIONS' en haut de la page pour valider cette
+                          étape avec votre signature.
+                        </p>
                       </div>
                     )}
                   </div>
@@ -193,4 +218,3 @@ export const MissionWorkflowPanel: React.FC<MissionWorkflowPanelProps> = ({
     </div>
   );
 };
-

@@ -12,17 +12,17 @@ import { db } from '../store/db';
 import { updatePendingCount } from '../services/sync/syncService';
 
 export default function BackgroundServices() {
-    const pendingCount = useLiveQuery(
-        () => db.syncOutbox.where({ status: 'pending' }).count(),
-        [],
-        0
-    );
+  const pendingCount = useLiveQuery(
+    () => db.syncOutbox.where({ status: 'pending' }).count(),
+    [],
+    0
+  );
 
-    useEffect(() => {
-        if (pendingCount !== undefined) {
-            updatePendingCount(pendingCount);
-        }
-    }, [pendingCount]);
+  useEffect(() => {
+    if (pendingCount !== undefined) {
+      updatePendingCount(pendingCount);
+    }
+  }, [pendingCount]);
 
-    return null;
+  return null;
 }

@@ -30,24 +30,27 @@ export function computeIGPPScore(stats: MissionStats, households?: Household[]):
   if (!stats.totalMissions) return 0;
 
   // Facteur 1 : Taux de certification (50%)
-  const certificationRate = stats.totalMissions > 0
-    ? stats.totalCertified / stats.totalMissions
-    : 0;
+  const certificationRate =
+    stats.totalMissions > 0 ? stats.totalCertified / stats.totalMissions : 0;
 
   // Facteur 2 : Efficience budgétaire (25%)
-  const avgCostPerMission = stats.totalMissions > 0 ? stats.totalIndemnities / stats.totalMissions : 0;
+  const avgCostPerMission =
+    stats.totalMissions > 0 ? stats.totalIndemnities / stats.totalMissions : 0;
   const COST_OPTIMAL = 50000;
   const COST_MAX = 80000;
-  const budgetScore = avgCostPerMission <= COST_OPTIMAL
-    ? 1.0
-    : avgCostPerMission >= COST_MAX
-      ? 0.0
-      : 1 - ((avgCostPerMission - COST_OPTIMAL) / (COST_MAX - COST_OPTIMAL));
+  const budgetScore =
+    avgCostPerMission <= COST_OPTIMAL
+      ? 1.0
+      : avgCostPerMission >= COST_MAX
+        ? 0.0
+        : 1 - (avgCostPerMission - COST_OPTIMAL) / (COST_MAX - COST_OPTIMAL);
 
   // Facteur 3 : Avancement terrain (15%)
   let terrainScore = 0;
   if (households && households.length > 0) {
-    const done = households.filter(h => h.status === 'Terminé' || h.status === 'Réception: Validée').length;
+    const done = households.filter(
+      (h) => h.status === 'Terminé' || h.status === 'Réception: Validée'
+    ).length;
     terrainScore = done / households.length;
   } else {
     terrainScore = 0.5;
@@ -56,7 +59,8 @@ export function computeIGPPScore(stats: MissionStats, households?: Household[]):
   // Facteur 4 : Bonus qualité si certification ≥ 80% (10%)
   const qualityBonus = certificationRate >= 0.8 ? 1.0 : certificationRate >= 0.6 ? 0.5 : 0.0;
 
-  const rawScore = (certificationRate * 0.50) + (budgetScore * 0.25) + (terrainScore * 0.15) + (qualityBonus * 0.10);
+  const rawScore =
+    certificationRate * 0.5 + budgetScore * 0.25 + terrainScore * 0.15 + qualityBonus * 0.1;
 
   return Math.round(Math.max(0, Math.min(100, rawScore * 100)));
 }
@@ -75,7 +79,7 @@ export function predictRisks(stats: MissionStats, households: Household[]): DGIn
       priority: 'high',
       message: `⚡ **RISQUE DE RETARD CRITIQUE** : Taux de certification à ${Math.round(certRate * 100)}%`,
       recommendation: `Au rythme actuel, projection de ${projected} missions certifiées d'ici 90 jours. Convoquez une session de validation d'urgence.`,
-      action: { label: "Certifier Missions", path: "/approbation" }
+      action: { label: 'Certifier Missions', path: '/approbation' },
     });
   } else if (certRate < 0.6 && stats.totalMissions > 5) {
     predictions.push({
@@ -83,20 +87,20 @@ export function predictRisks(stats: MissionStats, households: Household[]): DGIn
       priority: 'medium',
       message: `⚠️ **RISQUE DE RALENTISSEMENT** : Taux de certification à ${Math.round(certRate * 100)}%`,
       recommendation: `Cible recommandée : 70% de certification. Planifiez une revue hebdomadaire.`,
-      action: { label: "Voir Missions", path: "/mission-order" }
+      action: { label: 'Voir Missions', path: '/mission-order' },
     });
   }
 
   // Risque de stagnation terrain
   if (households.length > 0) {
-    const enCours = households.filter(h => h.status === 'En cours').length;
+    const enCours = households.filter((h) => h.status === 'En cours').length;
     const tauxEnCours = enCours / households.length;
     if (tauxEnCours > 0.5) {
       predictions.push({
         type: 'prediction',
         priority: 'medium',
         message: `🏘️ **STAGNATION TERRAIN** : ${Math.round(tauxEnCours * 100)}% des ménages en cours (${enCours}/${households.length})`,
-        recommendation: "Blocage logistique probable (câbles/compteurs). Vérifiez les stocks.",
+        recommendation: 'Blocage logistique probable (câbles/compteurs). Vérifiez les stocks.',
       });
     }
   }
@@ -107,16 +111,16 @@ export function predictRisks(stats: MissionStats, households: Household[]): DGIn
       type: 'prediction',
       priority: 'high',
       message: `💸 **DÉRIVE BUDGÉTAIRE GRAVE** : Coût moyen à ${new Intl.NumberFormat('fr-FR').format(Math.round(avgCost))} FCFA/mission`,
-      recommendation: "Seuil critique de 70.000 FCFA dépassé. Audit immédiat requis.",
-      action: { label: "Audit Finances", path: "/admin" }
+      recommendation: 'Seuil critique de 70.000 FCFA dépassé. Audit immédiat requis.',
+      action: { label: 'Audit Finances', path: '/admin' },
     });
   } else if (avgCost > 60000) {
     predictions.push({
       type: 'prediction',
       priority: 'medium',
       message: `💰 **DÉRIVE DU COÛT MOYEN** : ${new Intl.NumberFormat('fr-FR').format(Math.round(avgCost))} FCFA/mission`,
-      recommendation: "Le coût dépasse la moyenne historique de 50.000 FCFA.",
-      action: { label: "Audit Finances", path: "/admin" }
+      recommendation: 'Le coût dépasse la moyenne historique de 50.000 FCFA.',
+      action: { label: 'Audit Finances', path: '/admin' },
     });
   }
 
@@ -126,7 +130,7 @@ export function predictRisks(stats: MissionStats, households: Household[]): DGIn
       type: 'opportunity',
       priority: 'low',
       message: `✅ **OPPORTUNITÉ** : Excellente cadence de certification (${Math.round(certRate * 100)}%)`,
-      recommendation: "Bastion en zone verte. Accélérez le déploiement.",
+      recommendation: 'Bastion en zone verte. Accélérez le déploiement.',
     });
   }
 
@@ -134,7 +138,11 @@ export function predictRisks(stats: MissionStats, households: Household[]): DGIn
 }
 
 /** 🕵️ DÉTECTION D'ANOMALIES RENFORCÉE (V3.0) */
-export function detectAnomalies(stats: MissionStats, households: Household[], auditLogs: AuditLog[]): DGInsight[] {
+export function detectAnomalies(
+  stats: MissionStats,
+  households: Household[],
+  auditLogs: AuditLog[]
+): DGInsight[] {
   const anomalies: DGInsight[] = [];
 
   // Incohérence Finance/Mission
@@ -142,7 +150,7 @@ export function detectAnomalies(stats: MissionStats, households: Household[], au
     anomalies.push({
       type: 'anomaly',
       priority: 'high',
-      message: "🚨 **ANOMALIE GRAVE** : Dépenses détectées sans mission enregistrée.",
+      message: '🚨 **ANOMALIE GRAVE** : Dépenses détectées sans mission enregistrée.',
       recommendation: "Signalez à l'Admin. Possible fraude ou erreur de saisie.",
     });
   }
@@ -152,13 +160,13 @@ export function detectAnomalies(stats: MissionStats, households: Household[], au
     anomalies.push({
       type: 'anomaly',
       priority: 'high',
-      message: "🚨 **ANOMALIE DONNÉES** : Missions certifiées > Total missions.",
-      recommendation: "Incohérence critique de base de données.",
+      message: '🚨 **ANOMALIE DONNÉES** : Missions certifiées > Total missions.',
+      recommendation: 'Incohérence critique de base de données.',
     });
   }
 
   // Activité suspecte hors heures de service
-  const suspiciousLogs = auditLogs.filter(log => {
+  const suspiciousLogs = auditLogs.filter((log) => {
     const hour = new Date(log.timestamp).getHours();
     return hour >= 22 || hour < 6;
   });
@@ -167,7 +175,7 @@ export function detectAnomalies(stats: MissionStats, households: Household[], au
       type: 'anomaly',
       priority: 'medium',
       message: `🚨 **ANOMALIE ACTIVITÉ** : ${suspiciousLogs.length} actions nocturnes suspectes (22h-6h).`,
-      recommendation: "Vérifiez les logs et les utilisateurs concernés.",
+      recommendation: 'Vérifiez les logs et les utilisateurs concernés.',
     });
   }
 
@@ -176,8 +184,8 @@ export function detectAnomalies(stats: MissionStats, households: Household[], au
     anomalies.push({
       type: 'anomaly',
       priority: 'medium',
-      message: "🚨 **ANOMALIE TERRAIN** : Missions actives mais aucun ménage recensé.",
-      recommendation: "Synchronisation Kobo défaillante ou non initiée.",
+      message: '🚨 **ANOMALIE TERRAIN** : Missions actives mais aucun ménage recensé.',
+      recommendation: 'Synchronisation Kobo défaillante ou non initiée.',
     });
   }
 
@@ -189,7 +197,7 @@ export function detectAnomalies(stats: MissionStats, households: Household[], au
       priority: 'medium',
       message: `🚨 **CONGESTION VALIDATION** : ${pendingMissions} missions en attente.`,
       recommendation: "File d'attente DG critique. Certifiez en masse.",
-      action: { label: "Certifier en masse", path: "/approbation" }
+      action: { label: 'Certifier en masse', path: '/approbation' },
     });
   }
 
@@ -202,20 +210,20 @@ export function analyzeDG(
   households: Household[],
   auditLogs: AuditLog[]
 ): DGInsight[] {
-
   let allInsights: DGInsight[] = [];
   if (!stats) return allInsights;
 
   // 1. Score IGPP 3.0
   const igpp = computeIGPPScore(stats, households);
-  const igppLabel = igpp >= 80 ? "EXCELLENT" : igpp >= 60 ? "STABLE" : igpp >= 40 ? "INSUFFISANT" : "CRITIQUE";
+  const igppLabel =
+    igpp >= 80 ? 'EXCELLENT' : igpp >= 60 ? 'STABLE' : igpp >= 40 ? 'INSUFFISANT' : 'CRITIQUE';
   const igppType = igpp >= 60 ? 'info' : 'alert';
 
   allInsights.push({
     type: igppType,
     priority: igpp < 40 ? 'high' : igpp < 60 ? 'medium' : 'low',
     message: `🏛️ **INDICE IGPP 3.0 : ${igpp}/100 — ${igppLabel}**`,
-    recommendation: igpp < 60 ? "Intervention d'urgence sur la validation recommandée." : undefined
+    recommendation: igpp < 60 ? "Intervention d'urgence sur la validation recommandée." : undefined,
   });
 
   // 2. Alertes budgétaires
@@ -224,14 +232,14 @@ export function analyzeDG(
       type: 'alert',
       priority: 'high',
       message: `🚨 **ALERTE BUDGET CRITIQUE** : ${new Intl.NumberFormat('fr-FR').format(stats.totalIndemnities)} FCFA — Seuil de 8M dépassé.`,
-      action: { label: "Auditer Finances", path: "/admin" }
+      action: { label: 'Auditer Finances', path: '/admin' },
     });
   } else if (stats.totalIndemnities > 5000000) {
     allInsights.push({
       type: 'alert',
       priority: 'high',
       message: `⚠️ **ALERTE BUDGET** : ${new Intl.NumberFormat('fr-FR').format(stats.totalIndemnities)} FCFA — Seuil de 5M dépassé.`,
-      action: { label: "Auditer Finances", path: "/admin" }
+      action: { label: 'Auditer Finances', path: '/admin' },
     });
   }
 

@@ -1,12 +1,13 @@
 import React from 'react';
 // ── Polyfill for crypto.randomUUID (Fix for non-secure HTTP contexts) ────────
 if (typeof crypto !== 'undefined' && !crypto.randomUUID) {
-    crypto.randomUUID = function() {
-        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-            const r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
-            return v.toString(16);
-        }) as any;
-    };
+  crypto.randomUUID = function () {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+      const r = (Math.random() * 16) | 0,
+        v = c == 'x' ? r : (r & 0x3) | 0x8;
+      return v.toString(16);
+    }) as any;
+  };
 }
 
 import ReactDOM from 'react-dom/client';
@@ -31,19 +32,19 @@ startBackgroundSync();
 
 // ── Render ─────────────────────────────────────────────────────────────────
 ReactDOM.createRoot(document.getElementById('root')!).render(
-    <React.StrictMode>
-        <ErrorBoundary>
-            <AuthProvider>
-                <LabelsProvider>
-                    <SyncProvider>
-                        <ThemeProvider>
-                            <ProjectProvider>
-                                <App />
-                            </ProjectProvider>
-                        </ThemeProvider>
-                    </SyncProvider>
-                </LabelsProvider>
-            </AuthProvider>
-        </ErrorBoundary>
-    </React.StrictMode>
+  <React.StrictMode>
+    <ErrorBoundary>
+      <AuthProvider>
+        <LabelsProvider>
+          <SyncProvider>
+            <ThemeProvider>
+              <ProjectProvider>
+                <App />
+              </ProjectProvider>
+            </ThemeProvider>
+          </SyncProvider>
+        </LabelsProvider>
+      </AuthProvider>
+    </ErrorBoundary>
+  </React.StrictMode>
 );

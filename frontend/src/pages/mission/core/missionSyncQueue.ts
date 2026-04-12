@@ -29,9 +29,9 @@ export class MissionSyncQueue {
       payload: { ...action, missionId },
       timestamp: Date.now(),
       status: 'pending',
-      retryCount: 0
+      retryCount: 0,
     });
-    
+
     // Déclencher le traitement si on est en ligne
     if (navigator.onLine) {
       this.processQueue();
@@ -46,17 +46,14 @@ export class MissionSyncQueue {
     this.isProcessing = true;
 
     try {
-      const pendingItems = await db.syncOutbox
-        .where('status')
-        .equals('pending')
-        .toArray();
+      const pendingItems = await db.syncOutbox.where('status').equals('pending').toArray();
 
       for (const item of pendingItems) {
         try {
           const response = await fetch(item.endpoint, {
             method: item.method,
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(item.payload)
+            body: JSON.stringify(item.payload),
           });
 
           if (response.ok) {
@@ -66,7 +63,7 @@ export class MissionSyncQueue {
             await db.syncOutbox.update(item.id!, {
               retryCount: (item.retryCount || 0) + 1,
               lastError: `Server error: ${response.status}`,
-              status: item.retryCount > 5 ? 'failed' : 'pending'
+              status: item.retryCount > 5 ? 'failed' : 'pending',
             });
           }
         } catch (err) {

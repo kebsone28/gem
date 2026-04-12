@@ -5,13 +5,15 @@ import type { MissionNotification } from '../store/db';
  * Service de gestion des notifications (Approbations, Rejets, Alertes)
  */
 
-export const createNotification = async (notif: Omit<MissionNotification, 'id' | 'createdAt' | 'read' | 'archived'>) => {
+export const createNotification = async (
+  notif: Omit<MissionNotification, 'id' | 'createdAt' | 'read' | 'archived'>
+) => {
   const newNotif: MissionNotification = {
     ...notif,
     id: crypto.randomUUID(),
     createdAt: new Date().toISOString(),
     read: false,
-    archived: false
+    archived: false,
   };
   await db.notifications.add(newNotif);
   return newNotif;
@@ -28,7 +30,7 @@ export const getNotifications = async (projectId?: string) => {
     }
     return await db.notifications.reverse().sortBy('createdAt');
   } catch (err) {
-    console.error("Error fetching notifications:", err);
+    console.error('Error fetching notifications:', err);
     return [];
   }
 };

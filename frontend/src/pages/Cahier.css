@@ -1,39 +1,51 @@
 .cahier-header-branding {
-    position: absolute;
-    inset: 0;
-    opacity: 0.1;
-    pointer-events: none;
-    background-image: url('/assets/images/senelec-bandeau.png');
-    background-size: cover;
-    background-position: center;
+  position: absolute;
+  inset: 0;
+  opacity: 0.1;
+  pointer-events: none;
+  background-image: url('/assets/images/senelec-bandeau.png');
+  background-size: cover;
+  background-position: center;
 }
 
 .cahier-header-stripe {
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    height: 6px;
-    width: 100%;
-    z-index: 20;
-    background-image: linear-gradient(90deg, #f59e0b 25%, #ef4444 25%, #ef4444 50%, #10b981 50%, #10b981 75%, #3b82f6 75%);
-    background-size: 100px 100%;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 6px;
+  width: 100%;
+  z-index: 20;
+  background-image: linear-gradient(
+    90deg,
+    #f59e0b 25%,
+    #ef4444 25%,
+    #ef4444 50%,
+    #10b981 50%,
+    #10b981 75%,
+    #3b82f6 75%
+  );
+  background-size: 100px 100%;
 }
 
 .senelec-dots-pattern {
-    position: absolute;
-    inset: 0;
-    opacity: 0.1;
-    pointer-events: none;
-    background-image: radial-gradient(circle at 2px 2px, #f59e0b 1px, transparent 0);
-    background-size: 24px 24px;
+  position: absolute;
+  inset: 0;
+  opacity: 0.1;
+  pointer-events: none;
+  background-image: radial-gradient(circle at 2px 2px, #f59e0b 1px, transparent 0);
+  background-size: 24px 24px;
 }
 
 @keyframes spin-slow {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .animate-spin-slow {
-    animation: spin-slow 8s linear infinite;
+  animation: spin-slow 8s linear infinite;
 }

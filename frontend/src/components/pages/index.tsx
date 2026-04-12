@@ -31,23 +31,29 @@ interface StatsPageProps {
 }
 
 const statColorMap: Record<NonNullable<StatItem['color']>, string> = {
-  blue:   'text-[var(--color-primary)] dark:text-[#60AFFF]',
-  green:  'text-[var(--color-success)] dark:text-emerald-400',
+  blue: 'text-[var(--color-primary)] dark:text-[#60AFFF]',
+  green: 'text-[var(--color-success)] dark:text-emerald-400',
   yellow: 'text-[var(--color-warning)] dark:text-amber-400',
-  red:    'text-[var(--color-danger)] dark:text-red-400',
-  gray:   'text-[var(--color-text-muted)] dark:text-[var(--color-dark-text-muted)]',
+  red: 'text-[var(--color-danger)] dark:text-red-400',
+  gray: 'text-[var(--color-text-muted)] dark:text-[var(--color-dark-text-muted)]',
 };
 
 const statIconBgMap: Record<NonNullable<StatItem['color']>, string> = {
-  blue:   'bg-[rgba(30,144,255,0.10)] dark:bg-[rgba(30,144,255,0.15)] text-[var(--color-primary)]',
-  green:  'bg-[rgba(16,185,129,0.10)] dark:bg-[rgba(16,185,129,0.15)] text-[var(--color-success)]',
+  blue: 'bg-[rgba(30,144,255,0.10)] dark:bg-[rgba(30,144,255,0.15)] text-[var(--color-primary)]',
+  green: 'bg-[rgba(16,185,129,0.10)] dark:bg-[rgba(16,185,129,0.15)] text-[var(--color-success)]',
   yellow: 'bg-[rgba(245,158,11,0.10)] dark:bg-[rgba(245,158,11,0.15)] text-[var(--color-warning)]',
-  red:    'bg-[rgba(239,68,68,0.10)] dark:bg-[rgba(239,68,68,0.15)] text-[var(--color-danger)]',
-  gray:   'bg-[rgba(100,116,139,0.10)] dark:bg-[rgba(100,116,139,0.15)] text-[var(--color-text-muted)]',
+  red: 'bg-[rgba(239,68,68,0.10)] dark:bg-[rgba(239,68,68,0.15)] text-[var(--color-danger)]',
+  gray: 'bg-[rgba(100,116,139,0.10)] dark:bg-[rgba(100,116,139,0.15)] text-[var(--color-text-muted)]',
 };
 
 export const StatsPage: React.FC<StatsPageProps> = ({
-  title, subtitle, icon, stats, actions, children, loading = false,
+  title,
+  subtitle,
+  icon,
+  stats,
+  actions,
+  children,
+  loading = false,
 }) => {
   if (loading) {
     return (
@@ -73,21 +79,23 @@ export const StatsPage: React.FC<StatsPageProps> = ({
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
-                    <p className={`${COMMON_CLASSES.overline} mb-2 truncate`}>
-                      {stat.label}
-                    </p>
+                    <p className={`${COMMON_CLASSES.overline} mb-2 truncate`}>{stat.label}</p>
                     <p className={`text-2xl font-bold tracking-tighter ${statColorMap[color]}`}>
                       {stat.value}
                     </p>
                     {stat.trend && (
-                      <div className={`flex items-center gap-1 mt-2 text-xs font-semibold ${
-                        stat.trend.isPositive
-                          ? 'text-[var(--color-success)]'
-                          : 'text-[var(--color-danger)]'
-                      }`}>
+                      <div
+                        className={`flex items-center gap-1 mt-2 text-xs font-semibold ${
+                          stat.trend.isPositive
+                            ? 'text-[var(--color-success)]'
+                            : 'text-[var(--color-danger)]'
+                        }`}
+                      >
                         <span>{stat.trend.isPositive ? '↑' : '↓'}</span>
                         <span>{Math.abs(stat.trend.value)}%</span>
-                        <span className={`font-normal ${COMMON_CLASSES.caption}`}>vs mois préc.</span>
+                        <span className={`font-normal ${COMMON_CLASSES.caption}`}>
+                          vs mois préc.
+                        </span>
                       </div>
                     )}
                   </div>
@@ -141,7 +149,15 @@ interface FilterPageProps {
 }
 
 export const FilterPage: React.FC<FilterPageProps> = ({
-  title, subtitle, icon, filters, search, actions, children, loading = false, totalCount,
+  title,
+  subtitle,
+  icon,
+  filters,
+  search,
+  actions,
+  children,
+  loading = false,
+  totalCount,
 }) => {
   return (
     <PageContainer>
@@ -150,16 +166,21 @@ export const FilterPage: React.FC<FilterPageProps> = ({
       {/* Barre de filtres */}
       <div className={`${COMMON_CLASSES.card} ${COMMON_CLASSES.cardSm} mb-6`}>
         <div className="flex flex-col lg:flex-row gap-4">
-
           {/* Recherche */}
           {search && (
             <div className="flex-1">
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none
-                  text-[var(--color-text-muted)] dark:text-[var(--color-dark-text-muted)]">
+                <div
+                  className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none
+                  text-[var(--color-text-muted)] dark:text-[var(--color-dark-text-muted)]"
+                >
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                    />
                   </svg>
                 </div>
                 <input
@@ -188,7 +209,8 @@ export const FilterPage: React.FC<FilterPageProps> = ({
                   <option value="">Tous</option>
                   {filter.options.map((opt) => (
                     <option key={opt.value} value={opt.value}>
-                      {opt.label}{opt.count !== undefined ? ` (${opt.count})` : ''}
+                      {opt.label}
+                      {opt.count !== undefined ? ` (${opt.count})` : ''}
                     </option>
                   ))}
                 </select>
@@ -199,8 +221,8 @@ export const FilterPage: React.FC<FilterPageProps> = ({
 
         {totalCount !== undefined && (
           <p className={`mt-3 ${COMMON_CLASSES.caption}`}>
-            <span className="font-semibold text-[var(--color-primary)]">{totalCount}</span>{' '}
-            résultat{totalCount !== 1 ? 's' : ''} trouvé{totalCount !== 1 ? 's' : ''}
+            <span className="font-semibold text-[var(--color-primary)]">{totalCount}</span> résultat
+            {totalCount !== 1 ? 's' : ''} trouvé{totalCount !== 1 ? 's' : ''}
           </p>
         )}
       </div>
@@ -228,10 +250,15 @@ interface FormPageProps {
 }
 
 export const FormPage: React.FC<FormPageProps> = ({
-  title, subtitle, icon, onSubmit,
+  title,
+  subtitle,
+  icon,
+  onSubmit,
   submitLabel = 'Enregistrer',
   cancelLabel = 'Annuler',
-  onCancel, loading = false, children,
+  onCancel,
+  loading = false,
+  children,
 }) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -244,9 +271,7 @@ export const FormPage: React.FC<FormPageProps> = ({
       <PageHeader title={title} subtitle={subtitle} icon={icon} />
 
       <form onSubmit={handleSubmit} className="space-y-6" noValidate>
-        <div className={`${COMMON_CLASSES.card} ${COMMON_CLASSES.cardPadding}`}>
-          {children}
-        </div>
+        <div className={`${COMMON_CLASSES.card} ${COMMON_CLASSES.cardPadding}`}>{children}</div>
 
         <div className="flex justify-end items-center gap-3">
           {onCancel && (
@@ -259,17 +284,15 @@ export const FormPage: React.FC<FormPageProps> = ({
               {cancelLabel}
             </button>
           )}
-          <button
-            type="submit"
-            className={COMMON_CLASSES.btnPrimary}
-            disabled={loading}
-          >
+          <button type="submit" className={COMMON_CLASSES.btnPrimary} disabled={loading}>
             {loading ? (
               <span className="flex items-center gap-2">
                 <span className={COMMON_CLASSES.spinnerSm} />
                 Enregistrement...
               </span>
-            ) : submitLabel}
+            ) : (
+              submitLabel
+            )}
           </button>
         </div>
       </form>
@@ -292,7 +315,13 @@ interface DetailPageProps {
 }
 
 export const DetailPage: React.FC<DetailPageProps> = ({
-  title, subtitle, icon, breadcrumbs, actions, children, loading = false,
+  title,
+  subtitle,
+  icon,
+  breadcrumbs,
+  actions,
+  children,
+  loading = false,
 }) => {
   return (
     <PageContainer>

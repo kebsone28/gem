@@ -9,46 +9,44 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   icon?: React.ReactNode;
 }
 
-export const Button: React.FC<ButtonProps> = withAnalytics(({
-  variant = 'primary',
-  size = 'md',
-  isLoading = false,
-  icon,
-  children,
-  disabled,
-  ...props
-}) => {
-  const baseClasses = 'inline-flex items-center justify-center gap-2 font-medium rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed';
+export const Button: React.FC<ButtonProps> = withAnalytics(
+  ({ variant = 'primary', size = 'md', isLoading = false, icon, children, disabled, ...props }) => {
+    const baseClasses =
+      'inline-flex items-center justify-center gap-2 font-medium rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed';
 
-  const variantClasses = {
-    primary: 'bg-gradient-to-r from-blue-600 to-blue-400 text-white hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0',
-    secondary: 'bg-gray-100 text-gray-900 border border-gray-200 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-100 dark:border-gray-700 dark:hover:bg-gray-700',
-    outline: 'border-2 border-blue-600 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950',
-    ghost: 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800',
-    danger: 'bg-red-600 text-white hover:bg-red-700 hover:shadow-lg hover:-translate-y-0.5',
-  };
+    const variantClasses = {
+      primary:
+        'bg-gradient-to-r from-blue-600 to-blue-400 text-white hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0',
+      secondary:
+        'bg-gray-100 text-gray-900 border border-gray-200 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-100 dark:border-gray-700 dark:hover:bg-gray-700',
+      outline: 'border-2 border-blue-600 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950',
+      ghost: 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800',
+      danger: 'bg-red-600 text-white hover:bg-red-700 hover:shadow-lg hover:-translate-y-0.5',
+    };
 
-  const sizeClasses = {
-    sm: 'px-3 py-1.5 text-sm',
-    md: 'px-4 py-2 text-base',
-    lg: 'px-6 py-3 text-lg',
-  };
+    const sizeClasses = {
+      sm: 'px-3 py-1.5 text-sm',
+      md: 'px-4 py-2 text-base',
+      lg: 'px-6 py-3 text-lg',
+    };
 
-  return (
-    <button
-      className={`${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]}`}
-      disabled={disabled || isLoading}
-      {...props}
-    >
-      {isLoading ? (
-        <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-      ) : (
-        icon && <span className="flex-shrink-0">{icon}</span>
-      )}
-      {children}
-    </button>
-  );
-}, 'Button');
+    return (
+      <button
+        className={`${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]}`}
+        disabled={disabled || isLoading}
+        {...props}
+      >
+        {isLoading ? (
+          <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+        ) : (
+          icon && <span className="flex-shrink-0">{icon}</span>
+        )}
+        {children}
+      </button>
+    );
+  },
+  'Button'
+);
 
 interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   elevated?: boolean;
@@ -101,7 +99,9 @@ export const Input: React.FC<InputProps> = ({ label, error, icon, className = ''
         </label>
       )}
       <div className="relative">
-        {icon && <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">{icon}</div>}
+        {icon && (
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">{icon}</div>
+        )}
         <input
           className={`w-full px-4 py-2 ${icon ? 'pl-10' : ''} rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 ${
             error ? 'border-red-500 focus:ring-red-500' : ''
@@ -131,104 +131,124 @@ interface SelectProps {
   className?: string;
 }
 
-export const Select: React.FC<SelectProps> = withAnalytics(({
-  options,
-  value,
-  onChange,
-  placeholder = 'Sélectionner...',
-  label,
-  error,
-  disabled = false,
-  className = ''
-}) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const selectRef = useRef<HTMLDivElement>(null);
+export const Select: React.FC<SelectProps> = withAnalytics(
+  ({
+    options,
+    value,
+    onChange,
+    placeholder = 'Sélectionner...',
+    label,
+    error,
+    disabled = false,
+    className = '',
+  }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const selectRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (selectRef.current && !selectRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    };
+    useEffect(() => {
+      const handleClickOutside = (event: MouseEvent) => {
+        if (selectRef.current && !selectRef.current.contains(event.target as Node)) {
+          setIsOpen(false);
+        }
+      };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
-  const selectedOption = options.find(option => option.value === value);
+    const selectedOption = options.find((option) => option.value === value);
 
-  return (
-    <div className="w-full">
-      {label && (
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-          {label}
-        </label>
-      )}
-      <div className="relative" ref={selectRef}>
-        <button
-          type="button"
-          onClick={() => !disabled && setIsOpen(!isOpen)}
-          className={`w-full px-4 py-2 text-left rounded-lg border bg-white dark:bg-gray-800 transition-all duration-200 flex items-center justify-between ${
-            error
-              ? 'border-red-500 focus:ring-red-500'
-              : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500'
-          } ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:border-gray-400 dark:hover:border-gray-500 focus:outline-none focus:ring-2'} ${className}`}
-        >
-          <span className={selectedOption ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400 dark:text-gray-500'}>
-            {selectedOption ? selectedOption.label : placeholder}
-          </span>
-          <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
-        </button>
-
-        {isOpen && (
-          <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-60 overflow-auto">
-            {options.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => {
-                  if (!option.disabled) {
-                    onChange?.(option.value);
-                    setIsOpen(false);
-                  }
-                }}
-                className={`w-full px-4 py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-150 flex items-center justify-between ${
-                  option.disabled ? 'opacity-50 cursor-not-allowed' : ''
-                } ${value === option.value ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'text-gray-900 dark:text-gray-100'}`}
-                disabled={option.disabled}
-              >
-                {option.label}
-                {value === option.value && <Check className="w-4 h-4" />}
-              </button>
-            ))}
-          </div>
+    return (
+      <div className="w-full">
+        {label && (
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            {label}
+          </label>
         )}
+        <div className="relative" ref={selectRef}>
+          <button
+            type="button"
+            onClick={() => !disabled && setIsOpen(!isOpen)}
+            className={`w-full px-4 py-2 text-left rounded-lg border bg-white dark:bg-gray-800 transition-all duration-200 flex items-center justify-between ${
+              error
+                ? 'border-red-500 focus:ring-red-500'
+                : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500'
+            } ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:border-gray-400 dark:hover:border-gray-500 focus:outline-none focus:ring-2'} ${className}`}
+          >
+            <span
+              className={
+                selectedOption
+                  ? 'text-gray-900 dark:text-gray-100'
+                  : 'text-gray-400 dark:text-gray-500'
+              }
+            >
+              {selectedOption ? selectedOption.label : placeholder}
+            </span>
+            <ChevronDown
+              className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+            />
+          </button>
+
+          {isOpen && (
+            <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-60 overflow-auto">
+              {options.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => {
+                    if (!option.disabled) {
+                      onChange?.(option.value);
+                      setIsOpen(false);
+                    }
+                  }}
+                  className={`w-full px-4 py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-150 flex items-center justify-between ${
+                    option.disabled ? 'opacity-50 cursor-not-allowed' : ''
+                  } ${value === option.value ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'text-gray-900 dark:text-gray-100'}`}
+                  disabled={option.disabled}
+                >
+                  {option.label}
+                  {value === option.value && <Check className="w-4 h-4" />}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        {error && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{error}</p>}
       </div>
-      {error && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{error}</p>}
-    </div>
-  );
-}, 'Select');
+    );
+  },
+  'Select'
+);
 
 interface AlertProps extends React.HTMLAttributes<HTMLDivElement> {
   variant?: 'success' | 'warning' | 'error' | 'info';
   icon?: React.ReactNode;
 }
 
-export const Alert: React.FC<AlertProps> = withAnalytics(({ variant = 'info', icon, className = '', ...props }) => {
-  const variantClasses = {
-    success: 'bg-green-100 dark:bg-green-900/50 border-l-4 border-green-600 text-green-900 dark:text-green-100 font-medium',
-    warning: 'bg-yellow-100 dark:bg-yellow-900/50 border-l-4 border-yellow-600 text-yellow-900 dark:text-yellow-100 font-medium',
-    error: 'bg-red-100 dark:bg-red-900/50 border-l-4 border-red-600 text-red-900 dark:text-red-100 font-medium',
-    info: 'bg-blue-100 dark:bg-blue-900/50 border-l-4 border-blue-600 text-blue-900 dark:text-blue-100 font-medium',
-  };
+export const Alert: React.FC<AlertProps> = withAnalytics(
+  ({ variant = 'info', icon, className = '', ...props }) => {
+    const variantClasses = {
+      success:
+        'bg-green-100 dark:bg-green-900/50 border-l-4 border-green-600 text-green-900 dark:text-green-100 font-medium',
+      warning:
+        'bg-yellow-100 dark:bg-yellow-900/50 border-l-4 border-yellow-600 text-yellow-900 dark:text-yellow-100 font-medium',
+      error:
+        'bg-red-100 dark:bg-red-900/50 border-l-4 border-red-600 text-red-900 dark:text-red-100 font-medium',
+      info: 'bg-blue-100 dark:bg-blue-900/50 border-l-4 border-blue-600 text-blue-900 dark:text-blue-100 font-medium',
+    };
 
-  return (
-    <div className={`p-4 rounded flex gap-3 transition-all duration-200 ${variantClasses[variant]} ${className}`} {...props}>
-      {icon && <div className="flex-shrink-0 mt-0.5">{icon}</div>}
-      <div className="flex-1">{props.children}</div>
-    </div>
-  );
-}, 'Alert');
+    return (
+      <div
+        className={`p-4 rounded flex gap-3 transition-all duration-200 ${variantClasses[variant]} ${className}`}
+        {...props}
+      >
+        {icon && <div className="flex-shrink-0 mt-0.5">{icon}</div>}
+        <div className="flex-1">{props.children}</div>
+      </div>
+    );
+  },
+  'Alert'
+);
 
 interface TabsProps {
   tabs: { label: string; content: React.ReactNode }[];
@@ -275,7 +295,9 @@ export const StatCard: React.FC<StatCardProps> = ({ label, value, icon, trend })
           <p className="text-gray-700 dark:text-gray-300 text-sm font-semibold">{label}</p>
           <p className="text-3xl font-bold text-gray-900 dark:text-gray-50 mt-2">{value}</p>
           {trend && (
-            <p className={`text-sm font-semibold mt-3 ${trend.isPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+            <p
+              className={`text-sm font-semibold mt-3 ${trend.isPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
+            >
               {trend.isPositive ? '↑' : '↓'} {Math.abs(trend.value)}%
             </p>
           )}
@@ -292,7 +314,11 @@ interface PaginationProps {
   onPageChange: (page: number) => void;
 }
 
-export const Pagination: React.FC<PaginationProps> = ({ currentPage, totalPages, onPageChange }) => {
+export const Pagination: React.FC<PaginationProps> = ({
+  currentPage,
+  totalPages,
+  onPageChange,
+}) => {
   return (
     <div className="flex gap-2 justify-center">
       <Button
@@ -336,51 +362,60 @@ interface ModalProps extends React.HTMLAttributes<HTMLDivElement> {
   'aria-describedby'?: string;
 }
 
-export const Modal: React.FC<ModalProps> = withAnalytics(({ 
-  isOpen, 
-  onClose, 
-  title, 
-  children, 
-  actions,
-  'aria-labelledby': ariaLabelledBy,
-  'aria-describedby': ariaDescribedBy,
-  ...props
-}) => {
-  if (!isOpen) return null;
+export const Modal: React.FC<ModalProps> = withAnalytics(
+  ({
+    isOpen,
+    onClose,
+    title,
+    children,
+    actions,
+    'aria-labelledby': ariaLabelledBy,
+    'aria-describedby': ariaDescribedBy,
+    ...props
+  }) => {
+    if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-50">
-      <div 
-        className="absolute inset-0 bg-black/50 dark:bg-black/70" 
-        onClick={onClose}
-        role="presentation"
-      />
-      <div className="relative flex items-center justify-center min-h-screen p-4">
-        <Card 
-          className="w-full max-w-md"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby={ariaLabelledBy || 'modal-title'}
-          aria-describedby={ariaDescribedBy}
-          {...props}
-        >
-          <div className="p-6">
-            <h2 
-              id={ariaLabelledBy || 'modal-title'}
-              className="text-xl font-bold text-gray-900 dark:text-gray-50 mb-4"
-            >
-              {title}
-            </h2>
-            <div className={ariaDescribedBy ? `text-gray-700 dark:text-gray-300 mb-6` : 'text-gray-700 dark:text-gray-300 mb-6'}>
-              {children}
+    return (
+      <div className="fixed inset-0 z-50">
+        <div
+          className="absolute inset-0 bg-black/50 dark:bg-black/70"
+          onClick={onClose}
+          role="presentation"
+        />
+        <div className="relative flex items-center justify-center min-h-screen p-4">
+          <Card
+            className="w-full max-w-md"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={ariaLabelledBy || 'modal-title'}
+            aria-describedby={ariaDescribedBy}
+            {...props}
+          >
+            <div className="p-6">
+              <h2
+                id={ariaLabelledBy || 'modal-title'}
+                className="text-xl font-bold text-gray-900 dark:text-gray-50 mb-4"
+              >
+                {title}
+              </h2>
+              <div
+                className={
+                  ariaDescribedBy
+                    ? `text-gray-700 dark:text-gray-300 mb-6`
+                    : 'text-gray-700 dark:text-gray-300 mb-6'
+                }
+              >
+                {children}
+              </div>
+              {actions && <div className="flex gap-2 justify-end">{actions}</div>}
             </div>
-            {actions && <div className="flex gap-2 justify-end">{actions}</div>}
-          </div>
-        </Card>
+          </Card>
+        </div>
       </div>
-    </div>
-  );
-}, 'Modal');
+    );
+  },
+  'Modal'
+);
 
 // ==================== SKELETON LOADER (Loading States) ====================
 interface SkeletonProps {
@@ -391,12 +426,12 @@ interface SkeletonProps {
   className?: string;
 }
 
-export const Skeleton: React.FC<SkeletonProps> = ({ 
-  count = 1, 
-  height = 'h-4', 
+export const Skeleton: React.FC<SkeletonProps> = ({
+  count = 1,
+  height = 'h-4',
   width = 'w-full',
   circle = false,
-  className = ''
+  className = '',
 }) => {
   return (
     <>

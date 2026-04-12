@@ -4,10 +4,7 @@ import type { MissionMember } from '../pages/mission/core/missionTypes';
  * Calcule tous les totaux financiers de la mission en une seule passe.
  */
 export const calculateMissionTotals = (members: MissionMember[]) => {
-  const totalFrais = members.reduce(
-    (sum, m) => sum + (m.dailyIndemnity * m.days),
-    0
-  );
+  const totalFrais = members.reduce((sum, m) => sum + m.dailyIndemnity * m.days, 0);
 
   return {
     totalFrais,
@@ -26,5 +23,5 @@ export const calculateBudgetConsumption = (totalFrais: number, projectBudget: nu
  * Formate un montant en FCFA avec séparateur de milliers.
  */
 export const formatFCFA = (amount: number): string => {
-  return amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+  return amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 };

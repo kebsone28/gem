@@ -17,14 +17,19 @@ export const MissionTeamEditor: React.FC<MissionTeamEditorProps> = ({
   onUpdateMember,
   onRemoveMember,
   onAddMember,
-  onSyncDuration
+  onSyncDuration,
 }) => {
   const isLocked = isReadOnly || members.some(() => false); // Placeholder but logically true if isReadOnly
   return (
-    <section className={`glass-card !p-5 !rounded-[2rem] space-y-4 ${isLocked ? 'opacity-90' : ''}`}>
+    <section
+      className={`glass-card !p-5 !rounded-[2rem] space-y-4 ${isLocked ? 'opacity-90' : ''}`}
+    >
       <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-white/5">
         <h2 className="font-black text-slate-800 dark:text-white uppercase tracking-wider !text-[10px] flex items-center gap-2">
-          <div className="p-1.5 bg-indigo-500/10 rounded-lg"><Users size={14} className="text-indigo-500" /></div> Ressources Humaines Assignées
+          <div className="p-1.5 bg-indigo-500/10 rounded-lg">
+            <Users size={14} className="text-indigo-500" />
+          </div>{' '}
+          Ressources Humaines Assignées
         </h2>
         <div className="flex gap-2">
           {!isLocked && (
@@ -61,7 +66,7 @@ export const MissionTeamEditor: React.FC<MissionTeamEditorProps> = ({
                 type="text"
                 value={m.name}
                 readOnly={isReadOnly}
-                onChange={e => onUpdateMember(i, 'name', e.target.value)}
+                onChange={(e) => onUpdateMember(i, 'name', e.target.value)}
                 className="w-full bg-transparent border-none text-xs font-bold text-slate-800 dark:text-white outline-none px-2 placeholder-slate-400"
                 placeholder="Nom de l'opératif"
               />
@@ -71,20 +76,24 @@ export const MissionTeamEditor: React.FC<MissionTeamEditorProps> = ({
                 type="text"
                 value={m.role}
                 readOnly={isReadOnly}
-                onChange={e => onUpdateMember(i, 'role', e.target.value)}
+                onChange={(e) => onUpdateMember(i, 'role', e.target.value)}
                 className="w-full bg-transparent border-none text-xs italic text-slate-600 dark:text-slate-400 outline-none px-2 placeholder-slate-400/50"
                 placeholder="Spécialité/Rôle"
               />
             </div>
             <div className="col-span-6 md:col-span-3">
               <div className="flex items-center gap-2 bg-white/60 dark:bg-slate-800 p-2 rounded-xl ring-1 ring-slate-200/50 dark:ring-white/10 shadow-inner">
-                <span className="text-[7px] font-black text-slate-400 uppercase tracking-widest leading-none bg-slate-100 dark:bg-white/5 py-1 px-1.5 rounded-md">TAUX</span>
+                <span className="text-[7px] font-black text-slate-400 uppercase tracking-widest leading-none bg-slate-100 dark:bg-white/5 py-1 px-1.5 rounded-md">
+                  TAUX
+                </span>
                 <input
                   type="number"
                   min="0"
                   value={m.dailyIndemnity}
                   readOnly={isReadOnly}
-                  onChange={e => onUpdateMember(i, 'dailyIndemnity', Math.max(0, Number(e.target.value)))}
+                  onChange={(e) =>
+                    onUpdateMember(i, 'dailyIndemnity', Math.max(0, Number(e.target.value)))
+                  }
                   className="w-full bg-transparent border-none text-[11px] font-black text-emerald-700 dark:text-emerald-400 outline-none text-right focus:ring-0 placeholder-slate-400"
                   placeholder="0"
                 />
@@ -92,13 +101,15 @@ export const MissionTeamEditor: React.FC<MissionTeamEditorProps> = ({
             </div>
             <div className="col-span-6 md:col-span-3">
               <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 p-2 rounded-xl ring-1 ring-slate-200 dark:ring-white/10 shadow-inner">
-                <span className="text-[7px] font-black text-slate-500 uppercase tracking-widest leading-none bg-white/20 dark:bg-white/5 py-1 px-1.5 rounded-md">JOURS</span>
+                <span className="text-[7px] font-black text-slate-500 uppercase tracking-widest leading-none bg-white/20 dark:bg-white/5 py-1 px-1.5 rounded-md">
+                  JOURS
+                </span>
                 <input
                   type="number"
                   min="1"
                   value={m.days}
                   readOnly={isReadOnly}
-                  onChange={e => onUpdateMember(i, 'days', Math.max(1, Number(e.target.value)))}
+                  onChange={(e) => onUpdateMember(i, 'days', Math.max(1, Number(e.target.value)))}
                   className="w-full bg-transparent border-none text-[11px] font-black text-indigo-700 dark:text-indigo-400 outline-none text-center focus:ring-0 placeholder-slate-400"
                   placeholder="1"
                 />

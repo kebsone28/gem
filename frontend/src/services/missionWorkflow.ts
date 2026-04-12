@@ -93,7 +93,7 @@ export const submitForApproval = (
   workflow.status = 'in_review';
   workflow.currentStep = 1;
   workflow.submittedAt = Date.now();
-  
+
   // Premier step (soumission) considéré comme auto-approuvé par le créateur
   const step = workflow.steps[0];
   step.status = 'approved';
@@ -106,7 +106,7 @@ export const submitForApproval = (
     status: 'Soumission',
     timestamp: Date.now(),
     user: submittedBy,
-    comment: step.comment
+    comment: step.comment,
   });
 
   saveWorkflow(workflow);
@@ -138,7 +138,7 @@ export const approveStep = (
     status: `Approbation ${step.roleName}`,
     timestamp: Date.now(),
     user: approverName,
-    comment
+    comment,
   });
 
   // Avancer au prochain step
@@ -182,7 +182,7 @@ export const rejectStep = (
     status: `REJET par ${step.roleName}`,
     timestamp: Date.now(),
     user: rejectedBy,
-    comment: reason
+    comment: reason,
   });
 
   saveWorkflow(workflow);

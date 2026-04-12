@@ -1,7 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { CheckCircle2, AlertCircle, Hourglass } from 'lucide-react';
 import type { ApprovalRole } from '../constants/approvalConstants';
-import { getMissionApprovalHistory, approveMissionStep, rejectMissionStep, overrideMissionOrderNumber, canApproveMissionStep } from '../services/missionApprovalService';
+import {
+  getMissionApprovalHistory,
+  approveMissionStep,
+  rejectMissionStep,
+  overrideMissionOrderNumber,
+  canApproveMissionStep,
+} from '../services/missionApprovalService';
 import logger from '../utils/logger';
 import './MissionApprovalHistory.css';
 
@@ -28,7 +34,7 @@ const MissionApprovalHistory: React.FC<MissionApprovalHistoryProps> = ({
   missionOrderNumber,
   userRole,
   isAdmin = false,
-  onApprovalChanged
+  onApprovalChanged,
 }) => {
   const [workflow, setWorkflow] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
@@ -42,7 +48,7 @@ const MissionApprovalHistory: React.FC<MissionApprovalHistoryProps> = ({
 
   // Workflow roles in sequence (Simplified)
   const WORKFLOW_SEQUENCE: { role: ApprovalRole; label: string; sequence: number }[] = [
-    { role: 'DIRECTEUR', label: '👔 Validation Direction Générale', sequence: 1 }
+    { role: 'DIRECTEUR', label: '👔 Validation Direction Générale', sequence: 1 },
   ];
 
   useEffect(() => {
@@ -62,7 +68,7 @@ const MissionApprovalHistory: React.FC<MissionApprovalHistoryProps> = ({
       setError(null);
     } catch (err) {
       logger.error('Error fetching approval history:', err);
-      setError('Impossible de charger l\'historique d\'approbation');
+      setError("Impossible de charger l'historique d'approbation");
     } finally {
       setLoading(false);
     }
@@ -81,7 +87,7 @@ const MissionApprovalHistory: React.FC<MissionApprovalHistoryProps> = ({
       }
     } catch (err) {
       logger.error('Approval failed:', err);
-      setError('Erreur lors de l\'approbation');
+      setError("Erreur lors de l'approbation");
     } finally {
       setApproving(null);
     }
@@ -93,12 +99,14 @@ const MissionApprovalHistory: React.FC<MissionApprovalHistoryProps> = ({
       const updated = await approveMissionStep(missionId, 'ADMIN');
       if (updated) {
         setWorkflow(updated);
-        logger.log(`✅ Mission approved by Admin (all steps). Order number: ${updated.orderNumber}`);
+        logger.log(
+          `✅ Mission approved by Admin (all steps). Order number: ${updated.orderNumber}`
+        );
         onApprovalChanged?.();
       }
     } catch (err) {
       logger.error('Admin approval failed:', err);
-      setError('Erreur lors de l\'approbation admin');
+      setError("Erreur lors de l'approbation admin");
     } finally {
       setApproving(null);
     }
@@ -183,7 +191,8 @@ const MissionApprovalHistory: React.FC<MissionApprovalHistoryProps> = ({
 
   const canUserApprove = (step: ApprovalStep) => {
     if (!workflow) return false;
-    if (workflow.overallStatus === 'approved' || workflow.overallStatus === 'rejected') return false;
+    if (workflow.overallStatus === 'approved' || workflow.overallStatus === 'rejected')
+      return false;
     return canApproveMissionStep(userRole, step as any, isAdmin);
   };
 
@@ -249,13 +258,11 @@ const MissionApprovalHistory: React.FC<MissionApprovalHistoryProps> = ({
       {/* WORKFLOW STEPS */}
       <div className="approval-workflow">
         {WORKFLOW_SEQUENCE.map((step) => {
-          const stepData = workflow.steps?.find(
-            (s: ApprovalStep) => s.role === step.role
-          ) || {
+          const stepData = workflow.steps?.find((s: ApprovalStep) => s.role === step.role) || {
             role: step.role,
             label: step.label,
             sequence: step.sequence,
-            status: 'EN_ATTENTE'
+            status: 'EN_ATTENTE',
           };
 
           const isCurrentStep = workflow.currentStep === step.sequence;
@@ -323,9 +330,7 @@ const MissionApprovalHistory: React.FC<MissionApprovalHistoryProps> = ({
                 <div className="step-completed">
                   ✓ Approuvé
                   {stepData.decidedAt && (
-                    <small>
-                      {new Date(stepData.decidedAt).toLocaleDateString('fr-FR')}
-                    </small>
+                    <small>{new Date(stepData.decidedAt).toLocaleDateString('fr-FR')}</small>
                   )}
                 </div>
               )}
@@ -341,7 +346,9 @@ const MissionApprovalHistory: React.FC<MissionApprovalHistoryProps> = ({
             <CheckCircle2 className="w-6 h-6" />
             <div>
               <h4>✅ Approbation Complète</h4>
-              <p>Numéro de mission généré: <strong>{workflow.orderNumber}</strong></p>
+              <p>
+                Numéro de mission généré: <strong>{workflow.orderNumber}</strong>
+              </p>
               {isAdmin && (
                 <button
                   onClick={() => setOverrideOrderNumberOpen(true)}
@@ -370,9 +377,8 @@ const MissionApprovalHistory: React.FC<MissionApprovalHistoryProps> = ({
             <div>
               <h4>⏳ En Attente d'Approbation</h4>
               <p>
-                Étape {workflow.currentStep}/1: Attente de la validation par {
-                  WORKFLOW_SEQUENCE.find(s => s.sequence === workflow.currentStep)?.label
-                }
+                Étape {workflow.currentStep}/1: Attente de la validation par{' '}
+                {WORKFLOW_SEQUENCE.find((s) => s.sequence === workflow.currentStep)?.label}
               </p>
             </div>
           </div>
@@ -393,10 +399,7 @@ const MissionApprovalHistory: React.FC<MissionApprovalHistoryProps> = ({
               className="reject-textarea"
             />
             <div className="modal-actions">
-              <button
-                onClick={() => setRejectDialogOpen(false)}
-                className="btn btn-cancel"
-              >
+              <button onClick={() => setRejectDialogOpen(false)} className="btn btn-cancel">
                 Annuler
               </button>
               <button
@@ -416,7 +419,9 @@ const MissionApprovalHistory: React.FC<MissionApprovalHistoryProps> = ({
         <div className="modal-overlay" onClick={() => setOverrideOrderNumberOpen(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <h3>Modifier le Numéro de Mission</h3>
-            <p>Numéro actuel: <strong>{workflow.orderNumber}</strong></p>
+            <p>
+              Numéro actuel: <strong>{workflow.orderNumber}</strong>
+            </p>
             <input
               type="text"
               value={newOrderNumber}
@@ -425,10 +430,7 @@ const MissionApprovalHistory: React.FC<MissionApprovalHistoryProps> = ({
               className="override-input"
             />
             <div className="modal-actions">
-              <button
-                onClick={() => setOverrideOrderNumberOpen(false)}
-                className="btn btn-cancel"
-              >
+              <button onClick={() => setOverrideOrderNumberOpen(false)} className="btn btn-cancel">
                 Annuler
               </button>
               <button

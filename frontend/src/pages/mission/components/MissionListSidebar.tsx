@@ -13,8 +13,8 @@ type StatusFilter = 'all' | 'draft' | 'pending' | 'certified';
 
 const STATUS_CONFIG: Record<string, { label: string; dot: string; badge: string }> = {
   certified: { label: 'CERT', dot: 'bg-emerald-500', badge: 'bg-emerald-500/15 text-emerald-500' },
-  pending:   { label: 'ATTENTE', dot: 'bg-amber-500', badge: 'bg-amber-500/15 text-amber-500' },
-  draft:     { label: 'BROU', dot: 'bg-slate-400', badge: 'bg-slate-500/15 text-slate-400' },
+  pending: { label: 'ATTENTE', dot: 'bg-amber-500', badge: 'bg-amber-500/15 text-amber-500' },
+  draft: { label: 'BROU', dot: 'bg-slate-400', badge: 'bg-slate-500/15 text-slate-400' },
 };
 
 const getMissionStatus = (m: any): keyof typeof STATUS_CONFIG => {
@@ -27,7 +27,7 @@ export const MissionListSidebar: React.FC<MissionListSidebarProps> = ({
   savedMissions,
   currentMissionId,
   onLoadMission,
-  onDeleteMission
+  onDeleteMission,
 }) => {
   const { user } = useAuth();
   const [search, setSearch] = useState('');
@@ -37,16 +37,16 @@ export const MissionListSidebar: React.FC<MissionListSidebarProps> = ({
 
   const visibleMissions = useMemo(() => {
     if (isMaster) return savedMissions;
-    return savedMissions.filter(m => {
-        const isCreator = m.createdBy === user?.email || m.creatorId === user?.id;
-        const isMember = m.members?.some((member: any) => member.name === user?.name);
-        return isCreator || isMember;
+    return savedMissions.filter((m) => {
+      const isCreator = m.createdBy === user?.email || m.creatorId === user?.id;
+      const isMember = m.members?.some((member: any) => member.name === user?.name);
+      return isCreator || isMember;
     });
   }, [savedMissions, user, isMaster]);
 
   const filteredMissions = useMemo(() => {
     return visibleMissions
-      .filter(m => {
+      .filter((m) => {
         const status = getMissionStatus(m);
         if (filter !== 'all' && status !== filter) return false;
         if (search.trim()) {
@@ -66,19 +66,43 @@ export const MissionListSidebar: React.FC<MissionListSidebarProps> = ({
       });
   }, [savedMissions, search, filter]);
 
-  const counts = useMemo(() => ({
-    all: visibleMissions.length,
-    certified: visibleMissions.filter(m => m.isCertified).length,
-    pending: visibleMissions.filter(m => !m.isCertified && m.isSubmitted).length,
-    draft: visibleMissions.filter(m => !m.isCertified && !m.isSubmitted).length,
-  }), [visibleMissions]);
+  const counts = useMemo(
+    () => ({
+      all: visibleMissions.length,
+      certified: visibleMissions.filter((m) => m.isCertified).length,
+      pending: visibleMissions.filter((m) => !m.isCertified && m.isSubmitted).length,
+      draft: visibleMissions.filter((m) => !m.isCertified && !m.isSubmitted).length,
+    }),
+    [visibleMissions]
+  );
 
-  const filterButtons: { key: StatusFilter; label: string; color: string; activeColor: string }[] = [
-    { key: 'all',       label: 'Tous',    color: 'text-slate-400',   activeColor: 'bg-slate-700 text-white' },
-    { key: 'draft',     label: 'Brou.',   color: 'text-slate-400',   activeColor: 'bg-slate-500 text-white' },
-    { key: 'pending',   label: 'Att.',    color: 'text-amber-400',   activeColor: 'bg-amber-500 text-white' },
-    { key: 'certified', label: 'Cert.',   color: 'text-emerald-400', activeColor: 'bg-emerald-600 text-white' },
-  ];
+  const filterButtons: { key: StatusFilter; label: string; color: string; activeColor: string }[] =
+    [
+      {
+        key: 'all',
+        label: 'Tous',
+        color: 'text-slate-400',
+        activeColor: 'bg-slate-700 text-white',
+      },
+      {
+        key: 'draft',
+        label: 'Brou.',
+        color: 'text-slate-400',
+        activeColor: 'bg-slate-500 text-white',
+      },
+      {
+        key: 'pending',
+        label: 'Att.',
+        color: 'text-amber-400',
+        activeColor: 'bg-amber-500 text-white',
+      },
+      {
+        key: 'certified',
+        label: 'Cert.',
+        color: 'text-emerald-400',
+        activeColor: 'bg-emerald-600 text-white',
+      },
+    ];
 
   return (
     <div className="lg:col-span-2 no-print space-y-3">
@@ -92,11 +116,14 @@ export const MissionListSidebar: React.FC<MissionListSidebarProps> = ({
 
       {/* Barre de recherche */}
       <div className="relative">
-        <Search size={11} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+        <Search
+          size={11}
+          className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+        />
         <input
           type="text"
           value={search}
-          onChange={e => setSearch(e.target.value)}
+          onChange={(e) => setSearch(e.target.value)}
           placeholder="Rechercher..."
           className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 rounded-xl pl-7 pr-3 py-2 text-[10px] font-bold outline-none focus:ring-2 ring-indigo-500/20 placeholder-slate-400 transition-all"
         />
@@ -109,11 +136,15 @@ export const MissionListSidebar: React.FC<MissionListSidebarProps> = ({
             key={key}
             onClick={() => setFilter(key)}
             className={`py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all flex flex-col items-center gap-0.5 ${
-              filter === key ? activeColor : `bg-slate-100 dark:bg-white/5 ${color} hover:bg-slate-200 dark:hover:bg-white/10`
+              filter === key
+                ? activeColor
+                : `bg-slate-100 dark:bg-white/5 ${color} hover:bg-slate-200 dark:hover:bg-white/10`
             }`}
           >
             {key !== 'all' && (
-              <span className={`text-[11px] font-black leading-none ${filter === key ? 'text-white' : ''}`}>
+              <span
+                className={`text-[11px] font-black leading-none ${filter === key ? 'text-white' : ''}`}
+              >
                 {counts[key]}
               </span>
             )}
@@ -150,35 +181,52 @@ export const MissionListSidebar: React.FC<MissionListSidebarProps> = ({
               }`}
             >
               <div className="flex items-center justify-between gap-2">
-                <span className="truncate font-black">
-                  {m.orderNumber || 'Brouillon'}
-                </span>
-                <span className={`flex-shrink-0 flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[7px] font-black ${
-                  isActive ? 'bg-white/20 text-white' : cfg.badge
-                }`}>
+                <span className="truncate font-black">{m.orderNumber || 'Brouillon'}</span>
+                <span
+                  className={`flex-shrink-0 flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[7px] font-black ${
+                    isActive ? 'bg-white/20 text-white' : cfg.badge
+                  }`}
+                >
                   <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-white' : cfg.dot}`} />
                   {cfg.label}
                 </span>
               </div>
 
               <div className="flex items-center gap-1.5">
-                {status === 'certified' && !isActive && <CheckCircle2 size={9} className="text-emerald-500 flex-shrink-0" />}
-                {status === 'pending' && !isActive && <Clock size={9} className="text-amber-500 flex-shrink-0" />}
-                <span className={`text-[9px] truncate normal-case font-medium ${isActive ? 'text-white/70' : 'text-slate-500 dark:text-slate-500'}`}>
+                {status === 'certified' && !isActive && (
+                  <CheckCircle2 size={9} className="text-emerald-500 flex-shrink-0" />
+                )}
+                {status === 'pending' && !isActive && (
+                  <Clock size={9} className="text-amber-500 flex-shrink-0" />
+                )}
+                <span
+                  className={`text-[9px] truncate normal-case font-medium ${isActive ? 'text-white/70' : 'text-slate-500 dark:text-slate-500'}`}
+                >
                   {m.region || m.purpose || '—'}
                 </span>
               </div>
 
               {isActive && (
-                <ChevronRight size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-white/40" />
+                <ChevronRight
+                  size={14}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-white/40"
+                />
               )}
 
               {/* Delete button */}
               <div
                 role="button"
                 tabIndex={0}
-                onClick={(e) => { e.stopPropagation(); onDeleteMission(m.id, m.orderNumber || 'Brouillon'); }}
-                onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); onDeleteMission(m.id, m.orderNumber || 'Brouillon'); } }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDeleteMission(m.id, m.orderNumber || 'Brouillon');
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.stopPropagation();
+                    onDeleteMission(m.id, m.orderNumber || 'Brouillon');
+                  }
+                }}
                 className="absolute bottom-2 right-2 p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 rounded-lg opacity-0 group-hover:opacity-100 transition-all z-10"
                 title="Supprimer définitivement"
               >

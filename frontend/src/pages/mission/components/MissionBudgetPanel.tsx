@@ -11,7 +11,7 @@ interface MissionBudgetPanelProps {
 export const MissionBudgetPanel: React.FC<MissionBudgetPanelProps> = ({
   totalFrais,
   projectBudget,
-  members
+  members,
 }) => {
   const consumption = calculateBudgetConsumption(totalFrais, projectBudget);
 
@@ -25,7 +25,8 @@ export const MissionBudgetPanel: React.FC<MissionBudgetPanelProps> = ({
 
         <div className="space-y-1">
           <div className="text-4xl font-black text-white italic tracking-tighter">
-            {formatFCFA(totalFrais)} <span className="text-xl text-emerald-500 font-bold ml-1">XOF</span>
+            {formatFCFA(totalFrais)}{' '}
+            <span className="text-xl text-emerald-500 font-bold ml-1">XOF</span>
           </div>
           {projectBudget > 0 && (
             <div className="flex items-center gap-2">
@@ -35,7 +36,9 @@ export const MissionBudgetPanel: React.FC<MissionBudgetPanelProps> = ({
                   style={{ width: `${Math.min(100, consumption)}%` }}
                 />
               </div>
-              <span className="text-[10px] font-black text-slate-500">{consumption.toFixed(1)}% du Budget Projet</span>
+              <span className="text-[10px] font-black text-slate-500">
+                {consumption.toFixed(1)}% du Budget Projet
+              </span>
             </div>
           )}
         </div>
@@ -43,10 +46,13 @@ export const MissionBudgetPanel: React.FC<MissionBudgetPanelProps> = ({
         <div className="space-y-3 pt-6 border-t border-slate-800">
           {members.slice(0, 4).map((m, i) => (
             <div key={i} className="flex justify-between items-center text-xs">
-              <span className="text-slate-400 font-bold truncate max-w-[120px]">{m.name || 'Non assigné'}</span>
+              <span className="text-slate-400 font-bold truncate max-w-[120px]">
+                {m.name || 'Non assigné'}
+              </span>
               <div className="flex flex-col items-end">
                 <span className="text-white font-black font-mono">
-                  {formatFCFA(m.dailyIndemnity * m.days)} <span className="text-xs text-slate-500">XOF</span>
+                  {formatFCFA(m.dailyIndemnity * m.days)}{' '}
+                  <span className="text-xs text-slate-500">XOF</span>
                 </span>
               </div>
             </div>

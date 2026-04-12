@@ -8,7 +8,13 @@
 // ============================================
 
 export type ApprovalRole = 'INITIATEUR' | 'ADMIN' | 'DIRECTEUR';
-export type ApprovalStatus = 'EN_ATTENTE' | 'APPROUVE' | 'REJETE' | 'pending' | 'approved' | 'rejected';
+export type ApprovalStatus =
+  | 'EN_ATTENTE'
+  | 'APPROUVE'
+  | 'REJETE'
+  | 'pending'
+  | 'approved'
+  | 'rejected';
 export type WorkflowStatus = 'draft' | 'pending' | 'approved' | 'rejected' | 'executed';
 
 /**
@@ -121,10 +127,10 @@ export const APPROVAL_STATUS_MESSAGES: Record<ApprovalStatus, string> = {
  */
 export const WORKFLOW_STATUS_MESSAGES: Record<WorkflowStatus, string> = {
   draft: 'Brouillon',
-  pending: "Soumis (En attente DG)",
+  pending: 'Soumis (En attente DG)',
   approved: '✅ Validé par le DG',
   rejected: '❌ Rejetée',
-  executed: '🚀 Exécutée'
+  executed: '🚀 Exécutée',
 };
 
 /**

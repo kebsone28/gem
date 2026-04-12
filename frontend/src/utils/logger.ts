@@ -2,22 +2,22 @@
 const isProd = import.meta.env?.PROD;
 
 function log(...args: any[]) {
-    if (!isProd) console.log(...args);
+  if (!isProd) console.log(...args);
 }
 function warn(...args: any[]) {
-    if (!isProd) console.warn(...args);
+  if (!isProd) console.warn(...args);
 }
 function error(...args: any[]) {
-    if (!isProd) console.error(...args);
+  if (!isProd) console.error(...args);
 }
 
 function debug(...args: any[]) {
-    if (!isProd) console.debug(...args);
+  if (!isProd) console.debug(...args);
 }
 
 export default {
-    log,
-    warn,
-    error,
-    debug,
+  log,
+  warn,
+  error,
+  debug,
 };

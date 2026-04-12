@@ -1,6 +1,11 @@
 import React, { useState } from 'react';
 import { Copy, Sparkles, Download, Upload, ChevronRight, Trash2, Archive } from 'lucide-react';
-import { getTemplates, createMissionFromTemplate, exportMissionAsJSON, importMissionFromJSON } from '../../services/missionTemplates';
+import {
+  getTemplates,
+  createMissionFromTemplate,
+  exportMissionAsJSON,
+  importMissionFromJSON,
+} from '../../services/missionTemplates';
 import type { MissionOrderData, MissionMember } from '../../pages/mission/core/missionTypes';
 
 interface MissionQuickActionProps {
@@ -20,7 +25,7 @@ export const MissionQuickAction: React.FC<MissionQuickActionProps> = ({
   onDuplicate,
   onDelete,
   onArchive,
-  isAdmin = false
+  isAdmin = false,
 }) => {
   const [showTemplates, setShowTemplates] = useState(false);
   const templates = getTemplates();
@@ -65,10 +70,15 @@ export const MissionQuickAction: React.FC<MissionQuickActionProps> = ({
             <Copy size={18} className="text-amber-600 dark:text-amber-500" />
           </div>
           <div className="text-left flex-1">
-            <p className="text-xs font-black text-amber-700 dark:text-amber-500 uppercase tracking-widest">Dupliquer</p>
+            <p className="text-xs font-black text-amber-700 dark:text-amber-500 uppercase tracking-widest">
+              Dupliquer
+            </p>
             <p className="text-xs text-amber-600 dark:text-amber-600 font-bold">Nouvelle mission</p>
           </div>
-          <ChevronRight size={14} className="text-amber-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+          <ChevronRight
+            size={14}
+            className="text-amber-600 opacity-0 group-hover:opacity-100 transition-opacity"
+          />
         </button>
 
         {/* Templates */}
@@ -80,10 +90,17 @@ export const MissionQuickAction: React.FC<MissionQuickActionProps> = ({
             <Sparkles size={18} className="text-indigo-600 dark:text-indigo-500" />
           </div>
           <div className="text-left flex-1">
-            <p className="text-xs font-black text-indigo-700 dark:text-indigo-500 uppercase tracking-widest">Template</p>
-            <p className="text-xs text-indigo-600 dark:text-indigo-600 font-bold">Démarrer rapide</p>
+            <p className="text-xs font-black text-indigo-700 dark:text-indigo-500 uppercase tracking-widest">
+              Template
+            </p>
+            <p className="text-xs text-indigo-600 dark:text-indigo-600 font-bold">
+              Démarrer rapide
+            </p>
           </div>
-          <ChevronRight size={14} className="text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+          <ChevronRight
+            size={14}
+            className="text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity"
+          />
         </button>
       </div>
 
@@ -96,7 +113,7 @@ export const MissionQuickAction: React.FC<MissionQuickActionProps> = ({
           <Download size={12} />
           JSON
         </button>
-        
+
         {onArchive && (
           <button
             onClick={onArchive}
@@ -124,12 +141,7 @@ export const MissionQuickAction: React.FC<MissionQuickActionProps> = ({
         <label className="flex-1 py-2 bg-transparent text-slate-500 dark:text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] hover:text-indigo-500 transition-colors flex items-center justify-center gap-2 cursor-pointer">
           <Upload size={14} />
           Importer un fichier JSON
-          <input
-            type="file"
-            accept=".json"
-            onChange={handleImport}
-            className="hidden"
-          />
+          <input type="file" accept=".json" onChange={handleImport} className="hidden" />
         </label>
       </div>
 
@@ -155,7 +167,10 @@ export const MissionQuickAction: React.FC<MissionQuickActionProps> = ({
                       {template.description}
                     </p>
                   </div>
-                  <ChevronRight size={14} className="text-slate-400 group-hover:text-indigo-600 transition-colors flex-shrink-0 mt-0.5" />
+                  <ChevronRight
+                    size={14}
+                    className="text-slate-400 group-hover:text-indigo-600 transition-colors flex-shrink-0 mt-0.5"
+                  />
                 </div>
               </button>
             ))}

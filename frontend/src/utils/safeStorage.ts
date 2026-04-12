@@ -3,40 +3,42 @@
 const MAX_CHARS = 20_000; // ~20 KB per entry
 
 function isTooLarge(value: string | null): boolean {
-    return value !== null && value.length > MAX_CHARS;
+  return value !== null && value.length > MAX_CHARS;
 }
 
 export function getItem(key: string): string | null {
-    try {
-        const val = localStorage.getItem(key);
-        if (isTooLarge(val)) {
-            console.warn(`safeStorage: key \"${key}\" is too large (${val?.length} chars), purging`);
-            localStorage.removeItem(key);
-            return null;
-        }
-        return val;
-    } catch (e) {
-        console.error('safeStorage.getItem error', e);
-        return null;
+  try {
+    const val = localStorage.getItem(key);
+    if (isTooLarge(val)) {
+      console.warn(`safeStorage: key \"${key}\" is too large (${val?.length} chars), purging`);
+      localStorage.removeItem(key);
+      return null;
     }
+    return val;
+  } catch (e) {
+    console.error('safeStorage.getItem error', e);
+    return null;
+  }
 }
 
 export function setItem(key: string, value: string): void {
-    try {
-        if (isTooLarge(value)) {
-            console.warn(`safeStorage: attempt to store oversized value under \"${key}\" (${value.length} chars), ignoring`);
-            return;
-        }
-        localStorage.setItem(key, value);
-    } catch (e) {
-        console.error('safeStorage.setItem error', e);
+  try {
+    if (isTooLarge(value)) {
+      console.warn(
+        `safeStorage: attempt to store oversized value under \"${key}\" (${value.length} chars), ignoring`
+      );
+      return;
     }
+    localStorage.setItem(key, value);
+  } catch (e) {
+    console.error('safeStorage.setItem error', e);
+  }
 }
 
 export function removeItem(key: string): void {
-    try {
-        localStorage.removeItem(key);
-    } catch (e) {
-        console.error('safeStorage.removeItem error', e);
-    }
+  try {
+    localStorage.removeItem(key);
+  } catch (e) {
+    console.error('safeStorage.removeItem error', e);
+  }
 }

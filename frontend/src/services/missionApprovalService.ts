@@ -34,7 +34,7 @@ export const getMissionApprovalHistory = async (
 export const getPendingApprovals = async (isArchive = false): Promise<any[]> => {
   try {
     const response = await api.get('/missions/approvals/pending', {
-      params: { status: isArchive ? 'approuvee' : undefined }
+      params: { status: isArchive ? 'approuvee' : undefined },
     });
     return response.data.missions || [];
   } catch (err) {
@@ -59,9 +59,9 @@ export const approveMissionStep = async (
     const response = await api.post(`/missions/${missionId}/approve`, {
       role: role.toUpperCase(),
       comment,
-      signature
+      signature,
     });
-    
+
     // Notification locale pour l'archivage
     const wf = response.data;
     await notificationService.createNotification({
@@ -70,7 +70,7 @@ export const approveMissionStep = async (
       type: 'approval',
       title: `Approbation ${role}`,
       message: `Votre mission a été approuvée par ${role}. ${comment ? 'Com: ' + comment : ''}`,
-      sender: role
+      sender: role,
     });
 
     logger.log(`✅ Approbation ${role} enregistrée pour mission ${missionId}`);
@@ -104,7 +104,7 @@ export const rejectMissionStep = async (
       type: 'rejection',
       title: `Rejet de mission`,
       message: `Votre mission a été rejetée par ${role}. Raison: ${reason}`,
-      sender: role
+      sender: role,
     });
 
     logger.log(`⛔ Rejet ${role} enregistré pour mission ${missionId}`);
@@ -124,7 +124,7 @@ export const overrideMissionOrderNumber = async (
 ): Promise<MissionApprovalWorkflow | null> => {
   try {
     const response = await api.post(`/missions/${missionId}/override-order-number`, {
-      newOrderNumber
+      newOrderNumber,
     });
     logger.log(`✅ Numéro de mission remplacé pour ${missionId}`);
     return response.data;
@@ -169,7 +169,11 @@ export const canApproveMissionStep = (
   }
 
   // Seul le DG ou DG_PROQUELEC peut approuver l'étape DIRECTEUR
-  if ((normalizedRole === 'DIRECTEUR' || normalizedRole === 'DG_PROQUELEC') && normalizedStepRole === 'DIRECTEUR') return true;
+  if (
+    (normalizedRole === 'DIRECTEUR' || normalizedRole === 'DG_PROQUELEC') &&
+    normalizedStepRole === 'DIRECTEUR'
+  )
+    return true;
 
   return false;
 };

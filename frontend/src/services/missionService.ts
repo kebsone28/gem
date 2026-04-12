@@ -34,12 +34,12 @@ export const getMissions = async (projectId?: string): Promise<Mission[]> => {
  */
 export const createMission = async (missionData: Partial<Mission>): Promise<Mission | null> => {
   try {
-    console.log("🚀 [API] PAYLOAD SENT (CREATE):", missionData);
+    console.log('🚀 [API] PAYLOAD SENT (CREATE):', missionData);
     const response = await api.post('/missions', missionData);
     return response.data;
   } catch (err: any) {
     logger.error('❌ [API] Failed to create mission:', err);
-    console.error("❌ FULL BACKEND ERROR:", err.response?.data);
+    console.error('❌ FULL BACKEND ERROR:', err.response?.data);
     return null;
   }
 };
@@ -47,14 +47,17 @@ export const createMission = async (missionData: Partial<Mission>): Promise<Miss
 /**
  * Met à jour une mission sur le serveur
  */
-export const updateMission = async (id: string, missionData: Partial<Mission>): Promise<Mission | { error: number } | null> => {
+export const updateMission = async (
+  id: string,
+  missionData: Partial<Mission>
+): Promise<Mission | { error: number } | null> => {
   try {
     console.log(`🚀 [API] PAYLOAD SENT (UPDATE ${id}):`, missionData);
     const response = await api.patch(`/missions/${id}`, missionData);
     return response.data;
   } catch (err: any) {
     logger.error(`❌ [API] Failed to update mission ${id}:`, err);
-    console.error("❌ FULL BACKEND ERROR:", err.response?.data);
+    console.error('❌ FULL BACKEND ERROR:', err.response?.data);
     if (err.response?.status === 404) {
       return { error: 404 };
     }

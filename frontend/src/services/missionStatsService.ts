@@ -29,7 +29,7 @@ export const missionStatsService = {
    */
   async getUserStats(userEmail: string, userId: string): Promise<MissionStats> {
     const missions = await db.missions
-      .filter(m => m.createdBy === userEmail || m.creatorId === userId)
+      .filter((m) => m.createdBy === userEmail || m.creatorId === userId)
       .toArray();
     return this.processMissions(missions);
   },
@@ -43,15 +43,15 @@ export const missionStatsService = {
     const memberSet = new Set();
     const months: Record<string, number> = {};
 
-    missions.forEach(m => {
+    missions.forEach((m) => {
       const data = (m.data || m.formData) as MissionOrderData;
       const isCertified = !!(m.isCertified || data?.isCertified);
-      
+
       if (isCertified) certifiedCount++;
 
       // Calcul financier (Somme des indemnités)
       const members = (m.members || data?.members || []) as MissionMember[];
-      members.forEach(member => {
+      members.forEach((member) => {
         const cost = (Number(member.dailyIndemnity) || 0) * (Number(member.days) || 1);
         totalIndemnities += cost;
         if (member.name) memberSet.add(member.name);
@@ -70,7 +70,7 @@ export const missionStatsService = {
       totalIndemnities,
       avgCostPerMission: missions.length > 0 ? totalIndemnities / missions.length : 0,
       missionsByMonth: months,
-      totalMembersDeployed: memberSet.size
+      totalMembersDeployed: memberSet.size,
     };
   },
 
@@ -79,62 +79,69 @@ export const missionStatsService = {
    */
   async exportCertifiedMissionsToExcel(): Promise<void> {
     const allMissions = await db.missions.toArray();
-    
+
     // On ne garde que les missions certifiées
-    const certifiedMissions = allMissions.filter(m => {
-        const data = (m.data || m.formData) as MissionOrderData;
-        return !!(m.isCertified || data?.isCertified);
+    const certifiedMissions = allMissions.filter((m) => {
+      const data = (m.data || m.formData) as MissionOrderData;
+      return !!(m.isCertified || data?.isCertified);
     });
 
     if (certifiedMissions.length === 0) {
-        throw new Error("Aucune mission certifiée à exporter.");
+      throw new Error('Aucune mission certifiée à exporter.');
     }
 
     // Transformation pour Excel (Format plat, prêt pour la compta)
-    const exportData = certifiedMissions.flatMap(m => {
-        const data = (m.data || m.formData) as MissionOrderData;
-        const members = (m.members || data?.members || []) as MissionMember[];
+    const exportData = certifiedMissions.flatMap((m) => {
+      const data = (m.data || m.formData) as MissionOrderData;
+      const members = (m.members || data?.members || []) as MissionMember[];
 
-        return members.map(member => ({
-            "N° ORDRE": data.orderNumber || 'Brouillon',
-            "DATE CRÉATION": new Date(m.createdAt || Date.now()).toLocaleDateString('fr-FR'),
-            "DESTINATION": data.region || 'N/A',
-            "OBJET": data.purpose || 'N/A',
-            "AGENT": member.name || 'Inconnu',
-            "RÔLE": member.role || 'Opératif',
-            "JOURS": Number(member.days) || 1,
-            "INDEMNITÉ JOUR (FCFA)": Number(member.dailyIndemnity) || 0,
-            "TOTAL INDEMNITÉS (FCFA)": (Number(member.dailyIndemnity) || 0) * (Number(member.days) || 1),
-            "STATUT": "CERTIFIÉ DG",
-            "CRÉÉ PAR": m.createdBy || 'Système'
-        }));
+      return members.map((member) => ({
+        'N° ORDRE': data.orderNumber || 'Brouillon',
+        'DATE CRÉATION': new Date(m.createdAt || Date.now()).toLocaleDateString('fr-FR'),
+        DESTINATION: data.region || 'N/A',
+        OBJET: data.purpose || 'N/A',
+        AGENT: member.name || 'Inconnu',
+        RÔLE: member.role || 'Opératif',
+        JOURS: Number(member.days) || 1,
+        'INDEMNITÉ JOUR (FCFA)': Number(member.dailyIndemnity) || 0,
+        'TOTAL INDEMNITÉS (FCFA)':
+          (Number(member.dailyIndemnity) || 0) * (Number(member.days) || 1),
+        STATUT: 'CERTIFIÉ DG',
+        'CRÉÉ PAR': m.createdBy || 'Système',
+      }));
     });
 
     // Création du Workbook Excel
     const worksheet = XLSX.utils.json_to_sheet(exportData);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Missions_PROQUELEC");
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Missions_PROQUELEC');
 
     // Onglet Résumé par mission (1 ligne par mission)
-    const summaryData = certifiedMissions.map(m => {
-        const data = (m.data || m.formData) as MissionOrderData;
-        const members = (m.members || data?.members || []) as MissionMember[];
-        const totalCost = members.reduce((s, mb) => s + (Number(mb.dailyIndemnity) || 0) * (Number(mb.days) || 1), 0);
-        return {
-            "N° ORDRE": data.orderNumber || 'Brouillon',
-            "DATE": new Date(m.createdAt || Date.now()).toLocaleDateString('fr-FR'),
-            "DESTINATION": data.region || 'N/A',
-            "OBJET": data.purpose || 'N/A',
-            "NB AGENTS": members.length,
-            "TOTAL INDEMNITÉS (FCFA)": totalCost,
-            "STATUT": "CERTIFIÉ DG",
-            "CRÉÉ PAR": m.createdBy || 'Système'
-        };
+    const summaryData = certifiedMissions.map((m) => {
+      const data = (m.data || m.formData) as MissionOrderData;
+      const members = (m.members || data?.members || []) as MissionMember[];
+      const totalCost = members.reduce(
+        (s, mb) => s + (Number(mb.dailyIndemnity) || 0) * (Number(mb.days) || 1),
+        0
+      );
+      return {
+        'N° ORDRE': data.orderNumber || 'Brouillon',
+        DATE: new Date(m.createdAt || Date.now()).toLocaleDateString('fr-FR'),
+        DESTINATION: data.region || 'N/A',
+        OBJET: data.purpose || 'N/A',
+        'NB AGENTS': members.length,
+        'TOTAL INDEMNITÉS (FCFA)': totalCost,
+        STATUT: 'CERTIFIÉ DG',
+        'CRÉÉ PAR': m.createdBy || 'Système',
+      };
     });
     const wsSummary = XLSX.utils.json_to_sheet(summaryData);
-    XLSX.utils.book_append_sheet(workbook, wsSummary, "Résumé_Missions");
+    XLSX.utils.book_append_sheet(workbook, wsSummary, 'Résumé_Missions');
 
     // Téléchargement
-    XLSX.writeFile(workbook, `PROQUELEC_COMPTA_MISSIONS_${new Date().toISOString().split('T')[0]}.xlsx`);
-  }
+    XLSX.writeFile(
+      workbook,
+      `PROQUELEC_COMPTA_MISSIONS_${new Date().toISOString().split('T')[0]}.xlsx`
+    );
+  },
 };

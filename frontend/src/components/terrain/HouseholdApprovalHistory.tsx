@@ -3,12 +3,12 @@ import { Check, X, Clock, Shield, AlertCircle, MessageCircle } from 'lucide-reac
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import type { HouseholdApprovalHistory as HouseholdApprovalHistoryType } from '../../services/householdApprovalService';
-import { 
-  getApprovalHistory, 
-  approveHouseholdStep, 
+import {
+  getApprovalHistory,
+  approveHouseholdStep,
   rejectHouseholdStep,
   calculateApprovalProgress,
-  canApproveStep
+  canApproveStep,
 } from '../../services/householdApprovalService';
 import logger from '../../utils/logger';
 
@@ -19,27 +19,27 @@ interface HouseholdApprovalHistoryComponentProps {
 }
 
 const roleLabels: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
-  CHEF_PROJET: { 
-    label: 'Chef de Projet', 
-    icon: <AlertCircle size={16} />, 
-    color: 'bg-blue-500' 
+  CHEF_PROJET: {
+    label: 'Chef de Projet',
+    icon: <AlertCircle size={16} />,
+    color: 'bg-blue-500',
   },
-  ADMIN: { 
-    label: 'Administrateur', 
-    icon: <Shield size={16} />, 
-    color: 'bg-purple-500' 
+  ADMIN: {
+    label: 'Administrateur',
+    icon: <Shield size={16} />,
+    color: 'bg-purple-500',
   },
-  DIRECTEUR: { 
-    label: 'Directeur', 
-    icon: <Check size={16} />, 
-    color: 'bg-emerald-500' 
-  }
+  DIRECTEUR: {
+    label: 'Directeur',
+    icon: <Check size={16} />,
+    color: 'bg-emerald-500',
+  },
 };
 
 export const HouseholdApprovalHistory: React.FC<HouseholdApprovalHistoryComponentProps> = ({
   householdId,
   userRole,
-  isAdmin = false
+  isAdmin = false,
 }) => {
   const [history, setHistory] = useState<HouseholdApprovalHistoryType | null>(null);
   const [loading, setLoading] = useState(true);
@@ -51,25 +51,28 @@ export const HouseholdApprovalHistory: React.FC<HouseholdApprovalHistoryComponen
   const isValidUUID = (id: string) =>
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 
-  const loadHistory = useCallback(async (signal?: AbortSignal) => {
-    if (!isValidUUID(householdId)) {
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    try {
-      const data = await getApprovalHistory(householdId);
-      if (signal?.aborted) return;
-      if (data) {
-        setHistory(data);
+  const loadHistory = useCallback(
+    async (signal?: AbortSignal) => {
+      if (!isValidUUID(householdId)) {
+        setLoading(false);
+        return;
       }
-    } catch (err) {
-      if (signal?.aborted) return;
-      logger.error('Failed to load approval history:', err);
-    } finally {
-      if (!signal?.aborted) setLoading(false);
-    }
-  }, [householdId]);
+      setLoading(true);
+      try {
+        const data = await getApprovalHistory(householdId);
+        if (signal?.aborted) return;
+        if (data) {
+          setHistory(data);
+        }
+      } catch (err) {
+        if (signal?.aborted) return;
+        logger.error('Failed to load approval history:', err);
+      } finally {
+        if (!signal?.aborted) setLoading(false);
+      }
+    },
+    [householdId]
+  );
 
   useEffect(() => {
     const controller = new AbortController();
@@ -90,7 +93,7 @@ export const HouseholdApprovalHistory: React.FC<HouseholdApprovalHistoryComponen
         toast.success(`✅ ${role} approuvé!`);
       }
     } catch (err) {
-      toast.error('❌ Erreur lors de l\'approbation');
+      toast.error("❌ Erreur lors de l'approbation");
     } finally {
       setApproving(null);
     }
@@ -166,9 +169,9 @@ export const HouseholdApprovalHistory: React.FC<HouseholdApprovalHistoryComponen
           const isExpanded = expandedStep === step.role;
           const canApprove = canApproveStep(userRole, step, isAdmin);
 
-          let statusStyles = "bg-white/5 border-white/5";
-          if (step.status === 'approved') statusStyles = "bg-emerald-500/10 border-emerald-500/20";
-          if (step.status === 'rejected') statusStyles = "bg-rose-500/10 border-rose-500/20";
+          let statusStyles = 'bg-white/5 border-white/5';
+          if (step.status === 'approved') statusStyles = 'bg-emerald-500/10 border-emerald-500/20';
+          if (step.status === 'rejected') statusStyles = 'bg-rose-500/10 border-rose-500/20';
 
           return (
             <motion.div
@@ -186,7 +189,9 @@ export const HouseholdApprovalHistory: React.FC<HouseholdApprovalHistoryComponen
                 }`}
               >
                 <div className="flex items-center gap-4 flex-1 text-left">
-                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg ${config.color}`}>
+                  <div
+                    className={`w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg ${config.color}`}
+                  >
                     {step.status === 'approved' ? (
                       <Check size={24} />
                     ) : step.status === 'rejected' ? (
@@ -196,12 +201,18 @@ export const HouseholdApprovalHistory: React.FC<HouseholdApprovalHistoryComponen
                     )}
                   </div>
                   <div>
-                    <p className="text-sm font-black uppercase tracking-tight text-white">{config.label}</p>
+                    <p className="text-sm font-black uppercase tracking-tight text-white">
+                      {config.label}
+                    </p>
                     <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mt-1">
                       {step.status === 'approved' && step.approvedAt && (
-                        <span className="text-emerald-400/80">✅ Approuvé - {new Date(step.approvedAt).toLocaleDateString('fr-FR')}</span>
+                        <span className="text-emerald-400/80">
+                          ✅ Approuvé - {new Date(step.approvedAt).toLocaleDateString('fr-FR')}
+                        </span>
                       )}
-                      {step.status === 'rejected' && <span className="text-rose-400/80">❌ Rejeté</span>}
+                      {step.status === 'rejected' && (
+                        <span className="text-rose-400/80">❌ Rejeté</span>
+                      )}
                       {step.status === 'pending' && <span>⏳ En attente</span>}
                     </p>
                   </div>
@@ -292,15 +303,21 @@ export const HouseholdApprovalHistory: React.FC<HouseholdApprovalHistoryComponen
       </div>
 
       {/* Overall Status */}
-      <div className={`p-6 rounded-[2rem] border-2 transition-all ${
-        history.overallStatus === 'approved'
-          ? 'bg-emerald-500/10 border-emerald-500/30 shadow-lg shadow-emerald-500/5'
-          : 'bg-white/5 border-white/10'
-      }`}>
+      <div
+        className={`p-6 rounded-[2rem] border-2 transition-all ${
+          history.overallStatus === 'approved'
+            ? 'bg-emerald-500/10 border-emerald-500/30 shadow-lg shadow-emerald-500/5'
+            : 'bg-white/5 border-white/10'
+        }`}
+      >
         <div className="flex items-center gap-4">
-          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-xl ${
-            history.overallStatus === 'approved' ? 'bg-emerald-500 shadow-emerald-500/20' : 'bg-slate-700 shadow-slate-900/50'
-          }`}>
+          <div
+            className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-xl ${
+              history.overallStatus === 'approved'
+                ? 'bg-emerald-500 shadow-emerald-500/20'
+                : 'bg-slate-700 shadow-slate-900/50'
+            }`}
+          >
             {history.overallStatus === 'approved' ? <Check size={28} /> : <Clock size={28} />}
           </div>
           <div>

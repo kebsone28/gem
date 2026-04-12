@@ -22,7 +22,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const root = document.documentElement;
     root.setAttribute('data-theme', 'dark');
     root.classList.add('dark');
-    
+
     // Override any saved 'light' preference
     localStorage.setItem('theme', 'dark');
   }, []);

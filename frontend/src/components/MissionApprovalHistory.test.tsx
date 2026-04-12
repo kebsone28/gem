@@ -26,25 +26,25 @@ const mockWorkflow = {
       status: 'approved',
       approvedBy: 'Pape Oumar KEBE',
       approvedAt: '2026-03-05T10:30:00Z',
-      comments: 'Conforme aux normes'
+      comments: 'Conforme aux normes',
     },
     {
       role: 'ADMIN',
       status: 'pending',
       approvedBy: undefined,
       approvedAt: undefined,
-      comments: undefined
+      comments: undefined,
     },
     {
       role: 'DIRECTEUR',
       status: 'pending',
       approvedBy: undefined,
       approvedAt: undefined,
-      comments: undefined
-    }
+      comments: undefined,
+    },
   ],
   createdAt: '2026-03-05T09:00:00Z',
-  updatedAt: '2026-03-05T10:30:00Z'
+  updatedAt: '2026-03-05T10:30:00Z',
 };
 
 const mockApprovedWorkflow = {
@@ -55,8 +55,8 @@ const mockApprovedWorkflow = {
     status: 'approved',
     approvedBy: 'Test User',
     approvedAt: new Date().toISOString(),
-    comments: `Approved by step ${idx + 1}`
-  }))
+    comments: `Approved by step ${idx + 1}`,
+  })),
 };
 
 // ============================================
@@ -73,26 +73,16 @@ describe('MissionApprovalHistory Component', () => {
   describe('Rendering', () => {
     it('should render loading state initially', async () => {
       vi.mocked(approvalService.getMissionApprovalHistory).mockImplementation(
-        () => new Promise(resolve => setTimeout(() => resolve(mockWorkflow), 100))
+        () => new Promise((resolve) => setTimeout(() => resolve(mockWorkflow), 100))
       );
 
-      render(
-        <MissionApprovalHistory 
-          missionId="mission-123"
-          missionOrderNumber="20/2026"
-        />
-      );
+      render(<MissionApprovalHistory missionId="mission-123" missionOrderNumber="20/2026" />);
 
       expect(screen.getByText(/chargement/i)).toBeInTheDocument();
     });
 
     it('should render approval workflow complete', async () => {
-      render(
-        <MissionApprovalHistory 
-          missionId="mission-123"
-          missionOrderNumber="20/2026"
-        />
-      );
+      render(<MissionApprovalHistory missionId="mission-123" missionOrderNumber="20/2026" />);
 
       await waitFor(() => {
         expect(screen.getByText(/HISTORIQUE APPROBATIONS/i)).toBeInTheDocument();
@@ -108,12 +98,7 @@ describe('MissionApprovalHistory Component', () => {
     });
 
     it('should display progress correctly', async () => {
-      render(
-        <MissionApprovalHistory 
-          missionId="mission-123"
-          missionOrderNumber="20/2026"
-        />
-      );
+      render(<MissionApprovalHistory missionId="mission-123" missionOrderNumber="20/2026" />);
 
       await waitFor(() => {
         expect(screen.getByText(/Étape 1\/3/)).toBeInTheDocument();
@@ -125,12 +110,7 @@ describe('MissionApprovalHistory Component', () => {
         new Error('Network error')
       );
 
-      render(
-        <MissionApprovalHistory 
-          missionId="mission-123"
-          missionOrderNumber="20/2026"
-        />
-      );
+      render(<MissionApprovalHistory missionId="mission-123" missionOrderNumber="20/2026" />);
 
       await waitFor(() => {
         expect(screen.getByText(/impossible de charger/i)).toBeInTheDocument();
@@ -144,12 +124,7 @@ describe('MissionApprovalHistory Component', () => {
         mockApprovedWorkflow
       );
 
-      render(
-        <MissionApprovalHistory 
-          missionId="mission-123"
-          missionOrderNumber="20/2026"
-        />
-      );
+      render(<MissionApprovalHistory missionId="mission-123" missionOrderNumber="20/2026" />);
 
       await waitFor(() => {
         expect(screen.getByText(/Entièrement approuvée/)).toBeInTheDocument();
@@ -161,19 +136,12 @@ describe('MissionApprovalHistory Component', () => {
       const pendingWorkflow = {
         ...mockWorkflow,
         overallStatus: 'pending',
-        steps: mockWorkflow.steps.map(s => ({ ...s, status: 'pending' }))
+        steps: mockWorkflow.steps.map((s) => ({ ...s, status: 'pending' })),
       };
 
-      vi.mocked(approvalService.getMissionApprovalHistory).mockResolvedValueOnce(
-        pendingWorkflow
-      );
+      vi.mocked(approvalService.getMissionApprovalHistory).mockResolvedValueOnce(pendingWorkflow);
 
-      render(
-        <MissionApprovalHistory 
-          missionId="mission-123"
-          missionOrderNumber="20/2026"
-        />
-      );
+      render(<MissionApprovalHistory missionId="mission-123" missionOrderNumber="20/2026" />);
 
       await waitFor(() => {
         expect(screen.getByText(/En attente d'approbations/)).toBeInTheDocument();
@@ -188,20 +156,13 @@ describe('MissionApprovalHistory Component', () => {
         steps: [
           { ...mockWorkflow.steps[0] },
           { ...mockWorkflow.steps[1], status: 'rejected', comments: 'Missing details' },
-          { ...mockWorkflow.steps[2] }
-        ]
+          { ...mockWorkflow.steps[2] },
+        ],
       };
 
-      vi.mocked(approvalService.getMissionApprovalHistory).mockResolvedValueOnce(
-        rejectedWorkflow
-      );
+      vi.mocked(approvalService.getMissionApprovalHistory).mockResolvedValueOnce(rejectedWorkflow);
 
-      render(
-        <MissionApprovalHistory 
-          missionId="mission-123"
-          missionOrderNumber="20/2026"
-        />
-      );
+      render(<MissionApprovalHistory missionId="mission-123" missionOrderNumber="20/2026" />);
 
       await waitFor(() => {
         expect(screen.getByText(/Rejetée/)).toBeInTheDocument();
@@ -211,12 +172,10 @@ describe('MissionApprovalHistory Component', () => {
 
   describe('User Actions', () => {
     it('should call approve service when approve button clicked', async () => {
-      vi.mocked(approvalService.approveMissionStep).mockResolvedValueOnce(
-        mockApprovedWorkflow
-      );
+      vi.mocked(approvalService.approveMissionStep).mockResolvedValueOnce(mockApprovedWorkflow);
 
       render(
-        <MissionApprovalHistory 
+        <MissionApprovalHistory
           missionId="mission-123"
           missionOrderNumber="20/2026"
           userRole="ADMIN"
@@ -239,7 +198,7 @@ describe('MissionApprovalHistory Component', () => {
 
     it('should open reject dialog when reject button clicked', async () => {
       render(
-        <MissionApprovalHistory 
+        <MissionApprovalHistory
           missionId="mission-123"
           missionOrderNumber="20/2026"
           userRole="ADMIN"
@@ -265,7 +224,7 @@ describe('MissionApprovalHistory Component', () => {
       vi.mocked(approvalService.rejectMissionStep).mockResolvedValueOnce(mockWorkflow);
 
       render(
-        <MissionApprovalHistory 
+        <MissionApprovalHistory
           missionId="mission-123"
           missionOrderNumber="20/2026"
           userRole="ADMIN"
@@ -300,12 +259,10 @@ describe('MissionApprovalHistory Component', () => {
 
     it('should call onApprovalChanged callback', async () => {
       const mockCallback = vi.fn();
-      vi.mocked(approvalService.approveMissionStep).mockResolvedValueOnce(
-        mockApprovedWorkflow
-      );
+      vi.mocked(approvalService.approveMissionStep).mockResolvedValueOnce(mockApprovedWorkflow);
 
       render(
-        <MissionApprovalHistory 
+        <MissionApprovalHistory
           missionId="mission-123"
           missionOrderNumber="20/2026"
           userRole="ADMIN"
@@ -328,13 +285,13 @@ describe('MissionApprovalHistory Component', () => {
       const approvedWorkflow = {
         ...mockWorkflow,
         overallStatus: 'approved',
-        steps: mockWorkflow.steps.map((step) => ({ ...step, status: 'APPROUVE' }))
+        steps: mockWorkflow.steps.map((step) => ({ ...step, status: 'APPROUVE' })),
       };
 
       vi.mocked(approvalService.getMissionApprovalHistory).mockResolvedValueOnce(approvedWorkflow);
       vi.mocked(approvalService.overrideMissionOrderNumber).mockResolvedValueOnce({
         ...approvedWorkflow,
-        orderNumber: 'MISSION-2026-00099'
+        orderNumber: 'MISSION-2026-00099',
       });
 
       render(
@@ -356,12 +313,15 @@ describe('MissionApprovalHistory Component', () => {
       });
 
       fireEvent.change(screen.getByPlaceholderText(/Nouveau numéro de mission/), {
-        target: { value: 'MISSION-2026-00099' }
+        target: { value: 'MISSION-2026-00099' },
       });
       fireEvent.click(screen.getByRole('button', { name: /Modifier/ }));
 
       await waitFor(() => {
-        expect(approvalService.overrideMissionOrderNumber).toHaveBeenCalledWith('mission-123', 'MISSION-2026-00099');
+        expect(approvalService.overrideMissionOrderNumber).toHaveBeenCalledWith(
+          'mission-123',
+          'MISSION-2026-00099'
+        );
       });
     });
   });
@@ -369,7 +329,7 @@ describe('MissionApprovalHistory Component', () => {
   describe('Permissions', () => {
     it('should hide approve buttons for users without permission', async () => {
       render(
-        <MissionApprovalHistory 
+        <MissionApprovalHistory
           missionId="mission-123"
           missionOrderNumber="20/2026"
           userRole="CHEF_PROJET"
@@ -387,7 +347,7 @@ describe('MissionApprovalHistory Component', () => {
 
     it('should show all approve buttons for admin users', async () => {
       render(
-        <MissionApprovalHistory 
+        <MissionApprovalHistory
           missionId="mission-123"
           missionOrderNumber="20/2026"
           userRole="ADMIN"
@@ -406,12 +366,7 @@ describe('MissionApprovalHistory Component', () => {
     it('should refresh workflow at regular intervals', async () => {
       vi.useFakeTimers();
 
-      render(
-        <MissionApprovalHistory 
-          missionId="mission-123"
-          missionOrderNumber="20/2026"
-        />
-      );
+      render(<MissionApprovalHistory missionId="mission-123" missionOrderNumber="20/2026" />);
 
       // Initial render
       expect(approvalService.getMissionApprovalHistory).toHaveBeenCalledTimes(1);
@@ -429,10 +384,7 @@ describe('MissionApprovalHistory Component', () => {
       const clearIntervalSpy = vi.spyOn(global, 'clearInterval');
 
       const { unmount } = render(
-        <MissionApprovalHistory 
-          missionId="mission-123"
-          missionOrderNumber="20/2026"
-        />
+        <MissionApprovalHistory missionId="mission-123" missionOrderNumber="20/2026" />
       );
 
       unmount();
@@ -444,12 +396,7 @@ describe('MissionApprovalHistory Component', () => {
 
   describe('Step Details Display', () => {
     it('should show approved step details', async () => {
-      render(
-        <MissionApprovalHistory 
-          missionId="mission-123"
-          missionOrderNumber="20/2026"
-        />
-      );
+      render(<MissionApprovalHistory missionId="mission-123" missionOrderNumber="20/2026" />);
 
       await waitFor(() => {
         expect(screen.getByText(/Pape Oumar KEBE/)).toBeInTheDocument();
@@ -458,12 +405,7 @@ describe('MissionApprovalHistory Component', () => {
     });
 
     it('should not show details for pending steps', async () => {
-      render(
-        <MissionApprovalHistory 
-          missionId="mission-123"
-          missionOrderNumber="20/2026"
-        />
-      );
+      render(<MissionApprovalHistory missionId="mission-123" missionOrderNumber="20/2026" />);
 
       await waitFor(() => {
         // Count instances of "Approuvé par:"
@@ -487,19 +429,24 @@ describe('MissionApprovalHistory - Integration Tests', () => {
       overallStatus: 'in_progress',
       steps: [
         { ...mockWorkflow.steps[0] },
-        { ...mockWorkflow.steps[1], status: 'approved', approvedBy: 'Admin User', approvedAt: new Date().toISOString() },
-        { ...mockWorkflow.steps[2] }
-      ]
+        {
+          ...mockWorkflow.steps[1],
+          status: 'approved',
+          approvedBy: 'Admin User',
+          approvedAt: new Date().toISOString(),
+        },
+        { ...mockWorkflow.steps[2] },
+      ],
     };
     const allApproved = {
       ...mockWorkflow,
       overallStatus: 'approved',
-      steps: mockWorkflow.steps.map(s => ({
+      steps: mockWorkflow.steps.map((s) => ({
         ...s,
         status: 'approved',
         approvedBy: 'Test User',
-        approvedAt: new Date().toISOString()
-      }))
+        approvedAt: new Date().toISOString(),
+      })),
     };
 
     vi.mocked(approvalService.getMissionApprovalHistory)
@@ -510,7 +457,7 @@ describe('MissionApprovalHistory - Integration Tests', () => {
     vi.mocked(approvalService.approveMissionStep).mockResolvedValueOnce(step2Approved);
 
     render(
-      <MissionApprovalHistory 
+      <MissionApprovalHistory
         missionId="mission-123"
         missionOrderNumber="20/2026"
         userRole="ADMIN"
@@ -519,6 +466,8 @@ describe('MissionApprovalHistory - Integration Tests', () => {
     );
 
     // Third approve call completes workflow
-    expect(vi.mocked(approvalService.getMissionApprovalHistory)).toHaveBeenCalledWith('mission-123');
+    expect(vi.mocked(approvalService.getMissionApprovalHistory)).toHaveBeenCalledWith(
+      'mission-123'
+    );
   });
 });

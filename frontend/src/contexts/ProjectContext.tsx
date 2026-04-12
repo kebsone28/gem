@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../store/db';
@@ -14,7 +13,10 @@ interface ProjectContextType {
   setActiveProjectId: (id: string) => void;
   createProject: (name: string) => Promise<Project>;
   updateProject: (updates: Partial<Project>, id?: string) => Promise<void>;
-  deleteProject: (projectId: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  deleteProject: (
+    projectId: string,
+    password: string
+  ) => Promise<{ success: boolean; error?: string }>;
   isLoading: boolean;
 }
 
@@ -61,7 +63,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const currentId = id || activeProjectId;
     if (currentId) {
       //@ts-ignore
-    await db.projects.update(currentId, updates);
+      await db.projects.update(currentId, updates);
       await apiClient.patch(`/projects/${currentId}`, updates);
     }
   };
@@ -81,16 +83,18 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   return (
-    <ProjectContext.Provider value={{
-      project: activeProject || null,
-      projects,
-      activeProjectId,
-      setActiveProjectId,
-      createProject,
-      updateProject,
-      deleteProject,
-      isLoading: activeProject === undefined
-    }}>
+    <ProjectContext.Provider
+      value={{
+        project: activeProject || null,
+        projects,
+        activeProjectId,
+        setActiveProjectId,
+        createProject,
+        updateProject,
+        deleteProject,
+        isLoading: activeProject === undefined,
+      }}
+    >
       {children}
     </ProjectContext.Provider>
   );

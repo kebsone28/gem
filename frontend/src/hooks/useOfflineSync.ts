@@ -17,10 +17,10 @@ import { useSyncStore } from '../store/syncStore';
 import { performSync } from '../services/sync/syncService';
 
 export function useOfflineSync() {
-    const pendingCount = useSyncStore((s) => s.pendingCount);
+  const pendingCount = useSyncStore((s) => s.pendingCount);
 
-    return {
-        pendingCount,
-        syncData: performSync,
-    };
+  return {
+    pendingCount,
+    syncData: performSync,
+  };
 }

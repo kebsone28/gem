@@ -21,9 +21,9 @@ export const useHouseholdVisibility = (map: maplibregl.Map | null): void => {
       // Tier 2: zoom 11-13  → Supercluster + simple dot fallback (city view)
       // Tier 3: zoom >= 14  → Individual icon markers + labels (street view)
 
-      const isMacroView   = zoom < 11;
-      const isMidView     = zoom >= 11 && zoom < 14;
-      const isMicroView   = zoom >= 14;
+      const isMacroView = zoom < 11;
+      const isMidView = zoom >= 11 && zoom < 14;
+      const isMicroView = zoom >= 14;
 
       // Supercluster circles + counts (Tier 1 & 2)
       const clusterVisible = isMacroView || isMidView;
@@ -37,15 +37,27 @@ export const useHouseholdVisibility = (map: maplibregl.Map | null): void => {
       // Simple red-dot fallback: only in mid-view as supplement, hidden otherwise
       // (avoids double rendering — supercluster already shows counts)
       if (map.getLayer('households-circles-simple')) {
-        map.setLayoutProperty('households-circles-simple', 'visibility', isMidView ? 'none' : 'none');
+        map.setLayoutProperty(
+          'households-circles-simple',
+          'visibility',
+          isMidView ? 'none' : 'none'
+        );
       }
 
       // Full icon markers + labels (Tier 3 only)
       if (map.getLayer('households-local-layer')) {
-        map.setLayoutProperty('households-local-layer', 'visibility', isMicroView ? 'visible' : 'none');
+        map.setLayoutProperty(
+          'households-local-layer',
+          'visibility',
+          isMicroView ? 'visible' : 'none'
+        );
       }
       if (map.getLayer('households-labels-simple')) {
-        map.setLayoutProperty('households-labels-simple', 'visibility', isMicroView ? 'visible' : 'none');
+        map.setLayoutProperty(
+          'households-labels-simple',
+          'visibility',
+          isMicroView ? 'visible' : 'none'
+        );
       }
     };
 
