@@ -4,7 +4,8 @@ import {
     getHouseholdById,
     getHouseholdByNumero,
     createHousehold,
-    updateHousehold
+    updateHousehold,
+    getHouseholdsCount
 } from '../../modules/household/household.controller.js';
 import { authProtect } from '../middlewares/auth.js';
 import { verifierPermission, verifierAssignation } from '../../middleware/verifierPermission.js';
@@ -28,6 +29,7 @@ router.get('/debug/list', async (req, res) => {
 router.use(authProtect);
 
 router.get('/', getHouseholds);
+router.get('/count', getHouseholdsCount);
 router.get('/by-numero/:numeroordre', getHouseholdByNumero);
 router.get('/:id', getHouseholdById);
 router.post('/', verifierPermission(PERMISSIONS.MODIFIER_CARTE), verifierAssignation('menage'), createHousehold);

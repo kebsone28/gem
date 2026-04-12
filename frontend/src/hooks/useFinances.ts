@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../store/db';
 import type { Team, Project, Household } from '../utils/types';
@@ -113,12 +114,33 @@ export function useFinances() {
   );
 
   const householdsTotalCount = useLiveQuery(() => db.households.count()) || 0;
+  
+  const [householdsServerCount, setHouseholdsServerCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    const fetchServerHouseholdCount = async () => {
+      try {
+        const token = safeStorage.getItem('tk');
+        if (!token) return;
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/households/count`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setHouseholdsServerCount(data.count);
+        }
+      } catch (err) {
+        console.warn('Failed to fetch absolute household count from server, falling back to local DB.', err);
+      }
+    };
+    fetchServerHouseholdCount();
+  }, []);
 
   // Filtrer les ménages. Si les ménages de Kobo n'ont pas de projectId, on les inclut quand même
   // ou si on a un seul projet actif on prend tout pour la compatibilité avec la V1
   const households =
     allHouseholds?.filter((h) => !project?.id || !h.projectId || h.projectId === project.id) || [];
-  const householdsCount = householdsTotalCount; // Forcer la valeur globale depuis la DB entière
+  const householdsCount = householdsServerCount !== null ? householdsServerCount : householdsTotalCount; // PostgreSQL server truth, or local Dexie as fallback
   const duration = project?.duration || 180;
   const staffConfig = project?.config?.staffConfig || {};
   const legacyCosts = (project?.config as any)?.costs || {};

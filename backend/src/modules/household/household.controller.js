@@ -97,6 +97,24 @@ export const getHouseholds = async (req, res) => {
     }
 };
 
+// @desc    Get total households count
+// @route   GET /api/households/count
+export const getHouseholdsCount = async (req, res) => {
+    try {
+        const { organizationId } = req.user;
+        const count = await prisma.household.count({
+            where: {
+                organizationId,
+                deletedAt: null
+            }
+        });
+        res.json({ count });
+    } catch (error) {
+        console.error('Get households count error:', error);
+        res.status(500).json({ error: 'Server error while fetching household count' });
+    }
+};
+
 // @desc    Get single household
 // @route   GET /api/households/:id
 export const getHouseholdById = async (req, res) => {
