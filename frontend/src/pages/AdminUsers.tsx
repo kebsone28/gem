@@ -553,20 +553,20 @@ export default function AdminUsers() {
 
                 {/* Header Section */}
                 <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-2">
-                    <div className="space-y-1">
+                    <div className="space-y-1 min-w-0">
                         <div className="flex items-center gap-3">
                             <div className="w-10 h-10 bg-indigo-500 inline-flex items-center justify-center rounded-2xl shadow-[0_0_30px_rgba(99,102,241,0.4)]">
                                 <Users className="text-white w-5 h-5" />
                             </div>
-                            <h1 className="text-4xl font-black text-white tracking-tight">Utilisateurs</h1>
+                            <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight">Utilisateurs</h1>
                         </div>
-                        <p className="text-slate-500 font-bold text-sm ml-13">
+                        <p className="text-slate-500 font-bold text-sm md:ml-13">
                             {users.length} comptes enregistrés — <span className="text-emerald-500">{users.filter((u: User) => u.active).length} actifs</span>
                         </p>
                     </div>
 
-                    <div className="flex items-center gap-4">
-                        <div className="relative group">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full md:w-auto min-w-0">
+                        <div className="relative group flex-1 min-w-0">
                             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-400 w-4 h-4 transition-colors" />
                             <input
                                 type="text"
@@ -574,13 +574,13 @@ export default function AdminUsers() {
                                 title="Filtrer par nom, login ou rôle"
                                 value={search}
                                 onChange={e => setSearch(e.target.value)}
-                                className="w-64 bg-slate-900 border border-slate-800/50 rounded-2xl pl-11 pr-4 py-3.5 text-white font-bold text-sm placeholder:text-slate-600 dark:text-slate-400 focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all"
+                                className="w-full sm:w-64 min-w-0 bg-slate-900 border border-slate-800/50 rounded-2xl pl-11 pr-4 py-3.5 text-white font-bold text-sm placeholder:text-slate-600 dark:text-slate-400 focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all"
                             />
                         </div>
                         <button
                             onClick={openAdd}
                             aria-label="Créer un nouvel utilisateur"
-                            className="bg-indigo-600 hover:bg-slate-50 dark:bg-indigo-600 dark:hover:bg-indigo-500 hover:text-indigo-600 dark:hover:text-white text-white font-black px-6 py-3.5 rounded-2xl transition-all shadow-xl shadow-indigo-600/20 active:scale-95 flex items-center gap-2"
+                            className="w-full sm:w-auto justify-center bg-indigo-600 hover:bg-slate-50 dark:bg-indigo-600 dark:hover:bg-indigo-500 hover:text-indigo-600 dark:hover:text-white text-white font-black px-6 py-3.5 rounded-2xl transition-all shadow-xl shadow-indigo-600/20 active:scale-95 flex items-center gap-2"
                         >
                             <Plus size={20} strokeWidth={3} />
                             Nouveau

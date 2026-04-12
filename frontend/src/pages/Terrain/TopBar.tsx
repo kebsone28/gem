@@ -197,9 +197,9 @@ const TopBar: React.FC<TopBarProps> = ({
                     </div>
 
                     {/* ================= RIGHT ================= */}
-                    <div className="flex justify-between md:justify-end items-center gap-2 pointer-events-auto shrink-0">
+                    <div className="flex flex-wrap justify-between md:justify-end items-center gap-2 pointer-events-auto shrink-0 w-full">
 
-                        <div className="p-1 flex items-center gap-1 rounded-xl bg-[#0D1E35]/80 border border-white/10 shadow-2xl">
+                        <div className="p-1 flex flex-wrap items-center gap-1 rounded-xl bg-[#0D1E35]/80 border border-white/10 shadow-2xl">
 
                             <ActionBar>
                                 <button

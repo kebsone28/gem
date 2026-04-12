@@ -214,7 +214,13 @@ export default function Settings() {
                                                 </p>
                                                 <button 
                                                     onClick={async () => {
-                                                        if (window.confirm("Lancer la mise à jour complète du serveur ? \n\nCette action va synchroniser le code avec GitHub et reconstruire l'application en arrière-plan.")) {
+                                                        const hasPushed = window.confirm("⚠️ ATTENTION : Avez-vous bien fait un 'Git Push' de vos dernières modifications (via le script deploy_vps.ps1 ou VS Code) avant de lancer cette action ? \n\nCliquez sur OK si OUI, ou sur Annuler si NON.");
+                                                        if (!hasPushed) {
+                                                            toast('🛑 Veuillez envoyer votre code sur Github avant de déployer.', { style: { background: '#333', color: '#fff' } });
+                                                            return;
+                                                        }
+
+                                                        if (window.confirm("🚀 Lancer la mise à jour complète du serveur ? \n\nCette action va synchroniser le serveur avec GitHub et reconstruire l'application en arrière-plan.")) {
                                                             try {
                                                                 const res = await apiClient.post('/projects/system/deploy');
                                                                 toast.success(res.data.message || 'Le déploiement a été lancé !');

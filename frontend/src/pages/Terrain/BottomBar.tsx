@@ -15,7 +15,7 @@ const BottomBar: React.FC<BottomBarProps> = ({ filteredCount, totalCount, isOffl
     const isViewportFiltered = totalCount !== undefined && filteredCount < totalCount;
 
     return (
-        <div className="absolute bottom-6 left-1/2 z-10 flex max-w-[calc(100%-3rem)] -translate-x-1/2 items-center justify-center gap-4 pointer-events-none">
+        <div className="absolute bottom-6 left-1/2 z-10 flex max-w-[calc(100%-2rem)] -translate-x-1/2 items-center justify-center gap-4 pointer-events-none px-3 sm:px-0">
             <div className="pointer-events-auto">
                 <div className="flex items-center gap-4 bg-[#050F1F] border border-white/10 p-2 rounded-2xl shadow-2xl">
                     <GisHealthWidget result={auditResult} isDarkMode onFlyTo={onFlyTo} />
