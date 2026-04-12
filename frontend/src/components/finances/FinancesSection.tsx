@@ -100,7 +100,7 @@ export function FinancesSection({ project, onUpdate }: Props) {
 
     const handleUndo = async () => {
         if (previousConfig && project?.id) {
-            const { db } = await import('../../../store/db');
+            const { db } = await import('../../store/db');
             await db.projects.update(project.id, { config: previousConfig });
             setPreviousConfig(null);
             setSuccess(true);
