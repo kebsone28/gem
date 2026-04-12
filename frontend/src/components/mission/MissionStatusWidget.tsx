@@ -134,7 +134,7 @@ export const MissionStatusWidget: React.FC<MissionStatusWidgetProps> = ({
 
       {/* Detailed KPIs */}
       <div className="grid grid-cols-2 gap-3">
-        <div className="p-3 rounded-2xl bg-slate-50/50 dark:bg-white/5 border border-slate-100 dark:border-white/5">
+        <div className="p-3 rounded-2xl bg-slate-100/80 dark:bg-white/5 border border-slate-100 dark:border-white/5">
           <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1.5 leading-none">
             Indemnités
           </div>
@@ -145,7 +145,7 @@ export const MissionStatusWidget: React.FC<MissionStatusWidgetProps> = ({
             </span>
           </div>
         </div>
-        <div className="p-3 rounded-2xl bg-slate-50/50 dark:bg-white/5 border border-slate-100 dark:border-white/5">
+        <div className="p-3 rounded-2xl bg-slate-100/80 dark:bg-white/5 border border-slate-100 dark:border-white/5">
           <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1.5 leading-none">
             Effectif
           </div>

@@ -84,7 +84,7 @@ export function MissionInventory({ inventory = [], onChange }: MissionInventoryP
                 <div className="space-y-2">
                     {activeInventory.map((item) => (
                         <div key={item.id} className={`grid grid-cols-12 gap-4 items-center p-4 rounded-2xl border transition-all ${
-                            item.isChecked ? 'bg-white dark:bg-slate-800 border-indigo-500/20 opacity-100' : 'bg-slate-50/50 dark:bg-slate-900/30 border-transparent opacity-80'
+                            item.isChecked ? 'bg-white dark:bg-slate-800 border-indigo-500/20 opacity-100' : 'bg-slate-100/80 dark:bg-slate-900/30 border-transparent opacity-80'
                         }`}>
                             <div className="col-span-6 flex items-center gap-3">
                                 <Package size={16} className={item.isChecked ? 'text-indigo-500' : 'text-slate-400'} />

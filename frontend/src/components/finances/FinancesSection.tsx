@@ -22,6 +22,7 @@ export function FinancesSection({ project, onUpdate }: Props) {
     const [isSaving, setIsSaving] = useState(false);
     const [success, setSuccess] = useState(false);
     const [importErrors, setImportErrors] = useState<string[]>([]);
+    const [previousConfig, setPreviousConfig] = useState<any>(null);
 
     const devisItems: any[] = devis.report || [];
 
@@ -74,6 +75,10 @@ export function FinancesSection({ project, onUpdate }: Props) {
                 }
             });
             if (errors.length > 0) { setImportErrors(errors); e.target.value = ''; return; }
+            
+            // On sauvegarde l'état avant l'import pour le bouton annuler
+            setPreviousConfig(JSON.parse(JSON.stringify(project?.config || {})));
+            
             await importDevisList(rawData);
             setSuccess(true);
             setTimeout(() => setSuccess(false), 3000);
@@ -87,9 +92,20 @@ export function FinancesSection({ project, onUpdate }: Props) {
         setIsSaving(true);
         try {
             await onUpdate({ config: { ...project.config } });
+            setPreviousConfig(null); // Clear undo history after save
             setSuccess(true);
             setTimeout(() => setSuccess(false), 3000);
         } finally { setIsSaving(false); }
+    };
+
+    const handleUndo = async () => {
+        if (previousConfig && project?.id) {
+            const { db } = await import('../../../store/db');
+            await db.projects.update(project.id, { config: previousConfig });
+            setPreviousConfig(null);
+            setSuccess(true);
+            setTimeout(() => setSuccess(false), 3000);
+        }
     };
 
     return (
@@ -113,6 +129,11 @@ export function FinancesSection({ project, onUpdate }: Props) {
                         <Upload size={15} /> IMPORTER
                         <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleImport} />
                     </label>
+                    {previousConfig && (
+                        <button onClick={handleUndo} className="flex items-center gap-2 px-5 py-3 bg-rose-600 hover:bg-rose-700 text-white font-black text-xs rounded-xl transition-all active:scale-95">
+                            ANNULER L'IMPORT
+                        </button>
+                    )}
                     <button onClick={handleSaveToServer} disabled={isSaving} className="flex items-center gap-2 px-5 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs rounded-xl transition-all active:scale-95 disabled:opacity-50">
                         <Save size={15} /> {isSaving ? 'Sauvegarde...' : 'SAUVEGARDER SERVEUR'}
                     </button>

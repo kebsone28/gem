@@ -557,9 +557,9 @@ export default function Simulation() {
                                         <label className="text-xs font-black text-emerald-400 uppercase tracking-widest flex items-center gap-2">
                                             <DollarSign size={14} /> Trésorerie Client
                                         </label>
-                                        <div className="space-y-2 p-4 rounded-xl bg-white/50 dark:bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800">
+                                        <div className="space-y-2 p-4 rounded-xl bg-slate-100/60 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/50">
                                             <div className="flex justify-between text-sm">
-                                                <label htmlFor="acompte-rate" className="text-slate-600 dark:text-slate-400">Acompte à la commande</label>
+                                                <label htmlFor="acompte-rate" className="text-slate-600 dark:text-slate-300">Acompte à la commande</label>
                                                 <span className="text-slate-900 dark:text-white font-bold">{tauxAcompte}%</span>
                                             </div>
                                             <input

@@ -288,7 +288,7 @@ export default function DevisVsReel() {
                                 <th className={`px-4 py-5 text-xs font-black border-x text-center ${isDarkMode ? 'text-slate-400 border-slate-800 bg-indigo-500/5' : 'text-slate-500 border-slate-100 bg-indigo-50/30'}`} colSpan={2}>Réalisation (Réel)</th>
                                 <th className={`px-6 py-5 text-xs font-black uppercase tracking-[0.2em] text-right ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Ecart / Marge</th>
                             </tr>
-                            <tr className={`border-b ${isDarkMode ? 'bg-slate-950/30 border-slate-800' : 'bg-slate-50/50 border-slate-100'}`}>
+                            <tr className={`border-b ${isDarkMode ? 'bg-slate-950/30 border-slate-800' : 'bg-slate-100/80 border-slate-100'}`}>
                                 <th className="px-6 py-3"></th>
                                 <th className={`px-4 py-3 text-xs font-black text-right ${isDarkMode ? 'text-slate-500 bg-blue-500/5' : 'text-slate-400 bg-blue-50/30'}`}>Qté</th>
                                 <th className={`px-4 py-3 text-xs font-black text-right ${isDarkMode ? 'text-slate-500 bg-blue-500/5' : 'text-slate-400 bg-blue-50/30'}`}>P.U</th>

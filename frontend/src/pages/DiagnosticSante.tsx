@@ -145,7 +145,7 @@ export default function DiagnosticSante() {
             </div>
 
             <div className={`rounded-[2.5rem] border overflow-hidden ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'} shadow-2xl`}>
-                <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-950/50">
+                <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-100/80 dark:bg-slate-950/50">
                     <h3 className="text-sm font-black uppercase tracking-widest flex items-center gap-3 italic">
                         {activeTab === 'local' ? <Database className="text-indigo-500" size={20} /> : <Server className="text-emerald-500" size={20} />}
                         {activeTab === 'local' ? 'Historique Global des Synchronisations' : 'Journaux d\'Audit Serveur (Diagnostic)'}

@@ -37,7 +37,7 @@ export function MissionSettings({ features, onToggle }: MissionSettingsProps) {
                         onClick={() => onToggle(f.id as any)}
                         className={`flex items-start gap-4 p-4 rounded-2xl border transition-all duration-300 text-left group ${features[f.id as keyof typeof features]
                             ? 'bg-white dark:bg-slate-800 border-indigo-500/30 shadow-lg shadow-indigo-500/5'
-                            : 'bg-slate-50/50 dark:bg-slate-900/30 border-transparent opacity-60 grayscale-[0.5] hover:opacity-80 hover:grayscale-0'
+                            : 'bg-slate-100/80 dark:bg-slate-900/30 border-transparent opacity-60 grayscale-[0.5] hover:opacity-80 hover:grayscale-0'
                             }`}
                     >
                         <div className={`p-3 rounded-xl ${f.bg} ${f.color} transition-transform group-hover:scale-110`}>

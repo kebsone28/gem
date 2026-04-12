@@ -9,7 +9,7 @@ export default function DetailedBreakdown({ stats }: { stats: any }) {
 
     return (
         <div className={`border rounded-[2.5rem] overflow-hidden shadow-2xl h-full flex flex-col transition-all ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100'}`}>
-            <div className={`p-8 border-b flex items-center justify-between backdrop-blur-md sticky top-0 z-10 transition-all ${isDarkMode ? 'bg-slate-900/50 border-slate-800' : 'bg-white/50 border-slate-100'}`}>
+            <div className={`p-8 border-b flex items-center justify-between backdrop-blur-md sticky top-0 z-10 transition-all ${isDarkMode ? 'bg-slate-900/70 border-slate-800' : 'bg-slate-100/80 border-slate-200'}`}>
                 <h3 className={`text-xs font-black uppercase tracking-[0.3em] ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Postes de Dépense Détaillés</h3>
                 <div className="text-xs font-black text-indigo-600 bg-indigo-600/10 px-3 py-1 rounded-full uppercase border border-indigo-600/20 tracking-widest">
                     Estimation Pro
@@ -50,7 +50,7 @@ export default function DetailedBreakdown({ stats }: { stats: any }) {
                 </table>
             </div>
 
-            <div className={`p-8 border-t transition-all ${isDarkMode ? 'bg-slate-950/50 border-slate-800' : 'bg-slate-50/50 border-slate-100'}`}>
+            <div className={`p-8 border-t transition-all ${isDarkMode ? 'bg-slate-950/50 border-slate-800' : 'bg-slate-100/80 border-slate-100'}`}>
                 <div className="flex items-center justify-between">
                     <span className={`text-[13px] font-black uppercase tracking-widest ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>TOTAL BUDGET</span>
                     <span className="text-2xl font-black text-indigo-600 tracking-tighter">{fmtFCFA(stats.total)}</span>

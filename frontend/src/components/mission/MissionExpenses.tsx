@@ -86,7 +86,7 @@ export function MissionExpenses({ expenses = [], fuelStats, onChange }: MissionE
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Fuel Calculator */}
-                <div className="space-y-6 bg-slate-50/50 dark:bg-slate-900/30 p-6 rounded-3xl border border-slate-200/50 dark:border-white/5">
+                <div className="space-y-6 bg-slate-100/80 dark:bg-slate-900/30 p-6 rounded-3xl border border-slate-200/50 dark:border-white/5">
                     <div className="flex items-center gap-3 mb-2">
                         <Fuel className="text-indigo-500" size={18} />
                         <h3 className="text-xs font-black uppercase tracking-widest text-slate-700 dark:text-slate-300">Calculateur Carburant</h3>

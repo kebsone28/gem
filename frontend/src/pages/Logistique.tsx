@@ -81,7 +81,7 @@ export default function Logistique() {
 
             {/* Barre de recherche */}
             <div className="px-6 mb-4">
-                <div className={`group w-full max-w-sm flex items-center p-0.5 rounded-2xl border transition-all duration-500 ${isDarkMode ? 'bg-slate-950/40 border-slate-800 hover:border-blue-500/50 hover:shadow-lg hover:shadow-blue-500/5 focus-within:border-blue-500/80 focus-within:shadow-xl focus-within:shadow-blue-500/10' : 'bg-slate-50/50 border-slate-200 hover:border-blue-400/50 focus-within:border-blue-500/80 focus-within:shadow-xl focus-within:bg-white'}`}>
+                <div className={`group w-full max-w-sm flex items-center p-0.5 rounded-2xl border transition-all duration-500 ${isDarkMode ? 'bg-slate-950/40 border-slate-800 hover:border-blue-500/50 hover:shadow-lg hover:shadow-blue-500/5 focus-within:border-blue-500/80 focus-within:shadow-xl focus-within:shadow-blue-500/10' : 'bg-slate-100/80 border-slate-200 hover:border-blue-400/50 focus-within:border-blue-500/80 focus-within:shadow-xl focus-within:bg-white'}`}>
                     <div className="flex-1 flex items-center gap-3 px-4">
                         <Search className={`transition-colors duration-300 ${isDarkMode ? 'text-slate-600 group-focus-within:text-blue-400' : 'text-slate-400 group-focus-within:text-blue-500'}`} size={16} />
                         <input
@@ -97,7 +97,7 @@ export default function Logistique() {
 
             {/* Navigation par onglets */}
             <div className="px-6 mb-6">
-                <nav className={`border rounded-2xl overflow-hidden transition-colors ${isDarkMode ? 'border-slate-800 bg-slate-900/30' : 'border-slate-200 bg-slate-50/50'}`}>
+                <nav className={`border rounded-2xl overflow-hidden transition-colors ${isDarkMode ? 'border-slate-800 bg-slate-900/30' : 'border-slate-200 bg-slate-100/80'}`}>
                     <div className="flex overflow-x-auto gap-1 scrollbar-hide">
                         {TABS.map((tab) => {
                             const Icon = tab.icon;

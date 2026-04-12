@@ -148,26 +148,41 @@ export function useFinances() {
         await db.projects.update(project.id, { config: newConfig });
     };
 
+    const parseSafeNum = (val: any, defaultVal: number) => {
+        if (val === undefined || val === null || val === '') return defaultVal;
+        if (typeof val === 'number') return val;
+        const cleanStr = String(val).replace(/\s/g, '').replace(/,/g, '.');
+        const num = Number(cleanStr);
+        return isNaN(num) ? defaultVal : num;
+    };
+
     const importDevisList = async (list: any[]) => {
         if (!project?.id) return;
         const newConfig = { ...(project.config || {}) };
         if (!newConfig.financials) newConfig.financials = {};
         if (!newConfig.financials.plannedCosts) newConfig.financials.plannedCosts = {};
+        if (!newConfig.financials.realCosts) newConfig.financials.realCosts = {};
         
         const sourceItems = [...((newConfig.financials as any).devisItems ?? DEVIS_ITEMS)];
         
-        list.forEach((row, index) => {
-            const rowId = row.ID || row.id || `import_${Date.now()}_${index}`;
+        list.forEach((rawRow, index) => {
+            // Case-insensitive / whitespace-insensitive header mapping
+            const row: any = {};
+            for (const key in rawRow) {
+                row[key.trim().toLowerCase()] = rawRow[key];
+            }
+
+            const rowId = row['id'] || row['id_poste'] || `import_${Date.now()}_${index}`;
             const existingIndex = sourceItems.findIndex(i => i.id === rowId);
             
             const newItem = {
                 id: rowId,
-                label: row.Poste_de_Depense || row.Label || row.Poste || row.label || 'Sans nom',
-                region: row.Region || row.region || 'Global',
-                qty: Number(row.Prevision_Qte || row.Quantite_Prevue || row.qty || 1),
-                unit: Number(row.Prevision_PU || row.Prix_Unitaire || row.unit || 0),
-                rq: Number(row.Reel_Qte || 0),
-                ru: Number(row.Reel_PU || 0)
+                label: row['poste_de_depense'] || row['label'] || row['poste'] || 'Sans nom',
+                region: row['region'] || 'Global',
+                qty: parseSafeNum(row['prevision_qte'] ?? row['quantite_prevue'] ?? row['qty'], 1),
+                unit: parseSafeNum(row['prevision_pu'] ?? row['prix_unitaire'] ?? row['unit'], 0),
+                rq: parseSafeNum(row['reel_qte'] ?? row['reelle_qte'], 0),
+                ru: parseSafeNum(row['reel_pu'] ?? row['reelle_pu'], 0)
             };
 
             if (existingIndex >= 0) {
@@ -177,19 +192,19 @@ export function useFinances() {
                 sourceItems.push(newItem);
             }
             
-            // Also update planned costs directly
+            // Update planned costs
             if (!(newConfig.financials as any).plannedCosts[rowId]) {
                 (newConfig.financials as any).plannedCosts[rowId] = {};
             }
             (newConfig.financials as any).plannedCosts[rowId].qty = newItem.qty;
             (newConfig.financials as any).plannedCosts[rowId].unit = newItem.unit;
 
-            // Import real costs if provided in the Excel sheet
-            if (row.Reel_Qte !== undefined || row.Reel_PU !== undefined) {
+            // Import real costs
+            if (row['reel_qte'] !== undefined || row['reel_pu'] !== undefined) {
                 if (!(newConfig.financials as any).realCosts) (newConfig.financials as any).realCosts = {};
                 if (!(newConfig.financials as any).realCosts[rowId]) (newConfig.financials as any).realCosts[rowId] = {};
-                if (row.Reel_Qte !== undefined) (newConfig.financials as any).realCosts[rowId].qty = newItem.rq;
-                if (row.Reel_PU !== undefined) (newConfig.financials as any).realCosts[rowId].unit = newItem.ru;
+                if (row['reel_qte'] !== undefined) (newConfig.financials as any).realCosts[rowId].qty = newItem.rq;
+                if (row['reel_pu'] !== undefined) (newConfig.financials as any).realCosts[rowId].unit = newItem.ru;
             }
         });
 

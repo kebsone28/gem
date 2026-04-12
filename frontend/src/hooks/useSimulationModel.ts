@@ -366,10 +366,10 @@ function genererPlanningDetaille(
     ],
     network: [
       'Branchement électrique NF C14-100/Disposition de branchement Senelec',
-      'Installation des câbles et conduits',
+      'Installation des câbles préassemblés et conduits',
       'Connexion des équipements réseau',
       'Configuration et tests des connexions',
-      'Documentation technique',
+      'Renseignement du travail effectué',
     ],
     interior: [
       'Installation des interrupteurs et prises',

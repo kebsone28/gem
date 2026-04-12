@@ -75,7 +75,7 @@ const GisHealthWidget: React.FC<GisHealthWidgetProps> = ({ result, onFlyTo, isDa
                         </div>
 
                         {/* Audit Summary Grid */}
-                        <div className={`p-4 grid grid-cols-3 gap-2 border-b ${isDarkMode ? 'border-slate-800 bg-black/20' : 'border-slate-100 bg-slate-50/50'}`}>
+                        <div className={`p-4 grid grid-cols-3 gap-2 border-b ${isDarkMode ? 'border-slate-800 bg-black/20' : 'border-slate-100 bg-slate-100/80'}`}>
                             <div className="text-center">
                                 <span className="block text-[14px] font-black text-rose-500">{stats.critical}</span>
                                 <span className="text-xs font-black uppercase text-slate-500">Critiques</span>
