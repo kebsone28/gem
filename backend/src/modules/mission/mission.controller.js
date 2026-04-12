@@ -516,11 +516,8 @@ export const approveMissionStep = async (req, res) => {
             workflow = await createDefaultWorkflow(missionId, organizationId);
         }
 
-        // Ensure role is uppercase and valid (DG-Only Workflow)
+        // Normalize role
         const normalizedRole = (role || '').toString().toUpperCase();
-        if (!['DIRECTEUR', 'ADMIN', 'ADMIN_PROQUELEC'].includes(normalizedRole)) {
-            return res.status(400).json({ error: 'Invalid role for approval. Only DIRECTEUR or ADMIN can validate.' });
-        }
 
         if (workflow.overallStatus === 'rejected') {
             return res.status(400).json({ error: 'Cannot approve a rejected mission' });
@@ -661,13 +658,13 @@ export const approveMissionStep = async (req, res) => {
 
             if (nextStep) {
                 newCurrentStep = nextStep.sequence;
-                if (normalizedRole === 'CHEF_PROJET' && mission.status === 'draft') {
+                if (mission.status === 'draft') {
                     await tx.mission.update({
                         where: { id: missionId },
                         data: { status: 'en_attente_validation' }
                     });
                 }
-            } else if (normalizedRole === 'DIRECTEUR') {
+            } else {
                 orderNumber = await generateOrderNumber(organizationId);
                 newOverallStatus = 'approved';
                 newCurrentStep = step.sequence;
@@ -693,7 +690,7 @@ export const approveMissionStep = async (req, res) => {
                 data: {
                     currentStep: newCurrentStep,
                     overallStatus: newOverallStatus,
-                    ...(normalizedRole === 'DIRECTEUR' && {
+                    ...(!nextStep && {
                         orderNumber,
                         orderNumberGeneratedAt: new Date(),
                         orderNumberGeneratedBy: userId
@@ -719,7 +716,7 @@ export const approveMissionStep = async (req, res) => {
         if (result.nextStep) {
             missionNotificationService.notifyNextStep(mission, result.nextStep.role, organizationId)
                 .catch(err => logger.error('Next step notification failed:', err));
-        } else if (normalizedRole === 'DIRECTEUR') {
+        } else {
             missionNotificationService.notifyFullApproval(mission, result.orderNumber, mission.createdBy)
                 .catch(err => logger.error('Creator approval notification failed:', err));
         }
