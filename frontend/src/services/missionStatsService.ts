@@ -115,6 +115,25 @@ export const missionStatsService = {
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Missions_PROQUELEC");
 
+    // Onglet Résumé par mission (1 ligne par mission)
+    const summaryData = certifiedMissions.map(m => {
+        const data = (m.data || m.formData) as MissionOrderData;
+        const members = (m.members || data?.members || []) as MissionMember[];
+        const totalCost = members.reduce((s, mb) => s + (Number(mb.dailyIndemnity) || 0) * (Number(mb.days) || 1), 0);
+        return {
+            "N° ORDRE": data.orderNumber || 'Brouillon',
+            "DATE": new Date(m.createdAt || Date.now()).toLocaleDateString('fr-FR'),
+            "DESTINATION": data.region || 'N/A',
+            "OBJET": data.purpose || 'N/A',
+            "NB AGENTS": members.length,
+            "TOTAL INDEMNITÉS (FCFA)": totalCost,
+            "STATUT": "CERTIFIÉ DG",
+            "CRÉÉ PAR": m.createdBy || 'Système'
+        };
+    });
+    const wsSummary = XLSX.utils.json_to_sheet(summaryData);
+    XLSX.utils.book_append_sheet(workbook, wsSummary, "Résumé_Missions");
+
     // Téléchargement
     XLSX.writeFile(workbook, `PROQUELEC_COMPTA_MISSIONS_${new Date().toISOString().split('T')[0]}.xlsx`);
   }

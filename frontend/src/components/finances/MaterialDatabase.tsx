@@ -141,6 +141,7 @@ export default function MaterialDatabase() {
             'Stock': item.stock,
             'Unité': item.unit || 'U',
             'Prix_Unitaire_HT_FCFA': item.unitPrice,
+            'Total_Valorisation_FCFA': (item.stock || 0) * (item.unitPrice || 0),
             'Actif': item.isActive !== false ? 'OUI' : 'NON'
         }));
 

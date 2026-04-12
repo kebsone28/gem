@@ -105,6 +105,12 @@ export default function Settings() {
                                     utils.book_append_sheet(wb, utils.json_to_sheet(((cfg as any).materialCatalog || []).length ? (cfg as any).materialCatalog : [{ info: 'Catalogue vide' }]), 'Catalogue Materiel');
                                     const rates = Object.entries((cfg as any).productionRates || {}).map(([k, v]) => ({ Metier: k, Cadence_F_Jour: v }));
                                     utils.book_append_sheet(wb, utils.json_to_sheet(rates.length ? rates : [{ info: 'Aucune cadence' }]), 'Cadences Production');
+                                    // Onglet Coûts Prévisionnels
+                                    const plannedRows = Object.entries((cfg as any)?.financials?.plannedCosts || {}).map(([id, v]: [string, any]) => ({ ID: id, Prevision_Qte: v.qty ?? '', Prevision_PU: v.unit ?? '' }));
+                                    utils.book_append_sheet(wb, utils.json_to_sheet(plannedRows.length ? plannedRows : [{ info: 'Aucune donnée' }]), 'Couts_Previsionnels');
+                                    // Onglet Coûts Réels
+                                    const realRows = Object.entries((cfg as any)?.financials?.realCosts || {}).map(([id, v]: [string, any]) => ({ ID: id, Reel_Qte: v.qty ?? '', Reel_PU: v.unit ?? '' }));
+                                    utils.book_append_sheet(wb, utils.json_to_sheet(realRows.length ? realRows : [{ info: 'Aucune donnée' }]), 'Couts_Reels');
                                     writeFile(wb, `config_projet_${project?.name || 'export'}.xlsx`);
                                 } catch (err) { alert('Erreur export configuration.'); }
                             }}
