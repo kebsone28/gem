@@ -1,4 +1,4 @@
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useEffect } from 'react';
 import debounce from 'lodash.debounce';
 import logger from '../utils/logger';
 import { getHouseholdDerivedStatus } from '../utils/statusUtils';
@@ -159,6 +159,13 @@ export const useMapFilters = (households: Household[] = [], mapBounds: [number, 
     }, [households, searchWorker, setSearchResults, setIsSearching]);
 
     const debouncedSearch = useMemo(() => debounce(performSearch, 300), [performSearch]);
+
+    // ✅ Cleanup debounce on unmount to prevent memory leaks
+    useEffect(() => {
+        return () => {
+            debouncedSearch.cancel();
+        };
+    }, [debouncedSearch]);
 
     return {
         selectedPhases,

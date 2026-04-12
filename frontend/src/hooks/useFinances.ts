@@ -42,9 +42,10 @@ export function useFinances() {
         project?.id ? (db as any).inventory.where('projectId').equals(project.id).toArray() : Promise.resolve([])
         , [project?.id]);
 
-    // Filtrer les ménages par projet pour que les simulations soient précises
-    const households = allHouseholds?.filter(h => !project?.id || h.projectId === project.id);
-    const householdsCount = households?.length || 0;
+    // Filtrer les ménages. Si les ménages de Kobo n'ont pas de projectId, on les inclut quand même 
+    // ou si on a un seul projet actif on prend tout pour la compatibilité avec la V1
+    const households = allHouseholds?.filter(h => !project?.id || !h.projectId || h.projectId === project.id) || [];
+    const householdsCount = households.length;
     const duration = project?.duration || 180;
     const staffConfig = project?.config?.staffConfig || {};
     const legacyCosts = (project?.config as any)?.costs || {};

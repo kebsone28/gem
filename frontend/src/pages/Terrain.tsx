@@ -67,6 +67,8 @@ const Terrain: React.FC = () => {
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [deletePassword, setDeletePassword] = useState('');
     const [deleteError, setDeleteError] = useState('');
+    const [deleteAttempts, setDeleteAttempts] = useState(0);
+    const [lockoutUntil, setLockoutUntil] = useState<number | null>(null);
     const [showCreateProjectModal, setShowCreateProjectModal] = useState(false);
     const [newProjectName, setNewProjectName] = useState('');
     const modalInputRef = useRef<HTMLInputElement>(null);
@@ -289,19 +291,44 @@ const Terrain: React.FC = () => {
 
     const handleDeleteProject = useCallback(async () => {
         if (!project?.id) return;
+
+        // ✅ SECURITY: Check ratelimit
+        if (lockoutUntil && Date.now() < lockoutUntil) {
+            const remainingSeconds = Math.ceil((lockoutUntil - Date.now()) / 1000);
+            setDeleteError(`Trop de tentatives. Réessayez dans ${remainingSeconds}s.`);
+            return;
+        }
+
         if (!deletePassword) {
             setDeleteError('Veuillez entrer votre mot de passe.');
             return;
         }
+
         const result = await deleteProject(project.id, deletePassword);
         if (!result.success) {
-            setDeleteError(result.error || 'Mot de passe incorrect.');
+            // ✅ SECURITY: Increment attempts and lock out after 3 tries
+            const newAttempts = deleteAttempts + 1;
+            setDeleteAttempts(newAttempts);
+            if (newAttempts >= 3) {
+                const lockoutTime = Date.now() + (5 * 60 * 1000); // 5 minutes lockout
+                setLockoutUntil(lockoutTime);
+                setDeleteError('Trop de tentatives. Veuillez réessayer dans 5 minutes.');
+            } else {
+                setDeleteError(result.error || 'Mot de passe incorrect.');
+            }
+            // ✅ Clear password for security
+            setDeletePassword('');
             return;
         }
+
+        // ✅ Success: Reset all state
         setShowDeleteModal(false);
         setDeletePassword('');
         setDeleteError('');
-    }, [project, deletePassword, deleteProject]);
+        setDeleteAttempts(0);
+        setLockoutUntil(null);
+        toast.success('Projet supprimé avec succès');
+    }, [project, deletePassword, deleteProject, deleteAttempts, lockoutUntil]);
 
     // Keyboard shortcuts for modals
     useEffect(() => {
