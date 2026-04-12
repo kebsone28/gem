@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     TrendingUp,
@@ -7,10 +8,13 @@ import {
     Zap,
     Users,
     AlertTriangle,
-    Activity
+    Activity,
+    Check,
+    Link as LinkIcon
 } from 'lucide-react';
 import { useFinances } from '../hooks/useFinances';
 import { fmtFCFA } from '../utils/format';
+import { toast } from 'react-hot-toast';
 import {
     calculateScenario,
     optimizeTeamConfigs,
@@ -39,6 +43,7 @@ const ROLE_LABELS = {
 
 export default function Simulation() {
     const { devis, householdsCount, project } = useFinances();
+    const navigate = useNavigate();
 
     const roleCapacities = useMemo(
         () => buildRoleCapacities(project?.config?.productionRates),
@@ -69,6 +74,15 @@ export default function Simulation() {
 
     const [isOptimized, setIsOptimized] = useState(false);
     const [optimizedConfigs, setOptimizedConfigs] = useState<Record<RoleKey, TeamConfig> | null>(null);
+    const [showApplyModal, setShowApplyModal] = useState(false);
+
+    const handleApplyConfiguration = useCallback(() => {
+        if (!optimizedConfigs) return;
+        setTeamConfigs(optimizedConfigs);
+        setShowApplyModal(false);
+        setIsOptimized(false);
+        toast.success('Configuration optimisée appliquée comme scénario courant', { icon: '✅' });
+    }, [optimizedConfigs]);
 
     const currentScenario = useMemo(
         () => calculateScenario({
@@ -190,6 +204,15 @@ export default function Simulation() {
                             <Zap className="group-hover:animate-pulse" size={20} />
                             LANCER L'IA D'OPTIMISATION
                         </button>
+                        {isOptimized && optimizedConfigs && (
+                            <button
+                                onClick={() => setShowApplyModal(true)}
+                                className="w-full sm:w-auto flex justify-center items-center gap-3 px-6 py-3 bg-gradient-to-r from-indigo-500 to-indigo-700 hover:from-indigo-400 hover:to-indigo-600 text-white font-black rounded-2xl transition-all shadow-xl shadow-indigo-600/20 active:scale-95 group"
+                            >
+                                <Check size={20} />
+                                APPLIQUER CETTE CONFIG
+                            </button>
+                        )}
                     </ActionBar>
                 }
             />
@@ -730,6 +753,67 @@ export default function Simulation() {
                         </main>
                     </div>
                 </div>
+
+                {/* Apply Configuration Modal */}
+                <AnimatePresence>
+                    {showApplyModal && (
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+                            onClick={() => setShowApplyModal(false)}
+                        >
+                            <motion.div
+                                initial={{ scale: 0.95, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                exit={{ scale: 0.95, opacity: 0 }}
+                                onClick={(e) => e.stopPropagation()}
+                                className="bg-white dark:bg-slate-900 rounded-3xl p-8 shadow-2xl max-w-md mx-4 border border-slate-200 dark:border-slate-800"
+                            >
+                                <div className="flex items-start gap-4 mb-6">
+                                    <div className="w-12 h-12 bg-indigo-500/20 border border-indigo-500/50 rounded-2xl flex items-center justify-center text-indigo-400 shrink-0">
+                                        <Check size={24} />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-xl font-black text-slate-900 dark:text-white">Appliquer la configuration optimisée ?</h3>
+                                        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Les effectifs optimisés remplaceront votre configuration actuelle.</p>
+                                    </div>
+                                </div>
+
+                                <div className="bg-slate-50 dark:bg-slate-950/50 rounded-2xl p-4 mb-6 space-y-3">
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-slate-600 dark:text-slate-400">Durée</span>
+                                        <span className="font-bold text-slate-900 dark:text-white">{activeScenario.calendarDuration} jours</span>
+                                    </div>
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-slate-600 dark:text-slate-400">Coût</span>
+                                        <span className="font-bold text-slate-900 dark:text-white">{fmtFCFA(activeScenario.cost)}</span>
+                                    </div>
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-slate-600 dark:text-slate-400">Marge</span>
+                                        <span className={`font-bold ${activeScenario.margin >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>{fmtFCFA(activeScenario.margin)}</span>
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-3">
+                                    <button
+                                        onClick={() => setShowApplyModal(false)}
+                                        className="flex-1 px-4 py-3 bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-white font-bold rounded-xl hover:bg-slate-300 dark:hover:bg-slate-700 transition-all"
+                                    >
+                                        Annuler
+                                    </button>
+                                    <button
+                                        onClick={handleApplyConfiguration}
+                                        className="flex-1 px-4 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-black rounded-xl transition-all shadow-lg shadow-indigo-600/20 active:scale-95"
+                                    >
+                                        Appliquer
+                                    </button>
+                                </div>
+                            </motion.div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </ContentArea>
         </PageContainer>
     );

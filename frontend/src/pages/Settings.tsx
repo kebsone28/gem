@@ -155,7 +155,7 @@ export default function Settings() {
                         <button
                             key={tab.id}
                             role="tab"
-                            aria-selected={activeTab === tab.id}
+                            aria-selected={activeTab === tab.id ? 'true' : 'false'}
                             aria-controls={`panel-${tab.id}`}
                             id={`tab-${tab.id}`}
                             onClick={() => setActiveTab(tab.id as TabType)}

@@ -24,7 +24,7 @@ self.onmessage = (event) => {
     const { type, payload } = event.data;
 
     switch (type) {
-        case 'INDEX':
+        case 'INDEX': {
             // Build index for households
             const documents = (payload.households || []).map((h: any) => ({
                 id: h.id,
@@ -39,8 +39,9 @@ self.onmessage = (event) => {
             
             self.postMessage({ type: 'INDEX_READY' });
             break;
+        }
 
-        case 'SEARCH':
+        case 'SEARCH': {
             const results = miniSearch.search(payload.query);
             // Limit to 10 best matches
             const topResults = results.slice(0, 10).map(r => ({
@@ -52,10 +53,12 @@ self.onmessage = (event) => {
             
             self.postMessage({ type: 'SEARCH_RESULTS', results: topResults, query: payload.query });
             break;
+        }
 
-        case 'TERMINATE':
+        case 'TERMINATE': {
             miniSearch.removeAll();
             self.close();
             break;
+        }
     }
 };
