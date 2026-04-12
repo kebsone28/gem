@@ -1,44 +1,5 @@
 import Dexie, { type Table } from 'dexie';
-import type { AuditLog } from '../utils/types';
-
-export interface Project {
-  id: string;
-  organizationId: string;
-  name: string;
-  status: string;
-  version: number;
-  config?: Record<string, any>;
-  deletedAt?: Date | null;
-}
-
-export interface Household {
-  id: string;
-  projectId?: string;
-  zoneId: string;
-  organizationId: string;
-  updatedAt?: string;
-  grappeId?: string;
-  grappeName?: string;
-  deliveryStatus?: string;
-  delivery?: any;
-  assignedTeams?: string[];
-  workTime?: any;
-  latitude?: number;
-  longitude?: number;
-  name?: string;
-  phone?: string;
-  region?: string;
-  departement?: string;
-  village?: string;
-  status: string;
-  version: number;
-  location?: any;
-  owner?: any;
-  koboData?: any;
-  deletedAt?: Date | null;
-  backendId?: string;
-  syncStatus?: 'pending' | 'synced' | 'error';
-}
+import type { Project, Household, AuditLog } from '../utils/types';
 
 export interface SyncLog {
   id?: number;

@@ -13,6 +13,7 @@
 import prisma from '../core/utils/prisma.js';
 import { recalculateProjectGrappes } from './project_config.service.js';
 import { transformRowToHousehold } from './kobo.mapping.js';
+import { tracerAction } from './audit.service.js';
 
 const KOBO_API_URL = process.env.KOBO_API_URL || 'https://kf.kobotoolbox.org';
 const KOBO_TOKEN = process.env.KOBO_TOKEN || '';
@@ -53,16 +54,21 @@ function validateGPSRegion(latitude, longitude, region, submissionId = null) {
 
 /**
  * Fetches submissions from KoboToolbox API since a given date.
+ * @param {string} token - Project specific Kobo token
+ * @param {string} assetUid - Project specific Asset UID
  * @param {string|null} since - ISO timestamp for incremental sync
  * @returns {Promise<any[]>} Array of raw Kobo submissions
  */
-export async function fetchKoboSubmissions(since = null) {
-    if (!KOBO_TOKEN || !KOBO_FORM_ID) {
-        throw new Error('KOBO_TOKEN ou KOBO_FORM_ID non configurés dans les variables d\'environnement.');
+export async function fetchKoboSubmissions(token, assetUid, since = null) {
+    const finalToken = token || KOBO_TOKEN;
+    const finalAssetUid = assetUid || KOBO_FORM_ID;
+
+    if (!finalToken || !finalAssetUid) {
+        throw new Error('KOBO_TOKEN ou KOBO_FORM_ID non configurés (ni en variable d\'env, ni dans le projet).');
     }
 
     // Build query — Kobo supports ?query= with MongoDB-style JSON filter
-    let url = `${KOBO_API_URL}/api/v2/assets/${KOBO_FORM_ID}/data/?format=json&limit=5000`;
+    let url = `${KOBO_API_URL}/api/v2/assets/${finalAssetUid}/data/?format=json&limit=5000`;
     if (since) {
         const sinceDate = new Date(since).toISOString();
         // Kobo filter on submission time
@@ -71,7 +77,7 @@ export async function fetchKoboSubmissions(since = null) {
 
     const response = await fetch(url, {
         headers: {
-            Authorization: `Token ${KOBO_TOKEN}`,
+            Authorization: `Token ${finalToken}`,
             'Content-Type': 'application/json'
         }
     });
@@ -149,10 +155,30 @@ function mapSubmissionToHousehold(submission, organizationId, defaultZoneId, pro
  * @param {string} organizationId
  * @param {string} fallbackZoneId - zone used if no region is found
  * @param {string|null} since - ISO timestamp for incremental sync
+ * @param {string|null} projectId - specific project to sync
  * @returns {Promise<{applied: number, skipped: number, errors: number}>}
  */
-export async function syncKoboToDatabase(organizationId, fallbackZoneId, since = null) {
-    const submissions = await fetchKoboSubmissions(since);
+export async function syncKoboToDatabase(organizationId, fallbackZoneId, since = null, projectId = null) {
+    // 1. Resolve Project and its Kobo Config
+    let targetProjectId = projectId;
+    let koboToken = null;
+    let koboAssetUid = null;
+
+    if (!targetProjectId) {
+        const fallbackZone = await prisma.zone.findUnique({ where: { id: fallbackZoneId } });
+        targetProjectId = fallbackZone?.projectId;
+    }
+
+    if (targetProjectId) {
+        const project = await prisma.project.findUnique({ where: { id: targetProjectId } });
+        if (project?.config?.kobo) {
+            koboToken = project.config.kobo.token;
+            koboAssetUid = project.config.kobo.assetUid;
+            console.log(`[KOBO-SYNC] Using project-specific config for project: ${project.name}`);
+        }
+    }
+
+    const submissions = await fetchKoboSubmissions(koboToken, koboAssetUid, since);
 
     let applied = 0;
     let skipped = 0;
@@ -160,15 +186,6 @@ export async function syncKoboToDatabase(organizationId, fallbackZoneId, since =
 
     // Local cache for zones to avoid hitting DB for every household
     const zoneCache = {};
-
-    // Get the projectId of the fallback zone to know where to create new zones
-    let targetProjectId = null;
-    try {
-        const fallbackZone = await prisma.zone.findUnique({ where: { id: fallbackZoneId } });
-        targetProjectId = fallbackZone?.projectId;
-    } catch (e) {
-        console.warn('[KOBO-SYNC] Could not resolve target project for dynamic zones:', e.message);
-    }
 
     for (const submission of submissions) {
         try {
@@ -224,85 +241,88 @@ export async function syncKoboToDatabase(organizationId, fallbackZoneId, since =
 
             // 🔑 RECHERCHE PRÉALABLE: Chercher le ménage existant par numeroordre (clé métier unique)
             // numeroOrdre comes from the mapping module and is guaranteed to exist if household is not null
-            const numeroDemande = household.numeroOrdre;
+            // NORMALISATION: On s'assure que la recherche est insensible aux espaces et à la casse
+            const numeroDemande = household.numeroOrdre ? String(household.numeroOrdre).trim().toUpperCase() : null;
             let existingHousehold = null;
 
             if (numeroDemande) {
                 try {
+                    // 1. First attempt: Exact match
                     existingHousehold = await prisma.household.findFirst({
                         where: {
                             organizationId: organizationId,
                             OR: [
-                                { numeroordre: String(numeroDemande) },
-                                { id: String(numeroDemande) }
+                                { numeroordre: { equals: numeroDemande, mode: 'insensitive' } },
+                                { id: { equals: numeroDemande, mode: 'insensitive' } }
                             ],
                             deletedAt: null
                         }
                     });
+
+                    // 2. Fallback: If no match and it ends with a '0', it's likely a Kobo artifact
+                    // Example: Kobo sends '45260' but DB has '4526'
+                    if (!existingHousehold && numeroDemande.endsWith('0')) {
+                        const fallbackNumero = numeroDemande.substring(0, numeroDemande.length - 1);
+                        existingHousehold = await prisma.household.findFirst({
+                            where: {
+                                organizationId: organizationId,
+                                numeroordre: fallbackNumero,
+                                deletedAt: null
+                            }
+                        });
+                        
+                        if (existingHousehold) {
+                            console.log(`[KOBO-SYNC] 💡 Fuzzy match successful: ${numeroDemande} -> ${fallbackNumero}`);
+                        }
+                    }
                 } catch (e) {
-                    console.warn(`[KOBO-SYNC] Could not search for existing household by numeroordre/id:`, e.message);
+                     console.warn(`[KOBO-SYNC] Could not search for existing household by numeroordre [${numeroDemande}]:`, e.message);
                 }
             }
 
             // 🔑 UPSERT STRATEGY: Match by koboSubmissionId OR by existing N° Demande
-            // This ensures same Kobo submission is UPDATED, not duplicated
             const koboSubmissionId = BigInt(submission['_id']);
-
-            // For new households, generate a UUID (not using Kobo _id as household id)
-            // This avoids conflicts since Kobo _ids are numeric, not UUIDs
             const { v4: uuidv4 } = await import('uuid');
             const newHouseholdId = uuidv4();
 
+            // Préparation des données de mise à jour (évite d'écraser des données locales par du vide Kobo)
+            const updateData = {
+                status: household.status,
+                koboData: household.koboData,
+                zoneId: household.zoneId,
+                region: household.region || undefined,
+                name: household.name || undefined,
+                phone: household.phone || undefined,
+                departement: household.departement || undefined,
+                // CRITICAL: On ne remplace pas le village s'il est vide dans Kobo (car Kobo n'a pas la colonne village dans les données préchargées)
+                ...(household.village ? { village: household.village } : {}),
+                // GPS: On ne met à jour que si Kobo a fourni des coordonnées
+                ...(household.latitude ? { latitude: household.latitude } : {}),
+                ...(household.longitude ? { longitude: household.longitude } : {}),
+                source: 'KOBO',
+                assignedTeams: {
+                    set: household.assignedTeams
+                },
+                koboSync: household.koboSync,
+                koboSubmissionId: koboSubmissionId,
+                numeroordre: numeroDemande,
+                updatedAt: new Date()
+            };
+
             if (existingHousehold) {
-                // ✅ MISE À JOUR: Ménage existant trouvé par N° Demande ou ID métier
-                console.log(`[KOBO-SYNC] 🔄 UPDATE existing household: ${existingHousehold.id} with Kobo submission ${submission['_id']}`);
+                // ✅ MISE À JOUR: Ménage existant trouvé par N° Demande
+                console.log(`[KOBO-SYNC] 🔄 UPDATE existing household: ${existingHousehold.id} with N° ${numeroDemande}`);
                 await prisma.household.update({
                     where: { id: existingHousehold.id },
-                    data: {
-                        status: household.status,
-                        koboData: household.koboData,
-                        zoneId: household.zoneId,
-                        region: household.region,
-                        name: household.name,
-                        phone: household.phone,
-                        departement: household.departement,
-                        village: household.village,
-                        latitude: household.latitude,
-                        longitude: household.longitude,
-                        source: 'Kobo',
-                        assignedTeams: {
-                            set: household.assignedTeams
-                        },
-                        koboSync: household.koboSync,
-                        koboSubmissionId: koboSubmissionId,  // Link Kobo ID for future syncs
-                        numeroordre: String(household.numeroOrdre),  // Save business identifier
-                        updatedAt: new Date()
-                    }
+                    data: updateData
                 });
             } else {
-                // 🆕 CRÉATION: Nouveau ménage (upsert par koboSubmissionId)
+                // 🆕 CRÉATION ou UPSERT par ID Kobo (si n° demande n'a pas matché)
                 await prisma.household.upsert({
                     where: { koboSubmissionId: koboSubmissionId },
-                    update: {
-                        status: household.status,
-                        koboData: household.koboData,
-                        zoneId: household.zoneId,
-                        region: household.region,
-                        name: household.name,
-                        phone: household.phone,
-                        departement: household.departement,
-                        village: household.village,
-                        latitude: household.latitude,
-                        longitude: household.longitude,
-                        source: 'Kobo',  // Mark as Kobo-synced
-                        assignedTeams: {
-                            set: household.assignedTeams
-                        },
-                        koboSync: household.koboSync,
-                        updatedAt: new Date()
-                    },
+                    update: updateData,
                     create: {
-                        id: newHouseholdId,  // Generate UUID for new household
+                        id: newHouseholdId,
                         organizationId: household.organizationId,
                         zoneId: household.zoneId,
                         status: household.status,
@@ -318,9 +338,9 @@ export async function syncKoboToDatabase(organizationId, fallbackZoneId, since =
                         location: household.location || {},
                         assignedTeams: household.assignedTeams,
                         koboSync: household.koboSync,
-                        koboSubmissionId: koboSubmissionId,  // Store for future matching
-                        numeroordre: String(household.numeroOrdre),  // Save business identifier
-                        source: 'Kobo',
+                        koboSubmissionId: koboSubmissionId,
+                        numeroordre: numeroDemande,
+                        source: 'KOBO',
                         version: 1
                     }
                 });
@@ -352,5 +372,20 @@ export async function syncKoboToDatabase(organizationId, fallbackZoneId, since =
     }
 
     console.log(`[KOBO-SYNC] ✅ Done — Applied: ${applied}, Skipped: ${skipped}, Errors: ${errors}`);
+
+    // 🔥 AUDIT LOG: Tracer le résultat global de la synchronisation
+    await tracerAction({
+        organizationId,
+        action: 'SYNCHRONISATION_KOBO',
+        resource: 'Bordereau Terrain',
+        details: { 
+            applied, 
+            skipped, 
+            errors, 
+            totalSubmissions: submissions.length,
+            since: since || 'FULL_SYNC'
+        }
+    });
+
     return { applied, skipped, errors, total: submissions.length };
 }

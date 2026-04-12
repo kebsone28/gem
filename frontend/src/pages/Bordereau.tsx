@@ -17,7 +17,7 @@ import api from '../api/client';
 import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { generateGrappePDF, generateGrappeExcel } from '../services/bordereauGenerator';
-import { useProject } from '../hooks/useProject';
+import { useProject } from '../contexts/ProjectContext';
 import { db } from '../store/db';
 import { useSyncListener } from '../hooks/useSyncListener';
 import { fmtNum } from '../utils/format';

@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { useFinances } from '../../hooks/useFinances';
 import { useTheme } from '../../contexts/ThemeContext';
-import { useProject } from '../../hooks/useProject';
+import { useProject } from '../../contexts/ProjectContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import * as XLSX from 'xlsx';
 import { fmtFCFA } from '../../utils/format';

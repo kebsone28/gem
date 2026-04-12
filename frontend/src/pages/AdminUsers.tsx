@@ -23,14 +23,17 @@ const ROLE_CONFIG: Record<string, {
     label: string; color: string; textColor: string;
     icon: typeof Shield; description: string
 }> = {
-    ADMIN_PROQUELEC: { label: 'Administrateur', color: 'bg-indigo-100 dark:bg-indigo-900/50 border-indigo-600 dark:border-indigo-600 shadow-indigo-500/5', textColor: 'text-indigo-900 dark:text-indigo-100', icon: ShieldCheck, description: 'Accès complet & 2FA' },
-    ADMIN: { label: 'Admin Système', color: 'bg-indigo-100 dark:bg-indigo-900/50 border-indigo-600 dark:border-indigo-600 shadow-indigo-500/5', textColor: 'text-indigo-900 dark:text-indigo-100', icon: ShieldCheck, description: 'Super Administration' },
-    DG_PROQUELEC: { label: 'Direction Générale', color: 'bg-emerald-100 dark:bg-emerald-900/50 border-emerald-600 dark:border-emerald-600 shadow-emerald-500/5', textColor: 'text-emerald-900 dark:text-emerald-100', icon: Shield, description: 'Finances & Stratégie' },
-    CLIENT_LSE: { label: 'Client LSE', color: 'bg-amber-100 dark:bg-amber-900/50 border-amber-600 dark:border-amber-600 shadow-amber-500/5', textColor: 'text-amber-900 dark:text-amber-100', icon: UserIcon, description: 'Interventions & Suivi' },
-    CHEF_EQUIPE: { label: 'Chef de Chantier', color: 'bg-blue-100 dark:bg-blue-900/50 border-blue-600 dark:border-blue-600 shadow-blue-500/5', textColor: 'text-blue-900 dark:text-blue-100', icon: Users, description: 'Équipes & Terrain' },
-    CHEF_PROJET: { label: 'Chef de Projet', color: 'bg-sky-100 dark:bg-sky-900/50 border-sky-600 dark:border-sky-600 shadow-sky-500/5', textColor: 'text-sky-900 dark:text-sky-100', icon: Briefcase, description: 'Gestion de Mission' },
-    COMPTABLE: { label: 'Comptable', color: 'bg-rose-100 dark:bg-rose-900/50 border-rose-600 dark:border-rose-600 shadow-rose-500/5', textColor: 'text-rose-900 dark:text-rose-100', icon: Calculator, description: 'Finances & Audit' },
-    DIRECTEUR: { label: 'Directeur', color: 'bg-purple-100 dark:bg-purple-900/50 border-purple-600 dark:border-purple-600 shadow-purple-500/5', textColor: 'text-purple-900 dark:text-purple-100', icon: Award, description: 'Validation Finale' },
+    ADMIN_PROQUELEC: { label: 'Administrateur', color: 'bg-indigo-500/10 border-indigo-500/50', textColor: 'text-indigo-400', icon: ShieldCheck, description: 'Accès complet & 2FA' },
+    ADMIN: { label: 'Admin Système', color: 'bg-slate-500/10 border-slate-500/50', textColor: 'text-slate-400', icon: ShieldCheck, description: 'Super Administration' },
+    'DIRECTION GÉNÉRALE': { label: 'Direction Générale', color: 'bg-emerald-500/10 border-emerald-500/50', textColor: 'text-emerald-400', icon: Shield, description: 'Finances & Stratégie' },
+    DG_PROQUELEC: { label: 'DG Proquelec', color: 'bg-emerald-500/10 border-emerald-500/50', textColor: 'text-emerald-400', icon: Shield, description: 'Direction GEM' },
+    CLIENT_LSE: { label: 'Client LSE', color: 'bg-amber-500/10 border-amber-500/50', textColor: 'text-amber-400', icon: UserIcon, description: 'Interventions & Suivi' },
+    'CHEF DE CHANTIER': { label: 'Chef de Chantier', color: 'bg-blue-500/10 border-blue-500/50', textColor: 'text-blue-400', icon: Users, description: 'Équipes & Terrain' },
+    CHEF_EQUIPE: { label: 'Chef d\'Équipe', color: 'bg-blue-500/10 border-blue-500/50', textColor: 'text-blue-400', icon: Users, description: 'Exécution Opérationnelle' },
+    'CHEF DE PROJET': { label: 'Chef de Projet', color: 'bg-sky-500/10 border-sky-500/50', textColor: 'text-sky-400', icon: Briefcase, description: 'Gestion de Mission' },
+    CHEF_PROJET: { label: 'CP Vision', color: 'bg-sky-500/10 border-sky-500/50', textColor: 'text-sky-400', icon: Briefcase, description: 'Suivi Projets' },
+    COMPTABLE: { label: 'Comptable', color: 'bg-rose-500/10 border-rose-500/50', textColor: 'text-rose-400', icon: Calculator, description: 'Finances & Audit' },
+    DIRECTEUR: { label: 'Directeur', color: 'bg-purple-500/10 border-purple-500/50', textColor: 'text-purple-400', icon: Award, description: 'Validation Finale' },
 };
 
 const emptyForm = (): Omit<User, 'id' | 'createdAt'> => ({

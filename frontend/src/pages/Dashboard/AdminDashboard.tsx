@@ -24,7 +24,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { PageContainer, PageHeader, ContentArea } from '../../components';
 import { useNavigate } from 'react-router-dom';
 import { fmtNum } from '../../utils/format';
-import { useProject } from '../../hooks/useProject';
+import { useProject } from '../../contexts/ProjectContext';
 import { useSync } from '../../hooks/useSync';
 import { usePermissions } from '../../hooks/usePermissions';
 import logger from '../../utils/logger';
@@ -550,7 +550,7 @@ export default function AdminDashboard() {
             </ContentArea>
             
             {/* L'IA SAGE GEM-MINT (OMNISCIENTE & SÉCURE) */}
-            <MissionMentor stats={missionStats} />
+            <MissionMentor stats={missionStats} auditLogs={[]} households={[]} />
         </PageContainer>
     );
 }

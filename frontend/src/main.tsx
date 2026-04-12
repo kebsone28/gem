@@ -18,6 +18,7 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { LabelsProvider } from './contexts/LabelsContext';
 import { SyncProvider } from './contexts/SyncContext';
+import { ProjectProvider } from './contexts/ProjectContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 // ── Pure service initialisation — independent of React lifecycle ───────────
@@ -36,7 +37,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
                 <LabelsProvider>
                     <SyncProvider>
                         <ThemeProvider>
-                            <App />
+                            <ProjectProvider>
+                                <App />
+                            </ProjectProvider>
                         </ThemeProvider>
                     </SyncProvider>
                 </LabelsProvider>

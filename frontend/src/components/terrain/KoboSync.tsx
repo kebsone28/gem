@@ -3,7 +3,7 @@ import logger from '../../utils/logger';
 import { RefreshCw, Settings, CloudDownload, CheckCircle2, AlertCircle } from 'lucide-react';
 import apiClient from '../../api/client';
 import { useSync } from '../../hooks/useSync';
-import { useProject } from '../../hooks/useProject';
+import { useProject } from '../../contexts/ProjectContext';
 import toast from 'react-hot-toast';
 
 interface KoboSyncProps {

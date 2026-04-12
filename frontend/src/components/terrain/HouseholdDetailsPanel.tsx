@@ -31,7 +31,6 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
     onTraceItinerary,
     onCancelItinerary,
     grappeInfo,
-    userRole,
     isAdmin = false
 }) => {
     const closePanel = useTerrainUIStore(s => s.closePanel);
@@ -48,7 +47,6 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
         if (household.koboData?.photoUrl) return household.koboData.photoUrl;
         if (household.koboData?.photo) return household.koboData.photo;
         if (household.koboData?.Photo) return household.koboData.Photo;
-        if (household.koboSync?.photoUrl) return household.koboSync.photoUrl;
         
         // Direct Kobo API attachment structure
         const attachments = household.koboData?._attachments;

@@ -20,3 +20,4 @@ export const runWithContext = (context, callback) => {
 
 export const getOrganizationId = () => getContext().organizationId;
 export const getUserId = () => getContext().userId;
+export const getProjectId = () => getContext().projectId;

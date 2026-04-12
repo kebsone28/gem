@@ -8,14 +8,16 @@ import {
     Trash2,
     AlertTriangle,
     CheckCircle2,
-    History
+    History,
+    RefreshCw,
+    Edit2
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useTerrainData } from '../../hooks/useTerrainData';
 import { useSync } from '../../hooks/useSync';
 import logger from '../../utils/logger';
 import { useTheme } from '../../contexts/ThemeContext';
-import { useProject } from '../../hooks/useProject';
+import { useProject } from '../../contexts/ProjectContext';
 import { useAuth } from '../../contexts/AuthContext';
 import apiClient from '../../api/client';
 import { syncEventBus, SYNC_EVENTS } from '../../utils/syncEventBus';
@@ -31,7 +33,7 @@ export const DataHubModal: React.FC<DataHubModalProps> = ({ isOpen, onClose }) =
     const { isDarkMode } = useTheme();
     const { user } = useAuth();
     const { importHouseholds, repairSyncQueue } = useTerrainData();
-    const { activeProjectId, project, createProject, projects, deleteProject } = useProject();
+    const { activeProjectId, project, createProject, projects, deleteProject, updateProject, setActiveProjectId } = useProject();
     const [activeTab, setActiveTab] = useState<'import' | 'kobo' | 'backups' | 'danger' | 'projects'>('import');
     const [isProcessing, setIsProcessing] = useState(false);
     const [useServerImport, setUseServerImport] = useState(true); // Default to Server for mass imports
@@ -377,8 +379,13 @@ export const DataHubModal: React.FC<DataHubModalProps> = ({ isOpen, onClose }) =
     const handleClearData = async () => {
         const confirmed = await showConfirm('⚠️ ATTENTION', 'Effacer toutes les données locales ?');
         if (!confirmed) return;
+
+        const password = await showPrompt("Veuillez saisir votre mot de passe pour confirmer le nettoyage local :");
+        if (!password) return;
+
         setIsProcessing(true);
         try {
+            await apiClient.post('auth/verify-password', { password });
             await db.households.clear();
             await db.grappes.clear();
             await db.syncOutbox.clear();
@@ -395,9 +402,13 @@ export const DataHubModal: React.FC<DataHubModalProps> = ({ isOpen, onClose }) =
     const handleClearServerEntity = async (entity: string) => {
         const confirmed = await showConfirm('⚠️ DANGER SÉVÈRE', `Voulez-vous VRAIMENT supprimer définitivement ce type de données (${entity}) de la base centrale du SERVEUR et en local ?`);
         if (!confirmed) return;
+
+        const password = await showPrompt("Veuillez saisir votre mot de passe administrateur pour confirmer cette action nucléaire :");
+        if (!password) return;
+
         setIsProcessing(true);
         try {
-            await apiClient.delete(`sync/clear/${entity}`);
+            await apiClient.delete(`sync/clear/${entity}`, { data: { password } });
             if(entity === 'households' || entity === 'all') await db.households.clear();
             if(entity === 'grappes' || entity === 'all') await db.grappes.clear();
             if(entity === 'zones' || entity === 'all') await db.zones.clear();
@@ -605,34 +616,145 @@ export const DataHubModal: React.FC<DataHubModalProps> = ({ isOpen, onClose }) =
                                             <h3 className="text-indigo-400 font-black italic uppercase text-sm">Espaces de travail</h3>
                                             <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-1">Gérez vos différentes zones</p>
                                         </div>
-                                        <button onClick={async () => {
-                                            const name = await showPrompt("Nom du nouveau projet :");
-                                            if (name) {
-                                                const newProj = await createProject(name);
-                                                if (newProj) toast.success("Projet créé avec succès !");
-                                            }
-                                        }} disabled={isProcessing} className="w-full md:w-auto px-6 py-3 bg-indigo-600 text-white rounded-xl text-[10px] md:text-xs font-black uppercase tracking-widest hover:bg-indigo-500 transition-colors shadow-lg shadow-indigo-600/20 disabled:opacity-50">
-                                            + Nouveau Projet
-                                        </button>
-                                    </div>
-                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                     {projects?.map((p: any) => (
-                                        <div key={p.id} className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 p-4 bg-white/5 border border-white/10 hover:border-white/20 transition-colors rounded-2xl">
-                                            <div className="flex flex-col">
-                                                <div className="font-bold text-white text-xs md:text-sm uppercase tracking-wide truncate">{p.name}</div>
-                                                {p.id === activeProjectId && <div className="text-[9px] font-black uppercase text-indigo-400 mt-1">Actif</div>}
-                                            </div>
-                                            {p.id !== activeProjectId && (
-                                                <button onClick={async () => {
-                                                    const pwd = await showPrompt("Mot de passe admin :");
-                                                    if (pwd) {
-                                                        const res = await deleteProject(p.id, pwd);
-                                                        if (res.success) toast.success("Supprimé");
+                                        <div className="flex items-center gap-2">
+                                            <button 
+                                                onClick={async () => {
+                                                    const confirmed = await showConfirm('🛠️ MAINTENANCE', 'Voulez-vous forcer la synchronisation de la liste des projets depuis le serveur ? Cela nettoiera les projets fantômes.');
+                                                    if (!confirmed) return;
+                                                    
+                                                    setIsProcessing(true);
+                                                    try {
+                                                        const res = await apiClient.get('/projects');
+                                                        const serverProjects = res.data?.projects || [];
+                                                        await db.projects.clear();
+                                                        for (const sp of serverProjects) {
+                                                            await db.projects.put(sp);
+                                                        }
+                                                        toast.success("Liste des projets synchronisée");
+                                                    } catch (err) {
+                                                        toast.error("Erreur de synchronisation");
+                                                    } finally {
+                                                        setIsProcessing(false);
                                                     }
-                                                }} aria-label="Supprimer projet" className="p-2 bg-rose-500/10 hover:bg-rose-500/20 rounded-xl text-rose-500 transition-colors"><Trash2 size={16} /></button>
-                                            )}
+                                                }}
+                                                className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 text-[10px] uppercase font-black tracking-widest text-white/50 hover:text-white rounded-xl transition-all flex items-center gap-2"
+                                            >
+                                                <RefreshCw size={14} className={isProcessing ? 'animate-spin' : ''} />
+                                                Synchroniser
+                                            </button>
+                                            <button 
+                                                onClick={async () => {
+                                                    const name = await showPrompt("Nom du nouveau projet :");
+                                                    if (name) await createProject(name);
+                                                }}
+                                                className="px-6 py-2 bg-indigo-600 hover:bg-indigo-500 shadow-lg shadow-indigo-500/10 text-[10px] uppercase font-black tracking-widest text-white rounded-xl transition-all"
+                                            >
+                                                + Nouveau Projet
+                                            </button>
                                         </div>
-                                     ))}
+                                    </div>
+                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                     {projects?.sort((a: any) => (a.id === activeProjectId ? -1 : 1)).map((p: any) => {
+                                        const isActive = p.id === activeProjectId;
+                                        const userRole = user?.role?.toUpperCase();
+                                        const userEmail = user?.email?.toLowerCase();
+                                        const canSwitch = ['ADMIN_PROQUELEC', 'DG_PROQUELEC', 'COMPTABLE', 'ADMIN'].includes(userRole || '') || 
+                                                         userEmail === 'admingem' || 
+                                                         userEmail?.includes('admin@proquelec.com');
+
+                                        return (
+                                        <button 
+                                            key={p.id} 
+                                            onClick={async () => {
+                                                if (isActive) return;
+                                                if (!canSwitch) {
+                                                    toast.error("Seuls l'Admin, le DG ou le Comptable peuvent changer d'espace de travail.");
+                                                    return;
+                                                }
+                                                const confirmed = await showConfirm('Changer de projet', `Voulez-vous basculer sur le projet "${p.name}" ?`);
+                                                if (confirmed) {
+                                                    setActiveProjectId(p.id);
+                                                    toast.success(`Direction le projet : ${p.name}`);
+                                                }
+                                            }}
+                                            className={`group relative flex flex-col text-left p-6 transition-all duration-300 rounded-[32px] border-2 ${
+                                                isActive 
+                                                ? 'bg-gradient-to-br from-indigo-600/20 to-purple-600/10 border-indigo-500 shadow-[0_0_30px_rgba(99,102,241,0.15)] scale-[1.02] ring-4 ring-indigo-500/10' 
+                                                : 'bg-white/5 border-white/5 hover:border-white/10 hover:bg-white/8 outline-none'
+                                            } ${!canSwitch && !isActive ? 'opacity-60 grayscale-[0.5]' : ''}`}
+                                        >
+                                            <div className="flex items-center justify-between w-full mb-4">
+                                                <div className="flex items-center gap-4">
+                                                    <div className={`p-3 rounded-2xl transition-transform group-hover:scale-110 ${isActive ? 'bg-indigo-500 shadow-lg shadow-indigo-500/40 text-white' : 'bg-white/5 text-slate-500'}`}>
+                                                        <Database size={20} />
+                                                    </div>
+                                                    <div>
+                                                        <div className="font-black text-white text-sm md:text-base uppercase tracking-tighter truncate max-w-[140px]">{p.name}</div>
+                                                        <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">{isActive ? 'Session Active' : 'Disponible'}</div>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div className="flex items-center gap-2">
+                                                    {isActive && (
+                                                        <div className="animate-pulse bg-indigo-500 text-[10px] font-black uppercase text-white px-3 py-1 rounded-full shadow-lg shadow-indigo-500/30">Actif</div>
+                                                    )}
+                                                    
+                                                    {canSwitch && (
+                                                        <button 
+                                                            onClick={async (e) => {
+                                                                e.preventDefault();
+                                                                e.stopPropagation();
+                                                                const newName = await showPrompt(`Nouveau nom pour "${p.name}" :`);
+                                                                if (newName && newName !== p.name) {
+                                                                    await updateProject({ name: newName }, p.id);
+                                                                    toast.success("Projet renommé");
+                                                                }
+                                                            }}
+                                                            className="p-2.5 bg-white/5 hover:bg-white/10 rounded-xl text-slate-400 hover:text-white transition-colors"
+                                                            title="Modifier le nom"
+                                                        >
+                                                            <Edit2 size={16} />
+                                                        </button>
+                                                    )}
+
+                                                    {canSwitch && !isActive && (
+                                                        <button 
+                                                            onClick={async (e) => {
+                                                                e.preventDefault();
+                                                                e.stopPropagation();
+                                                                const pwd = await showPrompt(`Confirmer suppression de "${p.name}" ? Tapez votre mot de passe :`);
+                                                                if (pwd) {
+                                                                    const res = await deleteProject(p.id, pwd);
+                                                                    if (res.success) toast.success("Projet supprimé");
+                                                                    else toast.error(res.error || "Erreur suppression");
+                                                                }
+                                                            }}
+                                                            className="p-2.5 bg-rose-500/10 hover:bg-rose-500/20 rounded-xl text-rose-500 transition-colors"
+                                                            title="Supprimer le projet"
+                                                        >
+                                                            <Trash2 size={16} />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            <div className="flex items-center gap-5 mt-auto pt-4 border-t border-white/5">
+                                                <div className="flex flex-col">
+                                                    <span className="text-[9px] text-slate-500 font-bold uppercase tracking-[0.2em]">Zones</span>
+                                                    <span className={`text-xs font-black ${isActive ? 'text-indigo-400' : 'text-white'}`}>
+                                                        {p._count?.zones || 0}
+                                                    </span>
+                                                </div>
+                                                <div className="flex flex-col border-l border-white/10 pl-5">
+                                                    <span className="text-[9px] text-slate-500 font-bold uppercase tracking-[0.2em]">ID Unique</span>
+                                                    <span className="text-[10px] text-white/30 font-mono tracking-tighter">
+                                                        {p.id.substring(0, 8).toUpperCase()}...
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </button>
+                                        );
+                                     })}
                                      </div>
                                 </div>
                             )}

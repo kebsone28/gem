@@ -1,4 +1,12 @@
-export type UserRole = 'ADMIN' | 'ADMIN_PROQUELEC' | 'DG_PROQUELEC' | 'CLIENT_LSE' | 'CHEF_EQUIPE' | 'CHEF_PROJET' | 'COMPTABLE' | 'DIRECTEUR';
+export type UserRole =
+  | 'ADMIN'
+  | 'ADMIN_PROQUELEC'
+  | 'DG_PROQUELEC'
+  | 'CLIENT_LSE'
+  | 'CHEF_EQUIPE'
+  | 'CHEF_PROJET'
+  | 'COMPTABLE'
+  | 'DIRECTEUR';
 
 export interface User {
   id: string;
@@ -23,14 +31,14 @@ export interface User {
 }
 
 export interface AuditLog {
-    id: string;
-    userId: string;
-    userName: string;
-    action: string;
-    module: string;
-    details: string;
-    timestamp: string;
-    severity: 'info' | 'warning' | 'critical';
+  id: string;
+  userId: string;
+  userName: string;
+  action: string;
+  module: string;
+  details: string;
+  timestamp: string;
+  severity: 'info' | 'warning' | 'critical';
 }
 
 export interface Household {
@@ -91,9 +99,10 @@ export interface Household {
     departement?: string;
     tel?: string;
   };
+  koboSubmissionId?: string;
   version: number;
   lastModified?: number; // Timestamp local de la dernière modif
-  source?: 'local' | 'kobo' | 'import'; 
+  source?: 'local' | 'kobo' | 'import';
   deletedAt?: Date | null;
 }
 

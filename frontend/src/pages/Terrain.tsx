@@ -8,7 +8,7 @@ const MapComponent = React.lazy(() => import('../components/terrain/MapComponent
 import type { Household } from '../utils/types';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DataHubModal } from '../components/terrain/DataHubModal';
-import { useProject } from '../hooks/useProject';
+import { useProject } from '../contexts/ProjectContext';
 import { useSync } from '../contexts/SyncContext';
 import { useLogistique } from '../hooks/useLogistique';
 import { useSyncListener } from '../hooks/useSyncListener';
@@ -18,7 +18,6 @@ import { GeofencingAlerts } from '../components/terrain/GeofencingAlerts';
 import { PhotoLightbox } from '../components/terrain/PhotoLightbox';
 import { MapDrawZonesPanel } from '../components/terrain/MapDrawZones';
 import { GeoJsonOverlayPanel } from '../components/terrain/GeoJsonOverlay';
-import { TeamTrackingPanel } from '../components/terrain/TeamTracking';
 import { GrappeSelectorPanel } from '../components/terrain/GrappeSelectorPanel';
 import { MapGrappeAllocationPanel } from '../components/terrain/MapGrappeAllocationPanel';
 import { MapRegionDownload } from '../components/terrain/MapRegionDownload';
@@ -501,7 +500,6 @@ const Terrain: React.FC = () => {
             )}
 
             {activePanel === 'layers' && <div className="z-[60]"><GeoJsonOverlayPanel /></div>}
-            {activePanel === 'tracking' && <div className="z-[60]"><TeamTrackingPanel isDarkMode /></div>}
             {activePanel === 'grappe' && (
                 <div className="z-[60]">
                     <GrappeSelectorPanel

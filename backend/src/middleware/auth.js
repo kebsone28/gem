@@ -23,10 +23,11 @@ export const authenticate = (req, res, next) => {
       req.user = decoded;
       
       // On lance le reste de la requête dans un "Context Wrapper"
-      // Cela permet à Prisma (via AsyncLocalStorage) de connaître l'organisation sans la passer d'argument en argument.
+      // Cela permet à Prisma (via AsyncLocalStorage) de connaître l'organisation et le projet sans la passer d'argument en argument.
       runWithContext({ 
         userId: decoded.id, 
         organizationId: decoded.organizationId,
+        projectId: req.headers['x-project-id'] || null,
         role: decoded.role
       }, () => {
         next();

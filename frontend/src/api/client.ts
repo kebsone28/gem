@@ -12,13 +12,20 @@ const apiClient = axios.create({
     withCredentials: true,
 });
 
-// Request Interceptor: Add Auth Token
+// Request Interceptor: Add Auth Token & Project Context
 apiClient.interceptors.request.use(
     (config) => {
         const token = safeStorage.getItem('access_token');
+        const activeProjectId = safeStorage.getItem('active_project_id');
+
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
         }
+
+        if (activeProjectId) {
+            config.headers['X-Project-Id'] = activeProjectId;
+        }
+
         return config;
     },
     (error) => Promise.reject(error)

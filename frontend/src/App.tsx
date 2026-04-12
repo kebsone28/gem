@@ -8,6 +8,7 @@ import SessionWarningToast from './components/SessionWarningToast';
 import OfflineBanner from './components/OfflineBanner';
 import PWAPrompt from './components/PWAPrompt';
 import SyncNotification from './components/SyncNotification';
+import ImpersonationBanner from './components/ImpersonationBanner';
 import { Toaster } from 'react-hot-toast';
 import { PERMISSIONS, hasPermission } from './utils/permissions';
 
@@ -68,6 +69,7 @@ const PermissionRoute = ({
 function App() {
     return (
         <Router>
+            <ImpersonationBanner />
             {/* Dexie → syncStore bridge (must live inside React tree for useLiveQuery) */}
             <BackgroundServices />
 

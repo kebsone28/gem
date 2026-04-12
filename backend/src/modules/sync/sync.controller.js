@@ -1,3 +1,4 @@
+import bcrypt from 'bcryptjs';
 import prisma from '../../core/utils/prisma.js';
 import { pushSchema } from './sync.validation.js';
 import { socketService } from '../../services/socket.service.js';
@@ -312,8 +313,25 @@ export const pushChanges = async (req, res) => {
                     // Use the potentially updated zoneId
                     const finalZoneId = zoneExists.id;
 
+                    // SECURITY MERGE: If this is a "new" household ID from client, but N° ordre already exists on server, merge them!
+                    let finalId = id;
+                    if (!serverH && numeroordre) {
+                        const duplicate = await prisma.household.findFirst({
+                            where: { 
+                                organizationId, 
+                                numeroordre: { equals: numeroordre.trim().toUpperCase(), mode: 'insensitive' },
+                                deletedAt: null
+                            }
+                        });
+                        if (duplicate) {
+                            console.log(`[SYNC-PUSH] 🛡️ AUTO-MERGE: Client ID ${id} linked to existing Server ID ${duplicate.id} (N° ${numeroordre})`);
+                            finalId = duplicate.id;
+                            serverH = duplicate; 
+                        }
+                    }
+
                     await prisma.household.upsert({
-                        where: { id },
+                        where: { id: finalId },
                         update: {
                             zoneId: finalZoneId,
                             status: status || serverH?.status || 'planned',
@@ -336,7 +354,7 @@ export const pushChanges = async (req, res) => {
                             updatedAt: new Date()
                         },
                         create: {
-                            id,
+                            id: finalId,
                             zoneId: finalZoneId,
                             organizationId,
                             status: status || 'planned',
@@ -589,7 +607,7 @@ export const syncKobo = async (req, res) => {
         const force = req.body.force === true;
         const lastSyncDate = force ? new Date(0) : null; // Date(0) = 1970, force tout reprendre
 
-        const results = await syncKoboToDatabase(organizationId, defaultZoneId, lastSyncDate);
+        const results = await syncKoboToDatabase(organizationId, defaultZoneId, lastSyncDate, targetProject.id);
 
         // Sync Log
         try {
@@ -626,6 +644,27 @@ export const clearEntityData = async (req, res) => {
     try {
         const { organizationId } = req.user;
         const { entity } = req.params;
+        const { password } = req.body;
+
+        // 1. Require password in request body
+        if (!password) {
+            return res.status(400).json({ error: 'Mot de passe requis pour cette action sensible.' });
+        }
+
+        // 2. Fetch current user with their passwordHash
+        const currentUser = await prisma.user.findUnique({
+            where: { id: req.user.id }
+        });
+
+        if (!currentUser) {
+            return res.status(403).json({ error: 'Utilisateur introuvable.' });
+        }
+
+        // 3. Verify password against DB hash
+        const isPasswordValid = await bcrypt.compare(password, currentUser.passwordHash);
+        if (!isPasswordValid) {
+            return res.status(403).json({ error: 'Mot de passe incorrect. Action refusée.' });
+        }
 
         let result;
         if (entity === 'households') {
@@ -692,15 +731,22 @@ export const bulkImportHouseholds = async (req, res) => {
             }
         }
 
-        // 2. Préparation des données pour Prisma createMany
+        // 2. Préparation des données pour l'insertion
         const dataToInsert = households.map(h => {
-            const lat = (h.location?.coordinates?.[1] !== undefined) ? parseFloat(h.location.coordinates[1]) : null;
-            const lon = (h.location?.coordinates?.[0] !== undefined) ? parseFloat(h.location.coordinates[0]) : null;
+            const lat = (h.location?.coordinates?.[1] !== undefined) ? parseFloat(h.location.coordinates[1]) : (h.latitude ? parseFloat(h.latitude) : null);
+            const lon = (h.location?.coordinates?.[0] !== undefined) ? parseFloat(h.location.coordinates[0]) : (h.longitude ? parseFloat(h.longitude) : null);
+
+            // Important: Normalize numeroordre here too for the import
+            let numeroordre = h.numeroordre || h.Numero_ordre || h.id;
+            if (numeroordre && String(numeroordre).endsWith('.0')) {
+                numeroordre = String(numeroordre).substring(0, String(numeroordre).length - 2);
+            }
 
             return {
                 id: String(h.id),
                 organizationId,
                 zoneId: zoneId,
+                numeroordre: numeroordre ? String(numeroordre).toUpperCase().trim() : null,
                 status: h.status || 'planned',
                 owner: h.owner || {},
                 location: h.location || {},
@@ -716,32 +762,53 @@ export const bulkImportHouseholds = async (req, res) => {
             };
         });
 
-        // 3. Insertion Massive (Postgres supporte skipDuplicates)
-        const result = await prisma.household.createMany({
-            data: dataToInsert,
-            skipDuplicates: true
-        });
+        // 3. Insertion Massive avec gestion d'erreur par lot
+        // Note: createMany skipDuplicates ne gère QUE la clé primaire sur Postgres
+        // On va essayer d'insérer, si ça échoue on bascule sur un mode plus lent mais sûr (un par un ou upsert)
+        let importedCount = 0;
+        try {
+            const result = await prisma.household.createMany({
+                data: dataToInsert,
+                skipDuplicates: true
+            });
+            importedCount = result.count;
+        } catch (bulkError) {
+            console.warn('[SYNC-BULK] createMany failed (likely Unique Constraint). Falling back to safe sequential upsert.');
+            // Fallback: Upsert one by one (slower but ignores duplicates on numeroordre)
+            for (const item of dataToInsert) {
+                try {
+                    await prisma.household.upsert({
+                        where: { id: item.id },
+                        create: item,
+                        update: { ...item, updatedAt: new Date() }
+                    });
+                    importedCount++;
+                } catch (e) {
+                    console.error(`[SYNC-BULK-ITEM-ERROR] Failed to import household ${item.id}:`, e.message);
+                }
+            }
+        }
 
-        // 4. Mise à jour PostGIS (Spatial) pour tous les points d'un coup
+        // 4. Mise à jour PostGIS (Spatial)
         await prisma.$executeRaw`
             UPDATE "Household"
             SET location_gis = ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)
             WHERE "organizationId" = ${organizationId} 
-            AND location_gis IS NULL 
+            AND (location_gis IS NULL OR latitude != ST_Y(location_gis::geometry))
             AND latitude IS NOT NULL 
             AND longitude IS NOT NULL
         `;
 
-        console.log(`[SYNC-BULK] Success: ${result.count} households imported.`);
+        console.log(`[SYNC-BULK] Success: ${importedCount} households processed.`);
         
         res.json({
             success: true,
-            importedCount: result.count,
-            message: `${result.count} ménages importés directement sur le serveur.`
+            importedCount,
+            message: `${importedCount} ménages traités (import/update) sur le serveur.`
         });
 
     } catch (error) {
-        console.error('[SYNC-BULK-ERROR]:', error);
+        console.error('[SYNC-BULK-FATAL]:', error);
         res.status(500).json({ error: 'Bulk import failed', details: error.message });
     }
 };

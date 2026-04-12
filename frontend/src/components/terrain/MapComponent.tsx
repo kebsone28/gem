@@ -5,7 +5,7 @@
  * Ne contient que le composant MapLibreVectorMap.
  */
 
-import React, { useState } from 'react';
+import React from 'react';
 import type { Household } from '../../utils/types';
 import { getHouseholdDerivedStatus } from '../../utils/statusUtils';
 import MapLibreVectorMap from './MapLibreVectorMap';

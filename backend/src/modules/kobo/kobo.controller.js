@@ -8,8 +8,25 @@
  *   GET  /api//status — Return latest Kobo sync metadata
  */
 
-import { syncKoboToDatabase } from '../../services/kobo.service.js';
+import { syncKoboToDatabase, fetchKoboSubmissions } from '../../services/kobo.service.js';
 import prisma from '../../core/utils/prisma.js';
+
+/**
+ * POST /api/kobo/test-connection
+ * Tests if the provided Kobo credentials are valid.
+ */
+export const testKoboConnection = async (req, res) => {
+    const { token, assetUid } = req.body;
+    try {
+        // Try fetching with a limit of 1 to minimize data transfer
+        // We use fetchKoboSubmissions which now takes token and assetUid
+        await fetchKoboSubmissions(token, assetUid, null);
+        res.json({ success: true, message: 'Connexion KoBo établie avec succès !' });
+    } catch (e) {
+        console.error('[KOBO-TEST] Connection failed:', e.message);
+        res.status(400).json({ success: false, error: e.message });
+    }
+};
 
 // In-memory cache of last sync time per organization (reset on server restart)
 const lastKoboSyncMap = {};
@@ -80,9 +97,9 @@ export const triggerKoboSync = async (req, res) => {
 
         const since = lastKoboSyncMap[organizationId] || req.body.since || null;
 
-        console.log(`[KOBO] 🔄 Starting sync for org ${organizationId}, since: ${since || 'beginning'}`);
-
-        const result = await syncKoboToDatabase(organizationId, defaultZoneId, since);
+        console.log(`[KOBO] 🔄 Starting sync for org ${organizationId}, project ${targetProject?.id || 'default'}, since: ${since || 'beginning'}`);
+        
+        const result = await syncKoboToDatabase(organizationId, defaultZoneId, since, targetProject?.id);
 
         // Update last sync timestamp
         lastKoboSyncMap[organizationId] = new Date().toISOString();

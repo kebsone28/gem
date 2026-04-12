@@ -120,10 +120,17 @@ export const login = async (req, res) => {
         if (!user) {
             console.log('❌ User not found for email:', email);
         } else {
-            // Fusion des permissions (Rôle + Overrides)
+            // Gestion des permissions (Audit REINFORCEMENT: Override total)
             const rolePermissions = user.role?.permissions.map(p => p.permission.key) || [];
             const userOverrides = Array.isArray(user.permissions) ? user.permissions : [];
-            user.mergedPermissions = [...new Set([...rolePermissions, ...userOverrides])];
+            
+            if (userOverrides.length > 0) {
+                // Si permissions custom, on ignore les permissions du rôle (Override Total)
+                user.mergedPermissions = userOverrides;
+            } else {
+                // Sinon, on prend les permissions standards du rôle
+                user.mergedPermissions = rolePermissions;
+            }
             
             console.log('✅ User found in DB. Role:', user.role?.name || user.roleLegacy);
             const isMatch = await bcrypt.compare(password, user.passwordHash);
@@ -256,10 +263,10 @@ export const refreshToken = async (req, res) => {
 
         if (!user) return res.status(401).json({ error: 'User not found' });
 
-        // Fusion des permissions pour le refresh
+        // Permissions avec politique d'Override Total pour le refresh
         const rolePermissions = user.role?.permissions.map(p => p.permission.key) || [];
         const userOverrides = Array.isArray(user.permissions) ? user.permissions : [];
-        const mergedPermissions = [...new Set([...rolePermissions, ...userOverrides])];
+        const mergedPermissions = userOverrides.length > 0 ? userOverrides : rolePermissions;
 
         const tokenPayload = {
             id: user.id,
@@ -496,5 +503,201 @@ export const verify2FA = async (req, res) => {
             error: 'Erreur lors de la vérification 2FA',
             message: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
+    }
+};
+
+// @desc    Start impersonating another user
+// @route   POST /api/auth/impersonate
+export const impersonateUser = async (req, res) => {
+    try {
+        const { targetUserId } = req.body;
+        const adminUser = req.user;
+
+        // 🛡️ [REINFORCEMENT] Bloquer Nested Impersonation
+        if (adminUser.isSimulation) {
+            return res.status(403).json({ error: "Impossible de lancer une simulation depuis une session déjà simulée." });
+        }
+
+        // 1. Verrou de sécurité : Seul un ADMIN_PROQUELEC peut simuler
+        if (adminUser.role !== "ADMIN_PROQUELEC" && adminUser.email !== "admingem") {
+            return res.status(403).json({ error: "Accès interdit : privilèges insuffisants." });
+        }
+
+        // 2. Trouver l'utilisateur cible et vérifier le multi-tenant
+        const targetUser = await prisma.user.findUnique({
+            where: { id: targetUserId },
+            include: { 
+                organization: true,
+                role: {
+                    include: {
+                        permissions: { include: { permission: true } }
+                    }
+                }
+            }
+        });
+
+        if (!targetUser) return res.status(404).json({ error: "Utilisateur cible non trouvé" });
+
+        // 🛡️ [REINFORCEMENT] Politique sur rôles sensibles : Interdiction de simuler Admin/DG
+        const targetRole = targetUser.role?.name || targetUser.roleLegacy;
+        if ((targetRole === "ADMIN_PROQUELEC" || targetRole === "DG_PROQUELEC") && adminUser.email !== "admingem") {
+            return res.status(403).json({ error: "Sécurité : Impossible de simuler un compte de Direction ou d'Administration." });
+        }
+
+        // Sécurité Multi-tenant : on ne simule pas hors de son organisation
+        if (targetUser.organizationId !== adminUser.organizationId && adminUser.email !== "admingem") {
+            return res.status(403).json({ error: "Interdit de simuler un utilisateur d'une autre organisation." });
+        }
+
+        // 3. Gestion des permissions (Audit REINFORCEMENT: Override total)
+        const userOverrides = Array.isArray(targetUser.permissions) ? targetUser.permissions : [];
+        let finalPermissions = [];
+        
+        if (userOverrides.length > 0) {
+            // Si permissions custom, on ignore les permissions du rôle (Override Total)
+            finalPermissions = userOverrides;
+        } else {
+            // Sinon, on prend les permissions standards du rôle
+            finalPermissions = targetUser.role?.permissions.map(p => p.permission.key) || [];
+        }
+
+        // 4. Audit Log - Traçabilité
+        await tracerAction({
+            userId: adminUser.id,
+            organizationId: adminUser.organizationId,
+            action: "DEBUT_IMPERSONATION",
+            resource: "Utilisateur",
+            resourceId: targetUserId,
+            details: { simulatedUser: targetUser.email, reason: req.body.reason || "Support" },
+            req
+        });
+
+        // 5. Générer un JWT de simulation (Expiration courte 30m intégrée dans jwt.js)
+        const tokenPayload = {
+            id: targetUser.id,
+            email: targetUser.email,
+            organizationId: targetUser.organizationId,
+            role: targetRole,
+            permissions: finalPermissions
+        };
+
+        const { accessToken } = generateTokens(tokenPayload, adminUser);
+
+        res.json({
+            message: `Simulation active : ${targetUser.name}`,
+            user: {
+                id: targetUser.id,
+                email: targetUser.email,
+                role: targetRole,
+                name: targetUser.name,
+                permissions: finalPermissions,
+                organization: targetUser.organization?.name,
+                impersonatedBy: adminUser.id
+            },
+            accessToken
+        });
+
+    } catch (error) {
+        console.error("Impersonation error:", error);
+        res.status(500).json({ error: "Erreur lors de la tentative d'impersonation" });
+    }
+};
+
+// @desc    Stop impersonating and return to admin
+// @route   POST /api/auth/stop-impersonation
+export const stopImpersonation = async (req, res) => {
+    try {
+        const currentUser = req.user;
+
+        // 🔑 Vérifier que nous sommes bien en mode simulation
+        if (!currentUser.isSimulation || !currentUser.impersonatorId) {
+            return res.status(400).json({ error: "Aucune simulation active à arrêter." });
+        }
+
+        // 🔎 Retrouver l'admin original
+        const adminUser = await prisma.user.findUnique({
+            where: { id: currentUser.impersonatorId },
+            include: { 
+                organization: true,
+                role: {
+                    include: {
+                        permissions: { include: { permission: true } }
+                    }
+                }
+            }
+        });
+
+        if (!adminUser) return res.status(404).json({ error: "Administrateur original non retrouvé." });
+
+        // 📝 Audit Log : FIN d'impersonation
+        await tracerAction({
+            userId: adminUser.id,
+            organizationId: adminUser.organizationId,
+            action: "FIN_IMPERSONATION",
+            resource: "Utilisateur",
+            resourceId: currentUser.id,
+            details: { stoppedSimulationFor: currentUser.email },
+            req
+        });
+
+        // 🛠️ Préparation des droits admin pour le nouveau token
+        const rolePermissions = adminUser.role?.permissions.map(p => p.permission.key) || [];
+        const userOverrides = Array.isArray(adminUser.permissions) ? adminUser.permissions : [];
+        const adminPermissions = userOverrides.length > 0 ? userOverrides : rolePermissions;
+
+        const tokenPayload = {
+            id: adminUser.id,
+            email: adminUser.email,
+            organizationId: adminUser.organizationId,
+            role: adminUser.role?.name || adminUser.roleLegacy,
+            permissions: adminPermissions
+        };
+
+        // 🆕 Régénérer un token Admin neuf (Pas d'impersonatorId ici)
+        const { accessToken } = generateTokens(tokenPayload);
+
+        res.json({
+            message: "Retour à l'identité administrateur réussi",
+            user: {
+                id: adminUser.id,
+                email: adminUser.email,
+                role: adminUser.role?.name || adminUser.roleLegacy,
+                name: adminUser.name,
+                permissions: adminPermissions,
+                organization: adminUser.organization?.name
+            },
+            accessToken
+        });
+
+    } catch (error) {
+        console.error("Stop impersonation error:", error);
+        res.status(500).json({ error: "Erreur lors de l'arrêt de la simulation" });
+    }
+};
+
+// @desc    Verify user password (for sensitive actions)
+// @route   POST /api/auth/verify-password
+export const verifyPassword = async (req, res) => {
+    try {
+        const { password } = req.body;
+        const userId = req.user.id;
+
+        if (!password) {
+            return res.status(400).json({ error: 'Mot de passe requis' });
+        }
+
+        const user = await prisma.user.findUnique({ where: { id: userId } });
+        if (!user) return res.status(404).json({ error: 'Utilisateur non trouvé' });
+
+        const isMatch = await bcrypt.compare(password, user.passwordHash);
+        
+        if (isMatch) {
+            res.json({ success: true, message: 'Mot de passe vérifié' });
+        } else {
+            res.status(401).json({ success: false, error: 'Mot de passe incorrect' });
+        }
+    } catch (error) {
+        console.error('Verify password error:', error);
+        res.status(500).json({ error: 'Erreur lors de la vérification' });
     }
 };

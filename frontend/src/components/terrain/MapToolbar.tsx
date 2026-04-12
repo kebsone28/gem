@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
 import {
-    Plus,
-    Minus,
     Maximize2,
     Crosshair,
     Flame,
@@ -13,7 +11,6 @@ import {
     Map as MapIcon,
     Truck,
     PenLine,
-    Users,
     CloudDownload,
     Loader2,
     Sun,
@@ -22,6 +19,7 @@ import {
     Info
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import toast from 'react-hot-toast';
 import { useTerrainUIStore } from '../../store/terrainUIStore';
 
 interface ToolbarButtonProps {
@@ -56,8 +54,12 @@ export const MapToolbar: React.FC<MapToolbarProps> = ({ onRecenter }) => {
 
     // Zustand Selectors
     const setMapCommand = useTerrainUIStore(s => s.setMapCommand);
+    const mapCommand = useTerrainUIStore(s => s.mapCommand);
     const activePanel = useTerrainUIStore(s => s.activePanel);
     const setPanel = useTerrainUIStore(s => s.setPanel);
+
+    const currentCenter = mapCommand?.center || [-14.65, 14.45];
+    const currentZoom = mapCommand?.zoom ?? 7;
 
     const showHeatmap = useTerrainUIStore(s => s.showHeatmap);
     const toggleHeatmap = useTerrainUIStore(s => s.toggleHeatmap);
@@ -89,10 +91,18 @@ export const MapToolbar: React.FC<MapToolbarProps> = ({ onRecenter }) => {
 
     // Navigation Handlers
     const handleZoomIn = () => {
-        setMapCommand({ center: [0, 0], zoom: -1, timestamp: Date.now() });
+        setMapCommand({
+            center: currentCenter,
+            zoom: Math.min(currentZoom + 1, 22),
+            timestamp: Date.now()
+        });
     };
     const handleZoomOut = () => {
-        setMapCommand({ center: [0, 0], zoom: -2, timestamp: Date.now() });
+        setMapCommand({
+            center: currentCenter,
+            zoom: Math.max(currentZoom - 1, 1),
+            timestamp: Date.now()
+        });
     };
     const handleRecenter = () => {
         if (onRecenter) {
@@ -102,11 +112,29 @@ export const MapToolbar: React.FC<MapToolbarProps> = ({ onRecenter }) => {
         }
     };
     const handleLocate = () => {
-        if ("geolocation" in navigator) {
-            navigator.geolocation.getCurrentPosition((pos) => {
-                setMapCommand({ center: [pos.coords.longitude, pos.coords.latitude], zoom: 16, timestamp: Date.now() });
-            });
+        if (!('geolocation' in navigator)) {
+            toast.error('Géolocalisation non supportée par ce navigateur.');
+            return;
         }
+
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                setMapCommand({
+                    center: [pos.coords.longitude, pos.coords.latitude],
+                    zoom: 16,
+                    timestamp: Date.now()
+                });
+            },
+            (err) => {
+                const message = err.code === 1
+                    ? 'Permission refusée pour la géolocalisation.'
+                    : err.code === 2
+                        ? 'Position introuvable.'
+                        : 'Impossible d’obtenir votre position.';
+                toast.error(message);
+            },
+            { enableHighAccuracy: true, timeout: 10000 }
+        );
     };
 
     return (
@@ -171,7 +199,6 @@ export const MapToolbar: React.FC<MapToolbarProps> = ({ onRecenter }) => {
                 <ToolbarButton icon={<MousePointer2 />} title="Sélection Lasso" onClick={toggleSelecting} active={isSelecting} />
                 <ToolbarButton icon={<Truck />} title="Tournée Camion" onClick={() => setPanel('routing')} active={activePanel === 'routing'} />
                 <ToolbarButton icon={<PenLine />} title="Dessiner Zones" onClick={() => setPanel('draw')} active={activePanel === 'draw'} />
-                <ToolbarButton icon={<Users />} title="Suivi Équipes" onClick={() => setPanel('tracking')} active={activePanel === 'tracking'} />
                 <ToolbarButton icon={<Database />} title="Analytique" onClick={toggleDatabaseStats} active={showDatabaseStats} />
             </div>
 

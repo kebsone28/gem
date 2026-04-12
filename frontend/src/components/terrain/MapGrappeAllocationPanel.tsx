@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { X, Users, Truck, Zap, Hammer, ChevronRight, Save, Wand2 } from 'lucide-react';
 import { useLogistique } from '../../hooks/useLogistique';
 import toast from 'react-hot-toast';
+import apiClient from '../../api/client';
 
 interface MapGrappeAllocationPanelProps {
     onClose: () => void;
@@ -11,7 +12,7 @@ interface MapGrappeAllocationPanelProps {
 }
 
 export const MapGrappeAllocationPanel: React.FC<MapGrappeAllocationPanelProps> = ({ onClose, activeGrappeId, households }) => {
-    const { teams, grappesConfig } = useLogistique();
+    const { teams, grappesConfig, refreshTeams } = useLogistique();
     
     // Attempt to locate the exact Grappe from Backend config first, then Auto-generator
     const targetGrappe = useMemo(() => {
@@ -48,14 +49,28 @@ export const MapGrappeAllocationPanel: React.FC<MapGrappeAllocationPanelProps> =
             return;
         }
 
-        // TODO: In Phase 2/3, we will hook this up to the Backend `project_config.service` or a new `team_allocation.service`
-        // For now, mock the success
+        if (!activeGrappeId) {
+            toast.error("Aucune grappe sélectionnée pour l'affectation.");
+            return;
+        }
+
         const loading = toast.loading("Affectation des équipes sur le serveur...");
-        setTimeout(() => {
+        try {
+            await Promise.all(
+                Object.values(selectedTeams).map((teamId) =>
+                    apiClient.post(`/teams/${teamId}/assign`, { grappeId: activeGrappeId })
+                )
+            );
+
+            await refreshTeams();
             toast.dismiss(loading);
-            toast.success("Équipes affectées avec succès ! synchronisation en cours...");
+            toast.success("Équipes affectées avec succès !");
             onClose();
-        }, 1500);
+        } catch (error: any) {
+            toast.dismiss(loading);
+            const message = error?.response?.data?.error || error?.message || 'Erreur lors de l’affectation des équipes.';
+            toast.error(message);
+        }
     };
 
     const handleAutoAllocate = () => {

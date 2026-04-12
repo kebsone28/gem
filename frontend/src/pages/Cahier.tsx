@@ -19,7 +19,7 @@ import {
     FileText
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { useProject } from '../hooks/useProject';
+import { useProject } from '../contexts/ProjectContext';
 import { useTeams } from '../hooks/useTeams';
 import { exportCahiersToWord } from '../utils/exportWord';
 import * as safeStorage from '../utils/safeStorage';

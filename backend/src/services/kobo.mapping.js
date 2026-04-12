@@ -12,23 +12,32 @@
  * @returns {string|null} The numero ordre or null if not found
  */
 export function extractNumeroOrdre(row) {
+    // Debug: Voir la ligne brute pour identifier les nouveaux champs Kobo
+    // console.log('[KOBO-MAPPING-DEBUG] Processing row ID:', row._id || 'unknown');
+    
     // Try multiple field names (Kobo flexibility)
-    const numeroOrdre =
-        row['Numero_ordre'] ||       // Kobo actual form field
-        row['Numero ordre'] ||        // Alternative spelling
-        row['numero_ordre'] ||        // Local CSV format
-        row['numero'] ||              // Short form
-        row['id_menage'] ||           // Internal ID
-        row['_id'] ||                 // Fallback to Kobo submission ID
+    let val =
+        row['Numero_ordre'] ||       
+        row['Numero ordre'] ||        
+        row['numero_ordre'] ||        
+        row['ID_MENAGE'] ||
+        row['id_menage'] ||
+        row['numero'] ||              
+        row['_id'] ||                 
         null;
 
-    if (!numeroOrdre) {
-        return null;
-    }
+    if (val === null || val === undefined) return null;
 
-    // Clean and validate: must be numeric or alphanumeric string
-    const cleaned = String(numeroOrdre).trim();
-    return /^[A-Z0-9-]+$/i.test(cleaned) ? cleaned : null;
+    // Clean and validate
+    let cleaned = String(val).trim();
+    
+    // On garde le numéro EXACT de Kobo (plus de tronquage à 4 chiffres)
+    // Seul le ".0" technique d'Excel reste supprimé s'il existe.
+    if (cleaned.endsWith('.0')) {
+        cleaned = cleaned.substring(0, cleaned.length - 2);
+    }
+    
+    return /^[A-Z0-9.-]+$/i.test(cleaned) ? cleaned : null;
 }
 
 /**
@@ -40,64 +49,44 @@ export function extractCoordinates(row) {
     let latitude = null;
     let longitude = null;
 
-    // PRIORITY 1: Kobo actual submitted form structure
-    // TYPE_DE_VISITE/latitude_key and TYPE_DE_VISITE/longitude_key
-    const koboLat = row['TYPE_DE_VISITE/latitude_key'] || row['latitude_key'] || row['TYPE_DE_VISITE/latitude'];
-    const koboLon = row['TYPE_DE_VISITE/longitude_key'] || row['longitude_key'] || row['TYPE_DE_VISITE/longitude'];
+    // Helper to find a key by partial name (case insensitive)
+    const findValue = (regex) => {
+        const key = Object.keys(row).find(k => regex.test(k));
+        return key ? row[key] : null;
+    };
 
-    if (koboLat != null && koboLon != null) {
-        latitude = parseFloat(koboLat);
-        longitude = parseFloat(koboLon);
-    }
-
-    // PRIORITY 2: Alternative Kobo field names (for legacy or different forms)
-    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-        const alt_lat = row['_GPS du Ménage_latitude'] || row['Latitude'] || row['latitude'] || row['latitude_key'];
-        const alt_lon = row['_GPS du Ménage_longitude'] || row['Longitude'] || row['longitude'] || row['longitude_key'];
-
-        if (alt_lat && alt_lon) {
-            latitude = parseFloat(alt_lat);
-            longitude = parseFloat(alt_lon);
+    // PRIORITY 1: Kobo surveyor GPS (Geopoint field identified: LOCALISATION_CLIENT)
+    const geopointStr = row['LOCALISATION_CLIENT'] || row['TYPE_DE_VISITE/LOCALISATION_CLIENT'] || findValue(/gps.*menage/i);
+    if (geopointStr && typeof geopointStr === 'string' && geopointStr.includes(' ')) {
+        const parts = geopointStr.split(' ');
+        if (parts.length >= 2) {
+            latitude = parseFloat(parts[0]);
+            longitude = parseFloat(parts[1]);
         }
     }
 
-    // PRIORITY 3: Kobo native Geopoint field (often a space-separated string like 'lat lon alt acc')
-    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-        const geopointStr = row['LOCALISATION_CLIENT'] || row['TYPE_DE_VISITE/LOCALISATION_CLIENT'] || row['gps'];
-        if (geopointStr && typeof geopointStr === 'string') {
-            const parts = geopointStr.split(' ');
-            if (parts.length >= 2) {
-                latitude = parseFloat(parts[0]);
-                longitude = parseFloat(parts[1]);
-            }
+    // PRIORITY 2: surveyor "confirmed" columns (latitude_key/longitude_key or preciser_gps)
+    if (!latitude || !longitude) {
+        const preciseLat = row['latitude_key'] || row['preciser_gps/latitude'] || findValue(/preciser_gps.*latitude/i);
+        const preciseLon = row['longitude_key'] || row['preciser_gps/longitude'] || findValue(/preciser_gps.*longitude/i);
+        if (preciseLat && preciseLon) {
+            latitude = parseFloat(preciseLat);
+            longitude = parseFloat(preciseLon);
         }
     }
 
-    // PRIORITY 4: Kobo _geolocation array [lat, lon]
+    // PRIORITY 3: Kobo native _geolocation
     if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
         const koboGeo = row['_geolocation'];
-        // Note: Kobo _geolocation is usually [latitude, longitude]
         if (Array.isArray(koboGeo) && koboGeo.length >= 2 && koboGeo[0] !== null) {
             latitude = parseFloat(koboGeo[0]);
             longitude = parseFloat(koboGeo[1]);
         }
     }
 
-    // PRIORITY 4: Local CSV format: latitude / longitude (comma as decimal separator)
-    if (!latitude || !longitude) {
-        const localLat = row['latitude'];
-        const localLon = row['longitude'];
-
-        if (localLat && localLon) {
-            // Handle both . and , as decimal separator
-            latitude = parseFloat(String(localLat).replace(',', '.'));
-            longitude = parseFloat(String(localLon).replace(',', '.'));
-        }
-    }
-
     return {
-        latitude: Number.isFinite(latitude) ? latitude : null,
-        longitude: Number.isFinite(longitude) ? longitude : null
+        latitude: (Number.isFinite(latitude) && latitude !== 0) ? latitude : null,
+        longitude: (Number.isFinite(longitude) && longitude !== 0) ? longitude : null
     };
 }
 
@@ -107,20 +96,29 @@ export function extractCoordinates(row) {
  * @returns {object} { name, phone }
  */
 export function extractOwner(row) {
+    // Helper to find a key by partial name (case insensitive)
+    const findValue = (regex) => {
+        const key = Object.keys(row).find(k => regex.test(k));
+        return key ? row[key] : null;
+    };
+
     const name =
-        row['TYPE_DE_VISITE/nom_key'] ||    // Kobo actual form field
-        row['Prénom et Nom'] ||             // Alternative Kobo field
-        row['nom_prenom'] ||                // Local CSV alternative
-        row['chef_menage'] ||               // Local CSV alternative
-        row['name'] ||                      // Generic fallback
-        'Unknown';
+        row['nom_key'] ||                   
+        row['TYPE_DE_VISITE/nom_key'] ||    
+        row['Prénom et Nom'] ||             
+        row['nom_prenom'] ||
+        findValue(/nom.*key/i) ||
+        findValue(/prenom.*nom/i) ||
+        row['name'] ||                      
+        'Ménage Inconnu';
 
     const phone =
-        row['TYPE_DE_VISITE/telephone_key'] ||  // Kobo actual form field
-        row['Telephone'] ||                     // Alternative Kobo field
-        row['telephone'] ||                     // Local CSV
-        row['phonenumber'] ||                   // Alternative
-        row['phone'] ||                         // Generic
+        row['telephone_key'] ||                 
+        row['TYPE_DE_VISITE/telephone_key'] ||  
+        row['Telephone'] ||                     
+        row['telephone'] ||
+        findValue(/tel.*key/i) ||
+        findValue(/phone.*key/i) ||
         '';
 
     return {
@@ -135,11 +133,14 @@ export function extractOwner(row) {
  * @returns {object} { region, departement, commune, village }
  */
 export function extractRegionalInfo(row) {
+    // Note: Village column is verified missing in XLS, so we return empty/undefined
+    const region = row['region_key'] || row['TYPE_DE_VISITE/region_key'] || row['Region'] || '';
+    
     return {
-        region: String(row['TYPE_DE_VISITE/region_key'] || row['Region'] || row['region'] || '').trim(),
+        region: String(region).trim(),
         departement: String(row['departement'] || row['dept'] || '').trim(),
         commune: String(row['commune'] || '').trim(),
-        village: String(row['village'] || row['localite'] || '').trim()
+        village: '' // Missing in Kobo
     };
 }
 
@@ -149,78 +150,29 @@ export function extractRegionalInfo(row) {
  * @returns {string} Installation status
  */
 export function extractStatus(row) {
-    // PRIORITY 1: Check for "Situation du Ménage" field first (eligibility status)
-    // This field is often nested in a Kobo group like "group_wu8kv54/Situation_du_M_nage"
-    let situationDuMenage = null;
-
-    // Try exact Kobo field name first
-    situationDuMenage = row['group_wu8kv54/Situation_du_M_nage'];
-
-    // Alternative field names
-    if (!situationDuMenage) {
-        situationDuMenage =
-            row['Situation du Ménage'] ||
-            row['Situation_du_Menage'] ||
-            row['situation_menage'] ||
-            row['Eligibilité'] ||
-            row['eligibilite'] ||
-            null;
+    // Check for "Situation du Ménage" first (eligibility)
+    const sit = row['group_wu8kv54/Situation_du_M_nage'] || row['Situation_du_M_nage'] || row['Situation du Ménage'];
+    if (sit) {
+        const str = String(sit).toLowerCase();
+        if (str.includes('non_eligible') || str.includes('non éligible')) return 'Ménage non éligible';
     }
 
-    // If household is explicitly marked as ineligible, return that status
-    if (situationDuMenage) {
-        const situationStr = String(situationDuMenage).toLowerCase().trim();
-        if (situationStr.includes('non_eligible') ||
-            situationStr.includes('noneeligible') ||
-            situationStr.includes('non éligible') ||
-            situationStr.includes('ineligible')) {
-            return 'Ménage non éligible';
-        }
-        // If there's an explicit eligibility status, use it
-        if (situationStr !== '' && situationStr !== 'null') {
-            return String(situationDuMenage).trim();
-        }
-    }
+    // Check for "justificatif" (desistement)
+    const just = row['group_wu8kv54/justificatif'] || row['justificatif'];
+    if (just && String(just).toLowerCase().includes('desistement')) return 'Ménage désisté';
 
-    // PRIORITY 2: Check for "justificatif" field (like "desistement_du_menage")
-    const justificatif = row['group_wu8kv54/justificatif'];
-    if (justificatif) {
-        const justStr = String(justificatif).toLowerCase().trim();
-        if (justStr === 'desistement_du_menage' || justStr.includes('desistement')) {
-            return 'Ménage désisté';
-        }
-        // Other justificatif values could map to different statuses
-        if (justStr !== '' && justStr !== 'null') {
-            return `Justificatif: ${String(justificatif).trim()}`;
-        }
-    }
+    // Progressive workflow based on exact XLS field names
+    const isControlOk = row['validation_controleur_final'] === 'true';
+    const isInterieurOk = row['validation_interieur_final'] === 'true';
+    const isReseauOk = row['validation_reseau_final'] === 'true';
+    const isMaconOk = row['validation_macon_final'] === 'true';
+    const isLivreurOk = row['Je_confirme_la_remis_u_materiel_au_m_nage'] === 'true' || row['Je confirme la remise du materiel au ménage'] === 'true';
 
-    // PRIORITY 3: Fall back to form validation checkpoints
-    // Kobo form validation fields (check for confirmed steps)
-    const isConfirmedLivreur = row['Je confirme la remise du materiel au ménage'] === 'true';
-    const isConfirmedMur = row['✅ Je valide que le mur est terminé et conforme'] === 'true';
-    const isConfirmedBranchement = row['✅ Je valide que le branchement est terminé et conforme'] === 'true';
-    const isConfirmedInterieur = row['✅ Je valide que l\'installation intérieure est terminée et conforme'] === 'true';
-    const isConfirmedControl = row['✅ Je valide le contrôle et l\'installation est conforme'] === 'true';
-
-    // Determine status based on progression
-    if (isConfirmedControl) {
-        return 'Contrôle conforme';
-    } else if (isConfirmedInterieur) {
-        return 'Intérieur terminé';
-    } else if (isConfirmedBranchement) {
-        return 'Réseau terminé';
-    } else if (isConfirmedMur) {
-        return 'Murs terminés';
-    } else if (isConfirmedLivreur) {
-        return 'Livraison effectuée';
-    }
-
-    // PRIORITY 4: Local CSV: statut field
-    const localStatus = row['statut'] || row['status'];
-    if (localStatus) {
-        return String(localStatus).trim();
-    }
+    if (isControlOk) return 'Contrôle conforme';
+    if (isInterieurOk) return 'Intérieur terminé';
+    if (isReseauOk) return 'Réseau terminé';
+    if (isMaconOk) return 'Murs terminés';
+    if (isLivreurOk) return 'Livraison effectuée';
 
     return 'Non débuté';
 }

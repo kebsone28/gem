@@ -1,5 +1,5 @@
-import React from 'react';
-import { User, Phone, MapPin } from 'lucide-react';
+import React, { useEffect, useRef } from 'react';
+import { User, Users, Phone, MapPin } from 'lucide-react';
 
 interface MapTooltipProps {
     data: any;
@@ -8,14 +8,22 @@ interface MapTooltipProps {
 }
 
 const MapTooltip: React.FC<MapTooltipProps> = ({ data, x, y }) => {
+    const tooltipRef = useRef<HTMLDivElement | null>(null);
+
+    useEffect(() => {
+        if (!tooltipRef.current) return;
+        tooltipRef.current.style.left = `${x}px`;
+        tooltipRef.current.style.top = `${y}px`;
+    }, [x, y]);
+
     if (!data) return null;
 
     const isCluster = data.cluster;
 
     return (
         <div 
+            ref={tooltipRef}
             className="fixed z-[5000] pointer-events-none transform -translate-x-1/2 -translate-y-full mb-4"
-            style={{ left: x, top: y }}
         >
             <div className="bg-[#050F1F] border border-white/10 rounded-2xl p-4 shadow-2xl min-w-[200px] ring-1 ring-white/5 animate-in fade-in zoom-in duration-200">
                 {isCluster ? (
@@ -44,6 +52,37 @@ const MapTooltip: React.FC<MapTooltipProps> = ({ data, x, y }) => {
                                 <User size={12} className="text-blue-400 opacity-70" />
                                 <span className="text-[11px] font-black uppercase tracking-tight truncate max-w-[150px]">{data.name || 'Nom Inconnu'}</span>
                             </div>
+                            {data.assignedTeams && data.assignedTeams.length > 0 && (
+                                <div className="flex items-center gap-2 text-slate-300">
+                                    <Users size={10} className="text-slate-500" />
+                                    <span className="text-[10px] font-bold uppercase tracking-widest truncate max-w-[150px]">
+                                        {data.assignedTeams.join(', ')}
+                                    </span>
+                                </div>
+                            )}
+                            {data.koboSync && (
+                                <div className="grid grid-cols-2 gap-2 pt-1 text-[9px] text-slate-300 uppercase tracking-[0.2em]">
+                                    {[
+                                        { label: 'Maçon', value: data.koboSync.maconOk },
+                                        { label: 'Réseau', value: data.koboSync.reseauOk },
+                                        { label: 'Intérieur', value: data.koboSync.interieurOk },
+                                        { label: 'Contrôle', value: data.koboSync.controleOk },
+                                    ].map((item) => (
+                                        <span
+                                            key={item.label}
+                                            className={`inline-flex items-center justify-center rounded-full px-2 py-1 ${
+                                                item.value === true
+                                                    ? 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/20'
+                                                    : item.value === false
+                                                    ? 'bg-rose-500/10 text-rose-300 border border-rose-500/20'
+                                                    : 'bg-slate-900/70 text-slate-400 border border-slate-700'
+                                            }`}
+                                        >
+                                            {item.label}
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
                             {data.phone && (
                                 <div className="flex items-center gap-2 text-slate-300">
                                     <Phone size={10} className="text-slate-500" />

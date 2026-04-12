@@ -68,11 +68,11 @@ export const MissionWorkflowPanel: React.FC<MissionWorkflowPanelProps> = ({
           <span className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-widest text-white ${
             workflow.overallStatus === 'approved' ? 'bg-emerald-500' : 
             workflow.overallStatus === 'rejected' ? 'bg-rose-500' :
-            workflow.overallStatus === 'in_progress' ? 'bg-amber-500' : 'bg-slate-500'
+            workflow.overallStatus === 'executed' ? 'bg-amber-500' : 'bg-slate-500'
           }`}>
             {workflow.overallStatus === 'approved' ? 'APPROUVÉE' :
              workflow.overallStatus === 'rejected' ? 'REJETÉE' :
-             workflow.overallStatus === 'in_progress' ? 'EN RÉVISION' : 'EN ATTENTE'}
+             workflow.overallStatus === 'executed' ? 'EXÉCUTÉE' : 'EN ATTENTE'}
           </span>
         </div>
 

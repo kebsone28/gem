@@ -19,7 +19,7 @@ import type { MissionOrderData, MissionMember } from './mission/core/missionType
 // Hooks
 import { usePermissions } from '../hooks/usePermissions';
 import { useFinances } from '../hooks/useFinances';
-import { useProject } from '../hooks/useProject';
+import { useProject } from '../contexts/ProjectContext';
 import { useMissionState } from './mission/hooks/useMissionState';
 import { useMissionSync } from './mission/hooks/useMissionSync';
 import { useMissionWorkflow } from './mission/hooks/useMissionWorkflow';

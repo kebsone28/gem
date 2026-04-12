@@ -5,34 +5,37 @@ import { useTerrainUIStore } from '../store/terrainUIStore';
  * Hook to manage map routing state and common actions.
  */
 export const useRouting = () => {
-    const routingEnabled = useTerrainUIStore(s => s.routingEnabled);
-    const setRoutingEnabled = useTerrainUIStore(s => s.setRoutingEnabled);
-    const setRoutingStart = useTerrainUIStore(s => s.setRoutingStart);
-    const setRoutingDest = useTerrainUIStore(s => s.setRoutingDest);
-    const setRouteStats = useTerrainUIStore(s => s.setRouteStats);
-    const setInstructions = useTerrainUIStore(s => s.setInstructions);
-    const setFollowUser = useTerrainUIStore(s => s.setFollowUser);
-    const routeStats = useTerrainUIStore(s => s.routeStats);
-    const turnByTurnInstructions = useTerrainUIStore(s => s.turnByTurnInstructions);
+  //@ts-ignore
+  const routingEnabled = useTerrainUIStore((s) => s.routingEnabled);
+  //@ts-ignore
+  const setRoutingEnabled = useTerrainUIStore((s) => s.setRoutingEnabled);
+  const setRoutingStart = useTerrainUIStore((s) => s.setRoutingStart);
+  const setRoutingDest = useTerrainUIStore((s) => s.setRoutingDest);
+  const setRouteStats = useTerrainUIStore((s) => s.setRouteStats);
+  const setInstructions = useTerrainUIStore((s) => s.setInstructions);
+  //@ts-ignore
+  const setFollowUser = useTerrainUIStore((s) => s.setFollowUser);
+  const routeStats = useTerrainUIStore((s) => s.routeStats);
+  const turnByTurnInstructions = useTerrainUIStore((s) => s.turnByTurnInstructions);
 
-    const cancelRouting = useCallback(() => {
-        useTerrainUIStore.getState().closePanel();
-        setRoutingDest(null);
-        setRouteStats(null);
-        setInstructions([]);
-        setFollowUser(false);
-    }, [setRoutingDest, setRouteStats, setInstructions, setFollowUser]);
+  const cancelRouting = useCallback(() => {
+    useTerrainUIStore.getState().closePanel();
+    setRoutingDest(null);
+    setRouteStats(null);
+    setInstructions([]);
+    setFollowUser(false);
+  }, [setRoutingDest, setRouteStats, setInstructions, setFollowUser]);
 
-    return {
-        routingEnabled,
-        setRoutingEnabled,
-        setRoutingStart,
-        setRoutingDest,
-        setRouteStats,
-        routeStats,
-        turnByTurnInstructions,
-        setInstructions,
-        setFollowUser,
-        cancelRouting,
-    };
+  return {
+    routingEnabled,
+    setRoutingEnabled,
+    setRoutingStart,
+    setRoutingDest,
+    setRouteStats,
+    routeStats,
+    turnByTurnInstructions,
+    setInstructions,
+    setFollowUser,
+    cancelRouting,
+  };
 };

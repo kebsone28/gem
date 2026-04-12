@@ -24,7 +24,6 @@ export type PanelType =
   | 'routing'
   | 'draw'
   | 'layers'
-  | 'tracking'
   | 'grappe'
   | 'region'
   | 'datahub'

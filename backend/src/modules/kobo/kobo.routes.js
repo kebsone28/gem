@@ -9,7 +9,7 @@
 import { Router } from 'express';
 import { authProtect } from '../../api/middlewares/auth.js';
 import { verifyKoboWebhook } from '../../api/middlewares/koboWebhookAuth.js';
-import { triggerKoboSync, getKoboStatus, handleKoboWebhook } from './kobo.controller.js';
+import { triggerKoboSync, getKoboStatus, handleKoboWebhook, testKoboConnection } from './kobo.controller.js';
 
 const router = Router();
 
@@ -20,6 +20,7 @@ router.post('/webhook', verifyKoboWebhook, handleKoboWebhook);
 router.use(authProtect);
 
 router.post('/sync',   triggerKoboSync);
+router.post('/test-connection', testKoboConnection);
 router.get('/status',  getKoboStatus);
 
 export default router;

@@ -75,42 +75,98 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const logout = () => {
         safeStorage.removeItem('access_token');
         safeStorage.removeItem('user');
-        // Clear simulation state if any
-        safeStorage.removeItem('impersonated_user');
+        // Nettoyage complet des états de simulation
+        safeStorage.removeItem('admin_access_token');
+        safeStorage.removeItem('admin_user_data');
         setUser(null);
     };
 
     /**
-     * 🎭 Impersonate: Adopt another user's role temporarily
+     * 🎭 Impersonate: Adopt another user's role via Backend Security
      */
-    const impersonate = (targetUser: User) => {
-        if (!user || (user.role !== 'ADMIN_PROQUELEC' && user.email !== 'admingem')) return;
+    const impersonate = async (targetUser: User) => {
+        if (!user || (user.role !== 'ADMIN_PROQUELEC' && user.email !== 'admingem')) {
+            logger.warn('🚫 Tentative d\'impersonation non autorisée bloquée côté client');
+            return;
+        }
 
-        const originalUser = { ...user };
-        const simUser: User = {
-            ...targetUser,
-            impersonatedBy: originalUser.id,
-            originalRole: originalUser.role
-        };
+        try {
+            const currentToken = safeStorage.getItem('access_token');
+            const response = await fetch('/api/auth/impersonate', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${currentToken}`
+                },
+                body: JSON.stringify({ targetUserId: targetUser.id, reason: 'Support Administratif' })
+            });
 
-        safeStorage.setItem('impersonated_user', JSON.stringify(originalUser));
-        safeStorage.setItem('user', JSON.stringify(simUser));
-        setUser(simUser);
-        logger.log(`🎭 [AUTH] Impersonation started: simulating ${targetUser.name}`);
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Erreur lors de l\'impersonation');
+            }
+
+            const data = await response.json();
+
+            // 💾 SAUVEGARDE DE L'IDENTITÉ ADMIN REELLE
+            safeStorage.setItem('admin_access_token', currentToken!);
+            safeStorage.setItem('admin_user_data', JSON.stringify(user));
+
+            // 🔄 SWITCH VERS L'IDENTITÉ SIMULÉE
+            safeStorage.setItem('access_token', data.accessToken);
+            safeStorage.setItem('user', JSON.stringify(data.user));
+            
+            setUser(data.user);
+            logger.log(`🎭 [AUTH] Simulation active : ${targetUser.name}`);
+            
+            // Recharger la page pour réinitialiser tous les états de l'app avec le nouveau token
+            window.location.reload(); 
+
+        } catch (error: any) {
+            logger.error('❌ Impersonation failed:', error);
+            alert(`Erreur: ${error.message}`);
+        }
     };
 
     /**
-     * 🔙 Stop Impersonation: Return to Admin identity
+     * 🔙 Stop Impersonation: Return to Admin identity via Backend Validation
      */
-    const stopImpersonation = () => {
-        const storedOriginal = safeStorage.getItem('impersonated_user');
-        if (!storedOriginal) return;
+    const stopImpersonation = async () => {
+        try {
+            const currentToken = safeStorage.getItem('access_token');
+            const response = await fetch('/api/auth/stop-impersonation', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${currentToken}`
+                }
+            });
 
-        const originalUser = JSON.parse(storedOriginal);
-        safeStorage.setItem('user', JSON.stringify(originalUser));
-        safeStorage.removeItem('impersonated_user');
-        setUser(originalUser);
-        logger.log('🔙 [AUTH] Impersonation stopped: returned to admin');
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Erreur lors de l\'arrêt de la simulation');
+            }
+
+            const data = await response.json();
+
+            // 🔄 RESTAURATION DE L'IDENTITÉ ADMIN (Token neuf reçu du serveur)
+            safeStorage.setItem('access_token', data.accessToken);
+            safeStorage.setItem('user', JSON.stringify(data.user));
+            
+            // 🧹 NETTOYAGE DES ÉTATS TEMPORAIRES (Si présents)
+            safeStorage.removeItem('admin_access_token');
+            safeStorage.removeItem('admin_user_data');
+
+            logger.log('🔙 [AUTH] Sessions simulée fermée, retour admin validé');
+            
+            // Recharger pour réinitialiser l'application
+            window.location.reload(); 
+
+        } catch (error: any) {
+            logger.error('❌ Stop impersonation failed:', error);
+            // Fallback de sécurité si l'API échoue : on déconnecte tout
+            logout();
+        }
     };
 
     return (

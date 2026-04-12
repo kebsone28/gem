@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { MissionSageService, User, AppState } from '../services/MissionSageService';
+import { MissionSageService } from '../services/MissionSageService';
+import type { User, AppState } from '../services/MissionSageService';
 
 interface MissionSageChatProps {
   user?: User;
