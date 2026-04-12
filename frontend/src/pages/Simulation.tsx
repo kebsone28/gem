@@ -15,15 +15,18 @@ import {
 import { useFinances } from '../hooks/useFinances';
 import { fmtFCFA } from '../utils/format';
 import { toast } from 'react-hot-toast';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import {
-    calculateScenarioV2,
-    optimizeTeamConfigs,
+    calculerScenarioV2,
+    optimiserConfigurationsEquipes,
     buildRoleCapacities
 } from '../hooks/useSimulationModel';
 import type {
     TeamConfig,
     RoleKey,
-    OptimizationMode
+    ModeOptimisation,
+    Scenario
 } from '../hooks/useSimulationModel';
 
 // Import centralized design system
@@ -51,17 +54,24 @@ export default function Simulation() {
     );
 
     // Simulation state
-    const [unforeseenRate, setUnforeseenRate] = useState(10);
+    const [tauxImprevu, setTauxImprevu] = useState(10);
     const [baseVehicleCount, setBaseVehicleCount] = useState(2); // Base logistics vehicles
     const [isHivernage, setIsHivernage] = useState(false);
-    const [hivernagePenaltyMacon, setHivernagePenaltyMacon] = useState(30); // 30% penalty
-    const [hivernagePenaltyNetwork, setHivernagePenaltyNetwork] = useState(20); // 20% penalty
-    const [rejectRate, setRejectRate] = useState(0); // 0 to 20%
-    const [acompteRate, setAcompteRate] = useState(30); // 0 to 100%
-    const [targetDuration, setTargetDuration] = useState(150);
-    const [budgetLimitPercent, setBudgetLimitPercent] = useState(95);
-    const [minMarginPercent, setMinMarginPercent] = useState(10);
-    const [optimizationMode, setOptimizationMode] = useState<OptimizationMode>('duration');
+    const [penaliteHivernageMacon, setPenaliteHivernageMacon] = useState(30); // 30% penalty
+    const [penaliteHivernageReseau, setPenaliteHivernageReseau] = useState(20); // 20% penalty
+    const [tauxRejet, setTauxRejet] = useState(0); // 0 to 20%
+    const [tauxAcompte, setTauxAcompte] = useState(30); // 0 to 100%
+    const [dureeCible, setDureeCible] = useState(150);
+    const [limiteBudgetPourcent, setLimiteBudgetPourcent] = useState(95);
+    const [margeMinimalePourcent, setMargeMinimalePourcent] = useState(10);
+    const [optimizationMode, setOptimizationMode] = useState<ModeOptimisation>('duration');
+
+    // Date de démarrage initiale
+    const [dateDemarrageInitiale, setDateDemarrageInitiale] = useState(() => {
+        const today = new Date();
+        today.setDate(today.getDate() + 30); // Par défaut 30 jours dans le futur
+        return today;
+    });
 
     // Calendar state
     const [workDaysPerWeek, setWorkDaysPerWeek] = useState(6); // 5 or 6 days normally
@@ -78,6 +88,114 @@ export default function Simulation() {
     const [optimizedConfigs, setOptimizedConfigs] = useState<Record<RoleKey, TeamConfig> | null>(null);
     const [showApplyModal, setShowApplyModal] = useState(false);
 
+    const exporterPlanningPDF = useCallback((scenario: Scenario) => {
+        try {
+            const pdf = new jsPDF();
+            const pageWidth = pdf.internal.pageSize.getWidth();
+            const pageHeight = pdf.internal.pageSize.getHeight();
+            let yPosition = 20;
+
+            // En-tête
+            pdf.setFontSize(20);
+            pdf.setTextColor(40, 40, 40);
+            pdf.text('PLANNING DE CHANTIER', pageWidth / 2, yPosition, { align: 'center' });
+            yPosition += 15;
+
+            pdf.setFontSize(12);
+            pdf.setTextColor(100, 100, 100);
+            pdf.text(`Démarrage: ${scenario.dateDemarrageInitiale.toLocaleDateString('fr-FR')} - Fin: ${scenario.dateFinGlobale.toLocaleDateString('fr-FR')}`, pageWidth / 2, yPosition, { align: 'center' });
+            yPosition += 10;
+            pdf.text(`Durée totale: ${scenario.calendarDuration} jours calendaires`, pageWidth / 2, yPosition, { align: 'center' });
+            yPosition += 20;
+
+            // Tableau des équipes
+            const tableData = Object.entries(scenario.planningDetaille).map(([roleKey, planning]) => [
+                ROLE_LABELS[roleKey as RoleKey],
+                planning.equipesAllouees.toString(),
+                planning.dateDebut.toLocaleDateString('fr-FR'),
+                planning.dateFin.toLocaleDateString('fr-FR'),
+                `${planning.dureeCalendrier} jours`,
+                `${planning.capaciteJournaliere} ménages/jour`
+            ]);
+
+            autoTable(pdf, {
+                head: [['Équipe', 'Nombre', 'Début', 'Fin', 'Durée', 'Capacité']],
+                body: tableData,
+                startY: yPosition,
+                styles: {
+                    fontSize: 10,
+                    cellPadding: 3,
+                },
+                headStyles: {
+                    fillColor: [63, 81, 181],
+                    textColor: 255,
+                    fontStyle: 'bold',
+                },
+                alternateRowStyles: {
+                    fillColor: [245, 245, 245],
+                },
+            });
+
+            yPosition = (pdf as any).lastAutoTable.finalY + 20;
+
+            // Détails des tâches pour chaque équipe
+            Object.entries(scenario.planningDetaille).forEach(([roleKey, planning]) => {
+                if (yPosition > pageHeight - 60) {
+                    pdf.addPage();
+                    yPosition = 20;
+                }
+
+                pdf.setFontSize(14);
+                pdf.setTextColor(40, 40, 40);
+                pdf.text(`${ROLE_LABELS[roleKey as RoleKey]} (${planning.equipesAllouees} équipe${planning.equipesAllouees > 1 ? 's' : ''})`, 20, yPosition);
+                yPosition += 10;
+
+                pdf.setFontSize(10);
+                pdf.setTextColor(100, 100, 100);
+                pdf.text(`Période: ${planning.dateDebut.toLocaleDateString('fr-FR')} - ${planning.dateFin.toLocaleDateString('fr-FR')}`, 20, yPosition);
+                yPosition += 8;
+                pdf.text(`Capacité: ${planning.capaciteJournaliere} ménages/jour - Durée: ${planning.dureeCalendrier} jours`, 20, yPosition);
+                yPosition += 15;
+
+                pdf.setFontSize(11);
+                pdf.setTextColor(60, 60, 60);
+                pdf.text('Tâches principales:', 20, yPosition);
+                yPosition += 8;
+
+                planning.taches.forEach((tache, index) => {
+                    if (yPosition > pageHeight - 20) {
+                        pdf.addPage();
+                        yPosition = 20;
+                    }
+                    pdf.setFontSize(9);
+                    pdf.text(`• ${tache}`, 25, yPosition);
+                    yPosition += 6;
+                });
+
+                yPosition += 10;
+            });
+
+            // Pied de page
+            const pageCount = pdf.getNumberOfPages();
+            for (let i = 1; i <= pageCount; i++) {
+                pdf.setPage(i);
+                pdf.setFontSize(8);
+                pdf.setTextColor(150, 150, 150);
+                pdf.text(`Page ${i}/${pageCount}`, pageWidth - 30, pageHeight - 10);
+                pdf.text('Généré automatiquement par GEM SAAS', 20, pageHeight - 10);
+            }
+
+            // Téléchargement
+            const fileName = `planning-chantier-${scenario.dateDemarrageInitiale.toISOString().split('T')[0]}.pdf`;
+            pdf.save(fileName);
+            toast.success('Planning exporté en PDF avec succès !', { icon: '📄' });
+
+        } catch (error) {
+            console.error('Erreur lors de l\'export PDF:', error);
+            toast.error('Erreur lors de l\'export du planning', { icon: '❌' });
+        }
+    }, []);
+
     const handleApplyConfiguration = useCallback(() => {
         if (!optimizedConfigs) return;
         setTeamConfigs(optimizedConfigs);
@@ -87,20 +205,21 @@ export default function Simulation() {
     }, [optimizedConfigs]);
 
     const currentScenario = useMemo(
-        () => calculateScenarioV2({
+        () => calculerScenarioV2({
             householdsCount,
             devisTotalPlanned: devis.totalPlanned,
             projectConfig: project,
             teamConfigs,
             baseVehicleCount,
-            unforeseenRate,
+            tauxImprevu,
             isHivernage,
-            rejectRate,
-            acompteRate,
+            tauxRejet,
+            tauxAcompte,
             workDaysPerWeek,
             holidaysCount,
-            hivernagePenaltyMacon,
-            hivernagePenaltyNetwork
+            penaliteHivernageMacon,
+            penaliteHivernageReseau,
+            dateDemarrageInitiale
         }),
         [
             householdsCount,
@@ -108,77 +227,80 @@ export default function Simulation() {
             project,
             teamConfigs,
             baseVehicleCount,
-            unforeseenRate,
+            tauxImprevu,
             isHivernage,
-            rejectRate,
-            acompteRate,
+            tauxRejet,
+            tauxAcompte,
             workDaysPerWeek,
             holidaysCount,
-            hivernagePenaltyMacon,
-            hivernagePenaltyNetwork
+            penaliteHivernageMacon,
+            penaliteHivernageReseau,
+            dateDemarrageInitiale
         ]
     );
 
     const handleOptimize = useCallback(() => {
-        const optimized = optimizeTeamConfigs({
+        const optimized = optimiserConfigurationsEquipes({
             teamConfigs,
             ROLE_CAPACITY: roleCapacities,
-            targetDuration,
-            budgetLimitPercent,
-            minMarginPercent,
+            dureeCible,
+            limiteBudgetPourcent,
+            margeMinimalePourcent,
             householdsCount,
             devisTotalPlanned: devis.totalPlanned,
             workDaysPerWeek,
             holidaysCount,
             projectConfig: project,
             baseVehicleCount,
-            unforeseenRate,
+            tauxImprevu,
             isHivernage,
-            rejectRate,
-            acompteRate,
-            hivernagePenaltyMacon,
-            hivernagePenaltyNetwork,
-            mode: optimizationMode
+            tauxRejet,
+            tauxAcompte,
+            penaliteHivernageMacon,
+            penaliteHivernageReseau,
+            mode: optimizationMode,
+            dateDemarrageInitiale
         });
         setOptimizedConfigs(optimized);
         setIsOptimized(true);
     }, [
         teamConfigs,
         roleCapacities,
-        targetDuration,
-        budgetLimitPercent,
-        minMarginPercent,
+        dureeCible,
+        limiteBudgetPourcent,
+        margeMinimalePourcent,
         householdsCount,
         workDaysPerWeek,
         holidaysCount,
         project,
         baseVehicleCount,
-        unforeseenRate,
+        tauxImprevu,
         isHivernage,
-        rejectRate,
-        acompteRate,
-        hivernagePenaltyMacon,
-        hivernagePenaltyNetwork,
+        tauxRejet,
+        tauxAcompte,
+        penaliteHivernageMacon,
+        penaliteHivernageReseau,
         optimizationMode,
         devis.totalPlanned
     ]);
 
     const optScenario = useMemo(
         () => optimizedConfigs
-            ? calculateScenarioV2({
+            ? calculerScenarioV2({
                 householdsCount,
                 devisTotalPlanned: devis.totalPlanned,
                 projectConfig: project,
                 teamConfigs: optimizedConfigs,
                 baseVehicleCount,
-                unforeseenRate,
+                tauxImprevu,
                 isHivernage,
-                rejectRate,
-                acompteRate,
+                tauxRejet,
+                tauxAcompte,
                 workDaysPerWeek,
                 holidaysCount,
-                hivernagePenaltyMacon,
-                hivernagePenaltyNetwork
+                penaliteHivernageMacon,
+                penaliteHivernageReseau,
+                dateDemarrageInitiale
             })
             : null,
         [
@@ -187,14 +309,15 @@ export default function Simulation() {
             devis.totalPlanned,
             project,
             baseVehicleCount,
-            unforeseenRate,
+            tauxImprevu,
             isHivernage,
-            rejectRate,
-            acompteRate,
+            tauxRejet,
+            tauxAcompte,
             workDaysPerWeek,
             holidaysCount,
-            hivernagePenaltyMacon,
-            hivernagePenaltyNetwork
+            penaliteHivernageMacon,
+            penaliteHivernageReseau,
+            dateDemarrageInitiale
         ]
     );
 
@@ -373,7 +496,7 @@ export default function Simulation() {
                                                             <div className="space-y-2">
                                                                 <div className="flex justify-between text-xs">
                                                                     <span className="text-slate-600 dark:text-slate-400">Pénalité Maçons</span>
-                                                                    <span className="text-rose-400 font-bold">-{hivernagePenaltyMacon}%</span>
+                                                                    <span className="text-rose-400 font-bold">-{penaliteHivernageMacon}%</span>
                                                                 </div>
                                                                 <input
                                                                     aria-label="Pénalité Maçons"
@@ -381,15 +504,15 @@ export default function Simulation() {
                                                                     min="0"
                                                                     max="80"
                                                                     step="5"
-                                                                    value={hivernagePenaltyMacon}
-                                                                    onChange={(e) => setHivernagePenaltyMacon(parseInt(e.target.value))}
+                                                                    value={penaliteHivernageMacon}
+                                                                    onChange={(e) => setPenaliteHivernageMacon(parseInt(e.target.value))}
                                                                     className="w-full accent-rose-500"
                                                                 />
                                                             </div>
                                                             <div className="space-y-2">
                                                                 <div className="flex justify-between text-xs">
                                                                     <span className="text-slate-600 dark:text-slate-400">Pénalité Réseau</span>
-                                                                    <span className="text-rose-400 font-bold">-{hivernagePenaltyNetwork}%</span>
+                                                                    <span className="text-rose-400 font-bold">-{penaliteHivernageReseau}%</span>
                                                                 </div>
                                                                 <input
                                                                     title="Pénalité Réseau"
@@ -397,8 +520,8 @@ export default function Simulation() {
                                                                     min="0"
                                                                     max="80"
                                                                     step="5"
-                                                                    value={hivernagePenaltyNetwork}
-                                                                    onChange={(e) => setHivernagePenaltyNetwork(parseInt(e.target.value))}
+                                                                    value={penaliteHivernageReseau}
+                                                                    onChange={(e) => setPenaliteHivernageReseau(parseInt(e.target.value))}
                                                                     className="w-full accent-rose-500"
                                                                 />
                                                             </div>
@@ -412,7 +535,7 @@ export default function Simulation() {
                                         <div className="space-y-2 p-4 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800">
                                             <div className="flex justify-between text-sm">
                                                 <label htmlFor="reject-rate" className="text-slate-600 dark:text-slate-400">Taux de Rejet & Reprises</label>
-                                                <span className="text-slate-900 dark:text-white font-bold">{rejectRate}%</span>
+                                                <span className="text-slate-900 dark:text-white font-bold">{tauxRejet}%</span>
                                             </div>
                                             <input
                                                 id="reject-rate"
@@ -421,8 +544,8 @@ export default function Simulation() {
                                                 min="0"
                                                 max="30"
                                                 step="1"
-                                                value={rejectRate}
-                                                onChange={(e) => setRejectRate(parseInt(e.target.value))}
+                                                value={tauxRejet}
+                                                onChange={(e) => setTauxRejet(parseInt(e.target.value))}
                                                 className="w-full accent-rose-500"
                                             />
                                             <div className="text-xs text-slate-500 dark:text-slate-400 text-center">Affecte le volume de travail Réseau/Intérieur</div>
@@ -437,7 +560,7 @@ export default function Simulation() {
                                         <div className="space-y-2 p-4 rounded-xl bg-white/50 dark:bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800">
                                             <div className="flex justify-between text-sm">
                                                 <label htmlFor="acompte-rate" className="text-slate-600 dark:text-slate-400">Acompte à la commande</label>
-                                                <span className="text-slate-900 dark:text-white font-bold">{acompteRate}%</span>
+                                                <span className="text-slate-900 dark:text-white font-bold">{tauxAcompte}%</span>
                                             </div>
                                             <input
                                                 id="acompte-rate"
@@ -446,8 +569,8 @@ export default function Simulation() {
                                                 min="0"
                                                 max="100"
                                                 step="5"
-                                                value={acompteRate}
-                                                onChange={(e) => setAcompteRate(parseInt(e.target.value))}
+                                                value={tauxAcompte}
+                                                onChange={(e) => setTauxAcompte(parseInt(e.target.value))}
                                                 className="w-full accent-emerald-500"
                                             />
                                             <div className="text-xs text-slate-500 dark:text-slate-400 text-center">Fonds disponibles avant acompte suivant</div>
@@ -476,7 +599,7 @@ export default function Simulation() {
                                     <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-800">
                                         <div className="flex justify-between items-center">
                                             <label className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest block">Objectif durée</label>
-                                            <span className="text-slate-500 font-black">{targetDuration} jours</span>
+                                            <span className="text-slate-500 font-black">{dureeCible} jours</span>
                                         </div>
                                         <input
                                             title="Objectif durée"
@@ -484,18 +607,30 @@ export default function Simulation() {
                                             min="120"
                                             max="260"
                                             step="5"
-                                            value={targetDuration}
-                                            onChange={(e) => setTargetDuration(parseInt(e.target.value))}
+                                            value={dureeCible}
+                                            onChange={(e) => setDureeCible(parseInt(e.target.value))}
                                             className="w-full accent-purple-500"
                                         />
                                         <div className="text-xs text-slate-500 dark:text-slate-400 text-center">Durée cible pour l'optimisation intelligente</div>
+
+                                        <div className="pt-4">
+                                            <label className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest block mb-2">Date de démarrage</label>
+                                            <input
+                                                title="Date de démarrage initiale"
+                                                type="date"
+                                                value={dateDemarrageInitiale.toISOString().split('T')[0]}
+                                                onChange={(e) => setDateDemarrageInitiale(new Date(e.target.value))}
+                                                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
+                                            />
+                                            <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">Date de début du chantier (toutes les équipes en dépendent)</div>
+                                        </div>
 
                                         <div className="pt-4">
                                             <label className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest block mb-2">Stratégie d'optimisation</label>
                                             <select
                                                 title="Mode d'optimisation"
                                                 value={optimizationMode}
-                                                onChange={(e) => setOptimizationMode(e.target.value as OptimizationMode)}
+                                                onChange={(e) => setOptimizationMode(e.target.value as ModeOptimisation)}
                                                 className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
                                             >
                                                 <option value="duration">Durée cible</option>
@@ -512,7 +647,7 @@ export default function Simulation() {
                                         <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-800">
                                             <div className="flex justify-between items-center">
                                                 <label className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest block">Budget max</label>
-                                                <span className="text-emerald-400 font-black">{budgetLimitPercent}% du devis</span>
+                                                <span className="text-emerald-400 font-black">{limiteBudgetPourcent}% du devis</span>
                                             </div>
                                             <input
                                                 title="Budget max"
@@ -520,15 +655,15 @@ export default function Simulation() {
                                                 min="80"
                                                 max="100"
                                                 step="1"
-                                                value={budgetLimitPercent}
-                                                onChange={(e) => setBudgetLimitPercent(parseInt(e.target.value))}
+                                                value={limiteBudgetPourcent}
+                                                onChange={(e) => setLimiteBudgetPourcent(parseInt(e.target.value))}
                                                 className="w-full accent-emerald-600"
                                             />
                                             <div className="text-xs text-slate-500 dark:text-slate-400 text-center">Coût total cible par rapport au devis.</div>
 
                                             <div className="flex justify-between items-center">
                                                 <label className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest block">Marge minimale</label>
-                                                <span className="text-amber-400 font-black">{minMarginPercent}%</span>
+                                                <span className="text-amber-400 font-black">{margeMinimalePourcent}%</span>
                                             </div>
                                             <input
                                                 title="Marge minimale"
@@ -536,8 +671,8 @@ export default function Simulation() {
                                                 min="0"
                                                 max="30"
                                                 step="1"
-                                                value={minMarginPercent}
-                                                onChange={(e) => setMinMarginPercent(parseInt(e.target.value))}
+                                                value={margeMinimalePourcent}
+                                                onChange={(e) => setMargeMinimalePourcent(parseInt(e.target.value))}
                                                 className="w-full accent-amber-600"
                                             />
                                             <div className="text-xs text-slate-500 dark:text-slate-400 text-center">Marge nette minimale exigée pour le scénario optimisé.</div>
@@ -548,15 +683,15 @@ export default function Simulation() {
                                     <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-800">
                                         <div className="flex justify-between items-center">
                                             <label className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest block">Taux d'aléas estimé</label>
-                                            <span className="text-amber-400 font-black">{unforeseenRate}%</span>
+                                            <span className="text-amber-400 font-black">{tauxImprevu}%</span>
                                         </div>
                                         <input
                                             title="Aléas"
                                             type="range"
                                             min="0"
                                             max="30"
-                                            value={unforeseenRate}
-                                            onChange={(e) => setUnforeseenRate(parseInt(e.target.value))}
+                                            value={tauxImprevu}
+                                            onChange={(e) => setTauxImprevu(parseInt(e.target.value))}
                                             className="w-full accent-amber-600"
                                         />
                                     </div>
@@ -706,8 +841,8 @@ export default function Simulation() {
                                         </div>
                                         <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4">
                                             <p className="text-xs uppercase tracking-[0.2em] text-slate-500 mb-2">Cashflow</p>
-                                            <p className="text-2xl font-black text-white">{activeScenario.hasCashflowRisk ? 'Risque' : 'OK'}</p>
-                                            <p className={`text-xs mt-1 ${currentScenario.hasCashflowRisk && !activeScenario.hasCashflowRisk ? 'text-emerald-300' : 'text-slate-400'}`}>{currentScenario.hasCashflowRisk && !activeScenario.hasCashflowRisk ? 'Risque réduit' : 'Pas de changement'}</p>
+                                            <p className="text-2xl font-black text-white">{activeScenario.aRisqueTresorerie ? 'Risque' : 'OK'}</p>
+                                            <p className={`text-xs mt-1 ${currentScenario.aRisqueTresorerie && !activeScenario.aRisqueTresorerie ? 'text-emerald-300' : 'text-slate-400'}`}>{currentScenario.aRisqueTresorerie && !activeScenario.aRisqueTresorerie ? 'Risque réduit' : 'Pas de changement'}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -722,20 +857,20 @@ export default function Simulation() {
 
                                 <div className="space-y-4 mt-6">
                                     <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
-                                        <span className="text-slate-600 dark:text-slate-400">Acompte perçu ({acompteRate}%)</span>
-                                        <span className="text-slate-900 dark:text-white font-mono font-bold">{fmtFCFA(activeScenario.initialCash)}</span>
+                                        <span className="text-slate-600 dark:text-slate-400">Acompte perçu ({tauxAcompte}%)</span>
+                                        <span className="text-slate-900 dark:text-white font-mono font-bold">{fmtFCFA(activeScenario.tresorerieInitiale)}</span>
                                     </div>
                                     <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
                                         <span className="text-slate-600 dark:text-slate-400">Besoin FdR (Salaires + Logistique)</span>
-                                        <span className="text-rose-400 font-mono font-bold">{fmtFCFA(activeScenario.maxOutflow)}</span>
+                                        <span className="text-rose-400 font-mono font-bold">{fmtFCFA(activeScenario.depenseMax)}</span>
                                     </div>
 
-                                    {activeScenario.hasCashflowRisk ? (
+                                    {activeScenario.aRisqueTresorerie ? (
                                         <div className="bg-rose-500/10 border border-rose-500/20 p-4 rounded-xl flex items-start gap-4">
                                             <AlertTriangle className="text-rose-500 shrink-0 mt-1" size={24} />
                                             <div>
                                                 <h4 className="text-rose-400 font-black">Risque de Rupture de Trésorerie</h4>
-                                                <p className="text-rose-400/80 text-xs mt-1">Le paiement des équipes et des locations de véhicules dépassera l'acompte perçu de {fmtFCFA(activeScenario.maxOutflow - activeScenario.initialCash)}. Prévoyez un fond de roulement.</p>
+                                                <p className="text-rose-400/80 text-xs mt-1">Le paiement des équipes et des locations de véhicules dépassera l'acompte perçu de {fmtFCFA(activeScenario.depenseMax - activeScenario.tresorerieInitiale)}. Prévoyez un fond de roulement.</p>
                                             </div>
                                         </div>
                                     ) : (
@@ -760,7 +895,7 @@ export default function Simulation() {
                                 <div className="space-y-6 mt-6">
                                     {Object.entries(activeConfigs).map(([role, config]) => {
                                         const sched = activeScenario.schedule[role] || { start: 0, duration: 0, end: 0 };
-                                        const isBottleneck = role === activeScenario.bottleneck;
+                                        const isBottleneck = role === activeScenario.goulotDetroits;
 
                                         // Visual percentage based on global duration
                                         const startPct = (sched.start / activeScenario.duration) * 100;
@@ -797,7 +932,7 @@ export default function Simulation() {
                                     })}
                                 </div>
 
-                                {activeScenario.bottleneck && (
+                                {activeScenario.goulotDetroits && (
                                     <div className="p-6 bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-500/20 rounded-2xl flex items-start gap-4 mt-6">
                                         <div className="p-2 bg-indigo-500/20 text-indigo-400 rounded-lg shrink-0">
                                             <Users size={20} />
@@ -805,12 +940,82 @@ export default function Simulation() {
                                         <div>
                                             <h4 className="text-slate-900 dark:text-white font-bold mb-1">Impact sur la rentabilité</h4>
                                             <p className="text-sm text-indigo-200/70 font-medium">
-                                                Les autres équipes produisent plus vite que l'équipe "{ROLE_LABELS[activeScenario.bottleneck as keyof typeof ROLE_LABELS]}". Elles connaîtront des temps d'attente qui vous coûtent en salaires et en location de véhicules sans avancement.
+                                                Les autres équipes produisent plus vite que l'équipe "{ROLE_LABELS[activeScenario.goulotDetroits as keyof typeof ROLE_LABELS]}". Elles connaîtront des temps d'attente qui vous coûtent en salaires et en location de véhicules sans avancement.
                                                 {isOptimized ? " L'IA a lissé ces écarts au maximum !" : " Cliquez sur 'Lancer l'IA d'optimisation' pour équilibrer la chaîne de production."}
                                             </p>
                                         </div>
                                     </div>
                                 )}
+                            </div>
+
+                            {/* Planning détaillé */}
+                            <div className="mt-8">
+                                <div className="flex items-center justify-between mb-6">
+                                    <div>
+                                        <h3 className="text-xl font-black text-slate-900 dark:text-white">Planning de chantier</h3>
+                                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                                            Planning automatique généré • Démarrage: {activeScenario.dateDemarrageInitiale.toLocaleDateString('fr-FR')} • Fin: {activeScenario.dateFinGlobale.toLocaleDateString('fr-FR')}
+                                        </p>
+                                    </div>
+                                    <button
+                                        onClick={() => exporterPlanningPDF(activeScenario)}
+                                        className="flex items-center gap-2 bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                        Exporter PDF
+                                    </button>
+                                </div>
+
+                                <div className="grid gap-4">
+                                    {Object.entries(activeScenario.planningDetaille).map(([roleKey, planning]) => (
+                                        <div key={roleKey} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6">
+                                            <div className="flex items-center justify-between mb-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 bg-indigo-100 dark:bg-indigo-900/50 rounded-lg flex items-center justify-center">
+                                                        <Users className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                                                    </div>
+                                                    <div>
+                                                        <h4 className="font-bold text-slate-900 dark:text-white">{ROLE_LABELS[roleKey as RoleKey]}</h4>
+                                                        <p className="text-sm text-slate-500 dark:text-slate-400">{planning.equipesAllouees} équipe{planning.equipesAllouees > 1 ? 's' : ''}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="text-right">
+                                                    <div className="text-sm font-medium text-slate-900 dark:text-white">
+                                                        {planning.dateDebut.toLocaleDateString('fr-FR')} - {planning.dateFin.toLocaleDateString('fr-FR')}
+                                                    </div>
+                                                    <div className="text-xs text-slate-500 dark:text-slate-400">
+                                                        {planning.dureeCalendrier} jours calendaires
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-3">
+                                                <div className="flex justify-between text-sm">
+                                                    <span className="text-slate-600 dark:text-slate-400">Capacité journalière:</span>
+                                                    <span className="font-medium text-slate-900 dark:text-white">{planning.capaciteJournaliere} ménages/jour</span>
+                                                </div>
+                                                <div className="flex justify-between text-sm">
+                                                    <span className="text-slate-600 dark:text-slate-400">Durée effective:</span>
+                                                    <span className="font-medium text-slate-900 dark:text-white">{planning.dureeJours} jours</span>
+                                                </div>
+                                            </div>
+
+                                            <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-800">
+                                                <h5 className="text-sm font-medium text-slate-900 dark:text-white mb-2">Tâches principales:</h5>
+                                                <ul className="text-sm text-slate-600 dark:text-slate-400 space-y-1">
+                                                    {planning.taches.map((tache, index) => (
+                                                        <li key={index} className="flex items-start gap-2">
+                                                            <span className="text-indigo-500 mt-1">•</span>
+                                                            {tache}
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
 
                         </main>

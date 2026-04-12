@@ -86,11 +86,31 @@ export const applySizingScale = async (req, res) => {
         const passwordHash = await bcrypt.hash('ProquelecA1!', salt);
 
         const createdEntities = [];
+        
+        // Count existing teams to assign sequential numbers (e.g. Maçon 1, Maçon 2)
+        const currentTeams = await prisma.team.findMany({
+            where: { organizationId }
+        });
+        
+        const counts = {
+            macons: currentTeams.filter(t => t.name.toLowerCase().includes('maç')).length,
+            livreurs: currentTeams.filter(t => t.name.toLowerCase().includes('livr')).length,
+            elecs: currentTeams.filter(t => t.name.toLowerCase().includes('elec') || t.name.toLowerCase().includes('élec')).length,
+        };
 
         for (const roleKey of toCreateUserAndTeams) {
-            const randomCode = Math.random().toString(36).substring(2, 6).toUpperCase();
-            const teamName = `EQ-${roleKey.toUpperCase()}-${randomCode}`;
-            const email = `chef-${roleKey.toLowerCase()}-${randomCode}@gem.local`; // Dummy email for them to login
+            counts[roleKey] += 1; // Increment for the new team sequence
+            
+            let baseName = roleKey;
+            if (roleKey === 'macons') baseName = 'Maçon';
+            if (roleKey === 'livreurs') baseName = 'Livreur';
+            if (roleKey === 'elecs') baseName = 'Électricien';
+
+            const teamName = `${baseName} ${counts[roleKey]}`;
+            
+            // Clean dummy email format
+            const cleanEmailString = baseName.toLowerCase().replace(/ç/g, 'c').replace(/é/g, 'e');
+            const email = `chef-${cleanEmailString}${counts[roleKey]}@gem.local`;
 
             // 1. Create the User (CHEF_EQUIPE)
             const user = await prisma.user.create({

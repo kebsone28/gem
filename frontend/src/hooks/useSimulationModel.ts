@@ -14,19 +14,37 @@ export type RoleSchedule = {
   duration: number;
 };
 
-export type Scenario = {
+export type ScenarioBase = {
   duration: number;
   calendarDuration: number;
   schedule: Record<RoleKey, RoleSchedule>;
-  bottleneck: RoleKey;
+  goulotDetroits: RoleKey;
   capacity: number;
   cost: number;
   margin: number;
   laborCost: number;
   logisticsCost: number;
-  initialCash: number;
-  maxOutflow: number;
-  hasCashflowRisk: boolean;
+};
+
+export type Scenario = ScenarioBase & {
+  // Nouvelles propriétés pour le planning
+  dateDemarrageInitiale: Date;
+  planningDetaille: Record<RoleKey, PlanningEquipe>;
+  dateFinGlobale: Date;
+  tresorerieInitiale: number;
+  depenseMax: number;
+  aRisqueTresorerie: boolean;
+};
+
+export type PlanningEquipe = {
+  role: RoleKey;
+  dateDebut: Date;
+  dateFin: Date;
+  dureeJours: number;
+  dureeCalendrier: number;
+  equipesAllouees: number;
+  capaciteJournaliere: number;
+  taches: string[];
 };
 
 export type SimulationInputs = {
@@ -35,14 +53,15 @@ export type SimulationInputs = {
   projectConfig: any;
   teamConfigs: Record<RoleKey, TeamConfig>;
   baseVehicleCount: number;
-  unforeseenRate: number;
+  tauxImprevu: number;
   isHivernage: boolean;
-  rejectRate: number;
-  acompteRate: number;
+  tauxRejet: number;
+  tauxAcompte: number;
   workDaysPerWeek: number;
   holidaysCount: number;
-  hivernagePenaltyMacon: number;
-  hivernagePenaltyNetwork: number;
+  penaliteHivernageMacon: number;
+  penaliteHivernageReseau: number;
+  dateDemarrageInitiale?: Date;
 };
 
 export const ROLE_CAPACITY_DEFAULTS: Record<RoleKey, number> = {
@@ -77,21 +96,21 @@ export function calculateScenario({
   projectConfig,
   teamConfigs,
   baseVehicleCount,
-  unforeseenRate,
+  tauxImprevu,
   isHivernage,
-  rejectRate,
-  acompteRate,
+  tauxRejet,
+  tauxAcompte,
   workDaysPerWeek,
   holidaysCount,
-  hivernagePenaltyMacon,
-  hivernagePenaltyNetwork,
-}: SimulationInputs): Scenario {
+  penaliteHivernageMacon,
+  penaliteHivernageReseau,
+}: SimulationInputs): ScenarioBase {
   const productionRates = projectConfig?.config?.productionRates;
   const ROLE_CAPACITY = buildRoleCapacities(productionRates);
-  const factor = 1 + unforeseenRate / 100 + (isHivernage ? 0.05 : 0);
+  const factor = 1 + tauxImprevu / 100 + (isHivernage ? 0.05 : 0);
 
-  const maconCap = ROLE_CAPACITY.macon * (isHivernage ? 1 - hivernagePenaltyMacon / 100 : 1);
-  const networkCap = ROLE_CAPACITY.network * (isHivernage ? 1 - hivernagePenaltyNetwork / 100 : 1);
+  const maconCap = ROLE_CAPACITY.macon * (isHivernage ? 1 - penaliteHivernageMacon / 100 : 1);
+  const networkCap = ROLE_CAPACITY.network * (isHivernage ? 1 - penaliteHivernageReseau / 100 : 1);
   const interiorCap = ROLE_CAPACITY.interior;
   const controllerCap = ROLE_CAPACITY.controller * (isHivernage ? 0.9 : 1);
 
@@ -103,7 +122,7 @@ export function calculateScenario({
   };
 
   const minDailyCapacity = Math.max(1, Math.min(...Object.values(capacities).filter((c) => c > 0)));
-  const bottleneck = (Object.entries(capacities) as [RoleKey, number][])
+  const goulotDetroits = (Object.entries(capacities) as [RoleKey, number][])
     .filter(([, cap]) => cap > 0)
     .reduce((best, current) => (current[1] < best[1] ? current : best), [
       'macon',
@@ -111,9 +130,9 @@ export function calculateScenario({
     ] as [RoleKey, number])[0];
 
   const baseHouseholds = householdsCount;
-  const rejectHouseholds = Math.ceil(baseHouseholds * (rejectRate / 100));
-  const totalNetworkHouseholds = baseHouseholds + rejectHouseholds;
-  const totalInteriorHouseholds = baseHouseholds + rejectHouseholds;
+  const menagesRejetes = Math.ceil(baseHouseholds * (tauxRejet / 100));
+  const totalNetworkHouseholds = baseHouseholds + menagesRejetes;
+  const totalInteriorHouseholds = baseHouseholds + menagesRejetes;
 
   const durations = {
     macon: Math.max(1, Math.ceil((baseHouseholds / Math.max(capacities.macon, 1)) * factor)),
@@ -165,9 +184,7 @@ export function calculateScenario({
   (Object.entries(teamConfigs) as [RoleKey, TeamConfig][]).forEach(([role, config]) => {
     const teamDuration = schedule[role].duration;
     const householdsTreated =
-      role === 'network' || role === 'interior'
-        ? baseHouseholds + rejectHouseholds
-        : baseHouseholds;
+      role === 'network' || role === 'interior' ? baseHouseholds + menagesRejetes : baseHouseholds;
 
     if (config.paymentMode === 'task') {
       laborCost += householdsTreated * config.rate;
@@ -184,27 +201,24 @@ export function calculateScenario({
   const materialsCost = devisTotalPlanned * 0.4;
   const totalCost = laborCost + logisticsCost + materialsCost;
   const margin = devisTotalPlanned - totalCost;
-  const initialCash = devisTotalPlanned * (acompteRate / 100);
-  const maxOutflow = laborCost + logisticsCost;
-  const hasCashflowRisk = maxOutflow > initialCash;
+  const tresorerieInitiale = devisTotalPlanned * (tauxAcompte / 100);
+  const depenseMax = laborCost + logisticsCost;
+  const aRisqueTresorerie = depenseMax > tresorerieInitiale;
 
   return {
     duration: globalDuration,
     calendarDuration: globalCalendarDuration,
     schedule,
-    bottleneck,
+    goulotDetroits: goulotDetroits,
     capacity: minDailyCapacity,
     cost: totalCost,
     margin,
     laborCost,
     logisticsCost,
-    initialCash,
-    maxOutflow,
-    hasCashflowRisk,
   };
 }
 
-export type OptimizationMode =
+export type ModeOptimisation =
   | 'duration'
   | 'cost'
   | 'cashflow'
@@ -213,34 +227,35 @@ export type OptimizationMode =
   | 'quick_start'
   | 'low_logistics';
 
-export type OptimizationOptions = {
+export type OptionsOptimisation = {
   teamConfigs: Record<RoleKey, TeamConfig>;
   ROLE_CAPACITY: Record<RoleKey, number>;
-  targetDuration: number;
-  budgetLimitPercent: number;
-  minMarginPercent: number;
+  dureeCible: number;
+  limiteBudgetPourcent: number;
+  margeMinimalePourcent: number;
   householdsCount: number;
   devisTotalPlanned: number;
   workDaysPerWeek: number;
   holidaysCount: number;
   projectConfig: any;
   baseVehicleCount: number;
-  unforeseenRate: number;
+  tauxImprevu: number;
   isHivernage: boolean;
-  rejectRate: number;
-  acompteRate: number;
-  hivernagePenaltyMacon: number;
-  hivernagePenaltyNetwork: number;
-  mode: OptimizationMode;
+  tauxRejet: number;
+  tauxAcompte: number;
+  penaliteHivernageMacon: number;
+  penaliteHivernageReseau: number;
+  mode: ModeOptimisation;
+  dateDemarrageInitiale?: Date;
 };
 
 // V2: Realistic pipeline schedule (parallel flow, not sequential)
 // Controller spans entire project to inspect all phases.
-function computePipelineSchedule(
+function calculerCalendrierPipeline(
   durations: Record<RoleKey, number>,
-  unforeseenRate: number
+  tauxImprevu: number
 ): Record<RoleKey, RoleSchedule> {
-  const delayFactor = Math.min(unforeseenRate / 100, 0.25);
+  const delayFactor = Math.min(tauxImprevu / 100, 0.25);
   const maconDelay = Math.ceil(durations.macon * delayFactor * 0.2);
   const networkDelay = Math.ceil(durations.network * delayFactor * 0.2);
   const interiorDelay = Math.ceil(durations.interior * delayFactor * 0.2);
@@ -268,24 +283,24 @@ function computePipelineSchedule(
 }
 
 // V2: Realistic cashflow timeline (weekly simulation)
-function computeCashflow({
+function calculerTresorerie({
   laborCost,
   logisticsCost,
   devisTotalPlanned,
-  acompteRate,
+  tauxAcompte,
   duration,
 }: {
   laborCost: number;
   logisticsCost: number;
   devisTotalPlanned: number;
-  acompteRate: number;
+  tauxAcompte: number;
   duration: number;
 }): {
   initialCash: number;
   minCash: number;
   hasRisk: boolean;
 } {
-  const acompte = devisTotalPlanned * (acompteRate / 100);
+  const acompte = devisTotalPlanned * (tauxAcompte / 100);
   const weeklyOutflow = (laborCost + logisticsCost) / Math.max(duration / 7, 1);
 
   let cash = acompte;
@@ -331,19 +346,90 @@ function computeLogisticsCostV2(
   return total;
 }
 
+function genererPlanningDetaille(
+  schedule: Record<RoleKey, RoleSchedule>,
+  dateDemarrageInitiale: Date,
+  workDaysPerWeek: number,
+  holidaysCount: number,
+  teamConfigs: Record<RoleKey, TeamConfig>,
+  projectConfig: any
+): { planningDetaille: Record<RoleKey, PlanningEquipe>; dateFinGlobale: Date } {
+  const planningDetaille: Record<RoleKey, PlanningEquipe> = {} as Record<RoleKey, PlanningEquipe>;
+  let dateFinGlobale = new Date(dateDemarrageInitiale);
+
+  // Descriptions des tâches par rôle
+  const descriptionsTaches: Record<RoleKey, string[]> = {
+    macon: [
+      'Préparation du terrain et fondations',
+      'Construction des murs et structures',
+      'Finitions et contrôles qualité',
+    ],
+    network: [
+      'Branchement électrique NF C14-100/Disposition de branchement Senelec',
+      'Installation des câbles et conduits',
+      'Connexion des équipements réseau',
+      'Configuration et tests des connexions',
+      'Documentation technique',
+    ],
+    interior: [
+      'Installation des interrupteurs et prises',
+      'Montage des appareils électriques',
+      'Câblage intérieur et connexions',
+      'Tests fonctionnels et finitions',
+    ],
+    controller: [
+      'Contrôles qualité des installations',
+      'Validation des normes de sécurité',
+      'Certification et documentation finale',
+      'Formation des utilisateurs',
+    ],
+  };
+
+  Object.entries(schedule).forEach(([roleKey, roleSchedule]) => {
+    const role = roleKey as RoleKey;
+    const dateDebut = new Date(dateDemarrageInitiale);
+    dateDebut.setDate(dateDebut.getDate() + roleSchedule.start);
+
+    const dateFin = new Date(dateDemarrageInitiale);
+    dateFin.setDate(dateFin.getDate() + roleSchedule.end);
+
+    // Calcul de la durée calendaire
+    const dureeCalendrier = getCalendarDays(roleSchedule.duration, workDaysPerWeek, holidaysCount);
+
+    // Mise à jour de la date de fin globale
+    if (dateFin > dateFinGlobale) {
+      dateFinGlobale = new Date(dateFin);
+    }
+
+    planningDetaille[role] = {
+      role,
+      dateDebut,
+      dateFin,
+      dureeJours: roleSchedule.duration,
+      dureeCalendrier,
+      equipesAllouees: teamConfigs[role].count,
+      capaciteJournaliere:
+        projectConfig?.config?.productionRates?.[role] || ROLE_CAPACITY_DEFAULTS[role],
+      taches: descriptionsTaches[role] || [],
+    };
+  });
+
+  return { planningDetaille, dateFinGlobale };
+}
+
 // V2: Main calculation with pipeline + cashflow
-export function calculateScenarioV2(inputs: SimulationInputs): Scenario {
+export function calculerScenarioV2(inputs: SimulationInputs): Scenario {
   const base = calculateScenario(inputs);
 
   // Improved pipeline schedule with unforeseen buffer
-  const improvedSchedule = computePipelineSchedule(
+  const improvedSchedule = calculerCalendrierPipeline(
     {
       macon: base.schedule.macon.duration,
       network: base.schedule.network.duration,
       interior: base.schedule.interior.duration,
       controller: base.schedule.controller.duration,
     },
-    inputs.unforeseenRate
+    inputs.tauxImprevu
   );
 
   const newDuration = improvedSchedule.controller.end;
@@ -365,13 +451,24 @@ export function calculateScenarioV2(inputs: SimulationInputs): Scenario {
   const margin = inputs.devisTotalPlanned - totalCost;
 
   // Realistic cashflow
-  const cashflow = computeCashflow({
+  const cashflow = calculerTresorerie({
     laborCost: base.laborCost,
     logisticsCost,
     devisTotalPlanned: inputs.devisTotalPlanned,
-    acompteRate: inputs.acompteRate,
+    tauxAcompte: inputs.tauxAcompte,
     duration: newDuration,
   });
+
+  // Générer le planning détaillé
+  const dateDemarrageInitiale = inputs.dateDemarrageInitiale || new Date();
+  const { planningDetaille, dateFinGlobale } = genererPlanningDetaille(
+    improvedSchedule,
+    dateDemarrageInitiale,
+    inputs.workDaysPerWeek,
+    inputs.holidaysCount,
+    inputs.teamConfigs,
+    inputs.projectConfig
+  );
 
   return {
     ...base,
@@ -381,27 +478,30 @@ export function calculateScenarioV2(inputs: SimulationInputs): Scenario {
     cost: totalCost,
     margin,
     logisticsCost,
-    initialCash: cashflow.initialCash,
-    maxOutflow: Math.max(base.laborCost + logisticsCost, Math.abs(cashflow.minCash)),
-    hasCashflowRisk: cashflow.hasRisk,
+    tresorerieInitiale: cashflow.initialCash,
+    depenseMax: Math.max(base.laborCost + logisticsCost, Math.abs(cashflow.minCash)),
+    aRisqueTresorerie: cashflow.hasRisk,
+    dateDemarrageInitiale,
+    planningDetaille,
+    dateFinGlobale,
   };
 }
 
-function compareScenarios(
+function comparerScenarios(
   a: Scenario,
   b: Scenario,
-  mode: OptimizationMode,
-  targetDuration: number,
+  mode: ModeOptimisation,
+  dureeCible: number,
   devisTotalPlanned: number,
-  budgetLimitPercent: number,
-  minMarginPercent: number
+  limiteBudgetPourcent: number,
+  margeMinimalePourcent: number
 ) {
-  const budgetLimit = devisTotalPlanned * (budgetLimitPercent / 100);
-  const minMarginThreshold = devisTotalPlanned * (minMarginPercent / 100);
+  const budgetLimit = devisTotalPlanned * (limiteBudgetPourcent / 100);
+  const minMarginThreshold = devisTotalPlanned * (margeMinimalePourcent / 100);
 
-  const budgetPenalty = (scenario: Scenario) =>
+  const penaliteBudget = (scenario: Scenario) =>
     scenario.cost > budgetLimit ? 5000000 + (scenario.cost - budgetLimit) * 0.1 : 0;
-  const marginPenalty = (scenario: Scenario) =>
+  const penaliteMarge = (scenario: Scenario) =>
     scenario.margin < minMarginThreshold
       ? 5000000 + (minMarginThreshold - scenario.margin) * 0.1
       : 0;
@@ -410,36 +510,36 @@ function compareScenarios(
     if (a.calendarDuration !== b.calendarDuration) {
       return a.calendarDuration - b.calendarDuration;
     }
-    const aPenalty = budgetPenalty(a) + marginPenalty(a);
-    const bPenalty = budgetPenalty(b) + marginPenalty(b);
-    if (aPenalty !== bPenalty) {
-      return aPenalty - bPenalty;
+    const penaliteA = penaliteBudget(a) + penaliteMarge(a);
+    const penaliteB = penaliteBudget(b) + penaliteMarge(b);
+    if (penaliteA !== penaliteB) {
+      return penaliteA - penaliteB;
     }
     return b.margin - a.margin;
   }
 
   if (mode === 'cost') {
-    const aPenalty = a.calendarDuration > targetDuration ? 100000000 : a.cost;
-    const bPenalty = b.calendarDuration > targetDuration ? 100000000 : b.cost;
-    const aBudgetPenalty = budgetPenalty(a);
-    const bBudgetPenalty = budgetPenalty(b);
-    if (aPenalty + aBudgetPenalty !== bPenalty + bBudgetPenalty) {
-      return aPenalty + aBudgetPenalty - (bPenalty + bBudgetPenalty);
+    const penaliteA = a.calendarDuration > dureeCible ? 100000000 : a.cost;
+    const penaliteB = b.calendarDuration > dureeCible ? 100000000 : b.cost;
+    const penaliteBudgetA = penaliteBudget(a);
+    const penaliteBudgetB = penaliteBudget(b);
+    if (penaliteA + penaliteBudgetA !== penaliteB + penaliteBudgetB) {
+      return penaliteA + penaliteBudgetA - (penaliteB + penaliteBudgetB);
     }
-    const aMarginPenalty = marginPenalty(a);
-    const bMarginPenalty = marginPenalty(b);
-    if (aMarginPenalty !== bMarginPenalty) {
-      return aMarginPenalty - bMarginPenalty;
+    const penaliteMargeA = penaliteMarge(a);
+    const penaliteMargeB = penaliteMarge(b);
+    if (penaliteMargeA !== penaliteMargeB) {
+      return penaliteMargeA - penaliteMargeB;
     }
     return b.margin - a.margin;
   }
 
   if (mode === 'cashflow') {
-    if (a.hasCashflowRisk !== b.hasCashflowRisk) {
-      return a.hasCashflowRisk ? 1 : -1;
+    if (a.aRisqueTresorerie !== b.aRisqueTresorerie) {
+      return a.aRisqueTresorerie ? 1 : -1;
     }
-    const aScore = a.cost + budgetPenalty(a) + marginPenalty(a);
-    const bScore = b.cost + budgetPenalty(b) + marginPenalty(b);
+    const aScore = a.cost + penaliteBudget(a) + penaliteMarge(a);
+    const bScore = b.cost + penaliteBudget(b) + penaliteMarge(b);
     if (aScore !== bScore) {
       return aScore - bScore;
     }
@@ -447,25 +547,27 @@ function compareScenarios(
   }
 
   if (mode === 'profit_max') {
-    const riskPenaltyA = a.hasCashflowRisk ? 7000000 : 0;
-    const delayPenaltyA = a.calendarDuration > targetDuration ? 3000000 : 0;
-    const scoreA = a.margin - riskPenaltyA - delayPenaltyA - budgetPenalty(a) - marginPenalty(a);
+    const penaliteRisqueA = a.aRisqueTresorerie ? 7000000 : 0;
+    const penaliteRetardA = a.calendarDuration > dureeCible ? 3000000 : 0;
+    const scoreA =
+      a.margin - penaliteRisqueA - penaliteRetardA - penaliteBudget(a) - penaliteMarge(a);
 
-    const riskPenaltyB = b.hasCashflowRisk ? 7000000 : 0;
-    const delayPenaltyB = b.calendarDuration > targetDuration ? 3000000 : 0;
-    const scoreB = b.margin - riskPenaltyB - delayPenaltyB - budgetPenalty(b) - marginPenalty(b);
+    const penaliteRisqueB = b.aRisqueTresorerie ? 7000000 : 0;
+    const penaliteRetardB = b.calendarDuration > dureeCible ? 3000000 : 0;
+    const scoreB =
+      b.margin - penaliteRisqueB - penaliteRetardB - penaliteBudget(b) - penaliteMarge(b);
 
     return scoreB - scoreA;
   }
 
   if (mode === 'risk_averse') {
-    if (a.hasCashflowRisk !== b.hasCashflowRisk) {
-      return a.hasCashflowRisk ? 1 : -1;
+    if (a.aRisqueTresorerie !== b.aRisqueTresorerie) {
+      return a.aRisqueTresorerie ? 1 : -1;
     }
-    const aPenalty = budgetPenalty(a) + marginPenalty(a);
-    const bPenalty = budgetPenalty(b) + marginPenalty(b);
-    if (aPenalty !== bPenalty) {
-      return aPenalty - bPenalty;
+    const penaliteA = penaliteBudget(a) + penaliteMarge(a);
+    const penaliteB = penaliteBudget(b) + penaliteMarge(b);
+    if (penaliteA !== penaliteB) {
+      return penaliteA - penaliteB;
     }
     return b.margin - a.margin;
   }
@@ -480,10 +582,10 @@ function compareScenarios(
   }
 
   if (mode === 'low_logistics') {
-    const aPenalty = budgetPenalty(a) + marginPenalty(a);
-    const bPenalty = budgetPenalty(b) + marginPenalty(b);
-    if (aPenalty !== bPenalty) {
-      return aPenalty - bPenalty;
+    const penaliteA = penaliteBudget(a) + penaliteMarge(a);
+    const penaliteB = penaliteBudget(b) + penaliteMarge(b);
+    if (penaliteA !== penaliteB) {
+      return penaliteA - penaliteB;
     }
     if (a.logisticsCost !== b.logisticsCost) {
       return a.logisticsCost - b.logisticsCost;
@@ -494,42 +596,46 @@ function compareScenarios(
   return b.margin - a.margin;
 }
 
-export function optimizeTeamConfigs(options: OptimizationOptions): Record<RoleKey, TeamConfig> {
+export function optimiserConfigurationsEquipes(
+  options: OptionsOptimisation
+): Record<RoleKey, TeamConfig> {
   const {
     teamConfigs,
-    targetDuration,
-    budgetLimitPercent,
-    minMarginPercent,
+    dureeCible,
+    limiteBudgetPourcent,
+    margeMinimalePourcent,
     householdsCount,
     devisTotalPlanned,
     workDaysPerWeek,
     holidaysCount,
     projectConfig,
     baseVehicleCount,
-    unforeseenRate,
+    tauxImprevu,
     isHivernage,
-    rejectRate,
-    acompteRate,
-    hivernagePenaltyMacon,
-    hivernagePenaltyNetwork,
+    tauxRejet,
+    tauxAcompte,
+    penaliteHivernageMacon,
+    penaliteHivernageReseau,
     mode,
+    dateDemarrageInitiale,
   } = options;
 
   let currentConfigs: Record<RoleKey, TeamConfig> = JSON.parse(JSON.stringify(teamConfigs));
-  let bestScenario = calculateScenarioV2({
+  let bestScenario = calculerScenarioV2({
     householdsCount,
     devisTotalPlanned,
     projectConfig,
     teamConfigs: currentConfigs,
     baseVehicleCount,
-    unforeseenRate,
+    tauxImprevu,
     isHivernage,
-    rejectRate,
-    acompteRate,
+    tauxRejet,
+    tauxAcompte,
     workDaysPerWeek,
     holidaysCount,
-    hivernagePenaltyMacon,
-    hivernagePenaltyNetwork,
+    penaliteHivernageMacon,
+    penaliteHivernageReseau,
+    dateDemarrageInitiale,
   });
 
   let improved = true;
@@ -542,37 +648,38 @@ export function optimizeTeamConfigs(options: OptimizationOptions): Record<RoleKe
     iteration++;
     improved = false;
 
-    const bottleneck = bestScenario.bottleneck;
+    const goulotDetroits = bestScenario.goulotDetroits;
     const testConfigs = JSON.parse(JSON.stringify(currentConfigs));
 
     // Try increasing bottleneck
-    testConfigs[bottleneck].count = Math.min(testConfigs[bottleneck].count + 1, 8);
+    testConfigs[goulotDetroits].count = Math.min(testConfigs[goulotDetroits].count + 1, 8);
 
-    const scenario = calculateScenarioV2({
+    const scenario = calculerScenarioV2({
       householdsCount,
       devisTotalPlanned,
       projectConfig,
       teamConfigs: testConfigs,
       baseVehicleCount,
-      unforeseenRate,
+      tauxImprevu,
       isHivernage,
-      rejectRate,
-      acompteRate,
+      tauxRejet,
+      tauxAcompte,
       workDaysPerWeek,
       holidaysCount,
-      hivernagePenaltyMacon,
-      hivernagePenaltyNetwork,
+      penaliteHivernageMacon,
+      penaliteHivernageReseau,
+      dateDemarrageInitiale,
     });
 
     if (
-      compareScenarios(
+      comparerScenarios(
         scenario,
         bestScenario,
         mode,
-        targetDuration,
+        dureeCible,
         devisTotalPlanned,
-        budgetLimitPercent,
-        minMarginPercent
+        limiteBudgetPourcent,
+        margeMinimalePourcent
       ) < 0
     ) {
       currentConfigs = testConfigs;
@@ -594,31 +701,32 @@ export function optimizeTeamConfigs(options: OptimizationOptions): Record<RoleKe
       const newMode = currentMode === 'task' ? 'day' : 'task';
       testConfigs[role].paymentMode = newMode;
 
-      const scenario = calculateScenarioV2({
+      const scenario = calculerScenarioV2({
         householdsCount,
         devisTotalPlanned,
         projectConfig,
         teamConfigs: testConfigs,
         baseVehicleCount,
-        unforeseenRate,
+        tauxImprevu,
         isHivernage,
-        rejectRate,
-        acompteRate,
+        tauxRejet,
+        tauxAcompte,
         workDaysPerWeek,
         holidaysCount,
-        hivernagePenaltyMacon,
-        hivernagePenaltyNetwork,
+        penaliteHivernageMacon,
+        penaliteHivernageReseau,
+        dateDemarrageInitiale,
       });
 
       if (
-        compareScenarios(
+        comparerScenarios(
           scenario,
           bestScenario,
           mode,
-          targetDuration,
+          dureeCible,
           devisTotalPlanned,
-          budgetLimitPercent,
-          minMarginPercent
+          limiteBudgetPourcent,
+          margeMinimalePourcent
         ) < 0
       ) {
         currentConfigs = testConfigs;
