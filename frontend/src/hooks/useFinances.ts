@@ -13,7 +13,7 @@ export interface DevisItem {
 
 export const DEVIS_ITEMS: DevisItem[] = [
     { id: 'formation', label: 'Formation 5 équipes (19 électriciens)', region: 'Global', qty: 5, unit: 1500000 },
-    { id: 'transport', label: 'Transport matériel', region: 'Global', qty: 3750, unit: 3667 },
+    { id: 'transport', label: 'préparation et Transport matériel', region: 'Global', qty: 3750, unit: 3667 },
     { id: 'controle', label: 'Contrôle conformité / reporting', region: 'Global', qty: 3750, unit: 4000 },
     { id: 'kaffrine-coffret', label: 'Coffret + potelet + raccordement réseau', region: 'Kaffrine', qty: 2350, unit: 6230 },
     { id: 'kaffrine-mur', label: 'Mur support coffret (cheminée)', region: 'Kaffrine', qty: 2000, unit: 35000 },
@@ -148,6 +148,20 @@ export function useFinances() {
         await db.projects.update(project.id, { config: newConfig });
     };
 
+    const resetToDefault = async () => {
+        if (!project?.id) return;
+        const newConfig = { ...(project.config || {}) };
+        if (!newConfig.financials) newConfig.financials = {};
+        (newConfig.financials as any).devisItems = [...DEVIS_ITEMS];
+        (newConfig.financials as any).plannedCosts = {};
+        (newConfig.financials as any).realCosts = {};
+        DEVIS_ITEMS.forEach(d => {
+            (newConfig.financials as any).plannedCosts[d.id] = { qty: d.qty, unit: d.unit };
+            (newConfig.financials as any).realCosts[d.id] = { qty: d.qty, unit: d.unit };
+        });
+        await db.projects.update(project.id, { config: newConfig });
+    };
+
     const parseSafeNum = (val: any, defaultVal: number) => {
         if (val === undefined || val === null || val === '') return defaultVal;
         if (typeof val === 'number') return val;
@@ -276,6 +290,7 @@ export function useFinances() {
         addDevisItem,
         deleteDevisItem,
         importDevisList,
+        resetToDefault,
         isLoading: !projects || !teams || !households
     };
 }

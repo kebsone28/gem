@@ -18,7 +18,7 @@ interface Props {
 }
 
 export function FinancesSection({ project, onUpdate }: Props) {
-    const { devis, addDevisItem, deleteDevisItem, importDevisList } = useFinances();
+    const { devis, addDevisItem, deleteDevisItem, importDevisList, resetToDefault } = useFinances();
     const [isSaving, setIsSaving] = useState(false);
     const [success, setSuccess] = useState(false);
     const [importErrors, setImportErrors] = useState<string[]>([]);
@@ -129,6 +129,15 @@ export function FinancesSection({ project, onUpdate }: Props) {
                         <Upload size={15} /> IMPORTER
                         <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleImport} />
                     </label>
+                    <button onClick={async () => {
+                        if (confirm("Voulez-vous vraiment réinitialiser aux valeurs d'exemple de base ? Vos données importées seront effacées.")) {
+                            await resetToDefault();
+                            setSuccess(true);
+                            setTimeout(() => setSuccess(false), 3000);
+                        }
+                    }} className="flex items-center gap-2 px-5 py-3 bg-amber-600 hover:bg-amber-700 text-white font-black text-xs rounded-xl transition-all active:scale-95">
+                        RÉINITIALISER
+                    </button>
                     {previousConfig && (
                         <button onClick={handleUndo} className="flex items-center gap-2 px-5 py-3 bg-rose-600 hover:bg-rose-700 text-white font-black text-xs rounded-xl transition-all active:scale-95">
                             ANNULER L'IMPORT
