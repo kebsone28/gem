@@ -168,7 +168,7 @@ export function FinancesSection({ project, onUpdate }: Props) {
                     <table className="w-full text-left">
                         <thead className="bg-slate-950/50 border-b border-white/5">
                             <tr>
-                                {['Poste de Depense', 'Region', 'Qte', 'P.U', 'Total Prevu', 'Total Reel', 'Marge', ''].map(h => (
+                                {['Poste de Depense', 'Region', 'Qte', 'P.U (FCFA)', 'Total Prevu (FCFA)', 'Total Reel (FCFA)', 'Marge (FCFA)', ''].map(h => (
                                     <th key={h} className={`px-4 py-4 text-xs font-black text-slate-500 uppercase tracking-widest ${h === '' ? '' : 'text-right first:text-left'}`}>{h}</th>
                                 ))}
                             </tr>
@@ -180,11 +180,11 @@ export function FinancesSection({ project, onUpdate }: Props) {
                                 <tr key={item.id} className="group hover:bg-white/5 transition-all">
                                     <td className="px-4 py-4 text-sm font-bold text-white">{item.label}</td>
                                     <td className="px-4 py-4 text-xs font-black text-indigo-400 uppercase text-right">{item.region}</td>
-                                    <td className="px-4 py-4 text-right text-sm text-slate-300">{item.qty}</td>
-                                    <td className="px-4 py-4 text-right text-sm text-slate-300">{fmtFCFA(item.unit)}</td>
-                                    <td className="px-4 py-4 text-right text-sm font-bold text-blue-400">{fmtFCFA(item.planned)}</td>
-                                    <td className="px-4 py-4 text-right text-sm font-bold text-slate-300">{fmtFCFA(item.realTotal)}</td>
-                                    <td className={`px-4 py-4 text-right text-sm font-black ${item.margin >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{fmtFCFA(item.margin)}</td>
+                                    <td className="px-4 py-4 text-right text-sm text-slate-300">{item.qty.toLocaleString('fr-FR')}</td>
+                                    <td className="px-4 py-4 text-right text-sm text-slate-300">{item.unit.toLocaleString('fr-FR')}</td>
+                                    <td className="px-4 py-4 text-right text-sm font-bold text-blue-400">{item.planned.toLocaleString('fr-FR')}</td>
+                                    <td className="px-4 py-4 text-right text-sm font-bold text-slate-300">{item.realTotal.toLocaleString('fr-FR')}</td>
+                                    <td className={`px-4 py-4 text-right text-sm font-black ${item.margin >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{item.margin.toLocaleString('fr-FR')}</td>
                                     <td className="px-4 py-4">
                                         <button onClick={() => deleteDevisItem(item.id)} title="Supprimer ce poste" className="p-2 opacity-0 group-hover:opacity-100 text-rose-500 hover:bg-rose-500/10 rounded-lg transition-all">
                                             <Trash2 size={14} />
@@ -197,9 +197,9 @@ export function FinancesSection({ project, onUpdate }: Props) {
                             <tfoot className="bg-slate-950/50 border-t border-white/10">
                                 <tr>
                                     <td colSpan={4} className="px-4 py-4 text-xs font-black text-slate-500 uppercase tracking-widest">TOTAL ({devisItems.length} postes)</td>
-                                    <td className="px-4 py-4 text-right text-base font-black text-blue-400">{fmtFCFA(devisItems.reduce((s: number, i: any) => s + (i.planned || 0), 0))}</td>
-                                    <td className="px-4 py-4 text-right text-base font-black text-white">{fmtFCFA(devisItems.reduce((s: number, i: any) => s + (i.realTotal || 0), 0))}</td>
-                                    <td className={`px-4 py-4 text-right text-base font-black ${devis.globalMargin >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{fmtFCFA(devis.globalMargin)}</td>
+                                    <td className="px-4 py-4 text-right text-base font-black text-blue-400">{devisItems.reduce((s: number, i: any) => s + (i.planned || 0), 0).toLocaleString('fr-FR')}</td>
+                                    <td className="px-4 py-4 text-right text-base font-black text-white">{devisItems.reduce((s: number, i: any) => s + (i.realTotal || 0), 0).toLocaleString('fr-FR')}</td>
+                                    <td className={`px-4 py-4 text-right text-base font-black ${devis.globalMargin >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{devis.globalMargin.toLocaleString('fr-FR')}</td>
                                     <td />
                                 </tr>
                             </tfoot>
