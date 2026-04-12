@@ -37,7 +37,7 @@ export default function Charges() {
 
     if (isLoading) {
         return (
-            <div className={COMMON_CLASSES.flexCenter} style={{ minHeight: '60vh' }}>
+            <div className={`${COMMON_CLASSES.flexCenter} min-h-[60vh]`}>
                 <div className="relative w-20 h-20">
                     <div className="absolute inset-0 border-4 border-indigo-500/20 rounded-full"></div>
                     <div className="absolute inset-0 border-4 border-t-indigo-500 rounded-full animate-spin"></div>
@@ -151,7 +151,7 @@ export default function Charges() {
             </AnimatePresence>
 
             {/* Global Summary Footer Card */}
-            <div className={`${COMMON_CLASSES.card} p-6 md:p-12 overflow-hidden relative`} style={{ boxShadow: DESIGN_TOKENS.shadows['2xl'], background: isDarkMode ? DESIGN_TOKENS.colors.primary[600] : DESIGN_TOKENS.colors.gray[900] }}>
+            <div className={`${COMMON_CLASSES.card} p-6 md:p-12 overflow-hidden relative shadow-2xl ${isDarkMode ? 'bg-indigo-600' : 'bg-gray-900'}`}>
                 <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5 md:gap-8">
                     <div>
                         <h3 className={`${COMMON_CLASSES.heading2} text-white mb-1 md:mb-2 italic tracking-tighter uppercase`}>Besoin d'un rapport complet ?</h3>

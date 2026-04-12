@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
     FileSpreadsheet,
     Download,
@@ -27,6 +27,12 @@ function DevisRow({ item, onUpdatePlanned, onUpdateReal, onDelete }: {
     const [pUnit, setPUnit] = useState<number>(item.unit ?? 0);
     const [rQty, setRQty] = useState<number>(item.rq ?? item.qty ?? 0);
     const [rUnit, setRUnit] = useState<number>(item.ru ?? item.unit ?? 0);
+
+    // Resync local state when Dexie/server data changes (e.g. after save/sync)
+    useEffect(() => { setPQty(item.qty ?? 0); }, [item.qty]);
+    useEffect(() => { setPUnit(item.unit ?? 0); }, [item.unit]);
+    useEffect(() => { setRQty(item.rq ?? item.qty ?? 0); }, [item.rq, item.qty]);
+    useEffect(() => { setRUnit(item.ru ?? item.unit ?? 0); }, [item.ru, item.unit]);
 
     const totalPrevu = pQty * pUnit;
     const totalReel = rQty * rUnit;
@@ -161,8 +167,10 @@ export function FinancesSection({ project, onUpdate }: Props) {
     const handleSaveToServer = async () => {
         setIsSaving(true);
         try {
-            await onUpdate({ config: { ...project.config } });
-            setPreviousConfig(null); // Clear undo history after save
+            // Deep clone to ensure nested financials.realCosts & plannedCosts are fully included
+            const configSnapshot = JSON.parse(JSON.stringify(project?.config || {}));
+            await onUpdate({ config: configSnapshot });
+            setPreviousConfig(null);
             setSuccess(true);
             setTimeout(() => setSuccess(false), 3000);
         } finally { setIsSaving(false); }
