@@ -333,7 +333,7 @@ export function generateRapportFinancier(data: {
     const rows = devisReport.map(item => [
         item.label,
         item.region,
-        item.qty.toString(),
+        `${item.qty} / ${item.rq ?? item.qty}`,
         Math.round(item.unit).toString() + ' FCFA',
         fmt(item.planned),
         fmt(item.realTotal),
@@ -342,7 +342,7 @@ export function generateRapportFinancier(data: {
 
     autoTable(doc, {
         startY: y,
-        head: [['Poste', 'Région', 'Qté Prévue', 'PU', 'Total Prévu', 'Total Réel', 'Marge']],
+        head: [['Poste', 'Région', 'Qté (Prév/Réel)', 'PU', 'Total Prévu', 'Total Réel', 'Marge']],
         body: rows,
         styles: { fontSize: 7, cellPadding: 2.5 },
         headStyles: { fillColor: INDIGO, textColor: [255, 255, 255], fontStyle: 'bold' },
@@ -411,14 +411,21 @@ export function generateRapportKobo(data: { households: any[] }) {
     forms.forEach(f => { y = drawProgressBar(doc, f.name, f.pct, y, f.pct >= 70 ? GREEN : f.pct >= 50 ? AMBER : RED); });
     y += 6;
 
+    // Journal des syncs : dérivé des vraies données ménages
     y = drawSectionTitle(doc, 'Journal des Dernières Synchronisations', y);
-    const logRows = [
-        ['2026-03-01 18:45', 'Pull Kobo', '142 Enregistrements', 'Succès', 'Kaffrine'],
-        ['2026-03-01 15:20', 'Push Local→Serveur', '87 Formulaires', 'Succès', 'Tambacounda'],
-        ['2026-03-01 11:05', 'Pull Kobo', '56 Enregistrements', 'Partiel (3 erreurs)', 'Kédougou'],
-        ['2026-03-01 08:30', 'Push Local→Serveur', '203 Formulaires', 'Succès', 'Global'],
-        ['2026-02-29 21:00', 'Sync Automatique', '421 Enregistrements', 'Succès', 'Global'],
-    ];
+    const recentSynced = households
+        .filter(h => h.koboSync)
+        .sort((a, b) => new Date(b.updatedAt || b.createdAt || 0).getTime() - new Date(a.updatedAt || a.createdAt || 0).getTime())
+        .slice(0, 6);
+    const logRows = recentSynced.length > 0
+        ? recentSynced.map(h => [
+            new Date(h.updatedAt || h.createdAt || Date.now()).toLocaleString('fr-FR'),
+            'Pull Kobo',
+            h.numeroordre || h.id?.toString().substring(0, 10) || '—',
+            'Succès',
+            h.region || '—'
+          ])
+        : [['Aucune sync récente', '—', '—', '—', '—']];
     autoTable(doc, {
         startY: y,
         head: [['Horodatage', 'Type', 'Volume', 'Statut', 'Zone']],
@@ -430,7 +437,7 @@ export function generateRapportKobo(data: { households: any[] }) {
     });
 
     drawFooter(doc);
-    doc.save(`Rapport_Kobo_${new Date().toISOString().split('T')[0]}.csv`);
+    doc.save(`Rapport_Kobo_${new Date().toISOString().split('T')[0]}.pdf`);
 }
 
 // ─────────────────────────────────────────────────────────────────

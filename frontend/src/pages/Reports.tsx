@@ -53,6 +53,9 @@ export default function Reports() {
     const isLSE = user?.role === 'CLIENT_LSE';
     const isAdmin = user?.role === 'ADMIN_PROQUELEC' || user?.role === 'DG_PROQUELEC';
     const finances = useFinances();
+    const [exportFormat, setExportFormat] = useState('PDF');
+    const [includeFinancial, setIncludeFinancial] = useState(false);
+    const [includeSummary, setIncludeSummary] = useState(true);
 
     const markState = (id: string, state: 'loading' | 'done' | 'error') =>
         setStates(s => ({ ...s, [id]: state }));
@@ -279,41 +282,30 @@ export default function Reports() {
                                         <select
                                             id="export-format"
                                             title="Choisir le format d'export"
+                                            value={exportFormat}
+                                            onChange={e => setExportFormat(e.target.value)}
                                             className={`${COMMON_CLASSES.input} appearance-none pr-10 bg-slate-900 border-white/10 text-white`}
                                         >
-                                            <option>PDF Document (.pdf)</option>
-                                            <option>Excel Spreadsheet (.xlsx)</option>
-                                            <option>Structured JSON (.json)</option>
+                                            <option value="PDF">PDF Document (.pdf)</option>
+                                            <option value="Excel">Excel Spreadsheet (.xlsx)</option>
                                         </select>
                                         <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 text-blue-300/30 pointer-events-none" size={18} />
                                     </div>
                                 </div>
 
-                                <div className="space-y-3">
-                                    <label className={COMMON_CLASSES.label} htmlFor="export-date">Date d'Arrêt technique</label>
-                                    <input
-                                        id="export-date"
-                                        type="date"
-                                        title="Sélectionner une date"
-                                        className={`${COMMON_CLASSES.input} bg-slate-900 border-white/10 text-white`}
-                                    />
-                                </div>
-
-                                <div className="pt-4 space-y-4">
-                                    {!isLSE && (
-                                        <label className="flex items-center gap-4 cursor-pointer group">
-                                            <div className="w-6 h-6 rounded-lg border-2 border-blue-500 transition-all flex items-center justify-center bg-blue-500/10">
-                                                <div className="w-2.5 h-2.5 bg-blue-500 rounded-sm" />
-                                            </div>
-                                            <span className="text-blue-100 font-bold text-xs uppercase tracking-tight">Résumé Stratégique</span>
-                                        </label>
-                                    )}
+                                <div className="pt-2 space-y-4">
+                                    <label className="flex items-center gap-4 cursor-pointer group" onClick={() => setIncludeSummary(v => !v)}>
+                                        <div className={`w-6 h-6 rounded-lg border-2 transition-all flex items-center justify-center ${includeSummary ? 'border-blue-500 bg-blue-500/10' : 'border-white/10'}`}>
+                                            {includeSummary && <div className="w-2.5 h-2.5 bg-blue-500 rounded-sm" />}
+                                        </div>
+                                        <span className="text-blue-100 font-bold text-xs uppercase tracking-tight">Résumé Avancement Terrain</span>
+                                    </label>
                                     {isAdmin && (
-                                        <label className="flex items-center gap-4 cursor-pointer group text-blue-300/40 hover:text-blue-400 transition-colors">
-                                            <div className="w-6 h-6 rounded-lg border-2 border-white/10 group-hover:border-blue-500 transition-all flex items-center justify-center">
-                                                <div className="w-2.5 h-2.5 rounded-sm opacity-0 group-hover:opacity-100 bg-blue-500 transition-opacity" />
+                                        <label className="flex items-center gap-4 cursor-pointer group" onClick={() => setIncludeFinancial(v => !v)}>
+                                            <div className={`w-6 h-6 rounded-lg border-2 transition-all flex items-center justify-center ${includeFinancial ? 'border-emerald-500 bg-emerald-500/10' : 'border-white/10 group-hover:border-emerald-500'}`}>
+                                                {includeFinancial && <div className="w-2.5 h-2.5 bg-emerald-500 rounded-sm" />}
                                             </div>
-                                            <span className="font-bold text-xs uppercase tracking-tight">Données Financières</span>
+                                            <span className="font-bold text-xs uppercase tracking-tight text-blue-100">Données Financières (Devis vs Réel)</span>
                                         </label>
                                     )}
                                 </div>
@@ -333,7 +325,22 @@ export default function Reports() {
                             </div>
 
                             <button
-                                onClick={() => run('global', () => generateRapportAvancement({ households, zones, userName: user?.name }))}
+                                onClick={() => {
+                                    if (includeFinancial && isAdmin) {
+                                        run('global', () => generateRapportFinancier({
+                                            devisReport: finances.devis?.report || [],
+                                            totalPlanned: finances.devis?.totalPlanned || 0,
+                                            totalReal: finances.devis?.totalReal || 0,
+                                            globalMargin: finances.devis?.globalMargin || 0,
+                                            marginPct: finances.devis?.marginPct || 0,
+                                            ceiling: finances.devis?.ceiling || 300823750,
+                                            stats: finances.stats,
+                                            projectName: 'Projet GEM — Sénégal',
+                                        }));
+                                    } else {
+                                        run('global', () => generateRapportAvancement({ households, zones, userName: user?.name }));
+                                    }
+                                }}
                                 disabled={states['global'] === 'loading'}
                                 className={`${COMMON_CLASSES.btnPrimary} w-full py-5 rounded-[1.5rem] mt-6 text-xs uppercase tracking-[0.2em] shadow-blue-500/20`}
                             >
