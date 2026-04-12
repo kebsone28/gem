@@ -165,42 +165,79 @@ export function FinancesSection({ project, onUpdate }: Props) {
             {/* Table */}
             <div className="bg-white/5 rounded-[2rem] border border-white/5 overflow-hidden">
                 <div className="overflow-x-auto">
-                    <table className="w-full text-left">
-                        <thead className="bg-slate-950/50 border-b border-white/5">
-                            <tr>
-                                {['Poste de Depense', 'Region', 'Qte', 'P.U (FCFA)', 'Total Prevu (FCFA)', 'Total Reel (FCFA)', 'Marge (FCFA)', ''].map(h => (
-                                    <th key={h} className={`px-4 py-4 text-xs font-black text-slate-500 uppercase tracking-widest ${h === '' ? '' : 'text-right first:text-left'}`}>{h}</th>
-                                ))}
+                    <table className="w-full text-left border-collapse">
+                        <thead>
+                            {/* Row 1: Group headers */}
+                            <tr className="bg-slate-950/70 border-b border-white/5">
+                                <th colSpan={3} className="px-4 py-2 text-xs font-black text-slate-400 uppercase tracking-widest text-center border-r border-white/10">
+                                    DONNÉE FINANCIÈRE
+                                </th>
+                                <th colSpan={3} className="px-4 py-2 text-xs font-black text-blue-400 uppercase tracking-widest text-center border-r border-white/10">
+                                    COÛT PROJET (PRÉVISION)
+                                </th>
+                                <th colSpan={3} className="px-4 py-2 text-xs font-black text-amber-400 uppercase tracking-widest text-center border-r border-white/10">
+                                    CHARGE RÉELLE
+                                </th>
+                                <th className="px-4 py-2 text-xs font-black text-emerald-400 uppercase tracking-widest text-center">
+                                    MARGE
+                                </th>
+                                <th></th>
+                            </tr>
+                            {/* Row 2: Column headers */}
+                            <tr className="bg-slate-950/50 border-b border-white/5">
+                                <th className="px-4 py-3 text-xs font-black text-slate-500 uppercase tracking-widest text-left border-r border-white/5">ID</th>
+                                <th className="px-4 py-3 text-xs font-black text-slate-500 uppercase tracking-widest text-left border-r border-white/5">Poste de Dépense</th>
+                                <th className="px-4 py-3 text-xs font-black text-slate-500 uppercase tracking-widest text-center border-r border-white/10">Région</th>
+                                <th className="px-4 py-3 text-xs font-black text-blue-300 uppercase tracking-widest text-right">Prév. Qté</th>
+                                <th className="px-4 py-3 text-xs font-black text-blue-300 uppercase tracking-widest text-right">Prév. PU (FCFA)</th>
+                                <th className="px-4 py-3 text-xs font-black text-blue-300 uppercase tracking-widest text-right border-r border-white/10">Total Prévu</th>
+                                <th className="px-4 py-3 text-xs font-black text-amber-300 uppercase tracking-widest text-right">Réel Qté</th>
+                                <th className="px-4 py-3 text-xs font-black text-amber-300 uppercase tracking-widest text-right">Réel PU (FCFA)</th>
+                                <th className="px-4 py-3 text-xs font-black text-amber-300 uppercase tracking-widest text-right border-r border-white/10">Total Réel</th>
+                                <th className="px-4 py-3 text-xs font-black text-emerald-400 uppercase tracking-widest text-right">Écart (FCFA)</th>
+                                <th></th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-white/5">
                             {devisItems.length === 0 ? (
-                                <tr><td colSpan={8} className="py-16 text-center text-slate-600 font-bold text-sm">Aucun poste. Ajoutez-en ci-dessous ou importez un Excel.</td></tr>
+                                <tr><td colSpan={11} className="py-16 text-center text-slate-600 font-bold text-sm">Aucun poste. Ajoutez-en ci-dessous ou importez un Excel.</td></tr>
                             ) : devisItems.map((item: any) => (
                                 <tr key={item.id} className="group hover:bg-white/5 transition-all">
-                                    <td className="px-4 py-4 text-sm font-bold text-white">{item.label}</td>
-                                    <td className="px-4 py-4 text-xs font-black text-indigo-400 uppercase text-right">{item.region}</td>
-                                    <td className="px-4 py-4 text-right">
-                                        <input 
-                                            type="number" 
-                                            defaultValue={item.qty}
+                                    {/* DONNÉE FINANCIÈRE */}
+                                    <td className="px-4 py-3 text-xs text-slate-500 border-r border-white/5">{item.id}</td>
+                                    <td className="px-4 py-3 text-sm font-bold text-white border-r border-white/5">{item.label}</td>
+                                    <td className="px-4 py-3 text-xs font-black text-indigo-400 uppercase text-center border-r border-white/10">{item.region}</td>
+
+                                    {/* COÛT PROJET — éditables */}
+                                    <td className="px-2 py-1 text-right">
+                                        <input type="number" defaultValue={item.qty}
                                             onBlur={e => updatePlannedCost(item.id, 'qty', Number(e.target.value) || 0)}
-                                            className="w-20 bg-transparent text-right text-sm text-slate-300 border border-transparent hover:border-white/20 focus:border-indigo-500 rounded px-2 py-1 outline-none transition-all"
-                                        />
+                                            className="w-20 bg-transparent text-right text-sm text-blue-200 border border-transparent hover:border-blue-400/40 focus:border-blue-500 rounded px-2 py-1 outline-none transition-all" />
                                     </td>
-                                    <td className="px-4 py-4 text-right">
-                                        <input 
-                                            type="number" 
-                                            defaultValue={item.unit}
+                                    <td className="px-2 py-1 text-right">
+                                        <input type="number" defaultValue={item.unit}
                                             onBlur={e => updatePlannedCost(item.id, 'unit', Number(e.target.value) || 0)}
-                                            className="w-28 bg-transparent text-right text-sm text-slate-300 border border-transparent hover:border-white/20 focus:border-indigo-500 rounded px-2 py-1 outline-none transition-all"
-                                        />
+                                            className="w-28 bg-transparent text-right text-sm text-blue-200 border border-transparent hover:border-blue-400/40 focus:border-blue-500 rounded px-2 py-1 outline-none transition-all" />
                                     </td>
-                                    <td className="px-4 py-4 text-right text-sm font-bold text-blue-400">{item.planned.toLocaleString('fr-FR')}</td>
-                                    <td className="px-4 py-4 text-right text-sm font-bold text-slate-300">{item.realTotal.toLocaleString('fr-FR')}</td>
-                                    <td className={`px-4 py-4 text-right text-sm font-black ${item.margin >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{item.margin.toLocaleString('fr-FR')}</td>
-                                    <td className="px-4 py-4">
-                                        <button onClick={() => deleteDevisItem(item.id)} title="Supprimer ce poste" className="p-2 opacity-0 group-hover:opacity-100 text-rose-500 hover:bg-rose-500/10 rounded-lg transition-all">
+                                    <td className="px-4 py-3 text-right text-sm font-bold text-blue-400 border-r border-white/10">{item.planned.toLocaleString('fr-FR')}</td>
+
+                                    {/* CHARGE RÉELLE — éditables et autonomes */}
+                                    <td className="px-2 py-1 text-right">
+                                        <input type="number" defaultValue={item.rq ?? item.qty}
+                                            onBlur={e => updateRealCost(item.id, 'qty', Number(e.target.value) || 0)}
+                                            className="w-20 bg-transparent text-right text-sm text-amber-200 border border-transparent hover:border-amber-400/40 focus:border-amber-500 rounded px-2 py-1 outline-none transition-all" />
+                                    </td>
+                                    <td className="px-2 py-1 text-right">
+                                        <input type="number" defaultValue={item.ru ?? item.unit}
+                                            onBlur={e => updateRealCost(item.id, 'unit', Number(e.target.value) || 0)}
+                                            className="w-28 bg-transparent text-right text-sm text-amber-200 border border-transparent hover:border-amber-400/40 focus:border-amber-500 rounded px-2 py-1 outline-none transition-all" />
+                                    </td>
+                                    <td className="px-4 py-3 text-right text-sm font-bold text-amber-300 border-r border-white/10">{item.realTotal.toLocaleString('fr-FR')}</td>
+
+                                    {/* MARGE */}
+                                    <td className={`px-4 py-3 text-right text-sm font-black ${item.margin >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{item.margin.toLocaleString('fr-FR')}</td>
+                                    <td className="px-2 py-3">
+                                        <button onClick={() => deleteDevisItem(item.id)} title="Supprimer" className="p-2 opacity-0 group-hover:opacity-100 text-rose-500 hover:bg-rose-500/10 rounded-lg transition-all">
                                             <Trash2 size={14} />
                                         </button>
                                     </td>
@@ -208,11 +245,13 @@ export function FinancesSection({ project, onUpdate }: Props) {
                             ))}
                         </tbody>
                         {devisItems.length > 0 && (
-                            <tfoot className="bg-slate-950/50 border-t border-white/10">
+                            <tfoot className="bg-slate-950/60 border-t-2 border-white/10">
                                 <tr>
-                                    <td colSpan={4} className="px-4 py-4 text-xs font-black text-slate-500 uppercase tracking-widest">TOTAL ({devisItems.length} postes)</td>
-                                    <td className="px-4 py-4 text-right text-base font-black text-blue-400">{devisItems.reduce((s: number, i: any) => s + (i.planned || 0), 0).toLocaleString('fr-FR')}</td>
-                                    <td className="px-4 py-4 text-right text-base font-black text-white">{devisItems.reduce((s: number, i: any) => s + (i.realTotal || 0), 0).toLocaleString('fr-FR')}</td>
+                                    <td colSpan={3} className="px-4 py-4 text-xs font-black text-slate-400 uppercase tracking-widest border-r border-white/10">TOTAL — {devisItems.length} postes</td>
+                                    <td colSpan={2} className="px-4 py-4" />
+                                    <td className="px-4 py-4 text-right text-base font-black text-blue-400 border-r border-white/10">{devisItems.reduce((s: number, i: any) => s + (i.planned || 0), 0).toLocaleString('fr-FR')}</td>
+                                    <td colSpan={2} className="px-4 py-4" />
+                                    <td className="px-4 py-4 text-right text-base font-black text-amber-300 border-r border-white/10">{devisItems.reduce((s: number, i: any) => s + (i.realTotal || 0), 0).toLocaleString('fr-FR')}</td>
                                     <td className={`px-4 py-4 text-right text-base font-black ${devis.globalMargin >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{devis.globalMargin.toLocaleString('fr-FR')}</td>
                                     <td />
                                 </tr>
