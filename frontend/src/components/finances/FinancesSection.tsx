@@ -18,7 +18,7 @@ interface Props {
 }
 
 export function FinancesSection({ project, onUpdate }: Props) {
-    const { devis, addDevisItem, deleteDevisItem, importDevisList, resetToDefault } = useFinances();
+    const { devis, addDevisItem, deleteDevisItem, importDevisList, resetToDefault, updatePlannedCost } = useFinances();
     const [isSaving, setIsSaving] = useState(false);
     const [success, setSuccess] = useState(false);
     const [importErrors, setImportErrors] = useState<string[]>([]);
@@ -180,8 +180,22 @@ export function FinancesSection({ project, onUpdate }: Props) {
                                 <tr key={item.id} className="group hover:bg-white/5 transition-all">
                                     <td className="px-4 py-4 text-sm font-bold text-white">{item.label}</td>
                                     <td className="px-4 py-4 text-xs font-black text-indigo-400 uppercase text-right">{item.region}</td>
-                                    <td className="px-4 py-4 text-right text-sm text-slate-300">{item.qty.toLocaleString('fr-FR')}</td>
-                                    <td className="px-4 py-4 text-right text-sm text-slate-300">{item.unit.toLocaleString('fr-FR')}</td>
+                                    <td className="px-4 py-4 text-right">
+                                        <input 
+                                            type="number" 
+                                            defaultValue={item.qty}
+                                            onBlur={e => updatePlannedCost(item.id, 'qty', Number(e.target.value) || 0)}
+                                            className="w-20 bg-transparent text-right text-sm text-slate-300 border border-transparent hover:border-white/20 focus:border-indigo-500 rounded px-2 py-1 outline-none transition-all"
+                                        />
+                                    </td>
+                                    <td className="px-4 py-4 text-right">
+                                        <input 
+                                            type="number" 
+                                            defaultValue={item.unit}
+                                            onBlur={e => updatePlannedCost(item.id, 'unit', Number(e.target.value) || 0)}
+                                            className="w-28 bg-transparent text-right text-sm text-slate-300 border border-transparent hover:border-white/20 focus:border-indigo-500 rounded px-2 py-1 outline-none transition-all"
+                                        />
+                                    </td>
                                     <td className="px-4 py-4 text-right text-sm font-bold text-blue-400">{item.planned.toLocaleString('fr-FR')}</td>
                                     <td className="px-4 py-4 text-right text-sm font-bold text-slate-300">{item.realTotal.toLocaleString('fr-FR')}</td>
                                     <td className={`px-4 py-4 text-right text-sm font-black ${item.margin >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{item.margin.toLocaleString('fr-FR')}</td>
