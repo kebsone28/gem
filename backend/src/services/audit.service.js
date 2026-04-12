@@ -1,8 +1,9 @@
 import prisma from '../core/utils/prisma.js';
+import { sendMail } from './mail.service.js';
 
 /**
  * Service d'Audit - PROQUELEC SaaS
- * Permet de tracer toutes les actions critiques effectuées sur la plateforme.
+ * Permet de tracer toutes les actions critiques et d'envoyer des notifications email si nécessaire.
  */
 export const tracerAction = async (dataOrOrgId, userId, action, resource, resourceId, details, req = null) => {
     try {
@@ -12,7 +13,6 @@ export const tracerAction = async (dataOrOrgId, userId, action, resource, resour
         if (typeof dataOrOrgId === 'object' && !Array.isArray(dataOrOrgId) && dataOrOrgId !== null) {
             finalData = dataOrOrgId;
         } 
-        // Sinon, on reconstruit l'objet à partir des arguments positionnels (ancien format)
         else {
             finalData = {
                 organizationId: dataOrOrgId,
@@ -35,7 +35,7 @@ export const tracerAction = async (dataOrOrgId, userId, action, resource, resour
             req: request 
         } = finalData;
 
-        // Utiliser une exécution asynchrone non-bloquante totale
+        // 1. Enregistrement en base de données
         prisma.auditLog.create({
             data: {
                 userId: uId,
@@ -47,14 +47,31 @@ export const tracerAction = async (dataOrOrgId, userId, action, resource, resour
                 ipAddress: request ? request.ip : null,
                 userAgent: request ? request.headers['user-agent'] : null
             }
-        }).then(() => {
-            console.log(`[AUDIT] Action tracée : ${act} sur ${resrc}`);
-        }).catch(err => {
-            console.error('[ERREUR AUDIT] Échec silencieux :', err.message);
-        });
+        }).catch(err => console.error('[ERREUR AUDIT DB] :', err.message));
+
+        // 2. Notification Email pour les actions CRITIQUES
+        const criticalActions = ['SUPPRESSION_PROJET', 'MODIFICATION_SECURITE', 'RESET_DATA', 'CREATION_MISSION'];
+        if (criticalActions.includes(act) && process.env.AUDIT_NOTIF_EMAILS) {
+            const recipient = process.env.AUDIT_NOTIF_EMAILS;
+            sendMail({
+                to: recipient,
+                subject: `Alerte Sécurité: ${act}`,
+                title: `Action Critique Détectée`,
+                body: `
+                    L'action <b>${act}</b> a été effectuée sur la ressource <b>${resrc}</b> (ID: ${resId}).
+                    <br/><br/>
+                    <b>Détails :</b> ${JSON.stringify(det)}
+                    <br/>
+                    <b>Utilisateur :</b> ${uId || 'Système'}
+                    <br/>
+                    <b>Date :</b> ${new Date().toLocaleString()}
+                `
+            }).catch(err => console.error('[ERREUR NOTIF EMAIL] :', err.message));
+        }
+
+        console.log(`[AUDIT] Action tracée : ${act}`);
     } catch (error) {
-        // On ne bloque pas l'application si l'audit échoue, mais on log l'erreur
-        console.error('[ERREUR AUDIT] Impossible d\'enregistrer le log d\'audit :', error);
+        console.error('[ERREUR AUDIT] Échec :', error);
     }
 };
 

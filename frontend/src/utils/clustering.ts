@@ -81,16 +81,20 @@ export function kMeansClustering(points: any[], k: number, maxIterations = 50) {
     }));
 }
 
-export function generateDynamicGrappes(households: any[], regionTargetSizes = { 'Kaffrine': 600, 'Tambacounda': 600 }) {
-    // 1. Group households by region and ensure they have coordinates
-    const regionGroups: Record<string, any[]> = {};
+export function generateDynamicGrappes(households: any[], targetSize = 500) {
+    // 1. Group households by region and then by village
+    const hierarchy: Record<string, Record<string, any[]>> = {};
 
     for (const h of households) {
         if (!h.location || !h.location.coordinates || h.location.coordinates.length < 2) continue;
-        const region = h.region || 'Unknown';
-        if (!regionGroups[region]) regionGroups[region] = [];
-        // Coordinates in GeoJSON are [lon, lat]
-        regionGroups[region].push({
+        
+        const region = h.region || 'REGION_INCONNUE';
+        const village = h.village || 'VILLAGE_INCONNU';
+        
+        if (!hierarchy[region]) hierarchy[region] = {};
+        if (!hierarchy[region][village]) hierarchy[region][village] = [];
+        
+        hierarchy[region][village].push({
             id: h.id,
             coords: { lat: h.location.coordinates[1], lon: h.location.coordinates[0] },
             original: h
@@ -100,65 +104,69 @@ export function generateDynamicGrappes(households: any[], regionTargetSizes = { 
     const newGrappes: any[] = [];
     const newSousGrappes: any[] = [];
 
-    // 2. Process each region
-    for (const region in regionGroups) {
-        const points = regionGroups[region];
-        const targetSize = (regionTargetSizes as any)[region] || 500;
+    // 2. Process each Region -> Village
+    for (const regionName in hierarchy) {
+        let grappeCounterInRegion = 1;
 
-        // Determine k for main grappes (e.g., Target ~500 households per grappe)
-        const kMain = Math.max(1, Math.round(points.length / targetSize));
+        for (const villageName in hierarchy[regionName]) {
+            const points = hierarchy[regionName][villageName];
+            
+            // Determine how many grappes this village needs
+            const kMain = Math.max(1, Math.round(points.length / targetSize));
+            const villageClusters = kMeansClustering(points, kMain);
 
-        const mainClusters = kMeansClustering(points, kMain);
+            villageClusters.forEach((cluster, vIdx) => {
+                const grappeNumero = grappeCounterInRegion++;
+                const grappeId = `${regionName.substring(0, 3).toUpperCase()}-${villageName.substring(0, 3).toUpperCase()}-G${grappeNumero}`;
 
-        mainClusters.forEach((mainCluster, mainIdx) => {
-            const grappeNumero = mainIdx + 1;
-            const grappeId = `${region.substring(0, 3).toUpperCase()}-G${grappeNumero}`;
+                // Calculate radius
+                let maxRadius = 0;
+                let sumRadius = 0;
+                cluster.points.forEach((p: any) => {
+                    const dist = getDistance(cluster.centroid.lat, cluster.centroid.lon, p.coords.lat, p.coords.lon);
+                    if (dist > maxRadius) maxRadius = dist;
+                    sumRadius += dist;
+                });
+                const avgRadius = cluster.points.length ? sumRadius / cluster.points.length : 0;
 
-            // Calculate radius (max distance from centroid)
-            let maxRadius = 0;
-            let sumRadius = 0;
-            mainCluster.points.forEach((p: any) => {
-                const dist = getDistance(mainCluster.centroid.lat, mainCluster.centroid.lon, p.coords.lat, p.coords.lon);
-                if (dist > maxRadius) maxRadius = dist;
-                sumRadius += dist;
-            });
-            const avgRadius = mainCluster.points.length ? sumRadius / mainCluster.points.length : 0;
+                newGrappes.push({
+                    id: grappeId,
+                    nom: `${regionName} – ${villageName} – Grappe ${vIdx + 1}`,
+                    region: regionName,
+                    village: villageName,
+                    numero: grappeNumero,
+                    nb_menages: cluster.points.length,
+                    centroide_lat: cluster.centroid.lat,
+                    centroide_lon: cluster.centroid.lon,
+                    rayon_moyen_km: Number(avgRadius.toFixed(2)),
+                    rayon_max_km: Number(maxRadius.toFixed(2)),
+                    sous_grappes: []
+                });
 
-            newGrappes.push({
-                id: grappeId,
-                nom: `${region} – Grappe ${grappeNumero}`,
-                region: region,
-                numero: grappeNumero,
-                nb_menages: mainCluster.points.length,
-                centroide_lat: mainCluster.centroid.lat,
-                centroide_lon: mainCluster.centroid.lon,
-                rayon_moyen_km: Number(avgRadius.toFixed(2)),
-                rayon_max_km: Number(maxRadius.toFixed(2)),
-                sous_grappes: []
-            });
+                // Cluster into sub-grappes (Target ~100 households per sub-grappe)
+                const kSub = Math.max(1, Math.round(cluster.points.length / 100));
+                const subClusters = kMeansClustering(cluster.points, kSub);
 
-            // For each main grappe, cluster into sub-grappes (e.g., Target ~100 households per sub-grappe)
-            const kSub = Math.max(1, Math.round(mainCluster.points.length / 100));
-            const subClusters = kMeansClustering(mainCluster.points, kSub);
+                subClusters.forEach((subCluster, subIdx) => {
+                    const subNumero = subIdx + 1;
+                    const subId = `${grappeId}-SG${subNumero.toString().padStart(2, '0')}`;
 
-            subClusters.forEach((subCluster, subIdx) => {
-                const subNumero = subIdx + 1;
-                const subId = `${grappeId}-SG${subNumero.toString().padStart(2, '0')}`;
-
-                newSousGrappes.push({
-                    id: subId,
-                    grappe_id: grappeId,
-                    region: region,
-                    grappe_numero: grappeNumero,
-                    sous_grappe_numero: subNumero,
-                    nom: `${region} – Grappe ${grappeNumero} – SG${subNumero.toString().padStart(2, '0')}`,
-                    code: subId,
-                    nb_menages: subCluster.points.length,
-                    centroide_lat: subCluster.centroid.lat,
-                    centroide_lon: subCluster.centroid.lon
+                    newSousGrappes.push({
+                        id: subId,
+                        grappe_id: grappeId,
+                        region: regionName,
+                        village: villageName,
+                        grappe_numero: grappeNumero,
+                        sous_grappe_numero: subNumero,
+                        nom: `${regionName} – ${villageName} – Grappe ${vIdx + 1} – SG${subNumero.toString().padStart(2, '0')}`,
+                        code: subId,
+                        nb_menages: subCluster.points.length,
+                        centroide_lat: subCluster.centroid.lat,
+                        centroide_lon: subCluster.centroid.lon
+                    });
                 });
             });
-        });
+        }
     }
 
     return {

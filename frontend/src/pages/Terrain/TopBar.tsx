@@ -103,20 +103,11 @@ const TopBar: React.FC<TopBarProps> = ({
                                         <h3 className="text-[10px] md:text-[11px] font-black uppercase text-white">
                                             Explorer Terrain
                                         </h3>
-                                        <p className="text-[9px] md:text-[10px] font-bold text-blue-400/60 uppercase mt-1">
-                                            kebs Intelligence
+                                        <p className="text-[9px] md:text-[10px] font-black text-blue-500 uppercase mt-0.5 tracking-widest animate-pulse">
+                                            {project?.name || "Sans Projet"}
                                         </p>
                                     </div>
                                 </div>
-
-                                {project && (
-                                    <div className="flex items-center gap-1 md:gap-2 px-2 py-0.5 md:py-1 rounded-lg bg-blue-500/10 border border-blue-500/20">
-                                        <span className="text-[9px] md:text-[10px] font-black text-blue-100 italic uppercase">
-                                            {project.name.slice(0, 3).toUpperCase()}
-                                        </span>
-                                        <ChevronRight size={10} className="md:w-3 md:h-3 text-blue-400/50" />
-                                    </div>
-                                )}
                             </div>
 
                             {/* Search */}

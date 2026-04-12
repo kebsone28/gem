@@ -25,6 +25,9 @@ export const getProjects = async (req, res) => {
                         name: true,
                         email: true
                     }
+                },
+                _count: {
+                    select: { zones: true }
                 }
             },
             orderBy: {
@@ -81,6 +84,15 @@ export const createProject = async (req, res) => {
     try {
         const { id, name, budget, duration, totalHouses, config } = req.body;
         const { organizationId, id: userId } = req.user;
+
+        // Check for duplicate name
+        const existing = await prisma.project.findFirst({
+            where: { organizationId, name, deletedAt: null }
+        });
+
+        if (existing) {
+            return res.status(400).json({ error: 'Un projet avec ce nom existe déjà.' });
+        }
 
         const project = await prisma.project.create({
             data: {
@@ -471,13 +483,15 @@ export const resetProjectData = async (req, res) => {
         console.log(`[RESET] Supprimé ${deletedGrappes.count} grappes orphelines`);
 
         // Tracer l'action
-        await tracerAction(
+        await tracerAction({
+            userId: req.user.id,
             organizationId,
-            projectId,
-            'projet_reset',
-            `Réinitialisation du projet: ${project.name}`,
-            req.user.id
-        );
+            action: 'RESET_DATA',
+            resource: 'Projet',
+            resourceId: projectId,
+            details: { name: project.name },
+            req
+        });
 
         res.json({
             message: 'Project data reset successfully',

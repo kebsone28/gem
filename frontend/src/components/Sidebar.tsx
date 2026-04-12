@@ -24,7 +24,9 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { useSync } from '../hooks/useSync';
 import { usePermissions } from '../hooks/usePermissions';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
+import { normalizeRole, ROLES, isMasterAdmin, getMissionLabel } from '../utils/permissions';
+import { useProject } from '../contexts/ProjectContext';
 
 /**
  * Sidebar – Navigation principale Wanekoo (Deep Navy).
@@ -32,11 +34,16 @@ import { motion, AnimatePresence } from 'framer-motion';
  */
 export default function Sidebar() {
     const { user, logout, stopImpersonation } = useAuth();
+    const { project } = useProject();
     const { forceSync } = useSync();
     // En SaaS, on simule l'état de sync (le store Dexie est géré par BackgroundServices)
-    const isSyncing = false; 
+    const isSyncing = false;
     const { peut, PERMISSIONS } = usePermissions();
     const [mobileOpen, setMobileOpen] = useState(false);
+
+    // 1️⃣ Normalisation et bypass sécurisé via helpers
+    const nRole = useMemo(() => normalizeRole(user?.role), [user?.role]);
+    const isMaster = useMemo(() => isMasterAdmin(user), [user]);
 
     const handleLogout = () => {
         logout();
@@ -52,7 +59,7 @@ export default function Sidebar() {
         category: 'PILOTAGE' | 'OPÉRATIONS' | 'SYSTÈME';
     }
 
-    const navItems: NavItem[] = [
+    const navItems: NavItem[] = useMemo(() => [
         { to: '/dashboard', icon: LayoutDashboard, label: 'Tableau de Bord', category: 'PILOTAGE' },
         { to: '/simulation', icon: Calculator, label: 'Simulation', permission: PERMISSIONS.VOIR_SIMULATION, category: 'PILOTAGE' },
         { to: '/bordereau', icon: Users, label: 'Bordereau', permission: PERMISSIONS.GERER_LOGISTIQUE, category: 'PILOTAGE' },
@@ -60,51 +67,28 @@ export default function Sidebar() {
         { to: '/terrain', icon: MapIcon, label: 'Terrain', permission: PERMISSIONS.VOIR_CARTE, category: 'OPÉRATIONS' },
         { to: '/logistique', icon: Truck, label: 'Logistique', permission: PERMISSIONS.GERER_LOGISTIQUE, category: 'OPÉRATIONS' },
         { to: '/admin/approval', icon: ShieldCheck, label: 'Approbation', permission: PERMISSIONS.VALIDER_MISSION, category: 'OPÉRATIONS' },
-        { 
-            to: '/admin/mission', 
-            icon: ClipboardList, 
-            label: (user?.role === 'DG_PROQUELEC' || user?.role === 'DIRECTEUR') ? 'Mes Ordres de Mission' : (user?.role === 'ADMIN_PROQUELEC' ? 'Registre des Missions' : 'Missions OM'), 
+        {
+            to: '/admin/mission',
+            icon: ClipboardList,
+            label: getMissionLabel(user),
             permission: PERMISSIONS.CREER_MISSION,
-            category: 'OPÉRATIONS' 
+            category: 'OPÉRATIONS'
         },
         { to: '/admin/users', icon: Users, label: 'Utilisateurs', permission: PERMISSIONS.GERER_UTILISATEURS, category: 'SYSTÈME' },
         { to: '/admin/diagnostic', icon: Activity, label: 'Diagnostic Santé', permission: PERMISSIONS.VOIR_DIAGNOSTIC, category: 'SYSTÈME' },
-        { 
-            to: '/admin/kobo-terminal', 
-            icon: Terminal, 
-            label: 'Terminal Kobo', 
+        {
+            to: '/admin/kobo-terminal',
+            icon: Terminal,
+            label: 'Terminal Kobo',
             permission: PERMISSIONS.ACCES_TERMINAL_KOBO,
             visible: user?.organizationConfig?.features?.koboTerminal === true,
-            category: 'SYSTÈME' 
+            category: 'SYSTÈME'
         },
         { to: '/admin/organization', icon: Building2, label: 'Organisation', permission: PERMISSIONS.GERER_PARAMETRES, category: 'SYSTÈME' },
         { to: '/settings', icon: Settings, label: 'Paramètres', permission: PERMISSIONS.GERER_PARAMETRES, category: 'SYSTÈME' },
         { to: '/admin/security', icon: ShieldCheck, label: 'Sécurité', permission: PERMISSIONS.GERER_PARAMETRES, category: 'SYSTÈME' },
         { to: '/aide', icon: HelpCircle, label: 'Centre d\'Aide', category: 'SYSTÈME' },
-    ];
-
-    const isMaster = user?.email?.toLowerCase() === 'admingem' || user?.role === 'ADMIN_PROQUELEC';
-
-    // 🛡️ [RESILIENCE] If auth is loading, avoid empty black box
-    if (!user) {
-        return (
-            <div className="hidden lg:flex w-72 flex-col h-screen fixed left-0 bg-slate-950 border-r border-white/5 items-center justify-center">
-                <div className="w-8 h-8 border-4 border-blue-500/10 border-t-blue-500 rounded-full animate-spin" />
-            </div>
-        );
-    }
-
-    const groupedItems = useState(() => {
-        return navItems.reduce((acc, item) => {
-            if (item.visible === false) return acc;
-            const canSee = isMaster || !item.permission || peut(item.permission);
-            if (canSee) {
-                if (!acc[item.category]) acc[item.category] = [];
-                acc[item.category].push(item);
-            }
-            return acc;
-        }, {} as Record<string, NavItem[]>);
-    })[0];
+    ], [nRole, isMaster, PERMISSIONS, user?.organizationConfig?.features?.koboTerminal]);
 
     // 🚀 [REACTIVITY] Re-calculate items when user or permissions change
     const memoGroupedItems = useMemo(() => {
@@ -117,7 +101,7 @@ export default function Sidebar() {
             }
             return acc;
         }, {} as Record<string, NavItem[]>);
-    }, [user, user?.role, user?.permissions, isMaster, peut]);
+    }, [navItems, isMaster, peut]);
 
     const categoryConfig = {
         PILOTAGE: { color: 'blue', label: 'STRATÉGIE', glow: 'shadow-blue-500/10' },
@@ -125,18 +109,26 @@ export default function Sidebar() {
         SYSTÈME: { color: 'blue', label: 'ADMINISTRATION', glow: 'shadow-blue-500/10' }
     };
 
+    // 🛡️ [RESILIENCE] If auth is loading, avoid empty black box
+    if (!user) {
+        return (
+            <div className="hidden lg:flex w-72 flex-col h-screen fixed left-0 bg-slate-950 border-r border-white/5 items-center justify-center">
+                <div className="w-8 h-8 border-4 border-blue-500/10 border-t-blue-500 rounded-full animate-spin" />
+            </div>
+        );
+    }
+
     const RoleLabel = () => {
-        if (!user) return null;
         const labels: Record<string, string> = {
-            ADMIN_PROQUELEC: 'Admin',
-            DG_PROQUELEC: 'DG',
-            CLIENT_LSE: 'LSE',
-            CHEF_EQUIPE: 'Chef',
-            CHEF_PROJET: 'CP',
-            COMPTABLE: 'Comptable',
-            DIRECTEUR: 'DG',
+            [ROLES.ADMIN]: 'Admin',
+            [ROLES.DG]: 'DG',
+            [ROLES.CLIENT_LSE]: 'LSE',
+            [ROLES.CHEF_EQUIPE]: 'Chef',
+            [ROLES.CHEF_PROJET]: 'CP',
+            [ROLES.COMPTABLE]: 'Comptable',
         };
-        const label = labels[user.role] || user.role;
+        const labelText = nRole ? labels[nRole] : user.role;
+
         return (
             <div className="space-y-4">
                 <div className="p-4 rounded-3xl flex flex-col gap-3 border border-white/10 bg-white/5 shadow-xl">
@@ -151,7 +143,7 @@ export default function Sidebar() {
                                     <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px] shadow-emerald-500/50" />
                                     <span className="absolute w-2 h-2 rounded-full bg-emerald-500 animate-ping opacity-75" />
                                 </div>
-                                <span className="text-xs font-black uppercase tracking-[0.15em] opacity-80 text-blue-200">{label}</span>
+                                <span className="text-xs font-black uppercase tracking-[0.15em] opacity-80 text-blue-200">{labelText}</span>
                             </div>
                         </div>
                     </div>
@@ -197,21 +189,16 @@ export default function Sidebar() {
             {/* Mobile Toggle */}
             <button
                 onClick={() => setMobileOpen(!mobileOpen)}
+                aria-expanded={mobileOpen}
+                aria-label={mobileOpen ? 'Fermer le menu' : 'Ouvrir le menu'}
                 className="lg:hidden fixed top-6 right-6 z-[60] w-12 h-12 bg-electric-gradient rounded-2xl flex items-center justify-center text-white shadow-electric transition-transform active:scale-95"
             >
                 {mobileOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
 
-            <AnimatePresence>
-                {(mobileOpen || true) && (
-                    <motion.aside
-                        initial={false}
-                        animate={{ 
-                            x: mobileOpen ? 0 : (window.innerWidth < 1024 ? -320 : 0),
-                            opacity: 1
-                        }}
-                        className={`fixed lg:static inset-y-0 left-0 w-80 bg-slate-950 flex flex-col z-50 border-r border-white/5 shadow-2xl transition-all duration-500`}
-                    >
+            <aside
+                className={`fixed lg:static inset-y-0 left-0 w-80 bg-slate-950 flex flex-col z-50 border-r border-white/5 shadow-2xl transition-transform duration-500 ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}
+            >
                         {/* Simulation Bar (God Mode) */}
                         {user?.impersonatedBy && (
                             <div className="mx-6 mb-4 p-4 rounded-2xl bg-indigo-600 shadow-lg shadow-indigo-500/20 border border-indigo-400/30">
@@ -225,7 +212,7 @@ export default function Sidebar() {
                                             <p className="text-xs font-black text-white mt-1">Vue comme : {user.name}</p>
                                         </div>
                                     </div>
-                                    <button 
+                                    <button
                                         onClick={() => stopImpersonation()}
                                         className="p-2 bg-white/10 hover:bg-white/20 rounded-lg text-white transition-all active:scale-90"
                                         title="Redevenir Admin"
@@ -239,16 +226,23 @@ export default function Sidebar() {
                         {/* Logo Area */}
                         <div className="p-8">
                             <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-2xl bg-electric-gradient flex items-center justify-center shadow-electric-sm p-1">
+                                <div className="w-12 h-12 rounded-2xl bg-electric-gradient flex items-center justify-center shadow-electric-sm p-1 shrink-0">
                                     {user?.organizationConfig?.branding?.logo ? (
                                         <img src={user.organizationConfig.branding.logo} alt="Logo" className="max-w-full max-h-full object-contain" />
                                     ) : <BarChart3 className="text-white" size={24} />}
                                 </div>
-                                <div>
-                                    <h1 className="text-xl font-black tracking-tighter text-white italic leading-none">
+                                <div className="min-w-0">
+                                    <h1 className="text-xl font-black tracking-tighter text-white italic leading-none truncate">
                                         {user?.organizationConfig?.branding?.organizationName || "GEM SAAS"}
                                     </h1>
-                                    <span className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-500/80">Wanekoo Core</span>
+                                    <div className="flex flex-col mt-1">
+                                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-500 transition-all">
+                                            {project?.name || "Wanekoo Core"}
+                                        </span>
+                                        {project?.name && (
+                                            <span className="text-[8px] font-black uppercase tracking-[0.3em] text-slate-600 mt-0.5">Projet Actif</span>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -271,15 +265,15 @@ export default function Sidebar() {
                                                 onClick={() => setMobileOpen(false)}
                                                 className={({ isActive }) => `
                                                     group flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-300 relative overflow-hidden
-                                                    ${isActive 
-                                                        ? 'bg-white/5 text-white shadow-inner' 
+                                                    ${isActive
+                                                        ? 'bg-white/5 text-white shadow-inner'
                                                         : 'text-slate-500 hover:text-white hover:bg-white/5'}
                                                 `}
                                             >
                                                 {({ isActive }) => (
                                                     <>
                                                         {isActive && (
-                                                            <motion.div 
+                                                            <motion.div
                                                                 layoutId="nav-active"
                                                                 className="absolute inset-0 bg-blue-600/5 backdrop-blur-sm border border-white/5"
                                                                 transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
@@ -310,9 +304,7 @@ export default function Sidebar() {
                                 <LogOut size={16} className="group-hover:translate-x-1 transition-transform" />
                             </button>
                         </div>
-                    </motion.aside>
-                )}
-            </AnimatePresence>
+                    </aside>
 
             {/* Mobile Overlay */}
             {mobileOpen && (
