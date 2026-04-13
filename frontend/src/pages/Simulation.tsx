@@ -249,8 +249,10 @@ export default function Simulation() {
             !t.parentTeamId && 
             t.name.startsWith('Groupement')
           );
-          let parentTeamId = parentTeamsOfTrade.length > 0 ? parentTeamsOfTrade[0].id : null;
-          let parentTeamPath = parentTeamsOfTrade.length > 0 ? parentTeamsOfTrade[0].path : null;
+          let parentTeamId: string | null = parentTeamsOfTrade.length > 0 ? parentTeamsOfTrade[0].id : null;
+          let parentTeamPath: string | null = parentTeamsOfTrade.length > 0 ? parentTeamsOfTrade[0].path : null;
+          // Check if existing parent is online or offline
+          let parentIsOffline: boolean = parentTeamsOfTrade.length > 0 ? (parentTeamsOfTrade[0].syncStatus === 'pending') : false;
 
           if (!parentTeamId) {
             const parentPayload = {
@@ -265,12 +267,14 @@ export default function Simulation() {
               const res = await apiClient.post('/teams', parentPayload);
               parentTeamId = res.data.id;
               parentTeamPath = res.data.path;
+              parentIsOffline = false;
               await (db as any).teams.put(res.data);
               existingTeams.push(res.data);
               createdCount++;
             } catch (apiErr) {
               parentTeamId = crypto.randomUUID();
               parentTeamPath = parentTeamId;
+              parentIsOffline = true;
               const newParent = {
                 ...parentPayload,
                 id: parentTeamId,
@@ -293,24 +297,40 @@ export default function Simulation() {
             for (let i = 0; i < needed; i++) {
               const currentT = existingChildren.length + i + 1;
               const paddedNum = currentT.toString().padStart(2, '0');
-              const payload = {
-                name: `${roleLabel} - Équipe ${paddedNum}`,
-                projectId: activeProjectId,
-                parentTeamId: parentTeamId,
-                role: teamRole,
-                tradeKey,
-                capacity: roleCapacities[role as RoleKey] || 0,
-                status: 'active',
-              };
+              const childName = `${roleLabel} - Équipe ${paddedNum}`;
+              const newId = crypto.randomUUID();
 
-              try {
-                const res = await apiClient.post('/teams', payload);
-                await (db as any).teams.put(res.data);
-                existingTeams.push(res.data);
-              } catch (apiErr) {
-                const newId = crypto.randomUUID();
+              if (!parentIsOffline) {
+                // Parent is known by the server → call API directly
+                const payload = {
+                  name: childName,
+                  projectId: activeProjectId,
+                  parentTeamId: parentTeamId,
+                  role: teamRole,
+                  tradeKey,
+                  capacity: roleCapacities[role as RoleKey] || 0,
+                  status: 'active',
+                };
+                try {
+                  const res = await apiClient.post('/teams', payload);
+                  await (db as any).teams.put(res.data);
+                  existingTeams.push(res.data);
+                } catch (apiErr) {
+                  // Unexpected API error → save locally with offline flag
+                  const newTeam = { ...payload, id: newId, organizationId: project?.organizationId || 'org-offline', level: 1, syncStatus: 'pending', path: `${parentTeamPath}/${newId}` };
+                  await (db as any).teams.add(newTeam);
+                  existingTeams.push(newTeam);
+                }
+              } else {
+                // Parent is offline-only → save child locally, no API call
                 const newTeam = {
-                  ...payload,
+                  name: childName,
+                  projectId: activeProjectId,
+                  parentTeamId: parentTeamId,
+                  role: teamRole,
+                  tradeKey,
+                  capacity: roleCapacities[role as RoleKey] || 0,
+                  status: 'active',
                   id: newId,
                   organizationId: project?.organizationId || 'org-offline',
                   level: 1,

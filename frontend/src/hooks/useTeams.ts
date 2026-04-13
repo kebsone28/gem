@@ -38,9 +38,15 @@ export function useTeams(projectId?: string) {
         const localOfflineTeams = allLocalTeams.filter((t: any) => t.syncStatus === 'pending' && t.projectId === projectId);
         
         if (localOfflineTeams.length > 0) {
-           setTeamTree([...serverTree, ...localOfflineTeams]);
+          // Build proper tree structure for offline teams
+          const offlineParents = localOfflineTeams.filter((t: any) => !t.parentTeamId);
+          const offlineChildren = localOfflineTeams.filter((t: any) => !!t.parentTeamId);
+          offlineParents.forEach((parent: any) => {
+            parent.children = offlineChildren.filter((c: any) => c.parentTeamId === parent.id);
+          });
+          setTeamTree([...serverTree, ...offlineParents]);
         } else {
-           setTeamTree(serverTree);
+          setTeamTree(serverTree);
         }
       } catch (dbErr) {
         setTeamTree(serverTree);
@@ -111,11 +117,22 @@ export function useTeams(projectId?: string) {
     try {
       const response = await apiClient.patch(`/teams/${id}`, data);
       const updated = response.data;
-
       setTeams((prev) => prev.map((t) => (t.id === id ? updated : t)));
       await fetchTeamTree();
       return updated;
     } catch (err: any) {
+      // Offline fallback: update locally if 404 (offline team) or network error
+      if (err.response?.status === 404 || !err.response) {
+        logger.warn('Update offline: patching Dexie locally', id);
+        try {
+          await (db as any).teams.update(id, { ...data, syncStatus: 'pending' });
+          setTeams((prev) => prev.map((t) => (t.id === id ? { ...t, ...data } : t)));
+          await fetchTeamTree();
+          return { id, ...data };
+        } catch (dbErr) {
+          logger.error('Update team local error', dbErr);
+        }
+      }
       logger.error('Update team error', err);
       throw err;
     }
@@ -127,6 +144,18 @@ export function useTeams(projectId?: string) {
       setTeams((prev) => prev.filter((t) => t.id !== id));
       await fetchTeamTree();
     } catch (err: any) {
+      // Offline fallback: if 404, the team only exists locally → delete from Dexie
+      if (err.response?.status === 404 || err.response?.status === 401) {
+        logger.warn('Delete offline: removing from Dexie only', id);
+        try {
+          await (db as any).teams.delete(id);
+          setTeams((prev) => prev.filter((t) => t.id !== id));
+          await fetchTeamTree();
+          return;
+        } catch (dbErr) {
+          logger.error('Delete team local error', dbErr);
+        }
+      }
       logger.error('Delete team error', err);
       throw err;
     }
