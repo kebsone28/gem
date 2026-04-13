@@ -911,6 +911,10 @@ async function runRulesEngine(
     };
   }
 
+  let intent = detectIntent(q);
+  intent = getContextualIntent(memory, intent);
+  const activeIntents = getActiveIntents(intent);
+
   // NOUVELLE LOGIQUE TECHNIQUE AMÉLIORÉE
   if (
     intent.tech ||
@@ -986,10 +990,6 @@ async function runRulesEngine(
       _engine: 'RULES',
     };
   }
-
-  let intent = detectIntent(q);
-  intent = getContextualIntent(memory, intent);
-  const activeIntents = getActiveIntents(intent);
 
   if (intent.greeting) {
     return {

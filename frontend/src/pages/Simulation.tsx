@@ -217,7 +217,8 @@ export default function Simulation() {
     try {
       const activeProjectId = safeStorage.getItem('active_project_id');
       if (activeProjectId) {
-        const existingTeams = await (db as any).teams.where('projectId').equals(activeProjectId).toArray();
+        const allTeams = await (db as any).teams.toArray();
+        const existingTeams = allTeams.filter((t: any) => t.projectId === activeProjectId);
 
         const tradeKeyMapping = {
           macon: 'macons',
