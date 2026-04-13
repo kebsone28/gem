@@ -64,20 +64,20 @@ export default function OrganizationSettings() {
   useEffect(() => {
     const fetchAll = async () => {
       try {
-        const [cfgRes, statsRes] = await Promise.allSettled([
+        const [cfgRes, hhRes, teamsRes, usersRes, zonesRes] = await Promise.allSettled([
           apiClient.get('/organization/config'),
-          apiClient.get('/dashboard/stats'),
+          apiClient.get('/households/count'),
+          apiClient.get('/teams'),
+          apiClient.get('/users'),
+          apiClient.get('/zones'),
         ]);
         if (cfgRes.status === 'fulfilled') setConfig(cfgRes.value.data.config || {});
-        if (statsRes.status === 'fulfilled') {
-          const d = statsRes.value.data;
-          setStats({
-            households: d.totalHouseholds || d.households || 0,
-            teams: d.totalTeams || d.teams || 0,
-            users: d.totalUsers || d.users || 0,
-            zones: d.totalZones || d.zones || 0,
-          });
-        }
+        setStats({
+          households: hhRes.status === 'fulfilled' ? (hhRes.value.data.total || hhRes.value.data.count || 0) : 0,
+          teams:      teamsRes.status === 'fulfilled' ? (teamsRes.value.data.teams?.length || 0) : 0,
+          users:      usersRes.status === 'fulfilled' ? (usersRes.value.data.users?.length || usersRes.value.data.data?.length || 0) : 0,
+          zones:      zonesRes.status === 'fulfilled' ? (zonesRes.value.data.zones?.length || 0) : 0,
+        });
       } catch {
         toast.error('Erreur lors du chargement');
       } finally {
@@ -316,10 +316,10 @@ export default function OrganizationSettings() {
                         <FieldLabel>Logo (max 2 Mo)</FieldLabel>
                         <div
                           onClick={() => fileInputRef.current?.click()}
-                          className="h-36 border-2 border-dashed border-white/10 rounded-2xl flex flex-col items-center justify-center gap-3 cursor-pointer hover:border-blue-500/50 hover:bg-blue-500/5 transition-all group"
+                          className="h-36 border-2 border-dashed border-white/10 rounded-2xl flex flex-col items-center justify-center gap-3 cursor-pointer hover:border-blue-500/50 hover:bg-blue-500/5 transition-all group relative overflow-hidden"
                         >
                           {config.branding?.logo
-                            ? <img src={config.branding.logo} alt="Logo" className="h-full py-4 object-contain" />
+                            ? <img src={config.branding.logo} alt="Logo" className="absolute inset-0 w-full h-full object-contain p-4" />
                             : <>
                                 <Upload size={24} className="text-slate-600 group-hover:text-blue-400 transition-colors" />
                                 <span className="text-xs font-bold text-slate-500 group-hover:text-blue-400">Cliquer pour importer</span>
