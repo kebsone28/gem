@@ -1,18 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
-  Building2,
-  Palette,
-  Mail,
-  GitBranch,
-  Save,
-  Upload,
-  Plus,
-  Trash2,
-  MoveUp,
-  MoveDown,
-  ShieldCheck,
-  BellRing,
-  Box,
+  Building2, Palette, Mail, GitBranch, Save, Upload, Plus, Trash2,
+  MoveUp, MoveDown, ShieldCheck, BellRing, Box, Globe, Users,
+  Briefcase, Award, Zap, Check, ArrowRight, Camera, BarChart2, Lock,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import apiClient from '../api/client';
@@ -20,680 +10,647 @@ import { toast } from 'react-hot-toast';
 import { PageContainer, PageHeader, ContentArea } from '../components';
 import { motion, AnimatePresence } from 'framer-motion';
 
-interface WorkflowStep {
-  role: string;
-  label: string;
-  sequence: number;
+interface WorkflowStep { role: string; label: string; sequence: number; }
+interface OrgConfig {
+  branding?: { logo?: string; primaryColor?: string; footerText?: string; organizationName?: string; };
+  notifications?: { auditEmails?: string[]; workflowAlerts?: boolean; };
+  workflow?: { missionSteps?: WorkflowStep[]; };
+  labels?: { household?: { singular: string; plural: string }; zone?: { singular: string; plural: string }; };
+  features?: { koboTerminal?: boolean; };
 }
 
-interface OrgConfig {
-  branding?: {
-    logo?: string;
-    primaryColor?: string;
-    footerText?: string;
-    organizationName?: string;
+type TabId = 'branding' | 'notifications' | 'workflow' | 'labels' | 'features';
+
+const TABS: { id: TabId; label: string; icon: React.ElementType; color: string }[] = [
+  { id: 'branding',       label: 'Identité',      icon: Palette,    color: 'blue'    },
+  { id: 'notifications',  label: 'Notifications',  icon: BellRing,   color: 'emerald' },
+  { id: 'workflow',       label: 'Workflow',        icon: GitBranch,  color: 'amber'   },
+  { id: 'labels',         label: 'Glossaire',       icon: Box,        color: 'indigo'  },
+  { id: 'features',       label: 'Modules',         icon: Zap,        color: 'violet'  },
+];
+
+const COLOR_MAP: Record<string, string> = {
+  blue:    'bg-blue-500/10 text-blue-400 border-blue-500/30 data-[active=true]:bg-blue-600 data-[active=true]:text-white',
+  emerald: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 data-[active=true]:bg-emerald-600 data-[active=true]:text-white',
+  amber:   'bg-amber-500/10 text-amber-400 border-amber-500/30 data-[active=true]:bg-amber-600 data-[active=true]:text-white',
+  indigo:  'bg-indigo-500/10 text-indigo-400 border-indigo-500/30 data-[active=true]:bg-indigo-600 data-[active=true]:text-white',
+  violet:  'bg-violet-500/10 text-violet-400 border-violet-500/30 data-[active=true]:bg-violet-600 data-[active=true]:text-white',
+};
+
+function Toggle({ checked, onChange, color = 'blue' }: { checked: boolean; onChange: () => void; color?: string }) {
+  const colors: Record<string, string> = {
+    blue: 'bg-blue-600', emerald: 'bg-emerald-500', amber: 'bg-amber-500', violet: 'bg-violet-600',
   };
-  notifications?: {
-    auditEmails?: string[];
-    workflowAlerts?: boolean;
-  };
-  workflow?: {
-    missionSteps?: WorkflowStep[];
-  };
-  labels?: {
-    household?: { singular: string; plural: string };
-    zone?: { singular: string; plural: string };
-  };
-  features?: {
-    koboTerminal?: boolean;
-  };
+  return (
+    <button
+      onClick={onChange}
+      className={`relative w-14 h-7 rounded-full transition-all duration-300 focus:outline-none ${checked ? colors[color] || colors.blue : 'bg-slate-700'}`}
+    >
+      <div className={`absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full shadow-md transition-transform duration-300 ${checked ? 'translate-x-7' : 'translate-x-0'}`} />
+    </button>
+  );
 }
 
 export default function OrganizationSettings() {
   const { user, login } = useAuth();
   const [config, setConfig] = useState<OrgConfig>({});
+  const [stats, setStats] = useState({ households: 0, teams: 0, users: 0, zones: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<
-    'branding' | 'notifications' | 'workflow' | 'labels' | 'features'
-  >('branding');
+  const [activeTab, setActiveTab] = useState<TabId>('branding');
+  const [newEmail, setNewEmail] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const fetchConfig = async () => {
+    const fetchAll = async () => {
       try {
-        const response = await apiClient.get('/organization/config');
-        setConfig(response.data.config || {});
-      } catch (error) {
-        toast.error('Erreur lors du chargement de la configuration');
+        const [cfgRes, statsRes] = await Promise.allSettled([
+          apiClient.get('/organization/config'),
+          apiClient.get('/dashboard/stats'),
+        ]);
+        if (cfgRes.status === 'fulfilled') setConfig(cfgRes.value.data.config || {});
+        if (statsRes.status === 'fulfilled') {
+          const d = statsRes.value.data;
+          setStats({
+            households: d.totalHouseholds || d.households || 0,
+            teams: d.totalTeams || d.teams || 0,
+            users: d.totalUsers || d.users || 0,
+            zones: d.totalZones || d.zones || 0,
+          });
+        }
+      } catch {
+        toast.error('Erreur lors du chargement');
       } finally {
         setIsLoading(false);
       }
     };
-    fetchConfig();
+    fetchAll();
   }, []);
 
   const handleSave = async () => {
     setIsSaving(true);
     try {
       await apiClient.patch('/organization/config', { config });
-      toast.success('Configuration mise à jour avec succès');
-
-      // Mettre à jour le contexte global si nécessaire
-      if (user) {
-        // On met à jour le contexte avec la nouvelle config sans changer les autres infos
-        login(user.email, user.role, user.name, user.organization, user.id, undefined, config);
-      }
-    } catch (error) {
+      toast.success('Configuration sauvegardée ✓');
+      if (user) login(user.email, user.role, user.name, user.organization, user.id, undefined, config);
+    } catch {
       toast.error('Erreur lors de la sauvegarde');
     } finally {
       setIsSaving(false);
     }
   };
 
-  const updateBranding = (field: string, value: string) => {
-    setConfig((prev) => ({
-      ...prev,
-      branding: { ...(prev.branding || {}), [field]: value },
-    }));
-  };
+  const updateBranding = (field: string, value: string) =>
+    setConfig(prev => ({ ...prev, branding: { ...(prev.branding || {}), [field]: value } }));
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      // Check file size (max 2MB to not overload db/payload)
-      if (file.size > 2 * 1024 * 1024) {
-        toast.error('Le fichier est trop volumineux. La taille maximale est de 2 Mo.');
-        return;
-      }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        updateBranding('logo', reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) { toast.error('Fichier trop lourd (max 2 Mo)'); return; }
+    const reader = new FileReader();
+    reader.onloadend = () => updateBranding('logo', reader.result as string);
+    reader.readAsDataURL(file);
   };
 
-  const updateLabel = (type: 'household' | 'zone', field: 'singular' | 'plural', value: string) => {
-    setConfig((prev) => ({
-      ...prev,
-      labels: {
-        ...(prev.labels || {}),
-        [type]: { ...(prev.labels?.[type] || { singular: '', plural: '' }), [field]: value },
-      },
-    }));
-  };
+  const updateLabel = (type: 'household' | 'zone', field: 'singular' | 'plural', value: string) =>
+    setConfig(prev => ({ ...prev, labels: { ...(prev.labels || {}), [type]: { ...(prev.labels?.[type] || { singular: '', plural: '' }), [field]: value } } }));
 
-  const toggleFeature = (feature: keyof NonNullable<OrgConfig['features']>) => {
-    setConfig((prev) => ({
-      ...prev,
-      features: {
-        ...(prev.features || {}),
-        [feature]: !prev.features?.[feature],
-      },
-    }));
-  };
+  const toggleFeature = (feature: keyof NonNullable<OrgConfig['features']>) =>
+    setConfig(prev => ({ ...prev, features: { ...(prev.features || {}), [feature]: !prev.features?.[feature] } }));
 
   const addAuditEmail = () => {
-    const email = prompt("Entrez une adresse email pour l'audit :");
-    if (email && email.includes('@')) {
-      setConfig((prev) => {
-        const notifications = prev.notifications || {};
-        const auditEmails = notifications.auditEmails || [];
-        return {
-          ...prev,
-          notifications: { ...notifications, auditEmails: [...auditEmails, email] },
-        };
-      });
-    }
+    if (!newEmail || !newEmail.includes('@')) { toast.error('Email invalide'); return; }
+    setConfig(prev => {
+      const n = prev.notifications || {};
+      return { ...prev, notifications: { ...n, auditEmails: [...(n.auditEmails || []), newEmail] } };
+    });
+    setNewEmail('');
   };
 
-  const removeAuditEmail = (emailToRemove: string) => {
-    setConfig((prev) => {
-      const notifications = prev.notifications || {};
-      const auditEmails = (notifications.auditEmails || []).filter((e) => e !== emailToRemove);
-      return {
-        ...prev,
-        notifications: { ...notifications, auditEmails },
-      };
-    });
-  };
+  const removeAuditEmail = (email: string) =>
+    setConfig(prev => ({ ...prev, notifications: { ...(prev.notifications || {}), auditEmails: (prev.notifications?.auditEmails || []).filter(e => e !== email) } }));
 
   const addWorkflowStep = () => {
-    const role = prompt('Rôle technique (ex: COMPTABLE, LOGISTIQUE) :');
-    const label = prompt('Nom affiché (ex: Validation Comptable) :');
+    const role = prompt('Rôle (ex: COMPTABLE) :');
+    const label = prompt('Nom (ex: Validation Comptable) :');
     if (role && label) {
-      setConfig((prev) => {
-        const workflow = prev.workflow || {};
-        const steps = workflow.missionSteps || [];
-        const newStep: WorkflowStep = {
-          role: role.toUpperCase(),
-          label,
-          sequence: steps.length + 1,
-        };
-        return {
-          ...prev,
-          workflow: { ...workflow, missionSteps: [...steps, newStep] },
-        };
+      setConfig(prev => {
+        const wf = prev.workflow || {};
+        const steps = wf.missionSteps || [];
+        return { ...prev, workflow: { ...wf, missionSteps: [...steps, { role: role.toUpperCase(), label, sequence: steps.length + 1 }] } };
       });
     }
   };
 
-  const removeWorkflowStep = (index: number) => {
-    setConfig((prev) => {
-      const workflow = prev.workflow || {};
-      const steps = (workflow.missionSteps || [])
-        .filter((_, i) => i !== index)
-        .map((s, i) => ({ ...s, sequence: i + 1 }));
-      return {
-        ...prev,
-        workflow: { ...workflow, missionSteps: steps },
-      };
-    });
-  };
+  const removeWorkflowStep = (i: number) =>
+    setConfig(prev => ({ ...prev, workflow: { ...(prev.workflow || {}), missionSteps: (prev.workflow?.missionSteps || []).filter((_, idx) => idx !== i).map((s, idx) => ({ ...s, sequence: idx + 1 })) } }));
 
-  const moveStep = (index: number, direction: 'up' | 'down') => {
-    setConfig((prev) => {
+  const moveStep = (i: number, dir: 'up' | 'down') =>
+    setConfig(prev => {
       const steps = [...(prev.workflow?.missionSteps || [])];
-      if (direction === 'up' && index > 0) {
-        [steps[index], steps[index - 1]] = [steps[index - 1], steps[index]];
-      } else if (direction === 'down' && index < steps.length - 1) {
-        [steps[index], steps[index + 1]] = [steps[index + 1], steps[index]];
-      }
-      const reordered = steps.map((s, i) => ({ ...s, sequence: i + 1 }));
-      return {
-        ...prev,
-        workflow: { ...(prev.workflow || {}), missionSteps: reordered },
-      };
+      if (dir === 'up' && i > 0) [steps[i], steps[i-1]] = [steps[i-1], steps[i]];
+      else if (dir === 'down' && i < steps.length - 1) [steps[i], steps[i+1]] = [steps[i+1], steps[i]];
+      return { ...prev, workflow: { ...(prev.workflow || {}), missionSteps: steps.map((s, idx) => ({ ...s, sequence: idx + 1 })) } };
     });
-  };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-950">
-        <div className="w-12 h-12 border-4 border-blue-600/20 border-t-blue-600 rounded-full animate-spin"></div>
-      </div>
-    );
-  }
+  if (isLoading) return (
+    <div className="min-h-screen flex items-center justify-center bg-slate-950">
+      <div className="w-12 h-12 border-4 border-blue-600/20 border-t-blue-600 rounded-full animate-spin" />
+    </div>
+  );
+
+  const orgName = config.branding?.organizationName || user?.organization || 'Organisation';
+  const primaryColor = config.branding?.primaryColor || '#1e90ff';
 
   return (
     <PageContainer className="min-h-screen bg-slate-950 py-8">
       <PageHeader
         title="Mon Organisation"
-        subtitle="Personnalisez l'identité visuelle et les processus métier"
+        subtitle="Personnalisez l'identité et les processus de votre espace de travail"
         icon={<Building2 size={24} className="text-blue-500" />}
         actions={
           <button
             onClick={handleSave}
             disabled={isSaving}
-            className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-black text-xs rounded-xl transition-all shadow-lg shadow-blue-500/20 disabled:opacity-50"
+            className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-black text-xs rounded-xl transition-all shadow-lg shadow-blue-500/20 disabled:opacity-50 active:scale-95"
           >
-            <Save size={16} />
+            {isSaving ? <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" /> : <Save size={16} />}
             {isSaving ? 'SAUVEGARDE...' : 'ENREGISTRER'}
           </button>
         }
       />
 
-      <ContentArea className="mt-8 !p-0 !bg-transparent border-none">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          {/* Navigation latérale */}
-          <div className="lg:col-span-1 space-y-2">
-            <button
-              onClick={() => setActiveTab('branding')}
-              className={`w-full flex items-center gap-3 px-6 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${activeTab === 'branding' ? 'bg-blue-600 text-white shadow-xl' : 'bg-white/5 text-slate-400 hover:bg-white/10'}`}
-            >
-              <Palette size={18} /> Identité Visuelle
-            </button>
-            <button
-              onClick={() => setActiveTab('notifications')}
-              className={`w-full flex items-center gap-3 px-6 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${activeTab === 'notifications' ? 'bg-blue-600 text-white shadow-xl' : 'bg-white/5 text-slate-400 hover:bg-white/10'}`}
-            >
-              <BellRing size={18} /> Notifications & Audit
-            </button>
-            <button
-              onClick={() => setActiveTab('workflow')}
-              className={`w-full flex items-center gap-3 px-6 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${activeTab === 'workflow' ? 'bg-blue-600 text-white shadow-xl' : 'bg-white/5 text-slate-400 hover:bg-white/10'}`}
-            >
-              <GitBranch size={18} /> Workflow Mission
-            </button>
-            <button
-              onClick={() => setActiveTab('labels')}
-              className={`w-full flex items-center gap-3 px-6 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${activeTab === 'labels' ? 'bg-blue-600 text-white shadow-xl' : 'bg-white/5 text-slate-400 hover:bg-white/10'}`}
-            >
-              <Box size={18} /> Glossaire Métier
-            </button>
-            <button
-              onClick={() => setActiveTab('features')}
-              className={`w-full flex items-center gap-3 px-6 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${activeTab === 'features' ? 'bg-blue-600 text-white shadow-xl' : 'bg-white/5 text-slate-400 hover:bg-white/10'}`}
-            >
-              <ShieldCheck size={18} /> Fonctionnalités
-            </button>
+      <ContentArea className="mt-8 !p-0 !bg-transparent border-none space-y-8">
+
+        {/* ══ ORG PROFILE CARD ══ */}
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="relative overflow-hidden rounded-[2rem] border border-white/5 bg-gradient-to-br from-slate-900 to-slate-950"
+        >
+          {/* Background gradient blob */}
+          <div className="absolute -top-20 -right-20 w-80 h-80 rounded-full opacity-10 blur-3xl" style={{ background: primaryColor }} />
+
+          <div className="relative p-8 flex flex-col lg:flex-row gap-8 items-start lg:items-center">
+            {/* Logo / Avatar */}
+            <div className="relative group flex-shrink-0">
+              <div className="w-24 h-24 rounded-[1.5rem] border-2 border-white/10 bg-slate-800 flex items-center justify-center overflow-hidden shadow-2xl">
+                {config.branding?.logo
+                  ? <img src={config.branding.logo} alt="Logo" className="w-full h-full object-contain p-1" />
+                  : <Building2 size={36} className="text-slate-500" />
+                }
+              </div>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="absolute inset-0 rounded-[1.5rem] bg-black/60 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center"
+              >
+                <Camera size={20} className="text-white" />
+              </button>
+              <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
+              {/* Online dot */}
+              <div className="absolute bottom-1 right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-slate-900 shadow" />
+            </div>
+
+            {/* Org Info */}
+            <div className="flex-1 space-y-2">
+              <input
+                type="text"
+                value={config.branding?.organizationName || ''}
+                onChange={e => updateBranding('organizationName', e.target.value)}
+                placeholder="Nom de l'organisation"
+                className="text-2xl font-black text-white bg-transparent border-b border-transparent hover:border-white/20 focus:border-blue-500 outline-none transition-all w-full max-w-md pb-1"
+              />
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="flex items-center gap-1.5 text-xs font-bold text-slate-400">
+                  <Globe size={12} /> <span>{user?.organization || 'Afrique de l'Ouest'}</span>
+                </span>
+                <span className="flex items-center gap-1.5 text-xs font-bold text-slate-400">
+                  <Briefcase size={12} /> <span>Plan Enterprise</span>
+                </span>
+                <span className="flex items-center gap-1.5 px-2.5 py-1 bg-blue-500/10 rounded-full text-xs font-black text-blue-400 border border-blue-500/20">
+                  <Award size={10} /> GEM Premium
+                </span>
+              </div>
+            </div>
+
+            {/* Quick Stats Row */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 lg:flex-shrink-0">
+              {[
+                { label: 'Ménages', value: stats.households.toLocaleString(), icon: Users, color: 'blue' },
+                { label: 'Équipes', value: stats.teams, icon: Briefcase, color: 'emerald' },
+                { label: 'Utilisateurs', value: stats.users, icon: Lock, color: 'violet' },
+                { label: 'Zones', value: stats.zones, icon: BarChart2, color: 'amber' },
+              ].map(s => (
+                <div key={s.label} className="flex flex-col items-center p-4 bg-white/5 rounded-2xl border border-white/5 min-w-[80px] hover:bg-white/8 transition-all">
+                  <s.icon size={16} className={`text-${s.color}-400 mb-1`} />
+                  <div className="text-xl font-black text-white">{s.value}</div>
+                  <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{s.label}</div>
+                </div>
+              ))}
+            </div>
           </div>
 
-          {/* Zone de contenu dynamique */}
-          <div className="lg:col-span-3">
-            <motion.div
-              key={activeTab}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="glass-card !p-10 !rounded-[2.5rem] min-h-[500px]"
-            >
-              {activeTab === 'features' && (
-                <div className="space-y-10">
-                  <div className="flex items-center gap-4 mb-4">
-                    <div className="p-3 bg-blue-500/10 rounded-2xl">
-                      <ShieldCheck className="text-blue-500" />
-                    </div>
-                    <h3 className="text-xl font-black text-white uppercase tracking-tight italic">
-                      Activation des Modules
-                    </h3>
-                  </div>
+          {/* Color strip at bottom */}
+          <div className="h-1 w-full" style={{ background: `linear-gradient(to right, ${primaryColor}, transparent)` }} />
+        </motion.div>
 
-                  <div className="space-y-6">
-                    <div className="p-6 bg-blue-500/5 rounded-3xl border border-blue-500/10 flex items-start gap-4 mb-6">
-                      <ShieldCheck className="text-blue-500 shrink-0 mt-1" size={24} />
-                      <div className="space-y-1">
-                        <h4 className="text-sm font-black text-white">
-                          Contrôle Admin des Paramètres
-                        </h4>
-                        <p className="text-xs text-slate-400 leading-relaxed">
-                          Activez ou désactivez les fonctionnalités techniques sensibles pour le
-                          reste de l'organisation.
-                        </p>
+        {/* ══ MAIN PANEL ══ */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+
+          {/* Sidebar Tabs */}
+          <div className="lg:col-span-1 space-y-2">
+            {TABS.map(tab => {
+              const active = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`w-full flex items-center gap-3 px-5 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all border ${
+                    active
+                      ? `bg-white/10 text-white border-white/10 shadow-xl`
+                      : 'bg-white/3 text-slate-400 border-transparent hover:bg-white/7 hover:text-white'
+                  }`}
+                >
+                  <div className={`p-1.5 rounded-lg ${active ? `bg-${tab.color}-500/20 text-${tab.color}-400` : 'bg-white/5 text-slate-500'}`}>
+                    <tab.icon size={14} />
+                  </div>
+                  <span className="flex-1 text-left">{tab.label}</span>
+                  {active && <ArrowRight size={12} className="opacity-50" />}
+                </button>
+              );
+            })}
+
+            {/* Quick save shortcut */}
+            <div className="pt-4">
+              <button
+                onClick={handleSave}
+                disabled={isSaving}
+                className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-blue-600/20 hover:bg-blue-600 border border-blue-600/30 text-blue-400 hover:text-white font-black text-xs uppercase tracking-widest rounded-2xl transition-all disabled:opacity-50"
+              >
+                <Save size={14} />
+                Enregistrer
+              </button>
+            </div>
+          </div>
+
+          {/* Tab Content */}
+          <div className="lg:col-span-3">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeTab}
+                initial={{ opacity: 0, x: 12 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -12 }}
+                transition={{ duration: 0.18 }}
+                className="bg-slate-900/60 backdrop-blur border border-white/5 rounded-[2rem] p-8 min-h-[500px]"
+              >
+
+                {/* ── BRANDING ── */}
+                {activeTab === 'branding' && (
+                  <div className="space-y-8">
+                    <SectionHeader icon={<Palette className="text-blue-400" />} title="Identité Visuelle" color="blue" />
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      {/* Logo */}
+                      <div className="space-y-3">
+                        <FieldLabel>Logo (max 2 Mo)</FieldLabel>
+                        <div
+                          onClick={() => fileInputRef.current?.click()}
+                          className="h-36 border-2 border-dashed border-white/10 rounded-2xl flex flex-col items-center justify-center gap-3 cursor-pointer hover:border-blue-500/50 hover:bg-blue-500/5 transition-all group"
+                        >
+                          {config.branding?.logo
+                            ? <img src={config.branding.logo} alt="Logo" className="h-full py-4 object-contain" />
+                            : <>
+                                <Upload size={24} className="text-slate-600 group-hover:text-blue-400 transition-colors" />
+                                <span className="text-xs font-bold text-slate-500 group-hover:text-blue-400">Cliquer pour importer</span>
+                              </>
+                          }
+                        </div>
+                        {config.branding?.logo && (
+                          <button onClick={() => updateBranding('logo', '')} className="text-[10px] font-black text-rose-500 hover:text-rose-400 uppercase tracking-widest">
+                            Supprimer le logo
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Color */}
+                      <div className="space-y-3">
+                        <FieldLabel>Couleur Primaire</FieldLabel>
+                        <div className="flex gap-3 items-center">
+                          <input
+                            type="color"
+                            title="Couleur primaire"
+                            value={config.branding?.primaryColor || '#1e90ff'}
+                            onChange={e => updateBranding('primaryColor', e.target.value)}
+                            className="w-14 h-14 cursor-pointer rounded-2xl border-none bg-transparent overflow-hidden flex-shrink-0"
+                          />
+                          <input
+                            type="text"
+                            title="Code hexadécimal"
+                            placeholder="#1e90ff"
+                            value={config.branding?.primaryColor || '#1e90ff'}
+                            onChange={e => updateBranding('primaryColor', e.target.value)}
+                            className="flex-1 bg-slate-800 border border-white/5 rounded-2xl px-5 py-4 text-white font-mono text-sm uppercase focus:ring-2 focus:ring-blue-500/30 outline-none"
+                          />
+                        </div>
+
+                        {/* Color Palette presets */}
+                        <div className="flex gap-2 pt-1 flex-wrap">
+                          {['#1e90ff','#10b981','#f59e0b','#8b5cf6','#ef4444','#0ea5e9'].map(c => (
+                            <button
+                              key={c}
+                              title={c}
+                              onClick={() => updateBranding('primaryColor', c)}
+                              style={{ background: c }}
+                              className={`w-7 h-7 rounded-full border-2 transition-all ${config.branding?.primaryColor === c ? 'border-white scale-110' : 'border-transparent hover:scale-105'}`}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Footer text */}
+                    <div className="space-y-3">
+                      <FieldLabel>Pied de Page (PDF & Factures)</FieldLabel>
+                      <textarea
+                        value={config.branding?.footerText || ''}
+                        onChange={e => updateBranding('footerText', e.target.value)}
+                        rows={3}
+                        placeholder="Ex: PROQUELEC S.A - Dakar, Sénégal - RCCM SN-DKR-..."
+                        className="w-full bg-slate-800 border border-white/5 rounded-2xl px-5 py-4 text-white text-sm focus:ring-2 focus:ring-blue-500/30 outline-none resize-none"
+                      />
+                    </div>
+
+                    <InfoBox color="blue" icon={<ShieldCheck size={18} />}>
+                      Ces réglages remplacent le branding GEM SAAS par défaut pour tous vos collaborateurs.
+                    </InfoBox>
+                  </div>
+                )}
+
+                {/* ── NOTIFICATIONS ── */}
+                {activeTab === 'notifications' && (
+                  <div className="space-y-8">
+                    <SectionHeader icon={<Mail className="text-emerald-400" />} title="Audit & Notifications" color="emerald" />
+
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <FieldLabel>Emails en Copie (Audit)</FieldLabel>
+                        <span className="text-xs text-slate-500">{config.notifications?.auditEmails?.length || 0} adresse(s)</span>
+                      </div>
+
+                      {/* Add email inline */}
+                      <div className="flex gap-3">
+                        <input
+                          type="email"
+                          value={newEmail}
+                          onChange={e => setNewEmail(e.target.value)}
+                          onKeyDown={e => e.key === 'Enter' && addAuditEmail()}
+                          placeholder="email@organisation.com"
+                          className="flex-1 bg-slate-800 border border-white/5 rounded-xl px-4 py-3 text-white text-sm focus:ring-2 focus:ring-emerald-500/30 outline-none"
+                        />
+                        <button
+                          onClick={addAuditEmail}
+                          className="px-4 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2"
+                        >
+                          <Plus size={14} /> Ajouter
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <AnimatePresence>
+                          {config.notifications?.auditEmails?.map((email, i) => (
+                            <motion.div
+                              key={email}
+                              initial={{ opacity: 0, scale: 0.9 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              exit={{ opacity: 0, scale: 0.9 }}
+                              className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/5 group hover:border-emerald-500/30 transition-all"
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center">
+                                  <Mail size={12} className="text-emerald-400" />
+                                </div>
+                                <span className="text-sm font-bold text-white truncate">{email}</span>
+                              </div>
+                              <button onClick={() => removeAuditEmail(email)} className="text-slate-600 hover:text-rose-500 p-1 opacity-0 group-hover:opacity-100 transition-all">
+                                <Trash2 size={14} />
+                              </button>
+                            </motion.div>
+                          ))}
+                        </AnimatePresence>
+                        {(!config.notifications?.auditEmails || config.notifications.auditEmails.length === 0) && (
+                          <div className="col-span-full py-10 text-center border-2 border-dashed border-white/5 rounded-2xl text-slate-600 text-xs font-bold uppercase italic">
+                            Aucun email d'audit configuré
+                          </div>
+                        )}
                       </div>
                     </div>
 
                     <div className="pt-6 border-t border-white/5">
-                      <label className="flex items-center justify-between cursor-pointer group">
-                        <div className="flex-1">
-                          <h4 className="text-sm font-black text-white group-hover:text-blue-500 transition-colors">
-                            Terminal Kobo Toolbox
-                          </h4>
-                          <p className="text-xs text-slate-500">
-                            Permettre l'accès au terminal de synchronisation brute pour les
-                            utilisateurs habilités.
-                          </p>
+                      <div className="flex items-center justify-between p-5 bg-white/3 rounded-2xl border border-white/5">
+                        <div>
+                          <h4 className="text-sm font-black text-white">Alertes Workflow Temps Réel</h4>
+                          <p className="text-xs text-slate-500 mt-0.5">Notifier les valideurs dès qu'une action est requise.</p>
                         </div>
-                        <div
-                          onClick={() => toggleFeature('koboTerminal')}
-                          className={`w-14 h-8 rounded-full p-1 transition-colors relative ${config.features?.koboTerminal ? 'bg-blue-600' : 'bg-slate-800'}`}
-                        >
-                          <div
-                            className={`w-6 h-6 bg-white rounded-full transition-transform shadow-md ${config.features?.koboTerminal ? 'translate-x-6' : 'translate-x-0'}`}
-                          />
-                        </div>
-                      </label>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {activeTab === 'branding' && (
-                <div className="space-y-10">
-                  <div className="flex items-center gap-4 mb-4">
-                    <div className="p-3 bg-blue-500/10 rounded-2xl">
-                      <Palette className="text-blue-500" />
-                    </div>
-                    <h3 className="text-xl font-black text-white uppercase tracking-tight italic">
-                      Branding White-Label
-                    </h3>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                    <div className="space-y-4">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                        Logo de l'organisation (Fichier Image)
-                      </label>
-                      <div className="flex gap-4">
-                        <div className="flex-1 relative cursor-pointer group">
-                          <input
-                            type="file"
-                            accept="image/*"
-                            title="Choisir un fichier image"
-                            onChange={handleLogoUpload}
-                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                          />
-                          <div className="absolute inset-0 flex items-center gap-3 bg-slate-900 border border-white/5 rounded-2xl px-5 text-slate-400 text-sm group-hover:border-blue-500/50 group-hover:bg-slate-800 transition-all pointer-events-none">
-                            <Upload size={18} className="text-blue-500" />
-                            <span className="truncate">Cliquer pour parcourir (Max 2Mo)...</span>
-                          </div>
-                        </div>
-                        <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center p-2 border border-white/10 overflow-hidden shadow-Inner shrink-0 relative z-20">
-                          {config.branding?.logo ? (
-                            <img
-                              src={config.branding.logo}
-                              alt="Preview"
-                              className="max-w-full max-h-full object-contain"
-                            />
-                          ) : (
-                            <Palette className="text-slate-200" />
-                          )}
-                        </div>
-                      </div>
-                      {config.branding?.logo && (
-                        <div className="flex justify-end">
-                          <button
-                            onClick={() => updateBranding('logo', '')}
-                            className="text-[10px] font-black text-rose-500 hover:text-rose-400 uppercase tracking-widest transition-colors"
-                          >
-                            Supprimer le logo actuel
-                          </button>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="space-y-4">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                        Couleur Primaire
-                      </label>
-                      <div className="flex gap-4">
-                        <input
-                          type="color"
-                          title="Choisir la couleur primaire"
-                          value={config.branding?.primaryColor || '#1e90ff'}
-                          onChange={(e) => updateBranding('primaryColor', e.target.value)}
-                          className="w-14 h-14 bg-transparent border-none cursor-pointer rounded-2xl overflow-hidden"
-                        />
-                        <input
-                          type="text"
-                          title="Code hexadécimal de la couleur"
-                          placeholder="#000000"
-                          value={config.branding?.primaryColor || '#1e90ff'}
-                          onChange={(e) => updateBranding('primaryColor', e.target.value)}
-                          className="flex-1 bg-slate-900 border border-white/5 rounded-2xl px-5 py-4 text-white font-mono text-sm uppercase focus:ring-2 focus:ring-blue-500/30 outline-none"
+                        <Toggle
+                          checked={config.notifications?.workflowAlerts !== false}
+                          onChange={() => setConfig(prev => ({ ...prev, notifications: { ...(prev.notifications || {}), workflowAlerts: config.notifications?.workflowAlerts === false } }))}
+                          color="emerald"
                         />
                       </div>
                     </div>
                   </div>
+                )}
 
-                  <div className="space-y-4">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                      Texte Bas de Page (Factures & PDF)
-                    </label>
-                    <textarea
-                      value={config.branding?.footerText || ''}
-                      onChange={(e) => updateBranding('footerText', e.target.value)}
-                      rows={3}
-                      placeholder="Ex: PROQUELEC S.A - Dakar, Sénégal - RCCM SN-DKR-..."
-                      className="w-full bg-slate-900 border border-white/5 rounded-2xl px-5 py-4 text-white text-sm focus:ring-2 focus:ring-blue-500/30 outline-none resize-none"
-                    />
-                  </div>
-
-                  <div className="p-6 bg-blue-500/5 rounded-3xl border border-blue-500/10 flex items-start gap-4">
-                    <ShieldCheck className="text-blue-500 shrink-0 mt-1" size={24} />
-                    <div className="space-y-1">
-                      <h4 className="text-sm font-black text-white">Mode White-Label Actif</h4>
-                      <p className="text-xs text-slate-400 leading-relaxed">
-                        Ces réglages s'appliquent en temps réel à tous vos collaborateurs. Ils
-                        remplacent le branding par défaut de GEM SAAS pour vos documents officiels
-                        et votre interface.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {activeTab === 'notifications' && (
-                <div className="space-y-8">
-                  <div className="flex items-center gap-4 mb-4">
-                    <div className="p-3 bg-emerald-500/10 rounded-2xl">
-                      <Mail className="text-emerald-500" />
-                    </div>
-                    <h3 className="text-xl font-black text-white uppercase tracking-tight italic">
-                      Audit & Communications
-                    </h3>
-                  </div>
-
-                  <div className="space-y-6">
+                {/* ── WORKFLOW ── */}
+                {activeTab === 'workflow' && (
+                  <div className="space-y-8">
                     <div className="flex items-center justify-between">
-                      <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">
-                        Emails en Copie (Audit)
-                      </h4>
+                      <SectionHeader icon={<GitBranch className="text-amber-400" />} title="Processus de Validation" color="amber" />
                       <button
-                        onClick={addAuditEmail}
-                        className="text-xs font-black text-emerald-500 hover:text-emerald-400 flex items-center gap-1"
+                        onClick={addWorkflowStep}
+                        className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-white text-xs font-black uppercase tracking-widest rounded-xl flex items-center gap-2 transition-all"
                       >
-                        <Plus size={14} /> Ajouter un email
+                        <Plus size={14} /> Étape
                       </button>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {config.notifications?.auditEmails?.map((email, i) => (
-                        <div
-                          key={i}
-                          className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5 group hover:border-emerald-500/30 transition-all"
-                        >
-                          <span className="text-sm font-bold text-white">{email}</span>
-                          <button
-                            onClick={() => removeAuditEmail(email)}
-                            title="Supprimer cet email"
-                            className="text-slate-500 hover:text-rose-500 p-1 opacity-0 group-hover:opacity-100 transition-all"
+                    <div className="relative space-y-3">
+                      {/* Vertical connector */}
+                      {(config.workflow?.missionSteps?.length || 0) > 1 && (
+                        <div className="absolute left-[1.85rem] top-10 bottom-10 w-0.5 bg-amber-500/20 z-0" />
+                      )}
+                      <AnimatePresence>
+                        {config.workflow?.missionSteps?.map((step, i) => (
+                          <motion.div
+                            key={i}
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -10 }}
+                            className="relative z-10 flex items-center gap-4 p-5 bg-slate-800/60 rounded-2xl border border-white/5 group hover:border-amber-500/40 transition-all"
                           >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      ))}
-                      {(!config.notifications?.auditEmails ||
-                        config.notifications.auditEmails.length === 0) && (
-                        <div className="col-span-full py-8 text-center border-2 border-dashed border-white/5 rounded-[2rem] text-slate-500 font-bold text-xs uppercase italic">
-                          Aucun email d'audit configuré
+                            <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-black text-sm flex-shrink-0">
+                              {step.sequence}
+                            </div>
+                            <div className="flex-1">
+                              <div className="font-black text-sm text-white">{step.label}</div>
+                              <div className="text-[10px] font-black text-amber-400/70 uppercase tracking-widest mt-0.5">{step.role}</div>
+                            </div>
+                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                              <button onClick={() => moveStep(i, 'up')} disabled={i === 0} title="Monter" className="p-1.5 text-slate-500 hover:text-white disabled:opacity-20 rounded-lg hover:bg-white/5">
+                                <MoveUp size={14} />
+                              </button>
+                              <button onClick={() => moveStep(i, 'down')} disabled={i === (config.workflow?.missionSteps?.length||0)-1} title="Descendre" className="p-1.5 text-slate-500 hover:text-white disabled:opacity-20 rounded-lg hover:bg-white/5">
+                                <MoveDown size={14} />
+                              </button>
+                              <button onClick={() => removeWorkflowStep(i)} title="Supprimer" className="p-1.5 text-slate-500 hover:text-rose-500 rounded-lg hover:bg-rose-500/10 ml-1">
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          </motion.div>
+                        ))}
+                      </AnimatePresence>
+                      {(!config.workflow?.missionSteps || config.workflow.missionSteps.length === 0) && (
+                        <div className="py-14 text-center border-2 border-dashed border-white/5 rounded-2xl space-y-3">
+                          <GitBranch size={36} className="text-white/5 mx-auto" />
+                          <p className="text-slate-500 text-xs font-bold uppercase italic">Workflow par défaut (Chef → Comptable → DG)</p>
                         </div>
                       )}
                     </div>
 
-                    <div className="pt-6 border-t border-white/5">
-                      <label className="flex items-center gap-4 cursor-pointer group">
-                        <div
-                          className={`w-14 h-8 rounded-full p-1 transition-colors relative ${config.notifications?.workflowAlerts !== false ? 'bg-emerald-500' : 'bg-slate-800'}`}
-                        >
-                          <div
-                            className={`w-6 h-6 bg-white rounded-full transition-transform shadow-md ${config.notifications?.workflowAlerts !== false ? 'translate-x-6' : 'translate-x-0'}`}
-                          />
-                        </div>
-                        <input
-                          type="checkbox"
-                          className="hidden"
-                          checked={config.notifications?.workflowAlerts !== false}
-                          onChange={(e) =>
-                            setConfig((prev) => ({
-                              ...prev,
-                              notifications: {
-                                ...(prev.notifications || {}),
-                                workflowAlerts: e.target.checked,
-                              },
-                            }))
-                          }
-                        />
-                        <div>
-                          <h4 className="text-sm font-black text-white group-hover:text-emerald-500 transition-colors">
-                            Alertes de Workflow en Temps Réel
-                          </h4>
-                          <p className="text-xs text-slate-500">
-                            Notifier automatiquement les valideurs quand une action est requise.
-                          </p>
-                        </div>
-                      </label>
-                    </div>
+                    <InfoBox color="amber" icon={<BellRing size={16} />}>
+                      Les changements s'appliquent aux nouvelles missions uniquement.
+                    </InfoBox>
                   </div>
-                </div>
-              )}
+                )}
 
-              {activeTab === 'workflow' && (
-                <div className="space-y-8">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-4">
-                      <div className="p-3 bg-amber-500/10 rounded-2xl">
-                        <GitBranch className="text-amber-500" />
-                      </div>
-                      <h3 className="text-xl font-black text-white uppercase tracking-tight italic">
-                        Processus de Validation
-                      </h3>
-                    </div>
-                    <button
-                      onClick={addWorkflowStep}
-                      className="px-4 py-2 bg-amber-500 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:brightness-110 transition-all flex items-center gap-2"
-                    >
-                      <Plus size={16} /> Ajouter une étape
-                    </button>
-                  </div>
+                {/* ── LABELS ── */}
+                {activeTab === 'labels' && (
+                  <div className="space-y-8">
+                    <SectionHeader icon={<Box className="text-indigo-400" />} title="Glossaire Métier" color="indigo" />
 
-                  <div className="space-y-4">
-                    {config.workflow?.missionSteps?.map((step, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center gap-6 p-6 bg-white/5 rounded-3xl border border-white/10 group hover:border-amber-500/50 transition-all"
-                      >
-                        <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-500 flex items-center justify-center font-black">
-                          {step.sequence}
-                        </div>
-                        <div className="flex-1">
-                          <h4 className="text-sm font-black text-white">{step.label}</h4>
-                          <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                            {step.role}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
-                          <button
-                            onClick={() => moveStep(index, 'up')}
-                            disabled={index === 0}
-                            title="Monter d'un rang"
-                            className="p-2 text-slate-400 hover:text-white disabled:opacity-20"
-                          >
-                            <MoveUp size={16} />
-                          </button>
-                          <button
-                            onClick={() => moveStep(index, 'down')}
-                            disabled={index === (config.workflow?.missionSteps?.length || 0) - 1}
-                            title="Descendre d'un rang"
-                            className="p-2 text-slate-400 hover:text-white disabled:opacity-20"
-                          >
-                            <MoveDown size={16} />
-                          </button>
-                          <button
-                            onClick={() => removeWorkflowStep(index)}
-                            title="Supprimer l'étape"
-                            className="p-2 text-slate-400 hover:text-rose-500 ml-2"
-                          >
-                            <Trash2 size={16} />
-                          </button>
+                    <InfoBox color="indigo" icon={<ShieldCheck size={16} />}>
+                      Adaptez GEM à votre secteur. Remplacez "Ménage" par "Pylône", "Site", "École" ou "Client".
+                    </InfoBox>
+
+                    {[
+                      { key: 'household' as const, label: 'Entité Opérationnelle (ex: Ménage)', singular: 'Ménage', plural: 'Ménages' },
+                      { key: 'zone' as const, label: 'Unité de Secteur (ex: Zone)', singular: 'Zone', plural: 'Zones' },
+                    ].map(item => (
+                      <div key={item.key} className="space-y-4">
+                        <h4 className="text-xs font-black text-slate-500 uppercase tracking-widest border-b border-white/5 pb-3">{item.label}</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          {(['singular', 'plural'] as const).map(field => (
+                            <div key={field} className="space-y-2">
+                              <FieldLabel>{field === 'singular' ? 'Singulier' : 'Pluriel'}</FieldLabel>
+                              <input
+                                type="text"
+                                placeholder={`Ex: ${field === 'singular' ? item.singular : item.plural}`}
+                                value={config.labels?.[item.key]?.[field] || ''}
+                                onChange={e => updateLabel(item.key, field, e.target.value)}
+                                className="w-full bg-slate-800 border border-white/5 rounded-2xl px-5 py-4 text-white text-sm focus:ring-2 focus:ring-indigo-500/30 outline-none transition-all"
+                              />
+                            </div>
+                          ))}
                         </div>
                       </div>
                     ))}
-                    {(!config.workflow?.missionSteps ||
-                      config.workflow.missionSteps.length === 0) && (
-                      <div className="py-12 text-center border-2 border-dashed border-white/5 rounded-[2.5rem] space-y-4">
-                        <GitBranch size={40} className="text-white/5 mx-auto" />
-                        <p className="text-slate-500 font-bold text-xs uppercase tracking-[0.2em] italic max-w-xs mx-auto">
-                          Aucune étape configurée. Le workflow par défaut de 3 étapes (Chef,
-                          Comptable, DG) sera appliqué.
-                        </p>
-                      </div>
-                    )}
                   </div>
+                )}
 
-                  <div className="p-6 bg-amber-500/5 rounded-3xl border border-amber-500/10">
-                    <p className="text-xs text-amber-500/70 italic leading-relaxed text-center">
-                      <b>Note importante:</b> Le changement du workflow n'affecte pas les missions
-                      déjà soumises, mais s'appliquera instantanément à toutes les nouvelles
-                      demandes.
-                    </p>
-                  </div>
-                </div>
-              )}
+                {/* ── FEATURES ── */}
+                {activeTab === 'features' && (
+                  <div className="space-y-8">
+                    <SectionHeader icon={<Zap className="text-violet-400" />} title="Activation des Modules" color="violet" />
 
-              {activeTab === 'labels' && (
-                <div className="space-y-10">
-                  <div className="flex items-center gap-4 mb-4">
-                    <div className="p-3 bg-indigo-500/10 rounded-2xl">
-                      <Box className="text-indigo-500" />
-                    </div>
-                    <h3 className="text-xl font-black text-white uppercase tracking-tight italic">
-                      Glossaire Métier
-                    </h3>
-                  </div>
-                  <div className="p-6 bg-indigo-500/5 rounded-3xl border border-indigo-500/10 flex items-start gap-4 mb-6">
-                    <ShieldCheck className="text-indigo-500 shrink-0 mt-1" size={24} />
-                    <div className="space-y-1">
-                      <h4 className="text-sm font-black text-white">White-Label Sémantique</h4>
-                      <p className="text-xs text-slate-400 leading-relaxed">
-                        Adaptez GEM à votre métier. Si votre projet ne concerne pas des "Ménages",
-                        remplacez ce terme par "Pylônes", "Sites", "Écoles" ou "Clients".
-                      </p>
-                    </div>
-                  </div>
-                  <div className="space-y-10">
-                    <div className="space-y-6">
-                      <h4 className="text-xs font-black text-slate-500 uppercase tracking-widest border-b border-white/5 pb-4">
-                        Entité Opérationnelle
-                      </h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <div className="space-y-3">
-                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">
-                            Singulier
-                          </label>
-                          <input
-                            title="Nom singulier"
-                            placeholder="Ex: Ménage"
-                            type="text"
-                            value={config.labels?.household?.singular || 'Ménage'}
-                            onChange={(e) => updateLabel('household', 'singular', e.target.value)}
-                            className="w-full bg-slate-950 border border-white/5 rounded-2xl px-5 py-4 text-white text-sm focus:ring-2 focus:ring-indigo-500/30 outline-none"
-                          />
+                    <div className="space-y-4">
+                      {[
+                        {
+                          key: 'koboTerminal' as const,
+                          title: 'Terminal KoboToolbox',
+                          desc: 'Accès au terminal de synchronisation brute pour les agents habilités.',
+                          color: 'blue',
+                          icon: <Globe size={18} className="text-blue-400" />,
+                        },
+                      ].map(feat => (
+                        <div key={feat.key} className="flex items-start gap-5 p-6 bg-slate-800/50 rounded-2xl border border-white/5 hover:border-violet-500/20 transition-all">
+                          <div className="p-3 bg-white/5 rounded-xl flex-shrink-0">{feat.icon}</div>
+                          <div className="flex-1">
+                            <h4 className="font-black text-sm text-white">{feat.title}</h4>
+                            <p className="text-xs text-slate-500 mt-1 leading-relaxed">{feat.desc}</p>
+                          </div>
+                          <Toggle checked={!!config.features?.[feat.key]} onChange={() => toggleFeature(feat.key)} color={feat.color} />
                         </div>
-                        <div className="space-y-3">
-                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">
-                            Pluriel
-                          </label>
-                          <input
-                            title="Nom pluriel"
-                            placeholder="Ex: Ménages"
-                            type="text"
-                            value={config.labels?.household?.plural || 'Ménages'}
-                            onChange={(e) => updateLabel('household', 'plural', e.target.value)}
-                            className="w-full bg-slate-950 border border-white/5 rounded-2xl px-5 py-4 text-white text-sm focus:ring-2 focus:ring-indigo-500/30 outline-none"
-                          />
+                      ))}
+
+                      {/* Placeholder for future modules */}
+                      <div className="flex items-center gap-4 p-6 bg-white/3 rounded-2xl border border-dashed border-white/5">
+                        <div className="p-3 bg-white/5 rounded-xl">
+                          <Plus size={18} className="text-slate-600" />
+                        </div>
+                        <div>
+                          <h4 className="font-black text-sm text-slate-600">Nouveaux modules</h4>
+                          <p className="text-xs text-slate-700 mt-1">D'autres fonctionnalités seront disponibles prochainement.</p>
                         </div>
                       </div>
-                    </div>
-                    <div className="space-y-6 pt-4">
-                      <h4 className="text-xs font-black text-slate-500 uppercase tracking-widest border-b border-white/5 pb-4">
-                        Unités de Secteur / Zones
-                      </h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <div className="space-y-3">
-                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">
-                            Singulier
-                          </label>
-                          <input
-                            title="Nom singulier zone"
-                            placeholder="Ex: Zone"
-                            type="text"
-                            value={config.labels?.zone?.singular || 'Zone'}
-                            onChange={(e) => updateLabel('zone', 'singular', e.target.value)}
-                            className="w-full bg-slate-950 border border-white/5 rounded-2xl px-5 py-4 text-white text-sm focus:ring-2 focus:ring-indigo-500/30 outline-none"
-                          />
-                        </div>
-                        <div className="space-y-3">
-                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">
-                            Pluriel
-                          </label>
-                          <input
-                            title="Nom pluriel zone"
-                            placeholder="Ex: Zones"
-                            type="text"
-                            value={config.labels?.zone?.plural || 'Zones'}
-                            onChange={(e) => updateLabel('zone', 'plural', e.target.value)}
-                            className="w-full bg-slate-950 border border-white/5 rounded-2xl px-5 py-4 text-white text-sm focus:ring-2 focus:ring-indigo-500/30 outline-none"
-                          />
+
+                      {/* Status Board */}
+                      <div className="mt-6 p-6 bg-violet-500/5 border border-violet-500/10 rounded-2xl">
+                        <h4 className="text-xs font-black text-violet-400 uppercase tracking-widest mb-4">État des Modules</h4>
+                        <div className="space-y-2">
+                          {[
+                            { name: 'Simulation Financière', active: true },
+                            { name: 'Synchronisation Kobo', active: !!config.features?.koboTerminal },
+                            { name: 'Bordereau de Paiement', active: true },
+                            { name: 'Ordres de Mission', active: true },
+                          ].map(m => (
+                            <div key={m.name} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
+                              <span className="text-xs font-bold text-slate-400">{m.name}</span>
+                              <div className={`flex items-center gap-1.5 text-[10px] font-black uppercase ${m.active ? 'text-emerald-400' : 'text-slate-600'}`}>
+                                {m.active ? <><Check size={10} /> Actif</> : <><span className="w-2 h-2 rounded-full bg-slate-600 inline-block" /> Inactif</>}
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              )}
-            </motion.div>
+                )}
+              </motion.div>
+            </AnimatePresence>
           </div>
         </div>
       </ContentArea>
     </PageContainer>
+  );
+}
+
+// ── Shared micro-components ──
+
+function SectionHeader({ icon, title }: { icon: React.ReactNode; title: string; color: string }) {
+  return (
+    <div className="flex items-center gap-3 mb-2">
+      <div className="p-2.5 bg-white/5 rounded-xl">{icon}</div>
+      <h3 className="text-lg font-black text-white uppercase tracking-tight">{title}</h3>
+    </div>
+  );
+}
+
+function FieldLabel({ children }: { children: React.ReactNode }) {
+  return <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{children}</label>;
+}
+
+function InfoBox({ icon, children, color }: { icon: React.ReactNode; children: React.ReactNode; color: string }) {
+  const colors: Record<string, string> = {
+    blue:   'bg-blue-500/5 border-blue-500/10 text-blue-400',
+    amber:  'bg-amber-500/5 border-amber-500/10 text-amber-400/80',
+    indigo: 'bg-indigo-500/5 border-indigo-500/10 text-indigo-400',
+    violet: 'bg-violet-500/5 border-violet-500/10 text-violet-400',
+  };
+  return (
+    <div className={`flex items-start gap-3 p-5 rounded-2xl border ${colors[color] || colors.blue}`}>
+      <div className="flex-shrink-0 mt-0.5">{icon}</div>
+      <p className="text-xs leading-relaxed font-medium opacity-80">{children}</p>
+    </div>
   );
 }
