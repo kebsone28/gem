@@ -244,7 +244,11 @@ export default function Simulation() {
           const roleLabel = ROLE_LABELS[role as RoleKey];
 
           // 1. Rechercher ou créer le groupement parent (level 0)
-          const parentTeamsOfTrade = existingTeams.filter((t: any) => t.tradeKey === tradeKey && !t.parentTeamId);
+          const parentTeamsOfTrade = existingTeams.filter((t: any) => 
+            t.tradeKey === tradeKey && 
+            !t.parentTeamId && 
+            t.name.startsWith('Groupement')
+          );
           let parentTeamId = parentTeamsOfTrade.length > 0 ? parentTeamsOfTrade[0].id : null;
           let parentTeamPath = parentTeamsOfTrade.length > 0 ? parentTeamsOfTrade[0].path : null;
 
