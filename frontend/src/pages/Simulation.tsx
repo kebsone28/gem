@@ -71,10 +71,10 @@ export default function Simulation() {
   const [holidaysCount, setHolidaysCount] = useState(14); // Estimated Senegalese holidays
 
   const [teamConfigs, setTeamConfigs] = useState<Record<RoleKey, TeamConfig>>({
-    macon: { count: 5, paymentMode: 'task', rate: 29000, vehiclesPerTeam: 0 },
-    network: { count: 3, paymentMode: 'task', rate: 4500, vehiclesPerTeam: 0 },
-    interior: { count: 4, paymentMode: 'task', rate: 15000, vehiclesPerTeam: 0 },
-    controller: { count: 2, paymentMode: 'day', rate: 10000, vehiclesPerTeam: 1 }, // 1 vehicle per controller
+    macon: { count: 25, paymentMode: 'task', rate: 29000, vehiclesPerTeam: 0 },
+    network: { count: 6, paymentMode: 'task', rate: 4025, vehiclesPerTeam: 0 },
+    interior: { count: 41, paymentMode: 'task', rate: 15000, vehiclesPerTeam: 0 },
+    controller: { count: 6, paymentMode: 'day', rate: 6000, vehiclesPerTeam: 1 }, // 1 vehicle per controller
   });
 
   const [isOptimized, setIsOptimized] = useState(false);
@@ -242,43 +242,43 @@ export default function Simulation() {
           const tradeKey = tradeKeyMapping[role as RoleKey];
           const teamRole = roleMapping[role as RoleKey] || 'INSTALLATION';
           const roleLabel = ROLE_LABELS[role as RoleKey];
-          
+
           // 1. Rechercher ou créer le groupement parent (level 0)
           const parentTeamsOfTrade = existingTeams.filter((t: any) => t.tradeKey === tradeKey && !t.parentTeamId);
           let parentTeamId = parentTeamsOfTrade.length > 0 ? parentTeamsOfTrade[0].id : null;
           let parentTeamPath = parentTeamsOfTrade.length > 0 ? parentTeamsOfTrade[0].path : null;
-          
+
           if (!parentTeamId) {
-             const parentPayload = {
-                name: `Groupement ${roleLabel}`,
-                projectId: activeProjectId,
-                role: teamRole,
-                tradeKey,
-                capacity: 0,
-                status: 'active'
-             };
-             try {
-                const res = await apiClient.post('/teams', parentPayload);
-                parentTeamId = res.data.id;
-                parentTeamPath = res.data.path;
-                await (db as any).teams.put(res.data);
-                existingTeams.push(res.data);
-                createdCount++;
-             } catch (apiErr) {
-                parentTeamId = crypto.randomUUID();
-                parentTeamPath = parentTeamId;
-                const newParent = {
-                  ...parentPayload,
-                  id: parentTeamId,
-                  organizationId: project?.organizationId || 'org-offline',
-                  level: 0,
-                  syncStatus: 'pending',
-                  path: parentTeamId
-                };
-                await (db as any).teams.add(newParent);
-                existingTeams.push(newParent);
-                createdCount++;
-             }
+            const parentPayload = {
+              name: `Groupement ${roleLabel}`,
+              projectId: activeProjectId,
+              role: teamRole,
+              tradeKey,
+              capacity: 0,
+              status: 'active'
+            };
+            try {
+              const res = await apiClient.post('/teams', parentPayload);
+              parentTeamId = res.data.id;
+              parentTeamPath = res.data.path;
+              await (db as any).teams.put(res.data);
+              existingTeams.push(res.data);
+              createdCount++;
+            } catch (apiErr) {
+              parentTeamId = crypto.randomUUID();
+              parentTeamPath = parentTeamId;
+              const newParent = {
+                ...parentPayload,
+                id: parentTeamId,
+                organizationId: project?.organizationId || 'org-offline',
+                level: 0,
+                syncStatus: 'pending',
+                path: parentTeamId
+              };
+              await (db as any).teams.add(newParent);
+              existingTeams.push(newParent);
+              createdCount++;
+            }
           }
 
           // 2. Créer les sous-équipes

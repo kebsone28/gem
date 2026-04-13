@@ -83,8 +83,27 @@ export function useTeams(projectId?: string) {
       await fetchTeamTree();
       return newTeam;
     } catch (err: any) {
-      logger.error('Create team error', err);
-      throw err;
+      logger.warn('API indisponible ou erreur (400), création locale de secours', err);
+      try {
+        const newLocalId = crypto.randomUUID();
+        const newLocalTeam = {
+          ...data,
+          projectId,
+          id: newLocalId,
+          organizationId: 'org-offline',
+          level: data.parentTeamId ? 1 : 0,
+          status: 'active',
+          syncStatus: 'pending',
+          path: data.parentTeamId ? `${data.parentTeamId}/${newLocalId}` : newLocalId
+        };
+        await (db as any).teams.add(newLocalTeam);
+        setTeams((prev) => [...prev, newLocalTeam as any]);
+        await fetchTeamTree();
+        return newLocalTeam;
+      } catch (dbErr) {
+        logger.error('Erreur lors de la création locale (fallback):', dbErr);
+        throw err;
+      }
     }
   };
 
