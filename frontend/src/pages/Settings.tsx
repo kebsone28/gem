@@ -448,6 +448,7 @@ function TeamsSection({ project }: { project: any }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [collapsedTeams, setCollapsedTeams] = useState<Record<string, boolean>>({});
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [confirmResetAll, setConfirmResetAll] = useState(false);
 
   useEffect(() => {
     fetchTeamTree();
@@ -579,6 +580,30 @@ function TeamsSection({ project }: { project: any }) {
     }
   };
 
+  const handleResetAllTeams = async () => {
+    if (!confirmResetAll) {
+      setConfirmResetAll(true);
+      setTimeout(() => setConfirmResetAll(false), 5000);
+      return;
+    }
+    setConfirmResetAll(false);
+    try {
+      // Delete all teams (including children) one by one
+      const allIds: string[] = [];
+      teamTree.forEach((parent: any) => {
+        (parent.children || []).forEach((child: any) => allIds.push(child.id));
+        allIds.push(parent.id);
+      });
+      for (const id of allIds) {
+        await deleteTeam(id);
+      }
+      logger.log(`✅ ${allIds.length} équipe(s) supprimée(s)`);
+    } catch (err: any) {
+      logger.error('❌ Échec réinitialisation:', err);
+      alert('Erreur : ' + (err?.response?.data?.error || err.message || 'Erreur inconnue'));
+    }
+  };
+
   if (isTeamsLoading && teamTree.length === 0)
     return <div className="p-8 text-slate-400">Chargement des équipes...</div>;
 
@@ -625,6 +650,19 @@ function TeamsSection({ project }: { project: any }) {
           >
             + Nouveau Groupement
           </button>
+          {teamTree.length > 0 && (
+            <button
+              id="btn-reset-all-teams"
+              onClick={handleResetAllTeams}
+              className={`px-5 py-3 text-xs font-black uppercase tracking-widest rounded-xl transition-all active:scale-95 border ${
+                confirmResetAll
+                  ? 'bg-red-600 border-red-500 text-white animate-pulse shadow-lg shadow-red-600/30'
+                  : 'bg-red-900/20 border-red-700/40 text-red-400 hover:bg-red-700/30'
+              }`}
+            >
+              {confirmResetAll ? '⚠️ Confirmer suppression' : '🗑️ Réinitialiser tout'}
+            </button>
+          )}
         </div>
       </div>
 
