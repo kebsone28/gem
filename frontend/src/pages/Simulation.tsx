@@ -25,6 +25,7 @@ import {
 import type { TeamConfig, RoleKey, ModeOptimisation, Scenario } from '../hooks/useSimulationModel';
 import * as safeStorage from '../utils/safeStorage';
 import { db } from '../store/db';
+import apiClient from '../api/client';
 
 // Import centralized design system
 import { PageContainer, PageHeader, ContentArea, ActionBar } from '../components';
@@ -241,25 +242,35 @@ export default function Simulation() {
           const tradeKey = tradeKeyMapping[role as RoleKey];
           const teamRole = roleMapping[role as RoleKey] || 'INSTALLATION';
           const needed = config.count - existingTeams.filter((t: any) => t.tradeKey === tradeKey).length;
-          
+
           if (needed > 0) {
             for (let i = 0; i < needed; i++) {
               const currentT = existingTeams.filter((t: any) => t.tradeKey === tradeKey).length + i + 1;
               const paddedNum = currentT.toString().padStart(2, '0');
-              const newTeam = {
-                id: crypto.randomUUID(),
+              const payload = {
                 name: `${ROLE_LABELS[role as RoleKey]} - Équipe ${paddedNum}`,
                 projectId: activeProjectId,
-                organizationId: project?.organizationId || 'org',
                 role: teamRole,
                 tradeKey,
-                level: 0,
                 capacity: roleCapacities[role as RoleKey] || 0,
                 status: 'active',
-                syncStatus: 'pending',
-                path: `temp-${ts}-${role}-${i}`
               };
-              await (db as any).teams.add(newTeam);
+
+              try {
+                const res = await apiClient.post('/teams', payload);
+                await (db as any).teams.put(res.data);
+              } catch (apiErr) {
+                console.warn('API non disponible, sauvegarde locale hors-ligne', apiErr);
+                const newTeam = {
+                  ...payload,
+                  id: crypto.randomUUID(),
+                  organizationId: project?.organizationId || 'org-offline',
+                  level: 0,
+                  syncStatus: 'pending',
+                  path: `temp-${ts}-${role}-${i}`
+                };
+                await (db as any).teams.add(newTeam);
+              }
               createdCount++;
             }
           }
@@ -1211,7 +1222,7 @@ export default function Simulation() {
                 <div className="space-y-6 mt-6">
                   {Object.entries(activeConfigs).map(([role, config]) => {
                     const roleKey = role as RoleKey;
-                  const sched = activeScenario.schedule[roleKey] || {
+                    const sched = activeScenario.schedule[roleKey] || {
                       start: 0,
                       duration: 0,
                       end: 0,
