@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import apiClient from '../api/client';
 import type { Team } from '../utils/types';
 import logger from '../utils/logger';
+import { db } from '../store/db';
 
 export function useTeams(projectId?: string) {
   const [teams, setTeams] = useState<Team[]>([]);
@@ -30,7 +31,20 @@ export function useTeams(projectId?: string) {
     setIsLoading(true);
     try {
       const response = await apiClient.get(`/teams/tree?projectId=${projectId}`);
-      setTeamTree(response.data.tree);
+      const serverTree = response.data.tree || [];
+      
+      try {
+        const allLocalTeams = await (db as any).teams.toArray();
+        const localOfflineTeams = allLocalTeams.filter((t: any) => t.syncStatus === 'pending' && t.projectId === projectId);
+        
+        if (localOfflineTeams.length > 0) {
+           setTeamTree([...serverTree, ...localOfflineTeams]);
+        } else {
+           setTeamTree(serverTree);
+        }
+      } catch (dbErr) {
+        setTeamTree(serverTree);
+      }
       setError(null);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to fetch team tree');
