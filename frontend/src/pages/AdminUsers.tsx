@@ -25,7 +25,7 @@ import {
 import { appSecurity } from '../services/appSecurity';
 import { useAuth } from '../contexts/AuthContext';
 import { PageContainer, PageHeader, ContentArea } from '../components';
-import { PERMISSION_LABELS, PERMISSIONS, ROLE_PERMISSIONS } from '../utils/permissions';
+import { PERMISSION_LABELS, PERMISSIONS, ROLE_PERMISSIONS, normalizeRole, type UserRole as PermissionUserRole } from '../utils/permissions';
 import { userService } from '../services/userService';
 import { organizationService } from '../services/organizationService';
 import { auditService } from '../services/auditService';
@@ -129,7 +129,9 @@ const ROLE_CONFIG: Record<
   },
 };
 
-const emptyForm = (): Omit<User, 'id' | 'createdAt'> => ({
+type UserForm = Omit<User, 'id' | 'createdAt'>;
+
+const emptyForm = (): UserForm => ({
   email: '',
   notificationEmail: '',
   password: '',
@@ -161,7 +163,7 @@ export default function AdminUsers() {
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
-  const [form, setForm] = useState(emptyForm());
+  const [form, setForm] = useState<UserForm>(emptyForm());
   const [showPass, setShowPass] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
 
@@ -280,9 +282,10 @@ export default function AdminUsers() {
   };
 
   const togglePermission = (p: string) => {
-    setForm((f: any) => {
+    setForm((f: UserForm) => {
       // Obtenir l'état actuel : si undefined (auto), on commence par les droits du rôle
-      const current = f.permissions !== undefined ? f.permissions : ROLE_PERMISSIONS[f.role] || [];
+      const currentRole = normalizeRole(f.role) || (f.role as PermissionUserRole);
+      const current = f.permissions !== undefined ? f.permissions : ROLE_PERMISSIONS[currentRole] || [];
       if (current.includes(p)) {
         return { ...f, permissions: current.filter((x: string) => x !== p) };
       } else {
@@ -1361,10 +1364,11 @@ export default function AdminUsers() {
                     <>
                       <div className="grid grid-cols-1 gap-3 max-h-60 overflow-y-auto pr-2 custom-scrollbar bg-slate-950/50 p-2 rounded-2xl border border-slate-800">
                         {Object.entries(PERMISSIONS).map(([key, value]) => {
+                          const currentRole = normalizeRole(form.role) || (form.role as PermissionUserRole);
                           const isChecked =
                             form.permissions !== undefined
                               ? form.permissions.includes(value)
-                              : (ROLE_PERMISSIONS[form.role] || []).includes(value);
+                              : (ROLE_PERMISSIONS[currentRole] || []).includes(value);
 
                           const label = PERMISSION_LABELS[value] || value;
                           return (

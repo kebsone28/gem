@@ -68,10 +68,10 @@ export default function Simulation() {
   const [holidaysCount, setHolidaysCount] = useState(14); // Estimated Senegalese holidays
 
   const [teamConfigs, setTeamConfigs] = useState<Record<RoleKey, TeamConfig>>({
-    macon: { count: 5, paymentMode: 'task', rate: 10000, vehiclesPerTeam: 0 },
-    network: { count: 3, paymentMode: 'task', rate: 7500, vehiclesPerTeam: 0 },
-    interior: { count: 4, paymentMode: 'task', rate: 30000, vehiclesPerTeam: 0 },
-    controller: { count: 2, paymentMode: 'day', rate: 45000, vehiclesPerTeam: 1 }, // 1 vehicle per controller
+    macon: { count: 5, paymentMode: 'task', rate: 29000, vehiclesPerTeam: 0 },
+    network: { count: 3, paymentMode: 'task', rate: 4500, vehiclesPerTeam: 0 },
+    interior: { count: 4, paymentMode: 'task', rate: 15000, vehiclesPerTeam: 0 },
+    controller: { count: 2, paymentMode: 'day', rate: 10000, vehiclesPerTeam: 1 }, // 1 vehicle per controller
   });
 
   const [isOptimized, setIsOptimized] = useState(false);
@@ -209,13 +209,73 @@ export default function Simulation() {
     }
   }, []);
 
-  const handleApplyConfiguration = useCallback(() => {
+  const handleApplyConfiguration = useCallback(async () => {
     if (!optimizedConfigs) return;
+
+    try {
+      const activeProjectId = safeStorage.getItem('active_project_id');
+      if (activeProjectId) {
+        const existingTeams = await (db as any).teams.where('projectId').equals(activeProjectId).toArray();
+
+        const tradeKeyMapping = {
+          macon: 'macons',
+          network: 'reseau',
+          interior: 'interieur_type1',
+          controller: 'controle',
+        };
+
+        const roleMapping = {
+          macon: 'INSTALLATION',
+          network: 'INSTALLATION',
+          interior: 'INSTALLATION',
+          controller: 'SUPERVISION',
+        };
+
+        let createdCount = 0;
+        const ts = Date.now();
+
+        for (const [role, config] of Object.entries(optimizedConfigs)) {
+          const tradeKey = tradeKeyMapping[role as RoleKey];
+          const teamRole = roleMapping[role as RoleKey] || 'INSTALLATION';
+          const needed = config.count - existingTeams.filter((t: any) => t.tradeKey === tradeKey).length;
+          
+          if (needed > 0) {
+            for (let i = 0; i < needed; i++) {
+              const currentT = existingTeams.filter((t: any) => t.tradeKey === tradeKey).length + i + 1;
+              const paddedNum = currentT.toString().padStart(2, '0');
+              const newTeam = {
+                id: crypto.randomUUID(),
+                name: `${ROLE_LABELS[role as RoleKey]} - Équipe ${paddedNum}`,
+                projectId: activeProjectId,
+                organizationId: project?.organizationId || 'org',
+                role: teamRole,
+                tradeKey,
+                level: 0,
+                capacity: roleCapacities[role as RoleKey] || 0,
+                status: 'active',
+                syncStatus: 'pending',
+                path: `temp-${ts}-${role}-${i}`
+              };
+              await (db as any).teams.add(newTeam);
+              createdCount++;
+            }
+          }
+        }
+
+        if (createdCount > 0) {
+          toast.success(`${createdCount} équipe(s) générée(s) en base locale !`, { icon: '👷' });
+        }
+      }
+    } catch (err) {
+      console.error('Erreur génération équipe:', err);
+      toast.error('Erreur lors de la création auto des équipes');
+    }
+
     setTeamConfigs(optimizedConfigs);
     setShowApplyModal(false);
     setIsOptimized(false);
-    toast.success('Configuration optimisée appliquée comme scénario courant', { icon: '✅' });
-  }, [optimizedConfigs]);
+    toast.success('Configuration optimisée appliquée', { icon: '✅' });
+  }, [optimizedConfigs, project?.organizationId]);
 
   const currentScenario = useMemo(
     () =>
@@ -302,21 +362,21 @@ export default function Simulation() {
     () =>
       optimizedConfigs
         ? calculerScenarioV2({
-            householdsCount,
-            devisTotalPlanned: devis.totalPlanned,
-            projectConfig: project,
-            teamConfigs: optimizedConfigs,
-            baseVehicleCount,
-            tauxImprevu,
-            isHivernage,
-            tauxRejet,
-            tauxAcompte,
-            workDaysPerWeek,
-            holidaysCount,
-            penaliteHivernageMacon,
-            penaliteHivernageReseau,
-            dateDemarrageInitiale,
-          })
+          householdsCount,
+          devisTotalPlanned: devis.totalPlanned,
+          projectConfig: project,
+          teamConfigs: optimizedConfigs,
+          baseVehicleCount,
+          tauxImprevu,
+          isHivernage,
+          tauxRejet,
+          tauxAcompte,
+          workDaysPerWeek,
+          holidaysCount,
+          penaliteHivernageMacon,
+          penaliteHivernageReseau,
+          dateDemarrageInitiale,
+        })
         : null,
     [
       optimizedConfigs,
@@ -1147,7 +1207,8 @@ export default function Simulation() {
 
                 <div className="space-y-6 mt-6">
                   {Object.entries(activeConfigs).map(([role, config]) => {
-                    const sched = activeScenario.schedule[role] || {
+                    const roleKey = role as RoleKey;
+                  const sched = activeScenario.schedule[roleKey] || {
                       start: 0,
                       duration: 0,
                       end: 0,

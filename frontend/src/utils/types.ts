@@ -97,6 +97,7 @@ export interface Household {
     controleOk?: boolean;
     village?: string;
     departement?: string;
+    region?: string;
     tel?: string;
   };
   koboSubmissionId?: string;

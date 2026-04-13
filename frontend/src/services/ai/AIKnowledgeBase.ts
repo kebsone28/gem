@@ -1,7 +1,7 @@
 import { KOBO_STANDARDS } from './ElectricianQuran';
 
 export interface AIStateForPrompt {
-  stats?: { totalMissions?: number; totalCertified?: number; totalIndemnities?: number };
+  stats?: { totalMissions?: number; totalCertified?: number; totalIndemnities?: number } | null;
   households?: unknown[];
   auditLogs?: unknown[];
 }

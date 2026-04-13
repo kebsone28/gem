@@ -326,11 +326,16 @@ export default function Cahier() {
 
     const staffRates = project.config.costs.staffRates;
     for (const regionId in staffRates) {
-      for (const teamId in staffRates[regionId]) {
+      const regionRates = staffRates[regionId] as unknown;
+      if (!regionRates || typeof regionRates !== 'object') continue;
+      const ratesMap = regionRates as Record<string, { amount: number; mode: 'daily' | 'monthly' | 'task' }>;
+      for (const teamId in ratesMap) {
         const team = (allTeams || []).find((t: any) => t.id === teamId);
-        // We match by tradeKey to get the standard rate for this type of work
         if (team?.tradeKey === tradeKey) {
-          return staffRates[regionId][teamId].amount || null;
+          const rate = ratesMap[teamId];
+          if (rate) {
+            return rate.amount || null;
+          }
         }
       }
     }

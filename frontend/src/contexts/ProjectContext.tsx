@@ -10,7 +10,7 @@ interface ProjectContextType {
   project: Project | null;
   projects: Project[];
   activeProjectId: string | null;
-  setActiveProjectId: (id: string) => void;
+  setActiveProjectId: (id: string | null) => void;
   createProject: (name: string) => Promise<Project>;
   updateProject: (updates: Partial<Project>, id?: string) => Promise<void>;
   deleteProject: (
@@ -45,10 +45,15 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   }, [projects.length, activeProjectId]);
 
-  const setActiveProjectId = (id: string) => {
+  const setActiveProjectId = (id: string | null) => {
     setActiveProjectIdState(id);
-    safeStorage.setItem('active_project_id', id);
-    logger.log(`🎯 [PROJECT] Switched to ${id}`);
+    if (id) {
+      safeStorage.setItem('active_project_id', id);
+      logger.log(`🎯 [PROJECT] Switched to ${id}`);
+    } else {
+      safeStorage.removeItem('active_project_id');
+      logger.log('🎯 [PROJECT] Active project cleared');
+    }
   };
 
   const createProject = async (name: string) => {

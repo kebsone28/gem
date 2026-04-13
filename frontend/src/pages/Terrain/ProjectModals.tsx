@@ -13,7 +13,7 @@ interface ProjectModalsProps {
   onDeleteConfirm: () => void;
   onCloseCreate: () => void;
   onCloseDelete: () => void;
-  modalInputRef: RefObject<HTMLInputElement>;
+  modalInputRef: RefObject<HTMLInputElement | null>;
 }
 
 const ProjectModals: React.FC<ProjectModalsProps> = ({

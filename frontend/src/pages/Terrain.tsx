@@ -24,6 +24,7 @@ import { MapRegionDownload } from '../components/terrain/MapRegionDownload';
 import { HouseholdDetailsPanel } from '../components/terrain/HouseholdDetailsPanel';
 import { useFavorites } from '../hooks/useFavorites';
 import { useTerrainUIStore } from '../store/terrainUIStore';
+import { useNavigate } from 'react-router-dom';
 
 import { useGeolocation } from '../hooks/useGeolocation';
 import {
@@ -60,7 +61,6 @@ const Terrain: React.FC = () => {
 
   // 2. Local State & Refs
   const [mapBounds, setMapBounds] = useState<[number, number, number, number] | null>(null);
-  const mapZoomRef = useRef(7);
   const [isOfflineMode, setIsOfflineMode] = useState(!navigator.onLine);
 
   // Modals state
@@ -71,11 +71,13 @@ const Terrain: React.FC = () => {
   const [lockoutUntil, setLockoutUntil] = useState<number | null>(null);
   const [showCreateProjectModal, setShowCreateProjectModal] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
+  const [isGeolocationRequestInProgress, setIsGeolocationRequestInProgress] = useState(false);
+  const [geolocationToastId, setGeolocationToastId] = useState<string | number | null>(null);
   const modalInputRef = useRef<HTMLInputElement>(null);
 
   // 3. Zustand Store
   const activePanel = useTerrainUIStore((s) => s.activePanel);
-  const setPanel = (p: any) => useTerrainUIStore.getState().setPanel(p);
+  const setPanel = useTerrainUIStore((s) => s.setPanel);
   const closePanel = useTerrainUIStore((s) => s.closePanel);
   const viewMode = useTerrainUIStore((s) => s.viewMode);
   const setViewMode = useTerrainUIStore((s) => s.setViewMode);
@@ -88,6 +90,11 @@ const Terrain: React.FC = () => {
   const addPendingPoint = useTerrainUIStore((s) => s.addPendingPoint);
   const drawnZones = useTerrainUIStore((s) => s.drawnZones);
   const showLegend = useTerrainUIStore((s) => s.showLegend);
+  const setIsDrawing = useTerrainUIStore((s) => s.setIsDrawing);
+  const setPendingPoints = useTerrainUIStore((s) => s.setPendingPoints);
+  const pendingPoints = useTerrainUIStore((s) => s.pendingPoints);
+  const addZone = useTerrainUIStore((s) => s.addZone);
+  const activeGrappeId = useTerrainUIStore((s) => s.activeGrappeId);
 
   // 4. Custom Hooks (Logic Orchestration)
   const {
@@ -106,6 +113,7 @@ const Terrain: React.FC = () => {
   const { userLocation, geolocationError, handleRequestGeolocation } = useGeolocation((loc) => {
     setMapCommand({ center: loc, zoom: 16, timestamp: Date.now() });
   });
+  const navigate = useNavigate();
 
   const {
     grappeClusters,
@@ -115,8 +123,6 @@ const Terrain: React.FC = () => {
   } = useGrappeClustering(households);
   const { auditResult } = useAuditData(households);
   const {
-    // routingEnabled, // Omitted to fix unused warning
-    setRoutingEnabled,
     setRoutingStart,
     setRoutingDest,
     setRouteStats,
@@ -200,7 +206,7 @@ const Terrain: React.FC = () => {
         setMapCommand({ center: [lng, lat], zoom: 14, timestamp: Date.now() });
       }
     }
-  }, [households, setMapCommand]);
+  }, [households, selectedHouseholdId, setMapCommand]);
   useEffect(() => {
     const handleStatus = () => setIsOfflineMode(!navigator.onLine);
     window.addEventListener('online', handleStatus);
@@ -234,14 +240,20 @@ const Terrain: React.FC = () => {
   }, [forceSync]);
 
   const handleRecenterOnUser = useCallback(() => {
+    if (isGeolocationRequestInProgress) {
+      return;
+    }
+
     if (userLocation) {
       setMapCommand({ center: userLocation, zoom: 16, timestamp: Date.now() });
-    } else if (geolocationError) {
-      handleRequestGeolocation();
-    } else {
-      toast.loading('En attente de votre position... ⏳', { duration: 3000 });
+      return;
     }
-  }, [userLocation, geolocationError, handleRequestGeolocation, setMapCommand]);
+
+    const toastId = toast.loading('En attente de votre position... ⏳', { duration: 15000 });
+    setGeolocationToastId(toastId);
+    setIsGeolocationRequestInProgress(true);
+    handleRequestGeolocation();
+  }, [userLocation, handleRequestGeolocation, setMapCommand, isGeolocationRequestInProgress]);
 
   // ✅ Safe coordinate validation function
   const isValidCoordinate = (lng: unknown, lat: unknown): boolean => {
@@ -254,6 +266,18 @@ const Terrain: React.FC = () => {
       Math.abs(lat) <= 90
     );
   };
+
+  useEffect(() => {
+    if (geolocationToastId == null) return;
+    if (userLocation || geolocationError) {
+      if (typeof geolocationToastId === 'string' || typeof geolocationToastId === 'number') {
+        const dismissId = typeof geolocationToastId === 'number' ? geolocationToastId.toString() : geolocationToastId;
+        toast.dismiss(dismissId);
+      }
+      setGeolocationToastId(null);
+      setIsGeolocationRequestInProgress(false);
+    }
+  }, [userLocation, geolocationError, geolocationToastId]);
 
   const handleSelectResult = useCallback(
     (result: SearchResult) => {
@@ -289,11 +313,12 @@ const Terrain: React.FC = () => {
 
   const handleTraceItinerary = useCallback(() => {
     const h = households?.find((hh) => hh.id === selectedHouseholdId);
-    if (!h || !h.location?.coordinates) return;
-    const dest: [number, number] = [h.location.coordinates[0], h.location.coordinates[1]];
+    if (!h || !hasValidCoordinates(h)) return;
+    const [lng, lat] = h.location.coordinates;
+    const dest: [number, number] = [lng, lat];
 
     setRoutingDest(dest);
-    useTerrainUIStore.getState().setPanel('routing'); // 🚀 Ouvrir le bon panneau
+    setPanel('routing');
     setRouteStats(null);
 
     if (userLocation) {
@@ -316,6 +341,7 @@ const Terrain: React.FC = () => {
     setRoutingDest,
     setRouteStats,
     setRoutingStart,
+    setPanel,
   ]);
 
   const handleCancelItinerary = useCallback(() => {
@@ -370,19 +396,22 @@ const Terrain: React.FC = () => {
     setDeleteAttempts(0);
     setLockoutUntil(null);
     toast.success('Projet supprimé avec succès');
-  }, [project, deletePassword, deleteProject, deleteAttempts, lockoutUntil]);
+    navigate('/dashboard');
+  }, [project, deletePassword, deleteProject, deleteAttempts, lockoutUntil, navigate]);
 
   // Keyboard shortcuts for modals
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      if (e.key !== 'Escape') return;
+      if (showDeleteModal || showCreateProjectModal) {
+        e.preventDefault();
         setShowDeleteModal(false);
         setShowCreateProjectModal(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [showDeleteModal, showCreateProjectModal]);
 
   useEffect(() => {
     if (showCreateProjectModal || showDeleteModal) {
@@ -424,8 +453,18 @@ const Terrain: React.FC = () => {
       return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     };
 
+    type GrappeDefinition = {
+      id: string;
+      nom?: string;
+      name?: string;
+      region?: string;
+      centroide_lat?: number | null;
+      centroide_lon?: number | null;
+      nb_menages?: number;
+    };
+
     if (gId) {
-      const grappeDef = allGrappes.find((g: any) => g.id === gId);
+      const grappeDef = allGrappes.find((g: GrappeDefinition) => g.id === gId);
       const grappeName =
         selectedHousehold.grappeName || grappeDef?.nom || grappeDef?.name || `Grappe ${gId}`;
       const grappeCount = (households || []).filter((h: Household) => h.grappeId === gId).length;
@@ -438,15 +477,15 @@ const Terrain: React.FC = () => {
 
     const hRegion =
       selectedHousehold.region ||
-      (selectedHousehold as any).koboData?.region ||
-      (selectedHousehold as any).koboSync?.region;
+      selectedHousehold.koboData?.region ||
+      selectedHousehold.koboSync?.region;
     const pool = hRegion
       ? allGrappes.filter(
-          (g: any) => (g.region && g.region.toLowerCase() === hRegion.toLowerCase()) || !g.region
+          (g: GrappeDefinition) => (g.region && g.region.toLowerCase() === hRegion.toLowerCase()) || !g.region
         )
       : allGrappes;
 
-    let nearest: any = null;
+    let nearest: GrappeDefinition | null = null;
     let minDist = Infinity;
     for (const g of pool) {
       if (g.centroide_lat == null || g.centroide_lon == null) continue;
@@ -530,7 +569,6 @@ const Terrain: React.FC = () => {
                       userLocation={userLocation}
                       onHouseholdDrop={updateHouseholdLocation}
                       favorites={localFavorites}
-                      onMove={(_, zoom) => (mapZoomRef.current = zoom)}
                       onBoundsChange={setMapBounds}
                       warehouses={showWarehouses ? warehouseStats : []}
                       projectId={project?.id}
@@ -625,24 +663,23 @@ const Terrain: React.FC = () => {
       {activePanel === 'draw' && (
         <div className="z-[70]">
           <MapDrawZonesPanel
-            onStartDraw={() => useTerrainUIStore.getState().setIsDrawing(true)}
+            onStartDraw={() => setIsDrawing(true)}
             onConfirmZone={(name, team, color) => {
-              const store = useTerrainUIStore.getState();
-              store.addZone({
+              const newZone = {
                 id: `zone-${Date.now()}`,
                 name,
                 team,
                 color,
-                coordinates: [...store.pendingPoints],
+                coordinates: [...pendingPoints],
                 createdAt: new Date().toISOString(),
-              });
-              store.setIsDrawing(false);
-              store.setPendingPoints([]);
+              };
+              addZone(newZone);
+              setIsDrawing(false);
+              setPendingPoints([]);
             }}
             onCancelDraw={() => {
-              const store = useTerrainUIStore.getState();
-              store.setIsDrawing(false);
-              store.setPendingPoints([]);
+              setIsDrawing(false);
+              setPendingPoints([]);
             }}
           />
         </div>
@@ -669,7 +706,7 @@ const Terrain: React.FC = () => {
         <div className="z-[60]">
           <MapGrappeAllocationPanel
             onClose={closePanel}
-            activeGrappeId={useTerrainUIStore.getState().activeGrappeId || ''}
+            activeGrappeId={activeGrappeId || ''}
             households={households || []}
           />
         </div>
@@ -710,7 +747,7 @@ const Terrain: React.FC = () => {
         onDeleteConfirm={handleDeleteProject}
         onCloseCreate={() => setShowCreateProjectModal(false)}
         onCloseDelete={() => setShowDeleteModal(false)}
-        modalInputRef={modalInputRef as any}
+        modalInputRef={modalInputRef}
       />
     </div>
   );
