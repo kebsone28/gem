@@ -241,15 +241,58 @@ export default function Simulation() {
         for (const [role, config] of Object.entries(optimizedConfigs)) {
           const tradeKey = tradeKeyMapping[role as RoleKey];
           const teamRole = roleMapping[role as RoleKey] || 'INSTALLATION';
-          const needed = config.count - existingTeams.filter((t: any) => t.tradeKey === tradeKey).length;
+          const roleLabel = ROLE_LABELS[role as RoleKey];
+          
+          // 1. Rechercher ou créer le groupement parent (level 0)
+          const parentTeamsOfTrade = existingTeams.filter((t: any) => t.tradeKey === tradeKey && !t.parentTeamId);
+          let parentTeamId = parentTeamsOfTrade.length > 0 ? parentTeamsOfTrade[0].id : null;
+          let parentTeamPath = parentTeamsOfTrade.length > 0 ? parentTeamsOfTrade[0].path : null;
+          
+          if (!parentTeamId) {
+             const parentPayload = {
+                name: `Groupement ${roleLabel}`,
+                projectId: activeProjectId,
+                role: teamRole,
+                tradeKey,
+                capacity: 0,
+                status: 'active'
+             };
+             try {
+                const res = await apiClient.post('/teams', parentPayload);
+                parentTeamId = res.data.id;
+                parentTeamPath = res.data.path;
+                await (db as any).teams.put(res.data);
+                existingTeams.push(res.data);
+                createdCount++;
+             } catch (apiErr) {
+                parentTeamId = crypto.randomUUID();
+                parentTeamPath = parentTeamId;
+                const newParent = {
+                  ...parentPayload,
+                  id: parentTeamId,
+                  organizationId: project?.organizationId || 'org-offline',
+                  level: 0,
+                  syncStatus: 'pending',
+                  path: parentTeamId
+                };
+                await (db as any).teams.add(newParent);
+                existingTeams.push(newParent);
+                createdCount++;
+             }
+          }
+
+          // 2. Créer les sous-équipes
+          const existingChildren = existingTeams.filter((t: any) => t.tradeKey === tradeKey && t.parentTeamId === parentTeamId);
+          const needed = config.count - existingChildren.length;
 
           if (needed > 0) {
             for (let i = 0; i < needed; i++) {
-              const currentT = existingTeams.filter((t: any) => t.tradeKey === tradeKey).length + i + 1;
+              const currentT = existingChildren.length + i + 1;
               const paddedNum = currentT.toString().padStart(2, '0');
               const payload = {
-                name: `${ROLE_LABELS[role as RoleKey]} - Équipe ${paddedNum}`,
+                name: `${roleLabel} - Équipe ${paddedNum}`,
                 projectId: activeProjectId,
+                parentTeamId: parentTeamId,
                 role: teamRole,
                 tradeKey,
                 capacity: roleCapacities[role as RoleKey] || 0,
@@ -259,17 +302,19 @@ export default function Simulation() {
               try {
                 const res = await apiClient.post('/teams', payload);
                 await (db as any).teams.put(res.data);
+                existingTeams.push(res.data);
               } catch (apiErr) {
-                console.warn('API non disponible, sauvegarde locale hors-ligne', apiErr);
+                const newId = crypto.randomUUID();
                 const newTeam = {
                   ...payload,
-                  id: crypto.randomUUID(),
+                  id: newId,
                   organizationId: project?.organizationId || 'org-offline',
-                  level: 0,
+                  level: 1,
                   syncStatus: 'pending',
-                  path: `temp-${ts}-${role}-${i}`
+                  path: `${parentTeamPath}/${newId}`
                 };
                 await (db as any).teams.add(newTeam);
+                existingTeams.push(newTeam);
               }
               createdCount++;
             }
