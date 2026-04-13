@@ -222,7 +222,7 @@ export default function OrganizationSettings() {
               />
               <div className="flex flex-wrap items-center gap-3">
                 <span className="flex items-center gap-1.5 text-xs font-bold text-slate-400">
-                  <Globe size={12} /> <span>{user?.organization || 'Afrique de l'Ouest'}</span>
+                  <Globe size={12} /> <span>{user?.organization || "Afrique de l'Ouest"}</span>
                 </span>
                 <span className="flex items-center gap-1.5 text-xs font-bold text-slate-400">
                   <Briefcase size={12} /> <span>Plan Enterprise</span>
