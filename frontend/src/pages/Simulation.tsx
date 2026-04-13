@@ -23,6 +23,8 @@ import {
   buildRoleCapacities,
 } from '../hooks/useSimulationModel';
 import type { TeamConfig, RoleKey, ModeOptimisation, Scenario } from '../hooks/useSimulationModel';
+import * as safeStorage from '../utils/safeStorage';
+import { db } from '../store/db';
 
 // Import centralized design system
 import { PageContainer, PageHeader, ContentArea, ActionBar } from '../components';

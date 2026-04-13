@@ -17,6 +17,17 @@ const CORE_KNOWLEDGE = [
   'Les indemnités sont validées après certification DG et peuvent être consultées par les rôles autorisés.',
   'La sécurité électrique repose sur DDR, prise terre PE vert/jaune, et protections mécanique PVC.',
   'Les anomalies à éviter : fils visibles, barrette terre extérieure, poteaux bois pourris.',
+  // NOUVEAUX ÉLÉMENTS TECHNIQUES AJOUTÉS
+  'Le branchement Senelec nécessite impérativement un coffret en limite de propriété avec hublot à 1.60m minimum.',
+  'Les anomalies critiques incluent : poteaux bois pourris, câbles non enterrés, absence de prise terre, fils visibles.',
+  "L'installation intérieure MFR standard comprend : coffret disjoncteur, 3 lampes, 1 prise, interrupteurs en zone couverte.",
+  'La protection mécanique utilise des tubes PVC pour tous les câbles enterrés ou en saillie.',
+  'Le DDR (dispositif de coupure fuite terre) est obligatoire pour toute installation BT ≤ 1000V.',
+  'Les coordonnées GPS doivent être vérifiées sur site avec précision de ±5m pour éviter les erreurs de localisation.',
+  'Le numeroordre est unique par ménage et sert de clé primaire pour la synchronisation Kobo.',
+  'Les missions complexes nécessitent validation hiérarchique : Chef Équipe → Chef Projet → DG.',
+  "Le barème PROQUELEC inclut : matériel électrique, main-d'œuvre spécialisée, logistique terrain, transport.",
+  'Les problèmes de terrain courants : absence de poteau, refus client, coordonnées GPS incorrectes, anomalies techniques.',
 ];
 
 const TECHNICAL_SUMMARIES = [
@@ -35,6 +46,19 @@ const TECHNICAL_SUMMARIES = [
   {
     title: 'Glossaire technique',
     text: 'Partie active = conducteur sous tension, masse = élément touchable pouvant être sous tension, DDR = dispositif de coupure fuite terre, PE = prise terre vert/jaune.',
+  },
+  // NOUVEAUX RÉSUMÉS TECHNIQUES AJOUTÉS
+  {
+    title: 'Sécurité électrique',
+    text: 'DDR obligatoire BT ≤ 1000V, prise terre PE vert/jaune, protection mécanique PVC, absence de masses touchables sous tension.',
+  },
+  {
+    title: 'Synchronisation Kobo',
+    text: 'numeroordre unique par ménage, vérification GPS ±5m, synchronisation automatique, gestion des conflits de données.',
+  },
+  {
+    title: 'Calcul des indemnités',
+    text: "Matériel électrique + main-d'œuvre spécialisée + logistique terrain + transport. Validation DG obligatoire.",
   },
 ];
 

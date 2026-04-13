@@ -911,6 +911,82 @@ async function runRulesEngine(
     };
   }
 
+  // NOUVELLE LOGIQUE TECHNIQUE AMÉLIORÉE
+  if (
+    intent.tech ||
+    q.includes('technique') ||
+    q.includes('norme') ||
+    q.includes('senelec') ||
+    q.includes('installation')
+  ) {
+    memory.lastIntent = 'tech';
+
+    // Détection spécifique des sous-domaines techniques
+    if (q.includes('branchement') || q.includes('senelec') || q.includes('compteur')) {
+      return {
+        message: pfx(
+          `🏗️ **BRANCHEMENT SENELEC**\n\nLe branchement Senelec nécessite impérativement :\n• Coffret compteur en limite de propriété\n• Hublot à 1.60m minimum\n• Câble enterré à 0.5m sous grillage rouge\n• Hauteur ≥ 4m en ruelle, ≥ 6m sur route\n• Protection mécanique PVC obligatoire\n\n**Anomalies critiques** : poteaux bois pourris, câbles non enterrés, absence de prise terre.`
+        ),
+        type: 'info',
+        smartReplies: ['Installation intérieure', 'Sécurité électrique', 'Anomalies terrain'],
+        _engine: 'RULES',
+      };
+    }
+
+    if (q.includes('sécurité') || q.includes('ddr') || q.includes('protection')) {
+      return {
+        message: pfx(
+          `🛡️ **SÉCURITÉ ÉLECTRIQUE**\n\nLa sécurité est primordiale en BT ≤ 1000V :\n• DDR (dispositif de coupure fuite terre) obligatoire\n• Prise terre PE vert/jaune correctement installée\n• Protection mécanique PVC pour tous câbles\n• Absence de masses touchables sous tension\n• Vérification systématique des anomalies\n\n**Rappel** : La norme NS 01-001 impose ces protections.`
+        ),
+        type: 'info',
+        smartReplies: ['Normes NS 01-001', 'Installation intérieure', 'Contrôle qualité'],
+        _engine: 'RULES',
+      };
+    }
+
+    if (q.includes('anomalie') || q.includes('problème') || q.includes('erreur')) {
+      return {
+        message: pfx(
+          `⚠️ **ANOMALIES À ÉVITER**\n\nLes anomalies critiques sur le terrain :\n• Fils visibles ou câbles extérieurs\n• Barrette terre en dehors du bâtiment\n• Poteaux bois pourris ou endommagés\n• Surplombement de lignes interdit\n• Coordonnées GPS incorrectes (±5m précision requise)\n• Absence de protection mécanique PVC\n\n**Procédure** : Signaler immédiatement et documenter avec photos.`
+        ),
+        type: 'warning',
+        smartReplies: ['Résolution anomalies', 'Photos terrain', 'Rapport qualité'],
+        _engine: 'RULES',
+      };
+    }
+
+    if (
+      q.includes('intérieur') ||
+      q.includes('mfr') ||
+      q.includes('lampe') ||
+      q.includes('prise')
+    ) {
+      return {
+        message: pfx(
+          `🏠 **INSTALLATION INTÉRIEURE MFR**\n\nConfiguration standard :\n• Coffret disjoncteur dans couloir couvert\n• 3 lampes + 1 prise par défaut\n• Interrupteurs en zone couverte uniquement\n• Câbles armés enterrés obligatoires\n• Protection contre l'humidité\n\n**Qualité** : Vérifier l'absence de fils apparents et la conformité aux normes.`
+        ),
+        type: 'info',
+        smartReplies: ['Configuration avancée', 'Matériel requis', 'Contrôle final'],
+        _engine: 'RULES',
+      };
+    }
+
+    // Réponse générique technique améliorée
+    return {
+      message: pfx(
+        `⚡ **RÉFÉRENTIEL TECHNIQUE GEM-MINT**\n\nJe maîtrise les normes Senelec et NS 01-001 :\n• Installations basse tension BT ≤ 1000V\n• Branchements en limite de propriété\n• Sécurité électrique et protections\n• Anomalies terrain et résolutions\n• Configurations MFR standard\n\nPosez votre question technique spécifique !`
+      ),
+      type: 'info',
+      smartReplies: [
+        'Branchement Senelec',
+        'Sécurité électrique',
+        'Installation intérieure',
+        'Anomalies terrain',
+      ],
+      _engine: 'RULES',
+    };
+  }
+
   let intent = detectIntent(q);
   intent = getContextualIntent(memory, intent);
   const activeIntents = getActiveIntents(intent);

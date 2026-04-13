@@ -32,14 +32,14 @@ export interface AIEngineSettings {
 const CONFIG_KEY = 'gem_mint_ai_engine_config';
 
 const DEFAULT_CONFIG: AIEngineSettings = {
-  mode: 'HYBRID_RULES_FIRST',
+  mode: 'HYBRID_RULES_FIRST', // Optimisé pour la vitesse et la couverture
   provider: 'PUBLIC_POLLINATIONS', // Test AI public
   claudeApiKey: '',
-  claudeEnrichTechnical: false,
+  claudeEnrichTechnical: true, // Amélioré pour plus de précision technique
   claudeEnrichDecision: true,
   enableConversationMemory: true,
-  maxHistoryTurns: 10,
-  claudeTimeoutMs: 8000,
+  maxHistoryTurns: 15, // Augmenté pour meilleure mémoire contextuelle
+  claudeTimeoutMs: 5000, // Réduit pour meilleure réactivité
 };
 
 /** Charger la configuration active (avec valeurs par défaut) */
