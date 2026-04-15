@@ -21,5 +21,8 @@ module.exports = {
     'local-rules/no-typos-jsx': 'error',
     '@typescript-eslint/no-explicit-any': 'warn',
     '@typescript-eslint/no-unused-vars': 'warn',
+    // Disable Microsoft Edge Tools HTML validation rules (external tool, not ESLint)
+    // CSS inline styles are acceptable for dynamic CSS variables
+    'react/no-unknown-property': 'off',
   },
 };
