@@ -301,6 +301,7 @@ export default function OrganizationSettings() {
           {/* Background gradient blob */}
           <div
             className="absolute -top-20 -right-20 w-80 h-80 rounded-full opacity-10 blur-3xl bg-[var(--org-primary)]"
+            // eslint-disable-next-line react/no-unknown-property
             style={{ '--org-primary': primaryColor } as React.CSSProperties}
           />
 
@@ -391,6 +392,7 @@ export default function OrganizationSettings() {
           {/* Color strip at bottom */}
           <div
             className="h-1 w-full bg-gradient-to-r from-[var(--org-primary)] to-transparent"
+            // eslint-disable-next-line react/no-unknown-property
             style={{ '--org-primary': primaryColor } as React.CSSProperties}
           />
         </motion.div>
@@ -520,6 +522,7 @@ export default function OrganizationSettings() {
                                 key={c}
                                 title={c}
                                 onClick={() => updateBranding('primaryColor', c)}
+                                // eslint-disable-next-line react/no-unknown-property
                                 style={{ '--preset-c': c } as React.CSSProperties}
                                 className={`w-7 h-7 rounded-full border-2 transition-all bg-[var(--preset-c)] ${config.branding?.primaryColor === c ? 'border-white scale-110' : 'border-transparent hover:scale-105'}`}
                               />

@@ -286,8 +286,9 @@ export default function Sidebar() {
     <>
       {/* Mobile Toggle */}
       <button
+        type="button"
         onClick={() => setMobileOpen(!mobileOpen)}
-        aria-expanded={mobileOpen ? 'true' : 'false'}
+        aria-expanded={mobileOpen}
         aria-label={mobileOpen ? 'Fermer le menu' : 'Ouvrir le menu'}
         className="lg:hidden fixed top-6 right-6 z-[60] w-12 h-12 bg-electric-gradient rounded-2xl flex items-center justify-center text-white shadow-electric transition-transform active:scale-95"
       >
@@ -313,8 +314,10 @@ export default function Sidebar() {
                 </div>
               </div>
               <button
+                type="button"
                 onClick={() => stopImpersonation()}
                 className="p-2 bg-white/10 hover:bg-white/20 rounded-lg text-white transition-all active:scale-90"
+                aria-label="Redevenir Admin"
                 title="Redevenir Admin"
               >
                 <X size={14} strokeWidth={3} />

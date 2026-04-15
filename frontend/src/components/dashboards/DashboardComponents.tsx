@@ -87,6 +87,7 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
       <div className="h-2.5 w-full bg-white/5 rounded-full overflow-hidden border border-white/5 shadow-inner p-[1px]">
         <div
           className={`h-full transition-all duration-1000 ease-out rounded-full bg-gradient-to-r shadow-[0_0_15px] w-[var(--progress)] ${barColors[status]}`}
+          // eslint-disable-next-line react/no-unknown-property
           style={{ '--progress': `${percentage}%` } as React.CSSProperties}
         />
       </div>
@@ -155,8 +156,7 @@ export const KPICard: React.FC<KPICardProps> = ({ title, value, icon, trend, spa
           {sparkline.map((h, i) => (
             <div
               key={i}
-              className="flex-1 bg-blue-500/60 rounded-t-md transition-all duration-1000 h-[var(--bar-h)]"
-              style={{ '--bar-h': `${h}%` } as React.CSSProperties}
+              className="flex-1 bg-blue-500/60 rounded-t-md transition-all duration-1000 h-[var(--bar-h)]"              // eslint-disable-next-line react/no-unknown-property              style={{ '--bar-h': `${h}%` } as React.CSSProperties}
             />
           ))}
         </div>

@@ -548,6 +548,8 @@ export default function PVAutomation() {
                                       </div>
                                       <button 
                                         onClick={() => setSignatureData(null)}
+                                        title="Supprimer la signature"
+                                        aria-label="Supprimer la signature"
                                         className="absolute inset-0 bg-slate-900/80 flex items-center justify-center opacity-0 group-hover/sig:opacity-100 transition-opacity"
                                       >
                                         <Trash2 size={14} className="text-rose-500" />

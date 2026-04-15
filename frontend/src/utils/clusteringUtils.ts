@@ -126,21 +126,23 @@ function sanitizeHouseholdForMap(h: any): any | null {
  * Convert household data to GeoJSON features for high-performance clustering
  */
 export function householdsToGeoJSON(households: any[]): Feature<Point>[] {
-  return (households || [])
-    .map((h) => {
-      const cleaned = sanitizeHouseholdForMap(h);
-      if (!cleaned) return null;
+  const result: Feature<Point>[] = [];
 
-      return {
-        type: 'Feature' as const,
-        geometry: {
-          type: 'Point' as const,
-          coordinates: [cleaned.longitude, cleaned.latitude] as [number, number],
-        },
-        properties: cleaned,
-      };
-    })
-    .filter((f): f is Feature<Point> => f !== null);
+  (households || []).forEach((h) => {
+    const cleaned = sanitizeHouseholdForMap(h);
+    if (!cleaned) return;
+
+    result.push({
+      type: 'Feature',
+      geometry: {
+        type: 'Point',
+        coordinates: [cleaned.longitude, cleaned.latitude],
+      },
+      properties: cleaned,
+    });
+  });
+
+  return result;
 }
 
 /**
