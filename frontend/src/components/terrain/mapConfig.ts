@@ -8,13 +8,15 @@
  */
 
 export const STATUS_COLOR: Record<string, string> = {
-  'Contrôle conforme': '#10b981', // Vert émeraude
-  'Non conforme': '#f43f5e', // Rouge rose
-  'Intérieur terminé': '#818cf8', // Indigo clair
-  'Réseau terminé': '#3b82f6', // Bleu
-  'Murs terminés': '#f59e0b', // Ambre / Orange
-  'Livraison effectuée': '#06b6d4', // Cyan
-  'Non encore commencé': '#94a3b8', // Gris/Slate
+  'Contrôle conforme': '#10b981',    // Émeraude Vibrant
+  'Non conforme': '#f43f5e',         // Rose Alerte
+  'Intérieur terminé': '#6366f1',    // Indigo Électrique
+  'Réseau terminé': '#3b82f6',       // Bleu Brillant
+  'Murs terminés': '#f59e0b',        // Ambre Doré
+  'Livraison effectuée': '#06b6d4',  // Cyan Océan
+  'Non encore commencé': '#64748b',   // Ardoise Neutre
+  'Non éligible': '#f43f5e',         // Même que non conforme (Rose)
+  'Désistement': '#64748b',          // Neutre (Gris)
 };
 
 export const getStatusColor = (status?: string): string => {
@@ -101,7 +103,13 @@ export const ICON_SVGS = {
 
 export const getIconForStatus = (status: string) => {
   if (status.includes('Contrôle conforme')) return 'check';
-  if (status.includes('Non conforme') || status.includes('Problème')) return 'alert';
+  if (
+    status.includes('Non conforme') ||
+    status.includes('Problème') ||
+    status.includes('Non éligible') ||
+    status.includes('Désistement')
+  )
+    return 'alert';
   if (status.includes('Livraison effectuée')) return 'truck';
   if (
     status.includes('Murs terminés') ||
@@ -114,9 +122,31 @@ export const getIconForStatus = (status: string) => {
 };
 
 export const createIconDataURI = (svgContent: string, color: string) => {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24">
-        <circle cx="12" cy="12" r="11" fill="${color}" stroke="#ef4444" stroke-width="2.5"/>
-        <g transform="translate(2,2) scale(0.83)">
+  // Glow intensity and darker border
+  const strokeColor = 'rgba(255,255,255,0.9)'; // White border for contrast
+  
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 24 24">
+        <defs>
+          <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="1.5" result="blur" />
+            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+          </filter>
+          <linearGradient id="bubble" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" style="stop-color:white;stop-opacity:0.4" />
+            <stop offset="40%" style="stop-color:white;stop-opacity:0" />
+            <stop offset="100%" style="stop-color:black;stop-opacity:0.2" />
+          </linearGradient>
+        </defs>
+        <!-- External GLOW for status identification -->
+        <circle cx="12" cy="12" r="10.5" fill="${color}" opacity="0.4" filter="url(#glow)"/>
+        
+        <!-- MAIN CIRCLE -->
+        <circle cx="12" cy="12" r="9.5" fill="${color}" stroke="${strokeColor}" stroke-width="2"/>
+        
+        <!-- GLASS SHINE -->
+        <circle cx="12" cy="12" r="9.5" fill="url(#bubble)"/>
+        
+        <g transform="translate(4,4) scale(0.66)">
             ${svgContent}
         </g>
     </svg>`;

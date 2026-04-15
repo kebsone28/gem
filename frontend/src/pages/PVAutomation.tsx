@@ -27,6 +27,10 @@ import { dispatchPVAlerts } from '../services/alertTraceService';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { PVAIEngine } from '../services/ai/PVAIEngine';
+import type { PVType as PVAIType } from '../services/ai/PVAIEngine';
+import SignatureModal from '../components/common/SignatureModal';
+import { PenTool } from 'lucide-react';
 
 // --- Types & Interfaces ---
 
@@ -92,6 +96,17 @@ export default function PVAutomation() {
   const [selectedType, setSelectedType] = useState<PVType | 'ALL'>('ALL');
   const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isSignatureOpen, setIsSignatureOpen] = useState(false);
+  const [signatureData, setSignatureData] = useState<string | null>(null);
+
+  const digitalHash = useMemo(() => {
+    if (!selectedSubmission) return null;
+    return `GEM-${Math.random().toString(36).substring(2, 10).toUpperCase()}-${Date.now().toString(36).toUpperCase()}`;
+  }, [selectedSubmission]);
+
+  const archivedPVs = useLiveQuery(
+    () => db.pvs.orderBy('createdAt').reverse().limit(50).toArray()
+  ) || [];
 
   // Fetch Kobo submissions (simulated through households with status 'WAITING_AUDIT' or with koboData)
   const submissions =
@@ -431,45 +446,131 @@ export default function PVAutomation() {
 
                             <div>
                               <p className="font-bold text-slate-500 uppercase mb-2">
-                                DESCRIPTION DES CONSTATS (SYNC KOBO)
+                                DESCRIPTION DES CONSTATS (GÉNÉRÉ PAR IA GEM-MINT)
                               </p>
-                              <div className="bg-slate-950 p-4 rounded-xl border border-white/5 italic">
-                                {selectedSubmission.activePVType === 'PVNC' ? (
-                                  <>
-                                    <span className="block mb-2 text-rose-400 font-bold not-italic text-[10px] uppercase">Réf. Contractuelle : ART E.3 / ART 1.3 (Cahier des Charges)</span>
-                                    "Résistance de terre non conforme (ex: 1600 Ohms, seuil &lt; 1500 Ohms requis). Défaut de continuité ou d'isolement sur le circuit principal. Violation de la norme NS 01-001 entraînant le refus de paiement."
-                                  </>
-                                ) : selectedSubmission.activePVType === 'PVHSE' ? (
-                                  <>
-                                    <span className="block mb-2 text-rose-400 font-bold not-italic text-[10px] uppercase">Réf. Contractuelle : HSE 1.2 / HSE 1.3 (Cahier des Charges)</span>
-                                    "Intervention en hauteur sans harnais de sécurité certifié EN 361. Défaut de port des EPI obligatoires (casque, gants isolants). Risque majeur nécessitant l'arrêt immédiat des travaux."
-                                  </>
-                                ) : selectedSubmission.activePVType === 'PVRET' ? (
-                                  <>
-                                    <span className="block mb-2 text-amber-400 font-bold not-italic text-[10px] uppercase">Réf. Contractuelle : Clauses Pénalités (Cahier des Charges)</span>
-                                    "Absence de reporting Kobo quotidien (avant 18h00) ou retard de réalisation du lot. Application en cours des retenues financières prévues au marché."
-                                  </>
-                                ) : (
-                                  <>
-                                    <span className="block mb-2 text-emerald-400 font-bold not-italic text-[10px] uppercase">Réf. Contractuelle : ART 5.1 / 6.9 (Cahier des Charges)</span>
-                                    "Ouvrage réceptionné avec succès. Audit de conformité 'Zéro Défaut'. Essais de continuité, isolement (R {'>'} 0,5 MOhms) et déclenchement différentiel (IΔn ≤ 30 mA) strictement validés."
-                                  </>
-                                )}
+                              <div className="bg-slate-950 p-6 rounded-[1.5rem] border border-white/5 relative group/ai overflow-hidden">
+                                {/* AI Glow effect */}
+                                <div className="absolute inset-0 bg-blue-500/5 blur-xl opacity-0 group-hover/ai:opacity-100 transition-opacity rounded-[1.5rem]" />
+                                
+                                {/* Scanning Laser Effect */}
+                                <motion.div 
+                                  initial={{ top: '-100%' }}
+                                  animate={{ top: '100%' }}
+                                  transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                                  className="absolute left-0 right-0 h-1 bg-gradient-to-r from-transparent via-blue-500/40 to-transparent z-20 shadow-[0_0_15px_rgba(59,130,246,0.5)]"
+                                />
+
+                                <div className="relative z-10 space-y-4">
+                                  {(() => {
+                                    const aiContent = PVAIEngine.generateContent(
+                                      selectedSubmission, 
+                                      selectedSubmission.activePVType as PVType
+                                    );
+                                    return (
+                                      <>
+                                        <div className="flex items-center gap-2 mb-3">
+                                          <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                                          <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest">
+                                            Réf : {aiContent.referenceContractuelle}
+                                          </span>
+                                        </div>
+                                        
+                                        <p className="text-slate-300 italic leading-relaxed">
+                                          "{aiContent.description}"
+                                        </p>
+
+                                        <div className="pt-4 border-t border-white/5">
+                                          <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-2">
+                                            Recommandations Automatisées
+                                          </p>
+                                          <ul className="space-y-1">
+                                            {aiContent.recommendations.map((rec, i) => (
+                                              <li key={i} className="flex items-start gap-2 text-[10px] text-slate-400">
+                                                <span className="text-blue-500 mt-1">•</span>
+                                                {rec}
+                                              </li>
+                                            ))}
+                                          </ul>
+                                        </div>
+
+                                        {aiContent.materials && (
+                                          <div className="pt-4 border-t border-white/5">
+                                            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-3">
+                                              Logistique : Matériaux Consommés
+                                            </p>
+                                            <div className="grid grid-cols-2 gap-2">
+                                              {aiContent.materials.map((m, i) => (
+                                                <div key={i} className="flex justify-between items-center bg-white/5 px-3 py-1.5 rounded-lg border border-white/5">
+                                                  <span className="text-[9px] text-slate-400">{m.item}</span>
+                                                  <span className="text-[10px] font-black text-blue-400">{m.quantity} {m.unit}</span>
+                                                </div>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        )}
+                                      </>
+                                    );
+                                  })()}
+                                </div>
                               </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-12 pt-12">
-                              <div className="border-t border-dashed border-white/20 pt-4 flex flex-col items-center">
-                                <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">
-                                  VISA DIRECTION PROQUELEC
-                                </span>
-                                <div className="mt-6 h-12 w-32 bg-slate-900/50 rounded-xl" />
+                            {/* Signature Area */}
+                            <div className="pt-6 border-t border-white/5">
+                              <div className="flex items-center justify-between mb-4">
+                                <p className="font-bold text-slate-500 uppercase">
+                                  Signature & Approbation
+                                </p>
+                                {!signatureData && (
+                                  <button
+                                    onClick={() => setIsSignatureOpen(true)}
+                                    className="flex items-center gap-2 px-4 py-2 bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 rounded-xl transition-all active:scale-95 text-xs font-black uppercase tracking-widest border border-blue-500/20"
+                                  >
+                                    <PenTool size={14} /> Signer le document
+                                  </button>
+                                )}
                               </div>
-                              <div className="border-t border-dashed border-white/20 pt-4 flex flex-col items-center">
-                                <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">
-                                  VISA PRESTATAIRE
-                                </span>
-                                <div className="mt-6 h-12 w-32 bg-slate-900/50 rounded-xl" />
+
+                              <div className="grid grid-cols-2 gap-8">
+                                <div className="space-y-4">
+                                  <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">VISA DIRECTION PROQUELEC</span>
+                                  <div className="h-20 bg-slate-900/50 rounded-2xl border border-white/5 flex items-center justify-center">
+                                    <ShieldCheck className="text-emerald-500/20" size={32} />
+                                  </div>
+                                </div>
+                                <div className="space-y-4">
+                                  <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">VISA PRESTATAIRE</span>
+                                  {signatureData ? (
+                                    <div className="relative h-20 bg-white/5 rounded-2xl border border-blue-500/20 overflow-hidden flex items-center justify-center group/sig">
+                                      <img src={signatureData} alt="Signature" className="h-12 object-contain invert" />
+                                      <div className="absolute top-1 right-1 bg-emerald-500 text-white p-0.5 rounded-full">
+                                        <CheckCircle2 size={8} />
+                                      </div>
+                                      <button 
+                                        onClick={() => setSignatureData(null)}
+                                        className="absolute inset-0 bg-slate-900/80 flex items-center justify-center opacity-0 group-hover/sig:opacity-100 transition-opacity"
+                                      >
+                                        <Trash2 size={14} className="text-rose-500" />
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <div className="h-20 border-2 border-dashed border-white/5 rounded-2xl flex items-center justify-center text-slate-700 italic text-[9px]">
+                                      En attente...
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Legal Value / Hash */}
+                            <div className="mt-8 pt-6 border-t border-white/5 flex items-center justify-between opacity-50">
+                              <div className="flex flex-col">
+                                <span className="text-[8px] text-slate-500 font-black uppercase">Hash de Sécurité</span>
+                                <span className="text-[9px] font-mono text-slate-400">{digitalHash}</span>
+                              </div>
+                              <div className="text-right">
+                                <span className="text-[8px] text-slate-500 font-black uppercase">Horodatage</span>
+                                <span className="text-[9px] text-slate-400 block">{format(new Date(), 'dd/MM/yyyy HH:mm:ss', { locale: fr })}</span>
                               </div>
                             </div>
                           </div>
@@ -524,21 +625,127 @@ export default function PVAutomation() {
           </div>
         </div>
 
-        {/* ── Registre des PV Archivés (Axe 1 + Axe 3 — Traçabilité Complète) ── */}
-        <PVArchivePanel />
+        {/* ── Section Statistiques & Pilotage (Piste 3 — Reporting Premium) ── */}
+        <PVStatsBoard archivedPVs={archivedPVs} />
+
+        <PVArchivePanel archivedPVs={archivedPVs} />
       </ContentArea>
+
+      <SignatureModal 
+        isOpen={isSignatureOpen}
+        onClose={() => setIsSignatureOpen(false)}
+        onSave={(data) => setSignatureData(data)}
+        title="Approbation Technique GEM-MINT"
+      />
     </PageContainer>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SUB-COMPONENT: PV Stats Board (KPIs)
+// ─────────────────────────────────────────────────────────────────────────────
+function PVStatsBoard({ archivedPVs }: { archivedPVs: any[] }) {
+  const stats = useMemo(() => {
+    const total = archivedPVs.length;
+    const nc = archivedPVs.filter(pv => pv.type === 'PVNC').length;
+    const conformity = total > 0 ? Math.round(((total - nc) / total) * 100) : 100;
+    const hse = archivedPVs.filter(pv => pv.type === 'PVHSE').length;
+    const delay = archivedPVs.filter(pv => pv.type === 'PVRET').length;
+
+    return { total, conformity, hse, delay };
+  }, [archivedPVs]);
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-8">
+      {/* Widget 1: Conformité */}
+      <motion.div
+        whileHover={{ y: -8, scale: 1.02 }}
+        className="bg-slate-900/40 backdrop-blur-xl border border-emerald-500/20 p-6 rounded-[2rem] relative overflow-hidden group shadow-lg hover:shadow-emerald-500/10 transition-all"
+      >
+        <div className="absolute -inset-1 bg-gradient-to-br from-emerald-500/10 to-transparent blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+        <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-30 transition-all duration-700 scale-100 group-hover:scale-125">
+          <ShieldCheck size={64} className="text-emerald-500" />
+        </div>
+        <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-1">Taux de Conformité</p>
+        <div className="flex items-end gap-2">
+          <span className="text-3xl font-black text-white">{stats.conformity}%</span>
+          <span className="text-[10px] font-bold text-emerald-400 mb-1">Norme NS 01-001</span>
+        </div>
+        <div className="mt-4 h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+          <motion.div 
+            initial={{ width: 0 }}
+            animate={{ width: `${stats.conformity}%` }}
+            className="h-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" 
+          />
+        </div>
+      </motion.div>
+
+      {/* Widget 2: Volume Production */}
+      <motion.div
+        whileHover={{ y: -8, scale: 1.02 }}
+        className="bg-slate-900/40 backdrop-blur-xl border border-blue-500/20 p-6 rounded-[2rem] relative overflow-hidden group shadow-lg hover:shadow-blue-500/10 transition-all"
+      >
+        <div className="absolute -inset-1 bg-gradient-to-br from-blue-500/10 to-transparent blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+        <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-30 transition-all duration-700 scale-100 group-hover:scale-125">
+          <FileText size={64} className="text-blue-500" />
+        </div>
+        <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-1">Total PV Générés</p>
+        <div className="flex items-end gap-2">
+          <span className="text-3xl font-black text-white">{stats.total}</span>
+          <span className="text-[10px] font-bold text-blue-400 mb-1">Documents archivés</span>
+        </div>
+        <div className="mt-4 flex gap-1">
+          {[...Array(12)].map((_, i) => (
+            <div key={i} className={`h-4 flex-1 rounded-sm ${i < (stats.total % 12) ? 'bg-blue-500' : 'bg-slate-800'}`} />
+          ))}
+        </div>
+      </motion.div>
+
+      {/* Widget 3: Alertes HSE */}
+      <motion.div
+        whileHover={{ y: -5 }}
+        className="bg-slate-900/40 backdrop-blur-xl border border-rose-500/20 p-6 rounded-[2rem] relative overflow-hidden group"
+      >
+        <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+          <ShieldAlert size={64} className="text-rose-500" />
+        </div>
+        <p className="text-[10px] font-black text-rose-500 uppercase tracking-widest mb-1">Incidents HSE</p>
+        <div className="flex items-end gap-2">
+          <span className="text-3xl font-black text-white">{stats.hse}</span>
+          <span className="text-[10px] font-bold text-rose-400 mb-1">Action requise</span>
+        </div>
+        <p className="mt-4 text-[9px] text-slate-500 leading-tight">
+          Violation du périmètre de sécurité ou défaut d'EPI constaté.
+        </p>
+      </motion.div>
+
+      {/* Widget 4: Délais & Retards */}
+      <motion.div
+        whileHover={{ y: -5 }}
+        className="bg-slate-900/40 backdrop-blur-xl border border-amber-500/20 p-6 rounded-[2rem] relative overflow-hidden group"
+      >
+        <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+          <Clock size={64} className="text-amber-500" />
+        </div>
+        <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest mb-1">Défauts de Cadence</p>
+        <div className="flex items-end gap-2">
+          <span className="text-3xl font-black text-white">{stats.delay}</span>
+          <span className="text-[10px] font-bold text-amber-400 mb-1">PV de retard</span>
+        </div>
+        <div className="mt-4 flex items-center gap-2">
+          <div className="flex-1 h-1 bg-slate-800 rounded-full" />
+          <Scale size={14} className="text-slate-600" />
+          <div className="flex-1 h-1 bg-slate-800 rounded-full" />
+        </div>
+      </motion.div>
+    </div>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SUB-COMPONENT: PV Archive Panel (live from Dexie)
 // ─────────────────────────────────────────────────────────────────────────────
-function PVArchivePanel() {
-  const archivedPVs = useLiveQuery(
-    () => db.pvs.orderBy('createdAt').reverse().limit(50).toArray()
-  ) || [];
-
+function PVArchivePanel({ archivedPVs }: { archivedPVs: any[] }) {
   const typeStyles: Record<string, { bg: string; text: string; border: string }> = {
     PVNC:  { bg: 'bg-orange-500/10', text: 'text-orange-400',  border: 'border-orange-500/20' },
     PVR:   { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/20' },

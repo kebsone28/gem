@@ -253,22 +253,23 @@ export default function Aide() {
     },
     {
       id: 'terrain',
-      title: 'Carte Terrain — Mode Google Maps Entreprise',
+      title: 'Carte Terrain — SaaS Premium (200k+ pts)',
       icon: MapIcon,
       color: 'rose',
       bg: 'bg-rose-100 dark:bg-rose-900/50 text-rose-900 dark:text-rose-100',
       zap: 'text-rose-900 dark:text-rose-100',
       content: [
-        'Architecture Vector Tiles (MapLibre MVT) : rendu GPU fluide de 100 000+ points avec clustering natif automatique.',
-        "Routing OSRM natif : Tracé d'itinéraire précis et calcul de distance entre votre position GPS et n'importe quel ménage.",
-        '100% Mobile Responsive : Interface et panneaux tactiles optimisés pour une utilisation fluides sur smartphone.',
+        'Moteur de Clustering Pro (200k+) : Rendu GPU ultra-fluide avec intensité de couleur dynamique selon la densité.',
+        'Effet Scintillant (Glow) : Points et grappes avec aura lumineuse animée pour une visibilité accrue à longue distance.',
+        'Smart Sync Fingerprint : Rechargement intelligent du moteur de calcul uniquement en cas de changement réel des coordonnées.',
+        'Routing OSRM natif : Tracé d\'itinéraire précis et calcul de distance entre votre position GPS et n\'importe quel ménage.',
+        'Mapping de Statuts Avancé : Cohérence parfaite entre les données Kobo et les icônes (Gestion des non-éligibles et désistements).',
         'Géolocalisation continue : Suivi en temps réel de votre position avec bouton de recentrage dynamique.',
-        'Outils intégrés : Zoom, Carte satellite/rues, Heatmap thermique, Légende interactive, Régionalisation (Grappes).',
       ],
       utility:
-        'Localisation et navigation terrain. Essentiel pour la relève GPS, le dispatching des ménages par quartier et la validation visuelle des zones.',
+        'Localisation, navigation et pilotage massif de données. Essentiel pour gérer des projets nationaux (50k à 200k ménages) avec une fluidité absolue sans impacter le processeur.',
       example:
-        'Sélectionner le ménage #7432 pour lancer la navigation GPS directe vers la porte du client via OSRM.',
+        'Repérer instantanément une zone de forte densité (cluster rouge scintillant) et calculer l\'itinéraire le plus court pour une équipe de dépannage.',
     },
     {
       id: 'tournee',
@@ -585,7 +586,7 @@ export default function Aide() {
         <p
           className={`${COMMON_CLASSES.body} font-bold ${isDarkMode ? 'text-indigo-300' : 'text-indigo-700'}`}
         >
-          GEM SaaS v4.0 — GEM-MINT IA · Routing OSRM · Tuiles MVT · QR Traceability · Redis BullMQ
+          GEM SaaS v4.5 — GEM-MINT IA · Clustering 200k · Smart-Sync Fingerprint · OSRM Routing · QR Traceability
         </p>
       </div>
     </PageContainer>

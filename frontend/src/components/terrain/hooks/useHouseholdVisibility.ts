@@ -16,17 +16,16 @@ export const useHouseholdVisibility = (map: maplibregl.Map | null): void => {
     const updateVisibility = () => {
       const zoom = map.getZoom();
 
-      // ─── 3-TIER ZOOM SYSTEM ──────────────────────────────────────────────
-      // Tier 1: zoom < 11   → Supercluster bubbles only  (national/regional view)
-      // Tier 2: zoom 11-13  → Supercluster + simple dot fallback (city view)
-      // Tier 3: zoom >= 14  → Individual icon markers + labels (street view)
+      // Tier 1: zoom < 8    → Points microscopiques (Vue nationale)
+      // Tier 2: zoom 8-15   → Clusters / Grappes (Vue village)
+      // Tier 3: zoom >= 15  → Icônes détaillées (Vue précise)
 
-      const isMacroView = zoom < 11;
-      const isMidView = zoom >= 11 && zoom < 14;
-      const isMicroView = zoom >= 14;
+      const isNationalView = zoom < 8;
+      const isVillageView = zoom >= 8 && zoom < 15;
+      const isPreciseView = zoom >= 15;
 
-      // Supercluster circles + counts (Tier 1 & 2)
-      const clusterVisible = isMacroView || isMidView;
+      // Supercluster circles + counts (Visibles de Tier 1 à Tier 2)
+      const clusterVisible = zoom < 15;
       if (map.getLayer('cluster-circles')) {
         map.setLayoutProperty('cluster-circles', 'visibility', clusterVisible ? 'visible' : 'none');
       }
@@ -34,13 +33,21 @@ export const useHouseholdVisibility = (map: maplibregl.Map | null): void => {
         map.setLayoutProperty('cluster-counts', 'visibility', clusterVisible ? 'visible' : 'none');
       }
 
-      // Simple red-dot fallback: only in mid-view as supplement, hidden otherwise
-      // (avoids double rendering — supercluster already shows counts)
+      // Glow / Scintillement visibility
+      if (map.getLayer('households-glow-layer')) {
+        map.setLayoutProperty(
+          'households-glow-layer',
+          'visibility',
+          zoom < 15 ? 'visible' : 'none'
+        );
+      }
+
+      // Points simples (Vue distribution) - Toujours visibles mais très petits en dézoom
       if (map.getLayer('households-circles-simple')) {
         map.setLayoutProperty(
           'households-circles-simple',
           'visibility',
-          isMidView ? 'none' : 'none'
+          zoom < 15 ? 'visible' : 'none'
         );
       }
 
@@ -49,14 +56,14 @@ export const useHouseholdVisibility = (map: maplibregl.Map | null): void => {
         map.setLayoutProperty(
           'households-local-layer',
           'visibility',
-          isMicroView ? 'visible' : 'none'
+          isPreciseView ? 'visible' : 'none'
         );
       }
       if (map.getLayer('households-labels-simple')) {
         map.setLayoutProperty(
           'households-labels-simple',
           'visibility',
-          isMicroView ? 'visible' : 'none'
+          isPreciseView ? 'visible' : 'none'
         );
       }
     };

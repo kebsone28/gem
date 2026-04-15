@@ -168,6 +168,7 @@ export async function syncKoboToDatabase(organizationId, fallbackZoneId, since =
     let targetProjectId = projectId;
     let koboToken = null;
     let koboAssetUid = null;
+    let mappingConfig = {};
 
     if (!targetProjectId) {
         const fallbackZone = await prisma.zone.findUnique({ where: { id: fallbackZoneId } });
@@ -318,6 +319,7 @@ export async function syncKoboToDatabase(organizationId, fallbackZoneId, since =
                     set: household.assignedTeams
                 },
                 koboSync: household.koboSync,
+                constructionData: household.constructionData,
                 koboSubmissionId: koboSubmissionId,
                 numeroordre: numeroDemande,
                 updatedAt: new Date()
@@ -352,6 +354,7 @@ export async function syncKoboToDatabase(organizationId, fallbackZoneId, since =
                         location: household.location || {},
                         assignedTeams: household.assignedTeams,
                         koboSync: household.koboSync,
+                        constructionData: household.constructionData,
                         koboSubmissionId: koboSubmissionId,
                         numeroordre: numeroDemande,
                         source: 'KOBO',

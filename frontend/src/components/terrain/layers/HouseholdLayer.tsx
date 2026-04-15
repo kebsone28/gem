@@ -10,6 +10,7 @@ import {
   useHouseholdVisibility,
   useHeatmapVisibility,
   useHouseholdFilters,
+  useHouseholdAnimation,
 } from '../hooks';
 
 interface HouseholdLayerProps {
@@ -77,6 +78,7 @@ const HouseholdLayer: React.FC<HouseholdLayerProps> = ({
   useHouseholdVisibility(map);
   useHeatmapVisibility(map, showHeatmap);
   useHouseholdFilters(map, selectedPhases, selectedTeam);
+  useHouseholdAnimation(map, styleIsReady);
 
   return null;
 };

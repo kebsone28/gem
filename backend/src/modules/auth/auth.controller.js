@@ -154,16 +154,28 @@ export const login = async (req, res) => {
             });
 
             if (user.requires2FA) {
-                return res.json({
-                    user: {
-                        id: user.id,
-                        email: user.email,
-                        name: user.name,
-                        role: user.role,
-                        requires2FA: true,
-                        securityQuestion: user.securityQuestion
-                    }
-                });
+                // If 2FA code not provided, return the prompt
+                if (!req.body.twoFactorCode) {
+                    return res.json({
+                        user: {
+                            id: user.id,
+                            email: user.email,
+                            name: user.name,
+                            role: user.role,
+                            requires2FA: true,
+                            securityQuestion: user.securityQuestion
+                        }
+                    });
+                }
+
+                // Verify 2FA code against securityAnswerHash
+                const isValidAnswer = await bcrypt.compare(req.body.twoFactorCode.toLowerCase(), user.securityAnswerHash);
+                if (!isValidAnswer) {
+                    console.log('❌ Invalid 2FA code');
+                    return res.status(401).json({ error: 'Invalid 2FA code' });
+                }
+
+                console.log('✅ 2FA code verified');
             }
 
             console.log('✅ Passing 2FA check...');

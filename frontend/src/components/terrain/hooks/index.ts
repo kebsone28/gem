@@ -14,3 +14,4 @@ export {
   useHeatmapVisibility,
   useHouseholdFilters,
 } from './useHouseholdVisibility';
+export { useHouseholdAnimation } from './useHouseholdAnimation';

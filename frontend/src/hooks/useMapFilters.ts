@@ -92,35 +92,39 @@ export const useMapFilters = (
   );
 
   const filteredHouseholds = useMemo(() => {
-    return households.filter((h) => {
-      if (!hasValidCoordinates(h)) return false;
+    return (households || []).filter((h) => {
+      const passes = (() => {
+        if (!hasValidCoordinates(h)) return false;
 
-      const hStatus = getHouseholdDerivedStatus(h);
-      if (!selectedPhases.includes(hStatus)) return false;
+        const hStatus = getHouseholdDerivedStatus(h);
+        if (!selectedPhases.includes(hStatus)) return false;
 
-      const fulfillsTeamCriteria =
-        (!!h.koboSync?.livreurDate && selectedTeamFilters.includes('livraison')) ||
-        (!!h.koboSync?.maconOk && selectedTeamFilters.includes('maconnerie')) ||
-        (!!h.koboSync?.reseauOk && selectedTeamFilters.includes('reseau')) ||
-        (!!h.koboSync?.interieurOk && selectedTeamFilters.includes('installation')) ||
-        (!!h.koboSync?.controleOk && selectedTeamFilters.includes('controle'));
+        const fulfillsTeamCriteria =
+          (!!h.koboSync?.livreurDate && selectedTeamFilters.includes('livraison')) ||
+          (!!h.koboSync?.maconOk && selectedTeamFilters.includes('maconnerie')) ||
+          (!!h.koboSync?.reseauOk && selectedTeamFilters.includes('reseau')) ||
+          (!!h.koboSync?.interieurOk && selectedTeamFilters.includes('installation')) ||
+          (!!h.koboSync?.controleOk && selectedTeamFilters.includes('controle'));
 
-      const hasAnyKoboProgress =
-        !!h.koboSync?.livreurDate ||
-        !!h.koboSync?.maconOk ||
-        !!h.koboSync?.reseauOk ||
-        !!h.koboSync?.interieurOk ||
-        !!h.koboSync?.controleOk;
-      if (hasAnyKoboProgress && !fulfillsTeamCriteria) {
-        return false;
-      }
+        const hasAnyKoboProgress =
+          !!h.koboSync?.livreurDate ||
+          !!h.koboSync?.maconOk ||
+          !!h.koboSync?.reseauOk ||
+          !!h.koboSync?.interieurOk ||
+          !!h.koboSync?.controleOk;
+        if (hasAnyKoboProgress && !fulfillsTeamCriteria) {
+          return false;
+        }
 
-      if (selectedTeam !== 'all') {
-        const assignedTeams = Array.isArray(h.assignedTeams) ? h.assignedTeams : [];
-        if (!assignedTeams.includes(selectedTeam)) return false;
-      }
+        if (selectedTeam !== 'all') {
+          const assignedTeams = Array.isArray(h.assignedTeams) ? h.assignedTeams : [];
+          if (!assignedTeams.includes(selectedTeam)) return false;
+        }
 
-      return true;
+        return true;
+      })();
+
+      return passes;
     });
   }, [households, selectedPhases, selectedTeamFilters, selectedTeam]);
 

@@ -162,6 +162,39 @@ export function extractStatus(row, config = {}) {
 }
 
 /**
+ * Extract technical construction data (Excel Form mapping)
+ */
+export function extractConstructionData(row) {
+    return {
+        livreur: {
+            situation: row['group_wu8kv54/Situation_du_M_nage'] || row['Situation_du_M_nage'],
+            cable_2_5: row['group_sy9vj14/Longueur_Cable_2_5mm_Int_rieure'] || row['Longueur_Cable_2_5mm_Int_rieure'],
+            cable_1_5: row['group_sy9vj14/Longueur_Cable_1_5mm_Int_rieure'] || row['Longueur_Cable_1_5mm_Int_rieure'],
+            tranchee_4: row['group_sy9vj14/Longueur_Tranch_e_Cable_arm_4mm'] || row['Longueur_Tranch_e_Cable_arm_4mm'],
+            materiel_remis: row['group_sy9vj14/Je_confirme_la_remis_u_materiel_au_m_nage'] === 'true'
+        },
+        macon: {
+            type_mur: row['etape_macon/type_mur_realise_macon'] || row['type_mur_realise_macon'],
+            termine: row['etape_macon/validation_macon_final'] === 'true' || row['validation_macon_final'] === 'true'
+        },
+        reseau: {
+            etat: row['etape_reseau/etat_branchement_reseau'] || row['etat_branchement_reseau'],
+            termine: row['etape_reseau/validation_reseau_final'] === 'true' || row['validation_reseau_final'] === 'true'
+        },
+        interieur: {
+            etat: row['etape_interieur/etat_installation_interieur'] || row['etat_installation_interieur'],
+            termine: row['etape_interieur/validation_interieur_final'] === 'true' || row['validation_interieur_final'] === 'true'
+        },
+        controle: {
+            etat_global: row['etape_controleur/ETAT_DE_L_INSTALLATION'] || row['ETAT_DE_L_INSTALLATION'],
+            phase: row['etape_controleur/Phase_de_controle'] || row['Phase_de_controle'],
+            resistance_terre: row['etape_controleur/group_hx7ae46/VALEUR_DE_LA_RESISTANCE_DE_TER'] || row['VALEUR_DE_LA_RESISTANCE_DE_TER'],
+            conforme: row['etape_controleur/validation_controleur_final'] === 'true' || row['validation_controleur_final'] === 'true'
+        }
+    };
+}
+
+/**
  * Master transformation function
  */
 export function transformRowToHousehold(row, organizationId, defaultZoneId, projectId, config = {}) {
@@ -175,6 +208,7 @@ export function transformRowToHousehold(row, organizationId, defaultZoneId, proj
     const { name, phone } = extractOwner(row, config);
     const { region, departement, village } = extractRegionalInfo(row, config);
     const status = extractStatus(row, config);
+    const constructionData = extractConstructionData(row);
 
     return {
         numeroOrdre: numeroOrdre,
@@ -196,6 +230,7 @@ export function transformRowToHousehold(row, organizationId, defaultZoneId, proj
         zoneId: defaultZoneId,
         source: 'Kobo',
         koboData: row,
+        constructionData: constructionData,
         version: 1,
         // Carry the mapping result for koboSync metadata
         _meta: {
