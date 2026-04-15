@@ -120,8 +120,14 @@ export const login = async (req, res) => {
         if (!user) {
             console.log('❌ User not found for email:', email);
         } else {
+            // ✅ VÉRIFICATION SÉCURITÉ: Vérifier que passwordHash existe
+            if (!user.passwordHash) {
+                console.log('❌ User found but passwordHash is missing - user may be corrupted');
+                return res.status(400).json({ error: 'Invalid user account - contact administrator' });
+            }
+
             // Gestion des permissions (Audit REINFORCEMENT: Override total)
-            const rolePermissions = user.role?.permissions.map(p => p.permission.key) || [];
+            const rolePermissions = user.role?.permissions?.map(p => p.permission.key) || [];
             const userOverrides = Array.isArray(user.permissions) ? user.permissions : [];
             
             if (userOverrides.length > 0) {
@@ -133,11 +139,10 @@ export const login = async (req, res) => {
             }
             
             console.log('✅ User found in DB. Role:', user.role?.name || user.roleLegacy);
-            const isMatch = await bcrypt.compare(password, user.passwordHash);
-            console.log('🔑 Password match result:', isMatch);
+            console.log('✅ passwordHash exists:', !!user.passwordHash);
         }
 
-        if (user && (await bcrypt.compare(password, user.passwordHash))) {
+        if (user && user.passwordHash && (await bcrypt.compare(password, user.passwordHash))) {
             // Audit Log - Tentative réussie
             await tracerAction({
                 userId: user.id,
@@ -181,7 +186,7 @@ export const login = async (req, res) => {
             res.cookie('refreshToken', refreshToken, {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === 'production',
-                sameSite: 'strict',
+                sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
                 maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
             });
             console.log('✅ Final User Data for Frontend:', { 
@@ -220,10 +225,12 @@ export const login = async (req, res) => {
             res.status(401).json({ error: 'Invalid email or password' });
         }
     } catch (error) {
-        console.error('Login error:', error);
+        console.error('❌ [LOGIN ERROR]', error.message);
+        console.error('   Stack:', error.stack?.split('\n')[0]);
         
         // Handle database connection errors specifically
-        if (error.code === 'P1001' || error.message.includes("Can't reach database server")) {
+        if (error.code === 'P1001' || error.message?.includes("Can't reach database server")) {
+            console.error('🔴 Database connection failed');
             return res.status(503).json({
                 error: 'Base de données inaccessible',
                 message: 'Le serveur ne parvient pas à contacter la base de données. Vérifiez que Docker Desktop est lancé.',
@@ -231,6 +238,18 @@ export const login = async (req, res) => {
             });
         }
 
+        // Handle bcrypt errors
+        if (error.message?.includes('hash')) {
+            console.error('🔴 Password hash error - user may be corrupt');
+            return res.status(500).json({
+                error: 'Erreur d\'authentification',
+                message: 'Erreur interne lors de la vérification du mot de passe. Contactez l\'administrateur.',
+                code: 'HASH_ERROR'
+            });
+        }
+
+        // Generic error
+        console.error('🔴 Generic login error - Stack:', error.stack);
         res.status(500).json({
             error: 'Server error during login',
             message: error.message,

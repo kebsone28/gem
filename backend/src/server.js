@@ -4,6 +4,60 @@ import { config } from './core/config/config.js';
 const PORT = config.port || 5005;
 
 /**
+ * Auto-create admin user if none exists
+ */
+async function ensureAdminUser() {
+  try {
+    console.log('🔍 Checking for admin user...');
+    const { default: prisma } = await import('./core/utils/prisma.js');
+    const bcrypt = (await import('bcryptjs')).default;
+
+    // Check if admin exists
+    const existingAdmin = await prisma.user.findUnique({ where: { email: 'admingem' } });
+
+    if (!existingAdmin) {
+      console.log('🌱 Creating default admin user...');
+
+      const password = 'suprime';
+      const answer2FA = 'coran';
+
+      const salt = await bcrypt.genSalt(10);
+      const passwordHash = await bcrypt.hash(password, salt);
+      const answerHash = await bcrypt.hash(answer2FA.toLowerCase(), salt);
+
+      // Create organization if not exists
+      let org = await prisma.organization.findFirst({ where: { name: 'PROQUELEC' } });
+      if (!org) {
+        org = await prisma.organization.create({ data: { name: 'PROQUELEC' } });
+      }
+
+      // Create admin user
+      await prisma.user.create({
+        data: {
+          email: 'admingem',
+          passwordHash,
+          name: 'Administrateur PROQUELEC',
+          roleLegacy: 'ADMIN_PROQUELEC',
+          organizationId: org.id,
+          requires2FA: true,
+          securityQuestion: 'Votre référence spirituelle',
+          securityAnswerHash: answerHash,
+        }
+      });
+
+      console.log('✅ Admin user created!');
+      console.log('   Login: admingem');
+      console.log('   Password: suprime');
+      console.log('   2FA: coran');
+    } else {
+      console.log('✅ Admin user already exists');
+    }
+  } catch (error) {
+    console.error('❌ Error ensuring admin user:', error.message);
+  }
+}
+
+/**
  * Robust bootstrapping process.
  * 1. Binds the port immediately to satisfy Railway's health check.
  * 2. Loads heavy dependencies asynchronously.
@@ -47,6 +101,9 @@ async function bootstrap() {
 
       // Shared services initialization
       socketService.init(server);
+
+      // Ensure admin user exists
+      await ensureAdminUser();
 
       // ✅ Declare cleanup registry BEFORE using it
       const cleanupFunctions = [];

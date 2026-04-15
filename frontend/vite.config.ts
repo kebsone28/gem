@@ -118,13 +118,29 @@ export default defineConfig({
     proxy: {
       // Proxy all /api calls to the backend → eliminates CORS
       '/api': {
-        target: 'http://localhost:5005',
+        target: 'http://localhost:5008',
         changeOrigin: true,
         secure: false,
+        cookieDomainRewrite: '',
+        configure: (proxy, _options) => {
+          proxy.on('proxyRes', (proxyRes: any, _req: any, _res: any) => {
+            // Ensure cookies are properly set for cross-origin development scenario
+            const setCookieHeaders = proxyRes.headers['set-cookie'];
+            if (setCookieHeaders) {
+              const rewrittenCookies = (
+                Array.isArray(setCookieHeaders) ? setCookieHeaders : [setCookieHeaders]
+              ).map((cookie: string) => {
+                // Remove Domain restriction for dev, keep other attributes
+                return cookie.replace(/Domain=[^;]+;?\s*/i, '').replace(/; *$/, '');
+              });
+              proxyRes.headers['set-cookie'] = rewrittenCookies;
+            }
+          });
+        },
       },
       // Proxy WebSocket connections for Socket.io
       '/socket.io': {
-        target: 'http://localhost:5005',
+        target: 'http://localhost:5008',
         changeOrigin: true,
         secure: false,
         ws: true, // Enable WebSocket proxying
@@ -143,12 +159,12 @@ export default defineConfig({
     allowedHosts: true,
     proxy: {
       '/api': {
-        target: 'http://localhost:5005',
+        target: 'http://localhost:5008',
         changeOrigin: true,
         secure: false,
       },
       '/socket.io': {
-        target: 'http://localhost:5005',
+        target: 'http://localhost:5008',
         changeOrigin: true,
         secure: false,
         ws: true,
@@ -162,17 +178,25 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           if (id.includes('node_modules')) {
-             if (id.includes('maplibre-gl')) return 'maplibre';
-             if (id.includes('leaflet')) return 'leaflet';
-             if (id.includes('jspdf') || id.includes('jspdf-autotable') || id.includes('html2canvas')) return 'pdf';
-             if (id.includes('xlsx')) return 'xlsx';
-             if (id.includes('framer-motion')) return 'animation';
-             if (id.includes('dexie')) return 'dexie';
-             return 'vendor';
+            if (id.includes('maplibre-gl')) return 'maplibre';
+            if (id.includes('leaflet')) return 'leaflet';
+            if (
+              id.includes('jspdf') ||
+              id.includes('jspdf-autotable') ||
+              id.includes('html2canvas')
+            )
+              return 'pdf';
+            if (id.includes('xlsx')) return 'xlsx';
+            if (id.includes('framer-motion')) return 'animation';
+            if (id.includes('dexie')) return 'dexie';
+            return 'vendor';
           }
         },
       },
     },
+  },
+  optimizeDeps: {
+    include: ['qrcode'],
   },
   resolve: {
     alias: {

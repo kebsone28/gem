@@ -15,6 +15,16 @@
     "moduleDetection": "force",
     "noEmit": true,
     "jsx": "react-jsx",
+    "baseUrl": "src",
+    "paths": {
+      "@/*": ["*"],
+      "@services/*": ["services/*"],
+      "@components": ["components/index"],
+      "@components/*": ["components/*"],
+      "@contexts/*": ["contexts/*"],
+      "@utils/*": ["utils/*"],
+      "@assets/*": ["assets/*"]
+    },
 
     /* Linting */
     "strict": true,

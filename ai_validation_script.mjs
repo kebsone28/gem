@@ -142,35 +142,199 @@ Pouvez-vous préciser votre demande technique ?`;
 // Scénarios de test pour valider les améliorations
 const VALIDATION_SCENARIOS = [
   {
-    category: 'technical_enhanced',
-    description: 'Tests des nouvelles règles techniques',
-    queries: [
-      'Comment installer un branchement Senelec?',
-      'Quelles sont les protections de sécurité obligatoires?',
-      'Quelles anomalies sont critiques sur le terrain?',
-      'Comment faire une installation intérieure MFR?',
-      'Expliquez le rôle du DDR dans une installation.',
-      'Quelle hauteur minimale pour un coffret compteur?'
-    ]
+    category: 'greeting',
+    description: 'Tests de salutations et de détection d accueil',
+    queries: ['bonjour', 'salam', 'hello', 'salut']
   },
   {
-    category: 'knowledge_expanded',
-    description: 'Tests de la base de connaissances enrichie',
-    queries: [
-      'Quels sont les éléments du barème PROQUELEC?',
-      'Comment vérifier les coordonnées GPS sur site?',
-      'Quel est le rôle du numeroordre dans Kobo?',
-      'Quelles sont les validations hiérarchiques pour les missions complexes?'
-    ]
+    category: 'global',
+    description: 'Tests des questions générales sur GEM SAAS',
+    queries: ['c est quoi PROQUELEC?', 'explique la plateforme', 'que fait le logiciel']
   },
   {
-    category: 'fallback_improved',
-    description: 'Tests des réponses de fallback améliorées',
-    queries: [
-      'Comment résoudre un problème de poteau pourri?',
-      'Que faire si un client refuse l\'installation?',
-      'Comment gérer une anomalie technique découverte?'
-    ]
+    category: 'kobo',
+    description: 'Tests du pilier Kobo et de la collecte terrain',
+    queries: ['comment fonctionne kobo?', 'saisie kobo', 'terrain kobo', 'comment collecter des données']
+  },
+  {
+    category: 'mission',
+    description: 'Tests du module missions',
+    queries: ['comment creer une mission', 'mes missions', 'ordre de mission', 'certifier une mission']
+  },
+  {
+    category: 'workflow',
+    description: 'Tests du circuit de validation',
+    queries: ['comment valider une mission', 'circuit de validation', 'qui valide quoi']
+  },
+  {
+    category: 'finance',
+    description: 'Tests du pilier finance et du budget',
+    queries: ['budget', 'indemnite', 'cout mission', 'depense']
+  },
+  {
+    category: 'dashboard',
+    description: 'Tests du dashboard et des KPI',
+    queries: ['tableau de bord', 'kpi', 'statistiques', 'performance']
+  },
+  {
+    category: 'security',
+    description: 'Tests de la sécurité des accès',
+    queries: ['role', 'droit', 'acces refuse', 'admin securite']
+  },
+  {
+    category: 'sync',
+    description: 'Tests de synchronisation Kobo et données',
+    queries: ['sync', 'remonte', 'mise a jour', 'force sync']
+  },
+  {
+    category: 'org',
+    description: 'Tests de l organisation et des roles',
+    queries: ['dg', 'chef', 'agent', 'organisation equipe']
+  },
+  {
+    category: 'forbidden',
+    description: 'Tests des actions interdites',
+    queries: ['supprimer une mission', 'modifier donnees certifiees', 'interdit effacer']
+  },
+  {
+    category: 'vague',
+    description: 'Tests des demandes d aide et de confusion',
+    queries: ['j ai besoin daide', 'je suis perdu', 'explique moi']
+  },
+  {
+    category: 'tech',
+    description: 'Tests de l intelligence technique',
+    queries: ['norme ns 01-001', 'branchement senelec', 'compteur', 'disjoncteur', 'cable']
+  },
+  {
+    category: 'geo',
+    description: 'Tests des questions geographiques',
+    queries: ['dakar', 'region', 'zone', 'tivaouane', 'ou se trouve']
+  },
+  {
+    category: 'audit',
+    description: 'Tests du suivi et des logs',
+    queries: ['historique', 'journal', 'audit', 'trace action']
+  },
+  {
+    category: 'household',
+    description: 'Tests des ménages et bénéficiaires',
+    queries: ['menage', 'famille', 'beneficiaire', 'foyer']
+  },
+  {
+    category: 'rights',
+    description: 'Tests des permissions et habilitations',
+    queries: ['mon role', 'mes droits', 'autorise faire', 'permission']
+  },
+  {
+    category: 'simulation',
+    description: 'Tests du module simulation',
+    queries: ['simuler cout', 'devis branchement', 'calculer prix branchement']
+  },
+  {
+    category: 'inventory',
+    description: 'Tests du stock et de la logistique',
+    queries: ['stock materiel', 'inventaire', 'compteurs disponibles', 'logistique']
+  },
+  {
+    category: 'diagnostic',
+    description: 'Tests des erreurs système',
+    queries: ['bug', 'latence', 'crash', 'probleme technique']
+  },
+  {
+    category: 'mapping',
+    description: 'Tests du mapping Kobo',
+    queries: ['kobo mapping', 'champ form', 'correspondance donnees']
+  },
+  {
+    category: 'decision',
+    description: 'Tests des décisions DG et rapports',
+    queries: ['rapport dg', 'decision', 'bilan', 'strategie']
+  },
+  {
+    category: 'menu',
+    description: 'Tests du menu et des capacités du bot',
+    queries: ['menu', 'que peux tu faire', 'liste', 'guide']
+  },
+  {
+    category: 'approbation',
+    description: 'Tests de l approbation DG',
+    queries: ['approuver mission', 'signer', 'certifier', 'approbation']
+  },
+  {
+    category: 'planning',
+    description: 'Tests du planning et calendrier',
+    queries: ['calendrier', 'agenda', 'echeance', 'programme']
+  },
+  {
+    category: 'report',
+    description: 'Tests de génération de rapport',
+    queries: ['generer rapport', 'telecharger pdf', 'rapport word', 'compte rendu']
+  },
+  {
+    category: 'help_create',
+    description: 'Tests des guides de création',
+    queries: ['comment creer', 'comment faire', 'etapes pour', 'procedure']
+  },
+  {
+    category: 'mfr',
+    description: 'Tests du projet MFR',
+    queries: ['menage faible revenu', 'eligibilite mfr', 'critere selection', 'projet mfr']
+  },
+  {
+    category: 'norme',
+    description: 'Tests des normes electriques',
+    queries: ['ns 01-001', 'norme bt', 'regle generale', 'tension']
+  },
+  {
+    category: 'protection',
+    description: 'Tests des protections electriques',
+    queries: ['protection electrique', 'ddr', 'fusible', 'parafoudre']
+  },
+  {
+    category: 'anomalies',
+    description: 'Tests des anomalies terrain',
+    queries: ['anomalie', 'mauvaise pratique', 'defaut', 'fils visibles']
+  },
+  {
+    category: 'branchement',
+    description: 'Tests du branchement senelec',
+    queries: ['branchement', 'hublot', 'limite propriete', 'surplomber']
+  },
+  {
+    category: 'interieur',
+    description: 'Tests de l installation interieure',
+    queries: ['installation interieure', 'coffret disjoncteur', 'prise', 'lampe']
+  },
+  {
+    category: 'glossaire',
+    description: 'Tests du glossaire electrique',
+    queries: ['glossaire', 'definition partie active', 'contact indirect', 'prise terre']
+  },
+  {
+    category: 'terms',
+    description: 'Tests des definitions specialisées',
+    queries: ['liaison equipotentielle', 'section nominale', 'conducteur pe', 'masse electrique']
+  },
+  {
+    category: 'specs',
+    description: 'Tests des specifications techniques',
+    queries: ['hauteur minimale', 'protection mecanique', 'configuration standard']
+  },
+  {
+    category: 'protection_details',
+    description: 'Tests des détails de protection',
+    queries: ['eviter contact indirect', 'parafoudre', 'fusible', 'surtension']
+  },
+  {
+    category: 'anomalies_details',
+    description: 'Tests des anomalies spécifiques',
+    queries: ['fils visibles', 'barrette terre exterieur', 'poteaux bois pourris', 'cables plein air']
+  },
+  {
+    category: 'contract',
+    description: 'Tests du cahier des charges et contrat',
+    queries: ['cahier de charge', 'cahier des charges', 'contrat d execution', 'clause caution assurance']
   }
 ];
 

@@ -7,32 +7,38 @@
  */
 
 /**
- * Extract NUMEROORDRE from any source (Kobo or Local)
- * @param {object} row - Raw submission/import row
- * @returns {string|null} The numero ordre or null if not found
+ * Helper to extract a value from a row using a mapping config
+ * @param {object} row - Raw submission row
+ * @param {string} targetKey - The GEM target field (ex: 'name')
+ * @param {object} mappingConfig - The mapping dictionary (targetKey -> koboField)
+ * @param {string[]} fallbacks - Hardcoded fallback keys if config is missing
+ * @returns {any} The extracted value
  */
-export function extractNumeroOrdre(row) {
-    // Debug: Voir la ligne brute pour identifier les nouveaux champs Kobo
-    // console.log('[KOBO-MAPPING-DEBUG] Processing row ID:', row._id || 'unknown');
+function getValue(row, targetKey, mappingConfig, fallbacks = []) {
+    const koboField = mappingConfig?.[targetKey];
+    if (koboField && row[koboField] !== undefined) {
+        return row[koboField];
+    }
     
-    // Try multiple field names (Kobo flexibility)
-    let val =
-        row['Numero_ordre'] ||       
-        row['Numero ordre'] ||        
-        row['numero_ordre'] ||        
-        row['ID_MENAGE'] ||
-        row['id_menage'] ||
-        row['numero'] ||              
-        row['_id'] ||                 
-        null;
+    // Fallback to hardcoded defaults if no config matches
+    for (const key of fallbacks) {
+        if (row[key] !== undefined) return row[key];
+    }
+    
+    return null;
+}
 
-    if (val === null || val === undefined) return null;
+/**
+ * Extract NUMEROORDRE from any source
+ */
+export function extractNumeroOrdre(row, config = {}) {
+    let val = getValue(row, 'numeroordre', config, [
+        'Numero_ordre', 'Numero ordre', 'numero_ordre', 'ID_MENAGE', 'id_menage', 'numero', '_id'
+    ]);
 
-    // Clean and validate
+    if (!val) return null;
+
     let cleaned = String(val).trim();
-    
-    // On garde le numéro EXACT de Kobo (plus de tronquage à 4 chiffres)
-    // Seul le ".0" technique d'Excel reste supprimé s'il existe.
     if (cleaned.endsWith('.0')) {
         cleaned = cleaned.substring(0, cleaned.length - 2);
     }
@@ -42,21 +48,16 @@ export function extractNumeroOrdre(row) {
 
 /**
  * Extract geographic coordinates
- * @param {object} row - Raw submission/import row
- * @returns {object} { latitude: number, longitude: number }
  */
-export function extractCoordinates(row) {
+export function extractCoordinates(row, config = {}) {
     let latitude = null;
     let longitude = null;
 
-    // Helper to find a key by partial name (case insensitive)
-    const findValue = (regex) => {
-        const key = Object.keys(row).find(k => regex.test(k));
-        return key ? row[key] : null;
-    };
+    // 1. Try Configured GPS field
+    const geopointStr = getValue(row, 'gps_geopoint', config, [
+        'LOCALISATION_CLIENT', 'TYPE_DE_VISITE/LOCALISATION_CLIENT'
+    ]);
 
-    // PRIORITY 1: Kobo surveyor GPS (Geopoint field identified: LOCALISATION_CLIENT)
-    const geopointStr = row['LOCALISATION_CLIENT'] || row['TYPE_DE_VISITE/LOCALISATION_CLIENT'] || findValue(/gps.*menage/i);
     if (geopointStr && typeof geopointStr === 'string' && geopointStr.includes(' ')) {
         const parts = geopointStr.split(' ');
         if (parts.length >= 2) {
@@ -65,17 +66,17 @@ export function extractCoordinates(row) {
         }
     }
 
-    // PRIORITY 2: surveyor "confirmed" columns (latitude_key/longitude_key or preciser_gps)
+    // 2. Try Split Lat/Lon from config
     if (!latitude || !longitude) {
-        const preciseLat = row['latitude_key'] || row['preciser_gps/latitude'] || findValue(/preciser_gps.*latitude/i);
-        const preciseLon = row['longitude_key'] || row['preciser_gps/longitude'] || findValue(/preciser_gps.*longitude/i);
+        const preciseLat = getValue(row, 'gps_latitude', config, ['latitude_key', 'preciser_gps/latitude']);
+        const preciseLon = getValue(row, 'gps_longitude', config, ['longitude_key', 'preciser_gps/longitude']);
         if (preciseLat && preciseLon) {
             latitude = parseFloat(preciseLat);
             longitude = parseFloat(preciseLon);
         }
     }
 
-    // PRIORITY 3: Kobo native _geolocation
+    // 3. Native Kobo Fallback
     if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
         const koboGeo = row['_geolocation'];
         if (Array.isArray(koboGeo) && koboGeo.length >= 2 && koboGeo[0] !== null) {
@@ -92,34 +93,15 @@ export function extractCoordinates(row) {
 
 /**
  * Extract household owner information
- * @param {object} row - Raw submission/import row
- * @returns {object} { name, phone }
  */
-export function extractOwner(row) {
-    // Helper to find a key by partial name (case insensitive)
-    const findValue = (regex) => {
-        const key = Object.keys(row).find(k => regex.test(k));
-        return key ? row[key] : null;
-    };
+export function extractOwner(row, config = {}) {
+    const name = getValue(row, 'name', config, [
+        'nom_key', 'TYPE_DE_VISITE/nom_key', 'Prénom et Nom', 'nom_prenom', 'name'
+    ]) || 'Ménage Inconnu';
 
-    const name =
-        row['nom_key'] ||                   
-        row['TYPE_DE_VISITE/nom_key'] ||    
-        row['Prénom et Nom'] ||             
-        row['nom_prenom'] ||
-        findValue(/nom.*key/i) ||
-        findValue(/prenom.*nom/i) ||
-        row['name'] ||                      
-        'Ménage Inconnu';
-
-    const phone =
-        row['telephone_key'] ||                 
-        row['TYPE_DE_VISITE/telephone_key'] ||  
-        row['Telephone'] ||                     
-        row['telephone'] ||
-        findValue(/tel.*key/i) ||
-        findValue(/phone.*key/i) ||
-        '';
+    const phone = getValue(row, 'phone', config, [
+        'telephone_key', 'TYPE_DE_VISITE/telephone_key', 'Telephone', 'telephone', 'phone'
+    ]) || '';
 
     return {
         name: String(name).trim(),
@@ -129,44 +111,46 @@ export function extractOwner(row) {
 
 /**
  * Extract regional information
- * @param {object} row - Raw submission/import row
- * @returns {object} { region, departement, commune, village }
  */
-export function extractRegionalInfo(row) {
-    // Note: Village column is verified missing in XLS, so we return empty/undefined
-    const region = row['region_key'] || row['TYPE_DE_VISITE/region_key'] || row['Region'] || '';
+export function extractRegionalInfo(row, config = {}) {
+    const region = getValue(row, 'region', config, [
+        'region_key', 'TYPE_DE_VISITE/region_key', 'Region'
+    ]) || '';
+    
+    const departement = getValue(row, 'departement', config, ['departement', 'dept']) || '';
+    const village = getValue(row, 'village', config, ['village']) || '';
     
     return {
         region: String(region).trim(),
-        departement: String(row['departement'] || row['dept'] || '').trim(),
+        departement: String(departement).trim(),
         commune: String(row['commune'] || '').trim(),
-        village: '' // Missing in Kobo
+        village: String(village).trim()
     };
 }
 
 /**
  * Extract installation status
- * @param {object} row - Raw submission/import row
- * @returns {string} Installation status
  */
-export function extractStatus(row) {
-    // Check for "Situation du Ménage" first (eligibility)
-    const sit = row['group_wu8kv54/Situation_du_M_nage'] || row['Situation_du_M_nage'] || row['Situation du Ménage'];
+export function extractStatus(row, config = {}) {
+    // 1. Eligibility Check
+    const sit = getValue(row, 'situation_menage', config, [
+        'group_wu8kv54/Situation_du_M_nage', 'Situation_du_M_nage', 'Situation du Ménage'
+    ]);
     if (sit) {
         const str = String(sit).toLowerCase();
         if (str.includes('non_eligible') || str.includes('non éligible')) return 'Ménage non éligible';
     }
 
-    // Check for "justificatif" (desistement)
-    const just = row['group_wu8kv54/justificatif'] || row['justificatif'];
+    // 2. Desistement Check
+    const just = getValue(row, 'justificatif', config, ['group_wu8kv54/justificatif', 'justificatif']);
     if (just && String(just).toLowerCase().includes('desistement')) return 'Ménage désisté';
 
-    // Progressive workflow based on exact XLS field names
-    const isControlOk = row['validation_controleur_final'] === 'true';
-    const isInterieurOk = row['validation_interieur_final'] === 'true';
-    const isReseauOk = row['validation_reseau_final'] === 'true';
-    const isMaconOk = row['validation_macon_final'] === 'true';
-    const isLivreurOk = row['Je_confirme_la_remis_u_materiel_au_m_nage'] === 'true' || row['Je confirme la remise du materiel au ménage'] === 'true';
+    // 3. Progression Checkpoints from Config (New: Allow projects to define their ok/fail fields)
+    const isControlOk = getValue(row, 'status_control_ok', config, ['validation_controleur_final']) === 'true' || row['✅ Je valide le contrôle et l\'installation est conforme'] === 'true';
+    const isInterieurOk = getValue(row, 'status_interieur_ok', config, ['validation_interieur_final']) === 'true' || row['✅ Je valide que l\'installation intérieure est terminée et conforme'] === 'true';
+    const isReseauOk = getValue(row, 'status_reseau_ok', config, ['validation_reseau_final']) === 'true' || row['✅ Je valide que le branchement est terminé et conforme'] === 'true';
+    const isMaconOk = getValue(row, 'status_macon_ok', config, ['validation_macon_final']) === 'true' || row['✅ Je valide que le mur est terminé et conforme'] === 'true';
+    const isLivreurOk = getValue(row, 'status_livraison_ok', config, ['Je_confirme_la_remis_u_materiel_au_m_nage', 'Je confirme la remise du materiel au ménage']) === 'true';
 
     if (isControlOk) return 'Contrôle conforme';
     if (isInterieurOk) return 'Intérieur terminé';
@@ -178,79 +162,48 @@ export function extractStatus(row) {
 }
 
 /**
- * Extract photo/attachment
- * @param {object} row - Raw submission/import row
- * @returns {string|null} Photo URL or null
+ * Master transformation function
  */
-export function extractPhoto(row) {
-    const photo =
-        row['Photo'] ||
-        row['photo'] ||
-        row['1 photo anomalie si existant'] ||
-        null;
-
-    return photo ? String(photo).trim() : null;
-}
-
-/**
- * Master transformation function: Kobo/Local → Household
- * @param {object} row - Raw submission/import row
- * @param {string} organizationId
- * @param {string} defaultZoneId
- * @param {string} projectId
- * @returns {object} Normalized household object
- */
-export function transformRowToHousehold(row, organizationId, defaultZoneId, projectId) {
-    const numeroOrdre = extractNumeroOrdre(row);
+export function transformRowToHousehold(row, organizationId, defaultZoneId, projectId, config = {}) {
+    const numeroOrdre = extractNumeroOrdre(row, config);
 
     if (!numeroOrdre) {
-        return null; // Skip rows without numeroOrdre
+        return null;
     }
 
-    const { latitude, longitude } = extractCoordinates(row);
-    const { name, phone } = extractOwner(row);
-    const { region, departement, commune, village } = extractRegionalInfo(row);
-    const status = extractStatus(row);
-    const photo = extractPhoto(row);
+    const { latitude, longitude } = extractCoordinates(row, config);
+    const { name, phone } = extractOwner(row, config);
+    const { region, departement, village } = extractRegionalInfo(row, config);
+    const status = extractStatus(row, config);
 
     return {
-        // Business identifier (CRITICAL KEY)
         numeroOrdre: numeroOrdre,
-
-        // Owner information
         name: name,
         phone: phone,
-        owner: {
-            nom: name,
-            telephone: phone
-        },
-
-        // Geographic information
+        owner: { nom: name, telephone: phone },
         region: region,
         departement: departement,
-        commune: commune,
         village: village,
         latitude: latitude,
         longitude: longitude,
         location: {
             type: 'Point',
-            coordinates: longitude !== null && latitude !== null
-                ? [longitude, latitude]
-                : null
+            coordinates: longitude !== null && latitude !== null ? [longitude, latitude] : null
         },
-
-        // Installation status
         status: status,
-
-        // Organization & Zone
         organizationId: organizationId,
         projectId: projectId,
         zoneId: defaultZoneId,
-
-        // Metadata
-        source: 'Kobo', // Will be overridden for local imports
-        koboData: row, // Store entire raw row for reference
-        version: 1
+        source: 'Kobo',
+        koboData: row,
+        version: 1,
+        // Carry the mapping result for koboSync metadata
+        _meta: {
+            maconOk: getValue(row, 'status_macon_ok', config) === 'true' || row['✅ Je valide que le mur est terminé et conforme'] === 'true',
+            reseauOk: getValue(row, 'status_reseau_ok', config) === 'true' || row['✅ Je valide que le branchement est terminé et conforme'] === 'true',
+            interieurOk: getValue(row, 'status_interieur_ok', config) === 'true' || row['✅ Je valide que l\'installation intérieure est terminée et conforme'] === 'true',
+            controleOk: getValue(row, 'status_control_ok', config) === 'true' || row['✅ Je valide le contrôle et l\'installation est conforme'] === 'true'
+        }
     };
 }
 

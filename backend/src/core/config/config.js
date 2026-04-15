@@ -54,6 +54,16 @@ export const config = {
         password: process.env.REDIS_PASSWORD || null,
         tls: process.env.REDIS_TLS === 'true'
     },
+    ai: {
+        openaiKey: process.env.OPENAI_API_KEY || '',
+        openaiBaseUrl: process.env.OPENAI_API_BASE_URL || 'https://api.openai.com/v1',
+        model: process.env.OPENAI_MODEL || 'gpt-4.1-mini',
+        maxTokens: parseInt(process.env.OPENAI_MAX_TOKENS || '700', 10),
+        temperature: parseFloat(process.env.OPENAI_TEMPERATURE || '0.3'),
+        ollamaBaseUrl: process.env.OLLAMA_BASE_URL || 'https://proquelec.wanekoohost.com',
+        ollamaModel: process.env.OLLAMA_MODEL || 'qwen2.5-coder:7b',
+        cacheTtlSeconds: parseInt(process.env.AI_CACHE_TTL_SECONDS || '300', 10)
+    },
     storage: {
         endpoint: process.env.S3_ENDPOINT,
         region: process.env.S3_REGION || 'us-east-1',

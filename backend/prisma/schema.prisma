@@ -40,12 +40,14 @@ model User {
   permissions        Json?            @default("[]")
   notificationEmail  String?
   createdAt          DateTime         @default(now())
+  actionApprovals    ActionApproval[]
   auditLogs          AuditLog[]
   missions           Mission[]
   performanceLogs    PerformanceLog[]
   projectsUpdated    Project[]        @relation("UpdatedBy")
   syncLogs           SyncLog[]
   ledTeam            Team?            @relation("TeamLeader")
+  userMemory        UserMemory?
   organization       Organization     @relation(fields: [organizationId], references: [id])
   role               Role?            @relation(fields: [roleId], references: [id])
 }
@@ -336,7 +338,147 @@ model RolePermission {
   @@id([roleId, permissionId])
 }
 
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model UserMemory {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+
+  lastMessage   String?
+  lastIntent    String?
+
+  preferences   Json?
+  history       Json?
+  emotions      Json?
+  context       Json?
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user          User     @relation(fields: [userId], references: [id])
+  vectorMemories VectorMemory[]
+
+  @@index([userId])
+}
+
+model VectorMemory {
+  id            String     @id @default(cuid())
+  userId        String
+  userMemoryId  String
+  organizationId String?
+  
+  content       String     // Original text content
+  embedding     Json?      // OpenAI embedding stored as JSON array
+  metadata      Json?      // Additional metadata for semantic search and recall
+  
+  intent        String?    // e.g., "technical_issue", "greeting"
+  emotion       String?    // e.g., "stressed", "neutral"
+  source        String     @default("conversation") // "conversation", "document", "feedback"
+  importance    Float      @default(0.5) // 0.0-1.0 relevance score
+  
+  createdAt     DateTime   @default(now())
+  expiresAt     DateTime?  // For auto-cleanup of old memories
+  lastAccessed  DateTime   @default(now())
+  accessCount   Int        @default(0)
+  
+  userMemory    UserMemory @relation(fields: [userMemoryId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([userMemoryId])
+  @@index([createdAt])
+  @@index([expiresAt])
+}
+
+model AIMetrics {
+  id               String   @id @default(cuid())
+  userId           String
+  organizationId   String?
+  
+  requestType      String   // "query", "memory_store", "memory_search"
+  routeSelected    String   // "local", "ai", "hybrid", "cache"
+  
+  inputTokens      Int?     // For LLM calls
+  outputTokens     Int?     // For LLM calls
+  costUSD          Decimal? // Calculated cost
+  latencyMs        Int?     // Response time
+  
+  success          Boolean  @default(true)
+  errorMessage     String?
+  
+  intentDetected   String?
+  emotionDetected  String?
+  cacheHitRate     Float?   // % of queries served from cache
+  
+  createdAt        DateTime @default(now())
+  
+  @@index([userId])
+  @@index([organizationId])
+  @@index([createdAt])
+  @@index([routeSelected])
+}
+
+model PromptVersion {
+  id               String   @id @default(cuid())
+  organizationId   String?
+  
+  name             String   // e.g., "system_prompt_v1", "mission_routing_v2"
+  version          Int      // Sequential version number
+  prompt           String   // Full prompt text
+  model            String?  // GPT model it was designed for
+  description      String?
+  
+  isActive         Boolean  @default(false)
+  testResults      Json?    // {success_rate: 0.95, avg_latency_ms: 250}
+  metrics          Json?    // {cost_optimization: 0.7, quality_score: 0.92}
+  
+  createdAt        DateTime @default(now())
+  activatedAt      DateTime?
+  deactivatedAt    DateTime?
+  
+  @@unique([name, version])
+  @@index([organizationId])
+  @@index([isActive])
+  @@index([createdAt])
+}
+
+model ActionApproval {
+  id                String    @id @default(cuid())
+  organizationId    String
+  userId            String?
+  agentName         String    // TechAgent, DataAgent, SupportAgent, MissionSage
+  actionType        String    // createMission, assignTechnician, modifyData, etc.
+  riskLevel         String    // LOW, MEDIUM, HIGH
+  confidence        Float     // 0.0 - 1.0 (AI confidence score)
+  
+  status            String    @default("AUTO_EXECUTED") // AUTO_EXECUTED, PENDING, APPROVED, REJECTED, EXECUTED, FAILED
+  
+  payload           Json      // Full action payload
+  result            Json?     // Execution result
+  error             String?   // Error message if failed
+  
+  requestedBy       String?   // User or system that requested
+  approvedBy        String?   // User who approved
+  rejectedBy        String?   // User who rejected
+  rejectionComment  String?   // Why it was rejected
+  
+  requestedAt       DateTime  @default(now())
+  approvedAt        DateTime?
+  rejectedAt        DateTime?
+  executedAt        DateTime?
+  
+  metadata          Json?     // Additional context: intent, emotion, model_used, latency_ms, etc.
+  
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  user              User?     @relation(fields: [userId], references: [id])
+  
+  @@index([organizationId])
+  @@index([status])
+  @@index([userId])
+  @@index([agentName])
+  @@index([requestedAt])
+  @@index([riskLevel])
+}
+
 model spatial_ref_sys {
   srid      Int     @id
   auth_name String? @db.VarChar(256)

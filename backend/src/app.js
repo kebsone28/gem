@@ -88,6 +88,8 @@ import missionRoutes from './api/routes/mission.routes.js';
 import userRoutes from './api/routes/user.routes.js';
 import organizationRoutes from './api/routes/organization.routes.js';
 import sizingRoutes from './modules/sizing/sizing.routes.js';
+import assistantRoutes from './modules/assistant/assistant.router.js';
+import approvalRoutes from './modules/assistant/approval.router.js';
 
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
@@ -105,6 +107,8 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/missions', missionRoutes);
 app.use('/api/organization', organizationRoutes);
 app.use('/api/sizing', sizingRoutes);
+app.use('/api/ai', assistantRoutes);
+app.use('/api/approvals', approvalRoutes);
 
 app.get('/health', async (req, res) => {
     const health = {

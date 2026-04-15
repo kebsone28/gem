@@ -384,3 +384,5 @@ export const LoadingState: React.FC<LoadingStateProps> = ({
     </div>
   );
 };
+
+export { default as NotificationCenter } from './NotificationCenter';

@@ -98,10 +98,12 @@ export async function fetchKoboSubmissions(token, assetUid, since = null) {
  * @param {object} submission - Raw Kobo submission
  * @param {string} organizationId
  * @param {string} defaultZoneId
+ * @param {string} projectId
+ * @param {object} config - The mapping configuration
  */
-function mapSubmissionToHousehold(submission, organizationId, defaultZoneId, projectId) {
-    // Use professional mapping function
-    const household = transformRowToHousehold(submission, organizationId, defaultZoneId, projectId);
+function mapSubmissionToHousehold(submission, organizationId, defaultZoneId, projectId, config = {}) {
+    // Use professional mapping function with dynamic config
+    const household = transformRowToHousehold(submission, organizationId, defaultZoneId, projectId, config);
 
     if (!household) {
         return null; // Skip if mapping failed (missing numeroOrdre)
@@ -126,18 +128,21 @@ function mapSubmissionToHousehold(submission, organizationId, defaultZoneId, pro
         }[String(submission['Votre Role']).toLowerCase()] || submission['Votre Role']
     ] : []);
 
-    // Track installation progression via form validation checkpoints
+    // Track installation progression via form validation checkpoints (dynamic via _meta)
     household.koboSync = {
-        maconOk: submission['✅ Je valide que le mur est terminé et conforme'] === 'true',
-        reseauOk: submission['✅ Je valide que le branchement est terminé et conforme'] === 'true',
-        interieurOk: submission['✅ Je valide que l\'installation intérieure est terminée et conforme'] === 'true',
-        controleOk: submission['✅ Je valide le contrôle et l\'installation est conforme'] === 'true',
+        maconOk: household._meta?.maconOk || false,
+        reseauOk: household._meta?.reseauOk || false,
+        interieurOk: household._meta?.interieurOk || false,
+        controleOk: household._meta?.controleOk || false,
         livreurDate: submission['_submission_time'] || null
     };
 
+    // Remove temp meta
+    delete household._meta;
+
     // Store complete submission for audit trail
     household.koboData = submission;
-    household.source = 'Kobo';
+    household.source = 'KOBO';
     household.updatedAt = new Date(submission['_submission_time'] || Date.now());
 
     // Validate GPS coordinates match region
@@ -171,11 +176,20 @@ export async function syncKoboToDatabase(organizationId, fallbackZoneId, since =
 
     if (targetProjectId) {
         const project = await prisma.project.findUnique({ where: { id: targetProjectId } });
-        if (project?.config?.kobo) {
-            koboToken = project.config.kobo.token;
-            koboAssetUid = project.config.kobo.assetUid;
+        if (project?.config) {
+            koboToken = project.config.kobo?.token;
+            koboAssetUid = project.config.kobo?.assetUid;
+            // Mapping can be at project level
+            mappingConfig = project.config.kobo_field_mapping;
             console.log(`[KOBO-SYNC] Using project-specific config for project: ${project.name}`);
         }
+    }
+
+    // Fallback to Org config if project mapping is empty
+    if (!mappingConfig || Object.keys(mappingConfig).length === 0) {
+        const org = await prisma.organization.findUnique({ where: { id: organizationId } });
+        mappingConfig = org?.config?.kobo_field_mapping || {};
+        console.log(`[KOBO-SYNC] Using organization-level mapping config fallback`);
     }
 
     const submissions = await fetchKoboSubmissions(koboToken, koboAssetUid, since);
@@ -231,7 +245,7 @@ export async function syncKoboToDatabase(organizationId, fallbackZoneId, since =
             }
 
             // Map Kobo submission to unified Household format
-            const household = mapSubmissionToHousehold(submission, organizationId, zoneId, targetProjectId);
+            const household = mapSubmissionToHousehold(submission, organizationId, zoneId, targetProjectId, mappingConfig);
 
             // Skip if mapping failed (happens when numeroOrdre is missing)
             if (!household) {

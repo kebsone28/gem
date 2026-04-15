@@ -28,9 +28,10 @@ const DiagnosticSante = lazy(() => import('./pages/DiagnosticSante'));
 const SecuritySettings = lazy(() => import('./pages/SecuritySettings'));
 const MissionOrder = lazy(() => import('./pages/MissionOrder'));
 const Approbation = lazy(() => import('./pages/Approbation'));
-const KoboTerminal = lazy(() => import('./pages/Dashboard/KoboTerminal'));
+const KoboTerminal = lazy(() => import('./pages/DashboardViews/KoboTerminal'));
 const KoboMappingMaster = lazy(() => import('./pages/KoboMappingMaster'));
 const OrganizationSettings = lazy(() => import('./pages/OrganizationSettings'));
+const PVAutomation = lazy(() => import('./pages/PVAutomation'));
 
 // Dev-only: MemoryDiagnostic loaded conditionally — zero cost in production
 const MemoryDiagnostic = import.meta.env.DEV
@@ -266,6 +267,17 @@ function App() {
               <ProtectedRoute>
                 <PermissionRoute permission={PERMISSIONS.GERER_PARAMETRES}>
                   <OrganizationSettings />
+                </PermissionRoute>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/admin/pv-automation"
+            element={
+              <ProtectedRoute>
+                <PermissionRoute permission={PERMISSIONS.GERER_PV}>
+                  <PVAutomation />
                 </PermissionRoute>
               </ProtectedRoute>
             }

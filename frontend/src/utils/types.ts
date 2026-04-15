@@ -204,6 +204,41 @@ export interface PreparatorTeam {
   loadings: PreparatorLoading[];
 }
 
+export interface CahierTaskPricing {
+  dailyRate: number;
+  personnelCount: number;
+  durationDays: number;
+  penalties: string;
+  currency: string;
+}
+
+export interface CahierTask {
+  color: string;
+  icon: any;
+  image: string;
+  defaultCadence: string;
+  introduction: string;
+  missions: string[];
+  materials: string[];
+  hse: string[];
+  subcontracting?: string[];
+  finances?: string[];
+  legal?: string[];
+  pricing?: CahierTaskPricing;
+  technicalImages?: { url: string; label: string }[];
+}
+
+export interface TaskLibrary {
+  [key: string]: CahierTask;
+}
+
+export interface CahierVersion {
+  id: string;
+  date: string;
+  author: string;
+  library: TaskLibrary;
+}
+
 export interface Warehouse {
   id: string;
   name: string;
@@ -252,6 +287,7 @@ export interface ProjectConfig {
 
   materialCatalog?: CatalogItem[];
   subTeamAllocations?: Record<string, SubTeamEquipment[]>; // mapping subTeamId -> equipments
+  cahierHistory?: CahierVersion[];
 }
 
 export interface Project {

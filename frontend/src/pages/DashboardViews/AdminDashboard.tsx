@@ -244,7 +244,7 @@ export default function AdminDashboard() {
                 <StatusBadge status="info" label="Expert Console V.2" />
                 <span className="h-4 w-[1px] bg-white/10" />
                 <span className="text-[10px] font-black text-blue-400/40 uppercase tracking-[0.3em] font-mono">
-                  {project?.name || 'INITIALIZING...'}
+                  {project?.name || 'INITIALISATION...'}
                 </span>
               </div>
               <h1 className="text-5xl md:text-6xl font-black tracking-tighter italic uppercase leading-[0.8] mb-1">
@@ -265,7 +265,7 @@ export default function AdminDashboard() {
                   size={16}
                   className={`${isSyncing ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-700'}`}
                 />
-                {isSyncing ? 'SYNC IN PROGRESS' : 'SYNC CLOUD'}
+                {isSyncing ? 'SYNCHRO EN COURS' : 'SYNCHRO CLOUD'}
               </button>
               <button
                 onClick={() => navigate('/admin/kobo-mapping')}
@@ -275,7 +275,7 @@ export default function AdminDashboard() {
                   size={16}
                   className="text-blue-500 group-hover:scale-110 transition-transform"
                 />
-                KOBO ENGINE
+                MOTEUR KOBO
               </button>
               <button
                 onClick={handleExportCompta}
@@ -299,7 +299,7 @@ export default function AdminDashboard() {
                 }
                 className="h-14 px-8 bg-blue-600 hover:bg-blue-500 rounded-2xl text-[10px] font-black uppercase tracking-widest text-white transition-all shadow-xl shadow-blue-600/30 active:scale-95 flex items-center gap-3 italic"
               >
-                HUB ACTIONS
+                HUB D'ACTIONS
                 <ArrowRight size={16} />
               </button>
             </ActionBar>
@@ -360,7 +360,7 @@ export default function AdminDashboard() {
               <div className="grid grid-cols-2 gap-6">
                 <div className="p-8 rounded-[2.5rem] bg-white/[0.03] border border-white/5 shadow-inner hover:bg-white/[0.05] transition-all">
                   <p className="text-[10px] font-black text-blue-400/30 uppercase tracking-[0.3em] mb-4 italic">
-                    COMPLETED ASSETS
+                    CHANTIERS ACHEVÉS
                   </p>
                   <p className="text-4xl font-black text-white italic tracking-tighter leading-none">
                     {fmtNum(displayStats.electrifiedHouseholds)}
@@ -369,7 +369,7 @@ export default function AdminDashboard() {
                 </div>
                 <div className="p-8 rounded-[2.5rem] bg-white/[0.03] border border-white/5 shadow-inner hover:bg-white/[0.05] transition-all">
                   <p className="text-[10px] font-black text-blue-400/30 uppercase tracking-[0.3em] mb-4 italic">
-                    TOTAL PROJECT TARGET
+                    OBJECTIF TOTAL PROJET
                   </p>
                   <p className="text-4xl font-black text-white italic tracking-tighter leading-none">
                     {fmtNum(displayStats.totalHouseholds)}
@@ -394,7 +394,7 @@ export default function AdminDashboard() {
               title={`TOTAL ${getLabel('household.plural').toUpperCase()}`}
               value={fmtNum(displayStats.totalHouseholds)}
               icon={<Users size={22} />}
-              trend={{ value: 8, isUp: true, label: 'VS PREVIOUS PERIOD' }}
+              trend={{ value: 8, isUp: true, label: 'VS PÉRIODE PRÉCÉDENTE' }}
               sparkline={[30, 45, 35, 60, 55, 80, 70]}
             />
             <KPICard
@@ -408,7 +408,7 @@ export default function AdminDashboard() {
                         (missionStats.totalCertified / (missionStats.totalMissions || 1)) * 100
                       ),
                       isUp: true,
-                      label: 'Certification Rate',
+                      label: 'Taux de Certification',
                     }
                   : undefined
               }
@@ -435,19 +435,20 @@ export default function AdminDashboard() {
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12 pb-8 border-b border-white/5">
                   <div className="space-y-1">
                     <h3 className="text-[11px] font-black text-blue-400/40 uppercase tracking-[0.4em] flex items-center gap-3 italic">
-                      <LayoutGrid size={18} className="text-blue-500" /> ENGINEERING PIPELINE FLOW
+                      <LayoutGrid size={18} className="text-blue-500" /> FLUX OPÉRATIONNEL DES
+                      TRAVAUX
                     </h3>
                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                       {zones.length > 0
-                        ? `SYNCED WITH ${zones.length} OPERATIONAL ZONES`
-                        : 'AWAITING ZONE MAPPING'}
+                        ? `SYNCHRONISÉ AVEC ${zones.length} ZONES OPÉRATIONNELLES`
+                        : 'EN ATTENTE DE CARTOGRAPHIE'}
                     </p>
                   </div>
                   <button
                     onClick={() => navigate('/bordereau')}
                     className="h-10 px-6 bg-blue-600/10 hover:bg-blue-600 border border-blue-500/20 text-blue-400 hover:text-white rounded-full text-[9px] font-black uppercase tracking-widest transition-all italic active:scale-95"
                   >
-                    ZONE DEEP-DIVE →
+                    ANALYSE DÉTAILLÉE →
                   </button>
                 </div>
 
@@ -489,12 +490,12 @@ export default function AdminDashboard() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="p-10 rounded-[3rem] bg-slate-900/40 border border-white/5 backdrop-blur-3xl shadow-xl">
                   <h3 className="text-[11px] font-black text-blue-400/40 uppercase tracking-[0.4em] mb-8 italic flex items-center gap-3">
-                    <Box size={18} className="text-blue-500" /> LOGISTICS TRACKER
+                    <Box size={18} className="text-blue-500" /> SUIVI LOGISTIQUE
                   </h3>
                   <div className="space-y-4">
                     <div className="flex justify-between items-center bg-white/[0.03] p-6 rounded-2xl border border-white/5 group hover:bg-white/[0.05] transition-all">
                       <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic group-hover:text-blue-400 transition-colors">
-                        KITS DEPLOYED
+                        KITS DÉPLOYÉS
                       </span>
                       <span className="text-2xl font-black text-white italic">
                         {fmtNum(displayStats.logistics?.kitPrepared || 0)}
@@ -502,7 +503,7 @@ export default function AdminDashboard() {
                     </div>
                     <div className="flex justify-between items-center bg-white/[0.03] p-6 rounded-2xl border border-white/5 group hover:bg-white/[0.05] transition-all">
                       <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic group-hover:text-blue-400 transition-colors">
-                        AVG CABLE / HOUSE
+                        CÂBLE MOYEN / MÉNAGE
                       </span>
                       <span className="text-2xl font-black text-white italic">
                         {displayStats.performance?.avgCablePerHouse || 0}m
@@ -510,7 +511,7 @@ export default function AdminDashboard() {
                     </div>
                     <div className="flex justify-between items-center bg-rose-500/5 p-6 rounded-2xl border border-rose-500/10">
                       <span className="text-[10px] font-black text-rose-500/60 uppercase tracking-widest italic">
-                        LOGISTICS GAP
+                        ÉCART LOGISTIQUE
                       </span>
                       <span className="text-2xl font-black text-rose-500 italic">
                         -{displayStats.logistics?.gap || 0}
@@ -521,14 +522,14 @@ export default function AdminDashboard() {
 
                 <div className="p-10 rounded-[3rem] bg-slate-900/40 border border-white/5 backdrop-blur-3xl shadow-xl flex flex-col">
                   <h3 className="text-[11px] font-black text-blue-400/40 uppercase tracking-[0.4em] mb-4 italic flex items-center gap-3">
-                    <Activity size={18} className="text-blue-500" /> DAILY RENDERING
+                    <Activity size={18} className="text-blue-500" /> GÉNÉRATION JOURNALIÈRE
                   </h3>
                   <div className="flex-1 flex flex-col items-center justify-center py-6">
                     <div className="text-7xl font-black text-white italic tracking-tighter drop-shadow-xl">
                       {displayStats.performance?.avgPerDay || 0}
                     </div>
                     <p className="text-[10px] font-black text-blue-500/40 uppercase tracking-[0.3em] mt-2 italic">
-                      AVERAGE YIELD / DAY
+                      RENDEMENT MOYEN / JOUR
                     </p>
                     <div className="w-full h-24 flex items-end justify-between px-4 gap-2 mt-10">
                       {[40, 60, 45, 75, 80, 95, 85].map((h, i) => (
@@ -559,10 +560,11 @@ export default function AdminDashboard() {
                         <AlertCircle size={22} className="text-rose-500 shrink-0" />
                         <div>
                           <p className="text-xs font-black text-rose-500 uppercase tracking-[0.1em] italic">
-                            CRITICAL INCIDENTS
+                            INCIDENTS CRITIQUES
                           </p>
                           <p className="text-[11px] text-slate-400 mt-2 leading-relaxed font-bold">
-                            {displayStats.problemHouseholds} UNITS REQUIRE IMMEDIATE ACTION.
+                            {displayStats.problemHouseholds} UNITÉS NÉCESSITENT UNE ACTION
+                            IMMÉDIATE.
                           </p>
                         </div>
                       </motion.div>
@@ -576,10 +578,10 @@ export default function AdminDashboard() {
                         <RefreshCw size={22} className="text-amber-500 shrink-0" />
                         <div>
                           <p className="text-xs font-black text-amber-500 uppercase tracking-[0.1em] italic">
-                            SYNC WARNING
+                            ALERTE SYNCHRO
                           </p>
                           <p className="text-[11px] text-slate-400 mt-2 leading-relaxed font-bold">
-                            LATENCY DETECTED IN CLOUD UPLINK.
+                            LATENCE DÉTECTÉE DANS LA LIAISON CLOUD.
                           </p>
                         </div>
                       </motion.div>
@@ -592,7 +594,7 @@ export default function AdminDashboard() {
                             className="text-emerald-500 mx-auto mb-4 opacity-20"
                           />
                           <p className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] italic">
-                            ALL SYSTEMS NOMINAL
+                            SYSTÈMES OPÉRATIONNELS
                           </p>
                         </div>
                       )}
@@ -607,7 +609,7 @@ export default function AdminDashboard() {
               <div className="p-10 rounded-[3rem] bg-indigo-600/10 border border-indigo-500/20 backdrop-blur-3xl shadow-xl relative overflow-hidden group">
                 <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-indigo-500/20 blur-[80px] rounded-full group-hover:bg-indigo-500/30 transition-all duration-1000" />
                 <h3 className="text-[11px] font-black text-indigo-400 uppercase tracking-[0.4em] mb-8 italic flex items-center gap-3">
-                  <Calendar size={18} /> MISSION SCHEDULER
+                  <Calendar size={18} /> PLANIFICATEUR DE MISSIONS
                 </h3>
                 <div className="space-y-5 relative z-10">
                   {missions.length > 0 ? (
@@ -634,7 +636,7 @@ export default function AdminDashboard() {
                     <div className="py-14 text-center opacity-20 flex flex-col items-center border border-dashed border-white/10 rounded-2xl">
                       <Calendar size={32} className="mb-4" />
                       <p className="text-[10px] font-black uppercase tracking-[0.2em]">
-                        NO UPCOMING MISSIONS
+                        AUCUNE MISSION À VENIR
                       </p>
                     </div>
                   )}
@@ -657,10 +659,10 @@ export default function AdminDashboard() {
               </div>
               <div className="text-left">
                 <p className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-500 italic group-hover:text-blue-400">
-                  DATA CENTER
+                  CENTRE DE DONNÉES
                 </p>
                 <p className="text-sm font-black text-white italic uppercase tracking-tighter mt-1">
-                  Export Global Report
+                  Exporter Rapport Global
                 </p>
               </div>
             </button>
@@ -676,10 +678,10 @@ export default function AdminDashboard() {
               </div>
               <div className="text-left">
                 <p className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-500 italic group-hover:text-blue-400">
-                  IDENTITY ACCESS
+                  ACCÈS IDENTITÉS
                 </p>
                 <p className="text-sm font-black text-white italic uppercase tracking-tighter mt-1">
-                  User Management Console
+                  Console de Gestion Utilisateurs
                 </p>
               </div>
             </button>

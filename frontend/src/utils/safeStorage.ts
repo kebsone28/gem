@@ -1,6 +1,6 @@
 // simple wrapper around localStorage that protects against oversized values
 
-const MAX_CHARS = 20_000; // ~20 KB per entry
+const MAX_CHARS = 1_000_000; // ~1 MB per entry
 
 function isTooLarge(value: string | null): boolean {
   return value !== null && value.length > MAX_CHARS;

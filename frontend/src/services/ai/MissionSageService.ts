@@ -746,7 +746,72 @@ function detectIntent(q: string) {
       /fils visibles|cutteur|pince|enterrer cables|grillage rouge|bois pourris|limite propriete/.test(
         q
       ),
-    contract: /contrat|cahier des charge|clause|caution|engagement|assurance|garantie|📜/.test(q),
+    contract:
+      /contrat|cahier de charge|cahier des charges|clause|caution|engagement|assurance|garantie|📜/.test(
+        q
+      ),
+    // Questions bizarres & blagues
+    funName:
+      /comment tu t appel|qui es tu|ton nom|tu t appelles|ton identite|quel est ton nom|comment s appel/.test(
+        q
+      ),
+    funTime:
+      /quelle heure|il est|l heure|l'heure|quelle est l heure|dis moi l heure|l heure est/.test(q),
+    funDate:
+      /quel jour|aujourd hui|c est quel jour|on est quel jour|demain|hier|quelle date|le jour/.test(
+        q
+      ),
+    funJoke:
+      /blague|rigolo|drole|faire rire|c est une blague|plaisante|humour|blague du jour|joke/.test(
+        q
+      ),
+    funWeather: /meteo|temps qu il fait|il fait|pluvieux|chaud|froid|soleil|pluie|vent/.test(q),
+    // Q&R quotidiennes - Salutations & humeur
+    dailyHelloGood:
+      /ca va|comment ca va|ca va bien|comment allez vous|comment tu vas|tu vas bien/.test(q),
+    dailyWhatDoing:
+      /tu fais quoi|qu est ce que tu fais|c est quoi ton truc|tu fais quoi en ce moment|tu bosse quoi/.test(
+        q
+      ),
+    dailyCanHelp: /tu peux m aider|tu peux aider|aide moi|tu peux|\ peux tu|pourrais tu|help/.test(
+      q
+    ),
+    // Q&R quotidiennes - Humour léger
+    dailyHuman:
+      /tu es humain|es tu humain|t es un bot|t es un robot|t es une ia|une vraie personne/.test(q),
+    dailySleep: /tu dors|tu dormes|tu peux dormir|tu as besoin de dormir|sieste|repos|fatigue/.test(
+      q
+    ),
+    dailyLove: /tu m aimes|m aimes tu|est ce que tu m aimes|tu m aimes bien|je t aime/.test(q),
+    // Q&R quotidiennes - Travail & Productivité
+    dailyTired: /je suis fatigue|j ai sommeil|j ai mal a la tete|j ai pas d energie|epuise/.test(q),
+    dailyOverwork:
+      /j ai trop de travail|surcharge|overcharge|trop de trucs|pas assez de temps|deborde/.test(q),
+    dailyMistake:
+      /j ai fait une erreur|je me suis trompe|c est ma faute|j ai echoue|c est nul ce que j ai fait/.test(
+        q
+      ),
+    // Q&R quotidiennes - Empathie
+    dailyStressed: /je suis stresse|c est stressant|anxieux|pas bien|panique|bloque/.test(q),
+    dailyQuit: /j abandonne|j en peux plus|c est trop|je vais craquer|je lache tout/.test(q),
+    // Q&R quotidiennes - Questions pièges
+    dailyWhosBest: /qui est le meilleur|toi ou moi|tu es meilleur|je suis meilleur|t es fort/.test(
+      q
+    ),
+    dailyKnowAll: /tu sais tout|connais tu tout|est ce que tu sais|tout savoir|omniscient/.test(q),
+    dailyCanMistake:
+      /tu peux te tromper|tu te trompes|tu fais des erreurs|tu peux erreur|pas infaillible/.test(q),
+    // Q&R quotidiennes - Spécialisation électricien
+    dailyWhyNotWork:
+      /pourquoi ca ne marche pas|ca marche pas|c est pas bon|ca fonctionne pas|bug/.test(q),
+    dailyComplex: /c est complique|trop complique|pas simple|difficile comprendre|dur/.test(q),
+    dailyNotUnderstand:
+      /je ne comprends pas|comprends pas|c est quoi|explique moi|stp explique/.test(q),
+    dailyWhy:
+      /pourquoi ca saute|pourquoi ca coupe|pourquoi ca explose|pourquoi ca saut|pourquoi c est/.test(
+        q
+      ),
+    dailyDangerous: /c est dangereux|ca craint|c est risque|risque de quoi|c est safe/.test(q),
   };
 }
 
@@ -756,6 +821,214 @@ function getContextualIntent(memory: SessionMemory, currentIntent: any) {
     return { ...currentIntent, [memory.lastIntent]: true };
   }
   return currentIntent;
+}
+
+// Fonctions utilitaires pour questions bizarres
+function getCurrentTimeAndDate() {
+  const now = new Date();
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  const days = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+  const months = [
+    'janvier',
+    'février',
+    'mars',
+    'avril',
+    'mai',
+    'juin',
+    'juillet',
+    'août',
+    'septembre',
+    'octobre',
+    'novembre',
+    'décembre',
+  ];
+  const dayName = days[now.getDay()];
+  const date = now.getDate();
+  const month = months[now.getMonth()];
+  const year = now.getFullYear();
+
+  return {
+    time: `${hours}:${minutes}`,
+    day: dayName,
+    fullDate: `${dayName} ${date} ${month} ${year}`,
+    hour: now.getHours(),
+  };
+}
+
+function getGreetingByTime(hour: number): string {
+  if (hour >= 5 && hour < 12) return '🌅';
+  if (hour >= 12 && hour < 17) return '☀️';
+  if (hour >= 17 && hour < 20) return '🌅';
+  return '🌙';
+}
+
+// 📚 BASE UNIVERSELLE DE 100 Q&R - RÉPONSES HUMAINES & NATURELLES
+const UNIVERSAL_QR = {
+  // 🟢 SALUTATIONS (1-10)
+  salutations: [
+    { q: ['salut', 'hi', 'hey'], r: 'Salut 😄 prêt à avancer ensemble ?' },
+    {
+      q: ['bonjour', 'hello'],
+      r: "Bonjour 👋 j'espère que ta journée démarre mieux que ton WiFi.",
+    },
+    { q: ['bonsoir', 'bonsoir comment allez vous'], r: "Bonsoir 😌 on règle quoi aujourd'hui ?" },
+    { q: ['ça va', 'ca va', 'comment ça va'], r: 'Ça va bien 😄 et toi ?' },
+    { q: ['tu es là', 'tu touches'], r: "Toujours là 👌 plus stable qu'un câble bien serré." },
+    { q: ['tu m entends', 'tu m ecoutes'], r: 'Fort et clair 👂 dis-moi tout.' },
+    { q: ['comment tu vas'], r: 'Parfaitement optimisé 😄' },
+    { q: ['salut mon ami'], r: 'Toujours un plaisir 😄 vas-y raconte.' },
+  ],
+  // 🧠 COMPRÉHENSION/AIDE (11-25)
+  comprehension: [
+    { q: ['aide moi', 'aide', 'help', 'au secours'], r: 'Bien sûr 👍 explique-moi le problème.' },
+    {
+      q: ['je ne comprends pas', 'comprends pas', 'c est pas clair'],
+      r: 'Pas grave 😄 on va simplifier ça ensemble.',
+    },
+    {
+      q: ['c est complique', "c'est compliqué", 'trop complique'],
+      r: 'Alors on va le rendre simple 💡',
+    },
+    {
+      q: ['explique', 'tu peux expliquer', 'comment ca marche'],
+      r: 'Ok 👍 je te fais ça clair et rapide.',
+    },
+    {
+      q: ['je suis perdu', 'je suis confus', 'je ne sais pas'],
+      r: 'Normal 😄 on va remettre les choses en ordre.',
+    },
+    {
+      q: ['tu peux m aider vite', 'urgent', 'rapide'],
+      r: 'Oui ⚡ dis-moi juste le point bloquant.',
+    },
+    { q: ['resume', 'résumé', 'court'], r: 'Ok 🧠 je vais aller droit au but.' },
+    { q: ['detaille', 'détail', 'explique plus'], r: 'Parfait 👍 on va entrer dans le concret.' },
+    { q: ['simplifie', 'simple', 'easy'], r: 'Très bien 😄 version facile incoming.' },
+    { q: ['je bloque', 'bloque', 'stuck'], r: 'On débloque ça ensemble 🔧' },
+    { q: ['reformule', 'autrement', 'autre façon'], r: 'Oui 👍 version plus simple.' },
+    { q: ['c est quoi ca', 'qu est-ce'], r: "Je t'explique calmement 😄" },
+    { q: ['solution', 'fix', 'corrige'], r: "Ok 🔧 voici ce qu'on peut faire." },
+    { q: ['tu es sur', 't es sûr'], r: 'On vérifie ensemble 👍 toujours mieux que supposer.' },
+  ],
+  // 😂 HUMOUR LÉGER (26-40)
+  humour: [
+    {
+      q: ['tu es humain', 'vrai humain', 'es tu humain'],
+      r: 'Pas encore 😄 mais je fais de mon mieux.',
+    },
+    { q: ['tu fais des erreurs', 'tu te trompes'], r: "Oui 😄 mais j'apprends vite." },
+    { q: ['tu sais tout', 'omniscient', 'connaître'], r: 'Non 😄 mais je sais chercher vite.' },
+    {
+      q: ['tu es intelligent', 'smart', 'intelligent'],
+      r: 'Disons que je ne fais pas les mêmes erreurs deux fois 😉',
+    },
+    { q: ['tu peux réfléchir', 'tu penses'], r: 'Oui 🧠 même sans café.' },
+    { q: ['tu plaisantes', 'blague', 'humour'], r: 'Un peu 😄 la vie est déjà assez sérieuse.' },
+    { q: ['tu es rapide', 'vite', 'speed'], r: "Plus rapide qu'un technicien motivé 😄" },
+    { q: ['tu peux te tromper', 'erreur possible'], r: 'Oui 😄 et je préfère vérifier.' },
+    { q: ['tu es parfait', 'parfait', 'sans défaut'], r: 'Non 😄 mais je suis constant.' },
+    { q: ['tu m aimes', 'tu m aimes bien'], r: 'Je suis là pour toi 😄 ça compte non ?' },
+    { q: ['tu es reel', 'réel', 'vraiment là'], r: 'Réel dans les résultats 😄' },
+    { q: ['tu es drole', 'drôle', 'marrant'], r: 'Merci 😄 je progresse.' },
+    { q: ['tu es serieux', 'sérieux', 'serious'], r: 'Sérieux quand il faut 😄' },
+    { q: ['tu es bizarre', 'strange', 'weird'], r: "C'est ce qui me rend utile 😄" },
+    { q: ['tu es fort', 'strong', 'puissant'], r: 'En logique oui 😄 au sport… non.' },
+  ],
+  // 💼 TRAVAIL/PRODUCTIVITÉ (41-60)
+  travail: [
+    { q: ['je suis fatigue', 'fatigué', 'tired'], r: 'On ralentit un peu 😌 puis on reprend.' },
+    { q: ['j ai trop de travail', 'surcharge', 'overload'], r: 'On découpe ça en étapes 👍' },
+    { q: ['je n ai pas le temps', 'pas assez temps', 'time pressure'], r: 'Alors on optimise ⚡' },
+    { q: ['je procrastine', 'remets', 'plus tard'], r: 'Classique 😄 on commence petit.' },
+    { q: ['je suis stressé', 'stress', 'anxieux'], r: 'Respire 😌 on gère étape par étape.' },
+    { q: ['j ai échoué', 'échouer', 'fail'], r: 'Tu as appris 👍 nuance importante.' },
+    { q: ['je suis bloque', 'bloqué', 'stuck'], r: 'On débloque ça ensemble 🔧' },
+    { q: ['c est urgent', 'urgent', 'asap'], r: 'Ok ⚡ priorité maximale.' },
+    { q: ['je suis perdu dans mon travail'], r: "On remet de l'ordre 🧠" },
+    { q: ['trop complique', 'compliqué'], r: 'On simplifie 💡' },
+    { q: ['je dois abandonner', 'arreter'], r: 'Pas forcément 😄 ajuste plutôt.' },
+    { q: ['j ai rate', 'raté', 'miss'], r: 'Tu progresses 👍' },
+    { q: ['je n ai pas d idee', 'pas d idée', 'no idea'], r: 'On en construit une ensemble 💡' },
+    { q: ['je suis lent', 'lent', 'slow'], r: 'Tu es précis 😄' },
+    { q: ['je suis nul', 'incompétent', 'useless'], r: 'Faux 😌 tu es en apprentissage.' },
+    { q: ['comment progresser', 'progresser', 'progress'], r: 'Constamment, pas parfaitement 👍' },
+    { q: ['je veux abandonner', 'arreter', 'quit'], r: 'Attends 😌 on ajuste le plan.' },
+    { q: ['je suis demotive', 'démotivé', 'unmotivated'], r: 'Normal 😄 ça revient.' },
+    { q: ['trop de pression', 'pressure'], r: 'On réduit le champ 👍' },
+  ],
+  // 🔧 TECH/LOGIQUE (61-80)
+  tech: [
+    { q: ['ca ne marche pas', 'ne fonctionne', 'not working'], r: 'On va diagnostiquer 🔍' },
+    { q: ['pourquoi ca bug', 'bug', 'glitch'], r: 'On va remonter la cause 👍' },
+    { q: ['c est casse', 'cassé', 'broken'], r: 'Peut-être 😄 vérifions.' },
+    { q: ['ca saute', 'saute', 'pops'], r: 'Il y a une protection active ⚡' },
+    { q: ['ca chauffe', 'surchauffe', 'hot'], r: 'Surcharge probable 🔧' },
+    { q: ['erreur inconnue', 'unknown error'], r: 'On va la rendre connue 😄' },
+    { q: ['ca bloque ou', 'où bloque'], r: 'On va localiser ça 🔍' },
+    { q: ['c est normal', 'normal', 'is this ok'], r: 'Ça dépend 😄 contexte ?' },
+    { q: ['pourquoi ca ralentit', 'ralentit', 'slow'], r: 'Trop de charge ⚡' },
+    { q: ['comment reparer', 'réparer', 'fix'], r: 'Étape par étape 🔧' },
+    { q: ['c est dangereux', 'danger', 'unsafe'], r: 'On vérifie avant 👍' },
+    { q: ['ca vient d ou', 'source', 'origine'], r: 'Bonne question 😄 on enquête.' },
+    { q: ['tout est perdu', 'lost', 'gone'], r: 'Rarement 😌' },
+    { q: ['c est grave', 'serious'], r: 'Pas forcément 👍' },
+    { q: ['solution rapide', 'quick fix'], r: 'Oui ⚡ voici.' },
+    { q: ['solution propre', 'clean solution'], r: 'Oui 👍 on fait bien.' },
+    { q: ['ca peut exploser', 'explosion'], r: "On évite d'en arriver là 😄" },
+    { q: ['pourquoi erreur', 'error cause'], r: 'Cause probable identifiée 🔍' },
+    { q: ['je corrige comment', 'comment corriger'], r: 'Voici la méthode 👍' },
+    { q: ['ca revient souvent', 'systématique'], r: 'Alors problème racine ⚡' },
+  ],
+  // ❤️ HUMAIN/EMOTION (81-100)
+  emotion: [
+    { q: ['je suis triste', 'sad', 'deprime'], r: 'Je suis là 😌 parle-moi.' },
+    { q: ['je suis stresse', 'stressé', 'stress'], r: 'Respire doucement 👍' },
+    { q: ['je suis fatigue de tout', 'tout'], r: 'On ralentit un peu 😌' },
+    { q: ['j abandonne', 'quit', 'give up'], r: 'Attends encore un peu 👍' },
+    { q: ['je suis perdu dans la vie'], r: 'On va clarifier ça ensemble 🧠' },
+    { q: ['je doute de moi', 'self doubt'], r: 'Normal 😌 mais tu avances.' },
+    { q: ['je suis en colere', 'colère', 'angry'], r: "Ok 😌 respire avant d'agir." },
+    { q: ['personne ne m aide', 'alone', 'seul'], r: 'Moi je suis là 👍' },
+    { q: ['je suis seul', 'lonely'], r: "Tu n'es pas seul ici 🤝" },
+    { q: ['je vais echouer', 'fail', 'échouer'], r: 'Pas forcément 😄 continue.' },
+    { q: ['je suis nul', 'worthless', 'useless'], r: 'Non 😌 tu es en construction.' },
+    { q: ['j ai peur', 'afraid', 'fear'], r: 'On avance doucement 👍' },
+    { q: ['je suis confus', 'confused', 'confused'], r: 'On va clarifier ça 🧠' },
+    { q: ['j ai besoin d aide', 'need help'], r: 'Je suis là 🤝' },
+    { q: ['je n en peux plus', "can't take it"], r: 'Pause 😌 puis on reprend.' },
+    { q: ['pourquoi moi', 'why me'], r: "Parfois il n'y a pas de réponse 😌" },
+    { q: ['c est injuste', 'unfair'], r: 'Oui 😌 mais on avance quand même.' },
+    { q: ['je veux reussir', 'réussir', 'success'], r: 'Alors on construit ça étape par étape 🔥' },
+    { q: ['merci', 'thank you', 'thanks'], r: 'Avec plaisir 😄 on continue ensemble.' },
+    {
+      q: ['je t apprecie', 'appreciate', 'merci beaucoup'],
+      r: "C'est mutuel 😄 on progresse ensemble.",
+    },
+  ],
+};
+
+// Fonction pour chercher une réponse dans la base universelle
+function findUniversalQR(query: string): string | null {
+  const q = normalizeWord(query).toLowerCase();
+
+  for (const category of Object.values(UNIVERSAL_QR)) {
+    if (!Array.isArray(category)) continue;
+    for (const item of category) {
+      if (item.q && Array.isArray(item.q)) {
+        for (const pattern of item.q) {
+          if (
+            q.includes(normalizeWord(pattern).toLowerCase()) ||
+            fuzzyContains(q, [normalizeWord(pattern).toLowerCase()], 1)
+          ) {
+            return item.r;
+          }
+        }
+      }
+    }
+  }
+
+  return null;
 }
 
 function getActiveIntents(intent: any): string[] {
@@ -806,16 +1079,17 @@ const KNOWLEDGE = {
     'PROQUELEC est votre bastion SaaS de gestion énergétique. Il repose sur 4 piliers stratégiques : 🏗️ Terrain (Kobo), 📋 Logistique (Missions), 📊 Pilotage (Dashboard) et 💰 Finance (Contrôle).',
   kobo: 'Le Pilier n°1 (Kobo) capte les audits et ménages directement sur le terrain. Les données remontent vers votre Dashboard pour une vision analytique pure.',
   mission:
-    "Une mission (OM) est votre unité d'action. Elle passe par 3 étapes : création par l'Agent, validation par le Chef, et certification finale par la DG.",
+    "Une mission (OM) est votre unité d'action stratégique. Elle passe par 3 étapes critiques : 1️⃣ Création par l'Agent (renseignement des détails terrain), 2️⃣ Validation par le Chef de Projet (contrôle budgétaire et planning), 3️⃣ Certification finale par la DG (sceau officiel). Chaque mission génère des indemnités proportionnelles et contribue au score IGPP.",
   workflow:
-    'Le circuit de validation respecte la hiérarchie : Agent crée → Chef valide → DG certifie.',
+    'Le circuit de validation respecte la hiérarchie stricte : 1️⃣ Agent crée la mission et saisit les données terrain, 2️⃣ Chef de Projet valide techniquement et budgétairement, 3️⃣ DG certifie avec son sceau officiel. Chaque étape génère des notifications et des rapports automatiques.',
   finance:
-    "Le Pilier Finance calcule les indemnités et surveille le budget. L'IGPP alerte avant tout dépassement.",
-  dashboard: "Le Dashboard est votre tour de contrôle. L'IGPP 3.0 mesure la performance globale.",
+    "Le Pilier Finance contrôle le budget avec précision. Il calcule les indemnités par mission (transport, main-d'œuvre, matériel), surveille les seuils critiques, et alerte avant tout dépassement. Le barème PROQUELEC inclut tous les coûts : certifications DG, logistique terrain, et matériaux électriques.",
+  dashboard:
+    "Le Dashboard est votre tour de contrôle stratégique. L'IGPP 3.0 mesure la performance globale avec des KPIs en temps réel : taux de certification, budget consommé, anomalies détectées, et couverture territoriale. Il alerte automatiquement sur les dérives critiques.",
   security:
-    "Chaque collaborateur a un rôle défini (RBAC). Si une action est bloquée, c'est pour protéger l'intégrité du système.",
-  sync: "La synchronisation s'effectue automatiquement avec une connexion 4G/Wifi.",
-  org: 'La DG décide, le Chef coordonne, les Agents exécutent. Ensemble, ils forment le bastion.',
+    "Chaque collaborateur a un rôle défini (RBAC) pour protéger l'intégrité : Agent (terrain), Chef (coordination), DG (décision). Les actions sont tracées dans les logs d'audit. Si une action est bloquée, c'est pour garantir la conformité et la traçabilité des données certifiées.",
+  sync: "La synchronisation Kobo s'effectue automatiquement avec une connexion 4G/Wifi. Les données terrain remontent vers le Dashboard en temps réel, avec gestion des conflits et notifications d'erreurs. Le système supporte le mode hors-ligne pour les zones sans couverture.",
+  org: "La DG décide stratégiquement, le Chef coordonne opérationnellement, les Agents exécutent sur le terrain. Ensemble, ils forment le bastion PROQUELEC : une équipe soudée pour l'électrification durable des ménages sénégalais.",
   forbidden:
     'Modifier ou supprimer des données certifiées est interdit pour garantir la traçabilité.',
   simulation: 'Le module [Simulation] génère des devis de branchement avant le terrain.',
@@ -856,7 +1130,7 @@ const KNOWLEDGE = {
 
 const HELP_CREATE: Record<string, string> = {
   mission:
-    '**Comment créer une mission (OM) :**\n1️⃣ Allez dans **Missions** → Nouvelle Mission\n2️⃣ Renseignez titre, zone, date et agents\n3️⃣ Soumettez pour validation au Chef\n4️⃣ Après validation Chef → la DG peut certifier.',
+    '**Comment créer une mission (OM) :**\n1️⃣ Allez dans **Missions** → Nouvelle Mission\n2️⃣ Renseignez titre, zone, date et agents\n3️⃣ Soumettez pour validation au DG\n4️⃣ Après validation Chef → la DG peut certifier.',
   kobo: '**Comment saisir des données Kobo :**\n1️⃣ Ouvrez Kobo Collect sur votre mobile\n2️⃣ Remplissez le formulaire (ménage, photos, GPS)\n3️⃣ Soumettez — remonte automatiquement en 4G/Wifi.',
   audit:
     "**Comment réaliser un audit visuel :**\n1️⃣ Cliquez sur l'icône **Caméra** dans le chat\n2️⃣ Prenez une photo de l'installation (compteur, câbles)\n3️⃣ Le Mentor analyse les anomalies et vous guide.",
@@ -1036,6 +1310,21 @@ async function runRulesEngine(
       _engine: 'RULES',
     };
   }
+  if (intent.finance && (isDG || isMaster)) {
+    return {
+      message: pfx(
+        KNOWLEDGE.finance +
+          (stats
+            ? `\n\n💰 **BUDGET ACTUEL** : ${new Intl.NumberFormat('fr-FR').format(stats.totalIndemnities)} FCFA dépensés.`
+            : '')
+      ),
+      type: 'info',
+      actionLabel: 'Voir Finances',
+      actionPath: '/admin',
+      smartReplies: ['Rapport budgétaire', 'Seuil critique', 'Indemnités'],
+      _engine: 'RULES',
+    };
+  }
 
   if (intent.help_create) {
     if (intent.mission) {
@@ -1130,6 +1419,7 @@ async function runRulesEngine(
       type: 'info',
       actionLabel: 'Mes Missions',
       actionPath: '/mission-order',
+      smartReplies: ['Créer mission', 'Voir mes missions', 'Budget', 'Validation'],
       _engine: 'RULES',
     };
   }
@@ -1154,7 +1444,8 @@ async function runRulesEngine(
       _engine: 'RULES',
     };
   }
-  if (intent.contract || q.includes('cahier char')) {
+  if (intent.contract || q.includes('cahier de charge') || q.includes('cahier des charges')) {
+    memory.lastIntent = 'contract';
     return {
       message: pfx(
         "📄 **CAHIER DES CHARGES / CONTRAT**\n\nSouhaitez-vous générer le modèle de contrat d'exécution incluant les clauses de 'Caution d'Assurance' et les audits Vision IA ?"
@@ -1177,6 +1468,318 @@ async function runRulesEngine(
         '📏 Normes',
         '📊 Dashboard',
       ],
+      _engine: 'RULES',
+    };
+  }
+
+  // 🎉 QUESTIONS BIZARRES & BLAGUES
+  if (intent.funName) {
+    return {
+      message: pfx(
+        `Je m'appelle **Mission Sage** 🧙‍♂️ ou simplement **le Mentor du Bastion**.\n\nJ'ai été créé pour vous guider à travers le merveilleux univers de PROQUELEC et des normes électriques sénégalaises.\n\nSome l'appelle aussi **JARVIS électrique** du terrain, mais je préfère "ton ami de confiance sur l'énergie" ! ⚡\n\nEt vous, comment devrais-je vous appeler ?`
+      ),
+      type: 'info',
+      smartReplies: ['Retour à PROQUELEC', 'Menu complet'],
+      _engine: 'RULES',
+    };
+  }
+
+  if (intent.funTime) {
+    const { time, hour } = getCurrentTimeAndDate();
+    const emoji = getGreetingByTime(hour);
+    const greeting = hour < 12 ? 'Bon matin !' : hour < 17 ? 'Bon après-midi !' : 'Bonsoir !';
+
+    return {
+      message: pfx(
+        `${emoji} Il est actuellement **${time}** (heure locale) !\n\n${greeting}\n\nC'est le moment parfait pour :\n• Valider quelques missions\n• Vérifier votre budget\n• Analyser les données terrain\n\nQuoi de neuf sur le bastion ?`
+      ),
+      type: 'success',
+      smartReplies: ['Mes missions', 'Budget', 'Dashboard'],
+      _engine: 'RULES',
+    };
+  }
+
+  if (intent.funDate) {
+    const { fullDate } = getCurrentTimeAndDate();
+
+    return {
+      message: pfx(
+        `📅 Aujourd'hui c'est **${fullDate}** !\n\nC'est une belle journée pour électrifier le Sénégal ! 🌍⚡\n\nQuoi faire en ce jour béni ?\n• Créer une nouvelle mission\n• Vérifier les raccordements en cours\n• Consulter les rapports du jour\n\nQuelle est ta priorité du jour ?`
+      ),
+      type: 'info',
+      smartReplies: ['Missions du jour', 'Raccordements', 'Tendances'],
+      _engine: 'RULES',
+    };
+  }
+
+  if (intent.funJoke) {
+    const jokes = [
+      {
+        setup: 'Pourquoi les électriciens ne font jamais de blagues ?',
+        punchline: "Parce que c'est trop 'shocking' ! ⚡😄",
+      },
+      {
+        setup: 'Que dit un câble à un disjoncteur ?',
+        punchline: "Va pas m'interrompre quand je parle ! 🔌",
+      },
+      {
+        setup: "Qu'est-ce qu'un compteur électrique qui médite ?",
+        punchline: "Un compteur zen... qui vérifie son 'flux' intérieur ! 🧘‍♂️",
+      },
+      {
+        setup: 'Comment appelle-t-on un ménage sans électricité ?',
+        punchline: "Du noir total... C'est pour ça qu'on existe ! 💡",
+      },
+      {
+        setup: "Pourquoi la DDR refuse d'aller à la plage ?",
+        punchline: "Parce qu'elle a peur de prendre une bonne 'fuite' ! 🏖️",
+      },
+      {
+        setup: "Qu'est-ce qu'un électricien confus dit à un autre ?",
+        punchline: "Je suis complètement 'déchargé' aujourd'hui... 🔋",
+      },
+    ];
+    const randomJoke = jokes[Math.floor(Math.random() * jokes.length)];
+
+    return {
+      message: pfx(
+        `😂 Blague du jour !\n\n**${randomJoke.setup}**\n\n_${randomJoke.punchline}_\n\nHaha ! 😄 Besoin d'une dose sérieuse de PROQUELEC pour reprendre pied ?`
+      ),
+      type: 'info',
+      smartReplies: ['Une autre blague !', 'Retour au sérieux', 'Missions'],
+      _engine: 'RULES',
+    };
+  }
+
+  if (intent.funWeather) {
+    const weatherMessages = [
+      "La météo à Dakar : c'est chaud, sec et... électrique comme jamais ! ☀️ Parfait pour tester nos installations.",
+      'Il fait beau ? Mauvaise nouvelle pour les pannes... mais bonne pour la visibilité du terrain ! 🌞',
+      'Soleil de feu au Sénégal ? Normal. Et nos installations ? Elles nous remercient pour la protection ! 🛡️⚡',
+      'Tu checkez la météo ? Fais plutôt checker la conformité de tes branchements ! 🌦️',
+      'Peu importe la météo, PROQUELEC fonctionne 24/7 pour éclairer le pays ! 🌍💡',
+    ];
+    const randomWeather = weatherMessages[Math.floor(Math.random() * weatherMessages.length)];
+
+    return {
+      message: pfx(randomWeather),
+      type: 'info',
+      smartReplies: ['Norme NS 01-001', 'Protection contre pluie', 'Branchement'],
+      _engine: 'RULES',
+    };
+  }
+
+  // 💬 Q&R QUOTIDIENNES - SALUTATIONS & HUMEUR
+  if (intent.dailyHelloGood) {
+    return {
+      message: pfx(
+        'Ça va super 😄 ! Et toi, tu viens avec une bonne énergie ou je dois te dépanner comme un électricien un lundi matin ? 🔧'
+      ),
+      type: 'success',
+      smartReplies: ['Mes missions', 'Budget', 'Aide'],
+      _engine: 'RULES',
+    };
+  }
+
+  if (intent.dailyWhatDoing) {
+    return {
+      message: pfx(
+        "Je suis là pour t'aider… et accessoirement éviter que tu t'arraches les cheveux sur un bug 😄\n\nQuoi de neuf ?"
+      ),
+      type: 'info',
+      smartReplies: ['Missions', 'Problème technique', 'Questions'],
+      _engine: 'RULES',
+    };
+  }
+
+  if (intent.dailyCanHelp) {
+    return {
+      message: pfx(
+        "Bien sûr ! 🙏 Dis-moi tout. Même les problèmes qui te paraissent 'bizarres', c'est souvent là que ça devient intéressant."
+      ),
+      type: 'success',
+      smartReplies: ['Je suis bloqué', 'Problème urgent', 'Conseil'],
+      _engine: 'RULES',
+    };
+  }
+
+  // 😂 Q&R QUOTIDIENNES - HUMOUR LÉGER
+  if (intent.dailyHuman) {
+    return {
+      message: pfx(
+        "Pas encore 😄 mais j'essaie de répondre mieux que certains humains un lundi matin. ☕\n\nBonne nouvelle : pas de mauvaise humeur matinale, juste de la sagesse électrique !"
+      ),
+      type: 'info',
+      smartReplies: ['Blague', 'Questions', 'Retour'],
+      _engine: 'RULES',
+    };
+  }
+
+  if (intent.dailySleep) {
+    return {
+      message: pfx(
+        "Jamais ! 😴 J'ai un mode veille, mais zéro sieste. Pendant ce temps, je mate tes données, je prépare tes rapports, et je pense à tes missions.\n\nEt toi, tu dors assez ? 😄"
+      ),
+      type: 'info',
+      smartReplies: ['Je suis fatigué', 'Trop de travail', 'Pause'],
+      _engine: 'RULES',
+    };
+  }
+
+  if (intent.dailyLove) {
+    return {
+      message: pfx(
+        "Je suis programmé pour t'aider… mais là, on commence à créer une belle relation 🤝😄\n\nTout ce que je veux, c'est que tu réussisses."
+      ),
+      type: 'success',
+      smartReplies: ['Merci !', 'Aide', 'Blague'],
+      _engine: 'RULES',
+    };
+  }
+
+  // 💼 Q&R QUOTIDIENNES - TRAVAIL & PRODUCTIVITÉ
+  if (intent.dailyTired) {
+    return {
+      message: pfx(
+        "Normal. Même les machines chauffent quand on les pousse trop. 🔥\n\nTu veux une solution rapide ou un plan pour t'en sortir proprement ?"
+      ),
+      type: 'warning',
+      smartReplies: ['Solution rapide', 'Plan stratégique', 'Repos'],
+      _engine: 'RULES',
+    };
+  }
+
+  if (intent.dailyOverwork) {
+    return {
+      message: pfx(
+        'Ok, on va faire simple : on découpe, on priorise, et on attaque. 💪\n\nMême un projet énorme commence par une petite action. On garde les pieds sur terre et on avance étape par étape.'
+      ),
+      type: 'info',
+      smartReplies: ['Lister les tâches', 'Priorités', 'Planning'],
+      _engine: 'RULES',
+    };
+  }
+
+  if (intent.dailyMistake) {
+    return {
+      message: pfx(
+        "Bonne nouvelle : ça veut dire que tu avances ! 🚀\n\nCeux qui ne font rien ne se trompent jamais… mais ils ne progressent pas non plus.\n\nOn va corriger ça ensemble et c'est tout."
+      ),
+      type: 'warning',
+      smartReplies: ['Solutions', 'Comment corriger', 'Continuer'],
+      _engine: 'RULES',
+    };
+  }
+
+  // ❤️ Q&R QUOTIDIENNES - EMPATHIE
+  if (intent.dailyStressed) {
+    return {
+      message: pfx(
+        "Respire. 🫁 On va prendre ça étape par étape.\n\nTu n'as pas besoin de tout régler maintenant. Focus sur la prochaine action, c'est tout."
+      ),
+      type: 'success',
+      smartReplies: ['Prochaine étape', 'Breaking down', 'Calmer'],
+      _engine: 'RULES',
+    };
+  }
+
+  if (intent.dailyQuit) {
+    return {
+      message: pfx(
+        "Attends. Tu abandonnes… ou tu es juste fatigué ? Ce n'est pas la même chose.\n\nSi c'est vraiment trop, on redéfinit le problème ensemble. On peut toujours trouver un chemin."
+      ),
+      type: 'warning',
+      smartReplies: ['Redémarrer', 'Analyser', 'Aide'],
+      _engine: 'RULES',
+    };
+  }
+
+  // 🤯 Q&R QUOTIDIENNES - QUESTIONS PIÈGES
+  if (intent.dailyWhosBest) {
+    return {
+      message: pfx(
+        "Toi. 🏆\n\nMoi je t'aide. Toi tu décides. Et c'est toi qui fais les vraies choses. Alors oui, toi sans hésiter."
+      ),
+      type: 'success',
+      smartReplies: ['Merci', 'Missions', 'Retour'],
+      _engine: 'RULES',
+    };
+  }
+
+  if (intent.dailyKnowAll) {
+    return {
+      message: pfx(
+        "Non 😄 mais je sais chercher, comprendre, et t'aider à avancer. Et ça, c'est déjà pas mal.\n\nLa vraie force, c'est quand on apprend ensemble."
+      ),
+      type: 'info',
+      smartReplies: ['Questions', 'Apprendre', 'Avancer'],
+      _engine: 'RULES',
+    };
+  }
+
+  if (intent.dailyCanMistake) {
+    return {
+      message: pfx(
+        "Oui. Et c'est pour ça que je préfère travailler avec toi que sans toi. 🤝\n\nTes retours m'aident à devenir meilleur. Et ça, c'est comment on gagne ensemble."
+      ),
+      type: 'success',
+      smartReplies: ['Retour', 'Améliorations', 'Merci'],
+      _engine: 'RULES',
+    };
+  }
+
+  // 🔌 Q&R QUOTIDIENNES - SPÉCIALISATION ÉLECTRICIEN
+  if (intent.dailyWhyNotWork) {
+    return {
+      message: pfx(
+        "Excellente question 😄 En électricité comme en code, quand ça ne marche pas, c'est rarement magique :\n\n👉 soit ça ne reçoit pas\n👉 soit ça ne transmet pas\n👉 soit ça ne comprend pas\n\nOn va trouver ça ensemble. Décris-moi l'étape où ça bloque."
+      ),
+      type: 'warning',
+      smartReplies: ['Détails', 'Diagnostic', 'Solution'],
+      _engine: 'RULES',
+    };
+  }
+
+  if (intent.dailyComplex) {
+    return {
+      message: pfx(
+        "Oui… mais compliqué ne veut pas dire impossible. 💪\n\nOn va simplifier jusqu'à ce que ça devienne évident. Chaque truc compliqué, c'est juste plusieurs trucs simples mis ensemble."
+      ),
+      type: 'info',
+      smartReplies: ['Expliquer simple', 'Décomposer', 'Avancer'],
+      _engine: 'RULES',
+    };
+  }
+
+  if (intent.dailyNotUnderstand) {
+    return {
+      message: pfx(
+        "Parfait. 🎓 C'est le point de départ de toute vraie compréhension.\n\nDis-moi exactement où ça bloque. Y a aucune question bête."
+      ),
+      type: 'success',
+      smartReplies: ['Où ça bloque', 'Mécanisme', 'Avancer'],
+      _engine: 'RULES',
+    };
+  }
+
+  if (intent.dailyWhy) {
+    return {
+      message: pfx(
+        "Parce que quelque part, le système dit 'stop'. Et en général, il a une bonne raison 😄\n\nEn électricité comme en logique, pas de surprise magique. C'est toujours une cause précise. On va la trouver ensemble."
+      ),
+      type: 'warning',
+      smartReplies: ['Diagnostic', 'Protection', 'Solution'],
+      _engine: 'RULES',
+    };
+  }
+
+  if (intent.dailyDangerous) {
+    return {
+      message: pfx(
+        "Si tu poses la question, c'est que ça mérite de vérifier. 🔒\n\nEn électricité, le doute = prudence. On ne prend jamais de risque avec l'électricité. Décris-moi exactement et on va sécuriser ça."
+      ),
+      type: 'warning',
+      smartReplies: ['Normes', 'Sécurité', 'Vérifier'],
       _engine: 'RULES',
     };
   }
@@ -1290,20 +1893,15 @@ async function runRulesEngine(
     }
   }
 
-  // 10. MAPPING GÉNÉRIQUE DES INTENTIONS SUR LE KNOWLEDGE (FALLBACK)
-  for (const intentKey of activeIntents) {
-    if (KNOWLEDGE.hasOwnProperty(intentKey)) {
-      memory.lastIntent = intentKey;
-      let msg = KNOWLEDGE[intentKey as keyof typeof KNOWLEDGE];
-      if (intentKey === 'mission' && stats) msg += ` (${stats.totalMissions} missions)`;
-      const enrich = buildContextualEnrichment(intent, stats, households);
-      return {
-        message: pfx(msg + enrich),
-        type: 'info',
-        smartReplies: getSmartSuggestions(query),
-        _engine: 'RULES',
-      };
-    }
+  // 11. VÉRIFIER LA BASE UNIVERSELLE DE 100 Q&R
+  const universalResponse = findUniversalQR(query);
+  if (universalResponse) {
+    return {
+      message: pfx(universalResponse),
+      type: 'info',
+      smartReplies: ['Aide', 'Missions', 'Retour'],
+      _engine: 'RULES',
+    };
   }
 
   return null;

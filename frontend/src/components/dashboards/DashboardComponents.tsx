@@ -86,8 +86,8 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
       </div>
       <div className="h-2.5 w-full bg-white/5 rounded-full overflow-hidden border border-white/5 shadow-inner p-[1px]">
         <div
-          className={`h-full transition-all duration-1000 ease-out rounded-full bg-gradient-to-r shadow-[0_0_15px] ${barColors[status]}`}
-          style={{ width: `${percentage}%` }}
+          className={`h-full transition-all duration-1000 ease-out rounded-full bg-gradient-to-r shadow-[0_0_15px] w-[var(--progress)] ${barColors[status]}`}
+          style={{ '--progress': `${percentage}%` } as React.CSSProperties}
         />
       </div>
     </div>
@@ -155,8 +155,8 @@ export const KPICard: React.FC<KPICardProps> = ({ title, value, icon, trend, spa
           {sparkline.map((h, i) => (
             <div
               key={i}
-              className="flex-1 bg-blue-500/60 rounded-t-md transition-all duration-1000"
-              style={{ height: `${h}%` }}
+              className="flex-1 bg-blue-500/60 rounded-t-md transition-all duration-1000 h-[var(--bar-h)]"
+              style={{ '--bar-h': `${h}%` } as React.CSSProperties}
             />
           ))}
         </div>
@@ -195,10 +195,10 @@ export const ActivityFeed: React.FC<{ activities: Activity[] }> = ({ activities 
   <div className="space-y-6 flex flex-col h-full">
     <div className="flex justify-between items-center mb-4 px-2">
       <h3 className="text-[10px] font-black text-blue-300/30 uppercase tracking-[0.4em] italic">
-        REAL-TIME ACTIVITY
+        ACTIVITÉ EN TEMPS RÉEL
       </h3>
       <button className="text-[10px] font-black text-blue-400 flex items-center gap-1.5 hover:text-white tracking-widest uppercase italic transition-colors">
-        FULL LOG <ArrowRight size={12} />
+        JOURNAL COMPLET <ArrowRight size={12} />
       </button>
     </div>
     <div className="space-y-3 overflow-y-auto pr-2 custom-scrollbar flex-1">
@@ -232,7 +232,9 @@ export const ActivityFeed: React.FC<{ activities: Activity[] }> = ({ activities 
       ) : (
         <div className="h-full flex flex-col items-center justify-center opacity-20 py-20 text-center">
           <ActivityCircle size={40} className="mb-4" />
-          <p className="text-[10px] font-black uppercase tracking-widest">No activity recorded</p>
+          <p className="text-[10px] font-black uppercase tracking-widest">
+            Aucune activité enregistrée
+          </p>
         </div>
       )}
     </div>
@@ -264,7 +266,7 @@ const ActivityCircle: React.FC<{ size?: number; className?: string }> = ({
 export const AlertPanel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <div className="space-y-4">
     <h3 className="text-[11px] font-black text-rose-400/50 uppercase tracking-[0.4em] mb-6 italic">
-      CRITICAL ALERTS
+      ALERTES CRITIQUES
     </h3>
     {children}
   </div>

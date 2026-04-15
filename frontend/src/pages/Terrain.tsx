@@ -271,7 +271,10 @@ const Terrain: React.FC = () => {
     if (geolocationToastId == null) return;
     if (userLocation || geolocationError) {
       if (typeof geolocationToastId === 'string' || typeof geolocationToastId === 'number') {
-        const dismissId = typeof geolocationToastId === 'number' ? geolocationToastId.toString() : geolocationToastId;
+        const dismissId =
+          typeof geolocationToastId === 'number'
+            ? geolocationToastId.toString()
+            : geolocationToastId;
         toast.dismiss(dismissId);
       }
       setGeolocationToastId(null);
@@ -481,7 +484,8 @@ const Terrain: React.FC = () => {
       selectedHousehold.koboSync?.region;
     const pool = hRegion
       ? allGrappes.filter(
-          (g: GrappeDefinition) => (g.region && g.region.toLowerCase() === hRegion.toLowerCase()) || !g.region
+          (g: GrappeDefinition) =>
+            (g.region && g.region.toLowerCase() === hRegion.toLowerCase()) || !g.region
         )
       : allGrappes;
 

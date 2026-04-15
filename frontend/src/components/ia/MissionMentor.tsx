@@ -11,6 +11,8 @@ import {
   Camera,
   Volume2,
   VolumeX,
+  Maximize2,
+  Minimize2,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../contexts/AuthContext';
@@ -42,15 +44,38 @@ export const MissionMentor: React.FC<MissionMentorProps> = ({ stats, auditLogs, 
   const [isListening, setIsListening] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
+  const [isMaximized, setIsMaximized] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll à chaque nouveau message
+  // Auto-scroll à chaque nouveau message - ajusté pour montrer le début du message IA
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    if (scrollRef.current && history.length > 0) {
+      const lastMessage = history[history.length - 1];
+      if (lastMessage.type !== 'user') {
+        // Pour les messages IA, scroll pour montrer le début du message avec un délai
+        setTimeout(() => {
+          if (scrollRef.current) {
+            const container = scrollRef.current;
+            const lastMessageElement = container.lastElementChild as HTMLElement;
+            if (lastMessageElement) {
+              const containerRect = container.getBoundingClientRect();
+              const messageRect = lastMessageElement.getBoundingClientRect();
+              const scrollTop = container.scrollTop + (messageRect.top - containerRect.top) - 40; // 40px de marge pour la première ligne
+              container.scrollTo({ top: Math.max(0, scrollTop), behavior: 'smooth' });
+            }
+          }
+        }, 200);
+      } else {
+        // Pour les messages utilisateur, scroll vers le bas
+        setTimeout(() => {
+          if (scrollRef.current) {
+            scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+          }
+        }, 100);
+      }
     }
-  }, [history, isThinking]);
+  }, [history]);
 
   // EFFET PROACTIF (S'active à l'ouverture si pas d'historique)
   useEffect(() => {
@@ -224,6 +249,22 @@ export const MissionMentor: React.FC<MissionMentorProps> = ({ stats, auditLogs, 
 
   return (
     <>
+      <style>
+        {`
+          .ai-message-anchor::first-line {
+            font-size: 14px;
+            font-weight: 900;
+            color: #60a5fa;
+            border-left: 3px solid #3b82f6;
+            padding-left: 8px;
+            margin-bottom: 4px;
+            display: block;
+          }
+          .ai-response-first-line-visible {
+            padding-top: 8px;
+          }
+        `}
+      </style>
       {/* FLOATING BUTTON (GEM-MINT) */}
       <div className="fixed bottom-10 right-10 z-[1000] no-print" title="Ouvrir le Mentor GEM-MINT">
         <motion.button
@@ -252,7 +293,7 @@ export const MissionMentor: React.FC<MissionMentorProps> = ({ stats, auditLogs, 
             initial={{ opacity: 0, y: 100, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 100, scale: 0.9 }}
-            className="fixed bottom-32 right-10 w-[400px] h-[600px] z-[1000] glass-card !p-0 !rounded-[3rem] overflow-hidden flex flex-col shadow-[0_50px_100px_-20px_rgba(0,0,0,0.5)] border border-white/10 no-print"
+            className={`fixed bottom-32 right-10 ${isMaximized ? 'w-[calc(100vw-80px)] md:w-[800px] h-[80vh]' : 'w-[400px] h-[600px]'} z-[1000] bg-slate-950/95 backdrop-blur-3xl !p-0 !rounded-[2.5rem] md:!rounded-[3rem] overflow-hidden flex flex-col shadow-[0_50px_100px_-20px_rgba(0,0,0,0.5)] border border-white/10 no-print transition-all duration-500 ease-out`}
           >
             {/* Header Sage */}
             <div className="bg-slate-900 border-b border-white/5 p-6 flex items-center justify-between">
@@ -276,6 +317,13 @@ export const MissionMentor: React.FC<MissionMentorProps> = ({ stats, auditLogs, 
                   className={`text-slate-500 hover:text-white transition-colors p-2 rounded-full ${!isMuted ? 'bg-blue-500/10 text-blue-400' : ''}`}
                 >
                   {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+                </button>
+                <button
+                  onClick={() => setIsMaximized(!isMaximized)}
+                  title={isMaximized ? 'Réduire la fenêtre' : 'Agrandir la fenêtre'}
+                  className="text-slate-500 hover:text-white transition-colors p-2 rounded-full hover:bg-white/5"
+                >
+                  {isMaximized ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
                 </button>
                 {(user?.role === 'ADMIN_PROQUELEC' || user?.email === 'admingem') && (
                   <button
@@ -317,14 +365,14 @@ export const MissionMentor: React.FC<MissionMentorProps> = ({ stats, auditLogs, 
                   key={i}
                   initial={{ opacity: 0, x: resp.type === 'user' ? 20 : -20 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className={`p-5 rounded-[2rem] border relative overflow-hidden backdrop-blur-xl ${
+                  className={`p-5 rounded-[2rem] border relative overflow-hidden backdrop-blur-xl transition-all duration-300 ${
                     resp.type === 'user'
-                      ? 'bg-slate-800/80 border-slate-700/50 text-slate-200 ml-12 rounded-tr-none'
+                      ? `bg-slate-800 border-slate-700 text-slate-200 ${isMaximized ? 'ml-auto mr-4 max-w-[85%]' : 'ml-12'} rounded-tr-none shadow-md`
                       : resp.type === 'warning'
-                        ? 'bg-amber-500/10 border-amber-500/20 text-amber-100 mr-12 rounded-tl-none'
+                        ? `bg-amber-950 border-amber-500/30 text-amber-100 ${isMaximized ? 'mr-auto ml-4 max-w-[85%]' : 'mr-12'} rounded-tl-none`
                         : resp.type === 'error'
-                          ? 'bg-rose-500/10 border-rose-500/20 text-rose-100 mr-12 rounded-tl-none'
-                          : 'bg-blue-600/10 border-blue-600/20 text-blue-50 shadow-xl mr-12 rounded-tl-none'
+                          ? `bg-rose-950 border-rose-500/30 text-rose-100 ${isMaximized ? 'mr-auto ml-4 max-w-[85%]' : 'mr-12'} rounded-tl-none`
+                          : `bg-[#0a192e] border-blue-500/30 text-blue-50 shadow-xl ${isMaximized ? 'mr-auto ml-4 max-w-[85%]' : 'mr-12'} rounded-tl-none ai-message-anchor`
                   }`}
                 >
                   <div className="flex gap-4 items-start">
@@ -349,7 +397,7 @@ export const MissionMentor: React.FC<MissionMentorProps> = ({ stats, auditLogs, 
                     )}
                     <div className="flex-1 space-y-4">
                       <p
-                        className={`text-[13px] font-bold leading-relaxed whitespace-pre-wrap ${resp.type === 'user' ? 'italic' : ''}`}
+                        className={`text-[13px] font-bold leading-relaxed whitespace-pre-wrap ${resp.type === 'user' ? 'italic' : 'ai-response-first-line-visible'}`}
                       >
                         {resp.message}
                       </p>

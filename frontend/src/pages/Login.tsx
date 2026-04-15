@@ -72,11 +72,24 @@ export default function Login() {
       login(emailResp, roleResp, nameResp, orgResp, idResp, accessToken, orgConfigResp);
       navigate('/dashboard');
     } catch (err: any) {
-      logger.error('Login error:', err);
+      logger.error('🔴 Login error:', err);
 
       if (err.response?.status === 503 || err.message?.includes('Network Error')) {
         setError(
-          '⚠️ Base de données inaccessible. Veuillez vérifier que le serveur backend et la base de données sont lancés.'
+          '⚠️ Base de données inaccessible.\n\nActions:\n' +
+          '1. Vérifiez que le backend Node.js est lancé\n' +
+          '2. Vérifiez que Docker Desktop est ouvert\n' +
+          '3. Redémarrez: docker-compose restart postgres'
+        );
+      } else if (err.response?.status === 400) {
+        setError('❌ ' + (err.response?.data?.message || 'Requête invalide.'));
+      } else if (err.response?.status === 500) {
+        setError(
+          '❌ Erreur serveur.\n\n' +
+          'DEV: Vérifiez les logs du backend (npm run dev)\n' +
+          'Solution:\n' +
+          '1. node seed_admin.js (créer utilisateur)\n' +
+          '2. Redémarrer backend'
         );
       } else {
         setError(err.response?.data?.error || 'Identifiant ou mot de passe incorrect.');

@@ -32,11 +32,13 @@ export function useTeams(projectId?: string) {
     try {
       const response = await apiClient.get(`/teams/tree?projectId=${projectId}`);
       const serverTree = response.data.tree || [];
-      
+
       try {
         const allLocalTeams = await (db as any).teams.toArray();
-        const localOfflineTeams = allLocalTeams.filter((t: any) => t.syncStatus === 'pending' && t.projectId === projectId);
-        
+        const localOfflineTeams = allLocalTeams.filter(
+          (t: any) => t.syncStatus === 'pending' && t.projectId === projectId
+        );
+
         if (localOfflineTeams.length > 0) {
           // Build proper tree structure for offline teams
           const offlineParents = localOfflineTeams.filter((t: any) => !t.parentTeamId);
@@ -100,7 +102,7 @@ export function useTeams(projectId?: string) {
           level: data.parentTeamId ? 1 : 0,
           status: 'active',
           syncStatus: 'pending',
-          path: data.parentTeamId ? `${data.parentTeamId}/${newLocalId}` : newLocalId
+          path: data.parentTeamId ? `${data.parentTeamId}/${newLocalId}` : newLocalId,
         };
         await (db as any).teams.add(newLocalTeam);
         setTeams((prev) => [...prev, newLocalTeam as any]);

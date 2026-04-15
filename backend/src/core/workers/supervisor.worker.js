@@ -54,7 +54,7 @@ export const startSilentSupervisor = () => {
                 where: {
                     teams: { some: {} }, // Au moins une équipe
                     households: {
-                        some: { koboSync: { isNot: null } }
+                        some: { koboSync: { not: null } }
                     }
                 },
                 include: { 
@@ -63,7 +63,7 @@ export const startSilentSupervisor = () => {
                     },
                     households: {
                         where: {
-                            koboSync: { isNot: null },
+                            koboSync: { not: null },
                             updatedAt: { lt: staleSince }
                         },
                         orderBy: { updatedAt: 'desc' },

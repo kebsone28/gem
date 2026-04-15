@@ -11,25 +11,27 @@ const ImpersonationBanner: React.FC = () => {
 
   return (
     <div className="fixed top-0 left-0 right-0 z-[9999] bg-gradient-to-r from-red-600 via-orange-600 to-red-600 text-white shadow-2xl animate-in fade-in slide-in-from-top duration-500">
-      <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-4 py-2 md:py-3 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
         <div className="flex items-center gap-3">
-          <div className="bg-white/20 p-1.5 rounded-full animate-pulse">
+          <div className="bg-white/20 p-1.5 rounded-full animate-pulse shrink-0">
             <AlertTriangle size={18} className="text-white" />
           </div>
           <div className="flex flex-col">
-            <span className="text-sm font-bold tracking-wide uppercase">Mode Simulation Actif</span>
-            <span className="text-xs text-white/90">
+            <span className="text-[10px] md:text-sm font-bold tracking-wide uppercase">
+              Mode Simulation Actif
+            </span>
+            <span className="text-[10px] md:text-xs text-white/90">
               Vous agissez en tant que <strong className="text-white underline">{user.name}</strong>{' '}
-              ({user.role}). Toutes vos actions sont tracées.
+              ({user.role}).
             </span>
           </div>
         </div>
 
         <button
           onClick={() => stopImpersonation()}
-          className="flex items-center gap-2 bg-white text-red-600 px-4 py-2 rounded-lg font-bold text-sm hover:bg-red-50 transition-all active:scale-95 shadow-lg group"
+          className="flex items-center gap-2 bg-white text-red-600 px-3 md:px-4 py-1.5 md:py-2 rounded-lg font-bold text-[10px] md:text-sm hover:bg-red-50 transition-all active:scale-95 shadow-lg group shrink-0"
         >
-          <LogOut size={16} className="group-hover:translate-x-1 transition-transform" />
+          <LogOut size={14} className="group-hover:translate-x-1 transition-transform" />
           Quitter la simulation
         </button>
       </div>

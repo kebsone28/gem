@@ -1,7 +1,7 @@
 import { useAuth } from '../contexts/AuthContext';
-import AdminDashboard from './Dashboard/AdminDashboard';
-import ClientDashboard from './Dashboard/ClientDashboard';
-import TeamDashboard from './Dashboard/TeamDashboard';
+import AdminDashboard from './DashboardViews/AdminDashboard';
+import ClientDashboard from './DashboardViews/ClientDashboard';
+import TeamDashboard from './DashboardViews/TeamDashboard';
 
 export default function Dashboard() {
   const { user } = useAuth();

@@ -27,6 +27,7 @@ import { usePermissions } from '../hooks/usePermissions';
 import { motion } from 'framer-motion';
 import { normalizeRole, ROLES, isMasterAdmin, getMissionLabel } from '../utils/permissions';
 import { useProject } from '../contexts/ProjectContext';
+import { NotificationCenter } from './layout';
 
 /**
  * Sidebar – Navigation principale Wanekoo (Deep Navy).
@@ -81,6 +82,13 @@ export default function Sidebar() {
         icon: FileText,
         label: 'Cahier de Charge',
         permission: PERMISSIONS.VOIR_RAPPORTS,
+        category: 'PILOTAGE',
+      },
+      {
+        to: '/admin/pv-automation',
+        icon: ShieldCheck,
+        label: 'Automatisation PV',
+        permission: PERMISSIONS.GERER_PV,
         category: 'PILOTAGE',
       },
       {
@@ -317,33 +325,38 @@ export default function Sidebar() {
 
         {/* Logo Area */}
         <div className="p-8">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-electric-gradient flex items-center justify-center shadow-electric-sm p-1 shrink-0">
-              {user?.organizationConfig?.branding?.logo ? (
-                <img
-                  src={user.organizationConfig.branding.logo}
-                  alt="Logo"
-                  className="max-w-full max-h-full object-contain"
-                />
-              ) : (
-                <BarChart3 className="text-white" size={24} />
-              )}
-            </div>
-            <div className="min-w-0">
-              <h1 className="text-xl font-black tracking-tighter text-white italic leading-none truncate">
-                {user?.organizationConfig?.branding?.organizationName || 'GEM SAAS'}
-              </h1>
-              <div className="flex flex-col mt-1">
-                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-500 transition-all">
-                  {project?.name || 'Wanekoo Core'}
-                </span>
-                {project?.name && (
-                  <span className="text-[8px] font-black uppercase tracking-[0.3em] text-slate-600 mt-0.5">
-                    Projet Actif
-                  </span>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-electric-gradient flex items-center justify-center shadow-electric-sm p-1 shrink-0">
+                {user?.organizationConfig?.branding?.logo ? (
+                  <img
+                    src={user.organizationConfig.branding.logo}
+                    alt="Logo"
+                    className="max-w-full max-h-full object-contain"
+                  />
+                ) : (
+                  <BarChart3 className="text-white" size={24} />
                 )}
               </div>
+              <div className="min-w-0">
+                <h1 className="text-xl font-black tracking-tighter text-white italic leading-none truncate">
+                  {user?.organizationConfig?.branding?.organizationName || 'GEM SAAS'}
+                </h1>
+                <div className="flex flex-col mt-1">
+                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-500 transition-all">
+                    {project?.name || 'Wanekoo Core'}
+                  </span>
+                  {project?.name && (
+                    <span className="text-[8px] font-black uppercase tracking-[0.3em] text-slate-600 mt-0.5">
+                      Projet Actif
+                    </span>
+                  )}
+                </div>
+              </div>
             </div>
+            
+            {/* Notification Center Integration (Axe 4 - Amélioration Continue) */}
+            <NotificationCenter />
           </div>
         </div>
 

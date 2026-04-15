@@ -244,15 +244,17 @@ export default function Simulation() {
           const roleLabel = ROLE_LABELS[role as RoleKey];
 
           // 1. Rechercher ou créer le groupement parent (level 0)
-          const parentTeamsOfTrade = existingTeams.filter((t: any) => 
-            t.tradeKey === tradeKey && 
-            !t.parentTeamId && 
-            t.name.startsWith('Groupement')
+          const parentTeamsOfTrade = existingTeams.filter(
+            (t: any) =>
+              t.tradeKey === tradeKey && !t.parentTeamId && t.name.startsWith('Groupement')
           );
-          let parentTeamId: string | null = parentTeamsOfTrade.length > 0 ? parentTeamsOfTrade[0].id : null;
-          let parentTeamPath: string | null = parentTeamsOfTrade.length > 0 ? parentTeamsOfTrade[0].path : null;
+          let parentTeamId: string | null =
+            parentTeamsOfTrade.length > 0 ? parentTeamsOfTrade[0].id : null;
+          let parentTeamPath: string | null =
+            parentTeamsOfTrade.length > 0 ? parentTeamsOfTrade[0].path : null;
           // Check if existing parent is online or offline
-          let parentIsOffline: boolean = parentTeamsOfTrade.length > 0 ? (parentTeamsOfTrade[0].syncStatus === 'pending') : false;
+          let parentIsOffline: boolean =
+            parentTeamsOfTrade.length > 0 ? parentTeamsOfTrade[0].syncStatus === 'pending' : false;
 
           if (!parentTeamId) {
             const parentPayload = {
@@ -261,7 +263,7 @@ export default function Simulation() {
               role: teamRole,
               tradeKey,
               capacity: 0,
-              status: 'active'
+              status: 'active',
             };
             try {
               const res = await apiClient.post('/teams', parentPayload);
@@ -281,7 +283,7 @@ export default function Simulation() {
                 organizationId: project?.organizationId || 'org-offline',
                 level: 0,
                 syncStatus: 'pending',
-                path: parentTeamId
+                path: parentTeamId,
               };
               await (db as any).teams.add(newParent);
               existingTeams.push(newParent);
@@ -290,7 +292,9 @@ export default function Simulation() {
           }
 
           // 2. Créer les sous-équipes
-          const existingChildren = existingTeams.filter((t: any) => t.tradeKey === tradeKey && t.parentTeamId === parentTeamId);
+          const existingChildren = existingTeams.filter(
+            (t: any) => t.tradeKey === tradeKey && t.parentTeamId === parentTeamId
+          );
           const needed = config.count - existingChildren.length;
 
           if (needed > 0) {
@@ -317,7 +321,14 @@ export default function Simulation() {
                   existingTeams.push(res.data);
                 } catch (apiErr) {
                   // Unexpected API error → save locally with offline flag
-                  const newTeam = { ...payload, id: newId, organizationId: project?.organizationId || 'org-offline', level: 1, syncStatus: 'pending', path: `${parentTeamPath}/${newId}` };
+                  const newTeam = {
+                    ...payload,
+                    id: newId,
+                    organizationId: project?.organizationId || 'org-offline',
+                    level: 1,
+                    syncStatus: 'pending',
+                    path: `${parentTeamPath}/${newId}`,
+                  };
                   await (db as any).teams.add(newTeam);
                   existingTeams.push(newTeam);
                 }
@@ -335,7 +346,7 @@ export default function Simulation() {
                   organizationId: project?.organizationId || 'org-offline',
                   level: 1,
                   syncStatus: 'pending',
-                  path: `${parentTeamPath}/${newId}`
+                  path: `${parentTeamPath}/${newId}`,
                 };
                 await (db as any).teams.add(newTeam);
                 existingTeams.push(newTeam);
@@ -445,21 +456,21 @@ export default function Simulation() {
     () =>
       optimizedConfigs
         ? calculerScenarioV2({
-          householdsCount,
-          devisTotalPlanned: devis.totalPlanned,
-          projectConfig: project,
-          teamConfigs: optimizedConfigs,
-          baseVehicleCount,
-          tauxImprevu,
-          isHivernage,
-          tauxRejet,
-          tauxAcompte,
-          workDaysPerWeek,
-          holidaysCount,
-          penaliteHivernageMacon,
-          penaliteHivernageReseau,
-          dateDemarrageInitiale,
-        })
+            householdsCount,
+            devisTotalPlanned: devis.totalPlanned,
+            projectConfig: project,
+            teamConfigs: optimizedConfigs,
+            baseVehicleCount,
+            tauxImprevu,
+            isHivernage,
+            tauxRejet,
+            tauxAcompte,
+            workDaysPerWeek,
+            holidaysCount,
+            penaliteHivernageMacon,
+            penaliteHivernageReseau,
+            dateDemarrageInitiale,
+          })
         : null,
     [
       optimizedConfigs,
@@ -1165,7 +1176,9 @@ export default function Simulation() {
                       </p>
                       <p className="text-2xl font-black text-white flex items-baseline gap-2">
                         <span>{activeScenario.calendarDuration}j</span>
-                        <span className="text-sm text-blue-400/80 font-medium">(~{(activeScenario.calendarDuration / 30).toFixed(1).replace('.0', '')}m)</span>
+                        <span className="text-sm text-blue-400/80 font-medium">
+                          (~{(activeScenario.calendarDuration / 30).toFixed(1).replace('.0', '')}m)
+                        </span>
                       </p>
                       <p className="text-xs text-slate-400 mt-1">
                         {currentScenario.calendarDuration - activeScenario.calendarDuration > 0

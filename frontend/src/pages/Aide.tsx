@@ -19,6 +19,9 @@ import {
   ClipboardList,
   Target,
   CloudSync,
+  BrainCircuit,
+  QrCode,
+  ShieldAlert,
 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -52,8 +55,8 @@ const SCREENSHOTS = [
   },
   {
     src: '/aide_pdf_rapport.png',
-    label: 'Rapport PDF Multi-Pages',
-    desc: '4 modèles PDF avec en-tête PROQUELEC, barres de progression et pied de page Page N/Total.',
+    label: 'Rapports & Cahiers (.docx)',
+    desc: 'Exports professionnels avec QR code de traçabilité, calculs TVA auto, et moteur de rendu haute performance.',
   },
 ];
 
@@ -154,10 +157,46 @@ function ScreenshotGallery() {
 /* ─── Main page ─────────────────────────────────────────────────── */
 export default function Aide() {
   const { isDarkMode } = useTheme();
-  const [openSection, setOpenSection] = useState<string | null>('dashboard');
+  const [openSection, setOpenSection] = useState<string | null>('gem_mint_ia');
   const toggleSection = (id: string) => setOpenSection(openSection === id ? null : id);
 
   const overviewData = [
+    {
+      id: 'gem_mint_ia',
+      title: 'GEM-MINT IA — Intelligence Artificielle & Mentor',
+      icon: BrainCircuit,
+      color: 'violet',
+      bg: 'bg-violet-100 dark:bg-violet-900/50 text-violet-900 dark:text-violet-100',
+      zap: 'text-violet-900 dark:text-violet-100',
+      content: [
+        "Decision Engine (Cerveau) : Analyse prédictive des risques et génération d'insights stratégiques pour la DG.",
+        'Electrician Quran : Base de connaissances immuable intégrant les normes NS 01-001 et NFC 15-100.',
+        'Vision AI : Analyse intelligente des photos terrain pour détecter les anomalies visuelles.',
+        'Mentor Sage Interactif : Chat intelligent redimensionnable pour un pilotage assisté par IA.',
+      ],
+      utility:
+        "Auditer automatiquement vos données avant validation. L'IA compare vos saisies terrain avec les normes techniques pour garantir un chantier sans défaut.",
+      example:
+        "L'IA identifie une sous-utilisation des ressources à Kolda et suggère le redéploiement de 2 équipes vers Ziguinchor pour rattraper le retard.",
+    },
+    {
+      id: 'pv_automation',
+      title: 'Automatisation des Procès-Verbaux (PV)',
+      icon: ShieldAlert,
+      color: 'rose',
+      bg: 'bg-rose-100 dark:bg-rose-900/50 text-rose-900 dark:text-rose-100',
+      zap: 'text-rose-900 dark:text-rose-100',
+      content: [
+        'Génération Turbo : Création instantanée de PVNC (Non-Conformité), PVR (Réception) et PVHSE.',
+        'Détection Automatique : L’algorithme identifie le type de PV nécessaire selon les réponses Kobo (ex: seuils de terre).',
+        'Notifications Temps Réel : Envoi automatique d’alertes SMS/Email aux prestataires dès la détection d’une anomalie.',
+        'Juridique & Traçabilité : Tous les PV sont horodatés, géolocalisés et conformes au cahier des charges.',
+      ],
+      utility:
+        "Sécuriser juridiquement les chantiers et accélérer les levées de réserves. Permet de transformer des données froides (Kobo) en actions administratives immédiates.",
+      example:
+        "Une mesure de terre à 1600 Ohms (seuil > 1500) déclenche automatiquement la génération d'un PVNC envoyé par mail à l'électricien.",
+    },
     {
       id: 'dashboard',
       title: 'Dashboard Global (Admin / DG)',
@@ -172,6 +211,10 @@ export default function Aide() {
         'Accès rapide : Rapports / Gestion Utilisateurs / Carte Terrain.',
         'Backend Haute Performance : Node.js avec moteur Prisma et accélération Redis.',
       ],
+      utility:
+        "Supervision stratégique de haut niveau. Permet de piloter l'ensemble du projet GEM d'un coup d'œil et de réagir aux alertes critiques.",
+      example:
+        'Visualiser que la région de Matam est à 85% de raccordements avec un budget consommé de 12,4M FCFA.',
     },
     {
       id: 'team_dash',
@@ -186,6 +229,10 @@ export default function Aide() {
         "Alerte dépendance : avertissement si l'équipe précédente est < 80%.",
         "Performance : Cache Redis pour un chargement instantané des KPIs d'équipe.",
       ],
+      utility:
+        "Pilotage opérationnel pour les chefs de brigade. Permet de suivre l'avancement spécifique de leur corps d'état et de lever les blocages inter-équipes.",
+      example:
+        "Le Chef d'Équipe Réseau reçoit une alerte rouge car les Maçons n'ont pas encore scellé les coffrets (dépendance bloquée).",
     },
     {
       id: 'lse',
@@ -199,20 +246,10 @@ export default function Aide() {
         'Répartition par région et liste des 5 dernières validations terrain.',
         'Accès direct au Rapport PDF depuis le bouton Générer.',
       ],
-    },
-    {
-      id: 'notifications',
-      title: 'Alertes & Notifications',
-      icon: Bell,
-      color: 'amber',
-      bg: 'bg-amber-100 dark:bg-amber-900/50 text-amber-900 dark:text-amber-100',
-      zap: 'text-amber-900 dark:text-amber-100',
-      content: [
-        'Bannière ambre automatique si la dernière sync Kobo date de > 24h.',
-        'Notifications Push WebSockets : alertes temps réel lors des synchronisations terrains.',
-        "Bouton 'Sync maintenant' intégré, se ferme avec ✕.",
-        'Revérification automatique toutes les 5 minutes.',
-      ],
+      utility:
+        "Interface de transparence pour le client final (LSE). Permet de consulter l'avancement global certifié sans interférer avec les opérations.",
+      example:
+        'Le client (LSE) voit que 150 nouveaux ménages ont été raccordés ce matin même grâce aux logs temps réel.',
     },
     {
       id: 'terrain',
@@ -228,6 +265,10 @@ export default function Aide() {
         'Géolocalisation continue : Suivi en temps réel de votre position avec bouton de recentrage dynamique.',
         'Outils intégrés : Zoom, Carte satellite/rues, Heatmap thermique, Légende interactive, Régionalisation (Grappes).',
       ],
+      utility:
+        'Localisation et navigation terrain. Essentiel pour la relève GPS, le dispatching des ménages par quartier et la validation visuelle des zones.',
+      example:
+        'Sélectionner le ménage #7432 pour lancer la navigation GPS directe vers la porte du client via OSRM.',
     },
     {
       id: 'tournee',
@@ -242,6 +283,10 @@ export default function Aide() {
         "Bouton 'Lancer la tournée' : ouvre Google Maps avec l'itinéraire optimisé pour le chauffeur.",
         "Activé depuis l'icône Camion 🚛 dans la barre d'outils de la carte.",
       ],
+      utility:
+        'Optimisation de la logistique du dernier kilomètre. Utilisé par les chauffeurs pour livrer les kits solaires sans perte de temps ni gaspillage de carburant.',
+      example:
+        'Planifier la distribution de 20 kits de raccordement en optimisant le trajet pour consommer moins de 5000 FCFA de gazole.',
     },
     {
       id: 'geofencing',
@@ -256,6 +301,10 @@ export default function Aide() {
         "Galerie photos Kobo : cliquez sur une photo de ménage pour l'afficher en plein écran (lightbox).",
         'Navigation clavier dans le lightbox : flèches ← → pour passer de la photo maison à la photo compteur.',
       ],
+      utility:
+        "Contrôle qualité et détection de fraude. Permet à l'admin de vérifier visuellement la réalité des installations et la véracité des positions GPS transmises.",
+      example:
+        "L'Admin voit une alerte sur un ménage de Podor dont la photo GPS se trouve en réalité à Saint-Louis (Erreur de zone).",
     },
     {
       id: 'logistique',
@@ -269,6 +318,10 @@ export default function Aide() {
         'Atelier : IA prédictive pour estimer la date de fin de projet.',
         'Grappes & Affectations : assignez plusieurs équipes par zone.',
       ],
+      utility:
+        "Gestion du matériel et planning. Permet d'anticiper les ruptures de stock de câbles ou de compteurs avant qu'elles n'immobilisent les équipes.",
+      example:
+        "L'Atelier IA calcule qu'au rythme actuel (12 ménages/jour), le projet à Fatick finira le 15 Juillet.",
     },
     {
       id: 'rapports',
@@ -283,6 +336,10 @@ export default function Aide() {
         "Pied de page dynamique 'Page N / Total' sur chaque page.",
         'Chiffres FCFA format ASCII-safe (1.234.567 FCFA) — plus de caractères & parasites.',
       ],
+      utility:
+        'Reporting officiel à haute valeur ajoutée. Destiné à être envoyé aux bailleurs et partenaires pour prouver le travail accompli avec des graphiques certifiés.',
+      example:
+        "Générer un rapport d'avancement certifié par GEM-MINT IA pour la réunion hebdomadaire avec le client LSE.",
     },
     {
       id: 'finances',
@@ -295,20 +352,10 @@ export default function Aide() {
         'Graphiques camembert dynamiques : répartition du budget.',
         'Tableau Devis VS Réel : identifiez les postes déficitaires.',
       ],
-    },
-    {
-      id: 'parametres',
-      title: 'Sécurité & Contrôle Administrateur',
-      icon: ShieldCheck,
-      color: 'slate',
-      bg: 'bg-slate-100 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100',
-      zap: 'text-slate-900 dark:text-slate-100',
-      content: [
-        "God Mode Administrateur : L'Admin possède un accès 'Passe-Partout' total sur toutes les fonctions de sécurité.",
-        "Maître des Permissions : L'Admin peut outrepasser les rôles par défaut pour donner n'importe quel accès spécifique (ex: Terrain au Comptable).",
-        'Double Authentification (2FA) : Forçage de sécurité par compte avec question secrète hachée via Bcrypt.',
-        'Isolation SaaS : Chaque organisation possède sa propre configuration cloud étanche.',
-      ],
+      utility:
+        'Surveillance de la rentabilité. Permet aux comptables de comparer les dépenses réelles terrain avec les budgets alloués pour éviter les dérapages financiers.',
+      example:
+        "Détecter instantanément un dépassement de budget de 12% sur l'achat de câbles électriques TBT.",
     },
     {
       id: 'cahier',
@@ -320,9 +367,15 @@ export default function Aide() {
       content: [
         'Synoptiques métier : missions détaillées par phases techniques (Génie civil, Réseau, Intérieur, etc).',
         "Matériel & HSE : listes exhaustives par corps d'état avec consignes de sécurité Senelec.",
-        'Export Word (.doc) pro : inclut le logo Proquelec, introductions officielles et bloc de signatures.',
-        "Export groupé : générez l'intégralité du dossier technique (tous les métiers) en un seul clic.",
+        "Moteur Word PRO : Architecture modulaire avec chargement d'images en parallèle et cache intelligent.",
+        'Traçabilité QR Code : Chaque lot métier inclut un QR code de vérification terrain immuable.',
+        'Calculs Financiers : Automatisation des montants HT/TVA(18%)/TTC dans les bordereaux.',
+        'Sommaire Dynamique : Génération de TOC interactive avec hyperliens natifs Word.',
       ],
+      utility:
+        "Formalisation contractuelle et technique. Permet de générer les dossiers d'exécution certifiés et les bordereaux financiers en un clic pour vos partenaires.",
+      example:
+        'Générer un bordereau dont le montant global TTC est calculé automatiquement à 1.180.000 FCFA.',
     },
     {
       id: 'simulation',
@@ -336,6 +389,10 @@ export default function Aide() {
         "Graphiques d'impact temporel animés et calcul du surcoût lié aux risques.",
         "Ajustements interactifs de scénarios via une interface 'Glassmorphism' premium.",
       ],
+      utility:
+        "Aide à la décision prospective. Utilisé pour anticiper les retards liés aux saisons (hivernage) ou aux problèmes de trésorerie avant qu'ils ne surviennent.",
+      example:
+        "Simuler l'impact d'une semaine de fortes pluies sur le planning global du lot Réseau Basse Tension.",
     },
     {
       id: 'mission',
@@ -351,6 +408,29 @@ export default function Aide() {
         "Notifications Automatiques : Emails envoyés à la Direction (Soumission) et à l'Initiateur (Certification).",
         'Gestion des Perdiems : Calcul structuré par zones (1, 2, 3) selon les barèmes officiels.',
       ],
+      utility:
+        'Validation administrative et financière. Digitalise le circuit de signature des ordres de mission pour accélérer les départs sur le terrain.',
+      example:
+        'Le DG valide un OM pour une équipe de 5 personnes à Linguère : le coût est certifié à 245.000 FCFA.',
+    },
+    {
+      id: 'parametres',
+      title: 'Sécurité & Contrôle Administrateur',
+      icon: ShieldCheck,
+      color: 'slate',
+      bg: 'bg-slate-100 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100',
+      zap: 'text-slate-900 dark:text-slate-100',
+      content: [
+        "God Mode Administrateur : L'Admin possède un accès 'Passe-Partout' total sur toutes les fonctions de sécurité.",
+        "Maître des Permissions : L'Admin peut outrepasser les rôles par défaut pour donner n'importe quel accès spécifique (ex: Terrain au Comptable).",
+        "Impersonnation (God Mode) : Capacité à se connecter 'en tant que' un autre utilisateur pour diagnostic sans mot de passe.",
+        'Double Authentification (2FA) : Forçage de sécurité par compte avec question secrète hachée via Bcrypt.',
+        'Isolation SaaS : Chaque organisation possède sa propre configuration cloud étanche.',
+      ],
+      utility:
+        "Maintenance et support. Permet à l'administrateur système de résoudre les problèmes de compte et de garantir l'étanchéité des données.",
+      example:
+        "L'Admin prend l'identité d'un agent terrain pour vérifier pourquoi son panneau de synchronisation est bloqué.",
     },
     {
       id: 'hub',
@@ -364,6 +444,10 @@ export default function Aide() {
         'Tableau de bord organisé par pôles stratégiques (Exploration, Intelligence, Outils Experts).',
         "Recherche instantanée et exécution d'actions systèmes directes à la volée.",
       ],
+      utility:
+        "Accès rapide multi-fonctions. Utilisé pour naviguer à la vitesse de l'éclair dans les milliers de pages de l'application sans utiliser la souris.",
+      example:
+        'Utiliser Ctrl+K pour taper "Maçon" et accéder instantanément à la gestion des équipes de maçonnerie de Louga.',
     },
     {
       id: 'synchronisation',
@@ -379,6 +463,28 @@ export default function Aide() {
         'Protection Intelligente : Le système compare les dates (updatedAt) et ne remplace jamais une donnée plus récente.',
         "Auto-Sync : L'interface synchronise les petites modifications en temps réel sans action de votre part.",
       ],
+      utility:
+        'Intégrité des données multi-supports. Assure que les travaux faits au bureau (Excel) et les travaux faits sur mobile (Kobo) fusionnent parfaitement.',
+      example:
+        'Pousser 5000 nouveaux ménages importés localement vers le serveur cloud via une seule commande.',
+    },
+    {
+      id: 'kobo_engine',
+      title: 'Moteur de Synchronisation Kobo (Data Flow)',
+      icon: QrCode,
+      color: 'emerald',
+      bg: 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-900 dark:text-emerald-100',
+      zap: 'text-emerald-900 dark:text-emerald-100',
+      content: [
+        'Mapping Intelligent : Conversion automatique des flux XML KoboToolbox en modèles de données Household/Audit GEM.',
+        'Validation par NumeroOrdre : Stratégie d’upsert robuste empêchant les doublons lors des synchronisations massives.',
+        'Géolocalisation Inverse : Calcul automatique des zones (Grappes) et régions basé sur les coordonnées GPS Kobo.',
+        'Fil rouge technique : Récupération des photos d’installations et des signatures électroniques des bénéficiaires.',
+      ],
+      utility:
+        'Automatisation de la saisie terrain. Supprime le besoin de ressaisie manuelle en bureau en intégrant directement les données collectées par les contrôleurs via tablettes.',
+      example:
+        'Une synchronisation Kobo traite 200 nouvelles inspections en 3 secondes, mettant à jour instantanément les dashboards régionaux.',
     },
   ];
 
@@ -386,7 +492,7 @@ export default function Aide() {
     <PageContainer>
       <PageHeader
         title="Aide & Tour d'Horizon"
-        subtitle="Guide complet de GEM SaaS v3 PRO — architecture cloud avec backend PostgreSQL & performance temps réel."
+        subtitle="Guide complet de GEM SaaS v4.0 — architecture cloud avec backend PostgreSQL & performance temps réel."
         icon={HelpCircle}
       />
 
@@ -419,12 +525,12 @@ export default function Aide() {
                 </button>
 
                 <div
-                  className={`transition-all duration-300 ease-in-out ${openSection === section.id ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0 overflow-hidden'}`}
+                  className={`transition-all duration-300 ease-in-out ${openSection === section.id ? 'max-h-[1000px] opacity-100 pb-5' : 'max-h-0 opacity-0 overflow-hidden'}`}
                 >
                   <div
-                    className={`p-5 pt-0 border-t ${isDarkMode ? 'border-slate-800/50' : 'border-slate-100'}`}
+                    className={`px-5 pt-0 border-t ${isDarkMode ? 'border-slate-800/50' : 'border-slate-100'}`}
                   >
-                    <ul className="space-y-2.5 mt-4">
+                    <ul className="space-y-2.5 mt-5">
                       {section.content.map((item, idx) => (
                         <li key={idx} className="flex items-start gap-3">
                           <Zap size={14} className={`shrink-0 mt-0.5 ${section.zap}`} />
@@ -434,6 +540,37 @@ export default function Aide() {
                         </li>
                       ))}
                     </ul>
+
+                    {(section as any).utility && (
+                      <div
+                        className={`mt-5 p-4 rounded-xl ${isDarkMode ? 'bg-indigo-500/10 text-indigo-300' : 'bg-indigo-50 text-indigo-800'}`}
+                      >
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] mb-2">
+                          Usage & Utilité :
+                        </p>
+                        <p className="text-sm font-bold leading-relaxed">
+                          {(section as any).utility}
+                        </p>
+                      </div>
+                    )}
+
+                    {(section as any).example && (
+                      <div
+                        className={`mt-4 p-4 rounded-xl border-l-4 ${isDarkMode ? 'bg-slate-800/50 border-indigo-500/50' : 'bg-slate-50 border-indigo-500/30'}`}
+                      >
+                        <div className="flex items-center gap-2 mb-2">
+                          <Target size={14} className="text-indigo-500" />
+                          <span className="text-[10px] font-black tracking-widest text-indigo-500 uppercase">
+                            Cas d'usage concret
+                          </span>
+                        </div>
+                        <p
+                          className={`${COMMON_CLASSES.body} text-sm italic leading-relaxed text-slate-500 dark:text-slate-400`}
+                        >
+                          "{(section as any).example}"
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -448,7 +585,7 @@ export default function Aide() {
         <p
           className={`${COMMON_CLASSES.body} font-bold ${isDarkMode ? 'text-indigo-300' : 'text-indigo-700'}`}
         >
-          GEM SaaS v3.9 — Routing OSRM · Tuiles MVT · Geofencing · Mobile Responsive · Redis BullMQ
+          GEM SaaS v4.0 — GEM-MINT IA · Routing OSRM · Tuiles MVT · QR Traceability · Redis BullMQ
         </p>
       </div>
     </PageContainer>

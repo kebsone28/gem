@@ -61,6 +61,7 @@ export const PERMISSIONS = {
   ACCES_TERMINAL_KOBO: 'acces_terminal_kobo',
   CREER_MISSION: 'creer_mission',
   VALIDER_MISSION: 'valider_mission',
+  GERER_PV: 'gerer_pv',
 };
 
 // 4️⃣ MATRICE DE DROITS (Standard)
@@ -77,6 +78,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     PERMISSIONS.VALIDER_MISSION,
     PERMISSIONS.GERER_LOGISTIQUE,
     PERMISSIONS.VOIR_CARTE,
+    PERMISSIONS.GERER_PV,
   ],
 
   [ROLES.CHEF_PROJET]: [
@@ -89,6 +91,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     PERMISSIONS.VOIR_SIMULATION,
     PERMISSIONS.VOIR_FINANCES,
     PERMISSIONS.GERER_FINANCES,
+    PERMISSIONS.GERER_PV,
   ],
 
   [ROLES.COMPTABLE]: [
@@ -174,4 +177,5 @@ export const PERMISSION_LABELS: Record<string, string> = {
   [PERMISSIONS.SUPPRIMER_PROJET]: 'Supprimer Projets',
   [PERMISSIONS.GERER_PARAMETRES]: 'Paramètres Système',
   [PERMISSIONS.GERER_UTILISATEURS]: 'Gestion Utilisateurs',
+  [PERMISSIONS.GERER_PV]: 'Automatisation PV',
 };
