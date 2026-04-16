@@ -6,7 +6,7 @@ import { ELECTRICIAN_GUIDE } from './ElectricianQuran';
  * Plus aucune donnée simulée. Se base strictement sur les données Kobo et Construction réelles.
  */
 
-export type PVType = 'PVNC' | 'PVR' | 'PVHSE' | 'PVRET' | 'PVRD' | 'PVRES';
+export type PVType = 'PVNC' | 'PVR' | 'PVHSE' | 'PVRET' | 'PVRD' | 'PVRES' | 'PVINE';
 
 export interface GeneratedPVContent {
   description: string;
@@ -18,28 +18,31 @@ export interface GeneratedPVContent {
 // Fonction utilitaire pour extraire dynamiquement les matériels réels saisis
 function extractRealMaterials(tech: any, kobo: any) {
   const materials = [];
-  const source = { ...(tech?.livreur || tech), ...(kobo || {}) };
+  const source = { ...kobo, ...(tech?.livreur || {}), ...tech };
 
   Object.entries(source).forEach(([key, val]) => {
-    // Si la clé contient des mots typiques de matériel et a une valeur numérique
-    if (
-      (key.includes('cable') || key.includes('compteur') || key.includes('disjoncteur') || key.includes('lampe') || key.includes('hublot') || key.includes('poteau')) 
-      && (typeof val === 'number' || (typeof val === 'string' && !isNaN(Number(val))))
-    ) {
+    const lowKey = key.toLowerCase();
+    // Détection des mots clés techniques (Câbles, Tranchées, Équipements)
+    const isTechnical = ['cable', 'câble', 'tranch', 'tranchée', 'compteur', 'disjoncteur', 'lampe', 'hublot'].some(kw => lowKey.includes(kw));
+
+    if (isTechnical && (typeof val === 'number' || (typeof val === 'string' && val !== '' && !isNaN(Number(val))))) {
       const qte = Number(val);
       if (qte > 0) {
+        // Nettoyage du nom : on enlève les chemins de groupes Kobo (ex: group_sy9vj14/)
+        let label = key.split('/').pop()?.replace(/_/g, ' ') || key;
+        label = label.charAt(0).toUpperCase() + label.slice(1).toLowerCase();
+
         materials.push({
-          item: key.replace(/_/g, ' ').toUpperCase(),
+          item: label,
           quantity: qte,
-          unit: key.includes('cable') ? 'm' : 'U'
+          unit: (lowKey.includes('cable') || lowKey.includes('tranch')) ? 'm' : 'U'
         });
       }
     }
   });
 
-  // Si l'opérateur n'a saisi aucun matériel précis, on évite le tableau vide par un résumé contractuel
   if (materials.length === 0) {
-    materials.push({ item: "Ensemble matériel vérifié sur réseau existant", quantity: 1, unit: "Lot" });
+    materials.push({ item: "Prestation d'installation (Main d'œuvre certifiée)", quantity: 1, unit: "Lot" });
   }
 
   return materials;
@@ -75,6 +78,8 @@ export const PVAIEngine = {
         return this.generateHSEContent(submission, kobo, tech, refHash);
       case 'PVRET':
         return this.generateRetardContent(submission, kobo, tech, refHash);
+      case 'PVINE':
+        return this.generateIneligibleContent(submission, kobo, tech, refHash);
       default:
         return this.generateConformityContent(submission, kobo, tech, 'PROVISOIRE', refHash);
     }
@@ -87,8 +92,8 @@ export const PVAIEngine = {
     // Détection DYNAMIQUE des anomalies réelles dans les données
     if (tech.controle?.conforme === false) anomalies.push(`Contrôle final invalidé par l'auditeur.`);
     if (tech.macon?.termine === false) anomalies.push(`Travaux de génie civil inachevés.`);
-    if (tech.controle?.resistance_terre !== undefined && Number(tech.controle.resistance_terre) > 50) {
-      anomalies.push(`Valeur ohmique de terre hors norme: ${tech.controle.resistance_terre}Ω (>50Ω).`);
+    if (tech.controle?.resistance_terre !== undefined && Number(tech.controle.resistance_terre) > 1500) {
+      anomalies.push(`Valeur ohmique de terre hors norme: ${tech.controle.resistance_terre}Ω (>1500Ω).`);
     }
 
     if (anomalies.length === 0) {
@@ -103,6 +108,38 @@ export const PVAIEngine = {
       recommendations: [
         "Reprise immédiate des défauts mentionnés.",
         "Nouvelle inspection terrain obligatoire avant relance de facturation."
+      ],
+      referenceContractuelle: refHash
+    };
+  },
+
+  generateIneligibleContent(sub: Household, kobo: any, tech: any, refHash: string): GeneratedPVContent {
+    let cause = "Motifs probables : Contrainte technique insurmontable, désistement du bénéficiaire ou critères hors projet.";
+    
+    // Analyse des champs réels du formulaire
+    const situation = kobo.Situation_du_M_nage || kobo['group_wu8kv54/Situation_du_M_nage'] || "";
+    const justificatif = kobo.justificatif || kobo['group_wu8kv54/justificatif'] || "";
+
+    if (situation.toLowerCase().includes('menage_non_eligible')) {
+      cause = "Le ménage a été déclaré NON ÉLIGIBLE suite au passage des équipes de terrain.";
+    } else if (situation.toLowerCase().includes('menage_injoignable')) {
+      cause = "Le ménage est resté INJOIGNABLE après plusieurs tentatives de passage.";
+    } else if (justificatif.toLowerCase().includes('desistement_du_menage')) {
+      cause = "Le bénéficiaire a officiellement exprimé son DÉSISTEMENT du projet.";
+    } else if (justificatif.toLowerCase().includes('probleme_technique_d_installation')) {
+      cause = "Une impossibilité technique majeure empêche toute installation conforme.";
+    } else if (justificatif.toLowerCase().includes('maison_en_paille')) {
+      cause = "La structure de l'habitat (Maison en paille) est incompatible avec les normes de sécurité électrique.";
+    } else if (kobo.status_global === 'abandon') {
+      cause = "Le dossier a été marqué comme ABANDONNÉ dans le système de suivi.";
+    }
+
+    return {
+      description: `Par la présente, il est attesté que le candidat enregistré sous le lot N° ${sub.numeroordre} est déclaré INÉLIGIBLE aux travaux d'installation électrique au titre de ce projet. ${cause}`,
+      materials: [],
+      recommendations: [
+        "Clôture et abandon administratif du lot.",
+        "Aucune facturation prestataire n'est autorisée sur cette entité."
       ],
       referenceContractuelle: refHash
     };

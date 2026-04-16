@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { X, CheckCircle2, RotateCcw, PenTool } from 'lucide-react';
+import { X, CheckCircle2, RotateCcw, PenTool, Upload } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface SignatureModalProps {
@@ -79,6 +79,31 @@ export default function SignatureModal({
     }
   };
 
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !canvasRef.current) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = canvasRef.current!;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          // Scale to fit while maintaining aspect ratio
+          const scale = Math.min(canvas.width / img.width, canvas.height / img.height) * 0.9;
+          const x = (canvas.width - img.width * scale) / 2;
+          const y = (canvas.height - img.height * scale) / 2;
+          ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
+          setHasSigned(true);
+        }
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
   const save = () => {
     if (!canvasRef.current || !hasSigned) return;
     // Trim white edges if possible, but for now just send as is
@@ -144,19 +169,25 @@ export default function SignatureModal({
                 )}
               </div>
 
-              <div className="flex gap-3">
+              <div className="flex flex-wrap gap-3">
                 <button
                   onClick={clear}
-                  className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-slate-100 dark:bg-slate-900 text-slate-500 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-slate-200 transition-all active:scale-95"
+                  className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-slate-100 dark:bg-slate-900 text-slate-500 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition-all active:scale-95"
                 >
                   <RotateCcw size={14} /> Effacer
                 </button>
+                
+                <label className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-500/20 transition-all active:scale-95 cursor-pointer">
+                  <Upload size={14} /> Importer Cachet
+                  <input type="file" accept="image/*" onChange={handleFileUpload} className="hidden" />
+                </label>
+
                 <button
                   onClick={save}
                   disabled={!hasSigned}
-                  className="flex-[2] flex items-center justify-center gap-2 py-3.5 bg-slate-900 text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-xl shadow-slate-900/20 active:scale-95 disabled:opacity-50"
+                  className="w-full flex items-center justify-center gap-2 py-4 bg-slate-900 dark:bg-indigo-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-xl shadow-slate-900/20 active:scale-95 disabled:opacity-50 mt-2"
                 >
-                  <CheckCircle2 size={14} /> Enregistrer la Signature
+                  <CheckCircle2 size={16} /> Valider & Apposer
                 </button>
               </div>
             </div>
