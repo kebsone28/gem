@@ -1,0 +1,57 @@
+import type { MissionStats } from '../../../services/missionStatsService';
+
+export type { MissionStats };
+
+export interface PipelineData {
+  murs: number;
+  reseau: number;
+  interieur: number;
+  validated: number;
+}
+
+export interface PerformanceData {
+  avgPerDay: number;
+  daysWorked: number;
+  avgCablePerHouse: number;
+  efficiencyRate: number;
+}
+
+export interface LogisticsData {
+  kitPrepared: number;
+  kitLoaded: number;
+  gap: number;
+}
+
+export interface DashboardMetrics {
+  totalHouseholds: number;
+  electrifiedHouseholds: number;
+  progressPercent: number;
+  igppScore: number;
+  problemHouseholds: number;
+  incidentsHSE: number;
+  pvRetard: number;
+  totalPV: number;
+  totalArchived: number;
+  pvnc: number;
+  pvr: number;
+  pvhse: number;
+  nonConforme: number;
+  conforme: number;
+  actionRequired: number;
+  syncHealth?: 'healthy' | 'degraded' | 'critical';
+  pipeline: PipelineData;
+  performance: PerformanceData;
+  logistics: LogisticsData;
+  technical: { totalConsumption: number };
+  breakdown: {
+    byZone: Record<string, unknown>[];
+    byTeam: Record<string, unknown>[];
+  };
+}
+
+export interface Activity {
+  id: string;
+  type: 'success' | 'warning' | 'danger' | 'info';
+  message: string;
+  time: string;
+}
