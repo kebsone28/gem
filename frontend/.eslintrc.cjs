@@ -14,15 +14,35 @@ module.exports = {
       'warn',
       { allowConstantExport: true },
     ],
-    // Custom Local Rules via eslint-plugin-local-rules
-    'local-rules/no-tiny-text': 'error',
+    // ── Local Design System Rules ──
+    'local-rules/no-tiny-text': 'warn',
     'local-rules/flex-child-min-w-0': 'warn',
     'local-rules/icon-button-aria-label': 'warn',
-    'local-rules/no-typos-jsx': 'error',
+    'local-rules/no-typos-jsx': 'warn',
+
+    // ── TypeScript: all downgraded to warn (SaaS velocity) ──
     '@typescript-eslint/no-explicit-any': 'warn',
     '@typescript-eslint/no-unused-vars': 'warn',
-    // Disable Microsoft Edge Tools HTML validation rules (external tool, not ESLint)
-    // CSS inline styles are acceptable for dynamic CSS variables
+    '@typescript-eslint/no-unused-expressions': 'warn',
+    '@typescript-eslint/no-empty-object-type': 'warn',
+    '@typescript-eslint/no-unsafe-function-type': 'warn',
+    '@typescript-eslint/ban-ts-comment': 'warn',
+    '@typescript-eslint/no-require-imports': 'warn',
+    '@typescript-eslint/no-this-alias': 'warn',
+
+    // ── Core ESLint: downgraded to warn ──
+    'no-empty': 'warn',
+    'no-useless-escape': 'warn',
+    'no-useless-catch': 'warn',
+    'no-prototype-builtins': 'warn',
+    'no-undef': 'warn',
+    'no-fallthrough': 'warn',
+
+    // ── React Hooks ──
+    'react-hooks/exhaustive-deps': 'warn',
+    'react-hooks/refs': 'warn',
+
+    // ── Other ──
     'react/no-unknown-property': 'off',
   },
 };

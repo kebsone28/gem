@@ -34,7 +34,10 @@ export const useWebSockets = () => {
       logger.log('🚀 Initialisation du WebSocket Singleton...');
       socketInstance = io(BASE_URL, {
         withCredentials: true,
-        transports: ['websocket'],
+        // ✅ CRITICAL: Start with polling so Vite's HTTP proxy can handle the handshake,
+        // then Socket.io will automatically upgrade to WebSocket (ws transport)
+        transports: ['polling', 'websocket'],
+        path: '/socket.io',
         reconnection: true,
         reconnectionAttempts: 3,
         reconnectionDelay: 2000,

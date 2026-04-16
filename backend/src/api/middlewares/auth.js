@@ -4,10 +4,10 @@ import logger from '../../utils/logger.js';
 export const authProtect = async (req, res, next) => {
     try {
         let token;
-        
+
         // DEBUG: Log auth header at sync endpoint
         const endpoint = req.path || req.url;
-        
+
         // 🔒 SECURITY: Debug logs removed for production - tokens no longer exposed
 
         if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
@@ -22,7 +22,7 @@ export const authProtect = async (req, res, next) => {
         }
 
         const decoded = verifyAccessToken(token);
-        
+
         // Log decoded role and permissions for debugging
         logger.info(`[AUTH] 👤 User: ${decoded.email} | Role: ${decoded.role} | Perms: ${JSON.stringify(decoded.permissions)}`);
 
@@ -68,27 +68,27 @@ export const authorize = (...args) => {
 
         // 1. SYSTEM ADMIN BYPASS (God Mode)
         // Hardcoded to strictly match role or specific admin/dg email
-        const isAdmin = userRole === 'ADMIN_PROQUELEC' || 
-                        userRole === 'ADMIN' || 
-                        emailStr === 'admin@proquelec.com' ||
-                        emailStr === 'dg@proquelec.com';
+        const isAdmin = userRole === 'ADMIN_PROQUELEC' ||
+            userRole === 'ADMIN' ||
+            emailStr === 'admin@proquelec.com' ||
+            emailStr === 'dg@proquelec.com';
 
         // 2. GRANULAR PERMISSION CHECK
         // If the user has custom permissions (manually set by Admin), we check it strictly.
         // Even an empty array [ ] means "Forbidden to everything"
         const hasExplicitPermissionsSet = req.user.permissionsWasManuallySet;
         const hasExplicitAllow = requiredPermission && req.user.permissions.includes(requiredPermission);
-        
+
         // 3. ROLE FALLBACK
         // Only if the user has NO manual permissions at all (old system or not yet edited)
         const roleMatches = authorizedRoles.length === 0 || authorizedRoles.map(r => r.toUpperCase()).includes(userRole);
-        
+
         if (isAdmin || hasExplicitAllow || (!hasExplicitPermissionsSet && roleMatches)) {
             return next();
         }
-        
+
         logger.warn(`[AUTH] 🚫 RBAC DENIED: User Role '${userRole}' not in [${authorizedRoles.join(', ')}]`);
-        return res.status(403).json({ 
+        return res.status(403).json({
             error: 'Access denied: insufficient permissions',
             details: { userRole, requiredRoles: authorizedRoles }
         });
