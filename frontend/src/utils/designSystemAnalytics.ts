@@ -181,13 +181,16 @@ export function withAnalytics<P extends object>(
   Component: React.ComponentType<P>,
   componentName: string
 ) {
-  return React.forwardRef<any, P>((props, ref) => {
+  const AnalyticsWrapper = React.forwardRef<any, P>((props, ref) => {
     React.useEffect(() => {
       analytics.trackUsage(componentName, props as Record<string, any>);
-    }, []); // Track once per component instance
+    }, [props]); // Track once per component instance (or if props change significantly in dev)
 
-    return React.createElement(Component, { ...(props as any), ref });
+    return React.createElement(Component, { ...props, ref } as any);
   });
+
+  AnalyticsWrapper.displayName = `withAnalytics(${componentName})`;
+  return AnalyticsWrapper;
 }
 
 // Hook pour accéder aux métriques

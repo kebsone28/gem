@@ -18,8 +18,8 @@ export const useMissionSync = (
     setStatus: (status: MissionState['status']) => void;
     loadMission: (
       id: string | null,
-      data: any,
-      members: any[],
+      data: MissionState['formData'],
+      members: MissionState['members'],
       version?: number,
       updatedAt?: string,
       auditTrail?: AuditEntry[]
@@ -213,6 +213,7 @@ export const useMissionSync = (
       members,
       currentMissionId,
       isCertified,
+      isSubmitted,
       version,
       auditTrail,
       activeProjectId,
