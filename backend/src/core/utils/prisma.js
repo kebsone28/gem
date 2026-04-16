@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import { PrismaClient } from '@prisma/client';
 import { config } from '../config/config.js';
 import { getOrganizationId, getUserId, getProjectId } from '../context/storage.js';

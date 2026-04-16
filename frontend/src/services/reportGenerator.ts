@@ -292,7 +292,7 @@ export function generateRapportAvancement(data: {
     .slice(0, 50)
     .map((h, i) => [
       (i + 1).toString(),
-      h.numeroordre || h.id?.toString().substring(0, 10) || `MEN-${1000 + i}`,
+      h.numeroordre || h.id?.toString().substring(0, 10) || `ID-${1000 + i}`,
       h.region || '—',
       h.status || 'En cours',
       resolveName(h),
@@ -301,7 +301,7 @@ export function generateRapportAvancement(data: {
     for (let i = 0; i < 8; i++) {
       tableRows.push([
         (i + 1).toString(),
-        `MEN-${1001 + i}`,
+        `ID-${1001 + i}`,
         i % 2 === 0 ? 'Kaffrine' : 'Tambacounda',
         i < 5 ? 'Terminé' : 'Réseau',
         '—',

@@ -55,6 +55,7 @@ export default function Sidebar() {
     to: string;
     icon: any;
     label: string;
+    title: string; // Plain explanation for hover
     permission?: string;
     visible?: boolean;
     category: 'PILOTAGE' | 'OPÉRATIONS' | 'SYSTÈME';
@@ -62,11 +63,18 @@ export default function Sidebar() {
 
   const navItems: NavItem[] = useMemo(
     () => [
-      { to: '/dashboard', icon: LayoutDashboard, label: 'Tableau de Bord', category: 'PILOTAGE' },
+      { 
+        to: '/dashboard', 
+        icon: LayoutDashboard, 
+        label: 'Tableau de Bord', 
+        title: "Vue d'ensemble de la mission et indicateurs clés",
+        category: 'PILOTAGE' 
+      },
       {
         to: '/simulation',
         icon: Calculator,
         label: 'Simulation',
+        title: 'Calculez vos budgets et simulez des scénarios financiers',
         permission: PERMISSIONS.VOIR_SIMULATION,
         category: 'PILOTAGE',
       },
@@ -74,6 +82,7 @@ export default function Sidebar() {
         to: '/bordereau',
         icon: Users,
         label: 'Bordereau',
+        title: 'Gérez la logistique des équipes et les affectations terrain',
         permission: PERMISSIONS.GERER_LOGISTIQUE,
         category: 'PILOTAGE',
       },
@@ -81,6 +90,7 @@ export default function Sidebar() {
         to: '/cahier',
         icon: FileText,
         label: 'Cahier de Charge',
+        title: 'Consultez les spécifications techniques et les rapports détaillés',
         permission: PERMISSIONS.VOIR_RAPPORTS,
         category: 'PILOTAGE',
       },
@@ -88,6 +98,7 @@ export default function Sidebar() {
         to: '/admin/pv-automation',
         icon: ShieldCheck,
         label: 'Automatisation PV',
+        title: 'Générez et gérez les procès-verbaux automatiquement',
         permission: PERMISSIONS.GERER_PV,
         category: 'PILOTAGE',
       },
@@ -95,6 +106,7 @@ export default function Sidebar() {
         to: '/terrain',
         icon: MapIcon,
         label: 'Terrain',
+        title: 'Suivez les ménages sur la carte interactive en temps réel',
         permission: PERMISSIONS.VOIR_CARTE,
         category: 'OPÉRATIONS',
       },
@@ -102,6 +114,7 @@ export default function Sidebar() {
         to: '/logistique',
         icon: Truck,
         label: 'Logistique',
+        title: 'Gestion du déploiement et des ressources matérielles',
         permission: PERMISSIONS.GERER_LOGISTIQUE,
         category: 'OPÉRATIONS',
       },
@@ -109,6 +122,7 @@ export default function Sidebar() {
         to: '/admin/approval',
         icon: ShieldCheck,
         label: 'Approbation',
+        title: 'Validez ou rejetez les interventions effectuées sur le terrain',
         permission: PERMISSIONS.VALIDER_MISSION,
         category: 'OPÉRATIONS',
       },
@@ -116,6 +130,7 @@ export default function Sidebar() {
         to: '/admin/mission',
         icon: ClipboardList,
         label: getMissionLabel(user),
+        title: 'Planifiez vos prochaines missions et objectifs',
         permission: PERMISSIONS.CREER_MISSION,
         category: 'OPÉRATIONS',
       },
@@ -123,6 +138,7 @@ export default function Sidebar() {
         to: '/admin/users',
         icon: Users,
         label: 'Utilisateurs',
+        title: 'Gérez les comptes, les rôles et les accès de votre équipe',
         permission: PERMISSIONS.GERER_UTILISATEURS,
         category: 'SYSTÈME',
       },
@@ -130,6 +146,7 @@ export default function Sidebar() {
         to: '/admin/diagnostic',
         icon: Activity,
         label: 'Diagnostic Santé',
+        title: 'Vérifiez l’état technique du serveur et de la synchronisation',
         permission: PERMISSIONS.VOIR_DIAGNOSTIC,
         category: 'SYSTÈME',
       },
@@ -137,6 +154,7 @@ export default function Sidebar() {
         to: '/admin/kobo-terminal',
         icon: Terminal,
         label: 'Terminal Kobo',
+        title: 'Interface de commande directe pour la sync KoboToolbox',
         permission: PERMISSIONS.ACCES_TERMINAL_KOBO,
         visible: user?.organizationConfig?.features?.koboTerminal === true,
         category: 'SYSTÈME',
@@ -145,6 +163,7 @@ export default function Sidebar() {
         to: '/admin/organization',
         icon: Building2,
         label: 'Organisation',
+        title: 'Configurez votre identité visuelle et les paramètres de structure',
         permission: PERMISSIONS.GERER_PARAMETRES,
         category: 'SYSTÈME',
       },
@@ -152,6 +171,7 @@ export default function Sidebar() {
         to: '/settings',
         icon: Settings,
         label: 'Paramètres',
+        title: 'Réglages globaux de l’application et préférences personnelles',
         permission: PERMISSIONS.GERER_PARAMETRES,
         category: 'SYSTÈME',
       },
@@ -159,10 +179,17 @@ export default function Sidebar() {
         to: '/admin/security',
         icon: ShieldCheck,
         label: 'Sécurité',
+        title: 'Journal d’audit et contrôles de sécurité avancés',
         permission: PERMISSIONS.GERER_PARAMETRES,
         category: 'SYSTÈME',
       },
-      { to: '/aide', icon: HelpCircle, label: "Centre d'Aide", category: 'SYSTÈME' },
+      { 
+        to: '/aide', 
+        icon: HelpCircle, 
+        label: "Centre d'Aide", 
+        title: 'Besoin d’un guide ? Consultez notre documentation complète',
+        category: 'SYSTÈME' 
+      },
     ],
     [nRole, isMaster, PERMISSIONS, user?.organizationConfig?.features?.koboTerminal]
   );
@@ -378,6 +405,7 @@ export default function Sidebar() {
                   <NavLink
                     key={item.to}
                     to={item.to}
+                    title={item.title}
                     onClick={() => setMobileOpen(false)}
                     className={({ isActive }) => `
                                                     group flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-300 relative overflow-hidden

@@ -479,6 +479,81 @@ model ActionApproval {
   @@index([riskLevel])
 }
 
+model Alert {
+  id              String    @id @default(cuid())
+  organizationId  String
+  projectId       String
+  householdId     String?   // Alerte liée à un ménage (PVNC, PVHSE, etc.)
+  pvId            String?   // Alerte liée à un PV généré
+  
+  type            String    // PVNC, PVHSE, PVRET, PVRD, PVRES, IGPP_STOCK, IGPP_BUDGET, HSE_INCIDENT, etc.
+  severity        String    // CRITICAL, HIGH, MEDIUM, LOW
+  status          String    @default("OPEN")  // OPEN, ACKNOWLEDGED, RESOLVED, ESCALATED
+  
+  title           String
+  description     String?
+  recommendedAction String?
+  
+  // Traçabilité de l'alerte
+  createdAt       DateTime  @default(now())
+  acknowledgedAt  DateTime?
+  acknowledgedBy  String?   // ID utilisateur qui a reconnu l'alerte
+  resolvedAt      DateTime?
+  resolvedBy      String?   // ID utilisateur qui a résolu
+  
+  // Escalade automatique
+  escalatedAt     DateTime?
+  escalationLevel Int       @default(0) // 0 = initial, 1 = escalade 1, etc.
+  escalationNotificationSent Boolean @default(false)
+  
+  // Notifications
+  notified        Boolean   @default(false)
+  smsNotified     Boolean   @default(false)
+  emailNotified   Boolean   @default(false)
+  
+  // Métadonnées
+  metadata        Json?     // Données supplémentaires: seuils, valeurs actuelles, etc.
+  
+  @@index([organizationId])
+  @@index([projectId])
+  @@index([status])
+  @@index([severity])
+  @@index([type])
+  @@index([createdAt])
+  @@index([householdId])
+}
+
+model AlertConfiguration {
+  id              String    @id @default(cuid())
+  organizationId  String    @unique
+  
+  // Seuils IGPP
+  stockCritical   Int       @default(5)       // Nombre d'alertes avant critique
+  budgetThreshold Float     @default(90)      // Pourcentage d'utilisation
+  teamCapacity    Float     @default(85)      // Pourcentage de capacité
+  electricityMin  Float     @default(50)      // Pourcentage minimum
+  delayThreshold  Int       @default(5)       // Jours avant retard
+  
+  // Escalade
+  escalationDelay Int       @default(3600)    // Secondes avant escalade (1h)
+  escalationLoop  Boolean   @default(true)    // Ré-notifier après escalade?
+  
+  // Canaux
+  enableSMS       Boolean   @default(true)
+  enableEmail     Boolean   @default(true)
+  enablePush      Boolean   @default(false)
+  enableWhatsApp  Boolean   @default(false)
+  
+  // Horaires
+  quietHourStart  Int?      // 0-23 (optionnel)
+  quietHourEnd    Int?      // 0-23 (optionnel)
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  @@index([organizationId])
+}
+
 model spatial_ref_sys {
   srid      Int     @id
   auth_name String? @db.VarChar(256)

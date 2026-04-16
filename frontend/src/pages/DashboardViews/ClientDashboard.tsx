@@ -109,21 +109,21 @@ export default function ClientDashboard() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="p-10 md:p-14 rounded-[3.5rem] bg-slate-900/40 border border-white/10 shadow-3xl relative overflow-hidden backdrop-blur-3xl group"
+            className="p-6 md:p-14 rounded-3xl md:rounded-[3.5rem] bg-slate-900/40 border border-white/10 shadow-3xl relative overflow-hidden backdrop-blur-3xl group"
           >
             <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-blue-600/[0.03] to-transparent pointer-events-none" />
 
             <div className="flex flex-col md:flex-row items-center gap-16 relative z-10">
               <div className="flex-1 w-full space-y-8">
                 <div className="space-y-2">
-                  <h3 className="text-[11px] font-black text-blue-400/40 uppercase tracking-[0.4em] italic flex items-center gap-3">
+                  <h3 className="text-[10px] md:text-[11px] font-black text-blue-400/40 uppercase tracking-[0.3em] md:tracking-[0.4em] italic flex items-center gap-3">
                     <TrendingUp size={18} className="text-emerald-400" /> GLOBAL PROJECT ADVANCEMENT
                   </h3>
-                  <div className="flex items-baseline gap-4">
-                    <span className="text-8xl md:text-9xl font-black text-white tracking-tighter italic leading-none drop-shadow-xl">
+                  <div className="flex flex-wrap items-baseline gap-3 md:gap-4">
+                    <span className="text-7xl md:text-9xl font-black text-white tracking-tighter italic leading-none drop-shadow-xl">
                       {pct}%
                     </span>
-                    <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest bg-emerald-500/10 px-4 py-1.5 rounded-xl border border-emerald-500/20 italic">
+                    <span className="text-[9px] md:text-[10px] font-black text-emerald-400 uppercase tracking-[0.15em] md:tracking-widest bg-emerald-500/10 px-3 md:px-4 py-1.5 rounded-xl border border-emerald-500/20 italic mt-2 md:mt-0 max-w-full overflow-hidden text-ellipsis whitespace-nowrap">
                       SYSTÈME OPÉRATIONNEL
                     </span>
                   </div>
@@ -138,12 +138,12 @@ export default function ClientDashboard() {
                       transition={{ duration: 1.5, ease: 'easeOut' }}
                     />
                   </div>
-                  <div className="flex justify-between text-[9px] font-black text-slate-600 uppercase tracking-widest italic font-mono">
-                    <span>DEPL. START</span>
-                    <span className="text-white/60">
+                  <div className="flex justify-between text-[8px] md:text-[9px] font-black text-slate-600 uppercase tracking-widest italic font-mono flex-wrap gap-2">
+                    <span className="shrink-0">DEPL. START</span>
+                    <span className="text-white/60 text-center flex-1">
                       {fmtNum(done)} / {fmtNum(total)} UNITS COMPLETED
                     </span>
-                    <span>OPTIMAL TARGET</span>
+                    <span className="shrink-0 text-right">OPTIMAL TARGET</span>
                   </div>
                 </div>
               </div>
@@ -180,7 +180,7 @@ export default function ClientDashboard() {
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
             {/* Regional breakdown */}
-            <div className="lg:col-span-8 p-10 rounded-[3rem] bg-slate-900/40 border border-white/5 backdrop-blur-3xl shadow-2xl">
+            <div className="lg:col-span-8 p-6 md:p-10 rounded-3xl md:rounded-[3rem] bg-slate-900/40 border border-white/5 backdrop-blur-3xl shadow-2xl">
               <div className="flex items-center justify-between mb-12 pb-8 border-b border-white/5">
                 <h3 className="text-[11px] font-black tracking-[0.4em] text-blue-400/40 uppercase italic flex items-center gap-3">
                   <MapPin size={18} className="text-blue-500" /> TOP-PRIORITY REGIONS
@@ -214,7 +214,7 @@ export default function ClientDashboard() {
             </div>
 
             {/* Recent validations */}
-            <div className="lg:col-span-4 p-10 rounded-[3rem] bg-slate-900/40 border border-white/5 backdrop-blur-3xl shadow-2xl flex flex-col">
+            <div className="lg:col-span-4 p-6 md:p-10 rounded-3xl md:rounded-[3rem] bg-slate-900/40 border border-white/5 backdrop-blur-3xl shadow-2xl flex flex-col">
               <h3 className="text-[11px] font-black mb-10 flex items-center gap-3 text-blue-400/40 uppercase tracking-[0.4em] italic">
                 <TrendingUp size={18} className="text-emerald-400" /> RECENT VALIDATIONS
               </h3>

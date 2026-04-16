@@ -7,7 +7,6 @@ maplibregl.setWorkerCount(2);
 
 import { useMapInteractions } from './useMapInteractions';
 import { useMapClustering } from './useMapClustering';
-import { useMemorizedSupercluster } from './useMemorizedSupercluster';
 import { useMapMarkers } from './useMapMarkers';
 import { useMapMeasure } from './useMapMeasure';
 import { useMapLasso } from './useMapLasso';
@@ -25,6 +24,8 @@ import ZoneLayer from './layers/ZoneLayer';
 import LogisticsLayer from './layers/LogisticsLayer';
 import InteractionLayer from './layers/InteractionLayer';
 import MapTooltip from './MapTooltip';
+import { useSuperclusterWorker } from '../../hooks/useSuperclusterWorker';
+import { householdsToGeoJSON } from '../../utils/clusteringUtils';
 
 registerTileCacheProtocol();
 
@@ -113,7 +114,15 @@ const MapLibreVectorMap: React.FC<any> = ({
   const activeHouseholds = households;
 
   // Workers & supercluster
-  const superclusterRef = useMemorizedSupercluster(activeHouseholds);
+  const clusterWorker = useSuperclusterWorker();
+
+  // Load points into worker when households change
+  useEffect(() => {
+    if (activeHouseholds && activeHouseholds.length > 0) {
+      const geoJSON = householdsToGeoJSON(activeHouseholds);
+      clusterWorker.loadPoints(geoJSON);
+    }
+  }, [activeHouseholds, clusterWorker]);
   const geoJsonWorker = useMemo(
     () =>
       new Worker(new URL('../../workers/mapGeoJsonWorker.ts', import.meta.url), { type: 'module' }),
@@ -176,7 +185,7 @@ const MapLibreVectorMap: React.FC<any> = ({
     onZoneClickRef,
     onDropRef
   );
-  const { setupClusteringEvents, updateClusterDisplay } = useMapClustering(superclusterRef);
+  const { setupClusteringEvents, updateClusterDisplay } = useMapClustering(clusterWorker);
   const { setupUserMarker, cleanup: cleanupMarkers } = useMapMarkers(userLocation);
   const { setupMeasureTool } = useMapMeasure();
   const { setupLasso } = useMapLasso(isSelecting, householdsRef, onLassoSelection);

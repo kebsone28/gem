@@ -107,13 +107,17 @@ export const createMission = async (req, res) => {
         // Debug log
         try {
             import('fs').then(fs => fs.appendFileSync(path.join(__dirname, '../../../debug-mission.log'), `[${new Date().toISOString()}] SUCCESS ID: ${mission.id} | Project: ${safeProjectId}\n`));
-        } catch(e) {}
+        } catch (_e) {
+            // Logging file write failure - non-critical
+        }
 
         res.json(mission);
     } catch (error) {
         try {
             import('fs').then(fs => fs.appendFileSync(path.join(__dirname, '../../../debug-mission.log'), `[${new Date().toISOString()}] ERROR: ${String(error.stack || error)}\n`));
-        } catch(e) {}
+        } catch (_e) {
+            // Logging file write failure - non-critical
+        }
         logger.error('Create mission error:', error);
         res.status(500).json({ 
             error: 'Server error while creating mission',

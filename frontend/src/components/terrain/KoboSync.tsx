@@ -5,6 +5,7 @@ import apiClient from '../../api/client';
 import { useSync } from '../../hooks/useSync';
 import { useProject } from '../../contexts/ProjectContext';
 import toast from 'react-hot-toast';
+import { audioService } from '../../services/audioService';
 
 interface KoboSyncProps {
   onImport: (data: any[]) => void;
@@ -13,6 +14,15 @@ interface KoboSyncProps {
 export default function KoboSync({ onImport }: KoboSyncProps) {
   const { forceSync } = useSync();
   const [syncResult, setSyncResult] = useState<any>(null);
+
+  const [syncStep, setSyncStep] = useState<number>(0);
+  const steps = [
+    "Connexion à KoboToolbox...",
+    "Récupération des formulaires...",
+    "Analyse des changements (Delta)...",
+    "Application des mises à jour...",
+    "Finalisation de l'import..."
+  ];
 
   const [isSyncing, setIsSyncing] = useState(false);
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
@@ -28,19 +38,31 @@ export default function KoboSync({ onImport }: KoboSyncProps) {
     setIsSyncing(true);
     setStatus('idle');
     setSyncResult(null);
-    const toastId = toast.loading('Import Kobo en cours...');
+    setSyncStep(0);
+    
+    const toastId = toast.loading('Synchronisation Kobo lancée...');
+
+    // Simulation de progression visuelle pour les étapes
+    const stepInterval = setInterval(() => {
+      setSyncStep(prev => (prev < 3 ? prev + 1 : prev));
+    }, 1500);
+
     try {
       // Appel au backend — qui utilise KOBO_TOKEN et KOBO_FORM_ID du .env
       const response = await apiClient.post('kobo/sync', { projectId: project.id });
       const result = response.data?.result;
+      
+      clearInterval(stepInterval);
+      setSyncStep(4);
       setSyncResult(result);
 
       // Déclenche le pull pour ramener les ménages importés dans le cache local
-      // On attend 3s pour être sûr que le backend a tout fini
-      await new Promise((r) => setTimeout(r, 3000));
+      // On attend 1s pour être sûr que le backend a tout fini
+      await new Promise((r) => setTimeout(r, 1000));
       await forceSync();
 
       setStatus('success');
+      audioService.playSuccess(); // Feedback sonore premium
       const imported = result?.applied || 0;
       const skipped = result?.skipped || 0;
 
@@ -50,12 +72,14 @@ export default function KoboSync({ onImport }: KoboSyncProps) {
         { id: toastId }
       );
     } catch (error: any) {
+      clearInterval(stepInterval);
       logger.error('Kobo Sync Error:', error);
       setStatus('error');
       const msg = error?.response?.data?.error || 'Erreur de connexion au serveur';
       toast.error(`Échec : ${msg}`, { id: toastId });
     } finally {
       setIsSyncing(false);
+      setSyncStep(0);
     }
   };
 
@@ -100,7 +124,22 @@ export default function KoboSync({ onImport }: KoboSyncProps) {
         {isSyncing ? 'Importation Kobo...' : 'Lancer la Synchronisation'}
       </button>
 
-      {syncResult && (
+      {isSyncing && (
+        <div className="mt-6 space-y-3">
+          <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-tighter">
+            <span className="text-blue-400 animate-pulse">{steps[syncStep]}</span>
+            <span className="text-slate-500">{Math.round(((syncStep + 1) / steps.length) * 100)}%</span>
+          </div>
+          <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden border border-white/5">
+            <div 
+              className="h-full bg-gradient-to-r from-blue-600 to-indigo-500 shadow-[0_0_10px_rgba(59,130,246,0.5)] transition-all duration-700 ease-out"
+              style={{ width: `${((syncStep + 1) / steps.length) * 100}%` }}
+            />
+          </div>
+        </div>
+      )}
+
+      {syncResult && !isSyncing && (
         <div className="mt-3 p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-xs text-blue-300 font-bold flex gap-4">
           <span>✅ Importés : {syncResult.applied}</span>
           {syncResult.skipped > 0 && <span>⏭ Ignorés : {syncResult.skipped}</span>}

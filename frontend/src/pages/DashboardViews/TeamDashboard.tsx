@@ -230,7 +230,7 @@ export default function TeamDashboard() {
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
             {/* Pipeline of all teams */}
-            <div className="lg:col-span-8 p-10 rounded-[3rem] bg-slate-900/40 border border-white/5 backdrop-blur-3xl shadow-2xl">
+            <div className="lg:col-span-8 p-6 md:p-10 rounded-3xl md:rounded-[3rem] bg-slate-900/40 border border-white/5 backdrop-blur-3xl shadow-2xl">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12 pb-8 border-b border-white/5">
                 <div className="space-y-1">
                   <h3 className="text-[11px] font-black text-blue-400/40 uppercase tracking-[0.4em] italic flex items-center gap-3">
@@ -300,7 +300,7 @@ export default function TeamDashboard() {
             </div>
 
             {/* Right column: Regional breakdown */}
-            <div className="lg:col-span-4 p-10 rounded-[3rem] bg-slate-900/40 border border-white/5 backdrop-blur-3xl shadow-2xl flex flex-col">
+            <div className="lg:col-span-4 p-6 md:p-10 rounded-3xl md:rounded-[3rem] bg-slate-900/40 border border-white/5 backdrop-blur-3xl shadow-2xl flex flex-col">
               <h3 className="text-[11px] font-black mb-12 flex items-center gap-3 text-blue-400/40 uppercase tracking-[0.4em] italic">
                 <MapPin size={18} className="text-blue-500" /> MISSION CORES
               </h3>

@@ -9,6 +9,7 @@ import OfflineBanner from './components/OfflineBanner';
 import PWAPrompt from './components/PWAPrompt';
 import SyncNotification from './components/SyncNotification';
 import ImpersonationBanner from './components/ImpersonationBanner';
+import { CommandPalette } from './components/common/CommandPalette';
 import { Toaster } from 'react-hot-toast';
 import { PERMISSIONS, hasPermission } from './utils/permissions';
 
@@ -32,6 +33,7 @@ const KoboTerminal = lazy(() => import('./pages/DashboardViews/KoboTerminal'));
 const KoboMappingMaster = lazy(() => import('./pages/KoboMappingMaster'));
 const OrganizationSettings = lazy(() => import('./pages/OrganizationSettings'));
 const PVAutomation = lazy(() => import('./pages/PVAutomation'));
+const Alerts = lazy(() => import('./pages/Alerts'));
 
 // Dev-only: MemoryDiagnostic loaded conditionally — zero cost in production
 const MemoryDiagnostic = import.meta.env.DEV
@@ -283,6 +285,17 @@ function App() {
             }
           />
 
+          <Route
+            path="/admin/alerts"
+            element={
+              <ProtectedRoute>
+                <PermissionRoute permission={PERMISSIONS.GERER_PV}>
+                  <Alerts />
+                </PermissionRoute>
+              </ProtectedRoute>
+            }
+          />
+
           <Route path="/mission-order" element={<Navigate to="/admin/mission" replace />} />
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
         </Routes>
@@ -293,6 +306,7 @@ function App() {
       <OfflineBanner />
       <PWAPrompt />
       <SyncNotification />
+      <CommandPalette />
       <Toaster position="bottom-right" reverseOrder={false} />
 
       {/* Dev diagnostics — completely absent from production bundle */}

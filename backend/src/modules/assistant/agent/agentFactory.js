@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { Agent } from './AgentCore.js';
 import { agentTools } from './agentTools.js';
 import { queryOllama } from '../ollama.client.js';

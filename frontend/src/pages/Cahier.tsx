@@ -32,6 +32,7 @@ import './Cahier.css';
 
 // Import centralized design system
 import { PageContainer, PageHeader, ContentArea, ActionBar } from '@components';
+import Skeleton, { TableRowSkeleton, CardSkeleton } from '@components/common/Skeleton';
 
 const COLOR_MAPS: Record<string, { bg: string; text: string; border: string; bgSoft: string }> = {
   blue: {
@@ -706,6 +707,26 @@ export default function Cahier() {
       }
     }
   }, [finalRolesToDisplay, selectedRole]);
+
+  if (!project) {
+    return (
+      <PageContainer>
+        <PageHeader title="Chargement..." subtitle="Préparation de la norme projet" icon={HardHat} />
+        <ContentArea className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <CardSkeleton />
+            <CardSkeleton />
+            <CardSkeleton />
+          </div>
+          <div className="space-y-4">
+             <TableRowSkeleton />
+             <TableRowSkeleton />
+             <TableRowSkeleton />
+          </div>
+        </ContentArea>
+      </PageContainer>
+    );
+  }
 
   return (
     <PageContainer>

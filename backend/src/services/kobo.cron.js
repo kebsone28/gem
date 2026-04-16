@@ -95,6 +95,16 @@ async function runGlobalSync() {
 
             if (result.applied > 0) {
                 console.log(`[KOBO-CRON] ✅ Succès pour ${org.name}: ${result.applied} ménages importés/mis à jour.`);
+                
+                // NOTIFICATION TEMPS RÉEL (Socket.IO)
+                const { socketService } = await import('./socket.service.js');
+                socketService.emit('notification', {
+                    id: Date.now().toString(),
+                    type: 'SYNC',
+                    message: 'Synchronisation Kobo réussie',
+                    detail: `${result.applied} formulaires intégrés avec succès.`,
+                    sender: 'SERVEUR GEM'
+                });
             } else {
                 console.log(`[KOBO-CRON] ℹ️ Rien de nouveau pour ${org.name}.`);
             }

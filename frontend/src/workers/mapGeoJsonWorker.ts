@@ -10,6 +10,32 @@
  */
 
 // ── Types ──
+interface ConstructionData {
+  interiorStatus?: string;
+  networkStatus?: string;
+  wallType?: string;
+  audit?: {
+    installation_conforme?: string;
+    branchement_conforme?: string;
+  };
+  kit?: {
+    status?: string;
+  };
+}
+
+interface KoboSyncData {
+  controleOk?: boolean | null;
+  interieurOk?: boolean | null;
+  reseauOk?: boolean | null;
+  maconOk?: boolean | null;
+  livreurDate?: string | null;
+}
+
+interface AlertData {
+  severity?: string;
+  type?: string;
+}
+
 interface Household {
   id: string;
   status: string;
@@ -17,9 +43,9 @@ interface Household {
   location?: {
     coordinates: [number, number];
   };
-  alerts?: any[];
-  constructionData?: any;
-  koboSync?: any;
+  alerts?: AlertData[];
+  constructionData?: ConstructionData;
+  koboSync?: KoboSyncData;
   owner?: { name: string };
   name?: string;
 }
@@ -104,11 +130,13 @@ function getHouseholdDerivedStatus(h: Household): string {
 
 const JITTER_EPSILON = 0.00008;
 
-function sanitizeValue(val: any): any {
+function sanitizeValue(val: unknown): unknown {
   if (val === null || val === undefined) return 0;
   if (typeof val === 'object' && !Array.isArray(val)) {
-    const sanitized: any = {};
-    for (const k in val) sanitized[k] = sanitizeValue(val[k]);
+    const sanitized: Record<string, unknown> = {};
+    for (const k in val as Record<string, unknown>) {
+      sanitized[k] = sanitizeValue((val as Record<string, unknown>)[k]);
+    }
     return sanitized;
   }
   return val;
@@ -194,7 +222,7 @@ self.onmessage = (event) => {
         features,
       },
     });
-  } catch (error: any) {
-    self.postMessage({ type: 'ERROR', message: error.message });
+  } catch (error) {
+    self.postMessage({ type: 'ERROR', message: error instanceof Error ? error.message : 'Unknown Error' });
   }
 };

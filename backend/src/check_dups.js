@@ -1,3 +1,4 @@
+/* eslint-disable no-console, @typescript-eslint/no-unused-vars */
 import prisma from './core/utils/prisma.js';
 
 async function checkAndClean() {

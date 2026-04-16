@@ -16,30 +16,34 @@ import logger from '../../utils/logger';
 import convex from '@turf/convex';
 import { featureCollection, point } from '@turf/helpers';
 
-export const useMapClustering = (clustererRef: React.MutableRefObject<Supercluster | null>) => {
+export const useMapClustering = (
+  worker: { 
+    getClusters: (bbox: [number, number, number, number], zoom: number, callback: (clusters: any[]) => void) => void;
+    getLeaves: (clusterId: number, limit?: number) => Promise<any[]>;
+    isLoaded: boolean;
+  }
+) => {
   const clusterUpdateTimeoutRef = useRef<number | null>(null);
-  const lastHoveredClusterId = useRef<number | string | null>(null);
-
+  
   // Cache zoom + bbox pour éviter recalcul inutile
   const lastZoomRef = useRef<number | null>(null);
   const lastBBoxRef = useRef<[number, number, number, number] | null>(null);
 
   // ✅ THROTTLE: Minimum time between cluster updates (in ms)
-  const THROTTLE_MS = 100;
+  const THROTTLE_MS = 120;
   const lastUpdateTimeRef = useRef<number>(0);
 
   /**
-   * Met à jour les clusters pour la vue actuelle
+   * Met à jour les clusters pour la vue actuelle via le Worker
    */
   const updateClusterDisplay = useCallback(
     (map: maplibregl.Map, force = false) => {
-      // DEFENSIVE: Verify map is still initialized and has a style object
-      if (!map || !(map as any).style || !map.isStyleLoaded() || !clustererRef.current) return;
+      // DEFENSIVE: Verify map is still initialized and worker is ready
+      if (!map || !(map as any).style || !map.isStyleLoaded() || !worker.isLoaded) return;
 
-      // ✅ THROTTLE: Enforce minimum time between updates (unless forced)
       const now = Date.now();
       if (!force && now - lastUpdateTimeRef.current < THROTTLE_MS) {
-        return; // Skip this update, still in throttle window
+        return; 
       }
 
       const zoom = Math.round(map.getZoom());
@@ -65,74 +69,71 @@ export const useMapClustering = (clustererRef: React.MutableRefObject<Superclust
       }
 
       try {
-        const clusters = getClustersForZoom(clustererRef.current, bbox, zoom);
-        const clustersGeoJSON = {
-          type: 'FeatureCollection',
-          features: clusters,
-        };
+        // ✅ DEMANDE ASYNCHRONE AU WORKER
+        worker.getClusters(bbox, zoom, async (clusters) => {
+          if (!map.isStyleLoaded()) return;
 
-        // Calcule les limites territoriales (Convexe) de TOUTES les grappes
-        const hullFeatures: any[] = [];
-        clusters.forEach((c) => {
-          if (c.properties?.cluster) {
-            const leaves = clustererRef.current?.getLeaves(c.properties.cluster_id, Infinity);
-            if (leaves && leaves.length >= 3) {
-              const points = featureCollection(leaves.map((l) => point(l.geometry.coordinates)));
-              const hull = convex(points);
-              if (hull) hullFeatures.push(hull);
+          const clustersGeoJSON = {
+            type: 'FeatureCollection',
+            features: clusters,
+          };
+
+          // Calcule les limites territoriales (Hulls) de manière asynchrone si besoin
+          const hullFeatures: any[] = [];
+          
+          // Note: On limite le calcul des hulls aux 15 plus gros clusters visibles pour la perf UI
+          const clustersWithHulls = clusters
+            .filter(c => c.properties?.cluster)
+            .sort((a, b) => (b.properties.point_count || 0) - (a.properties.point_count || 0))
+            .slice(0, 15);
+
+          for (const c of clustersWithHulls) {
+            try {
+              const leaves = await worker.getLeaves(c.properties.cluster_id, 100);
+              if (leaves && leaves.length >= 3) {
+                const points = featureCollection(leaves.map((l) => point(l.geometry.coordinates)));
+                const hull = convex(points);
+                if (hull) hullFeatures.push(hull);
+              }
+            } catch (hullErr) {
+              // Ignore single hull errors
             }
           }
+
+          const hullsGeoJSON = {
+            type: 'FeatureCollection',
+            features: hullFeatures,
+          };
+
+          let source = map.getSource('supercluster-generated') as maplibregl.GeoJSONSource;
+
+          if (!source && map.isStyleLoaded()) {
+            try {
+              map.addSource('supercluster-generated', {
+                type: 'geojson',
+                data: clustersGeoJSON as any,
+              });
+              source = map.getSource('supercluster-generated') as maplibregl.GeoJSONSource;
+            } catch (e) { return; }
+          }
+
+          if (source?.setData) {
+            source.setData(clustersGeoJSON as any);
+            const hullSource = map.getSource('cluster-hulls') as maplibregl.GeoJSONSource;
+            if (hullSource && hullSource.setData) {
+              hullSource.setData(hullsGeoJSON as any);
+            }
+            lastUpdateTimeRef.current = Date.now();
+          }
         });
-        const hullsGeoJSON = {
-          type: 'FeatureCollection',
-          features: hullFeatures,
-        };
 
-        let source = map.getSource('supercluster-generated') as maplibregl.GeoJSONSource;
-
-        // ✅ Create source if it doesn't exist yet (race condition protection)
-        if (!source) {
-          try {
-            map.addSource('supercluster-generated', {
-              type: 'geojson',
-              data: clustersGeoJSON as any,
-            });
-            logger.debug('🔶 Created supercluster-generated source dynamically');
-            source = map.getSource('supercluster-generated') as maplibregl.GeoJSONSource;
-          } catch (addError) {
-            logger.warn('Failed to create supercluster-generated source:', addError);
-            return;
-          }
-        }
-
-        if (source?.setData) {
-          source.setData(clustersGeoJSON as any);
-
-          // Update ALL cluster territories at once dynamically!
-          const hullSource = map.getSource('cluster-hulls') as maplibregl.GeoJSONSource;
-          if (hullSource && hullSource.setData) {
-            hullSource.setData(hullsGeoJSON as any);
-          }
-
-          logger.debug(`🔶 Supercluster applied ${clusters.length} features (throttled)`);
-
-          lastUpdateTimeRef.current = now; // Update throttle timestamp
-
-          if (force) {
-            lastZoomRef.current = zoom;
-            lastBBoxRef.current = bbox;
-          }
-        }
-
-        if (!force) {
-          lastZoomRef.current = zoom;
-          lastBBoxRef.current = bbox;
-        }
+        lastZoomRef.current = zoom;
+        lastBBoxRef.current = bbox;
       } catch (error) {
         logger.error('Failed to update Supercluster clusters:', error);
       }
     },
-    [clustererRef]
+    [worker]
   );
 
   /**
@@ -168,7 +169,7 @@ export const useMapClustering = (clustererRef: React.MutableRefObject<Superclust
         }
       };
     },
-    [updateClusterDisplay, clustererRef]
+    [updateClusterDisplay]
   );
 
   return { setupClusteringEvents, updateClusterDisplay };

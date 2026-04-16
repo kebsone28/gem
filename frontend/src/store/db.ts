@@ -31,6 +31,7 @@ export interface MissionNotification {
   createdAt: string;
   read: boolean;
   archived: boolean;
+  dedupKey?: string; // 🔑 Clé pour éviter les doublons métier
 }
 
 // Paramètres de sécurité applicatifs (persistés localement)
@@ -278,6 +279,11 @@ export class ProquelecDatabase extends Dexie {
       syncOutbox: '++id, status, timestamp',
       favorites: '++id, projectId, householdId, createdAt',
       map_tiles: 'url, timestamp, zoom',
+    });
+
+    // 🔑 Version 14: Ajout déduplication des notifications par clé métier
+    this.version(14).stores({
+      notifications: 'id, type, projectId, missionId, archived, read, createdAt, dedupKey',
     });
   }
 }

@@ -1,11 +1,11 @@
 import { verifyAccessToken } from '../../core/utils/jwt.js';
+import logger from '../../utils/logger.js';
 
 export const authProtect = async (req, res, next) => {
     try {
         let token;
         
         // DEBUG: Log auth header at sync endpoint
-        const authHeader = req.headers.authorization;
         const endpoint = req.path || req.url;
         
         // 🔒 SECURITY: Debug logs removed for production - tokens no longer exposed
@@ -17,14 +17,14 @@ export const authProtect = async (req, res, next) => {
         }
 
         if (!token) {
-            console.error(`[AUTH-ERROR] No token available. Endpoint: ${endpoint}. Headers:`, Object.keys(req.headers));
+            logger.error(`[AUTH-ERROR] No token available. Endpoint: ${endpoint}. Headers:`, Object.keys(req.headers));
             return res.status(401).json({ error: 'Not authorized, no token' });
         }
 
         const decoded = verifyAccessToken(token);
         
         // Log decoded role and permissions for debugging
-        console.log(`[AUTH] 👤 User: ${decoded.email} | Role: ${decoded.role} | Perms: ${JSON.stringify(decoded.permissions)}`);
+        logger.info(`[AUTH] 👤 User: ${decoded.email} | Role: ${decoded.role} | Perms: ${JSON.stringify(decoded.permissions)}`);
 
         // Inject user info into request
         req.user = {
@@ -37,7 +37,7 @@ export const authProtect = async (req, res, next) => {
 
         next();
     } catch (error) {
-        console.error('Auth check failed:', error.message);
+        logger.error('Auth check failed:', error.message);
         res.status(401).json({ error: 'Not authorized, token failed' });
     }
 };
@@ -65,7 +65,6 @@ export const authorize = (...args) => {
     return (req, res, next) => {
         const userRole = req.user.role?.toUpperCase();
         const emailStr = req.user.email?.toLowerCase() || "";
-        const nameStr = (req.user.name || "").toUpperCase();
 
         // 1. SYSTEM ADMIN BYPASS (God Mode)
         // Hardcoded to strictly match role or specific admin/dg email
@@ -88,7 +87,7 @@ export const authorize = (...args) => {
             return next();
         }
         
-        console.warn(`[AUTH] 🚫 RBAC DENIED: User Role '${userRole}' not in [${authorizedRoles.join(', ')}]`);
+        logger.warn(`[AUTH] 🚫 RBAC DENIED: User Role '${userRole}' not in [${authorizedRoles.join(', ')}]`);
         return res.status(403).json({ 
             error: 'Access denied: insufficient permissions',
             details: { userRole, requiredRoles: authorizedRoles }

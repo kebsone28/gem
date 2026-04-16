@@ -19,6 +19,8 @@ import {
   BarChart3,
   Database,
   Download,
+  FileText,
+  Clock,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PageContainer, PageHeader, ContentArea } from '../../components';
@@ -180,18 +182,53 @@ export default function AdminDashboard() {
     }
   };
 
-  const displayStats = metrics || {
-    totalHouseholds: localTotal,
-    electrifiedHouseholds: localDone,
-    progressPercent: localTotal > 0 ? Math.round((localDone / localTotal) * 100) : 0,
-    igppScore: 0,
-    problemHouseholds: households.filter((h) => h.status === 'Problème').length,
-    pipeline: { murs: 0, reseau: 0, interieur: 0, validated: localDone },
-    performance: { avgPerDay: 0, daysWorked: 0, avgCablePerHouse: 0, efficiencyRate: 0 },
-    logistics: { kitPrepared: 0, kitLoaded: 0, gap: 0 },
-    technical: { totalConsumption: 0 },
-    breakdown: { byZone: [], byTeam: [] },
-  };
+  const displayStats = metrics
+    ? metrics
+    : localTotal === 0
+    ? {
+        totalHouseholds: 0,
+        electrifiedHouseholds: 0,
+        progressPercent: 0,
+        igppScore: 0,
+        problemHouseholds: 0,
+        incidentsHSE: 0,
+        pvRetard: 0,
+        totalPV: 0,
+        totalArchived: 0,
+        pvnc: 0,
+        pvr: 0,
+        pvhse: 0,
+        nonConforme: 0,
+        conforme: 0,
+        actionRequired: 0,
+        pipeline: { murs: 0, reseau: 0, interieur: 0, validated: 0 },
+        performance: { avgPerDay: 0, daysWorked: 0, avgCablePerHouse: 0, efficiencyRate: 0 },
+        logistics: { kitPrepared: 0, kitLoaded: 0, gap: 0 },
+        technical: { totalConsumption: 0 },
+        breakdown: { byZone: [], byTeam: [] },
+      }
+    : {
+        totalHouseholds: localTotal,
+        electrifiedHouseholds: localDone,
+        progressPercent: localTotal > 0 ? Math.round((localDone / localTotal) * 100) : 0,
+        igppScore: 0,
+        problemHouseholds: households.filter((h) => h.status === 'Problème').length,
+        incidentsHSE: 0,
+        pvRetard: 0,
+        totalPV: 0,
+        totalArchived: 0,
+        pvnc: 0,
+        pvr: 0,
+        pvhse: 0,
+        nonConforme: 0,
+        conforme: 0,
+        actionRequired: 0,
+        pipeline: { murs: 0, reseau: 0, interieur: 0, validated: localDone },
+        performance: { avgPerDay: 0, daysWorked: 0, avgCablePerHouse: 0, efficiencyRate: 0 },
+        logistics: { kitPrepared: 0, kitLoaded: 0, gap: 0 },
+        technical: { totalConsumption: 0 },
+        breakdown: { byZone: [], byTeam: [] },
+      };
 
   const feedActivities = auditLogs.map((log) => ({
     id: log.id,
@@ -309,7 +346,7 @@ export default function AdminDashboard() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="p-10 md:p-14 rounded-[3.5rem] bg-slate-900/40 border border-white/10 shadow-3xl relative overflow-hidden backdrop-blur-3xl group"
+            className="p-6 md:p-14 rounded-3xl md:rounded-[3.5rem] bg-slate-900/40 border border-white/10 shadow-3xl relative overflow-hidden backdrop-blur-3xl group"
           >
             <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-blue-600/[0.03] to-transparent pointer-events-none" />
             <div className="absolute bottom-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-blue-500/20 to-transparent" />
@@ -321,12 +358,12 @@ export default function AdminDashboard() {
                     <Compass size={18} className="text-blue-500" /> Progression des activités
                     terrain
                   </h3>
-                  <div className="flex items-baseline gap-4">
-                    <span className="text-8xl md:text-9xl font-black text-white tracking-tighter italic leading-none drop-shadow-xl">
+                  <div className="flex flex-wrap items-baseline gap-3 md:gap-4">
+                    <span className="text-7xl md:text-9xl font-black text-white tracking-tighter italic leading-none drop-shadow-xl">
                       {displayStats.progressPercent}%
                     </span>
                     <span
-                      className={`px-4 py-1.5 rounded-xl text-[10px] font-black tracking-widest uppercase italic shadow-lg ${displayStats.progressPercent > 50 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-blue-600/10 text-blue-400 border border-blue-500/20'}`}
+                      className={`px-3 md:px-4 py-1.5 rounded-xl text-[9px] md:text-[10px] font-black md:tracking-widest uppercase italic shadow-lg mt-2 md:mt-0 ${displayStats.progressPercent > 50 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-blue-600/10 text-blue-400 border border-blue-500/20'}`}
                     >
                       MISE EN ŒUVRE EN COURS
                     </span>
@@ -350,14 +387,14 @@ export default function AdminDashboard() {
                       className="h-full bg-gradient-to-r from-blue-700 to-blue-400 rounded-full shadow-[0_0_25px_rgba(59,130,246,0.5)]"
                     />
                   </div>
-                  <div className="flex justify-between text-[9px] font-black text-slate-600 uppercase tracking-widest italic">
-                    <span>PHASE INITIALE</span>
-                    <span>NIVEAU DE RÉALISATION OPTIMAL</span>
+                  <div className="flex justify-between text-[8px] md:text-[9px] font-black text-slate-600 uppercase tracking-widest italic flex-wrap gap-2">
+                    <span className="shrink-0 text-left">PHASE INITIALE</span>
+                    <span className="shrink-0 text-right ms-auto">NIVEAU DE RÉALISATION OPTIMAL</span>
                   </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div className="p-8 rounded-[2.5rem] bg-white/[0.03] border border-white/5 shadow-inner hover:bg-white/[0.05] transition-all">
                   <p className="text-[10px] font-black text-blue-400/30 uppercase tracking-[0.3em] mb-4 italic">
                     CHANTIERS ACHEVÉS
@@ -427,11 +464,104 @@ export default function AdminDashboard() {
             />
           </div>
 
+          {/* ── LEVEL 2.5: COMPLIANCE & PV STATS ── */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-6">
+            <KPICard
+              title="CONFORMITÉ"
+              value={displayStats.conforme || 0}
+              icon={<ShieldCheck size={22} className="text-emerald-400" />}
+              trend={
+                displayStats.totalHouseholds
+                  ? {
+                      value: Math.round(
+                        ((displayStats.conforme || 0) / displayStats.totalHouseholds) * 100
+                      ),
+                      isUp: true,
+                      label: 'Taux',
+                    }
+                  : undefined
+              }
+            />
+            <KPICard
+              title="NON-CONFORME"
+              value={displayStats.nonConforme || 0}
+              icon={<AlertCircle size={22} className="text-rose-400" />}
+              trend={
+                displayStats.totalHouseholds
+                  ? {
+                      value: Math.round(
+                        ((displayStats.nonConforme || 0) / displayStats.totalHouseholds) * 100
+                      ),
+                      isUp: false,
+                      label: 'Taux',
+                    }
+                  : undefined
+              }
+            />
+            <KPICard
+              title="INCIDENTS HSE"
+              value={displayStats.incidentsHSE || 0}
+              icon={<AlertCircle size={22} className="text-amber-500" />}
+              trend={
+                displayStats.incidentsHSE > 0
+                  ? { value: displayStats.incidentsHSE, isUp: false, label: 'À traiter' }
+                  : undefined
+              }
+            />
+            <KPICard
+              title="PV GÉNÉRÉS"
+              value={displayStats.totalPV || 0}
+              icon={<FileText size={22} className="text-blue-400" />}
+            />
+            <KPICard
+              title="PV RETARD"
+              value={displayStats.pvRetard || 0}
+              icon={<Clock size={22} className="text-orange-400" />}
+              trend={
+                displayStats.pvRetard > 0
+                  ? { value: displayStats.pvRetard, isUp: false, label: 'En retard' }
+                  : undefined
+              }
+            />
+            <KPICard
+              title="ACTIONS REQUISES"
+              value={displayStats.actionRequired || 0}
+              icon={<Activity size={22} className="text-purple-400" />}
+              trend={
+                displayStats.actionRequired > 0
+                  ? { value: displayStats.actionRequired, isUp: false, label: 'En attente' }
+                  : undefined
+              }
+            />
+          </div>
+
+          {/* ── LEVEL 2.6: PV BREAKDOWN ── */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            <div className="p-6 rounded-[2rem] bg-slate-900/40 border border-white/5 backdrop-blur-xl">
+              <h4 className="text-[10px] font-black text-blue-400/40 uppercase tracking-[0.3em] mb-4">
+                PVNC (Non-Conformité)
+              </h4>
+              <p className="text-3xl font-black text-white italic">{displayStats.pvnc || 0}</p>
+            </div>
+            <div className="p-6 rounded-[2rem] bg-slate-900/40 border border-white/5 backdrop-blur-xl">
+              <h4 className="text-[10px] font-black text-emerald-400/40 uppercase tracking-[0.3em] mb-4">
+                PVR (Réception)
+              </h4>
+              <p className="text-3xl font-black text-white italic">{displayStats.pvr || 0}</p>
+            </div>
+            <div className="p-6 rounded-[2rem] bg-slate-900/40 border border-white/5 backdrop-blur-xl">
+              <h4 className="text-[10px] font-black text-amber-400/40 uppercase tracking-[0.3em] mb-4">
+                PVHSE (Sécurité)
+              </h4>
+              <p className="text-3xl font-black text-white italic">{displayStats.pvhse || 0}</p>
+            </div>
+          </div>
+
           {/* ── LEVEL 3: OPERATIONAL GRID ── */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
             {/* ── OPERATIONAL METRICS (Left) ── */}
             <div className="lg:col-span-8 space-y-10">
-              <div className="p-10 rounded-[3rem] bg-slate-900/40 border border-white/5 backdrop-blur-3xl shadow-2xl">
+              <div className="p-6 md:p-10 rounded-3xl md:rounded-[3rem] bg-slate-900/40 border border-white/5 backdrop-blur-3xl shadow-2xl">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12 pb-8 border-b border-white/5">
                   <div className="space-y-1">
                     <h3 className="text-[11px] font-black text-blue-400/40 uppercase tracking-[0.4em] flex items-center gap-3 italic">
@@ -488,7 +618,7 @@ export default function AdminDashboard() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="p-10 rounded-[3rem] bg-slate-900/40 border border-white/5 backdrop-blur-3xl shadow-xl">
+                <div className="p-6 md:p-10 rounded-3xl md:rounded-[3rem] bg-slate-900/40 border border-white/5 backdrop-blur-3xl shadow-xl">
                   <h3 className="text-[11px] font-black text-blue-400/40 uppercase tracking-[0.4em] mb-8 italic flex items-center gap-3">
                     <Box size={18} className="text-blue-500" /> SUIVI LOGISTIQUE
                   </h3>
@@ -520,7 +650,7 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
-                <div className="p-10 rounded-[3rem] bg-slate-900/40 border border-white/5 backdrop-blur-3xl shadow-xl flex flex-col">
+                <div className="p-6 md:p-10 rounded-3xl md:rounded-[3rem] bg-slate-900/40 border border-white/5 backdrop-blur-3xl shadow-xl flex flex-col">
                   <h3 className="text-[11px] font-black text-blue-400/40 uppercase tracking-[0.4em] mb-4 italic flex items-center gap-3">
                     <Activity size={18} className="text-blue-500" /> GÉNÉRATION JOURNALIÈRE
                   </h3>
@@ -548,7 +678,7 @@ export default function AdminDashboard() {
 
             {/* ── CONTROL & ACTIVITY (Right) ── */}
             <div className="lg:col-span-4 space-y-10">
-              <div className="p-10 rounded-[3rem] bg-slate-900/40 border border-white/5 backdrop-blur-3xl shadow-xl">
+              <div className="p-6 md:p-10 rounded-3xl md:rounded-[3rem] bg-slate-900/40 border border-white/5 backdrop-blur-3xl shadow-xl">
                 <AlertPanel>
                   <AnimatePresence>
                     {displayStats.problemHouseholds > 0 && (

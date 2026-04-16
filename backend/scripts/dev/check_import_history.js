@@ -31,11 +31,10 @@ async function checkImportHistory() {
       console.log(`  ${i + 1}. ID: ${h.id}, Nom: ${h.name}, Région: ${h.region}, Modifié: ${h.updatedAt.toISOString().split('T')[0]}`);
     });
 
-    // Vérifier la distribution des IDs (MEN-XXXX)
+    // Vérifier la distribution des IDs (Numériques ou UUID)
     const patterns = await prisma.household.findMany({
       where: {
-        deletedAt: null,
-        id: { startsWith: 'MEN-' }
+        deletedAt: null
       },
       select: { id: true },
       take: 20
@@ -43,7 +42,7 @@ async function checkImportHistory() {
 
     console.log('\nÉchantillons d\'IDs de ménages:');
     patterns.forEach(p => console.log(`  ${p.id}`));
-    console.log(`  ... (total: ${await prisma.household.count({ where: { deletedAt: null, id: { startsWith: 'MEN-' } } })})`);
+    console.log(`  ... (total: ${await prisma.household.count({ where: { deletedAt: null } })})`);
 
     // Vérifier s'il y a des ménages avec le même numéro mais créés à des dates différentes
     const allIds = await prisma.household.findMany({

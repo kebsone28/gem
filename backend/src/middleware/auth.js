@@ -97,7 +97,8 @@ export const optionalAuthenticate = (req, res, next) => {
       try {
         const decoded = jwt.verify(token, JWT_SECRET);
         req.user = decoded;
-      } catch (error) {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      } catch (_err) {
         // Token invalide mais on continue (stats publiques)
         req.user = null;
       }

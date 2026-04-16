@@ -10,6 +10,15 @@
 
 import MiniSearch from 'minisearch';
 
+interface HouseholdDocument {
+  id: string;
+  owner?: { name: string };
+  name?: string;
+  village?: string;
+  phone?: string;
+  [key: string]: unknown;
+}
+
 const miniSearch = new MiniSearch({
   fields: ['id', 'name', 'village', 'phone'], // fields to index for full-text search
   storeFields: ['id', 'name', 'village', 'phone', 'data'], // fields to return with search results
@@ -26,7 +35,7 @@ self.onmessage = (event) => {
   switch (type) {
     case 'INDEX': {
       // Build index for households
-      const documents = (payload.households || []).map((h: any) => ({
+      const documents = (payload.households || []).map((h: HouseholdDocument) => ({
         id: h.id,
         name: h.owner?.name || h.name || 'N/A',
         village: h.village || '',

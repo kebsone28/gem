@@ -233,7 +233,7 @@ export const pushChanges = async (req, res) => {
                 const { 
                     id, zoneId, status, location, owner, koboData, version,
                     name, phone, region, departement, village, source,
-                    constructionData, alerts
+                    constructionData, alerts, numeroordre
                 } = h;
 
                 // Explicitly cast latitude/longitude to Float if they are valid numbers, or null if invalid/empty
@@ -250,9 +250,9 @@ export const pushChanges = async (req, res) => {
                     };
                 }
 
-                    // Accept both UUID and custom ID formats (e.g., MEN-0001 from imports)
+                    // Accept both UUID and custom ID formats (e.g., 4526 from imports)
                     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-                    const customIdRegex = /^[A-Z0-9-]+$/; // Accepts alphanumeric IDs like 4526 or MEN-0001
+                    const customIdRegex = /^[A-Z0-9-]+$/; // Accepts alphanumeric IDs like 4526
                     
                     if (id && !uuidRegex.test(id) && !customIdRegex.test(id)) {
                         const skipMsg = `[${new Date().toISOString()}] [SYNC-SKIP] Household ID [${id}] is not a valid UUID or custom format. Skipping.\n`;
@@ -262,10 +262,11 @@ export const pushChanges = async (req, res) => {
                     }
 
                     try {
-                        const serverH = await prisma.household.findUnique({ 
+                        const _serverH = await prisma.household.findUnique({ 
                             where: { id },
                             include: { zone: { select: { projectId: true } } }
                         });
+                        serverH = _serverH;
                     if (serverH && serverH.version > (parseInt(version) || 0)) {
                         results.conflicts.push({ id, type: 'household', server: serverH });
                         continue;
@@ -273,6 +274,7 @@ export const pushChanges = async (req, res) => {
 
                     // CRITICAL: Verify zone exists before upserting household (foreign key constraint)
                     let zoneExists = await prisma.zone.findUnique({ where: { id: zoneId } });
+                    let serverH = null;
                     
                     if (!zoneExists) {
                         console.log(`[SYNC-HEAL] 🏗️ Zone ${zoneId} not found for household ${id}. Attempting to heal...`);
@@ -607,19 +609,23 @@ export const syncKobo = async (req, res) => {
         const force = req.body.force === true;
         const lastSyncDate = force ? new Date(0) : null; // Date(0) = 1970, force tout reprendre
 
-        const results = await syncKoboToDatabase(organizationId, defaultZoneId, lastSyncDate, targetProject.id);
+        const results = await syncKoboToDatabase(organizationId, defaultZoneId, lastSyncDate, targetProject.id, req.user.id);
 
         // Sync Log
         try {
             await prisma.syncLog.create({
                 data: {
                     organizationId,
-                    source: 'kobo',
-                    applied: results.applied || 0,
-                    skipped: results.skipped || 0,
-                    errors: results.errors || 0,
-                    total: results.total || 0,
-                    syncedAt: new Date(),
+                    userId: req.user.id,
+                    action: 'KOBO_PULL_SYNC',
+                    applied: results.applied || 0, // Optionnel si ton schéma le permet
+                    details: { 
+                        total: results.total || 0,
+                        skipped: results.skipped || 0,
+                        errors: results.errors || 0,
+                        applied: results.applied || 0
+                    },
+                    timestamp: new Date(),
                     deviceId: 'SERVER_BULK_SYNC'
                 }
             });

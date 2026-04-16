@@ -97,9 +97,9 @@ export const triggerKoboSync = async (req, res) => {
 
         const since = lastKoboSyncMap[organizationId] || req.body.since || null;
 
-        console.log(`[KOBO] 🔄 Starting sync for org ${organizationId}, project ${targetProject?.id || 'default'}, since: ${since || 'beginning'}`);
+        console.log(`[KOBO] 🔄 Starting sync for org ${organizationId}, project ${targetProjectId || 'default'}, since: ${since || 'beginning'}`);
         
-        const result = await syncKoboToDatabase(organizationId, defaultZoneId, since, targetProject?.id);
+        const result = await syncKoboToDatabase(organizationId, defaultZoneId, since, targetProjectId);
 
         // Update last sync timestamp
         lastKoboSyncMap[organizationId] = new Date().toISOString();

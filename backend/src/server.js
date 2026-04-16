@@ -126,6 +126,13 @@ async function bootstrap() {
       const supervisorCleanup = startSilentSupervisor();
       if (supervisorCleanup) cleanupFunctions.push(supervisorCleanup);
 
+      // Démarrage du système d'escalade des alertes
+      const { startAlertEscalationAgent, startIGPPAlertAgent } = await import('./services/alertEscalationAgent.js');
+      const alertEscalationCleanup = startAlertEscalationAgent();
+      const igppAlertCleanup = startIGPPAlertAgent();
+      if (alertEscalationCleanup) cleanupFunctions.push(() => clearInterval(alertEscalationCleanup));
+      if (igppAlertCleanup) cleanupFunctions.push(() => clearInterval(igppAlertCleanup));
+
       console.log('💎 PROQUELEC Server is now fully operational.');
 
       // ✅ IMPROVED: Complete graceful shutdown

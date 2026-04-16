@@ -15,7 +15,7 @@ export const notFoundHandler = (req, res) => {
 /**
  * Middleware de gestion des erreurs centralisé
  */
-export const errorHandler = (err, req, res, next) => {
+export const errorHandler = (err, req, res) => {
   const timestamp = new Date().toISOString();
   const requestId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 

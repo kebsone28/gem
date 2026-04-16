@@ -14,6 +14,18 @@ class SocketService {
         this.io.on('connection', (socket) => {
             console.log(`🔌 New client connected: ${socket.id}`);
 
+            // The client explicitly identifies itself
+            socket.on('authenticate', (data) => {
+                const { userId, role } = data || {};
+                if (userId) {
+                    socket.join(`user_${userId}`);
+                    console.log(`👤 Socket ${socket.id} authenticated as user_${userId}`);
+                }
+                if (role) {
+                    socket.join(`role_${role}`);
+                }
+            });
+
             socket.on('join_room', (room) => {
                 socket.join(room);
                 console.log(`👤 Socket ${socket.id} joined room ${room}`);
@@ -41,6 +53,16 @@ class SocketService {
         } else {
             this.io.emit(event, data);
         }
+    }
+
+    emitToUser(userId, event, data) {
+        if (!this.io) return;
+        this.io.to(`user_${userId}`).emit(event, data);
+    }
+
+    emitToRole(role, event, data) {
+        if (!this.io) return;
+        this.io.to(`role_${role}`).emit(event, data);
     }
 }
 

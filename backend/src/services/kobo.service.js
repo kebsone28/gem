@@ -161,9 +161,10 @@ function mapSubmissionToHousehold(submission, organizationId, defaultZoneId, pro
  * @param {string} fallbackZoneId - zone used if no region is found
  * @param {string|null} since - ISO timestamp for incremental sync
  * @param {string|null} projectId - specific project to sync
+ * @param {string|null} userId - user who triggered the sync
  * @returns {Promise<{applied: number, skipped: number, errors: number}>}
  */
-export async function syncKoboToDatabase(organizationId, fallbackZoneId, since = null, projectId = null) {
+export async function syncKoboToDatabase(organizationId, fallbackZoneId, since = null, projectId = null, userId = null) {
     // 1. Resolve Project and its Kobo Config
     let targetProjectId = projectId;
     let koboToken = null;
@@ -393,6 +394,7 @@ export async function syncKoboToDatabase(organizationId, fallbackZoneId, since =
     // 🔥 AUDIT LOG: Tracer le résultat global de la synchronisation
     await tracerAction({
         organizationId,
+        userId: userId,
         action: 'SYNCHRONISATION_KOBO',
         resource: 'Bordereau Terrain',
         details: { 

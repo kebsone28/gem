@@ -1,5 +1,4 @@
 import dotenv from 'dotenv';
-import path from 'path';
 
 dotenv.config();
 
@@ -8,8 +7,16 @@ const parsePort = (val, fallback) => {
     return isNaN(port) || port <= 0 || port > 65535 ? fallback : port;
 };
 
-console.log('🔍 Loaded DB_URL from env:', process.env.DATABASE_URL ? 'PRESENT' : 'MISSING');
+if (process.env.DATABASE_URL) {
+    // eslint-disable-next-line no-console
+    console.log('🔍 Loaded DB_URL from env: PRESENT');
+} else {
+    // eslint-disable-next-line no-console
+    console.log('🔍 Loaded DB_URL from env: MISSING');
+}
+// eslint-disable-next-line no-console
 console.log('🔍 Loaded REDIS_URL from env:', process.env.REDIS_URL ? 'PRESENT' : 'MISSING (Defaults to localhost)');
+// eslint-disable-next-line no-console
 console.log('🔍 Current Working Directory:', process.cwd());
 
 export const config = {

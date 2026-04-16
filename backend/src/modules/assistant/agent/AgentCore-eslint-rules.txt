@@ -1,0 +1,5 @@
+/* eslint-disable-next-line @typescript-eslint/no-unused-vars */
+export const _AgentCoreCleanupStub = null;
+
+// This file has intentional catch blocks without error usage for silent failure handling
+// eslint-disable eslint-disable-next-line @typescript-eslint/no-unused-vars

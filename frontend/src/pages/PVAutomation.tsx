@@ -21,16 +21,76 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { PageContainer, PageHeader, ContentArea } from '@components';
+import { PageContainer, PageHeader, ContentArea, ActionBar } from '@components';
+import Skeleton, { TableRowSkeleton, CardSkeleton } from '@components/common/Skeleton';
 import { createNotification } from '../services/notificationService';
 import { dispatchPVAlerts } from '../services/alertTraceService';
+import alertsAPI from '../services/alertsAPI';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { usePermissions } from '../hooks/usePermissions';
+import { audioService } from '../services/audioService';
 import { PVAIEngine } from '../services/ai/PVAIEngine';
 import type { PVType as PVAIType } from '../services/ai/PVAIEngine';
 import SignatureModal from '../components/common/SignatureModal';
 import { PenTool } from 'lucide-react';
+
+// --- Utilities ---
+
+/**
+ * Formate l'étiquette d'un lot de manière propre (sans null/undefined)
+ */
+const formatLotLabel = (lotId?: string | null, lotName?: string | null): string => {
+  const id = lotId ?? 'N/A';
+  if (!lotName || lotName.trim() === '') {
+    return `lot ${id}`;
+  }
+  return `lot ${id} (${lotName.trim()})`;
+};
+
+/**
+ * Construit une notification CONSOLIDÉE intelligente (1 action métier = 1 notif)
+ * Gère: succès complet / warning (SMS échoué) / erreur (PV échoué)
+ */
+const buildConsolidatedNotification = (
+  type: PVType,
+  lotLabel: string,
+  smsStatus?: string,
+  emailStatus?: string
+) => {
+  const isSmsSent = smsStatus === 'SENT';
+  const isEmailSent = emailStatus === 'SENT';
+  const isSmsOrEmailFailed = smsStatus === 'FAILED' || emailStatus === 'FAILED';
+
+  // 🟢 Succès complet
+  if (isSmsSent || isEmailSent) {
+    return {
+      title: `✅ ${type} généré et envoyé`,
+      message: `Le PV pour le ${lotLabel} a été généré et transmis avec succès.`,
+      type: type === 'PVNC' || type === 'PVHSE' ? 'rejection' : 'approval',
+      dedupKey: `pv-${type}-${lotLabel}`,
+    };
+  }
+
+  // 🟡 Warning: PV généré mais communication échouée
+  if (isSmsOrEmailFailed) {
+    return {
+      title: `⚠️ ${type} généré, transmission échouée`,
+      message: `Le PV pour le ${lotLabel} a été généré mais l'envoi SMS/Email a échoué.`,
+      type: 'rejection',
+      dedupKey: `pv-${type}-${lotLabel}`,
+    };
+  }
+
+  // 🟠 Par défaut: juste généré
+  return {
+    title: `${type} généré`,
+    message: `Le PV pour le ${lotLabel} a été établi.`,
+    type: type === 'PVNC' || type === 'PVHSE' ? 'rejection' : 'approval',
+    dedupKey: `pv-${type}-${lotLabel}`,
+  };
+};
 
 // --- Types & Interfaces ---
 
@@ -89,6 +149,15 @@ const PV_TEMPLATES: Record<PVType, PVTemplate> = {
   },
 };
 
+export const getAutoRecommendedType = (s: any): PVType => {
+  const data = s.koboData || {};
+  if (data.hse_violation === 'yes') return 'PVHSE';
+  if (data.status_global === 'refused' || s.koboSync?.controleOk === false) return 'PVNC';
+  if (data.delay_detected === 'yes') return 'PVRET';
+  if (s.status === 'COMPLETED' && !s.pvd_signed) return 'PVRD';
+  return 'PVR';
+};
+
 // --- Main Component ---
 
 export default function PVAutomation() {
@@ -119,31 +188,31 @@ export default function PVAutomation() {
       const matchSearch = (s.name || s.numeroordre || '')
         .toLowerCase()
         .includes(searchTerm.toLowerCase());
-      // Logic to determine auto-recommended type could go here
+      
+      // Appliquer le filtre par type si un type spécifique est sélectionné
+      if (selectedType !== 'ALL') {
+        const recommendedType = getAutoRecommendedType(s);
+        return matchSearch && recommendedType === selectedType;
+      }
+      
       return matchSearch;
     });
-  }, [submissions, searchTerm]);
+  }, [submissions, searchTerm, selectedType]);
 
   const handleCreatePV = async (type: PVType, submission: any) => {
     setIsGenerating(true);
     try {
-      // 1. Generate local notification
-      await createNotification({
-        title: `Nouveau ${type} généré`,
-        message: `Le PV pour le lot ${submission.numeroordre} (${submission.name}) a été établi automatiquement.`,
-        sender: 'Système GEM-PROQUELEC',
-        type: type === 'PVNC' || type === 'PVHSE' ? 'rejection' : 'approval',
-        projectId: submission.projectId,
-      });
+      const lotLabel = formatLotLabel(submission.numeroordre, submission.name);
 
-      // 1.5 Sauvegarde persistante du PV dans Dexie (Axe 1 - Amélioration Continue)
+      // 1. Sauvegarde persistante du PV dans Dexie (Axe 1 - Amélioration Continue)
       const pvId = crypto.randomUUID();
+      const householdLabel = submission.name ?? 'N/A';
       await db.pvs.put({
         id: pvId,
         householdId: submission.id,
         projectId: submission.projectId || 'N/A',
         type: type,
-        content: `PV ${type} généré pour le ménage ${submission.name} (Réf: ${submission.numeroordre})`,
+        content: `PV ${type} généré pour le ménage ${householdLabel} (Réf: ${submission.numeroordre})`,
         createdAt: new Date().toISOString(),
         metadata: {
           koboSubmissionId: submission.koboSubmissionId,
@@ -165,15 +234,60 @@ export default function PVAutomation() {
         numerolot: submission.numeroordre,
       });
 
-      // 3. Feedback utilisateur
+      // 3. Créer UNE SEULE notification CONSOLIDÉE (fusion intelligente) au lieu de 2
       const smsStatus = alertResults.smsTrace?.status;
       const emailStatus = alertResults.emailTrace?.status;
-      const statusMsg = [
-        smsStatus === 'SENT' ? '✅ SMS envoyé' : smsStatus === 'FAILED' ? '⚠️ SMS échoué' : null,
-        emailStatus === 'SENT' ? '✅ Email envoyé' : emailStatus === 'FAILED' ? '⚠️ Email échoué' : null,
-      ].filter(Boolean).join(' | ');
+      const notifData = buildConsolidatedNotification(type, lotLabel, smsStatus, emailStatus);
 
-      toast.success(`PV ${type} généré & tracé${statusMsg ? ` — ${statusMsg}` : ''}`);
+      await createNotification({
+        title: notifData.title,
+        message: notifData.message,
+        sender: 'Système GEM-PROQUELEC',
+        type: notifData.type,
+        projectId: submission.projectId,
+        // 🔑 Clé de déduplication: évite les doublons métier
+        dedupKey: notifData.dedupKey,
+      });
+
+      // 4. Créer une alerte backend (Flux d'Alertes Finalisé)
+      try {
+        const severityMap = {
+          PVHSE: 'CRITICAL',
+          PVRES: 'CRITICAL',
+          PVNC: 'HIGH',
+          PVRET: 'HIGH',
+          PVR: 'LOW',
+          PVRD: 'MEDIUM',
+        };
+
+        await alertsAPI.createAlert({
+          projectId: submission.projectId || 'N/A',
+          householdId: submission.id,
+          pvId,
+          type,
+          severity: severityMap[type as keyof typeof severityMap] || 'MEDIUM',
+          title: `${type} généré pour ${submission.name || 'Ménage inconnu'}`,
+          description: `Un procès-verbal de type ${type} a été automatiquement généré pour le ménage.`,
+          recommendedAction: 'Consulter le PV et signer électroniquement dans votre espace GEM.',
+          metadata: {
+            numeroordre: submission.numeroordre,
+            prestataireName: submission.name,
+            smsStatus,
+            emailStatus,
+          },
+        });
+      } catch (alertErr) {
+        console.error('Erreur lors de la création de l\'alerte backend:', alertErr);
+        // Ne pas bloquer le flux si l'alerte échoue
+      }
+
+      // 5. Feedback utilisateur via toast (court et concis)
+      const statusMsg = [
+        smsStatus === 'SENT' ? '✅ SMS' : smsStatus === 'FAILED' ? '⚠️ SMS échoué' : null,
+        emailStatus === 'SENT' ? '✅ Email' : emailStatus === 'FAILED' ? '⚠️ Email échoué' : null,
+      ].filter(Boolean).join(' + ');
+
+      toast.success(`PV ${type} généré${statusMsg ? ` (${statusMsg})` : ''}`);
 
       setSelectedSubmission({ ...submission, activePVType: type, generatedPvId: pvId });
       setIsGenerating(false);
@@ -183,14 +297,7 @@ export default function PVAutomation() {
     }
   };
 
-  const getAutoRecommendedType = (s: any): PVType => {
-    const data = s.koboData || {};
-    if (data.hse_violation === 'yes') return 'PVHSE';
-    if (data.status_global === 'refused' || s.koboSync?.controleOk === false) return 'PVNC';
-    if (data.delay_detected === 'yes') return 'PVRET';
-    if (s.status === 'COMPLETED' && !s.pvd_signed) return 'PVRD';
-    return 'PVR';
-  };
+
 
   return (
     <PageContainer>
@@ -241,6 +348,7 @@ export default function PVAutomation() {
                   <button
                     key={type}
                     onClick={() => setSelectedType(type === selectedType ? 'ALL' : type)}
+                    title={`Filtrer la liste pour n'afficher que les ${PV_TEMPLATES[type].title}`}
                     className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all ${
                       selectedType === type
                         ? 'bg-blue-600 text-white'
@@ -253,7 +361,13 @@ export default function PVAutomation() {
               </div>
 
               <div className="space-y-2 max-h-[600px] overflow-y-auto custom-scrollbar pr-2">
-                {filteredSubmissions.map((s) => {
+                {submissions.length === 0 ? (
+                  <>
+                    <TableRowSkeleton />
+                    <TableRowSkeleton />
+                    <TableRowSkeleton />
+                  </>
+                ) : filteredSubmissions.map((s) => {
                   const recommended = getAutoRecommendedType(s);
                   const isSelected = selectedSubmission?.id === s.id;
                   return (
@@ -348,6 +462,7 @@ export default function PVAutomation() {
                               key={tmpl.type}
                               onClick={() => handleCreatePV(tmpl.type, selectedSubmission)}
                               disabled={isGenerating}
+                              title={tmpl.description}
                               className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
                                 isGenerating
                                   ? 'opacity-50 cursor-not-allowed'
@@ -428,7 +543,7 @@ export default function PVAutomation() {
                               </p>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-8">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                               <div>
                                 <p className="font-bold text-slate-500 uppercase">DATE & HEURE</p>
                                 <p className="text-white">
@@ -498,7 +613,7 @@ export default function PVAutomation() {
                                             <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-3">
                                               Logistique : Matériaux Consommés
                                             </p>
-                                            <div className="grid grid-cols-2 gap-2">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                                               {aiContent.materials.map((m, i) => (
                                                 <div key={i} className="flex justify-between items-center bg-white/5 px-3 py-1.5 rounded-lg border border-white/5">
                                                   <span className="text-[9px] text-slate-400">{m.item}</span>
@@ -531,7 +646,7 @@ export default function PVAutomation() {
                                 )}
                               </div>
 
-                              <div className="grid grid-cols-2 gap-8">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
                                 <div className="space-y-4">
                                   <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">VISA DIRECTION PROQUELEC</span>
                                   <div className="h-20 bg-slate-900/50 rounded-2xl border border-white/5 flex items-center justify-center">
@@ -579,7 +694,10 @@ export default function PVAutomation() {
                         </div>
 
                         <div className="flex gap-4">
-                          <button className="flex-1 bg-white hover:bg-slate-200 text-slate-950 font-black py-4 rounded-2xl flex items-center justify-center gap-3 transition-all active:scale-95 text-xs uppercase tracking-widest">
+                          <button 
+                            className="flex-1 bg-white hover:bg-slate-200 text-slate-950 font-black py-4 rounded-2xl flex items-center justify-center gap-3 transition-all active:scale-95 text-xs uppercase tracking-widest"
+                            title="Télécharger le dossier complet au format PDF ou Word"
+                          >
                             <Download size={18} />
                             Télécharger PDF / DOCX
                           </button>
@@ -636,12 +754,17 @@ export default function PVAutomation() {
       <SignatureModal 
         isOpen={isSignatureOpen}
         onClose={() => setIsSignatureOpen(false)}
-        onSave={(data) => setSignatureData(data)}
+        onSave={(data) => {
+          setSignatureData(data);
+          audioService.playSuccess();
+        }}
         title="Approbation Technique GEM-MINT"
       />
     </PageContainer>
   );
 }
+
+import { AnimatedCounter } from '../components/common/AnimatedCounter';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SUB-COMPONENT: PV Stats Board (KPIs)
@@ -657,6 +780,17 @@ function PVStatsBoard({ archivedPVs }: { archivedPVs: any[] }) {
     return { total, conformity, hse, delay };
   }, [archivedPVs]);
 
+  if (archivedPVs.length === 0) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-8">
+        <CardSkeleton />
+        <CardSkeleton />
+        <CardSkeleton />
+        <CardSkeleton />
+      </div>
+    );
+  }
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-8">
       {/* Widget 1: Conformité */}
@@ -669,8 +803,10 @@ function PVStatsBoard({ archivedPVs }: { archivedPVs: any[] }) {
           <ShieldCheck size={64} className="text-emerald-500" />
         </div>
         <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-1">Taux de Conformité</p>
-        <div className="flex items-end gap-2">
-          <span className="text-3xl font-black text-white">{stats.conformity}%</span>
+        <div className="flex items-end gap-1">
+          <span className="text-3xl font-black text-white">
+            <AnimatedCounter value={stats.conformity} suffix="%" />
+          </span>
           <span className="text-[10px] font-bold text-emerald-400 mb-1">Norme NS 01-001</span>
         </div>
         <div className="mt-4 h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
@@ -692,8 +828,10 @@ function PVStatsBoard({ archivedPVs }: { archivedPVs: any[] }) {
           <FileText size={64} className="text-blue-500" />
         </div>
         <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-1">Total PV Générés</p>
-        <div className="flex items-end gap-2">
-          <span className="text-3xl font-black text-white">{stats.total}</span>
+        <div className="flex items-end gap-1">
+          <span className="text-3xl font-black text-white">
+            <AnimatedCounter value={stats.total} />
+          </span>
           <span className="text-[10px] font-bold text-blue-400 mb-1">Documents archivés</span>
         </div>
         <div className="mt-4 flex gap-1">

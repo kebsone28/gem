@@ -625,7 +625,7 @@ export default function Simulation() {
                           </div>
 
                           {/* Advanced Params (only if not optimized globally to keep it clean, or always show but disabled) */}
-                          <div className="grid grid-cols-2 gap-2 mt-2 pt-3 border-t border-slate-200 dark:border-slate-200 dark:border-slate-800/50">
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 mt-2 pt-3 border-t border-slate-200 dark:border-slate-200 dark:border-slate-800/50">
                             <div className="flex flex-col gap-1">
                               <label className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-widest font-black">
                                 Paiement
@@ -992,7 +992,7 @@ export default function Simulation() {
                       <Clock size={14} /> Calendrier & Jours Fériés
                     </label>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="flex flex-col gap-2 p-3 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800">
                         <label
                           htmlFor="work-days"

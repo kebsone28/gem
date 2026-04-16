@@ -145,7 +145,7 @@ export class StaticResponseImprover {
 **🎯 Stratégie de Matching:**
 • Identifiant métier: numeroordre (clé UNIQUE)
 • Logique: UPDATE si existe, CREATE sinon
-• Format: String human-readable (ex: MEN-XXXX)
+• Format: Numérique (ex: 4526)
 
 **📊 Extraction de Champs:**
 • numeroordre/numero_ordre: Identifiant unique

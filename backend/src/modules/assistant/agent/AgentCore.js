@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 export class Agent {
   constructor(name, tools, planner) {
     this.name = name;

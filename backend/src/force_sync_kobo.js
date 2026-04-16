@@ -1,4 +1,5 @@
 import { syncKoboToDatabase } from './services/kobo.service.js';
+/* eslint-disable no-console, @typescript-eslint/no-unused-vars */
 import prisma from './core/utils/prisma.js';
 import dotenv from 'dotenv';
 

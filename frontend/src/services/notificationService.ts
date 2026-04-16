@@ -6,16 +6,41 @@ import type { MissionNotification } from '../store/db';
  */
 
 export const createNotification = async (
-  notif: Omit<MissionNotification, 'id' | 'createdAt' | 'read' | 'archived'>
+  notif: Omit<MissionNotification, 'id' | 'createdAt' | 'read' | 'archived'> & {
+    dedupKey?: string; // 🔑 Clé facultative pour éviter les doublons métier
+  }
 ) => {
-  const newNotif: MissionNotification = {
-    ...notif,
+  const { dedupKey, ...notifData } = notif;
+
+  // 🔍 Vérifier si une notification similaire existe déjà (déduplication)
+  if (dedupKey) {
+    const existingNotif = await (db.notifications as any)
+      .where('dedupKey')
+      .equals(dedupKey)
+      .first()
+      .catch(() => null);
+
+    if (existingNotif && !existingNotif.read) {
+      // 🔄 Mettre à jour la notification existante au lieu de créer un doublon
+      await db.notifications.update(existingNotif.id, {
+        ...notifData,
+        createdAt: new Date().toISOString(), // Remonter en haut
+      });
+      return existingNotif;
+    }
+  }
+
+  // ✨ Créer une nouvelle notification
+  const newNotif: MissionNotification & { dedupKey?: string } = {
+    ...notifData,
+    dedupKey, // Stocker la clé pour déduplication future
     id: crypto.randomUUID(),
     createdAt: new Date().toISOString(),
     read: false,
     archived: false,
   };
-  await db.notifications.add(newNotif);
+
+  await db.notifications.add(newNotif as any);
   return newNotif;
 };
 

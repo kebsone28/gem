@@ -94,16 +94,40 @@ export const getProjectKPIs = async (req, res) => {
             GROUP BY t.id, t.name, u.name, pl."tradeKey"
         `;
 
+
         const aggr = koboAggrResult[0] || {};
         const daysWorked = Number(aggr.days_worked || 1);
         const totalValidated = Number(aggr.total_validated || 0);
         const totalHouseholds = households.length;
         const totalCable = Number(aggr.cable_2_5 || 0) + Number(aggr.cable_1_5 || 0) + Number(aggr.cable_4_armed || 0) + Number(aggr.cable_1_5_armed || 0);
 
+        // Comptages par statut
         const murCount = households.filter(h => h.status === 'Murs').length;
         const reseauCount = households.filter(h => h.status === 'Réseau').length;
         const interieurCount = households.filter(h => h.status === 'Intérieur').length;
         const problemCount = households.filter(h => h.status === 'Problème' || h.status === 'Inéligible').length;
+        const hseCount = households.filter(h => h.status && h.status.toLowerCase().includes('hse')).length;
+        const pvRetardCount = households.filter(h => h.status && h.status.toLowerCase().includes('retard')).length;
+        const pvncCount = households.filter(h => h.status && h.status.toUpperCase().includes('PVNC')).length;
+        const pvrCount = households.filter(h => h.status && h.status.toUpperCase().includes('PVR')).length;
+        const pvhseCount = households.filter(h => h.status && h.status.toUpperCase().includes('PVHSE')).length;
+        const totalPV = households.filter(h => h.status && h.status.toUpperCase().includes('PV')).length;
+        const totalArchived = households.filter(h => h.status === 'Terminé' || h.status === 'Réception: Validée').length;
+        const actionRequiredCount = households.filter(h => h.alerts && Array.isArray(h.alerts) && h.alerts.some(a => a.level === 'critical' || a.level === 'warning')).length;
+        const nonConformeCount = households.filter(h => h.status && h.status.toLowerCase().includes('non-conform')).length;
+        const conformeCount = households.filter(h => h.status && h.status.toLowerCase().includes('conform')).length;
+
+        // Audit logs critiques (si besoin)
+        const auditLogs = await prisma.auditLog.findMany({
+            where: {
+                organizationId,
+                module: 'HSE',
+                severity: { in: ['critical', 'warning'] },
+                resource: { contains: projectId }
+            },
+            orderBy: { timestamp: 'desc' },
+            take: 10
+        });
 
         const igppRaw = totalHouseholds > 0 ? (
             (totalValidated * 1.0) + (interieurCount * 0.75) + (reseauCount * 0.45) + (murCount * 0.2)
@@ -118,6 +142,17 @@ export const getProjectKPIs = async (req, res) => {
                 electrifiedHouseholds: totalValidated,
                 progressPercent: totalHouseholds > 0 ? Math.round((totalValidated / (totalHouseholds - problemCount || 1)) * 100) : 0,
                 igppScore: Math.min(100, Math.round(igppRaw * 10) / 10),
+                incidentsHSE: hseCount,
+                pvRetard: pvRetardCount,
+                totalPV,
+                totalArchived,
+                pvnc: pvncCount,
+                pvr: pvrCount,
+                pvhse: pvhseCount,
+                nonConforme: nonConformeCount,
+                conforme: conformeCount,
+                actionRequired: actionRequiredCount,
+                auditLogs,
                 performance: {
                     daysWorked,
                     avgPerDay: Math.round((totalValidated / daysWorked) * 10) / 10,

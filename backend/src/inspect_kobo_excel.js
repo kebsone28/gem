@@ -1,3 +1,4 @@
+/* eslint-disable no-console, @typescript-eslint/no-unused-vars */
 import xlsx from 'xlsx';
 
 const EXCEL_PATH = 'C:/Mes-Sites-Web/GEM_SAAS/archive/Liste/Suivi_Électrification_menages_V2.xlsx';

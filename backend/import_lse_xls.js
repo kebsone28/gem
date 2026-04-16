@@ -51,13 +51,15 @@ async function main() {
                 zoneMap.set(zoneKey, zoneId);
             }
 
-            const householdId = `MEN-${String(row['Numero_ordre']).padStart(4, '0')}`;
+            const rawOrder = String(row['Numero_ordre']).trim();
+            const householdId = rawOrder; // L'ID devient le numéro propre
             const latitude = parseFloat(row['latitude']);
             const longitude = parseFloat(row['longitude']);
 
             await prisma.household.upsert({
                 where: { id: householdId },
                 update: {
+                    numeroordre: rawOrder,
                     status: 'Non débuté',
                     location: { type: 'Point', coordinates: [longitude, latitude] },
                     owner: {
@@ -75,6 +77,7 @@ async function main() {
                 },
                 create: {
                     id: householdId,
+                    numeroordre: rawOrder,
                     zoneId: zoneId,
                     organizationId: ORG_ID,
                     status: 'Non débuté',

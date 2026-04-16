@@ -5,15 +5,11 @@ import { generateDynamicGrappes } from '../utils/clustering.js';
 const recalculationTimers = new Map();
 const activeRecalculations = new Set();
 
+// Storage for pending resolvers to avoid hanging promises when debouncing
+const pendingResolvers = new Map();
+
 /**
  * Recalculates grappes (clusters) for a project based on current household data.
- * Updates the project configuration with the new grappes and zone assignments.
- * 
- * Includes a debouncing mechanism to handle rapid successive calls (e.g. during sync push batches).
- * 
- * @param {string} projectId 
- * @param {string} organizationId 
- * @param {boolean} force - Force recalculation even if grappes exist
  */
 export async function recalculateProjectGrappes(projectId, organizationId, force = false) {
     if (!projectId) return;
@@ -24,14 +20,22 @@ export async function recalculateProjectGrappes(projectId, organizationId, force
         return { success: true, message: 'Recalculation in progress' };
     }
 
-    // 2. Debounce logic: Delay execution to catch subsequent batches
+    // 2. Debounce logic
     if (recalculationTimers.has(projectId)) {
         clearTimeout(recalculationTimers.get(projectId));
+        // Resolve the previous pending promise to prevent HTTP hang
+        const resolvePrevious = pendingResolvers.get(projectId);
+        if (resolvePrevious) {
+            resolvePrevious({ success: true, message: 'Debounced (Batched with next call)' });
+        }
     }
 
     return new Promise((resolve, reject) => {
+        pendingResolvers.set(projectId, resolve);
+        
         const timer = setTimeout(async () => {
             recalculationTimers.delete(projectId);
+            pendingResolvers.delete(projectId);
             activeRecalculations.add(projectId);
             
             try {

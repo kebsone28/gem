@@ -12,6 +12,7 @@ import { config } from './core/config/config.js';
 
 const app = express();
 
+app.use(helmet());
 app.use(cors(config.cors));
 
 // Log all 403 responses globally for debugging
@@ -90,6 +91,7 @@ import organizationRoutes from './api/routes/organization.routes.js';
 import sizingRoutes from './modules/sizing/sizing.routes.js';
 import assistantRoutes from './modules/assistant/assistant.router.js';
 import approvalRoutes from './modules/assistant/approval.router.js';
+import alertsRoutes from './modules/alerts/alerts.routes.js';
 
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
@@ -109,6 +111,7 @@ app.use('/api/organization', organizationRoutes);
 app.use('/api/sizing', sizingRoutes);
 app.use('/api/ai', assistantRoutes);
 app.use('/api/approvals', approvalRoutes);
+app.use('/api/alerts', alertsRoutes);
 
 app.get('/health', async (req, res) => {
     const health = {
@@ -137,7 +140,8 @@ app.get('/health', async (req, res) => {
     try {
         const ping = await redisConnection.ping();
         if (ping === 'PONG') health.services.redis = 'UP';
-    } catch (e) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    } catch (_err) {
         health.status = 'PARTIAL';
     }
 
@@ -146,7 +150,7 @@ app.get('/health', async (req, res) => {
 });
 
 // 6. Global Error Handler
-app.use((err, req, res, next) => {
+app.use((err, req, res) => {
     console.error('🔥 GLOBAL ERROR:', err.stack);
     
     // Specific handling for DB errors in the global handler

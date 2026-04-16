@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import prisma from '../utils/prisma.js';
 import { sendMail } from '../../services/mail.service.js';
 

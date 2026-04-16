@@ -4,28 +4,44 @@ import { useAuth } from '../contexts/AuthContext';
 import logger from '../utils/logger';
 import { syncEventBus } from '../utils/syncEventBus';
 
+let socketInstance: Socket | null = null;
+
 export const useWebSockets = () => {
   const { user } = useAuth();
-  const socketRef = useRef<Socket | null>(null);
+  const initializedRef = useRef(false);
 
   useEffect(() => {
-    if (!user) return;
+    // 1. Cleanup if user logs out
+    if (!user) {
+      if (socketInstance) {
+        logger.log('🧹 Nettoyage WebSocket (Déconnexion utilisateur)...');
+        socketInstance.disconnect();
+        socketInstance = null;
+      }
+      return;
+    }
 
-    // Connect via Vite proxy: /socket.io is intercepted and sent to the backend.
-    // VITE_API_URL defaults to '/api' in local dev.
-    // We want the socket to connect to the origin (e.g., http://localhost:3000) so the proxy can catch it.
+    // 2. Prevent double listener initialization in Strict Mode
+    if (initializedRef.current) return;
+    initializedRef.current = true;
+
+    // 3. Robust URL resolution (Vite dev -> local proxy base, Prod -> direct URL)
     const BASE_URL = import.meta.env.PROD
       ? import.meta.env.VITE_API_URL?.replace(/\/api$/, '') || window.location.origin
       : window.location.origin;
 
-    socketRef.current = io(BASE_URL, {
-      withCredentials: true,
-      transports: ['websocket', 'polling'],
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
-    });
+    if (!socketInstance) {
+      logger.log('🚀 Initialisation du WebSocket Singleton...');
+      socketInstance = io(BASE_URL, {
+        withCredentials: true,
+        transports: ['websocket'],
+        reconnection: true,
+        reconnectionAttempts: 3,
+        reconnectionDelay: 2000,
+      });
+    }
 
-    const socket = socketRef.current;
+    const socket = socketInstance;
 
     socket.on('connect_error', (error) => {
       logger.error('❌ Erreur de connexion WebSocket:', error.message);
@@ -33,61 +49,42 @@ export const useWebSockets = () => {
 
     socket.on('connect', () => {
       logger.log('✅ Connecté aux WebSockets (Status: ONLINE)');
-      // Initialize sync event bus with socket for backend notifications
       syncEventBus.initSocket(socket);
+
+      // S'authentifier auprès du backend pour rejoindre ses Salles (Rooms)
+      socket.emit('authenticate', {
+        userId: user?.id,
+        role: user?.roleLegacy || user?.role
+      });
     });
 
-    // Handle generic real-time notifications
+    // Handle generic real-time notifications via standard event bus
     socket.on('notification', (data: any) => {
-      // Allow SYNC notifications even for self to confirm operation success
-      if (data?.type !== 'SYNC' && data?.data?.user && data.data.user === user?.id) {
+      // Ignorer les notifications destinées à UN AUTRE utilisateur spécifiquement
+      if (data?.data?.user && data.data.user !== user?.id) {
         return;
       }
 
-      // Simple DOM-based toast for immediate MVP impact
-      const toast = document.createElement('div');
-      toast.className =
-        'fixed bottom-4 right-4 z-[9999] bg-indigo-600/95 backdrop-blur-xl border border-indigo-400/30 text-white p-4 rounded-2xl shadow-2xl flex items-center gap-4 transition-all duration-300 transform translate-y-10 opacity-0';
-      toast.style.transition = 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
-      toast.innerHTML = `
-                <div class="px-3 py-2 bg-white/20 rounded-xl text-xl shrink-0">📡</div>
-                <div>
-                   <h4 class="font-black text-sm tracking-tight">${data.message || 'Mise à jour entrante'}</h4>
-                   <p class="text-xs text-indigo-100 mt-0.5 font-medium leading-tight">${data.type === 'SYNC' ? 'Données synchronisées depuis le cloud.' : 'Alerte temps réel reçue.'}</p>
-                </div>
-            `;
-
-      document.body.appendChild(toast);
-
-      // Pop in
-      requestAnimationFrame(() => {
-        toast.classList.remove('translate-y-10', 'opacity-0');
-      });
-
-      // Pop out after 5s
-      setTimeout(() => {
-        toast.classList.add('opacity-0', 'translate-y-2');
-        setTimeout(() => toast.remove(), 400);
-      }, 5000);
+      // Propager proprement au système de notification React (NotificationCenter / Toaster)
+      syncEventBus.emit('notification', data);
     });
 
     socket.on('disconnect', () => {
       logger.log('🔌 Déconnecté des WebSockets');
     });
 
+    // Nettoyage strict des LISTENERS au démontage
+    // (Le composant est démonté, on enlève SES écouteurs pour éviter les doublons au prochain mount)
     return () => {
+      initializedRef.current = false;
       if (socket) {
-        logger.log('🧹 Nettoyage WebSocket...');
         socket.off('connect');
+        socket.off('connect_error');
         socket.off('notification');
         socket.off('disconnect');
-        socket.off('connect_error');
-        if (socket.connected) {
-          socket.disconnect();
-        }
       }
     };
-  }, [user?.id]);
+  }, [user]);
 
-  return socketRef.current;
+  return socketInstance;
 };
