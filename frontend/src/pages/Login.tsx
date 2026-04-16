@@ -45,6 +45,7 @@ export default function Login() {
       });
 
       const { accessToken, user: userPayload } = response.data;
+      console.log('🔐 LOGIN RESPONSE DEBUG:', { userPayload, accessToken });
       const emailResp = userPayload?.email || '';
       const roleResp = userPayload?.role || '';
       const nameResp = userPayload?.name || '';
@@ -52,6 +53,7 @@ export default function Login() {
       const orgConfigResp = userPayload?.organizationConfig;
       const idResp = userPayload?.id;
       const requires2FA = userPayload?.requires2FA;
+      console.log('🔐 EXTRACTED FIELDS:', { emailResp, roleResp, nameResp, orgResp, idResp });
 
       if (requires2FA) {
         setPendingUser({
