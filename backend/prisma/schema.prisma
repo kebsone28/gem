@@ -124,6 +124,9 @@ model Household {
   @@index([village])
   @@index([assignedTeams])
   @@index([grappeId])
+  @@index([zoneId, organizationId])
+  @@index([status])
+  @@index([organizationId, status])
 }
 
 model Region {

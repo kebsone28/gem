@@ -38,10 +38,7 @@ export const getProjectKPIs = async (req, res) => {
             });
         }
 
-        const households = await prisma.household.findMany({
-            where: { zone: { projectId }, organizationId, deletedAt: null }
-        });
-
+        // Note: Households array removed for performance - using aggregations instead
         // --- DEEP KOBO ANALYTICS (Raw SQL for Performance & Granularity) ---
 
         // 1. Global Totals
@@ -98,24 +95,50 @@ export const getProjectKPIs = async (req, res) => {
         const aggr = koboAggrResult[0] || {};
         const daysWorked = Number(aggr.days_worked || 1);
         const totalValidated = Number(aggr.total_validated || 0);
-        const totalHouseholds = households.length;
-        const totalCable = Number(aggr.cable_2_5 || 0) + Number(aggr.cable_1_5 || 0) + Number(aggr.cable_4_armed || 0) + Number(aggr.cable_1_5_armed || 0);
+        // --- OPTIMIZED COUNTS (SQL Aggregate instead of JS filter) ---
+        const statusGroups = await prisma.household.groupBy({
+            by: ['status'],
+            where: { zone: { projectId }, organizationId, deletedAt: null },
+            _count: true
+        });
 
-        // Comptages par statut
-        const murCount = households.filter(h => h.status === 'Murs').length;
-        const reseauCount = households.filter(h => h.status === 'Réseau').length;
-        const interieurCount = households.filter(h => h.status === 'Intérieur').length;
-        const problemCount = households.filter(h => h.status === 'Problème' || h.status === 'Inéligible').length;
-        const hseCount = households.filter(h => h.status && h.status.toLowerCase().includes('hse')).length;
-        const pvRetardCount = households.filter(h => h.status && h.status.toLowerCase().includes('retard')).length;
-        const pvncCount = households.filter(h => h.status && h.status.toUpperCase().includes('PVNC')).length;
-        const pvrCount = households.filter(h => h.status && h.status.toUpperCase().includes('PVR')).length;
-        const pvhseCount = households.filter(h => h.status && h.status.toUpperCase().includes('PVHSE')).length;
-        const totalPV = households.filter(h => h.status && h.status.toUpperCase().includes('PV')).length;
-        const totalArchived = households.filter(h => h.status === 'Terminé' || h.status === 'Réception: Validée').length;
-        const actionRequiredCount = households.filter(h => h.alerts && Array.isArray(h.alerts) && h.alerts.some(a => a.level === 'critical' || a.level === 'warning')).length;
-        const nonConformeCount = households.filter(h => h.status && h.status.toLowerCase().includes('non-conform')).length;
-        const conformeCount = households.filter(h => h.status && h.status.toLowerCase().includes('conform')).length;
+        const getCount = (statusName) => statusGroups.find(g => g.status === statusName)?._count || 0;
+        const getCountByPattern = (pattern) => statusGroups
+            .filter(g => g.status && g.status.toLowerCase().includes(pattern.toLowerCase()))
+            .reduce((sum, g) => sum + g._count, 0);
+        const getCountByUPattern = (pattern) => statusGroups
+            .filter(g => g.status && g.status.toUpperCase().includes(pattern.toUpperCase()))
+            .reduce((sum, g) => sum + g._count, 0);
+
+        const totalHouseholds = statusGroups.reduce((sum, g) => sum + g._count, 0);
+        const murCount = getCount('Murs');
+        const reseauCount = getCount('Réseau');
+        const interieurCount = getCount('Intérieur');
+        const totalValidated = getCount('Terminé') + getCount('Réception: Validée');
+        
+        const problemCount = getCount('Problème') + getCount('Inéligible');
+        const hseCount = getCountByPattern('hse');
+        const pvRetardCount = getCountByPattern('retard');
+        const pvncCount = getCountByUPattern('PVNC');
+        const pvrCount = getCountByUPattern('PVR');
+        const pvhseCount = getCountByUPattern('PVHSE');
+        const totalPV = getCountByUPattern('PV');
+        const totalArchived = totalValidated;
+        
+        // Critical alerts count requires a separate aggregation or complex JSONB query
+        // For performance, we'll do a simple count of households having non-empty alerts array if supported,
+        // otherwise a prioritized count.
+        const actionRequiredCount = await prisma.household.count({
+            where: { 
+                zone: { projectId }, 
+                organizationId, 
+                deletedAt: null,
+                alerts: { not: [] }
+            }
+        });
+
+        const nonConformeCount = getCountByPattern('non-conform');
+        const conformeCount = getCountByPattern('conform');
 
         // Audit logs critiques (si besoin)
         const auditLogs = await prisma.auditLog.findMany({

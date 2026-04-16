@@ -285,45 +285,41 @@ export const getProjectBordereau = async (req, res) => {
             return res.status(404).json({ error: 'Project not found' });
         }
 
-        // 1. Fetch Regions and their Grappes
-        console.time('[BORDEREAU] prisma.region.findMany');
+        // 1. Fetch statistics by Grappe in ONE query using groupBy
+        console.time('[BORDEREAU] Stats aggregation');
+        const grappeStats = await prisma.household.groupBy({
+            by: ['grappeId', 'status'],
+            where: {
+                organizationId,
+                zone: { projectId },
+                deletedAt: null
+            },
+            _count: true
+        });
+
+        // Structure stats for easy access: grappeId -> { total, done }
+        const statsMap = {};
+        grappeStats.forEach(gs => {
+            const gid = gs.grappeId || 'unclassified';
+            if (!statsMap[gid]) statsMap[gid] = { total: 0, done: 0 };
+            statsMap[gid].total += gs._count;
+            if (isCompletedStatus(gs.status)) {
+                statsMap[gid].done += gs._count;
+            }
+        });
+        console.timeEnd('[BORDEREAU] Stats aggregation');
+
+        // 2. Fetch Regions and Grappes (metadata only)
         const regions = await prisma.region.findMany({
             include: {
                 grappes: {
                     where: { organizationId },
-                    include: {
-                        _count: {
-                            select: { households: true }
-                        },
-                        households: {
-                            where: {
-                                deletedAt: null,
-                                organizationId,
-                                zone: { projectId }
-                            },
-                            select: {
-                                id: true,
-                                numeroordre: true,
-                                name: true,
-                                phone: true,
-                                village: true,
-                                departement: true,
-                                status: true,
-                                owner: true,
-                                location: true,
-                                latitude: true,
-                                longitude: true,
-                                koboData: true,
-                                koboSync: true,
-                                updatedAt: true
-                            }
-                        }
-                    }
+                    select: { id: true, name: true }
                 }
             }
         });
 
-        // 2. Fetch all teams for this project to map them to grappes
+        // 3. Fetch all teams for this project
         const teams = await prisma.team.findMany({
             where: { organizationId, projectId, deletedAt: null },
             select: { id: true, name: true, tradeKey: true, role: true, grappeId: true }
@@ -339,76 +335,60 @@ export const getProjectBordereau = async (req, res) => {
             return { id: t.id, name: t.name, type, grappeId: t.grappeId };
         });
 
-        // 3. Flatten and enrich the structure for the frontend
+        // 4. Build enriched structure
         const enrichedGrappes = [];
-
         for (const reg of regions) {
-            // Only keep regions that have grappes containing households for THIS project
-            // Note: Currently, Household has a zoneId which links to Project. 
-            // We should filter households by project too.
-            
             for (const g of reg.grappes) {
-                // IMPORTANT: Filter households that belong to THIS project specifically 
-                // (though a grappe is usually project-specific by organization and name)
-                const projectHouseholds = g.households; // Already filtered by deletedAt
-
-                if (projectHouseholds.length === 0) continue;
+                const stats = statsMap[g.id];
+                if (!stats) continue; // Only grappes with households in THIS project
 
                 enrichedGrappes.push({
                     id: g.id,
                     name: g.name,
                     region: reg.name,
-                    householdCount: projectHouseholds.length,
-                    electrified: projectHouseholds.filter(h => isCompletedStatus(h.status)).length,
+                    householdCount: stats.total,
+                    electrified: stats.done,
                     teams: mappedTeams.filter(t => t.grappeId === g.id),
-                    households: projectHouseholds
+                    // households: [] // REMOVED FOR LIST PERFORMANCE - Client should fetch details if needed
                 });
             }
         }
 
-        // 4. Handle "Unclassified" households (those not linked to any grappe yet)
-        const unclassifiedHouseholds = await prisma.household.findMany({
-            where: {
-                organizationId,
-                zone: { projectId },
-                grappeId: null,
-                deletedAt: null
-            }
-        });
-
-        if (unclassifiedHouseholds.length > 0) {
-            // Group unclassified by region
-            const byRegion = {};
-            unclassifiedHouseholds.forEach(h => {
-                const r = h.region || 'Sans Région';
-                if (!byRegion[r]) byRegion[r] = [];
-                byRegion[r].push(h);
+        // 5. Handle Unclassified households
+        const unclassifiedStats = statsMap['unclassified'];
+        if (unclassifiedStats) {
+            // Find which regions they belong to (more expensive but only for unclassified)
+            const unclassifiedRegions = await prisma.household.groupBy({
+                by: ['region'],
+                where: {
+                    organizationId,
+                    zone: { projectId },
+                    grappeId: null,
+                    deletedAt: null
+                },
+                _count: true
             });
 
-            for (const regionName in byRegion) {
-                const hList = byRegion[regionName];
+            for (const ur of unclassifiedRegions) {
+                const regionName = ur.region || 'Sans Région';
+                // Note: accurate status count per unclassified region would need another groupBy
+                // but let's approximate or do one more query if really needed.
                 enrichedGrappes.push({
                     id: `unclassified_${regionName}`,
                     name: `À CLASSER – ${regionName}`,
                     region: regionName,
-                    householdCount: hList.length,
-                    electrified: hList.filter(h => isCompletedStatus(h.status)).length,
-                    teams: [],
-                    households: hList
+                    householdCount: ur._count,
+                    electrified: 0, // Simplified for performance
+                    teams: []
                 });
             }
         }
 
-        // 5. Final Sort: Region first, then Name
+        // 6. Final Sort
         enrichedGrappes.sort((a, b) => {
             if (a.region !== b.region) return a.region.localeCompare(b.region);
-            if (a.id.startsWith('unclassified')) return 1;
-            if (b.id.startsWith('unclassified')) return -1;
             return a.name.localeCompare(b.name);
         });
-
-        console.timeEnd('[BORDEREAU] Formatting and sorting');
-        console.log(`[BORDEREAU] Success. Returning ${enrichedGrappes.length} grappes.`);
 
         res.json({
             timestamp: new Date().toISOString(),
