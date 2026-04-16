@@ -502,7 +502,7 @@ export const deployServerUpdate = async (req, res) => {
         }
 
         const projectPath = '/var/www/proquelec/gem-saas';
-        const command = `cd ${projectPath} && git pull origin main && cd frontend && npx vite build`;
+        const command = `cd ${projectPath} && git fetch --all && git reset --hard origin/main && npm install && cd frontend && npm install && npm run build`;
 
         console.log(`[SYSTEM] Déploiement initié par ${email}`);
 
