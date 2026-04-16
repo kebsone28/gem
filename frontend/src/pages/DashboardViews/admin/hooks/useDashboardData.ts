@@ -43,7 +43,17 @@ export function useDashboardData(projectId: string, canViewReports: boolean) {
   }, [fetchMetrics]);
 
   const metrics = useMemo((): DashboardMetrics => {
-    if (remoteMetrics) return remoteMetrics;
+    // Si on a des données distantes, on les complète avec des valeurs par défaut pour éviter les crashs
+    if (remoteMetrics) {
+      return {
+        ...remoteMetrics,
+        pipeline: remoteMetrics.pipeline || { murs: 0, reseau: 0, interieur: 0, validated: 0 },
+        performance: remoteMetrics.performance || { avgPerDay: 0, daysWorked: 0, avgCablePerHouse: 0, efficiencyRate: 0 },
+        logistics: remoteMetrics.logistics || { kitPrepared: 0, kitLoaded: 0, gap: 0 },
+        technical: remoteMetrics.technical || { totalConsumption: 0 },
+        breakdown: remoteMetrics.breakdown || { byZone: [], byTeam: [] }
+      };
+    }
 
     const total = localHouseholds.length;
     const done = localHouseholds.filter(

@@ -39,23 +39,23 @@ export const OperationalSection: React.FC<OperationalSectionProps> = ({ metrics,
           <div className="space-y-8">
             <ProgressBar
               label="Maçonnerie Structurelle"
-              count={`${metrics.pipeline.murs} SITES`}
-              percentage={Math.round((metrics.pipeline.murs / total) * 100)}
+              count={`${metrics.pipeline?.murs || 0} SITES`}
+              percentage={Math.round(((metrics.pipeline?.murs || 0) / total) * 100)}
             />
             <ProgressBar
               label="Réseaux & Infrastructures"
-              count={`${metrics.pipeline.reseau} SITES`}
-              percentage={Math.round((metrics.pipeline.reseau / total) * 100)}
+              count={`${metrics.pipeline?.reseau || 0} SITES`}
+              percentage={Math.round(((metrics.pipeline?.reseau || 0) / total) * 100)}
             />
             <ProgressBar
               label="Installations Intérieures"
-              count={`${metrics.pipeline.interieur} SITES`}
-              percentage={Math.round((metrics.pipeline.interieur / total) * 100)}
+              count={`${metrics.pipeline?.interieur || 0} SITES`}
+              percentage={Math.round(((metrics.pipeline?.interieur || 0) / total) * 100)}
             />
             <ProgressBar
               label="Mise en Service Finale"
-              count={`${metrics.electrifiedHouseholds} SITES`}
-              percentage={metrics.progressPercent}
+              count={`${metrics.electrifiedHouseholds || 0} SITES`}
+              percentage={metrics.progressPercent || 0}
               status="success"
             />
           </div>

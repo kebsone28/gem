@@ -1,6 +1,4 @@
 import React, { useState, useMemo } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../store/db';
 import {
   FileText,
   AlertTriangle,
@@ -19,22 +17,14 @@ import {
   Scale,
   Bell,
   ExternalLink,
+  Plus,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PageContainer, PageHeader, ContentArea, ActionBar } from '@components';
-import Skeleton, { TableRowSkeleton, CardSkeleton } from '@components/common/Skeleton';
-import { createNotification } from '../services/notificationService';
-import { dispatchPVAlerts } from '../services/alertTraceService';
-import alertsAPI from '../services/alertsAPI';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { usePermissions } from '../hooks/usePermissions';
-import { audioService } from '../services/audioService';
-import { PVAIEngine } from '../services/ai/PVAIEngine';
-import type { PVType as PVAIType } from '../services/ai/PVAIEngine';
-import SignatureModal from '../components/common/SignatureModal';
-import { PenTool } from 'lucide-react';
 
 // --- Utilities ---
 
