@@ -281,9 +281,27 @@ export class ProquelecDatabase extends Dexie {
       map_tiles: 'url, timestamp, zoom',
     });
 
-    // 🔑 Version 14: Ajout déduplication des notifications par clé métier
+    // 🔑 Version 14: Ajout déduplication des notifications par clé métier & Restauration schéma complet
     this.version(14).stores({
       notifications: 'id, type, projectId, missionId, archived, read, createdAt, dedupKey',
+      pvs: 'id, householdId, projectId, type, createdAt',
+      ai_learning_logs: '++id, query, userId, role, timestamp',
+      audit_logs: 'id, userId, action, timestamp',
+      missions: 'id, projectId, orderNumber, startDate, endDate',
+      inventory: 'id, projectId, category, name',
+      expenses: 'id, projectId, category, date',
+      organizations: 'id, name',
+      users: 'id, organizationId, email, role',
+      projects: 'id, organizationId, name, status, version',
+      zones: 'id, projectId, organizationId, name, version',
+      households: 'id, projectId, zoneId, organizationId, status, version',
+      grappes: 'id, projectId, region',
+      teams: 'id, organizationId, name, type, specialty',
+      sync_logs: '++id, timestamp, action',
+      app_security: 'key, updatedAt',
+      syncOutbox: '++id, status, timestamp',
+      favorites: '++id, projectId, householdId, createdAt',
+      map_tiles: 'url, timestamp, zoom',
     });
   }
 }

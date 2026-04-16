@@ -45,6 +45,26 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   }, [projects.length, activeProjectId]);
 
+  // 🔄 Auto-Sync: Si aucun projet en local, on interroge le serveur (seulement si connecté)
+  useEffect(() => {
+    const fetchInitialProjects = async () => {
+      const token = safeStorage.getItem('access_token');
+      if (projects.length === 0 && token) {
+        try {
+          const response = await apiClient.get('/projects');
+          const serverProjects = response.data.projects || response.data || [];
+          if (serverProjects.length > 0) {
+            await db.projects.bulkPut(serverProjects);
+            logger.log(`♻️ [STORE] ${serverProjects.length} projets récupérés du serveur`);
+          }
+        } catch (err) {
+          logger.error('❌ Échec de synchronisation initiale des projets', err);
+        }
+      }
+    };
+    fetchInitialProjects();
+  }, [projects.length]);
+
   const setActiveProjectId = (id: string | null) => {
     setActiveProjectIdState(id);
     if (id) {

@@ -57,7 +57,7 @@ export default function AdminDashboard() {
 
   // ── BUSINESS HOOKS ──
   const { metrics, refresh: refreshKPI, localZonesCount } = useDashboardData(projectId, canViewReports);
-  const { stats: missionStats, missions, refresh: refreshMissions } = useMissionStats(user, projectId);
+  const { stats: missionStats, missions, refresh: refreshMissions } = useMissionStats(user as any, projectId);
   const { activities, refresh: refreshMonitoring } = useMonitoring(canViewReports);
   const { feedActivities, refresh: refreshAudit } = useAuditLogs(activities);
 

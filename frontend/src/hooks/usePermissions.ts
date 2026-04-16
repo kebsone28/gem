@@ -34,10 +34,20 @@ export const usePermissions = () => {
     return false;
   };
 
+  const isAdmin = user?.role === 'ADMIN_PROQUELEC' || user?.email === 'admingem';
+  const isChefProjet = user?.role === 'CHEF_PROJET';
+  const isDG = user?.role === 'DG_PROQUELEC';
+
   return {
     peut,
     peutModifier,
     PERMISSIONS,
     role: user?.role,
+    user,
+    isAdmin,
+    canEdit: isAdmin || isChefProjet,
+    canManagePV: isAdmin || isChefProjet || isDG,
+    isChefProjet,
+    isDG
   };
 };

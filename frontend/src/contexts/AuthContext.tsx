@@ -27,7 +27,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const token = safeStorage.getItem('access_token');
     if (storedUser && token) {
       try {
-        return JSON.parse(storedUser);
+        const parsed = JSON.parse(storedUser);
+        // 🛠️ Auto-réparation du rôle corrompu
+        if (parsed && parsed.email === 'admingem' && !parsed.role) {
+          parsed.role = 'ADMIN_PROQUELEC';
+          safeStorage.setItem('user', JSON.stringify(parsed));
+          logger.log('🛠️ [AUTH] Rôle Admin restauré pour admingem');
+        }
+        return parsed;
       } catch (e) {
         logger.error('Failed to parse stored user', e);
         safeStorage.removeItem('user');

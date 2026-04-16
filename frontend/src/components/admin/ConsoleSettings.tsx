@@ -109,6 +109,8 @@ export const ConsoleSettings: React.FC<ConsoleSettingsProps> = ({ onSettingsChan
                 <button
                   onClick={() => setIsOpen(false)}
                   className="p-2 hover:bg-slate-800 rounded-lg transition-colors"
+                  aria-label="Fermer"
+                  title="Fermer"
                 >
                   <X size={20} className="text-slate-400" />
                 </button>
@@ -267,5 +269,3 @@ export const ConsoleSettings: React.FC<ConsoleSettingsProps> = ({ onSettingsChan
     </>
   );
 };
-
-export type { ConsoleSettingsConfig };
