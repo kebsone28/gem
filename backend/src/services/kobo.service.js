@@ -167,13 +167,41 @@ function mapSubmissionToHousehold(submission, organizationId, defaultZoneId, pro
 export async function syncKoboToDatabase(organizationId, fallbackZoneId, since = null, projectId = null, userId = null) {
     // 1. Resolve Project and its Kobo Config
     let targetProjectId = projectId;
+    let validatedFallbackZoneId = fallbackZoneId;
+    let mappingConfig = {};
     let koboToken = null;
     let koboAssetUid = null;
-    let mappingConfig = {};
 
+    // 🕵️ AUTO-RESOLUTION: Si fallbackZoneId est en fait un projectId ou si targetProjectId est manquant
     if (!targetProjectId) {
-        const fallbackZone = await prisma.zone.findUnique({ where: { id: fallbackZoneId } });
-        targetProjectId = fallbackZone?.projectId;
+        // Est-ce une zone ?
+        const zone = await prisma.zone.findUnique({ where: { id: fallbackZoneId } });
+        if (zone) {
+            targetProjectId = zone.projectId;
+        } else {
+            // Est-ce un projet ?
+            const project = await prisma.project.findUnique({ where: { id: fallbackZoneId } });
+            if (project) {
+                targetProjectId = project.id;
+                console.log(`[KOBO-SYNC] 💡 fallbackZoneId was actually a projectId [${project.name}]. Resolving default zone...`);
+                
+                // Trouver ou créer une zone par défaut pour ce projet ("Zone Générale")
+                let defaultZone = await prisma.zone.findFirst({
+                    where: { projectId: project.id, organizationId }
+                });
+
+                if (!defaultZone) {
+                    defaultZone = await prisma.zone.create({
+                        data: {
+                            name: 'Zone Générale',
+                            projectId: project.id,
+                            organizationId
+                        }
+                    });
+                }
+                validatedFallbackZoneId = defaultZone.id;
+            }
+        }
     }
 
     if (targetProjectId) {
@@ -181,7 +209,6 @@ export async function syncKoboToDatabase(organizationId, fallbackZoneId, since =
         if (project?.config) {
             koboToken = project.config.kobo?.token;
             koboAssetUid = project.config.kobo?.assetUid;
-            // Mapping can be at project level
             mappingConfig = project.config.kobo_field_mapping;
             console.log(`[KOBO-SYNC] Using project-specific config for project: ${project.name}`);
         }
@@ -200,6 +227,9 @@ export async function syncKoboToDatabase(organizationId, fallbackZoneId, since =
     let skipped = 0;
     let errors = 0;
 
+    // Use the validated fallback
+    const actualFallbackZoneId = validatedFallbackZoneId;
+
     // Local cache for zones to avoid hitting DB for every household
     const zoneCache = {};
 
@@ -215,7 +245,7 @@ export async function syncKoboToDatabase(organizationId, fallbackZoneId, since =
                 ''
             ).trim();
 
-            let zoneId = fallbackZoneId;
+            let zoneId = actualFallbackZoneId;
 
             if (regionName && targetProjectId) {
                 if (zoneCache[regionName]) {

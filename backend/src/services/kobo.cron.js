@@ -77,8 +77,8 @@ async function runGlobalSync() {
         try {
             console.log(`[KOBO-CRON] 📡 Sync pour l'organisation ${org.name} (Projet: ${org.projects[0].name})...`);
             
-            // Appel de la logique de service
-            const result = await syncKoboToDatabase(org.id, targetProjectId);
+            // Appel de la logique de service (Passage du projectId en argument spécifique)
+            const result = await syncKoboToDatabase(org.id, null, null, targetProjectId);
             
             // Log en BDD si possible
             await prisma.syncLog.create({
