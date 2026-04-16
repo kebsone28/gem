@@ -58,7 +58,7 @@ function getMemory(userId: string): SessionMemory {
         return { ...parsed, contextHistory: parsed.contextHistory || [] };
       }
     }
-  } catch (e) {}
+  } catch {}
   return { history: [], contextHistory: [], lastUpdated: Date.now() };
 }
 
@@ -1033,7 +1033,7 @@ function findUniversalQR(query: string): string | null {
 
 function getActiveIntents(intent: any): string[] {
   return Object.entries(intent)
-    .filter(([_, v]) => v === true)
+    .filter(([, v]) => v === true)
     .map(([k]) => k);
 }
 
@@ -2146,7 +2146,7 @@ async function orchestrate(
         timestamp: new Date(),
         context: 'rules_fallback',
       });
-    } catch (e) {}
+    } catch {}
   }
 
   if (config.mode === 'HYBRID_RULES_FIRST') {
