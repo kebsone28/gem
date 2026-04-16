@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { ProgressBar } from '../../../../components/dashboards/DashboardComponents';
 import { fmtNum } from '../../../../utils/format';
 import { useNavigate } from 'react-router-dom';
-import { DashboardMetrics } from '../types';
+import type { DashboardMetrics } from '../types';
 
 interface OperationalSectionProps {
   metrics: DashboardMetrics;

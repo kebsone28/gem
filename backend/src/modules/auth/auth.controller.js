@@ -237,12 +237,14 @@ export const login = async (req, res) => {
             res.status(401).json({ error: 'Invalid email or password' });
         }
     } catch (error) {
-        console.error('❌ [LOGIN ERROR]', error.message);
-        console.error('   Stack:', error.stack?.split('\n')[0]);
+        console.error('❌ [CRITICAL LOGIN CRASH]');
+        console.error('   Message:', error.message);
+        console.error('   Code:', error.code);
+        console.error('   Stack:', error.stack);
         
         // Handle database connection errors specifically
         if (error.code === 'P1001' || error.message?.includes("Can't reach database server")) {
-            console.error('🔴 Database connection failed');
+            console.error('🔴 Database connection failed at login');
             return res.status(503).json({
                 error: 'Base de données inaccessible',
                 message: 'Le serveur ne parvient pas à contacter la base de données. Vérifiez que Docker Desktop est lancé.',
@@ -250,22 +252,11 @@ export const login = async (req, res) => {
             });
         }
 
-        // Handle bcrypt errors
-        if (error.message?.includes('hash')) {
-            console.error('🔴 Password hash error - user may be corrupt');
-            return res.status(500).json({
-                error: 'Erreur d\'authentification',
-                message: 'Erreur interne lors de la vérification du mot de passe. Contactez l\'administrateur.',
-                code: 'HASH_ERROR'
-            });
-        }
-
         // Generic error
-        console.error('🔴 Generic login error - Stack:', error.stack);
         res.status(500).json({
             error: 'Server error during login',
             message: error.message,
-            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+            stack: process.env.NODE_ENV === 'development' || !process.env.NODE_ENV ? error.stack : undefined
         });
     }
 };

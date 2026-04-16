@@ -150,7 +150,7 @@ app.get('/health', async (req, res) => {
 });
 
 // 6. Global Error Handler
-app.use((err, req, res) => {
+app.use((err, req, res, next) => {
     console.error('🔥 GLOBAL ERROR:', err.stack);
     
     // Specific handling for DB errors in the global handler

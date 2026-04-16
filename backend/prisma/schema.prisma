@@ -47,9 +47,9 @@ model User {
   projectsUpdated    Project[]        @relation("UpdatedBy")
   syncLogs           SyncLog[]
   ledTeam            Team?            @relation("TeamLeader")
-  userMemory        UserMemory?
   organization       Organization     @relation(fields: [organizationId], references: [id])
   role               Role?            @relation(fields: [roleId], references: [id])
+  userMemory         UserMemory?
 }
 
 model Project {
@@ -339,48 +339,40 @@ model RolePermission {
 }
 
 model UserMemory {
-  id            String   @id @default(cuid())
-  userId        String   @unique
-
-  lastMessage   String?
-  lastIntent    String?
-
-  preferences   Json?
-  history       Json?
-  emotions      Json?
-  context       Json?
-
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  user          User     @relation(fields: [userId], references: [id])
+  id             String         @id @default(cuid())
+  userId         String         @unique
+  lastMessage    String?
+  lastIntent     String?
+  preferences    Json?
+  history        Json?
+  emotions       Json?
+  context        Json?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  user           User           @relation(fields: [userId], references: [id])
   vectorMemories VectorMemory[]
 
   @@index([userId])
 }
 
 model VectorMemory {
-  id            String     @id @default(cuid())
-  userId        String
-  userMemoryId  String
+  id             String     @id @default(cuid())
+  userId         String
+  userMemoryId   String
   organizationId String?
-  
-  content       String     // Original text content
-  embedding     Json?      // OpenAI embedding stored as JSON array
-  metadata      Json?      // Additional metadata for semantic search and recall
-  
-  intent        String?    // e.g., "technical_issue", "greeting"
-  emotion       String?    // e.g., "stressed", "neutral"
-  source        String     @default("conversation") // "conversation", "document", "feedback"
-  importance    Float      @default(0.5) // 0.0-1.0 relevance score
-  
-  createdAt     DateTime   @default(now())
-  expiresAt     DateTime?  // For auto-cleanup of old memories
-  lastAccessed  DateTime   @default(now())
-  accessCount   Int        @default(0)
-  
-  userMemory    UserMemory @relation(fields: [userMemoryId], references: [id], onDelete: Cascade)
-  
+  content        String
+  embedding      Json?
+  metadata       Json?
+  intent         String?
+  emotion        String?
+  source         String     @default("conversation")
+  importance     Float      @default(0.5)
+  createdAt      DateTime   @default(now())
+  expiresAt      DateTime?
+  lastAccessed   DateTime   @default(now())
+  accessCount    Int        @default(0)
+  userMemory     UserMemory @relation(fields: [userMemoryId], references: [id], onDelete: Cascade)
+
   @@index([userId])
   @@index([userMemoryId])
   @@index([createdAt])
@@ -388,27 +380,22 @@ model VectorMemory {
 }
 
 model AIMetrics {
-  id               String   @id @default(cuid())
-  userId           String
-  organizationId   String?
-  
-  requestType      String   // "query", "memory_store", "memory_search"
-  routeSelected    String   // "local", "ai", "hybrid", "cache"
-  
-  inputTokens      Int?     // For LLM calls
-  outputTokens     Int?     // For LLM calls
-  costUSD          Decimal? // Calculated cost
-  latencyMs        Int?     // Response time
-  
-  success          Boolean  @default(true)
-  errorMessage     String?
-  
-  intentDetected   String?
-  emotionDetected  String?
-  cacheHitRate     Float?   // % of queries served from cache
-  
-  createdAt        DateTime @default(now())
-  
+  id              String   @id @default(cuid())
+  userId          String
+  organizationId  String?
+  requestType     String
+  routeSelected   String
+  inputTokens     Int?
+  outputTokens    Int?
+  costUSD         Decimal?
+  latencyMs       Int?
+  success         Boolean  @default(true)
+  errorMessage    String?
+  intentDetected  String?
+  emotionDetected String?
+  cacheHitRate    Float?
+  createdAt       DateTime @default(now())
+
   @@index([userId])
   @@index([organizationId])
   @@index([createdAt])
@@ -416,23 +403,20 @@ model AIMetrics {
 }
 
 model PromptVersion {
-  id               String   @id @default(cuid())
-  organizationId   String?
-  
-  name             String   // e.g., "system_prompt_v1", "mission_routing_v2"
-  version          Int      // Sequential version number
-  prompt           String   // Full prompt text
-  model            String?  // GPT model it was designed for
-  description      String?
-  
-  isActive         Boolean  @default(false)
-  testResults      Json?    // {success_rate: 0.95, avg_latency_ms: 250}
-  metrics          Json?    // {cost_optimization: 0.7, quality_score: 0.92}
-  
-  createdAt        DateTime @default(now())
-  activatedAt      DateTime?
-  deactivatedAt    DateTime?
-  
+  id             String    @id @default(cuid())
+  organizationId String?
+  name           String
+  version        Int
+  prompt         String
+  model          String?
+  description    String?
+  isActive       Boolean   @default(false)
+  testResults    Json?
+  metrics        Json?
+  createdAt      DateTime  @default(now())
+  activatedAt    DateTime?
+  deactivatedAt  DateTime?
+
   @@unique([name, version])
   @@index([organizationId])
   @@index([isActive])
@@ -440,37 +424,30 @@ model PromptVersion {
 }
 
 model ActionApproval {
-  id                String    @id @default(cuid())
-  organizationId    String
-  userId            String?
-  agentName         String    // TechAgent, DataAgent, SupportAgent, MissionSage
-  actionType        String    // createMission, assignTechnician, modifyData, etc.
-  riskLevel         String    // LOW, MEDIUM, HIGH
-  confidence        Float     // 0.0 - 1.0 (AI confidence score)
-  
-  status            String    @default("AUTO_EXECUTED") // AUTO_EXECUTED, PENDING, APPROVED, REJECTED, EXECUTED, FAILED
-  
-  payload           Json      // Full action payload
-  result            Json?     // Execution result
-  error             String?   // Error message if failed
-  
-  requestedBy       String?   // User or system that requested
-  approvedBy        String?   // User who approved
-  rejectedBy        String?   // User who rejected
-  rejectionComment  String?   // Why it was rejected
-  
-  requestedAt       DateTime  @default(now())
-  approvedAt        DateTime?
-  rejectedAt        DateTime?
-  executedAt        DateTime?
-  
-  metadata          Json?     // Additional context: intent, emotion, model_used, latency_ms, etc.
-  
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
-  
-  user              User?     @relation(fields: [userId], references: [id])
-  
+  id               String    @id @default(cuid())
+  organizationId   String
+  userId           String?
+  agentName        String
+  actionType       String
+  riskLevel        String
+  confidence       Float
+  status           String    @default("AUTO_EXECUTED")
+  payload          Json
+  result           Json?
+  error            String?
+  requestedBy      String?
+  approvedBy       String?
+  rejectedBy       String?
+  rejectionComment String?
+  requestedAt      DateTime  @default(now())
+  approvedAt       DateTime?
+  rejectedAt       DateTime?
+  executedAt       DateTime?
+  metadata         Json?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  user             User?     @relation(fields: [userId], references: [id])
+
   @@index([organizationId])
   @@index([status])
   @@index([userId])
@@ -480,40 +457,30 @@ model ActionApproval {
 }
 
 model Alert {
-  id              String    @id @default(cuid())
-  organizationId  String
-  projectId       String
-  householdId     String?   // Alerte liée à un ménage (PVNC, PVHSE, etc.)
-  pvId            String?   // Alerte liée à un PV généré
-  
-  type            String    // PVNC, PVHSE, PVRET, PVRD, PVRES, IGPP_STOCK, IGPP_BUDGET, HSE_INCIDENT, etc.
-  severity        String    // CRITICAL, HIGH, MEDIUM, LOW
-  status          String    @default("OPEN")  // OPEN, ACKNOWLEDGED, RESOLVED, ESCALATED
-  
-  title           String
-  description     String?
-  recommendedAction String?
-  
-  // Traçabilité de l'alerte
-  createdAt       DateTime  @default(now())
-  acknowledgedAt  DateTime?
-  acknowledgedBy  String?   // ID utilisateur qui a reconnu l'alerte
-  resolvedAt      DateTime?
-  resolvedBy      String?   // ID utilisateur qui a résolu
-  
-  // Escalade automatique
-  escalatedAt     DateTime?
-  escalationLevel Int       @default(0) // 0 = initial, 1 = escalade 1, etc.
-  escalationNotificationSent Boolean @default(false)
-  
-  // Notifications
-  notified        Boolean   @default(false)
-  smsNotified     Boolean   @default(false)
-  emailNotified   Boolean   @default(false)
-  
-  // Métadonnées
-  metadata        Json?     // Données supplémentaires: seuils, valeurs actuelles, etc.
-  
+  id                         String    @id @default(cuid())
+  organizationId             String
+  projectId                  String
+  householdId                String?
+  pvId                       String?
+  type                       String
+  severity                   String
+  status                     String    @default("OPEN")
+  title                      String
+  description                String?
+  recommendedAction          String?
+  createdAt                  DateTime  @default(now())
+  acknowledgedAt             DateTime?
+  acknowledgedBy             String?
+  resolvedAt                 DateTime?
+  resolvedBy                 String?
+  escalatedAt                DateTime?
+  escalationLevel            Int       @default(0)
+  escalationNotificationSent Boolean   @default(false)
+  notified                   Boolean   @default(false)
+  smsNotified                Boolean   @default(false)
+  emailNotified              Boolean   @default(false)
+  metadata                   Json?
+
   @@index([organizationId])
   @@index([projectId])
   @@index([status])
@@ -524,33 +491,24 @@ model Alert {
 }
 
 model AlertConfiguration {
-  id              String    @id @default(cuid())
-  organizationId  String    @unique
-  
-  // Seuils IGPP
-  stockCritical   Int       @default(5)       // Nombre d'alertes avant critique
-  budgetThreshold Float     @default(90)      // Pourcentage d'utilisation
-  teamCapacity    Float     @default(85)      // Pourcentage de capacité
-  electricityMin  Float     @default(50)      // Pourcentage minimum
-  delayThreshold  Int       @default(5)       // Jours avant retard
-  
-  // Escalade
-  escalationDelay Int       @default(3600)    // Secondes avant escalade (1h)
-  escalationLoop  Boolean   @default(true)    // Ré-notifier après escalade?
-  
-  // Canaux
-  enableSMS       Boolean   @default(true)
-  enableEmail     Boolean   @default(true)
-  enablePush      Boolean   @default(false)
-  enableWhatsApp  Boolean   @default(false)
-  
-  // Horaires
-  quietHourStart  Int?      // 0-23 (optionnel)
-  quietHourEnd    Int?      // 0-23 (optionnel)
-  
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  
+  id              String   @id @default(cuid())
+  organizationId  String   @unique
+  stockCritical   Int      @default(5)
+  budgetThreshold Float    @default(90)
+  teamCapacity    Float    @default(85)
+  electricityMin  Float    @default(50)
+  delayThreshold  Int      @default(5)
+  escalationDelay Int      @default(3600)
+  escalationLoop  Boolean  @default(true)
+  enableSMS       Boolean  @default(true)
+  enableEmail     Boolean  @default(true)
+  enablePush      Boolean  @default(false)
+  enableWhatsApp  Boolean  @default(false)
+  quietHourStart  Int?
+  quietHourEnd    Int?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
   @@index([organizationId])
 }
 

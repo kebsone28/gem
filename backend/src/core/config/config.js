@@ -36,13 +36,17 @@ export const config = {
                 'http://localhost:5173',
                 'http://localhost:5174',
                 'http://localhost:5175',
+                'http://127.0.0.1:3000',
+                'http://127.0.0.1:5173',
                 'http://gem.proquelec.sn',
                 'https://gem.proquelec.sn',
                 'http://www.gem.proquelec.sn',
                 'https://www.gem.proquelec.sn'
             ];
-            // Allow requests with no origin (like mobile apps or curl) or if origin is in allowed list
-            if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+            // En développement, on est plus tolérant sur les erreurs CORS pour éviter les 500
+            const isDev = !process.env.NODE_ENV || process.env.NODE_ENV === 'development';
+            
+            if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes('*') || isDev) {
                 callback(null, true);
             } else {
                 console.warn(`🔒 CORS Blocked attempt from origin: ${origin}`);

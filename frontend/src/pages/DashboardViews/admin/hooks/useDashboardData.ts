@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../../../store/db';
 import apiClient from '../../../../api/client';
 import logger from '../../../../utils/logger';
-import { DashboardMetrics } from '../types';
+import type { DashboardMetrics } from '../types';
 
 export function useDashboardData(projectId: string, canViewReports: boolean) {
   const [remoteMetrics, setRemoteMetrics] = useState<DashboardMetrics | null>(null);
@@ -50,6 +50,11 @@ export function useDashboardData(projectId: string, canViewReports: boolean) {
       (h) => h.status === 'Terminé' || h.status === 'Réception: Validée'
     ).length;
 
+    // Calcul dynamique du pipeline local
+    const mursCount = localHouseholds.filter(h => h.constructionData?.mursStatus === 'Terminé').length;
+    const reseauCount = localHouseholds.filter(h => h.constructionData?.reseauStatus === 'Terminé').length;
+    const interieurCount = localHouseholds.filter(h => h.constructionData?.interieurStatus === 'Terminé').length;
+
     return {
       totalHouseholds: total,
       electrifiedHouseholds: done,
@@ -64,11 +69,21 @@ export function useDashboardData(projectId: string, canViewReports: boolean) {
       pvr: 0,
       pvhse: 0,
       nonConforme: 0,
-      conforme: 0,
-      actionRequired: 0,
+      conforme: Math.max(0, done - localHouseholds.filter(h => h.status === 'Problème').length),
+      actionRequired: localHouseholds.filter(h => h.status === 'Problème').length,
       syncHealth: 'healthy',
-      pipeline: { murs: 0, reseau: 0, interieur: 0, validated: done },
-      performance: { avgPerDay: 0, daysWorked: 0, avgCablePerHouse: 0, efficiencyRate: 0 },
+      pipeline: { 
+        murs: mursCount, 
+        reseau: reseauCount, 
+        interieur: interieurCount, 
+        validated: done 
+      },
+      performance: { 
+        avgPerDay: 0, 
+        daysWorked: 0, 
+        avgCablePerHouse: 0, 
+        efficiencyRate: 0 
+      },
       logistics: { kitPrepared: 0, kitLoaded: 0, gap: 0 },
       technical: { totalConsumption: 0 },
       breakdown: { byZone: [], byTeam: [] },

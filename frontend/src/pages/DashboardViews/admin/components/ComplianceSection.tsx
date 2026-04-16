@@ -1,7 +1,7 @@
 import React from 'react';
 import { ShieldCheck, AlertCircle, FileText, Clock, Activity } from 'lucide-react';
 import { KPICard } from '../../../../components/dashboards/DashboardComponents';
-import { DashboardMetrics } from '../types';
+import type { DashboardMetrics } from '../types';
 
 interface ComplianceSectionProps {
   metrics: DashboardMetrics;

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { auditService } from '../../../../services/auditService';
-import { AuditLog } from '../../../../utils/types';
-import { Activity } from '../types';
+import type { AuditLog } from '../../../../utils/types';
+import type { Activity } from '../types';
 
 export function useAuditLogs(remoteActivities: any[] = []) {
   const [logs, setLogs] = useState<AuditLog[]>([]);

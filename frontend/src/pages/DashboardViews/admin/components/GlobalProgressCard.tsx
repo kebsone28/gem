@@ -2,7 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Compass } from 'lucide-react';
 import { fmtNum } from '../../../../utils/format';
-import { DashboardMetrics } from '../types';
+import type { DashboardMetrics } from '../types';
 
 interface GlobalProgressCardProps {
   metrics: DashboardMetrics;

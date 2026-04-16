@@ -1,7 +1,5 @@
 import type { MissionStats } from '../../../services/missionStatsService';
 
-export type { MissionStats };
-
 export interface PipelineData {
   murs: number;
   reseau: number;
@@ -44,8 +42,8 @@ export interface DashboardMetrics {
   logistics: LogisticsData;
   technical: { totalConsumption: number };
   breakdown: {
-    byZone: Record<string, unknown>[];
-    byTeam: Record<string, unknown>[];
+    byZone: any[];
+    byTeam: any[];
   };
 }
 
@@ -55,3 +53,5 @@ export interface Activity {
   message: string;
   time: string;
 }
+
+export type { MissionStats };
