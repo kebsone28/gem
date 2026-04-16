@@ -9,7 +9,7 @@ import {
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } from 'docx';
+import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, ImageRun, Table, TableRow, TableCell, WidthType, BorderStyle } from 'docx';
 import { saveAs } from 'file-saver';
 
 // --- Services & DB ---
@@ -258,30 +258,134 @@ function PVContentView({ submission, logic }: { submission: any, logic: any }) {
 
   const handleDownload = async () => {
     try {
+      let signatureParagraph = new Paragraph({ text: "(En attente de visa prestataire)", alignment: AlignmentType.CENTER });
+      if (logic.signatureData) {
+        try {
+          const base64Data = logic.signatureData.split(',')[1];
+          const binaryString = window.atob(base64Data);
+          const len = binaryString.length;
+          const bytes = new Uint8Array(len);
+          for (let i = 0; i < len; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+          }
+          signatureParagraph = new Paragraph({
+            alignment: AlignmentType.CENTER,
+            children: [
+              new ImageRun({
+                data: bytes,
+                transformation: { width: 180, height: 60 }
+              })
+            ]
+          });
+        } catch (err) {
+          console.warn("Erreur decodage signature", err);
+          signatureParagraph = new Paragraph({ text: "(Visa prestataire apposé numériquement)", alignment: AlignmentType.CENTER });
+        }
+      }
+
       const doc = new Document({
+        styles: {
+          default: {
+            document: { run: { font: "Segoe UI", size: 22, color: "1e293b" } },
+            heading1: {
+              run: { font: "Segoe UI", size: 32, bold: true, color: "0f172a" },
+              paragraph: { alignment: AlignmentType.CENTER, spacing: { after: 300 } },
+            },
+            heading2: {
+              run: { font: "Segoe UI", size: 24, bold: true, color: "0284c7" },
+              paragraph: { spacing: { before: 400, after: 150 } },
+            }
+          }
+        },
         sections: [{
           properties: {},
           children: [
-            new Paragraph({ text: `PROCES-VERBAL - ${tmpl.title}`, heading: HeadingLevel.HEADING_1, alignment: AlignmentType.CENTER }),
-            new Paragraph({ text: "" }),
-            new Paragraph({ children: [new TextRun({ text: "RÉFÉRENCE : ", bold: true }), new TextRun(aiContent.referenceContractuelle)] }),
-            new Paragraph({ children: [new TextRun({ text: "MÉNAGE : ", bold: true }), new TextRun(`${submission.name || 'Inconnu'} (Lot ${submission.numeroordre || 'N/A'})`)] }),
-            new Paragraph({ children: [new TextRun({ text: "DATE : ", bold: true }), new TextRun(new Date().toLocaleString('fr-FR'))] }),
+            new Paragraph({ text: `CERTIFICAT OFFICIEL : PV ${type}`, heading: HeadingLevel.HEADING_1 }),
+            
+            // Header: Informations du projet
+            new Table({
+              width: { size: 100, type: WidthType.PERCENTAGE },
+              borders: {
+                top: { style: BorderStyle.NIL }, bottom: { style: BorderStyle.NIL },
+                left: { style: BorderStyle.NIL }, right: { style: BorderStyle.NIL },
+                insideHorizontal: { style: BorderStyle.NIL }, insideVertical: { style: BorderStyle.NIL }
+              },
+              rows: [
+                new TableRow({
+                  children: [
+                    new TableCell({
+                      children: [
+                        new Paragraph({ children: [new TextRun({ text: "RÉFÉRENCE : ", bold: true, color: "64748b" }), new TextRun({ text: aiContent.referenceContractuelle, bold: true })] }),
+                        new Paragraph({ children: [new TextRun({ text: "MÉNAGE : ", bold: true, color: "64748b" }), new TextRun({ text: `${submission.name || 'Inconnu'} (Lot ${submission.numeroordre || 'N/A'})` })] })
+                      ]
+                    }),
+                    new TableCell({
+                      children: [
+                        new Paragraph({ children: [new TextRun({ text: "DATE D'ÉDITION : ", bold: true, color: "64748b" }), new TextRun(new Date().toLocaleDateString('fr-FR'))] }),
+                        new Paragraph({ children: [new TextRun({ text: "STATUT : ", bold: true, color: "64748b" }), new TextRun({ text: "VALIDÉ", bold: true, color: "10b981" })] })
+                      ]
+                    })
+                  ]
+                })
+              ]
+            }),
+
             new Paragraph({ text: "" }),
             new Paragraph({ text: "1. CONSTATS TECHNIQUES", heading: HeadingLevel.HEADING_2 }),
-            new Paragraph({ text: aiContent.description }),
+            new Paragraph({ text: aiContent.description, alignment: AlignmentType.JUSTIFIED }),
+            
             new Paragraph({ text: "" }),
             new Paragraph({ text: "2. MATÉRIEL ASSOCIÉ", heading: HeadingLevel.HEADING_2 }),
-            ...(aiContent.materials?.length ? aiContent.materials.map((m: any) => new Paragraph({ text: `- ${m.quantity} ${m.unit} : ${m.item}` })) : [new Paragraph({ text: "Non spécifié" })]),
+            new Table({
+              width: { size: 100, type: WidthType.PERCENTAGE },
+              rows: aiContent.materials?.length ? aiContent.materials.map(m => 
+                new TableRow({
+                  children: [
+                    new TableCell({ children: [new Paragraph({ text: m.item, bold: true })], width: { size: 70, type: WidthType.PERCENTAGE } }),
+                    new TableCell({ children: [new Paragraph({ text: `${m.quantity} ${m.unit}` })], width: { size: 30, type: WidthType.PERCENTAGE } })
+                  ]
+                })
+              ) : [
+                new TableRow({ children: [new TableCell({ children: [new Paragraph("Prestation globale certifiée sans décompte unitaire.")] })] })
+              ]
+            }),
+
             new Paragraph({ text: "" }),
             new Paragraph({ text: "3. RECOMMANDATIONS & ACTIONS", heading: HeadingLevel.HEADING_2 }),
-            ...(aiContent.recommendations?.length ? aiContent.recommendations.map((r: string) => new Paragraph({ text: `> ${r}` })) : [new Paragraph({ text: "Aucune recommandation" })]),
+            ...(aiContent.recommendations?.length ? aiContent.recommendations.map(r => new Paragraph({ text: `• ${r}` })) : [new Paragraph({ text: "Aucune recommandation particulière." })]),
+            
             new Paragraph({ text: "" }),
             new Paragraph({ text: "" }),
-            new Paragraph({ children: [new TextRun({ text: "SIGNATURES & APPROBATION", bold: true })], alignment: AlignmentType.CENTER }),
-            new Paragraph({ text: "" }),
-            new Paragraph({ text: logic.signatureData ? "(Visa prestataire apposé numériquement)" : "(En attente de visa prestataire)", alignment: AlignmentType.CENTER }),
-            new Paragraph({ text: "(Validation Direction GEM)", alignment: AlignmentType.CENTER })
+            
+            // Footer: Signatures
+            new Table({
+              width: { size: 100, type: WidthType.PERCENTAGE },
+              borders: {
+                top: { style: BorderStyle.NIL }, bottom: { style: BorderStyle.NIL },
+                left: { style: BorderStyle.NIL }, right: { style: BorderStyle.NIL },
+                insideHorizontal: { style: BorderStyle.NIL }, insideVertical: { style: BorderStyle.NIL }
+              },
+              rows: [
+                new TableRow({
+                  children: [
+                    new TableCell({
+                      width: { size: 50, type: WidthType.PERCENTAGE },
+                      children: [
+                        new Paragraph({ text: "Superviseur PROQUELEC", bold: true, alignment: AlignmentType.CENTER }),
+                        new Paragraph({ text: "(Validation Juridique)", alignment: AlignmentType.CENTER, color: "10b981" })
+                      ]
+                    }),
+                    new TableCell({
+                      width: { size: 50, type: WidthType.PERCENTAGE },
+                      children: [
+                        new Paragraph({ text: "Visa Prestataire Terrain", bold: true, alignment: AlignmentType.CENTER }),
+                        signatureParagraph
+                      ]
+                    })
+                  ]
+                })
+              ]
+            })
           ],
         }],
       });
