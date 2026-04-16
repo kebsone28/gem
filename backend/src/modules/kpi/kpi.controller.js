@@ -114,7 +114,9 @@ export const getProjectKPIs = async (req, res) => {
         const murCount = getCount('Murs');
         const reseauCount = getCount('Réseau');
         const interieurCount = getCount('Intérieur');
-        const totalValidated = getCount('Terminé') + getCount('Réception: Validée');
+        
+        // Use the existing totalValidated from raw SQL or update it with aggregate counts
+        const validatedCount = getCount('Terminé') + getCount('Réception: Validée');
         
         const problemCount = getCount('Problème') + getCount('Inéligible');
         const hseCount = getCountByPattern('hse');
@@ -123,17 +125,15 @@ export const getProjectKPIs = async (req, res) => {
         const pvrCount = getCountByUPattern('PVR');
         const pvhseCount = getCountByUPattern('PVHSE');
         const totalPV = getCountByUPattern('PV');
-        const totalArchived = totalValidated;
+        const totalArchived = validatedCount;
         
-        // Critical alerts count requires a separate aggregation or complex JSONB query
-        // For performance, we'll do a simple count of households having non-empty alerts array if supported,
-        // otherwise a prioritized count.
         const actionRequiredCount = await prisma.household.count({
             where: { 
                 zone: { projectId }, 
                 organizationId, 
                 deletedAt: null,
-                alerts: { not: [] }
+                // Simplified count for alerts
+                NOT: { alerts: { equals: [] } }
             }
         });
 
@@ -153,7 +153,7 @@ export const getProjectKPIs = async (req, res) => {
         });
 
         const igppRaw = totalHouseholds > 0 ? (
-            (totalValidated * 1.0) + (interieurCount * 0.75) + (reseauCount * 0.45) + (murCount * 0.2)
+            (validatedCount * 1.0) + (interieurCount * 0.75) + (reseauCount * 0.45) + (murCount * 0.2)
         ) / (totalHouseholds - problemCount || 1) * 100 : 0;
 
         const result = {
@@ -162,8 +162,8 @@ export const getProjectKPIs = async (req, res) => {
             timestamp: new Date().toISOString(),
             metrics: {
                 totalHouseholds,
-                electrifiedHouseholds: totalValidated,
-                progressPercent: totalHouseholds > 0 ? Math.round((totalValidated / (totalHouseholds - problemCount || 1)) * 100) : 0,
+                electrifiedHouseholds: validatedCount,
+                progressPercent: totalHouseholds > 0 ? Math.round((validatedCount / (totalHouseholds - problemCount || 1)) * 100) : 0,
                 igppScore: Math.min(100, Math.round(igppRaw * 10) / 10),
                 incidentsHSE: hseCount,
                 pvRetard: pvRetardCount,
@@ -178,8 +178,8 @@ export const getProjectKPIs = async (req, res) => {
                 auditLogs,
                 performance: {
                     daysWorked,
-                    avgPerDay: Math.round((totalValidated / daysWorked) * 10) / 10,
-                    avgCablePerHouse: totalValidated > 0 ? Math.round((totalCable / totalValidated) * 10) / 10 : 0,
+                    avgPerDay: Math.round((validatedCount / daysWorked) * 10) / 10,
+                    avgCablePerHouse: validatedCount > 0 ? Math.round((totalCable / validatedCount) * 10) / 10 : 0,
                 },
                 technical: {
                     cable25: Number(aggr.cable_2_5 || 0),
