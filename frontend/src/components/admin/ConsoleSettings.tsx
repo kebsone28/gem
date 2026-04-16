@@ -8,10 +8,10 @@ import { Settings, X, Eye, Layout, Palette } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface ConsoleSettingsProps {
-  onSettingsChange?: (settings: ConsoleSettings) => void;
+  onSettingsChange?: (settings: ConsoleSettingsConfig) => void;
 }
 
-interface ConsoleSettings {
+export interface ConsoleSettingsConfig {
   // Affichage
   showSidebar: boolean;
   showStats: boolean;
@@ -28,7 +28,7 @@ interface ConsoleSettings {
   gridSpacing: 'tight' | 'normal' | 'spacious';
 }
 
-const DEFAULT_SETTINGS: ConsoleSettings = {
+const DEFAULT_SETTINGS: ConsoleSettingsConfig = {
   showSidebar: true,
   showStats: true,
   showTeams: true,
@@ -42,7 +42,7 @@ const DEFAULT_SETTINGS: ConsoleSettings = {
 
 export const ConsoleSettings: React.FC<ConsoleSettingsProps> = ({ onSettingsChange }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [settings, setSettings] = useState<ConsoleSettings>(() => {
+  const [settings, setSettings] = useState<ConsoleSettingsConfig>(() => {
     // Charger depuis localStorage
     const saved = localStorage.getItem('console-settings');
     return saved ? JSON.parse(saved) : DEFAULT_SETTINGS;
@@ -54,18 +54,18 @@ export const ConsoleSettings: React.FC<ConsoleSettingsProps> = ({ onSettingsChan
     onSettingsChange?.(settings);
   }, [settings, onSettingsChange]);
 
-  const toggleSetting = (key: keyof ConsoleSettings) => {
+  const toggleSetting = (key: keyof ConsoleSettingsConfig) => {
     setSettings(prev => ({
       ...prev,
       [key]: typeof prev[key] === 'boolean' ? !prev[key] : prev[key]
     }));
   };
 
-  const updateSetting = (key: keyof ConsoleSettings, value: unknown) => {
+  const updateSetting = (key: keyof ConsoleSettingsConfig, value: unknown) => {
     setSettings(prev => ({
       ...prev,
       [key]: value
-    } as ConsoleSettings));
+    } as ConsoleSettingsConfig));
   };
 
   const resetSettings = () => {
@@ -131,8 +131,8 @@ export const ConsoleSettings: React.FC<ConsoleSettingsProps> = ({ onSettingsChan
                       <label key={key} className="flex items-center gap-3 cursor-pointer group">
                         <input
                           type="checkbox"
-                          checked={settings[key as keyof ConsoleSettings] as boolean}
-                          onChange={() => toggleSetting(key as keyof ConsoleSettings)}
+                          checked={settings[key as keyof ConsoleSettingsConfig] as boolean}
+                          onChange={() => toggleSetting(key as keyof ConsoleSettingsConfig)}
                           className="w-4 h-4 rounded cursor-pointer"
                         />
                         <span className="text-sm text-slate-300 group-hover:text-white transition-colors">
@@ -268,4 +268,4 @@ export const ConsoleSettings: React.FC<ConsoleSettingsProps> = ({ onSettingsChan
   );
 };
 
-export type { ConsoleSettings };
+export type { ConsoleSettingsConfig };

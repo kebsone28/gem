@@ -119,10 +119,11 @@ export default function NotificationCenter() {
           id: data.id || Date.now().toString(),
           title: data.message || 'Nouvelle notification',
           message: data.type === 'SYNC' ? 'Synchronisation Cloud exécutée' : (data.detail || 'Opération système enregistrée'),
-          type: data.type === 'SYNC' ? 'info' : 'approval',
+          type: data.type === 'SYNC' ? 'system' : 'approval',
           sender: data.sender || 'SYSTÈME',
-          read: 0,
-          createdAt: Date.now()
+          read: false,
+          archived: false,
+          createdAt: new Date().toISOString()
         });
       } catch (error) {
         console.error('Erreur lors de la sauvegarde de la notification:', error);

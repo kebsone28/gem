@@ -6,10 +6,10 @@
 import React, { useState } from 'react';
 import { ShieldCheck, Activity, Users, AlertCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { ConsoleSettings, type ConsoleSettings as ConsoleSettingsType } from '../components/admin/ConsoleSettings';
+import { ConsoleSettings, type ConsoleSettingsConfig } from './ConsoleSettings';
 import { useConsoleLayout } from '../hooks/useConsoleLayout';
 
-const DEFAULT_SETTINGS: ConsoleSettingsType = {
+const DEFAULT_SETTINGS: ConsoleSettingsConfig = {
   showSidebar: true,
   showStats: true,
   showTeams: true,
@@ -22,7 +22,7 @@ const DEFAULT_SETTINGS: ConsoleSettingsType = {
 };
 
 export const AdminDashboardEnhanced: React.FC = () => {
-  const [settings, setSettings] = useState<ConsoleSettingsType>(DEFAULT_SETTINGS);
+  const [settings, setSettings] = useState<ConsoleSettingsConfig>(DEFAULT_SETTINGS);
   const layout = useConsoleLayout(settings);
 
   // Données mockées pour la démo

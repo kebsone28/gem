@@ -59,12 +59,12 @@ export const MissionListSidebar: React.FC<MissionListSidebarProps> = ({
         }
         return true;
       })
-      .sort((a, b) => {
+      .sort((a, b: any) => {
         const timeA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
         const timeB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
         return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA);
       });
-  }, [savedMissions, search, filter]);
+  }, [visibleMissions, search, filter]);
 
   const counts = useMemo(
     () => ({

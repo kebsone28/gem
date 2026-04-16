@@ -87,7 +87,7 @@ const buildConsolidatedNotification = (
   return {
     title: `${type} généré`,
     message: `Le PV pour le ${lotLabel} a été établi.`,
-    type: type === 'PVNC' || type === 'PVHSE' ? 'rejection' : 'approval',
+    type: (type === 'PVNC' || type === 'PVHSE' ? 'rejection' : 'approval') as 'approval' | 'rejection' | 'system',
     dedupKey: `pv-${type}-${lotLabel}`,
   };
 };

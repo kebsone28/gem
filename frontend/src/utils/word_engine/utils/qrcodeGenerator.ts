@@ -1,6 +1,4 @@
-// src/utils/word_engine/utils/qrcodeGenerator.ts
-// Génération QR Code via Canvas API natif du navigateur
-// Pas de dépendance externe - compatible Vite/ESM sans configuration
+import QRCode from 'qrcode';
 
 /**
  * Encode une URL en QR Code et retourne un ArrayBuffer PNG
@@ -10,7 +8,6 @@ export const generateQRCodeBuffer = async (text: string): Promise<ArrayBuffer | 
   if (!text) return null;
 
   try {
-    const QRCode = await import('qrcode');
 
     const canvas = document.createElement('canvas');
     canvas.width = 200;

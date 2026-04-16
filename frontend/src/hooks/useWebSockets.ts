@@ -57,7 +57,7 @@ export const useWebSockets = () => {
       // S'authentifier auprès du backend pour rejoindre ses Salles (Rooms)
       socket.emit('authenticate', {
         userId: user?.id,
-        role: user?.roleLegacy || user?.role
+        role: user?.role
       });
     });
 

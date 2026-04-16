@@ -9,7 +9,7 @@ import { useLabels } from '../../contexts/LabelsContext';
 import { missionStatsService } from '../../services/missionStatsService';
 import { useAuth } from '../../contexts/AuthContext';
 import { MissionMentor } from '../../components/ia/MissionMentor';
-import { ConsoleSettings, type ConsoleSettings as ConsoleSettingsType } from '../../components/admin/ConsoleSettings';
+import { ConsoleSettings, type ConsoleSettingsConfig } from '../../components/admin/ConsoleSettings';
 import { useConsoleLayout } from '../../hooks/useConsoleLayout';
 
 // ── MODULE ARCHITECTURE ──
@@ -29,7 +29,7 @@ import { useSyncHandler } from './admin/hooks/useSyncHandler';
 import { useAutoRefresh } from './admin/hooks/useAutoRefresh';
 
 // ── DEFAULT CONSOLE SETTINGS ──
-const DEFAULT_CONSOLE_SETTINGS: ConsoleSettingsType = {
+const DEFAULT_CONSOLE_SETTINGS: ConsoleSettingsConfig = {
   showSidebar: true,
   showStats: true,
   showTeams: true,
@@ -49,7 +49,7 @@ export default function AdminDashboard() {
   const { getLabel } = useLabels();
 
   // ── CONSOLE CUSTOMIZATION ──
-  const [consoleSettings, setConsoleSettings] = useState<ConsoleSettingsType>(DEFAULT_CONSOLE_SETTINGS);
+  const [consoleSettings, setConsoleSettings] = useState<ConsoleSettingsConfig>(DEFAULT_CONSOLE_SETTINGS);
   useConsoleLayout(consoleSettings);
 
   const canViewReports = peut(PERMISSIONS.VOIR_RAPPORTS);
