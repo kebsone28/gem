@@ -22,7 +22,11 @@ export const MissionApprovalStatusBanner: React.FC<MissionApprovalStatusBannerPr
         s.status === 'approved' ||
         s.status === 'rejected'
     )
-    .sort((a, b) => new Date(b.decidedAt || 0).getTime() - new Date(a.decidedAt || 0).getTime());
+    .sort((a, b) => {
+      const timeB = b.updatedAt || b.approvedAt || 0;
+      const timeA = a.updatedAt || a.approvedAt || 0;
+      return new Date(timeB).getTime() - new Date(timeA).getTime();
+    });
 
   const lastStep = decidedSteps[0];
 
@@ -109,18 +113,18 @@ export const MissionApprovalStatusBanner: React.FC<MissionApprovalStatusBannerPr
             <p
               className={`text-xs font-bold italic mb-3 ${isRejected ? 'text-rose-600 dark:text-rose-400' : 'text-slate-700 dark:text-slate-300'}`}
             >
-              "{lastStep.comment || 'Aucune observation particulière.'}"
+              "{lastStep.reasonIfRejected || lastStep.comment || lastStep.comments || 'Aucune observation particulière.'}"
             </p>
             <div className="flex items-center justify-between border-t border-slate-200 dark:border-white/10 pt-2">
               <div className="flex items-center gap-1.5">
                 <User size={12} className="text-slate-400" />
                 <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
-                  {lastStep.decidedBy || lastStep.role}
+                  {lastStep.approvedBy || lastStep.roleName || lastStep.role}
                 </span>
               </div>
               <span className="text-[9px] font-bold text-slate-400">
-                {lastStep.decidedAt
-                  ? new Date(lastStep.decidedAt).toLocaleDateString('fr-FR', {
+                {lastStep.updatedAt || lastStep.approvedAt
+                  ? new Date(lastStep.updatedAt || lastStep.approvedAt).toLocaleDateString('fr-FR', {
                       day: '2-digit',
                       month: 'short',
                     })

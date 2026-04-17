@@ -58,10 +58,10 @@ export const MissionStatusWidget: React.FC<MissionStatusWidgetProps> = ({
       bgGlow: 'bg-slate-500/10',
     },
     ready: {
-      label: 'PRÊTE',
-      color: 'bg-amber-500',
-      icon: Zap,
-      bgGlow: 'bg-amber-500/10',
+      label: 'BROUILLON',
+      color: 'bg-indigo-500',
+      icon: Clock,
+      bgGlow: 'bg-indigo-500/10',
     },
     certified: {
       label: 'SIGNÉE',

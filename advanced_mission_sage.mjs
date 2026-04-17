@@ -92,7 +92,7 @@ export class AdvancedMissionSageService {
 
     // Ajouter contexte PROQUELEC
     if (!improved.toLowerCase().includes('proquelec') &&
-        (improved.toLowerCase().includes('mission') || improved.toLowerCase().includes('électrif'))) {
+      (improved.toLowerCase().includes('mission') || improved.toLowerCase().includes('électrif'))) {
       improved = `**PROQUELEC - Électrification nationale:**\n\n${improved}`;
     }
 
@@ -175,7 +175,7 @@ QUESTION UTILISATEUR: ${query}
 
 INSTRUCTION: Tu es MissionSage, expert PROQUELEC. Utilise TOUTES les connaissances disponibles.
 Réponds de façon professionnelle, précise et structurée. Si la question concerne un aspect spécifique,
-fournis des détails techniques et des références aux normes quand applicable.`;
+fournis des détails techniques et des références aux normes quand applicâble.`;
 
     try {
       const response = await fetch(

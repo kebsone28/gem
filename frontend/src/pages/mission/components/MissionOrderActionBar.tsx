@@ -1,396 +1,316 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Plus,
   Copy,
   Sparkles,
-  ChevronDown,
   Settings,
   Smartphone,
-  DollarSign,
   RefreshCw,
-  Archive,
-  Trash2,
   Save,
   ListChecks,
-  MapIcon,
   Fingerprint,
   Bell,
+  Download,
+  ChevronDown,
+  MapIcon,
+  DollarSign
 } from 'lucide-react';
 import { ActionBar } from '../../../components';
 import { getTemplates } from '../../../services/missionTemplates';
 
-interface MissionOrderActionBarProps {
-  formData: any;
-  currentMissionId: string | null;
-  role: string | null;
-  isSyncing: boolean;
-  isSyncingServer: boolean;
-  isDirty: boolean;
-  showTemplates: boolean;
-  showConfig: boolean;
-  showAudit: boolean;
-  PERMISSIONS: any;
-  peut: (perm: string) => boolean;
+const Dropdown = ({ icon, label, isOpen, onToggle, children }: any) => {
+  return (
+    <div className="relative">
+      <button
+        onClick={onToggle}
+        className={`flex items-center gap-1 px-2 py-1.5 rounded-lg transition-colors text-xs ${
+          isOpen ? 'bg-white/10 text-white' : 'text-slate-300 hover:bg-white/5'
+        }`}
+      >
+        {icon}
+        {label && <span>{label}</span>}
+        <ChevronDown size={12} className={`transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
 
-  onNewMission: () => void;
-  onDuplicate: () => void;
-  onTemplateToggle: () => void;
-  onTemplateSelect: (id: string) => void;
-  onConfigToggle: () => void;
-  onToggleFeature: (feature: string) => void;
-  onToggleSimplifiedMode: (value: boolean) => void;
-  onNotificationsToggle: () => void;
-  onAuditToggle: () => void;
-  unreadCount?: number;
-  onSyncFromServer: () => void;
-  onArchive: () => void;
-  onDelete: () => void;
-  onExportExcel: () => void;
-  onExportWord: () => void;
-  onExportPDF: () => void;
-  onSave: () => void;
-  onValidate: () => void;
-  onSubmit: () => void;
-  isCertified: boolean;
-  isSubmitted: boolean;
-}
+      {isOpen && (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="absolute top-full right-0 mt-2 w-64 bg-slate-900 border border-white/10 rounded-xl shadow-2xl p-2 z-50 animate-in fade-in slide-in-from-top-2 origin-top-right"
+        >
+          {children}
+        </div>
+      )}
+    </div>
+  );
+};
 
-export const MissionOrderActionBar: React.FC<MissionOrderActionBarProps> = ({
-  formData,
-  currentMissionId,
-  role,
-  isSyncing,
-  isSyncingServer,
-  isDirty,
-  showTemplates,
-  showConfig,
-  showAudit,
-  PERMISSIONS,
-  peut,
+export const MissionOrderActionBar = (props: any) => {
+  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  onNewMission,
-  onDuplicate,
-  onTemplateToggle,
-  onTemplateSelect,
-  onConfigToggle,
-  onToggleFeature,
-  onToggleSimplifiedMode,
-  onNotificationsToggle,
-  onAuditToggle,
-  unreadCount = 0,
-  onSyncFromServer,
-  onArchive,
-  onDelete,
-  onExportExcel,
-  onExportWord,
-  onExportPDF,
-  onSave,
-  onValidate,
-  onSubmit,
-  isCertified,
-  isSubmitted,
-}) => {
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setActiveDropdown(null);
+      }
+    };
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
+
+  const toggleDropdown = (name: string) => {
+    setActiveDropdown(activeDropdown === name ? null : name);
+  };
+
+  const {
+    formData,
+    currentMissionId,
+    role,
+    isSyncing,
+    isSyncingServer,
+    isDirty,
+    showAudit,
+    unreadCount = 0,
+    onNewMission,
+    onDuplicate,
+    onTemplateSelect,
+    onConfigToggle,
+    onToggleFeature,
+    onToggleSimplifiedMode,
+    onNotificationsToggle,
+    onAuditToggle,
+    onSyncFromServer,
+    onUpdateField,
+    onExportExcel,
+    onExportWord,
+    onExportPDF,
+    onSave,
+    onValidate,
+    onSubmit,
+    isCertified,
+    isSubmitted,
+    isSimplifiedMode,
+  } = props;
+
   const isAdmin = ['ADMIN', 'ADMIN_PROQUELEC', 'DG_PROQUELEC'].includes(role || '');
 
   return (
-    <ActionBar className="no-print">
-      <div className="flex items-center gap-3 flex-wrap flex-1">
-        <button
-          onClick={onNewMission}
-          className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-xl font-black text-[9px] uppercase tracking-widest hover:from-indigo-500 hover:to-blue-500 transition-all shadow-lg active:scale-95 border border-white/10"
-        >
-          <Plus size={12} />
-          NOUVEAU
-        </button>
+    <ActionBar className="no-print !bg-slate-950/90 backdrop-blur-xl border-t border-white/5 px-4 py-2 shadow-2xl">
 
-        <button
-          onClick={onDuplicate}
-          disabled={!currentMissionId}
-          className="flex items-center gap-2 px-4 py-2.5 border border-amber-500/30 text-amber-600 dark:text-amber-400 bg-amber-500/10 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-amber-500/20 transition-all shadow-sm disabled:opacity-50"
-        >
-          <Copy size={12} />
-          DUPLIQUER
-        </button>
+      <div className="flex flex-wrap items-center justify-between gap-4">
 
-        <div className="relative">
-          <button
-            onClick={onTemplateToggle}
-            className="flex items-center gap-2 px-4 py-2.5 border border-purple-500/30 text-purple-600 dark:text-purple-400 bg-purple-500/10 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-purple-500/20 transition-all shadow-sm"
-          >
-            <Sparkles size={12} />
-            MODELES
-            <ChevronDown
-              size={12}
-              className={`transition-transform duration-300 ${showTemplates ? 'rotate-180' : ''}`}
-            />
-          </button>
-
-          {showTemplates && (
-            <div className="absolute top-full left-0 mt-2 w-72 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl z-[100] p-3 animate-in fade-in slide-in-from-top-2 duration-200">
-              <div className="space-y-1">
-                {getTemplates().map((template: any) => (
-                  <button
-                    key={template.id}
-                    onClick={() => onTemplateSelect(template.id)}
-                    className="w-full p-3 text-left rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors group"
-                  >
-                    <p className="text-[10px] font-black text-slate-800 dark:text-white uppercase tracking-widest group-hover:text-indigo-500 transition-colors">
-                      {template.name}
-                    </p>
-                    <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 leading-tight">
-                      {template.description}
-                    </p>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="relative">
-          <button
-            onClick={onConfigToggle}
-            className="flex items-center gap-2 px-4 py-2.5 border border-slate-500/30 text-slate-600 dark:text-slate-400 bg-slate-500/10 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-slate-500/20 transition-all shadow-sm"
-          >
-            <Settings size={12} />
-            CONFIG
-            <ChevronDown
-              size={12}
-              className={`transition-transform duration-300 ${showConfig ? 'rotate-180' : ''}`}
-            />
-          </button>
-
-          {showConfig && (
-            <div className="absolute top-full left-0 mt-2 w-72 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl z-[100] p-4 animate-in fade-in slide-in-from-top-2 duration-200">
-              <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">
-                Modules Experts
-              </h4>
-              <div className="space-y-3">
-                {[
-                  { id: 'map', label: 'Mini-Carte SIG', icon: MapIcon, color: 'text-indigo-500' },
-                  {
-                    id: 'expenses',
-                    label: 'Gestion des Frais',
-                    icon: DollarSign,
-                    color: 'text-emerald-500',
-                  },
-                  {
-                    id: 'inventory',
-                    label: 'Inventaire & Checklist',
-                    icon: ListChecks,
-                    color: 'text-amber-500',
-                  },
-                  { id: 'ai', label: 'Outils IA', icon: Sparkles, color: 'text-purple-500' },
-                ].map((f) => (
-                  <button
-                    key={f.id}
-                    onClick={() => onToggleFeature(f.id)}
-                    className="w-full flex items-center justify-between p-2 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition-colors group"
-                  >
-                    <div className="flex items-center gap-3">
-                      <f.icon size={14} className={f.color} />
-                      <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                        {f.label}
-                      </span>
-                    </div>
-                    <div
-                      className={`w-8 h-4 rounded-full relative transition-colors ${formData.features?.[f.id] ? 'bg-indigo-600' : 'bg-slate-200 dark:bg-slate-700'}`}
-                    >
-                      <div
-                        className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${formData.features?.[f.id] ? 'left-4.5' : 'left-0.5'}`}
-                      />
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="w-px h-8 bg-slate-200 dark:bg-white/10 mx-1 hidden lg:block" />
-
-        <button
-          onClick={onAuditToggle}
-          className={`flex items-center gap-2 px-4 py-2.5 border rounded-xl font-black text-[9px] uppercase tracking-widest transition-all shadow-sm ${showAudit ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-slate-500/10 border-slate-500/30 text-slate-600 dark:text-slate-400 hover:bg-slate-500/20'}`}
-        >
-          <Fingerprint size={12} />
-          AUDIT
-        </button>
-
-        <button
-          onClick={onNotificationsToggle}
-          className="relative flex items-center gap-2 px-4 py-2.5 bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-amber-500/20 transition-all shadow-sm"
-        >
-          <Bell size={12} className={unreadCount > 0 ? 'animate-bounce' : ''} />
-          ALERTE
-          {unreadCount > 0 && (
-            <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-rose-500 text-white rounded-full flex items-center justify-center text-[8px] font-black shadow-lg animate-pulse">
-              {unreadCount}
-            </span>
-          )}
-        </button>
-
-        <button
-          onClick={onSyncFromServer}
-          disabled={isSyncingServer}
-          className="flex items-center gap-2 px-4 py-2.5 border border-indigo-500/30 text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-indigo-500/20 transition-all shadow-sm"
-        >
-          <RefreshCw size={12} className={isSyncingServer ? 'animate-spin' : ''} />
-          SYNC
-        </button>
-
-        {isAdmin && (
+        {/* 📝 TITRE & INFOS */}
+        <div className="flex flex-col min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <button
-              onClick={onArchive}
-              className="p-3 border border-slate-400 dark:border-white/20 text-slate-600 dark:text-slate-400 bg-slate-500/10 rounded-xl hover:bg-slate-500/20 transition-all shadow-sm"
-              title="ARCHIVER"
-            >
-              <Archive size={14} />
-            </button>
-            <button
-              onClick={onDelete}
-              className="p-3 border border-rose-500/30 text-rose-600 dark:text-rose-400 bg-rose-500/10 rounded-xl hover:bg-rose-500/20 transition-all shadow-sm"
-              title="SUPPRIMER"
-            >
-              <Trash2 size={14} />
-            </button>
+            {!isCertified && !isSubmitted ? (
+               <input
+                 type="text"
+                 value={formData.purpose || ''}
+                 onChange={(e) => onUpdateField('purpose', e.target.value.toUpperCase())}
+                 placeholder="OBJET DE LA MISSION..."
+                 className="bg-transparent border-none outline-none text-[9px] font-extrabold text-white/70 placeholder:text-slate-600 w-full max-w-[280px] focus:ring-0 p-0 tracking-tight"
+               />
+            ) : (
+              <h4 className="text-[9px] font-extrabold text-white/70 truncate uppercase tracking-tight max-w-[280px]">
+                {formData.purpose || 'Mission Sans Titre'}
+              </h4>
+            )}
+            <div className={`px-1.5 py-0.5 rounded-full text-[8px] font-bold flex items-center gap-1 ${
+              isCertified ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 
+              isSubmitted ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' :
+              'bg-slate-500/10 text-slate-400 border border-slate-500/20'
+            }`}>
+              <div className={`w-1 h-1 rounded-full ${
+                isCertified ? 'bg-emerald-400 animate-pulse' : 
+                isSubmitted ? 'bg-blue-400' : 
+                'bg-slate-400'
+              }`} />
+              {isCertified ? 'SIGNÉE' : isSubmitted ? 'ATTENTE' : 'BROUILLON'}
+            </div>
           </div>
-        )}
-      </div>
-
-      <div className="flex gap-2 flex-wrap items-center">
-        <div className="flex items-center gap-1.5">
-          {/* Export Excel */}
-          <button
-            onClick={onExportExcel}
-            className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-400 rounded-xl hover:bg-emerald-600 hover:text-white hover:border-emerald-600 transition-all shadow-sm group"
-            title="Exporter en Excel (.xlsx)"
-          >
-            <svg viewBox="0 0 24 24" className="w-4 h-4 flex-shrink-0" fill="currentColor">
-              <path
-                d="M14.017 1.002H4.5A1.5 1.5 0 0 0 3 2.502v19a1.5 1.5 0 0 0 1.5 1.5h15a1.5 1.5 0 0 0 1.5-1.5V8.017l-7-7z"
-                opacity="0.3"
-              />
-              <path d="M14 1v6a1 1 0 0 0 1 1h6" />
-              <path
-                d="m7 13 2.5 4 2.5-4m0 0 2.5 4 2.5-4"
-                strokeWidth="1.5"
-                stroke="currentColor"
-                fill="none"
-              />
-            </svg>
-            <span className="text-[8px] font-black uppercase tracking-widest">XLS</span>
-          </button>
-
-          {/* Export Word */}
-          <button
-            onClick={onExportWord}
-            className="flex items-center gap-1.5 px-3 py-2 bg-blue-600/10 border border-blue-500/20 text-blue-700 dark:text-blue-400 rounded-xl hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all shadow-sm group"
-            title="Exporter en Word (.docx)"
-          >
-            <svg viewBox="0 0 24 24" className="w-4 h-4 flex-shrink-0" fill="currentColor">
-              <path
-                d="M14.017 1.002H4.5A1.5 1.5 0 0 0 3 2.502v19a1.5 1.5 0 0 0 1.5 1.5h15a1.5 1.5 0 0 0 1.5-1.5V8.017l-7-7z"
-                opacity="0.3"
-              />
-              <path d="M14 1v6a1 1 0 0 0 1 1h6" />
-              <text x="6" y="19" fontSize="7" fontWeight="bold" fill="currentColor">
-                W
-              </text>
-            </svg>
-            <span className="text-[8px] font-black uppercase tracking-widest">WORD</span>
-          </button>
-
-          {/* Export PDF */}
-          <button
-            onClick={onExportPDF}
-            className="flex items-center gap-1.5 px-3 py-2 bg-rose-600/10 border border-rose-500/20 text-rose-700 dark:text-rose-400 rounded-xl hover:bg-rose-600 hover:text-white hover:border-rose-600 transition-all shadow-sm group"
-            title="Exporter en PDF (.pdf)"
-          >
-            <svg viewBox="0 0 24 24" className="w-4 h-4 flex-shrink-0" fill="currentColor">
-              <path
-                d="M14.017 1.002H4.5A1.5 1.5 0 0 0 3 2.502v19a1.5 1.5 0 0 0 1.5 1.5h15a1.5 1.5 0 0 0 1.5-1.5V8.017l-7-7z"
-                opacity="0.3"
-              />
-              <path d="M14 1v6a1 1 0 0 0 1 1h6" />
-              <text x="5" y="19" fontSize="6" fontWeight="bold" fill="currentColor">
-                PDF
-              </text>
-            </svg>
-            <span className="text-[8px] font-black uppercase tracking-widest">PDF</span>
-          </button>
+          <span className="text-[9px] text-slate-500 font-medium truncate">
+            {formData.orderNumber && !formData.orderNumber.startsWith('TEMP-') ? `${formData.orderNumber} • ` : ''}
+            {formData.date || 'Date non définie'} • {formData.region || 'Localisation à préciser'}
+          </span>
         </div>
 
-        {isAdmin && !isCertified && (
+        {/* ⚡ ACTIONS PRINCIPALES */}
+        <div className="flex items-center gap-2">
+
           <button
-            onClick={onValidate}
-            className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black shadow-xl hover:scale-105 transition-all text-[9px] uppercase tracking-widest ml-2 border border-white/10"
+            onClick={onSave}
+            disabled={isSyncing || isSyncingServer || isSubmitted || isCertified}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black tracking-widest transition-all shadow-lg active:scale-95 ${
+              isSubmitted || isCertified
+                ? 'bg-slate-800 text-slate-600'
+                : isDirty
+                ? 'bg-orange-500 text-white shadow-orange-500/20'
+                : 'bg-blue-600 text-white shadow-blue-500/20'
+            }`}
           >
-            <ListChecks size={12} />
-            VALIDER LA MISSION
+            <Save size={14} className={isSyncing ? 'animate-spin' : ''} />
+            {isSubmitted || isCertified
+              ? 'VERROUILLÉ'
+              : isSyncing
+              ? 'SYNC...'
+              : isDirty
+              ? 'SAUVEGARDER*'
+              : 'SAUVEGARDÉ'}
           </button>
-        )}
 
-        {isCertified && (
-          <div className="flex items-center gap-2 px-5 py-2.5 bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-xl font-black text-[9px] uppercase tracking-widest ml-2">
-            <Fingerprint size={12} />
-            MISSION VALIDÉE
-          </div>
-        )}
-
-        {peut(PERMISSIONS.CREER_MISSION) && !isCertified && (
-          <div className="flex items-center gap-2 ml-2">
+          {!isSubmitted && !isAdmin && (
             <button
-              onClick={() => onToggleSimplifiedMode(true)}
-              className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl font-black shadow-xl hover:scale-105 transition-all text-[9px] uppercase tracking-widest border border-white/10"
-              title="Lancer l'interface terrain"
+              onClick={() => window.confirm('Soumettre la mission ?') && onSubmit()}
+              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-[10px] font-black tracking-widest shadow-lg shadow-indigo-600/20 active:scale-95 transition-all"
             >
-              <Smartphone size={12} />
-              MODE TERRAIN
+              <ListChecks size={14}/> SOUMETTRE
             </button>
+          )}
 
-            {isSubmitted ? (
-              <div className="flex items-center gap-2 px-4 py-2.5 bg-amber-500/10 text-amber-600 border border-amber-500/20 rounded-xl font-black text-[9px] uppercase tracking-widest">
-                <RefreshCw size={12} className="animate-spin" />
-                EN ATTENTE
+          {isAdmin && !isCertified && (
+            <button
+              onClick={onValidate}
+              className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl text-[10px] font-black tracking-widest shadow-lg shadow-emerald-600/20 active:scale-95 transition-all"
+            >
+              <Fingerprint size={14}/> VALIDER
+            </button>
+          )}
+
+        </div>
+
+        {/* 🧰 ACTIONS SECONDAIRES */}
+        <div className="flex items-center gap-1" ref={containerRef}>
+
+          {/* Création */}
+          <button onClick={onNewMission} className="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-all" title="Nouveau">
+            <Plus size={16}/>
+          </button>
+
+          <button onClick={onDuplicate} disabled={!currentMissionId} className="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-lg disabled:opacity-20 transition-all" title="Dupliquer">
+            <Copy size={16}/>
+          </button>
+
+          {/* Templates */}
+          <Dropdown
+            icon={<Sparkles size={14} className="text-purple-400" />}
+            label="MODÈLES"
+            isOpen={activeDropdown === 'templates'}
+            onToggle={() => toggleDropdown('templates')}
+          >
+            <h4 className="px-2 py-1.5 mb-1 text-[9px] font-black text-slate-500 uppercase tracking-widest">Modèles disponibles</h4>
+            {getTemplates().map((t: any) => (
+              <button
+                key={t.id}
+                onClick={() => {
+                  onTemplateSelect(t.id);
+                  setActiveDropdown(null);
+                }}
+                className="w-full text-left p-2.5 text-[10px] font-bold text-slate-300 hover:bg-white/5 rounded-lg transition-colors group"
+              >
+                <span className="group-hover:text-purple-400">{t.name}</span>
+              </button>
+            ))}
+          </Dropdown>
+
+          {/* Config */}
+          <Dropdown
+            icon={<Settings size={14} className="text-slate-400" />}
+            label="CONFIG"
+            isOpen={activeDropdown === 'config'}
+            onToggle={() => toggleDropdown('config')}
+          >
+            <div className="p-1 space-y-1">
+              <h4 className="px-2 py-1 text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5 mb-1">Modules d'expertise</h4>
+              
+              {[
+                { id: 'map', label: 'Carte SIG / GPS', icon: MapIcon, color: 'text-indigo-400' },
+                { id: 'expenses', label: 'Frais & Indemnités', icon: DollarSign, color: 'text-emerald-400' },
+                { id: 'inventory', label: 'Inventaire Matériel', icon: ListChecks, color: 'text-amber-400' },
+              ].map((f) => {
+                const isActive = !!formData.features?.[f.id];
+                return (
+                  <div
+                    key={f.id}
+                    onPointerDown={(e) => { e.stopPropagation(); onToggleFeature(f.id); }}
+                    className="w-full flex items-center justify-between p-2.5 hover:bg-white/10 rounded-xl transition-all group cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2.5 pointer-events-none">
+                      <f.icon size={14} className={`${f.color} ${isActive ? 'opacity-100' : 'opacity-40'} transition-opacity`} />
+                      <span className={`text-[11px] font-bold ${isActive ? 'text-white' : 'text-slate-400'} transition-colors`}>{f.label}</span>
+                    </div>
+                    <div className={`w-8 h-4 rounded-full relative transition-all duration-300 ${isActive ? 'bg-indigo-500 shadow-lg shadow-indigo-500/20' : 'bg-slate-800'}`}>
+                      <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow-md transition-all duration-300 ${isActive ? 'left-4.5' : 'left-0.5'}`} />
+                    </div>
+                  </div>
+                );
+              })}
+
+              <div className="h-px bg-white/5 my-1.5" />
+              
+              <div
+                onPointerDown={(e) => { e.stopPropagation(); onToggleSimplifiedMode(!isSimplifiedMode); }}
+                className="w-full flex items-center justify-between p-2.5 hover:bg-white/10 rounded-xl transition-all group cursor-pointer"
+              >
+                <div className="flex items-center gap-2.5 pointer-events-none">
+                  <Smartphone size={14} className={`text-blue-400 ${isSimplifiedMode ? 'opacity-100' : 'opacity-40'} transition-opacity`} />
+                  <span className={`text-[11px] font-bold ${isSimplifiedMode ? 'text-white' : 'text-slate-400'} transition-colors`}>Mode Terrain (Simplifié)</span>
+                </div>
+                <div className={`w-8 h-4 rounded-full relative transition-all duration-300 ${isSimplifiedMode ? 'bg-blue-500 shadow-lg shadow-blue-500/20' : 'bg-slate-800'}`}>
+                  <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow-md transition-all duration-300 ${isSimplifiedMode ? 'left-4.5' : 'left-0.5'}`} />
+                </div>
               </div>
-            ) : (
-              !isAdmin && (
-                <button
-                  onClick={() => {
-                    if (
-                      window.confirm(
-                        'Voulez-vous soumettre cette mission pour validation ? Elle ne sera plus modifiable.'
-                      )
-                    ) {
-                      onSubmit();
-                    }
-                  }}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-indigo-500/20 text-indigo-500 border border-indigo-500/30 rounded-xl font-black shadow-xl hover:scale-105 transition-all text-[9px] uppercase tracking-widest"
-                >
-                  <ListChecks size={12} />
-                  SOUMETTRE
-                </button>
-              )
-            )}
+            </div>
+          </Dropdown>
 
+          {/* Export */}
+          <Dropdown
+            icon={<Download size={14} className="text-blue-400" />}
+            label="EXPORT"
+            isOpen={activeDropdown === 'export'}
+            onToggle={() => toggleDropdown('export')}
+          >
             <button
-              onClick={onSave}
-              disabled={isSyncing || isSyncingServer || isSubmitted || isCertified}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-black shadow-xl hover:scale-105 transition-all text-[9px] uppercase tracking-widest ${isSubmitted || isCertified ? 'bg-slate-500/20 text-slate-500 cursor-not-allowed border-white/5' : isDirty ? 'bg-orange-500 hover:bg-orange-600 text-white' : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}
+              onClick={() => { onExportExcel(); setActiveDropdown(null); }}
+              className="w-full flex items-center gap-2 p-2.5 text-[10px] font-bold text-slate-300 hover:bg-white/5 rounded-lg"
             >
-              <Save size={12} className={isSyncing || isSyncingServer ? 'animate-pulse' : ''} />
-              {isSubmitted || isCertified
-                ? 'LOCKED'
-                : isSyncing || isSyncingServer
-                  ? 'SYNC...'
-                  : isDirty
-                    ? 'ENREGISTRER*'
-                    : 'SAUVEGARDÉ'}
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Excel
             </button>
-          </div>
-        )}
+            <button
+              onClick={() => { onExportWord(); setActiveDropdown(null); }}
+              className="w-full flex items-center gap-2 p-2.5 text-[10px] font-bold text-slate-300 hover:bg-white/5 rounded-lg"
+            >
+              <div className="w-1.5 h-1.5 rounded-full bg-blue-500" /> Word
+            </button>
+            <button
+              onClick={() => { onExportPDF(); setActiveDropdown(null); }}
+              className="w-full flex items-center gap-2 p-2.5 text-[10px] font-bold text-slate-300 hover:bg-white/5 rounded-lg"
+            >
+              <div className="w-1.5 h-1.5 rounded-full bg-rose-500" /> PDF
+            </button>
+          </Dropdown>
+
+          <div className="w-px h-4 bg-white/10 mx-1" />
+
+          {/* Sync */}
+          <button onClick={onSyncFromServer} className="p-2 text-slate-400 hover:text-white transition-all" title="Synchroniser">
+            <RefreshCw size={16} className={isSyncingServer ? 'animate-spin text-blue-400' : ''}/>
+          </button>
+
+          {/* Notifications */}
+          <button onClick={onNotificationsToggle} className="relative p-2 text-slate-400 hover:text-white transition-all" title="Notifications">
+            <Bell size={16}/>
+            {unreadCount > 0 && (
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 border border-slate-900 rounded-full"/>
+            )}
+          </button>
+
+          {/* Audit */}
+          <button onClick={onAuditToggle} className={`p-2 transition-all ${showAudit ? 'text-indigo-400 bg-indigo-500/10 rounded-lg' : 'text-slate-400 hover:text-white'}`} title="Piste d'audit">
+            <Fingerprint size={16}/>
+          </button>
+
+        </div>
+
       </div>
     </ActionBar>
   );

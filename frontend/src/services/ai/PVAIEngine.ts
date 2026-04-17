@@ -6,6 +6,37 @@ import { ELECTRICIAN_GUIDE } from './ElectricianQuran';
  * Plus aucune donnée simulée. Se base strictement sur les données Kobo et Construction réelles.
  */
 
+const resolveKoboImageUrl = (filename: string) => {
+  if (!filename) return null;
+  // Serveur OCHA par défaut (le plus commun pour ce type de formulaire)
+  return `https://kc.humanitarianresponse.info/attachment/original?media_file=proquelec/attachments/${filename}`;
+};
+
+const extractChecklist = (tech: any = {}) => {
+  return [
+    { 
+      point: "Génie Civil / Mur de support", 
+      status: tech.macon?.type_mur || "Non renseigné", 
+      conforme: !!tech.macon?.termine 
+    },
+    { 
+      point: "Branchement au réseau (4mm²)", 
+      status: tech.reseau?.etat || "Non renseigné", 
+      conforme: !!tech.reseau?.termine 
+    },
+    { 
+      point: "Installation Intérieure", 
+      status: tech.interieur?.etat || "Non renseigné", 
+      conforme: !!tech.interieur?.termine 
+    },
+    { 
+      point: "Contrôle Final & Terre", 
+      status: tech.controle?.resistance_terre ? `R=${tech.controle.resistance_terre}Ω` : "Non renseigné", 
+      conforme: !!tech.controle?.conforme 
+    }
+  ];
+};
+
 export type PVType = 'PVNC' | 'PVR' | 'PVHSE' | 'PVRET' | 'PVRD' | 'PVRES' | 'PVINE';
 
 export interface GeneratedPVContent {
@@ -13,6 +44,8 @@ export interface GeneratedPVContent {
   recommendations: string[];
   referenceContractuelle: string;
   materials?: { item: string; quantity: number | string; unit: string }[];
+  checklist?: { point: string; status: string; conforme: boolean }[];
+  photos?: string[];
 }
 
 // Fonction utilitaire pour extraire dynamiquement les matériels réels saisis
@@ -20,23 +53,30 @@ function extractRealMaterials(tech: any, kobo: any) {
   const materials = [];
   const source = { ...kobo, ...(tech?.livreur || {}), ...tech };
 
+  // Priorité aux deux piliers : Câbles et Tranchées
+  const c25 = Number(source.câble_2_5 || source['group_sy9vj14/Longueur_câble_2_5mm_Int_rieure'] || 0);
+  const c15 = Number(source.câble_1_5 || source['group_sy9vj14/Longueur_câble_1_5mm_Int_rieure'] || 0);
+  const tr4 = Number(source.tranchee_4 || source['group_sy9vj14/Longueur_Tranch_e_câble_arm_4mm'] || 0);
+
+  // Si au moins une mesure technique est présente, on les affiche toutes pour la transparence
+  if (c25 > 0 || c15 > 0 || tr4 > 0) {
+    materials.push({ item: "Câblage intérieur 2.5mm²", quantity: c25, unit: "m" });
+    materials.push({ item: "Câblage éclairage 1.5mm²", quantity: c15, unit: "m" });
+    materials.push({ item: "Tranchée câble armé 4mm²", quantity: tr4, unit: "m" });
+  }
+
+  // Autres équipements (Compteurs, etc.)
   Object.entries(source).forEach(([key, val]) => {
     const lowKey = key.toLowerCase();
-    // Détection des mots clés techniques (Câbles, Tranchées, Équipements)
-    const isTechnical = ['cable', 'câble', 'tranch', 'tranchée', 'compteur', 'disjoncteur', 'lampe', 'hublot'].some(kw => lowKey.includes(kw));
+    if (lowKey.includes('câble') || lowKey.includes('tranch')) return; // Déjà gérés ci-dessus
 
+    const isTechnical = ['compteur', 'disjoncteur', 'lampe', 'hublot'].some(kw => lowKey.includes(kw));
     if (isTechnical && (typeof val === 'number' || (typeof val === 'string' && val !== '' && !isNaN(Number(val))))) {
       const qte = Number(val);
       if (qte > 0) {
-        // Nettoyage du nom : on enlève les chemins de groupes Kobo (ex: group_sy9vj14/)
         let label = key.split('/').pop()?.replace(/_/g, ' ') || key;
         label = label.charAt(0).toUpperCase() + label.slice(1).toLowerCase();
-
-        materials.push({
-          item: label,
-          quantity: qte,
-          unit: (lowKey.includes('cable') || lowKey.includes('tranch')) ? 'm' : 'U'
-        });
+        materials.push({ item: label, quantity: qte, unit: 'U' });
       }
     }
   });
@@ -96,18 +136,41 @@ export const PVAIEngine = {
       anomalies.push(`Valeur ohmique de terre hors norme: ${tech.controle.resistance_terre}Ω (>1500Ω).`);
     }
 
-    if (anomalies.length === 0) {
-      anomalies.push("Anomalies générales constatées lors de l'inspection visuelle (cf. rapport d'intervention).");
+    // NOUVEAU: Extraction des motifs textuels saisis sur le formulaire Kobo
+    const koboKeys = Object.keys(kobo || {});
+    koboKeys.forEach(key => {
+      const lowKey = key.toLowerCase();
+      if (lowKey.includes('motif') || lowKey.includes('raison') || lowKey.includes('observation') || lowKey.includes('commentaire')) {
+        const val = kobo[key];
+        if (val && typeof val === 'string' && val.length > 3) {
+          anomalies.push(`Note Terrain: "${val}"`);
+        }
+      }
+    });
+
+    // Synthèse narrative améliorée
+    const narrativeHeader = "L'audit technique réalisé sur site souligne des anomalies significatives impactant la conformité contractuelle de l'ouvrage.";
+    const narrativeSub = anomalies.length > 0 
+      ? `Les dysfonctionnements suivants ont été spécifiquement identifiés comme points bloquants : ${anomalies.join(', ')}.`
+      : "Des manquements généraux de finition ou de mise en œuvre ont été relevés, interdisant toute validation en l'état.";
+
+    const photos = [];
+    if (tech.photos?.anomalie) {
+      const url = resolveKoboImageUrl(tech.photos.anomalie);
+      if (url) photos.push(url);
     }
 
     return {
-      description: desc + anomalies.join(" "),
+      description: `${narrativeHeader}\n\n${narrativeSub}\n\nConformément aux clauses de qualité, une levée des réserves est exigée avant toute nouvelle soumission de paiement.`,
       materials: [
-        { item: "Intervention de reprise globale (Main d'Oeuvre)", quantity: 1, unit: "Forfait" }
+        { item: "Remise en conformité globale (Main d'Oeuvre)", quantity: 1, unit: "Forfait" }
       ],
+      checklist: extractChecklist(tech),
+      photos,
       recommendations: [
-        "Reprise immédiate des défauts mentionnés.",
-        "Nouvelle inspection terrain obligatoire avant relance de facturation."
+        "Ré-intervention impérative des équipes de pose pour correction des défauts listés.",
+        "Auto-contrôle documenté requis avant demande de contre-audit.",
+        "Suspension de la validation administrative du lot jusqu'à preuve de conformité."
       ],
       referenceContractuelle: refHash
     };
@@ -135,22 +198,29 @@ export const PVAIEngine = {
     }
 
     return {
-      description: `Par la présente, il est attesté que le candidat enregistré sous le lot N° ${sub.numeroordre} est déclaré INÉLIGIBLE aux travaux d'installation électrique au titre de ce projet. ${cause}`,
+      description: `L'analyse du dossier lotissement ${sub.numeroordre} a conduit à une décision d'inéligibilité administrative ou technique. ${cause} Cette situation entraîne la clôture immédiate de la fiche sans possibilité de facturation de travaux.`,
       materials: [],
+      checklist: extractChecklist(tech),
       recommendations: [
-        "Clôture et abandon administratif du lot.",
-        "Aucune facturation prestataire n'est autorisée sur cette entité."
+        "Transfert immédiat du ménage dans le registre des abandons.",
+        "Ré-affectation potentielle des équipements logistiques vers un lot éligible.",
+        "Clôture définitive du dossier électronique et physique."
       ],
       referenceContractuelle: refHash
     };
   },
 
   generateHSEContent(sub: Household, kobo: any, tech: any, refHash: string): GeneratedPVContent {
+    const teamName = tech.manualTeam || "Équipe non identifiée";
+    const incidentDesc = tech.manualDescription || "Incident de sécurité documenté lors de la surveillance terrain.";
+
     return {
-      description: `Incident de type Santé/Sécurité (HSE) documenté sur le LOT ${sub.numeroordre}. L'audit des EPI ou des méthodes d'intervention sur réseau actif a révélé un manquement aux règles de sécurité en vigueur.`,
+      description: `RAPPORT D'INCIDENT SÉCURITÉ (HSE)\n\nÉquipe impliquée : ${teamName}\nLot concerné : ${sub.numeroordre}\n\nConstat technique : ${incidentDesc}\n\nCet incident constitue un manquement aux règles de sécurité en vigueur sur le projet et nécessite une action corrective immédiate.`,
+      checklist: extractChecklist(tech),
       recommendations: [
-        "Arrêt temporaire du chantier sur cette zone.",
-        "Concertation de sécurité (Toolbox Talk) requise avec le sous-traitant."
+        "Arrêt temporaire du chantier pour l'équipe concernée.",
+        "Briefing de sécurité (Toolbox Talk) obligatoire dirigé par le superviseur HSE.",
+        "Vérification de la conformité de l'ensemble des EPI avant reprise."
       ],
       referenceContractuelle: refHash
     };
@@ -163,6 +233,7 @@ export const PVAIEngine = {
 
     return {
       description: `Notification de retard contractuel émise pour le dossier ${sub.numeroordre}. Le dossier est ouvert depuis ${daysElapsed} jour(s) sans clôture finale approuvée par le superviseur, dépassant les SLA définis.`,
+      checklist: extractChecklist(tech),
       recommendations: [
         "Mise en demeure d'exécution sous les plus brefs délais.",
         "Application potentielle des pénalités de retard."
@@ -175,12 +246,18 @@ export const PVAIEngine = {
     const resistance = tech.controle?.resistance_terre ? `${tech.controle.resistance_terre}Ω` : "Validée";
     const mats = extractRealMaterials(tech, kobo);
 
+    const narrative = mode === 'PROVISOIRE'
+      ? `L'ouvrage réalisé pour le compte du ménage ${sub.name} a été soumis à un audit de conformité rigoureux. Les relevés de terrain, notamment la mesure de résistance de terre (${resistance}), témoignent d'une exécution conforme aux spécifications du Cahier des Charges. En conséquence, la réception provisoire est prononcée, ouvrant droit à la phase de garantie.`
+      : `Le lot ${sub.numeroordre} a franchi avec succès la période de garantie contractuelle sans incident majeur signalé. L'audit de réception définitive confirme la pérennité de l'installation sous réserve du maintien des conditions d'utilisation normales. Le transfert de propriété et d'exploitation est ici validé sans réserves.`;
+
     return {
-      description: `Vérification technique complète achevée. Les tests de diagnostic valident l'installation (Résistance de terre : ${resistance}). L'ouvrage est déclaré apte et réceptionné en phase ${mode}.`,
+      description: narrative,
       materials: mats,
+      checklist: extractChecklist(tech),
       recommendations: [
-        mode === 'PROVISOIRE' ? "Ouverture de la période de garantie." : "Transfert d'exploitation achevé. Clôture administrative validée.",
-        "Facturation autorisée pour ces lignes de service."
+        mode === 'PROVISOIRE' ? "Vérification périodique recommandée durant l'année de garantie." : "Clôture du cycle de projet. Fin des obligations de maintenance liées à la pose.",
+        "Validation de la mise en facturation pour le présent lot.",
+        "Archivage du dossier technique certifié."
       ],
       referenceContractuelle: refHash
     };
@@ -198,4 +275,22 @@ export const PVAIEngine = {
     };
   }
 };
+export const PV_DESCRIPTIONS = {
+  PVR: "PV RÉCEPTION PROVISOIRE : Travaux conformes. Ouvre le droit à facturation.",
+  PVNC: "PV NON-CONFORMITÉ : Réserves majeures bloquant la réception.",
+  PVHSE: "RAPPORT SÉCURITÉ : Manquement grave aux normes HSE.",
+  PVRET: "RAPPORT RETARD : Notification de dépassement des délais contractuels.",
+  PVRD: "PV RÉCEPTION DÉFINITIVE : Clôture finale après garantie.",
+  PVRES: "RAPPORT RÉSILIATION : Arrêt définitif pour faute grave.",
+  PVINE: "RAPPORT INÉLIGIBILITÉ : Ménage clôturé administrativement sans frais."
+};
 
+export const PV_TEMPLATES = {
+  PVR: { title: "PV de Réception Provisoire", color: 'emerald', description: 'Installation conforme et autorisée au paiement.' },
+  PVNC: { title: "PV de Non-Conformité", color: 'orange', description: 'Anomalies détectées à reprendre obligatoirement.' },
+  PVHSE: { title: "Rapport d'Incident Sécurité (HSE)", color: 'red', description: 'Violation grave des règles de sécurité.' },
+  PVRET: { title: "Rapport de Retard Contractuel", color: 'amber', description: 'Dépassement des délais contractuels.' },
+  PVRD: { title: "PV de Réception Définitive", color: 'blue', description: 'Clôture finale et fin de garantie.' },
+  PVRES: { title: "Rapport de Résiliation", color: 'rose', description: 'Arrêt immédiat pour faute grave.' },
+  PVINE: { title: "Rapport d'Inéligibilité", color: 'rose', description: 'Désistement ou inéligibilité administrative.' }
+};

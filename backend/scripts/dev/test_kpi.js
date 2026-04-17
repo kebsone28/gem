@@ -12,10 +12,10 @@ async function main() {
             SELECT 
                 SUM(COALESCE(NULLIF("koboData"->'group_ed3yt17'->>'Nombre_de_KIT_pr_par', '')::numeric, 0)) as kit_prepared,
                 SUM(COALESCE(NULLIF("koboData"->'group_ed3yt17'->>'Nombre_de_KIT_Charg_pour_livraison', '')::numeric, 0)) as kit_loaded,
-                SUM(COALESCE(NULLIF("koboData"->'group_wu8kv54'->'group_sy9vj14'->>'Longueur_Cable_2_5mm_Int_rieure', '')::numeric, 0)) as cable_2_5,
-                SUM(COALESCE(NULLIF("koboData"->'group_wu8kv54'->'group_sy9vj14'->>'Longueur_Cable_1_5mm_Int_rieure', '')::numeric, 0)) as cable_1_5,
-                SUM(COALESCE(NULLIF("koboData"->'group_wu8kv54'->'group_sy9vj14'->>'Longueur_Tranch_e_Cable_arm_4mm', '')::numeric, 0)) as cable_4_armed,
-                SUM(COALESCE(NULLIF("koboData"->'group_wu8kv54'->'group_sy9vj14'->>'Longueur_Tranch_e_C_ble_arm_1_5mm', '')::numeric, 0)) as cable_1_5_armed,
+                SUM(COALESCE(NULLIF("koboData"->'group_wu8kv54'->'group_sy9vj14'->>'Longueur_câble_2_5mm_Int_rieure', '')::numeric, 0)) as câble_2_5,
+                SUM(COALESCE(NULLIF("koboData"->'group_wu8kv54'->'group_sy9vj14'->>'Longueur_câble_1_5mm_Int_rieure', '')::numeric, 0)) as câble_1_5,
+                SUM(COALESCE(NULLIF("koboData"->'group_wu8kv54'->'group_sy9vj14'->>'Longueur_Tranch_e_câble_arm_4mm', '')::numeric, 0)) as câble_4_armed,
+                SUM(COALESCE(NULLIF("koboData"->'group_wu8kv54'->'group_sy9vj14'->>'Longueur_Tranch_e_C_ble_arm_1_5mm', '')::numeric, 0)) as câble_1_5_armed,
                 COUNT(DISTINCT "koboData"->>'today') as days_worked,
                 COUNT(*) filter (where status = 'Terminé' OR status = 'Réception: Validée') as total_validated
             FROM "Household" h

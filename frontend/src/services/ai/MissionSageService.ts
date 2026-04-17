@@ -186,7 +186,7 @@ const QUESTION_CATALOG: Record<string, string[]> = {
     'Câbles extérieurs',
     'Barrette de terre externe',
     'Poteau bois pourri',
-    'Pourquoi le cable visible est interdit ?',
+    'Pourquoi le câble visible est interdit ?',
     'Quels sont les défauts fréquents ?',
     'Comment signaler une anomalie ?',
   ],
@@ -469,7 +469,7 @@ const CATEGORY_KEYWORDS: Record<string, string[]> = {
     'defaut',
     'interdit',
     'fils',
-    'cables',
+    'câbles',
     'barrette',
     'poteau',
     'visible',
@@ -665,7 +665,7 @@ function detectIntent(q: string) {
     vague: /aide|comprends pas|faire quoi|complique|perdu|confus|expliquer|aide moi|stp/.test(q),
     fast: /^(mission|budget|kobo|stats|aide|bonjour|salam|hi|hello)$/.test(q),
     tech:
-      /compteur|disjoncteur|transform|branchement|norme|spec|37500|faible revenu|eligibilit|interieur|senelec|ns 01-001|protection|anomalie|cable|choc electrique|fusible|conducteur|mise a la terre|ppe|ddp|ddr/.test(
+      /compteur|disjoncteur|transform|branchement|norme|spec|37500|faible revenu|eligibilit|interieur|senelec|ns 01-001|protection|anomalie|câble|choc electrique|fusible|conducteur|mise a la terre|ppe|ddp|ddr/.test(
         q
       ) ||
       fuzzyContains(q, [
@@ -688,7 +688,7 @@ function detectIntent(q: string) {
       q
     ),
     inventory:
-      /stock|materiel|inventaire|logistique|flux|equipement|cable en stock|compteur disponible/.test(
+      /stock|materiel|inventaire|logistique|flux|equipement|câble en stock|compteur disponible/.test(
         q
       ),
     diagnostic:
@@ -715,7 +715,7 @@ function detectIntent(q: string) {
         q
       ),
     anomalies:
-      /anomalie|eviter|mauvais|erreur|defaut|interdit|mauvaise pratique|visible|fils|cables exterieurs|barrette terre/.test(
+      /anomalie|eviter|mauvais|erreur|defaut|interdit|mauvaise pratique|visible|fils|câbles exterieurs|barrette terre/.test(
         q
       ),
     branchement:
@@ -723,7 +723,7 @@ function detectIntent(q: string) {
         q
       ),
     interieur:
-      /interieur|installation interieure|coffret disjoncteur|couloir|couvert|prise|lampe|interrupteur|cable arme|enterr/.test(
+      /interieur|installation interieure|coffret disjoncteur|couloir|couvert|prise|lampe|interrupteur|câble arme|enterr/.test(
         q
       ),
     glossaire:
@@ -736,14 +736,14 @@ function detectIntent(q: string) {
         q
       ),
     specs:
-      /hauteur minimale|configuration standard|protection mecanique|hublot hauteur|cables plein air|barrette terre exterieur|poteaux bois|surplomber/.test(
+      /hauteur minimale|configuration standard|protection mecanique|hublot hauteur|câbles plein air|barrette terre exterieur|poteaux bois|surplomber/.test(
         q
       ),
     protection_details: /eviter contact indirect|parafoudre|surtensions|fusible|surintensites/.test(
       q
     ),
     anomalies_details:
-      /fils visibles|cutteur|pince|enterrer cables|grillage rouge|bois pourris|limite propriete/.test(
+      /fils visibles|cutteur|pince|enterrer câbles|grillage rouge|bois pourris|limite propriete/.test(
         q
       ),
     contract:

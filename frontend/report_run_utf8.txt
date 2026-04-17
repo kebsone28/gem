@@ -40,11 +40,11 @@ Coherent: true | Length: 3039
 ---
 Question: Quelles installations couvre la norme NS 01-001 ?
 Coherent: true | Length: 2071
-### NS 01‑001 – Domain d’application  > **Norme** : NS 01‑001   > **Applicable** : Installations en basse tension (BT) **≤ 1 000 V**  La norme NS 01‑001 s’applique à **toutes les installations électriques de basse tension** prévues par le système qui 
+### NS 01‑001 – Domain d’application  > **Norme** : NS 01‑001   > **Applicâble** : Installations en basse tension (BT) **≤ 1 000 V**  La norme NS 01‑001 s’applique à **toutes les installations électriques de basse tension** prévues par le système qui 
 ---
 Question: Quelle tension est permise par la norme NS 01-001 ?
 Coherent: true | Length: 246
-**Réponse :**  - **Norme applicable :** NS 01‑001   - **Plage de tension permise :** **BT (basse tension) jusqu’à 1000 V**.    Ainsi, toute installation électrique réalisée dans le cadre du GEM‑MINT doit respecter cette limite maximale de 1000 V. 
+**Réponse :**  - **Norme applicâble :** NS 01‑001   - **Plage de tension permise :** **BT (basse tension) jusqu’à 1000 V**.    Ainsi, toute installation électrique réalisée dans le cadre du GEM‑MINT doit respecter cette limite maximale de 1000 V. 
 ---
 Question: Quelles sont les exclusions de la norme NS 01-001 ?
 Coherent: true | Length: 291

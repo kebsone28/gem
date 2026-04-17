@@ -234,8 +234,8 @@ export function useLogistique() {
   const koboStats = useMemo(() => {
     const stats = {
       totalPreparateurKits: 0,
-      cableInt25Total: 0,
-      cableInt15Total: 0,
+      câbleInt25Total: 0,
+      câbleInt15Total: 0,
       tranchee4Total: 0,
       tranchee15Total: 0,
     };
@@ -243,8 +243,8 @@ export function useLogistique() {
     households?.forEach((h) => {
       if (h.koboSync) {
         stats.totalPreparateurKits += h.koboSync.preparateurKits || 0;
-        stats.cableInt25Total += h.koboSync.cableInt25 || 0;
-        stats.cableInt15Total += h.koboSync.cableInt15 || 0;
+        stats.câbleInt25Total += h.koboSync.câbleInt25 || 0;
+        stats.câbleInt15Total += h.koboSync.câbleInt15 || 0;
         stats.tranchee4Total += h.koboSync.tranchee4 || 0;
         stats.tranchee15Total += h.koboSync.tranchee15 || 0;
       }

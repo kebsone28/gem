@@ -10,7 +10,7 @@ export interface PipelineData {
 export interface PerformanceData {
   avgPerDay: number;
   daysWorked: number;
-  avgCablePerHouse: number;
+  avgcâblePerHouse: number;
   efficiencyRate: number;
 }
 

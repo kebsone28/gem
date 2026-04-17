@@ -31,9 +31,9 @@
 | select_one cj3rh91 | Situation_du_M_nage | Situation du Ménage | False |
 | select_multiple pr4rq21 | justificatif | justificatif | False |
 | begin_group | group_sy9vj14 | formulaire | False |
-| integer | Longueur_Cable_2_5mm_Int_rieure | Longueur Cable 2,5mm² Intérieure | True |
-| integer | Longueur_Cable_1_5mm_Int_rieure | Longueur Cable 1,5mm² Intérieure | True |
-| integer | Longueur_Tranch_e_Cable_arm_4mm | Longueur Tranchée (Cable armé 4mm²) | True |
+| integer | Longueur_câble_2_5mm_Int_rieure | Longueur câble 2,5mm² Intérieure | True |
+| integer | Longueur_câble_1_5mm_Int_rieure | Longueur câble 1,5mm² Intérieure | True |
+| integer | Longueur_Tranch_e_câble_arm_4mm | Longueur Tranchée (câble armé 4mm²) | True |
 | integer | Longueur_Tranch_e_C_ble_arm_1_5mm | Longueur Tranchée Câble armé 1,5mm²) | True |
 | acknowledge | Je_confirme_la_remis_u_materiel_au_m_nage | Je confirme la remise du materiel au ménage | True |
 | acknowledge | Je_confirme_le_marqu_osition_des_coffrets | Je confirme le marquage de la position du Mur et position des coffrets | True |
@@ -185,7 +185,7 @@
 | sv3tg34 | non_termine | Non terminé |
 | kx9fr02 | coffret_compteur_non_encore_pos | Coffret compteur non encore posé/ |
 | kx9fr02 | potelet_non_encore_pos | Potelet non encore posé/ |
-| kx9fr02 | cable_preassemble_non_encore_tire | Câble préassemblé non encore tiré/ |
+| kx9fr02 | câble_preassemble_non_encore_tire | Câble préassemblé non encore tiré/ |
 | kx9fr02 | necessite_une_extension | Nécessite une Extension/ |
 | kx9fr02 | pas_de_pince_d_encrages | Pas de pince d'encrages/ |
 | kx9fr02 | pas_de_connecteurs | Pas de Connecteurs/ |
@@ -248,15 +248,15 @@
 | jm8qy41 | boite_de_d_rivation_mal_fix_e | Boite de dérivation mal fixée/ |
 | jm8qy41 | c_blage__lumi_re_interrupteur__mal_effec | Câblage (lumière/interrupteur) mal effectué/ |
 | jm8qy41 | c_blage___refaire_c_blage_prise_mal_effe | Câblage Prise mal effectué/ |
-| jm8qy41 | cable_1_5mm__jonctionn__par__pissure | Câble 1,5mm² Jonctionné par épissure/ |
-| jm8qy41 | cable_2_5mm__jonctionn__par__pissure | Câble 2,5mm² Jonctionné par épissure/ |
+| jm8qy41 | câble_1_5mm__jonctionn__par__pissure | Câble 1,5mm² Jonctionné par épissure/ |
+| jm8qy41 | câble_2_5mm__jonctionn__par__pissure | Câble 2,5mm² Jonctionné par épissure/ |
 | jm8qy41 | c_ble_arm__non_enterr | Câble d'alimentation mal enterré/ |
-| jm8qy41 | cable_d_alimentation_non_adapt | Câble d'alimentation non adapté pour être enterré/ |
-| jm8qy41 | cable_mal_fix | Câblage intérieur mal fixé sur parois/ |
+| jm8qy41 | câble_d_alimentation_non_adapt | Câble d'alimentation non adapté pour être enterré/ |
+| jm8qy41 | câble_mal_fix | Câblage intérieur mal fixé sur parois/ |
 | jm8qy41 | coffret_disjoncteur___d_placer_en_lieu_c | Coffret disjoncteur à déplacer en lieu couvert / |
 | jm8qy41 | code_de_couleur__conducteur__non_respect | Code de couleur (conducteur) non respecté/ |
 | jm8qy41 | coffret_disjoncteur_mal_fix | Coffret disjoncteur mal fixé/ |
-| jm8qy41 | cable_d_alimentation_4mm__mal_fix | Câble d'alimentation 4mm² mal fixé sur parois/ |
+| jm8qy41 | câble_d_alimentation_4mm__mal_fix | Câble d'alimentation 4mm² mal fixé sur parois/ |
 | jm8qy41 | c_blage_pass__en_a_rien | Câblage passé en aérien et non enterré/ |
 | jm8qy41 | d_faut_connexion_lumi_re | Défaut connexion lumière(mal câblé)/ |
 | jm8qy41 | douille___remplacer | Douille à remplacer (détériorée)/ |
@@ -271,7 +271,7 @@
 | jm8qy41 | profondeur_tranch_e_non_ad_quate__minimu | Profondeur de la tranchée non adéquate (minimum 30cm à creuser)/ |
 | jm8qy41 | pas_de_domino_au_niveau_de_la_boite_de_d | Pas de dominos au niveau de la boite de dérivation/ |
 | jm8qy41 | section_2_5mm__non_adapt_e_pour_les_lamp | Section câble 2,5mm² non adaptée pour les lampes/ |
-| jm8qy41 | section_cable_d_alimentation_non_respect | Section Cable d'alimentation non respectée (minimum 4mm²)/ |
+| jm8qy41 | section_câble_d_alimentation_non_respect | Section câble d'alimentation non respectée (minimum 4mm²)/ |
 | vo5kj15 | conducteurs_visibles_sur_c_ble_1_5mm | Conducteurs visibles sur câble 1,5mm²/ |
 | vo5kj15 | conducteurs_visibles_sur_c_ble_2_5mm | Conducteurs visibles sur câble 2,5mm²/ |
 | vo5kj15 | conducteurs_visibles_sur_c_ble_4mm | Conducteurs visibles sur câble 4mm²/ |

@@ -213,10 +213,10 @@ export const getMissionReadiness = (
   const percentage = Math.min(100, score);
   let status: 'draft' | 'ready' | 'certified' | 'executed' | 'submitted' = 'draft';
 
-  if (percentage === 100) status = 'executed';
-  else if (isCertified) status = 'certified';
+  if (isCertified) status = 'certified';
   else if (isSubmitted) status = 'submitted';
-  else if (percentage >= 60) status = 'ready';
+  else if (percentage === 100) status = 'executed';
+  else status = 'draft';
 
   return { percentage, status, nextSteps };
 };

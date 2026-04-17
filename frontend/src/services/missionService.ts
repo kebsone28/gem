@@ -30,6 +30,19 @@ export const getMissions = async (projectId?: string): Promise<Mission[]> => {
 };
 
 /**
+ * Récupère une mission spécifique par son ID
+ */
+export const getMission = async (id: string): Promise<Mission | null> => {
+  try {
+    const response = await api.get(`/missions/${id}`);
+    return response.data;
+  } catch (err) {
+    logger.error(`Failed to fetch mission ${id}:`, err);
+    return null;
+  }
+};
+
+/**
  * Crée une nouvelle mission sur le serveur
  */
 export const createMission = async (missionData: Partial<Mission>): Promise<Mission | null> => {

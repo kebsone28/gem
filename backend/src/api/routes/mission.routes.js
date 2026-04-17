@@ -1,5 +1,4 @@
 import express from 'express';
-import path from 'path';
 import {
     getMissions,
     getPendingApprovals,
@@ -16,42 +15,40 @@ import { authProtect, authorize } from '../middlewares/auth.js';
 
 const router = express.Router();
 
-// Add a simple debug middleware to trace all incoming requests
-router.use((req, res, next) => {
-    import('fs').then(fs => fs.appendFileSync(path.join(__dirname, '../../debug-mission.log'), `INCOMING: ${req.method} ${req.originalUrl}\n`));
-    next();
-});
-
 // All routes require authentication
 router.use(authProtect);
 
-// Approval specific (must be before :id routes)
-router.get('/approvals/pending', authorize('ADMIN_PROQUELEC', 'ADMIN', 'DG_PROQUELEC', 'DG', 'DIRECTEUR', 'CHEF_PROJET', 'COMPTABLE'), getPendingApprovals);
+// =============================================
+// RÔLES CANONIQUES (après normalisation dans authorize()) :
+//   ADMIN_PROQUELEC = Super Admin (bypass total)
+//   DIRECTEUR       = Directeur Général (approuve tout, voit soumises)
+//   CHEF_PROJET     = Chef de Projet (voit ses missions seulement)
+//   COMPTABLE       = Comptable (voit soumises)
+// =============================================
 
-// CRUD
-router.get('/', getMissions);
+// Cockpit d'approbation - tous ceux qui participent au workflow
+router.get('/approvals/pending', authorize('ADMIN_PROQUELEC', 'DIRECTEUR', 'CHEF_PROJET', 'COMPTABLE'), getPendingApprovals);
 
-// CRUD
-router.get('/', getMissions);
+// CRUD missions
+router.get('/', getMissions); // Filtrage géré dans le contrôleur selon le rôle
 
-// WRAPPER DE DEBUG POUR INTERCEPTER LE 500 EXACT
-router.post('/', authorize('ADMIN_PROQUELEC', 'ADMIN', 'DG_PROQUELEC', 'DG', 'CHEF_PROJET', 'DIRECTEUR', 'COMPTABLE'), async (req, res, next) => {
+router.post('/', authorize('ADMIN_PROQUELEC', 'DIRECTEUR', 'CHEF_PROJET', 'COMPTABLE'), async (req, res, next) => {
     try {
         await createMission(req, res);
     } catch (e) {
-        import('fs').then(fs => fs.appendFileSync(path.join(__dirname, '../../debug-mission.log'), 'ROUTER CATCH: ' + e.stack + '\n'));
         next(e);
     }
 });
-router.patch('/:id', authorize('ADMIN_PROQUELEC', 'ADMIN', 'DG_PROQUELEC', 'CHEF_PROJET', 'DIRECTEUR', 'COMPTABLE'), updateMission);
-router.put('/:id', authorize('ADMIN_PROQUELEC', 'ADMIN', 'DG_PROQUELEC', 'CHEF_PROJET', 'DIRECTEUR', 'COMPTABLE'), updateMission);
-router.delete('/:id', authorize('ADMIN_PROQUELEC', 'ADMIN'), deleteMission);
-router.post('/:id/duplicate', authorize('ADMIN_PROQUELEC', 'ADMIN', 'DG_PROQUELEC', 'DG', 'CHEF_PROJET', 'DIRECTEUR'), duplicateMission);
 
-// Mission approval endpoints
+router.patch('/:id', authorize('ADMIN_PROQUELEC', 'DIRECTEUR', 'CHEF_PROJET', 'COMPTABLE'), updateMission);
+router.put('/:id',   authorize('ADMIN_PROQUELEC', 'DIRECTEUR', 'CHEF_PROJET', 'COMPTABLE'), updateMission);
+router.delete('/:id', authorize('ADMIN_PROQUELEC'), deleteMission);
+router.post('/:id/duplicate', authorize('ADMIN_PROQUELEC', 'DIRECTEUR', 'CHEF_PROJET'), duplicateMission);
+
+// Workflow d'approbation
 router.get('/:missionId/approval-history', getMissionApprovalHistory);
-router.post('/:missionId/approve', authorize('ADMIN_PROQUELEC', 'DG_PROQUELEC', 'DIRECTEUR', 'CHEF_PROJET', 'COMPTABLE'), approveMissionStep);
-router.post('/:missionId/reject', authorize('ADMIN_PROQUELEC', 'DG_PROQUELEC', 'DIRECTEUR', 'CHEF_PROJET', 'COMPTABLE'), rejectMissionStep);
+router.post('/:missionId/approve', authorize('ADMIN_PROQUELEC', 'DIRECTEUR', 'CHEF_PROJET', 'COMPTABLE'), approveMissionStep);
+router.post('/:missionId/reject',  authorize('ADMIN_PROQUELEC', 'DIRECTEUR', 'CHEF_PROJET', 'COMPTABLE'), rejectMissionStep);
 router.post('/:missionId/override-order-number', authorize('ADMIN_PROQUELEC'), overrideOrderNumber);
 
 export default router;

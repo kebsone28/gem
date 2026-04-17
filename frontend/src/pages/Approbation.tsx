@@ -22,6 +22,7 @@ import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import SignatureModal from '../components/common/SignatureModal';
 import { fmtFCFA } from '../utils/format';
+import { syncEventBus } from '../utils/syncEventBus';
 
 export default function Approbation() {
   const { user } = useAuth();
@@ -61,17 +62,30 @@ export default function Approbation() {
   if (isAccountant && !roleStr.includes('COMPTABLE')) workflowRole = 'COMPTABLE';
 
   const [isArchiveMode, setIsArchiveMode] = useState(false);
+  const [counts, setCounts] = useState({ pending: 0, archive: 0 });
 
   const fetchPending = async () => {
     setIsLoading(true);
     try {
-      const missions = await missionApprovalService.getPendingApprovals(isArchiveMode);
+      // Fetch both for accurate counters
+      const [missions, otherMissions] = await Promise.all([
+        missionApprovalService.getPendingApprovals(isArchiveMode),
+        missionApprovalService.getPendingApprovals(!isArchiveMode)
+      ]);
+
       setPendingMissions(missions);
-      if (missions.length > 0 && !selectedMission) {
-        setSelectedMission(missions[0]);
-      } else if (missions.length === 0) {
-        setSelectedMission(null);
-      }
+      setCounts({
+        pending: isArchiveMode ? otherMissions.length : missions.length,
+        archive: isArchiveMode ? missions.length : otherMissions.length
+      });
+
+      // Maintain selection if possible, otherwise select first or none
+      setSelectedMission(prevSelected => {
+        if (prevSelected && missions.some(m => m.id === prevSelected.id)) {
+          return missions.find(m => m.id === prevSelected.id);
+        }
+        return missions.length > 0 ? missions[0] : null;
+      });
     } catch (error) {
       toast.error('Erreur lors du chargement des approbations');
     } finally {
@@ -80,9 +94,23 @@ export default function Approbation() {
   };
 
   useEffect(() => {
-    setSelectedMission(null);
     fetchPending();
   }, [isArchiveMode]);
+
+  useEffect(() => {
+    // 🔄 Auto-synchronisation intelligente du composant d'Approbation
+    const handleSync = () => {
+      fetchPending();
+    };
+
+    const unsubSaved = syncEventBus.subscribe('mission:saved', handleSync);
+    const unsubNotification = syncEventBus.subscribe('notification', handleSync);
+
+    return () => {
+      unsubSaved();
+      unsubNotification();
+    };
+  }, [isArchiveMode]); // On recommence pour garantir que le fetch lit bien `isArchiveMode` actuel
 
   const handleDelete = async (e: React.MouseEvent, id: string, title: string) => {
     e.stopPropagation();
@@ -260,19 +288,26 @@ Ces missions n'ont pas encore été validées ni rejetées. Si vous videz la lis
           <div className="flex items-center justify-between px-2">
             <div className="flex flex-col gap-1">
               <h3 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em]">
-                {isArchiveMode ? 'Archives Certifiées' : 'Soumissions Reçues'} (
-                {pendingMissions.length})
+                {isArchiveMode ? 'Archives Certifiées' : 'Soumissions Reçues'}
               </h3>
               <button
-                onClick={() => setIsArchiveMode(!isArchiveMode)}
-                className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-lg border transition-all w-fit
-                                    ${
-                                      isArchiveMode
-                                        ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
-                                        : 'bg-white/5 text-slate-400 border-white/10 hover:bg-white/10'
-                                    }`}
+                onClick={() => {
+                  setSelectedMission(null);
+                  setIsArchiveMode(!isArchiveMode);
+                }}
+                className={`text-[10px] font-black uppercase tracking-widest px-3 py-2 rounded-xl border transition-all w-fit flex items-center gap-3
+                                     ${
+                                       isArchiveMode
+                                         ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20 hover:bg-emerald-500/20'
+                                         : 'bg-white/5 text-slate-400 border-white/10 hover:bg-white/10'
+                                     }`}
               >
-                {isArchiveMode ? '← Voir en attente' : '📂 Voir les archives'}
+                <span>{isArchiveMode ? '← Voir en attente' : '📂 Voir les archives'}</span>
+                <span className={`px-1.5 py-0.5 rounded-md text-[8px] font-black ${
+                  isArchiveMode ? 'bg-emerald-500 text-white' : 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'
+                }`}>
+                  {isArchiveMode ? counts.pending : counts.archive}
+                </span>
               </button>
             </div>
             <div className="flex items-center gap-2">
@@ -541,6 +576,45 @@ Ces missions n'ont pas encore été validées ni rejetées. Si vous videz la lis
                           </p>
                         </div>
                       </div>
+                    </div>
+                  </div>
+
+                  {/* 📅 SECTION PLANNING DÉTAILLÉ */}
+                  <div className="mb-10 relative z-10">
+                    <div className="flex items-center gap-3 mb-6">
+                      <Calendar size={18} className="text-indigo-400" />
+                      <h4 className="text-xs font-black text-white uppercase tracking-widest">
+                        Déroulement de la Mission (Planning Jour par Jour)
+                      </h4>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {selectedMission.data?.planning?.length > 0 ? (
+                        selectedMission.data.planning.map((step: string, i: number) => {
+                          const lines = step.split('\n');
+                          const title = lines[0] || `Jour ${i + 1}`;
+                          const description = lines.slice(1).join('\n');
+                          
+                          return (
+                            <div key={i} className="p-6 rounded-[2rem] bg-white/2 border border-white/5 hover:bg-white/5 transition-all group">
+                              <div className="flex items-center gap-3 mb-3">
+                                <div className="px-2.5 py-1 rounded-lg bg-indigo-500/10 text-indigo-400 text-[9px] font-black uppercase tracking-widest border border-indigo-500/20">
+                                  Jour {i + 1}
+                                </div>
+                                <h5 className="text-[11px] font-black text-white uppercase truncate">{title}</h5>
+                              </div>
+                              <p className="text-[10px] text-slate-500 font-medium leading-relaxed italic line-clamp-3 group-hover:line-clamp-none transition-all">
+                                {description || 'Aucun détail précisé pour cette journée.'}
+                              </p>
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <div className="col-span-2 p-8 rounded-[2rem] border-2 border-dashed border-white/5 text-center">
+                          <Clock size={24} className="mx-auto text-slate-700 mb-2 opacity-30" />
+                          <p className="text-[10px] text-slate-600 font-bold uppercase tracking-widest">Aucun planning détaillé renseigné</p>
+                        </div>
+                      )}
                     </div>
                   </div>
 

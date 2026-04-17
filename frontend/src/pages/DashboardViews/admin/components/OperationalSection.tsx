@@ -73,7 +73,7 @@ export const OperationalSection: React.FC<OperationalSectionProps> = ({ metrics,
               </div>
               <div className="flex justify-between items-center bg-white/[0.03] p-6 rounded-2xl border border-white/5 group hover:bg-white/[0.05] transition-all">
                 <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic group-hover:text-blue-400 transition-colors">CÂBLE MOYEN / MÉNAGE</span>
-                <span className="text-2xl font-black text-white italic">{metrics.performance.avgCablePerHouse}m</span>
+                <span className="text-2xl font-black text-white italic">{metrics.performance.avgcâblePerHouse}m</span>
               </div>
               <div className="flex justify-between items-center bg-rose-500/5 p-6 rounded-2xl border border-rose-500/10">
                 <span className="text-[10px] font-black text-rose-500/60 uppercase tracking-widest italic">ÉCART LOGISTIQUE</span>

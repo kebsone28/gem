@@ -67,7 +67,7 @@ export const KIT_COMPOSITION = [
     unit: 'u',
   },
   {
-    id: 'cable_preassemble_16',
+    id: 'câble_preassemble_16',
     category: 'Réseau Branchement',
     label: 'Câble préassemblé 2×16mm²',
     qty: 1,
@@ -95,7 +95,7 @@ export const KIT_COMPOSITION = [
     unit: 'u',
   },
   {
-    id: 'cable_rvfv_6_15m',
+    id: 'câble_rvfv_6_15m',
     category: 'Kit Principal (Intérieur)',
     label: 'Câble RVFV 2×6mm² (15m)',
     qty: 1,
@@ -110,7 +110,7 @@ export const KIT_COMPOSITION = [
   },
   { id: 'hublot', category: 'Kit Principal (Intérieur)', label: 'Hublot', qty: 1, unit: 'u' },
   {
-    id: 'cable_3x15_4m',
+    id: 'câble_3x15_4m',
     category: 'Kit Principal (Intérieur)',
     label: 'Câble 3×1,5mm² (4m)',
     qty: 1,
@@ -243,7 +243,7 @@ export const KIT_COMPOSITION = [
     unit: 'u',
   },
   {
-    id: 'cable_arme_3x25_10m',
+    id: 'câble_arme_3x25_10m',
     category: 'Kit Secondaire (Intérieur)',
     label: 'Câble armé 3×12,5mm² (10m)',
     qty: 1,

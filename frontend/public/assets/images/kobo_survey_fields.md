@@ -29,9 +29,9 @@
 | select_one cj3rh91                               | Situation_du_M_nage                       | Situation du Ménage                                                                     |
 | select_multiple pr4rq21                          | justificatif                              | justificatif                                                                            |
 | begin_group                                      | group_sy9vj14                             | formulaire                                                                              |
-| integer                                          | Longueur_Cable_2_5mm_Int_rieure           | Longueur Cable 2,5mm² Intérieure                                                        |
-| integer                                          | Longueur_Cable_1_5mm_Int_rieure           | Longueur Cable 1,5mm² Intérieure                                                        |
-| integer                                          | Longueur_Tranch_e_Cable_arm_4mm           | Longueur Tranchée (Cable armé 4mm²)                                                     |
+| integer                                          | Longueur_câble_2_5mm_Int_rieure           | Longueur câble 2,5mm² Intérieure                                                        |
+| integer                                          | Longueur_câble_1_5mm_Int_rieure           | Longueur câble 1,5mm² Intérieure                                                        |
+| integer                                          | Longueur_Tranch_e_câble_arm_4mm           | Longueur Tranchée (câble armé 4mm²)                                                     |
 | integer                                          | Longueur_Tranch_e_C_ble_arm_1_5mm         | Longueur Tranchée Câble armé 1,5mm²)                                                    |
 | acknowledge                                      | Je_confirme_la_remis_u_materiel_au_m_nage | Je confirme la remise du materiel au ménage                                             |
 | acknowledge                                      | Je_confirme_le_marqu_osition_des_coffrets | Je confirme le marquage de la position du Mur et position des coffrets                  |

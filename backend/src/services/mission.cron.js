@@ -53,10 +53,10 @@ export const runMissionReminders = async () => {
 };
 
 /**
- * Planifier l'exécution toutes les 12 heures
+ * Planifier l'exécution toutes les 2 heures
  */
 export const startMissionCron = () => {
-    const HOURS_INTERVAL = 12;
+    const HOURS_INTERVAL = 2;
     const missionInterval = setInterval(runMissionReminders, HOURS_INTERVAL * 60 * 60 * 1000);
     logger.info(`🚀 [CRON] Système de rappel automatique activé (intervalle: ${HOURS_INTERVAL}h).`);
 

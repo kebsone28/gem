@@ -107,10 +107,10 @@ const CahierSection: React.FC<{
 }> = ({ title, color, children }) => (
   <div className="mb-10">
     <div className="flex items-center space-x-2 mb-6">
-      <div 
-        className="w-1.5 h-6 rounded-full shadow-lg bg-[var(--section-color)]" 
+      <div
+        className="w-1.5 h-6 rounded-full shadow-lg bg-[var(--section-color)]"
         // eslint-disable-next-line react/no-unknown-property
-        style={{ '--section-color': color } as React.CSSProperties} 
+        style={{ '--section-color': color } as React.CSSProperties}
       />
       <h4 className="font-black text-white uppercase tracking-[0.2em] text-xs md:text-sm">
         {title}
@@ -719,9 +719,9 @@ export default function Cahier() {
             <CardSkeleton />
           </div>
           <div className="space-y-4">
-             <TableRowSkeleton />
-             <TableRowSkeleton />
-             <TableRowSkeleton />
+            <TableRowSkeleton />
+            <TableRowSkeleton />
+            <TableRowSkeleton />
           </div>
         </ContentArea>
       </PageContainer>
@@ -1091,8 +1091,8 @@ export default function Cahier() {
                             <div
                               key={i}
                               className={`flex items-center space-x-3 bg-slate-900/40 text-slate-300 p-3 rounded-xl border border-white/5 text-xs font-bold transition-all hover:border-orange-500/30 ${m.startsWith('Materiel') || m.includes('Réalisation')
-                                  ? 'sm:col-span-2 bg-orange-500/10 border-orange-500/20 text-orange-400 mt-2'
-                                  : ''
+                                ? 'sm:col-span-2 bg-orange-500/10 border-orange-500/20 text-orange-400 mt-2'
+                                : ''
                                 }`}
                             >
                               <Package
@@ -1372,7 +1372,7 @@ export default function Cahier() {
 
                           <div className="border-t border-emerald-500/10 pt-4">
                             <p className="text-xs text-slate-500 uppercase font-bold mb-2">
-                              Clauses de pénalités applicables
+                              Clauses de pénalités applicâbles
                             </p>
                             <p className="text-xs text-emerald-500/70 italic leading-relaxed">
                               "{currentTask.pricing?.penalties}"

@@ -87,8 +87,8 @@ export interface Household {
   koboSync?: {
     preparateurKits?: number;
     livreurDate?: string;
-    cableInt25?: number;
-    cableInt15?: number;
+    câbleInt25?: number;
+    câbleInt15?: number;
     tranchee4?: number;
     tranchee15?: number;
     maconOk?: boolean;

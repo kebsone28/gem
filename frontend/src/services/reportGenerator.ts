@@ -577,15 +577,15 @@ export function generateRapportLogistique(data: { households: any[]; zones?: any
   // Aggregate materials by region
   const regionalMaterials: Record<
     string,
-    { cable: number; potelets: number; coffretReseau: number; coffretInt: number }
+    { câble: number; potelets: number; coffretReseau: number; coffretInt: number }
   > = {};
   households.forEach((h) => {
     const r = h.region || 'Inconnue';
     if (!regionalMaterials[r])
-      regionalMaterials[r] = { cable: 0, potelets: 0, coffretReseau: 0, coffretInt: 0 };
+      regionalMaterials[r] = { câble: 0, potelets: 0, coffretReseau: 0, coffretInt: 0 };
 
     // Use Kobo fields where available, otherwise fall back to 0
-    regionalMaterials[r].cable += (h.koboSync?.cableInt25 || 0) + (h.koboSync?.tranchee4 || 0); // aggregated cable metric
+    regionalMaterials[r].câble += (h.koboSync?.câbleInt25 || 0) + (h.koboSync?.tranchee4 || 0); // aggregated câble metric
     if (h.koboSync?.maconOk) regionalMaterials[r].potelets++;
     if (h.koboSync?.reseauOk) regionalMaterials[r].coffretReseau++;
     if (h.koboSync?.interieurOk) regionalMaterials[r].coffretInt++;
@@ -593,12 +593,12 @@ export function generateRapportLogistique(data: { households: any[]; zones?: any
 
   y = drawSectionTitle(doc, 'Consommation Matériaux par Région', y);
   const matData = Object.entries(regionalMaterials)
-    .sort((a, b) => b[1].cable - a[1].cable)
+    .sort((a, b) => b[1].câble - a[1].câble)
     .slice(0, 10)
     .map(([region, mats]) => [
       region,
       mats.potelets.toString(),
-      `${mats.cable} m`,
+      `${mats.câble} m`,
       mats.coffretReseau.toString(),
       mats.coffretInt.toString(),
     ]);

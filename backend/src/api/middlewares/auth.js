@@ -29,10 +29,11 @@ export const authProtect = async (req, res, next) => {
         // Inject user info into request
         req.user = {
             ...decoded,
-            organizationId: decoded.organizationId, // Critical for Prisma $extends multi-tenancy
+            organizationId: decoded.organizationId,
             permissions: decoded.permissions || [],
-            // Flag to detect if Admin has touched this profile
-            permissionsWasManuallySet: decoded.permissions !== null && decoded.permissions !== undefined
+            // TRUE uniquement si un admin a configuré des permissions granulaires (tableau non-vide)
+            // Un tableau vide [] = permissions non configurées → fallback par rôle
+            permissionsWasManuallySet: Array.isArray(decoded.permissions) && decoded.permissions.length > 0
         };
 
         next();
@@ -62,32 +63,71 @@ export const authorize = (...args) => {
         }
     }
 
+    // 🔑 Mapping de normalisation : variantes → rôle canonique
+    // Règle métier :
+    //   ADMIN_PROQUELEC = Super Admin (bypass total, voit tout)
+    //   DIRECTEUR       = Directeur Général (approuve tout, passe par les routes normales)
+    //   CHEF_PROJET/CP  = Chef de Projet (voit ses missions uniquement)
+    const ROLE_ALIASES = {
+        // Chef de Projet — toutes variantes
+        'CP':                  'CHEF_PROJET',
+        'CHEF_PROJET':         'CHEF_PROJET',
+        'CHEF_DE_PROJET':      'CHEF_PROJET',
+        'CHEF DE PROJET':      'CHEF_PROJET',   // ← stocké en base avec espaces
+        'CHEF PROJET':         'CHEF_PROJET',
+        // Directeur Général — toutes variantes
+        'DG':                  'DIRECTEUR',
+        'DG_PROQUELEC':        'DIRECTEUR',
+        'DIRECTEUR_GENERAL':   'DIRECTEUR',
+        'DIRECTEUR GENERAL':   'DIRECTEUR',     // ← avec espaces
+        'DIR_GEN':             'DIRECTEUR',
+        'DIRECTEUR':           'DIRECTEUR',
+        // Admin — toutes variantes
+        'ADMIN':               'ADMIN_PROQUELEC',
+        'ADMIN_PROQUELEC':     'ADMIN_PROQUELEC',
+        // Autres rôles standard
+        'COMPTABLE':           'COMPTABLE',
+        'SUPERVISEUR':         'SUPERVISEUR',
+        'AGENT':               'AGENT',
+        'TERRAIN':             'TERRAIN',
+    };
+
+    const normalizeRole = (role) => ROLE_ALIASES[role?.toUpperCase()] || role?.toUpperCase();
+
     return (req, res, next) => {
-        const userRole = req.user.role?.toUpperCase();
+        const rawUserRole = req.user.role?.toUpperCase();
+        const userRole = normalizeRole(rawUserRole); // Normalisation systématique
         const emailStr = req.user.email?.toLowerCase() || "";
 
         // 1. SYSTEM ADMIN BYPASS (God Mode)
-        // Hardcoded to strictly match role or specific admin/dg email
+        // Seul ADMIN_PROQUELEC a le bypass total de toutes les routes
+        // DG_PROQUELEC a les droits d'approbation mais passe par les vérifications normales
         const isAdmin = userRole === 'ADMIN_PROQUELEC' ||
-            userRole === 'ADMIN' ||
-            emailStr === 'admin@proquelec.com' ||
-            emailStr === 'dg@proquelec.com';
+            emailStr === 'admin@proquelec.com';
 
         // 2. GRANULAR PERMISSION CHECK
-        // If the user has custom permissions (manually set by Admin), we check it strictly.
-        // Even an empty array [ ] means "Forbidden to everything"
         const hasExplicitPermissionsSet = req.user.permissionsWasManuallySet;
         const hasExplicitAllow = requiredPermission && req.user.permissions.includes(requiredPermission);
 
-        // 3. ROLE FALLBACK
-        // Only if the user has NO manual permissions at all (old system or not yet edited)
-        const roleMatches = authorizedRoles.length === 0 || authorizedRoles.map(r => r.toUpperCase()).includes(userRole);
+        // 3. ROLE FALLBACK — comparer les rôles normalisés
+        const normalizedAuthorizedRoles = authorizedRoles.map(r => normalizeRole(r));
+        const roleMatches = normalizedAuthorizedRoles.length === 0 || normalizedAuthorizedRoles.includes(userRole);
 
-        if (isAdmin || hasExplicitAllow || (!hasExplicitPermissionsSet && roleMatches)) {
+        // 4. LOGIQUE D'AUTORISATION :
+        // -isAdmin: God Mode 
+        // -hasExplicitAllow: L'utilisateur a la permission stricte demandée par la route
+        // -(!requiredPermission && roleMatches): La route ne demande aucune permission, on se fie uniquement au Rôle.
+        // -(!hasExplicitPermissionsSet && roleMatches): La route demande une permission, mais l'utilisateur n'a aucune permission configurée (legacy), on fallback sur son rôle.
+        if (
+            isAdmin || 
+            hasExplicitAllow || 
+            (!requiredPermission && roleMatches) || 
+            (!hasExplicitPermissionsSet && roleMatches)
+        ) {
             return next();
         }
 
-        logger.warn(`[AUTH] 🚫 RBAC DENIED: User Role '${userRole}' not in [${authorizedRoles.join(', ')}]`);
+        logger.warn(`[AUTH] 🚫 RBAC DENIED: User Role '${rawUserRole}' (→${userRole}) not in [${authorizedRoles.join(', ')}]`);
         return res.status(403).json({
             error: 'Access denied: insufficient permissions',
             details: { userRole, requiredRoles: authorizedRoles }

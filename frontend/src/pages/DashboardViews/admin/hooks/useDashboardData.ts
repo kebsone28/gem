@@ -48,7 +48,7 @@ export function useDashboardData(projectId: string, canViewReports: boolean) {
       return {
         ...remoteMetrics,
         pipeline: remoteMetrics.pipeline || { murs: 0, reseau: 0, interieur: 0, validated: 0 },
-        performance: remoteMetrics.performance || { avgPerDay: 0, daysWorked: 0, avgCablePerHouse: 0, efficiencyRate: 0 },
+        performance: remoteMetrics.performance || { avgPerDay: 0, daysWorked: 0, avgcâblePerHouse: 0, efficiencyRate: 0 },
         logistics: remoteMetrics.logistics || { kitPrepared: 0, kitLoaded: 0, gap: 0 },
         technical: remoteMetrics.technical || { totalConsumption: 0 },
         breakdown: remoteMetrics.breakdown || { byZone: [], byTeam: [] }
@@ -91,7 +91,7 @@ export function useDashboardData(projectId: string, canViewReports: boolean) {
       performance: { 
         avgPerDay: 0, 
         daysWorked: 0, 
-        avgCablePerHouse: 0, 
+        avgcâblePerHouse: 0, 
         efficiencyRate: 0 
       },
       logistics: { kitPrepared: 0, kitLoaded: 0, gap: 0 },

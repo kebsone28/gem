@@ -14,25 +14,47 @@ import { missionNotificationService } from '../../services/notification.service.
 export const getMissions = async (req, res) => {
     try {
         const { projectId } = req.query;
-        const { organizationId, id: userId, role: userRole } = req.user;
+        const { organizationId, id: userId, role: rawUserRole } = req.user;
 
-        // Logique de filtrage RBAC :
-        // 1. ADMIN et DG voient tout.
-        // 2. Les autres (dont DIRECTEUR) voient leurs propres missions (même draft)
-        //    ET les missions soumises/publiées des autres (pas en 'draft').
-        
+        // Normalisation des alias de rôles
+        const ROLE_ALIASES = {
+            'CP': 'CHEF_PROJET',
+            'DG': 'DIRECTEUR',
+            'DG_PROQUELEC': 'DIRECTEUR',
+            'DIRECTEUR_GENERAL': 'DIRECTEUR',
+            'DIR_GEN': 'DIRECTEUR',
+            'ADMIN': 'ADMIN_PROQUELEC'
+        };
+        const userRole = ROLE_ALIASES[rawUserRole?.toUpperCase()] || rawUserRole?.toUpperCase();
+
         let whereClause = {
             organizationId,
             projectId: projectId || undefined,
             deletedAt: null
         };
 
-        if (userRole !== 'ADMIN_PROQUELEC' && userRole !== 'DG_PROQUELEC') {
+        if (userRole === 'CHEF_PROJET') {
+            // Chef de Projet : voit UNIQUEMENT ses propres missions
+            whereClause = { ...whereClause, createdBy: userId };
+        } else if (userRole === 'ADMIN_PROQUELEC') {
+            // Admin : voit TOUT sans restriction
+            // (pas de filtre supplémentaire)
+        } else if (userRole === 'DIRECTEUR') {
+            // Directeur : voit toutes les missions soumises + ses propres drafts
             whereClause = {
                 ...whereClause,
                 OR: [
-                    { createdBy: userId }, // Ses propres missions
-                    { status: { not: 'draft' } } // Les missions des autres si elles ne sont plus en brouillon
+                    { createdBy: userId },           // Ses propres missions (meme drafts)
+                    { status: { not: 'draft' } }     // Toutes les missions soumises des autres
+                ]
+            };
+        } else {
+            // Autres rôles (COMPTABLE, SUPERVISEUR...) : les leurs + publiées
+            whereClause = {
+                ...whereClause,
+                OR: [
+                    { createdBy: userId },
+                    { status: { not: 'draft' } }
                 ]
             };
         }
@@ -73,12 +95,12 @@ export const createMission = async (req, res) => {
             try {
                 // On cherche le projet dans la même org
                 const project = await prisma.project.findFirst({
-                    where: { 
+                    where: {
                         id: projectId,
-                        organizationId 
+                        organizationId
                     }
                 });
-                
+
                 if (project) {
                     safeProjectId = project.id;
                 } else {
@@ -119,7 +141,7 @@ export const createMission = async (req, res) => {
             // Logging file write failure - non-critical
         }
         logger.error('Create mission error:', error);
-        res.status(500).json({ 
+        res.status(500).json({
             error: 'Server error while creating mission',
             message: error.message,
             code: error.code
@@ -138,8 +160,8 @@ export const updateMission = async (req, res) => {
         const userRole = rawUserRole?.toUpperCase();
 
         // Find mission first to verify ownership
-        const missionBefore = await prisma.mission.findFirst({ 
-            where: { id, organizationId, deletedAt: null } 
+        const missionBefore = await prisma.mission.findFirst({
+            where: { id, organizationId, deletedAt: null }
         });
         if (!missionBefore) return res.status(404).json({ error: 'Mission not found' });
 
@@ -228,8 +250,8 @@ export const updateMission = async (req, res) => {
             }
         } else if (status === 'approuvee' && missionBefore.status !== 'approuvee') {
             // THE CERTIFIABLE AUDIT LOG (PROQUELEC)
-            await tracerAction(organizationId, userId, 'MISSION_CERTIFIED_DG', 'Mission', id, { 
-                title, 
+            await tracerAction(organizationId, userId, 'MISSION_CERTIFIED_DG', 'Mission', id, {
+                title,
                 status,
                 orderNumber: finalOrderNumber,
                 certifierId: userId,
@@ -256,7 +278,7 @@ export const updateMission = async (req, res) => {
         } else {
             await tracerAction(organizationId, userId, 'MISSION_UPDATE', 'Mission', id, { title, status });
         }
-        
+
         res.json(mission);
     } catch (error) {
         logger.error('Update mission error:', error);
@@ -465,7 +487,7 @@ export const getMissionApprovalHistory = async (req, res) => {
                 status: step.status,
                 approvedBy: step.decidedBy,
                 approvedAt: step.decidedAt,
-                comments: step.comment
+                comment: step.comment
             })),
             orderNumberGeneratedAt: workflow.orderNumberGeneratedAt,
             orderNumberGeneratedBy: workflow.orderNumberGeneratedBy,
@@ -558,7 +580,7 @@ export const approveMissionStep = async (req, res) => {
 
             // Generate orderNumber after all approvals
             const orderNumber = await generateOrderNumber(organizationId);
-            
+
             const updatedWorkflow = await prisma.missionApprovalWorkflow.update({
                 where: { id: workflow.id },
                 data: {
@@ -672,7 +694,7 @@ export const approveMissionStep = async (req, res) => {
                 orderNumber = await generateOrderNumber(organizationId);
                 newOverallStatus = 'approved';
                 newCurrentStep = step.sequence;
-                
+
                 // Merge signature into mission data
                 const missionData = typeof mission.data === 'object' ? mission.data : {};
                 await tx.mission.update({
@@ -785,9 +807,9 @@ export const rejectMissionStep = async (req, res) => {
         // Déterminer l'étape cible
         const normalizedRole = (role || '').toString().toUpperCase();
         const isAdmin = req.user.role === 'ADMIN_PROQUELEC' || req.user.role === 'ADMIN';
-        
+
         let step = workflow.approvalSteps.find(s => s.role === normalizedRole);
-        
+
         // Si c'est un ADMIN qui rejette globalement
         if (!step && isAdmin) {
             // On rejette l'étape courante
@@ -930,7 +952,7 @@ export const getPendingApprovals = async (req, res) => {
     try {
         const { organizationId, role: userRole, id: userId } = req.user;
         const isAdmin = userRole === 'ADMIN_PROQUELEC' || userRole === 'ADMIN';
-        
+
         // Mapping roles from Auth to Workflow
         const roleMapping = {
             'DG_PROQUELEC': 'DIRECTEUR',
@@ -946,12 +968,12 @@ export const getPendingApprovals = async (req, res) => {
             where: {
                 organizationId,
                 deletedAt: null,
-                status: isArchiveQuery ? 'approuvee' : { not: 'draft' }, 
+                status: isArchiveQuery ? 'approuvee' : { not: 'draft' },
                 ...(isArchiveQuery ? {} : {
                     OR: [
                         { status: 'soumise' },
                         { status: 'en_attente_validation', approvalWorkflow: { isNot: null } },
-                        { 
+                        {
                             approvalWorkflow: {
                                 approvalSteps: {
                                     some: {

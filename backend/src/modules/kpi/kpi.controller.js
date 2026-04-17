@@ -46,10 +46,10 @@ export const getProjectKPIs = async (req, res) => {
             SELECT 
                 SUM(COALESCE(NULLIF("koboData"->'group_ed3yt17'->>'Nombre_de_KIT_pr_par', '')::numeric, 0)) as kit_prepared,
                 SUM(COALESCE(NULLIF("koboData"->'group_ed3yt17'->>'Nombre_de_KIT_Charg_pour_livraison', '')::numeric, 0)) as kit_loaded,
-                SUM(COALESCE(NULLIF("koboData"->'group_wu8kv54'->'group_sy9vj14'->>'Longueur_Cable_2_5mm_Int_rieure', '')::numeric, 0)) as cable_2_5,
-                SUM(COALESCE(NULLIF("koboData"->'group_wu8kv54'->'group_sy9vj14'->>'Longueur_Cable_1_5mm_Int_rieure', '')::numeric, 0)) as cable_1_5,
-                SUM(COALESCE(NULLIF("koboData"->'group_wu8kv54'->'group_sy9vj14'->>'Longueur_Tranch_e_Cable_arm_4mm', '')::numeric, 0)) as cable_4_armed,
-                SUM(COALESCE(NULLIF("koboData"->'group_wu8kv54'->'group_sy9vj14'->>'Longueur_Tranch_e_C_ble_arm_1_5mm', '')::numeric, 0)) as cable_1_5_armed,
+                SUM(COALESCE(NULLIF("koboData"->'group_wu8kv54'->'group_sy9vj14'->>'Longueur_câble_2_5mm_Int_rieure', '')::numeric, 0)) as câble_2_5,
+                SUM(COALESCE(NULLIF("koboData"->'group_wu8kv54'->'group_sy9vj14'->>'Longueur_câble_1_5mm_Int_rieure', '')::numeric, 0)) as câble_1_5,
+                SUM(COALESCE(NULLIF("koboData"->'group_wu8kv54'->'group_sy9vj14'->>'Longueur_Tranch_e_câble_arm_4mm', '')::numeric, 0)) as câble_4_armed,
+                SUM(COALESCE(NULLIF("koboData"->'group_wu8kv54'->'group_sy9vj14'->>'Longueur_Tranch_e_C_ble_arm_1_5mm', '')::numeric, 0)) as câble_1_5_armed,
                 COUNT(DISTINCT "koboData"->>'today') as days_worked,
                 COUNT(*) filter (where status = 'Terminé' OR status = 'Réception: Validée') as total_validated
             FROM "Household" h
@@ -63,10 +63,10 @@ export const getProjectKPIs = async (req, res) => {
                 z.name as zone_name,
                 COUNT(*) as total,
                 COUNT(*) filter (where h.status = 'Terminé' OR h.status = 'Réception: Validée') as done,
-                SUM(COALESCE(NULLIF(h."koboData"->'group_wu8kv54'->'group_sy9vj14'->>'Longueur_Cable_2_5mm_Int_rieure', '')::numeric, 0) +
-                    COALESCE(NULLIF(h."koboData"->'group_wu8kv54'->'group_sy9vj14'->>'Longueur_Cable_1_5mm_Int_rieure', '')::numeric, 0) +
-                    COALESCE(NULLIF(h."koboData"->'group_wu8kv54'->'group_sy9vj14'->>'Longueur_Tranch_e_Cable_arm_4mm', '')::numeric, 0) +
-                    COALESCE(NULLIF(h."koboData"->'group_wu8kv54'->'group_sy9vj14'->>'Longueur_Tranch_e_C_ble_arm_1_5mm', '')::numeric, 0)) as cable_total
+                SUM(COALESCE(NULLIF(h."koboData"->'group_wu8kv54'->'group_sy9vj14'->>'Longueur_câble_2_5mm_Int_rieure', '')::numeric, 0) +
+                    COALESCE(NULLIF(h."koboData"->'group_wu8kv54'->'group_sy9vj14'->>'Longueur_câble_1_5mm_Int_rieure', '')::numeric, 0) +
+                    COALESCE(NULLIF(h."koboData"->'group_wu8kv54'->'group_sy9vj14'->>'Longueur_Tranch_e_câble_arm_4mm', '')::numeric, 0) +
+                    COALESCE(NULLIF(h."koboData"->'group_wu8kv54'->'group_sy9vj14'->>'Longueur_Tranch_e_C_ble_arm_1_5mm', '')::numeric, 0)) as câble_total
             FROM "Household" h
             JOIN "Zone" z ON h."zoneId" = z.id
             WHERE z."projectId" = ${projectId} AND h."organizationId" = ${organizationId} AND h."deletedAt" IS NULL
@@ -95,6 +95,12 @@ export const getProjectKPIs = async (req, res) => {
         const aggr = koboAggrResult[0] || {};
         const daysWorked = Number(aggr.days_worked || 1);
         const totalValidated = Number(aggr.total_validated || 0);
+
+        const totalcâble = Number(aggr.câble_2_5 || 0) + 
+                           Number(aggr.câble_1_5 || 0) + 
+                           Number(aggr.câble_4_armed || 0) + 
+                           Number(aggr.câble_1_5_armed || 0);
+
         // --- OPTIMIZED COUNTS (SQL Aggregate instead of JS filter) ---
         const statusGroups = await prisma.household.groupBy({
             by: ['status'],
@@ -114,10 +120,10 @@ export const getProjectKPIs = async (req, res) => {
         const murCount = getCount('Murs');
         const reseauCount = getCount('Réseau');
         const interieurCount = getCount('Intérieur');
-        
+
         // Use the existing totalValidated from raw SQL or update it with aggregate counts
         const validatedCount = getCount('Terminé') + getCount('Réception: Validée');
-        
+
         const problemCount = getCount('Problème') + getCount('Inéligible');
         const hseCount = getCountByPattern('hse');
         const pvRetardCount = getCountByPattern('retard');
@@ -126,11 +132,11 @@ export const getProjectKPIs = async (req, res) => {
         const pvhseCount = getCountByUPattern('PVHSE');
         const totalPV = getCountByUPattern('PV');
         const totalArchived = validatedCount;
-        
+
         const actionRequiredCount = await prisma.household.count({
-            where: { 
-                zone: { projectId }, 
-                organizationId, 
+            where: {
+                zone: { projectId },
+                organizationId,
                 deletedAt: null,
                 // Simplified count for alerts
                 NOT: { alerts: { equals: [] } }
@@ -179,14 +185,14 @@ export const getProjectKPIs = async (req, res) => {
                 performance: {
                     daysWorked,
                     avgPerDay: Math.round((validatedCount / daysWorked) * 10) / 10,
-                    avgCablePerHouse: validatedCount > 0 ? Math.round((totalCable / validatedCount) * 10) / 10 : 0,
+                    avgcâblePerHouse: validatedCount > 0 ? Math.round((totalcâble / validatedCount) * 10) / 10 : 0,
                 },
                 technical: {
-                    cable25: Number(aggr.cable_2_5 || 0),
-                    cable15: Number(aggr.cable_1_5 || 0),
-                    cable4Armed: Number(aggr.cable_4_armed || 0),
-                    cable15Armed: Number(aggr.cable_1_5_armed || 0),
-                    totalConsumption: totalCable
+                    câble25: Number(aggr.câble_2_5 || 0),
+                    câble15: Number(aggr.câble_1_5 || 0),
+                    câble4Armed: Number(aggr.câble_4_armed || 0),
+                    câble15Armed: Number(aggr.câble_1_5_armed || 0),
+                    totalConsumption: totalcâble
                 },
                 logistics: {
                     kitPrepared: Number(aggr.kit_prepared || 0),
@@ -201,7 +207,7 @@ export const getProjectKPIs = async (req, res) => {
                             name: z.zone_name,
                             total,
                             done,
-                            cable: Number(z.cable_total),
+                            câble: Number(z.câble_total),
                             progress: total > 0 ? Math.round((done / total) * 100) : 0
                         };
                     }),

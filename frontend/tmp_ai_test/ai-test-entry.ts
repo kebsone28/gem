@@ -37,7 +37,7 @@ const queries = [
   'tableau de bord',
   'norme ns 01-001',
   'branchement senelec',
-  'anomalie cable visible',
+  'anomalie câble visible',
   'installation interieure',
   'simuler cout branchement',
   'rapport dg',

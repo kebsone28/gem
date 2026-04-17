@@ -182,6 +182,25 @@ export const generateMissionOrderPDF = async (data: MissionOrderData) => {
       console.error('Signature failed in PDF', e);
       currentY += 20;
     }
+  } else if (data.isCertified) {
+    // 🔴 CACHET ÉLECTRONIQUE OFFICIEL
+    doc.setDrawColor(220, 38, 38); // Rouge officiel
+    doc.setLineWidth(0.8);
+    doc.roundedRect(dgCenterX - 35, currentY + 2, 70, 25, 4, 4, 'D');
+    doc.setTextColor(220, 38, 38);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.text('PROQUELEC - DIRECTION GÉNÉRALE', dgCenterX, currentY + 8, { align: 'center' });
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text('VU ET APPROUVÉ', dgCenterX, currentY + 15, { align: 'center' });
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'italic');
+    doc.text('Signature numérique certifiée', dgCenterX, currentY + 22, { align: 'center' });
+    
+    // Remettre couleur par défaut
+    doc.setTextColor(...DARK);
+    currentY += 32;
   } else {
     // Ligne pour signature manuelle
     doc.setDrawColor(200, 200, 200);
@@ -265,6 +284,22 @@ export const generateMissionOrderPDF = async (data: MissionOrderData) => {
     } catch (e) {
       console.error('Signature failed in PDF p2', e);
     }
+  } else if (data.isCertified) {
+    // 🔴 CACHET ÉLECTRONIQUE OFFICIEL
+    doc.setDrawColor(220, 38, 38); // Rouge officiel
+    doc.setLineWidth(0.8);
+    doc.roundedRect(dgCenterX - 35, currentY + 5, 70, 25, 4, 4, 'D');
+    doc.setTextColor(220, 38, 38);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.text('PROQUELEC - DIRECTION GÉNÉRALE', dgCenterX, currentY + 11, { align: 'center' });
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text('VU ET APPROUVÉ', dgCenterX, currentY + 18, { align: 'center' });
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'italic');
+    doc.text('Signature numérique certifiée', dgCenterX, currentY + 25, { align: 'center' });
+    doc.setTextColor(...DARK);
   }
 
   // ─────────────────────────────────────────────────────────────────

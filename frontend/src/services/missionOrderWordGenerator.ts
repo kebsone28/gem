@@ -342,7 +342,26 @@ export const generateMissionOrderWord = async (data: MissionOrderData) => {
                         ];
                       }
                     })()
-                  : [
+                  : data.isCertified ? [
+                      new Paragraph({
+                        alignment: AlignmentType.CENTER,
+                        children: [
+                          new TextRun({ text: 'PROQUELEC - DIRECTION GÉNÉRALE', size: 16, color: COLORS.DANGER }),
+                        ],
+                      }),
+                      new Paragraph({
+                        alignment: AlignmentType.CENTER,
+                        children: [
+                          new TextRun({ text: 'VU ET APPROUVÉ', size: 20, bold: true, color: COLORS.DANGER }),
+                        ],
+                      }),
+                      new Paragraph({
+                        alignment: AlignmentType.CENTER,
+                        children: [
+                          new TextRun({ text: 'Signature numérique certifiée', size: 14, italics: true, color: COLORS.DANGER }),
+                        ],
+                      }),
+                    ] : [
                       new Paragraph({
                         alignment: AlignmentType.CENTER,
                         text: '(Signature Électronique)',

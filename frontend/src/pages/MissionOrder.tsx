@@ -23,6 +23,7 @@ import { useProject } from '../contexts/ProjectContext';
 import { useMissionState } from './mission/hooks/useMissionState';
 import { useMissionSync } from './mission/hooks/useMissionSync';
 import { useMissionWorkflow } from './mission/hooks/useMissionWorkflow';
+import { syncEventBus } from '../utils/syncEventBus';
 
 // Core Selectors
 import {
@@ -86,8 +87,17 @@ export default function MissionOrder() {
     return () => clearTimeout(timer);
   }, [missionState.isDirty, handleSaveMission, state.currentMissionId]);
 
-  // DB Queries
-  const savedMissions = useLiveQuery(() => db.missions.toArray(), []) || [];
+  // DB Queries & Filtered List
+  const allMissions = useLiveQuery(() => db.missions.toArray()) || [];
+  const savedMissions = useMemo(() => {
+    const r = role?.toUpperCase() || '';
+    const isPowerful = r === 'ADMIN_PROQUELEC' || r === 'ADMIN' || r === 'DIRECTEUR' || r === 'DG_PROQUELEC' || r === 'COMPTABLE';
+    
+    if (isPowerful) return allMissions;
+    
+    // Inclure les missions créées par l'utilisateur OU les missions sans 'createdBy' (données legacy)
+    return allMissions.filter(m => !m.createdBy || m.createdBy === user?.id || m.createdBy === 'inconnu');
+  }, [allMissions, role, user?.id]);
 
   const unreadCount = useLiveQuery(() => db.notifications.where('read').equals(0).count(), []) || 0;
 
@@ -131,6 +141,26 @@ export default function MissionOrder() {
     }
   }, [savedMissions.length, searchParams, setSearchParams]); // Re-tenter quand les missions DB sont chargées
 
+  // 🔄 Écoute Globale Real-Time (WebSocket Events)
+  useEffect(() => {
+    const handleRemoteUpdate = (data: any) => {
+      // Pour éviter les boucles, on s'assure qu'on répond surtout aux notifications de type SYNC
+      // Mais dans le doute on force le fetch qui est intelligent
+      handleSyncFromServer();
+      if (state.currentMissionId) {
+        fetchWorkflow();
+      }
+    };
+
+    const unsubNotification = syncEventBus.subscribe('notification', handleRemoteUpdate);
+    const unsubMissionUpdate = syncEventBus.subscribe('mission:update', handleRemoteUpdate);
+    
+    return () => {
+      unsubNotification();
+      unsubMissionUpdate();
+    };
+  }, [handleSyncFromServer, state.currentMissionId, fetchWorkflow]);
+
   // Sauvegarder l'ID de la mission active
   useEffect(() => {
     if (state.currentMissionId) {
@@ -143,7 +173,7 @@ export default function MissionOrder() {
   const handleNewMission = () => {
     const orderNumber = `TEMP-${Date.now().toString().slice(-6)}`;
     const date = new Date().toLocaleDateString('fr-FR');
-    missionState.resetMission(orderNumber, date, DEFAULT_PLANNING_STEPS, user?.email, user?.id);
+    missionState.resetMission(orderNumber, date, DEFAULT_PLANNING_STEPS, user?.email || 'inconnu', user?.id);
     missionState.addAuditEntry('Nouvelle mission créée (Brouillon)', user?.name || 'Utilisateur');
   };
 
@@ -483,6 +513,7 @@ export default function MissionOrder() {
             onConfigToggle={() => setShowConfig(!showConfig)}
             onToggleFeature={handleToggleFeature}
             onToggleSimplifiedMode={missionState.setSimplifiedMode}
+            isSimplifiedMode={state.isSimplifiedMode}
             onNotificationsToggle={() => setShowNotifications(!showNotifications)}
             onAuditToggle={() => setShowAudit(!showAudit)}
             unreadCount={unreadCount}

@@ -112,15 +112,15 @@
     "type": "begin_group"
   },
   {
-    "name": "Longueur_Cable_2_5mm_Int_rieure",
+    "name": "Longueur_câble_2_5mm_Int_rieure",
     "type": "integer"
   },
   {
-    "name": "Longueur_Cable_1_5mm_Int_rieure",
+    "name": "Longueur_câble_1_5mm_Int_rieure",
     "type": "integer"
   },
   {
-    "name": "Longueur_Tranch_e_Cable_arm_4mm",
+    "name": "Longueur_Tranch_e_câble_arm_4mm",
     "type": "integer"
   },
   {

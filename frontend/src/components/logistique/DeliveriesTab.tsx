@@ -66,7 +66,7 @@ export default function DeliveriesTab({ searchQuery = '' }: DeliveriesTabProps) 
             </div>
           </div>
           <p className={`text-4xl font-black mb-3 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-            {(koboStats?.cableInt25Total || 0) + (koboStats?.cableInt15Total || 0)} m
+            {(koboStats?.câbleInt25Total || 0) + (koboStats?.câbleInt15Total || 0)} m
           </p>
           <p className={`text-xs font-medium ${isDarkMode ? 'text-slate-500' : 'text-slate-600'}`}>
             Cumul 2.5mm + 1.5mm
@@ -220,11 +220,11 @@ export default function DeliveriesTab({ searchQuery = '' }: DeliveriesTabProps) 
                     </td>
                     <td className={`px-6 py-4`}>
                       <div className="flex flex-col gap-1">
-                        {(d.koboSync?.cableInt25 || 0) > 0 && (
+                        {(d.koboSync?.câbleInt25 || 0) > 0 && (
                           <span
                             className={`text-xs px-2 py-1 rounded font-mono w-fit ${isDarkMode ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-700'}`}
                           >
-                            2.5: {d.koboSync?.cableInt25}m
+                            2.5: {d.koboSync?.câbleInt25}m
                           </span>
                         )}
                         {(d.koboSync?.tranchee4 || 0) > 0 && (
@@ -234,7 +234,7 @@ export default function DeliveriesTab({ searchQuery = '' }: DeliveriesTabProps) 
                             Tr: {d.koboSync?.tranchee4}m
                           </span>
                         )}
-                        {!d.koboSync?.cableInt25 && !d.koboSync?.tranchee4 && (
+                        {!d.koboSync?.câbleInt25 && !d.koboSync?.tranchee4 && (
                           <span
                             className={`text-xs ${isDarkMode ? 'text-slate-600' : 'text-slate-400'}`}
                           >

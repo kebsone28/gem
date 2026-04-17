@@ -204,7 +204,7 @@ const VALIDATION_SCENARIOS = [
   {
     category: 'tech',
     description: 'Tests de l intelligence technique',
-    queries: ['norme ns 01-001', 'branchement senelec', 'compteur', 'disjoncteur', 'cable']
+    queries: ['norme ns 01-001', 'branchement senelec', 'compteur', 'disjoncteur', 'câble']
   },
   {
     category: 'geo',
@@ -329,7 +329,7 @@ const VALIDATION_SCENARIOS = [
   {
     category: 'anomalies_details',
     description: 'Tests des anomalies spécifiques',
-    queries: ['fils visibles', 'barrette terre exterieur', 'poteaux bois pourris', 'cables plein air']
+    queries: ['fils visibles', 'barrette terre exterieur', 'poteaux bois pourris', 'câbles plein air']
   },
   {
     category: 'contract',

@@ -57,7 +57,7 @@ BASE DE CONNAISSANCES:
 - PROQUELEC gère l'électrification de masse au Sénégal via l'application GEM-MINT.
 - GEM-MINT orchestre les missions OM: création, validation par Chef de Projet et certification DG.
 - Kobo Collect est utilisé pour la collecte terrain et la synchronisation se fait par numeroordre.
-- La norme applicable est NS 01-001 pour les installations BT ≤1000V.
+- La norme applicâble est NS 01-001 pour les installations BT ≤1000V.
 - Le branchement Senelec doit respecter le coffret limite propriété, hublot 1.60m, câble enterré 0.5m sous grillage rouge.
 - La sécurité électrique utilise DDR, prise terre PE vert/jaune et protection mécanique PVC.
 - Les anomalies majeures à éviter sont les fils visibles, courroies à l'air libre, barrettes de terre extérieures et poteaux bois pourris.

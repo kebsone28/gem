@@ -12,9 +12,9 @@ interface MissionListSidebarProps {
 type StatusFilter = 'all' | 'draft' | 'pending' | 'certified';
 
 const STATUS_CONFIG: Record<string, { label: string; dot: string; badge: string }> = {
-  certified: { label: 'CERT', dot: 'bg-emerald-500', badge: 'bg-emerald-500/15 text-emerald-500' },
+  certified: { label: 'SIGNÉE', dot: 'bg-emerald-500', badge: 'bg-emerald-500/15 text-emerald-500' },
   pending: { label: 'ATTENTE', dot: 'bg-amber-500', badge: 'bg-amber-500/15 text-amber-500' },
-  draft: { label: 'BROU', dot: 'bg-slate-400', badge: 'bg-slate-500/15 text-slate-400' },
+  draft: { label: 'BROUILLON', dot: 'bg-slate-400', badge: 'bg-slate-500/15 text-slate-400' },
 };
 
 const getMissionStatus = (m: any): keyof typeof STATUS_CONFIG => {
@@ -33,12 +33,18 @@ export const MissionListSidebar: React.FC<MissionListSidebarProps> = ({
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<StatusFilter>('all');
 
-  const isMaster = user?.email === 'admingem' || user?.role === 'ADMIN_PROQUELEC';
+  const role = user?.role?.toUpperCase() || '';
+  const isMaster = role === 'ADMIN_PROQUELEC' || role === 'DIRECTEUR' || role === 'DG_PROQUELEC' || user?.email === 'admingem';
 
   const visibleMissions = useMemo(() => {
     if (isMaster) return savedMissions;
     return savedMissions.filter((m) => {
-      const isCreator = m.createdBy === user?.email || m.creatorId === user?.id;
+      // Vérification complète des champs possibles : par email, par ID (createdBy ou creatorId)
+      const isCreator = !m.createdBy || 
+                        m.createdBy === 'inconnu' || 
+                        m.createdBy === user?.email || 
+                        m.createdBy === user?.id || 
+                        m.creatorId === user?.id;
       const isMember = m.members?.some((member: any) => member.name === user?.name);
       return isCreator || isMember;
     });
@@ -86,26 +92,26 @@ export const MissionListSidebar: React.FC<MissionListSidebarProps> = ({
       },
       {
         key: 'draft',
-        label: 'Brou.',
+        label: 'BROUILLON',
         color: 'text-slate-400',
         activeColor: 'bg-slate-500 text-white',
       },
       {
         key: 'pending',
-        label: 'Att.',
+        label: 'ATTENTE',
         color: 'text-amber-400',
         activeColor: 'bg-amber-500 text-white',
       },
       {
         key: 'certified',
-        label: 'Cert.',
+        label: 'SIGNÉE',
         color: 'text-emerald-400',
         activeColor: 'bg-emerald-600 text-white',
       },
     ];
 
   return (
-    <div className="lg:col-span-2 no-print space-y-3">
+    <div className="w-full no-print space-y-3">
       <h3 className="!text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 px-1 flex items-center gap-2">
         <FileText size={10} />
         Mes Missions
@@ -130,25 +136,21 @@ export const MissionListSidebar: React.FC<MissionListSidebarProps> = ({
       </div>
 
       {/* Filtres status */}
-      <div className="grid grid-cols-4 gap-1">
+      <div className="flex gap-1">
         {filterButtons.map(({ key, label, color, activeColor }) => (
           <button
             key={key}
             onClick={() => setFilter(key)}
-            className={`py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all flex flex-col items-center gap-0.5 ${
+            className={`flex-1 py-1 rounded-lg text-[7px] font-black uppercase tracking-tighter transition-all flex flex-col items-center gap-0.5 min-w-0 ${
               filter === key
                 ? activeColor
                 : `bg-slate-100 dark:bg-white/5 ${color} hover:bg-slate-200 dark:hover:bg-white/10`
             }`}
           >
-            {key !== 'all' && (
-              <span
-                className={`text-[11px] font-black leading-none ${filter === key ? 'text-white' : ''}`}
-              >
-                {counts[key]}
-              </span>
-            )}
-            {label}
+            <span className={`text-[10px] font-black leading-none ${filter === key ? 'text-white' : 'text-slate-400'}`}>
+              {counts[key] || 0}
+            </span>
+            <span className="truncate w-full px-0.5 text-center">{label}</span>
           </button>
         ))}
       </div>
@@ -181,7 +183,11 @@ export const MissionListSidebar: React.FC<MissionListSidebarProps> = ({
               }`}
             >
               <div className="flex items-center justify-between gap-2">
-                <span className="truncate font-black">{m.orderNumber || 'Brouillon'}</span>
+                <span className="truncate font-black">
+                  {m.orderNumber && !m.orderNumber.startsWith('TEMP-')
+                    ? m.orderNumber
+                    : m.purpose || 'Brouillon'}
+                </span>
                 <span
                   className={`flex-shrink-0 flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[7px] font-black ${
                     isActive ? 'bg-white/20 text-white' : cfg.badge
@@ -202,7 +208,7 @@ export const MissionListSidebar: React.FC<MissionListSidebarProps> = ({
                 <span
                   className={`text-[9px] truncate normal-case font-medium ${isActive ? 'text-white/70' : 'text-slate-500 dark:text-slate-500'}`}
                 >
-                  {m.region || m.purpose || '—'}
+                  {m.region || (m.orderNumber && !m.orderNumber.startsWith('TEMP-') ? m.purpose : 'Destination à préciser')}
                 </span>
               </div>
 

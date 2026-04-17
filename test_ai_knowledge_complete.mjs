@@ -67,7 +67,7 @@ RÉPONDS DE FAÇON PROFESSIONNELLE, PRÉCISE ET UTILISE TOUTES LES CONNAISSANCES
     questions.push(
       "Qu'est-ce que PROQUELEC?",
       "Quel est l'objectif de GEM-MINT?",
-      "Quelles sont les normes applicables?",
+      "Quelles sont les normes applicâbles?",
       "Comment fonctionne l'électrification nationale?"
     );
 
@@ -99,7 +99,7 @@ RÉPONDS DE FAÇON PROFESSIONNELLE, PRÉCISE ET UTILISE TOUTES LES CONNAISSANCES
     questions.push(
       "Quelles sont les règles pour un branchement Senelec?",
       "Où placer le coffret compteur?",
-      "Comment enterrer les câbles?",
+      "Comment enterrer les câbless?",
       "Qu'est-ce qu'une partie active?",
       "Qu'est-ce qu'une masse?",
       "Quelles sont les sections de câble standard?"
@@ -181,7 +181,7 @@ RÉPONDS DE FAÇON PROFESSIONNELLE, PRÉCISE ET UTILISE TOUTES LES CONNAISSANCES
 
   async runFullTest() {
     console.log('🚀 DÉMARRAGE TEST COMPLET IA AVEC BASE DE CONNAISSANCES\n');
-    console.log('=' .repeat(80));
+    console.log('='.repeat(80));
 
     const questions = this.generateAllQuestions();
     this.results.totalQuestions = questions.length;
@@ -231,18 +231,18 @@ RÉPONDS DE FAÇON PROFESSIONNELLE, PRÉCISE ET UTILISE TOUTES LES CONNAISSANCES
   }
 
   displayResults() {
-    console.log('\n' + '=' .repeat(80));
+    console.log('\n' + '='.repeat(80));
     console.log('📊 RÉSULTATS FINAUX DU TEST');
-    console.log('=' .repeat(80));
+    console.log('='.repeat(80));
 
     console.log(`\n📈 STATISTIQUES GÉNÉRALES:`);
     console.log(`   Total questions: ${this.results.totalQuestions}`);
-    console.log(`   Réponses cohérentes: ${this.results.coherentResponses} (${Math.round(this.results.coherentResponses/this.results.totalQuestions*100)}%)`);
-    console.log(`   Réponses à améliorer: ${this.results.incoherentResponses} (${Math.round(this.results.incoherentResponses/this.results.totalQuestions*100)}%)`);
-    console.log(`   Erreurs: ${this.results.errors} (${Math.round(this.results.errors/this.results.totalQuestions*100)}%)`);
+    console.log(`   Réponses cohérentes: ${this.results.coherentResponses} (${Math.round(this.results.coherentResponses / this.results.totalQuestions * 100)}%)`);
+    console.log(`   Réponses à améliorer: ${this.results.incoherentResponses} (${Math.round(this.results.incoherentResponses / this.results.totalQuestions * 100)}%)`);
+    console.log(`   Erreurs: ${this.results.errors} (${Math.round(this.results.errors / this.results.totalQuestions * 100)}%)`);
 
     if (this.results.responseTimes.length > 0) {
-      const avgTime = Math.round(this.results.responseTimes.reduce((a,b) => a+b, 0) / this.results.responseTimes.length);
+      const avgTime = Math.round(this.results.responseTimes.reduce((a, b) => a + b, 0) / this.results.responseTimes.length);
       const minTime = Math.min(...this.results.responseTimes);
       const maxTime = Math.max(...this.results.responseTimes);
       console.log(`\n⏱️  PERFORMANCE:`);

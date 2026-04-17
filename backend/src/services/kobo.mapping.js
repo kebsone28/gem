@@ -19,12 +19,12 @@ function getValue(row, targetKey, mappingConfig, fallbacks = []) {
     if (koboField && row[koboField] !== undefined) {
         return row[koboField];
     }
-    
+
     // Fallback to hardcoded defaults if no config matches
     for (const key of fallbacks) {
         if (row[key] !== undefined) return row[key];
     }
-    
+
     return null;
 }
 
@@ -42,7 +42,7 @@ export function extractNumeroOrdre(row, config = {}) {
     if (cleaned.endsWith('.0')) {
         cleaned = cleaned.substring(0, cleaned.length - 2);
     }
-    
+
     return /^[A-Z0-9.-]+$/i.test(cleaned) ? cleaned : null;
 }
 
@@ -116,10 +116,10 @@ export function extractRegionalInfo(row, config = {}) {
     const region = getValue(row, 'region', config, [
         'region_key', 'TYPE_DE_VISITE/region_key', 'Region'
     ]) || '';
-    
+
     const departement = getValue(row, 'departement', config, ['departement', 'dept']) || '';
     const village = getValue(row, 'village', config, ['village']) || '';
-    
+
     return {
         region: String(region).trim(),
         departement: String(departement).trim(),
@@ -168,9 +168,9 @@ export function extractConstructionData(row) {
     return {
         livreur: {
             situation: row['group_wu8kv54/Situation_du_M_nage'] || row['Situation_du_M_nage'],
-            cable_2_5: row['group_sy9vj14/Longueur_Cable_2_5mm_Int_rieure'] || row['Longueur_Cable_2_5mm_Int_rieure'],
-            cable_1_5: row['group_sy9vj14/Longueur_Cable_1_5mm_Int_rieure'] || row['Longueur_Cable_1_5mm_Int_rieure'],
-            tranchee_4: row['group_sy9vj14/Longueur_Tranch_e_Cable_arm_4mm'] || row['Longueur_Tranch_e_Cable_arm_4mm'],
+            câble_2_5: row['group_sy9vj14/Longueur_câble_2_5mm_Int_rieure'] || row['Longueur_câble_2_5mm_Int_rieure'],
+            câble_1_5: row['group_sy9vj14/Longueur_câble_1_5mm_Int_rieure'] || row['Longueur_câble_1_5mm_Int_rieure'],
+            tranchee_4: row['group_sy9vj14/Longueur_Tranch_e_câble_arm_4mm'] || row['Longueur_Tranch_e_câble_arm_4mm'],
             materiel_remis: row['group_sy9vj14/Je_confirme_la_remis_u_materiel_au_m_nage'] === 'true'
         },
         macon: {
@@ -190,6 +190,10 @@ export function extractConstructionData(row) {
             phase: row['etape_controleur/Phase_de_controle'] || row['Phase_de_controle'],
             resistance_terre: row['etape_controleur/group_hx7ae46/VALEUR_DE_LA_RESISTANCE_DE_TER'] || row['VALEUR_DE_LA_RESISTANCE_DE_TER'],
             conforme: row['etape_controleur/validation_controleur_final'] === 'true' || row['validation_controleur_final'] === 'true'
+        },
+        photos: {
+            anomalie: row['etape_controleur/group_hx7ae46/_1_photo_anomalie_si_possible'] || row['_1_photo_anomalie_si_possible'],
+            compteur: row['etape_controleur/photo_compteur'] || row['photo_compteur'] || row['Photo']
         }
     };
 }
@@ -252,7 +256,7 @@ export function transformRowToHousehold(row, organizationId, defaultZoneId, proj
 export function transformRows(rows, organizationId, defaultZoneId, projectId) {
     const valid = [];
     const invalid = [];
-    
+
     for (const row of rows) {
         try {
             const household = transformRowToHousehold(row, organizationId, defaultZoneId, projectId);

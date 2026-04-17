@@ -1,4 +1,5 @@
 import { db } from '../../../store/db';
+import api from '../../../api/client';
 import type { MissionState, MissionAction } from './missionTypes';
 
 /**
@@ -49,26 +50,31 @@ export class MissionSyncQueue {
       const pendingItems = await db.syncOutbox.where('status').equals('pending').toArray();
 
       for (const item of pendingItems) {
+        // ⚠️ Skip items with temp IDs — they can't exist on the server yet
+        if (item.endpoint.includes('/temp-')) {
+          await db.syncOutbox.delete(item.id!);
+          continue;
+        }
+
         try {
-          const response = await fetch(item.endpoint, {
-            method: item.method,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(item.payload),
+          const method = item.method.toLowerCase() as 'get' | 'post' | 'put' | 'patch' | 'delete';
+          const response = await api[method](item.endpoint.replace('/api', ''), item.payload);
+
+          if (response.data) {
+            await db.syncOutbox.delete(item.id!);
+          }
+        } catch (err: any) {
+          const status = err?.response?.status;
+          const retryCount = (item.retryCount || 0) + 1;
+          const isFatal = status === 401 || status === 403 || status === 404 || retryCount > 5;
+
+          await db.syncOutbox.update(item.id!, {
+            retryCount,
+            lastError: `Error ${status || 'network'}`,
+            status: isFatal ? 'failed' : 'pending',
           });
 
-          if (response.ok) {
-            await db.syncOutbox.delete(item.id!);
-          } else {
-            // Logique de retry incrementale
-            await db.syncOutbox.update(item.id!, {
-              retryCount: (item.retryCount || 0) + 1,
-              lastError: `Server error: ${response.status}`,
-              status: item.retryCount > 5 ? 'failed' : 'pending',
-            });
-          }
-        } catch (err) {
-          console.error('[SyncQueue] Fetch failed:', err);
-          break; // Stop processing for now if network fails completely
+          if (!navigator.onLine) break;
         }
       }
     } finally {

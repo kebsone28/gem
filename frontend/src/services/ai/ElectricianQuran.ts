@@ -46,7 +46,7 @@ export const ELECTRICIAN_GUIDE: Record<string, TechnicalDefinition> = {
       'prise',
       'couloir',
       'interrupteur',
-      'cable arme',
+      'câble arme',
       'enterr',
       'grillage',
     ],
@@ -134,11 +134,11 @@ export const ELECTRICIAN_GUIDE: Record<string, TechnicalDefinition> = {
         caption: '❌ À ÉVITER : Mauvaise découpe à la pince',
       },
       {
-        url: '/guide_images/bonne_pratique_decoupe_cable.png',
+        url: '/guide_images/bonne_pratique_decoupe_câble.png',
         caption: '✅ BONNE PRATIQUE : Découpage au cutteur',
       },
       {
-        url: '/guide_images/anomalie_cables_exterieurs.png',
+        url: '/guide_images/anomalie_câbles_exterieurs.png',
         caption: '❌ À ÉVITER : Câbles en plein air',
       },
       {
@@ -154,7 +154,7 @@ export const ELECTRICIAN_GUIDE: Record<string, TechnicalDefinition> = {
         caption: '❌ À ÉVITER : Poteau bois pourri',
       },
       {
-        url: '/guide_images/materiel_cable_arme_grillage.png',
+        url: '/guide_images/materiel_câble_arme_grillage.png',
         caption: 'Matériel Conforme : Câble armé et Grillage avertisseur',
       },
     ],
@@ -359,7 +359,7 @@ export const ELECTRICIAN_GUIDE: Record<string, TechnicalDefinition> = {
     description: "Point de connexion physique entre le réseau public et l'installation privée.",
     specs: ['Câble torsadé alu/cuivre', 'Fixation murale sécurisée', 'Audit photo obligatoire'],
     norm: 'Spec PROQUELEC v2.1',
-    keywords: ['branchement', 'raccordement', 'connexion senelec', 'cable'],
+    keywords: ['branchement', 'raccordement', 'connexion senelec', 'câble'],
   },
   transformateur: {
     title: 'Poste de Transformation',
