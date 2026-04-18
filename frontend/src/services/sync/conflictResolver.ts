@@ -8,6 +8,8 @@
 import { logger } from '../logger';
 import { db } from '../../store/db';
 import { useSyncStore } from '../../store/syncStore';
+import { enqueue } from './queueService';
+import { canTransition } from '../../domain/status/statusUtils';
 
 export type ConflictStrategy = 'server-wins' | 'client-wins' | 'merge';
 
@@ -24,7 +26,7 @@ export interface ConflictRecord {
 
 /** Default strategy per entity type */
 const DEFAULT_STRATEGIES: Record<string, ConflictStrategy> = {
-  households: 'server-wins', // Server is source of truth for household status
+  households: 'merge', // Remplacé: On merge les données au lieu de supprimer l'input offline
   projects: 'server-wins',
   zones: 'server-wins',
   teams: 'server-wins',
@@ -50,27 +52,50 @@ export function resolveConflict(
       return localData;
 
     case 'merge': {
-      // Simple field-level merge: prefer server for system fields, client for user fields
+      // Base on server data (Kobo truth + system fields)
+      const merged: Record<string, unknown> = { ...serverData };
+
+      // Intelligent Merge for Households
+      if (entityType === 'households') {
+        const localStatus = (localData['status'] as string) || '';
+        const serverStatus = (serverData['status'] as string) || '';
+
+        // Prioritize advanced statuses locally so we don't regress work
+        // Utilisation stricte de notre engine de règles
+        if (localStatus && canTransition(serverStatus, localStatus)) {
+            merged['status'] = localStatus;
+        }
+
+        // --- RÈGLE MÉTIER STRICTE ---
+        // Le Reste (Nom, Tél, GPS, Équipes, etc.) obéit toujours à Kobo/Serveur 
+        // L'unique exception locale est le statut forcé par l'admin ci-dessus.
+      }
+
+      // System fields MUST be server truth
       const systemFields = [
         'id',
         'organizationId',
         'projectId',
-        'version',
-        'deletedAt',
-        'updatedAt',
+        'zoneId',
+        'deletedAt'
       ];
-      const merged: Record<string, unknown> = { ...localData };
 
       for (const key of systemFields) {
-        if (serverData[key] !== undefined) {
+        // Handle nested projectId from serverData if zone is populated
+        if (key === 'projectId' && serverData.zone && (serverData.zone as any).projectId) {
+          merged[key] = (serverData.zone as any).projectId;
+        } else if (serverData[key] !== undefined) {
           merged[key] = serverData[key];
+        } else if (localData[key] !== undefined) {
+          merged[key] = localData[key];
         }
       }
 
-      // Take the higher version
+      // VITAL: Take the higher version AND INCREMENT IT locally
+      // so the next sync forces the server to accept our merged resolution
       const localVersion = (localData['version'] as number) ?? 0;
       const serverVersion = (serverData['version'] as number) ?? 0;
-      merged['version'] = Math.max(localVersion, serverVersion);
+      merged['version'] = Math.max(localVersion, serverVersion) + 1;
 
       return merged;
     }
@@ -139,6 +164,17 @@ export async function handleServerConflicts(
       try {
         await table.put(record.resolvedData);
         logger.debug('CONFLICT', `Persisted resolved ${record.entityType}/${record.entityId}`);
+
+        // Si on a fusionné des données locales avec le serveur, il faut que 
+        // le serveur prenne connaissance de cette fusion au prochain cycle.
+        if (record.strategy === 'merge') {
+            await enqueue({
+                action: 'UPDATE', // La plupart du temps ce sera un update qui pousse la nouvelle version
+                endpoint: `/api/${record.entityType}`,
+                payload: record.resolvedData
+            });
+            logger.debug('CONFLICT', `Re-enqueued post-merge ${record.entityType}/${record.entityId}`);
+        }
       } catch (err) {
         logger.error(
           'CONFLICT',

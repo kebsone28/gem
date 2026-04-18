@@ -55,17 +55,22 @@ export const pullChanges = async (req, res) => {
 
         // Flatten projectId for frontend compatibility & SANITIZE coordinates for Mapbox
         const households = rawHouseholds.map(h => {
-            // Mapbox crashes if coordinates are null. If we have a point but no coords, or vice-versa,
-            // we ensure the frontend gets something it can handle or we skip the location part.
-            const hasCoords = h.latitude !== null && h.longitude !== null && !isNaN(h.latitude) && !isNaN(h.longitude);
-            
+            // Mapbox and frontend filters rely on location.coordinates [lng, lat]
+            const lat = Number(h.latitude);
+            const lng = Number(h.longitude);
+            const hasCoords = !isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0;
+
+            const finalLocation = hasCoords 
+                ? { type: 'Point', coordinates: [lng, lat] }
+                : (h.location || null);
+
             return {
                 ...h,
-                projectId: h.zone?.projectId,
+                projectId: h.zone?.projectId || h.projectId,
                 zone: undefined, // Remove nested object to save bandwidth
-                // Ensure koboSubmissionId is a string if it's a BigInt (handled by BigInt.prototype.toJSON too)
-                latitude: h.latitude || 0,
-                longitude: h.longitude || 0
+                location: finalLocation,
+                latitude: hasCoords ? lat : (lat || 0),
+                longitude: hasCoords ? lng : (lng || 0)
             };
         });
 
@@ -266,15 +271,30 @@ export const pushChanges = async (req, res) => {
                             where: { id },
                             include: { zone: { select: { projectId: true } } }
                         });
-                        serverH = _serverH;
+                        let serverH = _serverH;
+                        
                     if (serverH && serverH.version > (parseInt(version) || 0)) {
                         results.conflicts.push({ id, type: 'household', server: serverH });
+                        
+                        // Enregistrer le conflit côté serveur
+                        await prisma.conflictLog.create({
+                            data: {
+                                organizationId,
+                                entityType: 'households',
+                                entityId: id,
+                                clientVersion: parseInt(version) || 0,
+                                serverVersion: serverH.version,
+                                localData: h,
+                                serverData: serverH,
+                                strategy: 'pending-client-review'
+                            }
+                        }).catch(e => console.error('[SYNC-CONFLICT-LOG] Failed to create ConflictLog:', e.message));
+
                         continue;
                     }
 
                     // CRITICAL: Verify zone exists before upserting household (foreign key constraint)
                     let zoneExists = await prisma.zone.findUnique({ where: { id: zoneId } });
-                    let serverH = null;
                     
                     if (!zoneExists) {
                         console.log(`[SYNC-HEAL] 🏗️ Zone ${zoneId} not found for household ${id}. Attempting to heal...`);

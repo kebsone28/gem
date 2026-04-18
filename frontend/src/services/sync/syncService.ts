@@ -65,9 +65,11 @@ async function pullUpdates(): Promise<void> {
 
 /** Trigger server-side Kobo external sync */
 async function triggerKoboSync(): Promise<void> {
+  const activeProjectId = safeStorage.getItem('active_project_id');
   logger.debug('SYNC', 'Triggering Kobo external sync');
   try {
-    await apiClient.post('sync/kobo');
+    const payload = activeProjectId ? { projectId: activeProjectId } : {};
+    await apiClient.post('sync/kobo', payload);
   } catch (err) {
     logger.warn('SYNC', 'Kobo background sync failed (non-critical)', err);
   }

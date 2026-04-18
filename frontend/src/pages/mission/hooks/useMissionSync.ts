@@ -9,6 +9,7 @@ import { syncQueue } from '../core/missionSyncQueue';
 import logger from '../../../utils/logger';
 import toast from 'react-hot-toast';
 import type { MissionState, AuditEntry } from '../core/missionTypes';
+import { generateIntegrityHash } from '../../../utils/crypto';
 
 /**
  * HOOK : Synchronisation Mission Industrielle (Version Robuste)
@@ -117,6 +118,15 @@ export const useMissionSync = (
 
           const totals = calculateMissionTotals(members);
 
+          let integrityHash = formData.integrityHash;
+          if (finalIsCertified && !integrityHash) {
+             integrityHash = await generateIntegrityHash({
+               formData,
+               members,
+               version: localVersion
+             });
+          }
+
           let serverStatus = 'draft';
           if (finalIsCertified) serverStatus = 'approuvee';
           else if (finalIsSubmitted) serverStatus = 'soumise';
@@ -135,6 +145,7 @@ export const useMissionSync = (
               members,
               isCertified: finalIsCertified,
               isSubmitted: finalIsSubmitted,
+              integrityHash,
             },
           };
 
@@ -148,6 +159,28 @@ export const useMissionSync = (
               if (result && !('error' in result)) {
                 serverSuccess = true;
                 actions.setSyncStatus('synced');
+                
+                // 🔥 CRITIQUE: Injecter le numéro officiel s'il est présent
+                const officialOrderNumber = (result as any).orderNumber || (result as any).data?.orderNumber;
+                if (officialOrderNumber) {
+                  missionData.orderNumber = officialOrderNumber;
+                  // Si le numéro est présent au top-level mais pas dans data, on le synchronise
+                  if (missionData.data) {
+                    missionData.data.orderNumber = officialOrderNumber;
+                  } else {
+                    (missionData as any).orderNumber = officialOrderNumber;
+                  }
+                  
+                  // Mettre à jour l'écran immédiatement via loadMission
+                  actions.loadMission(
+                    finalId,
+                    { ...formData, orderNumber: officialOrderNumber },
+                    members,
+                    (result as any).version || localVersion,
+                    (result as any).updatedAt || now,
+                    auditTrail
+                  );
+                }
               } else if (result && typeof result === 'object' && 'error' in result && result.error === 409) {
                 /**
                  * 🔥 CONFLIT VERSION
@@ -184,6 +217,18 @@ export const useMissionSync = (
               if (created) {
                 assignedId = created.id;
                 serverSuccess = true;
+                
+                const officialNum = (created as any).orderNumber || (created as any).data?.orderNumber;
+                if (officialNum) {
+                  actions.loadMission(
+                    created.id,
+                    { ...formData, orderNumber: officialNum },
+                    members,
+                    (created as any).version || 1,
+                    (created as any).updatedAt || now,
+                    auditTrail
+                  );
+                }
               } else {
                 serverSuccess = false;
               }
@@ -197,6 +242,11 @@ export const useMissionSync = (
            * ALIGNEMENT ID (temp → réel)
            */
           if (assignedId !== finalId) {
+            // 🔥 REMAPPING OFFLINE ACTIONS
+            if (isNewMission) {
+              await syncQueue.remapTempId(finalId, assignedId);
+            }
+
             await db.missions.delete(finalId);
             missionData.id = assignedId;
             await db.missions.put(missionData);

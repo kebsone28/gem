@@ -35,7 +35,7 @@ export const missionNotificationService = {
             const users = await prisma.user.findMany({
                 where: {
                     organizationId: organizationId,
-                    role: { in: Array.isArray(nextRole) ? nextRole : [nextRole] },
+                    role: { in: (Array.isArray(nextRole) ? nextRole : [nextRole]).map(r => r === 'DIRECTEUR' ? ['DIRECTEUR', 'DG_PROQUELEC', 'DG', 'DIRECTION'] : r).flat() },
                     active: true
                 },
                 select: { email: true, notificationEmail: true, name: true }
@@ -80,7 +80,7 @@ export const missionNotificationService = {
             const stakeholders = await prisma.user.findMany({
                 where: {
                     organizationId: initiator.organizationId,
-                    roleLegacy: { in: ['DG_PROQUELEC', 'ADMIN_PROQUELEC', 'COMPTABLE'] },
+                    role: { in: ['DG_PROQUELEC', 'DIRECTEUR', 'ADMIN_PROQUELEC', 'ADMIN', 'COMPTABLE', 'FINANCE'] },
                     active: true
                 },
                 select: { email: true, notificationEmail: true }

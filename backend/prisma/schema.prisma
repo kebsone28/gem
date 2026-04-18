@@ -21,6 +21,7 @@ model Organization {
   projects        Project[]
   teams           Team[]
   users           User[]
+  conflictLogs    ConflictLog[]
 }
 
 model User {
@@ -110,6 +111,7 @@ model Household {
   alerts           Json?                    @default("[]")
   source           String?
   version          Int                      @default(1)
+  manualOverrides  String[]                 @default([])
   assignedTeams    String[]                 @default([])
   grappeId         String?
   updatedAt        DateTime                 @updatedAt
@@ -203,6 +205,26 @@ model SyncLog {
   user      User     @relation(fields: [userId], references: [id])
 }
 
+model ConflictLog {
+  id             String       @id @default(uuid())
+  organizationId String
+  entityType     String
+  entityId       String
+  clientVersion  Int?
+  serverVersion  Int?
+  localData      Json?
+  serverData     Json?
+  resolvedData   Json?
+  strategy       String       @default("last-write-wins")
+  timestamp      DateTime     @default(now())
+  resolved       Boolean      @default(false)
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
+  @@index([entityType, entityId])
+  @@index([timestamp])
+}
+
 model AuditLog {
   id             String       @id @default(uuid())
   organizationId String
@@ -286,6 +308,7 @@ model MissionApprovalWorkflow {
   orderNumberGeneratedBy String?
   orderNumberOverridenAt DateTime?
   orderNumberOverridenBy String?
+  integrityHash          String?
   createdAt              DateTime              @default(now())
   updatedAt              DateTime              @updatedAt
   approvalSteps          MissionApprovalStep[]
@@ -305,6 +328,7 @@ model MissionApprovalStep {
   decidedBy  String?
   decidedAt  DateTime?
   comment    String?
+  signature  String?
   createdAt  DateTime                @default(now())
   updatedAt  DateTime                @updatedAt
   workflow   MissionApprovalWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)

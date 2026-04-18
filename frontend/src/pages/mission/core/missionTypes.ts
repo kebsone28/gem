@@ -56,6 +56,7 @@ export interface MissionOrderData {
   branding?: BrandingConfig;
   createdBy?: string;
   creatorId?: string;
+  integrityHash?: string;
 }
 
 export type MissionStatus = 'idle' | 'saving' | 'error' | 'success';

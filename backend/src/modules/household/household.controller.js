@@ -236,8 +236,8 @@ export const createHousehold = async (req, res) => {
 export const updateHousehold = async (req, res) => {
     try {
         const { id } = req.params;
-        const { status, location, owner, assignedTeams } = req.body;
         const { organizationId } = req.user;
+        const updates = req.body;
 
         const household = await prisma.household.findFirst({
             where: { id, organizationId },
@@ -248,22 +248,75 @@ export const updateHousehold = async (req, res) => {
             return res.status(404).json({ error: 'Household not found' });
         }
 
-        const updated = await prisma.household.update({
-            where: { id },
-            data: {
-                status,
-                location: location !== undefined ? location : household.location,
-                owner: owner !== undefined ? owner : household.owner,
-                assignedTeams: assignedTeams !== undefined ? assignedTeams : household.assignedTeams,
-                version: household.version + 1
+        // --- MANAGE OVERRIDES ---
+        let currentOverrides = household.manualOverrides || [];
+        const { unlockFields, ...otherUpdates } = updates;
+        
+        // 1. Remove unlocked fields
+        if (Array.isArray(unlockFields)) {
+            currentOverrides = currentOverrides.filter(f => !unlockFields.includes(f));
+        }
+
+        // 2. Add modified fields to overrides (if they are basic model fields)
+        const trackableFields = [
+            'name', 'phone', 'numeroordre', 'region', 'departement', 'village', 
+            'latitude', 'longitude', 'zoneId', 'source', 'assignedTeams',
+            'owner', 'constructionData', 'koboSync'
+        ];
+
+        Object.keys(otherUpdates).forEach(key => {
+            if (trackableFields.includes(key) && !currentOverrides.includes(key)) {
+                currentOverrides.push(key);
             }
         });
 
-        // Sync PostGIS point
-        if (location && Array.isArray(location.coordinates)) {
+        // Logic for deep merge on JSON fields if they are objects
+        const prepareJsonField = (field, newVal) => {
+            if (newVal === undefined) return household[field];
+            if (newVal === null) return null;
+            if (typeof newVal === 'object' && !Array.isArray(newVal) && typeof household[field] === 'object') {
+                return { ...(household[field] || {}), ...newVal };
+            }
+            return newVal;
+        };
+
+        const data = {
+            status: updates.status !== undefined ? updates.status : household.status,
+            name: updates.name !== undefined ? updates.name : household.name,
+            phone: updates.phone !== undefined ? updates.phone : household.phone,
+            numeroordre: updates.numeroordre !== undefined ? updates.numeroordre : household.numeroordre,
+            region: updates.region !== undefined ? updates.region : household.region,
+            departement: updates.departement !== undefined ? updates.departement : household.departement,
+            village: updates.village !== undefined ? updates.village : household.village,
+            latitude: updates.latitude !== undefined ? Number(updates.latitude) : household.latitude,
+            longitude: updates.longitude !== undefined ? Number(updates.longitude) : household.longitude,
+            zoneId: updates.zoneId !== undefined ? updates.zoneId : household.zoneId,
+            source: updates.source !== undefined ? updates.source : household.source,
+            assignedTeams: updates.assignedTeams !== undefined ? updates.assignedTeams : household.assignedTeams,
+            
+            // JSON Fields with merging capability
+            owner: prepareJsonField('owner', updates.owner),
+            constructionData: prepareJsonField('constructionData', updates.constructionData),
+            koboSync: prepareJsonField('koboSync', updates.koboSync),
+            location: prepareJsonField('location', updates.location),
+            alerts: prepareJsonField('alerts', updates.alerts),
+            
+            manualOverrides: currentOverrides,
+            version: household.version + 1
+        };
+
+        const updated = await prisma.household.update({
+            where: { id },
+            data
+        });
+
+        // Sync PostGIS point if coordinates changed
+        const finalLat = data.latitude;
+        const finalLng = data.longitude;
+        if (finalLat !== null && finalLng !== null && (updates.latitude !== undefined || updates.longitude !== undefined || updates.location !== undefined)) {
             await prisma.$executeRaw`
                 UPDATE "Household"
-                SET location_gis = ST_SetSRID(ST_MakePoint(${location.coordinates[0]}, ${location.coordinates[1]}), 4326)
+                SET location_gis = ST_SetSRID(ST_MakePoint(${finalLng}, ${finalLat}), 4326)
                 WHERE id = ${id}
             `;
         }

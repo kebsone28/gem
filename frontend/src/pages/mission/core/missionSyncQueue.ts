@@ -50,10 +50,10 @@ export class MissionSyncQueue {
       const pendingItems = await db.syncOutbox.where('status').equals('pending').toArray();
 
       for (const item of pendingItems) {
-        // ⚠️ Skip items with temp IDs — they can't exist on the server yet
+        // ⚠️ Skip items with temp IDs until the mission itself is created and assigned a real ID
         if (item.endpoint.includes('/temp-')) {
-          await db.syncOutbox.delete(item.id!);
-          continue;
+          // Instead of deleting, we keep them until their parent mission gets a real ID
+          continue; 
         }
 
         try {
@@ -80,6 +80,22 @@ export class MissionSyncQueue {
     } finally {
       this.isProcessing = false;
     }
+  }
+
+  /**
+   * RE-MAP : Met à jour toutes les actions d'un ID temporaire vers un ID réel
+   */
+  public async remapTempId(tempId: string, realId: string) {
+    const pendingItems = await db.syncOutbox.toArray();
+    for (const item of pendingItems) {
+      if (item.endpoint.includes(tempId)) {
+        await db.syncOutbox.update(item.id!, {
+          endpoint: item.endpoint.replace(tempId, realId),
+          payload: { ...item.payload, missionId: realId }
+        });
+      }
+    }
+    console.log(`🔄 [SYNC] Remapping OK : ${tempId} -> ${realId}`);
   }
 }
 

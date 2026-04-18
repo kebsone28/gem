@@ -152,8 +152,8 @@ export function missionReducer(state: MissionState, action: MissionAction): Miss
       const isNowCertified = action.payload;
       let newOrderNumber = state.formData.orderNumber;
 
-      // Génération automatique du N° d'ordre si validation et manquant
-      if (isNowCertified && !newOrderNumber) {
+      // Génération automatique du N° d'ordre si validation et manquant ou temporaire
+      if (isNowCertified && (!newOrderNumber || newOrderNumber.includes('TEMP'))) {
         const year = new Date().getFullYear();
         const random = Math.floor(Math.random() * 900) + 100;
         newOrderNumber = `MO-${year}-${random}`;

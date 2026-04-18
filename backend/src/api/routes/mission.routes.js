@@ -9,13 +9,23 @@ import {
     approveMissionStep,
     rejectMissionStep,
     duplicateMission,
-    overrideOrderNumber
+    overrideOrderNumber,
+    verifyMissionPublic,
+    sendMissionDocumentEmail,
+    analyzeMissionIA
 } from '../../modules/mission/mission.controller.js';
 import { authProtect, authorize } from '../middlewares/auth.js';
+import multer from 'multer';
+
+// Internal multer for doc sending
+const upload = multer({ storage: multer.memoryStorage() });
 
 const router = express.Router();
 
-// All routes require authentication
+// Public route - MUST BE BEFORE authProtect
+router.get('/verify/:identifier', verifyMissionPublic);
+
+// Secure routes - require authentication
 router.use(authProtect);
 
 // =============================================
@@ -50,5 +60,7 @@ router.get('/:missionId/approval-history', getMissionApprovalHistory);
 router.post('/:missionId/approve', authorize('ADMIN_PROQUELEC', 'DIRECTEUR', 'CHEF_PROJET', 'COMPTABLE'), approveMissionStep);
 router.post('/:missionId/reject',  authorize('ADMIN_PROQUELEC', 'DIRECTEUR', 'CHEF_PROJET', 'COMPTABLE'), rejectMissionStep);
 router.post('/:missionId/override-order-number', authorize('ADMIN_PROQUELEC'), overrideOrderNumber);
+router.post('/:missionId/send-document-email', upload.single('document'), sendMissionDocumentEmail);
+router.post('/:missionId/analyze-ia', authorize('ADMIN_PROQUELEC', 'DIRECTEUR'), analyzeMissionIA);
 
 export default router;

@@ -86,6 +86,11 @@ export const exportCahiersToWord = async (
   isMultiple: boolean,
   generalClauses?: string[]
 ) => {
+  if (!tasks || tasks.length === 0) {
+    console.warn('[word_engine] exportCahiersToWord called with empty tasks array');
+    return;
+  }
+
   const allSections: any[] = [];
   const commonProps = {
     ...PAGE_PROPERTIES,
@@ -94,8 +99,9 @@ export const exportCahiersToWord = async (
   };
 
   // 1. Front Page
-  const mainTitle = isMultiple ? 'Cahiers des Charges Complets' : tasks[0].role;
-  const qrText = `https://gem-saas.proquelec.sn/verify/${tasks[0].role.replace(/\s+/g, '_')}_${Date.now()}`;
+  const mainTitle = isMultiple ? 'Cahiers des Charges Complets' : (tasks[0].role || 'Sans titre');
+  const safeRole = tasks[0].role?.replace(/\s+/g, '_') || 'lot';
+  const qrText = `https://gem-saas.proquelec.sn/verify/${safeRole}_${Date.now()}`;
   const qrBuffer = await generateQRCodeBuffer(qrText);
 
   allSections.push({

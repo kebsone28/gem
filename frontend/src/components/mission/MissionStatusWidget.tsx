@@ -9,8 +9,10 @@ import {
   Activity,
   TrendingUp,
   TrendingDown,
+  ShieldCheck,
 } from 'lucide-react';
 import { getMissionReadiness } from '../../services/missionValidation';
+import { verifyIntegrity } from '../../utils/crypto';
 import type { MissionOrderData, MissionMember } from '../../pages/mission/core/missionTypes';
 
 interface MissionStatusWidgetProps {
@@ -40,10 +42,25 @@ export const MissionStatusWidget: React.FC<MissionStatusWidgetProps> = ({
   healthStatus = 'optimal',
   budgetVariance = 0,
 }) => {
+  const [isIntegrityValid, setIsIntegrityValid] = React.useState<boolean | null>(null);
+
+  const hasOfficialNumber = data.orderNumber && !data.orderNumber.includes('TEMP');
+  const effectiveCertified = isCertified || hasOfficialNumber;
+
+  React.useEffect(() => {
+    if (data.integrityHash) {
+      verifyIntegrity({ formData: data, members, version }, data.integrityHash).then(isValid => {
+        setIsIntegrityValid(isValid);
+      });
+    } else {
+      setIsIntegrityValid(null);
+    }
+  }, [data, members, version]);
+
   const { percentage, status, nextSteps } = getMissionReadiness(
     data,
     members,
-    isCertified,
+    effectiveCertified as boolean,
     isSubmitted
   );
 
@@ -124,6 +141,19 @@ export const MissionStatusWidget: React.FC<MissionStatusWidgetProps> = ({
         {isSyncing && <RefreshCw size={12} className="text-indigo-500 animate-spin" />}
       </div>
 
+      {/* Integrity Badge (Phase 4) */}
+      {isIntegrityValid !== null && (
+        <div className={`p-2 rounded-xl flex items-center justify-between gap-3 ${isIntegrityValid ? 'bg-indigo-500/10 border-indigo-500/20' : 'bg-rose-500/10 border-rose-500/20'} border border-dashed`}>
+          <div className="flex items-center gap-1.5">
+            <ShieldCheck size={12} className={isIntegrityValid ? 'text-indigo-500' : 'text-rose-500'} />
+            <span className={`text-[8px] font-black uppercase tracking-widest ${isIntegrityValid ? 'text-indigo-500' : 'text-rose-500'}`}>
+              {isIntegrityValid ? 'Intégrité Certifiée' : 'Données Altérées'}
+            </span>
+          </div>
+          {isIntegrityValid && <Zap size={8} className="text-indigo-500 animate-pulse" />}
+        </div>
+      )}
+
       {/* Health Score Central KPI */}
       <div
         className={`p-3 rounded-[1.5rem] ${healthUI.bg} ${healthUI.border} border border-dashed flex flex-col items-center justify-center relative overflow-hidden`}
@@ -167,13 +197,13 @@ export const MissionStatusWidget: React.FC<MissionStatusWidgetProps> = ({
             Préparation
           </span>
           <span className="text-[11px] font-black text-slate-900 dark:text-white">
-            {percentage.toFixed(0)}%
+            {isCertified ? '100%' : `${percentage.toFixed(0)}%`}
           </span>
         </div>
         <div className="w-full h-2 bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden">
           <div
             className={`h-full transition-all duration-700 ease-out ${config?.color || 'bg-slate-500'}`}
-            style={{ width: `${percentage}%` }}
+            style={{ width: `${isCertified ? 100 : percentage}%` }}
           />
         </div>
       </div>
@@ -184,27 +214,14 @@ export const MissionStatusWidget: React.FC<MissionStatusWidgetProps> = ({
           <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1.5 leading-none">
             Indemnités
           </div>
-          <div className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-1">
-            {budgetVariance === 0 ? (
-              ''
-            ) : budgetVariance > 0 ? (
+            {budgetVariance > 10 ? (
               <TrendingUp size={12} className="text-rose-500" />
             ) : (
-              <TrendingDown size={12} className="text-emerald-500" />
+              <Zap size={12} className="text-emerald-500" />
             )}
-            <span
-              className={
-                budgetVariance > 0
-                  ? 'text-rose-600'
-                  : budgetVariance < 0
-                    ? 'text-emerald-600'
-                    : 'text-slate-900 dark:text-white'
-              }
-            >
-              {budgetVariance > 0 ? '+' : ''}
-              {budgetVariance.toFixed(1)}%
+            <span className="text-emerald-600">
+               {new Intl.NumberFormat('fr-FR').format(members.reduce((s, m) => s + (m.dailyIndemnity || 0) * (m.days || 1), 0))} XOF
             </span>
-          </div>
         </div>
         <div className="p-3 rounded-2xl bg-slate-100/80 dark:bg-white/5 border border-slate-100 dark:border-white/5">
           <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1.5 leading-none">

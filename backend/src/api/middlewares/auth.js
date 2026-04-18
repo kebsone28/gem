@@ -1,14 +1,11 @@
 import { verifyAccessToken } from '../../core/utils/jwt.js';
 import logger from '../../utils/logger.js';
+import { runWithContext } from '../../core/context/storage.js';
 
 export const authProtect = async (req, res, next) => {
     try {
         let token;
-
-        // DEBUG: Log auth header at sync endpoint
         const endpoint = req.path || req.url;
-
-        // 🔒 SECURITY: Debug logs removed for production - tokens no longer exposed
 
         if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
             token = req.headers.authorization.split(' ')[1];
@@ -17,26 +14,30 @@ export const authProtect = async (req, res, next) => {
         }
 
         if (!token) {
-            logger.error(`[AUTH-ERROR] No token available. Endpoint: ${endpoint}. Headers:`, Object.keys(req.headers));
+            logger.error(`[AUTH-ERROR] No token available. Endpoint: ${endpoint}.`);
             return res.status(401).json({ error: 'Not authorized, no token' });
         }
 
         const decoded = verifyAccessToken(token);
 
-        // Log decoded role and permissions for debugging
-        logger.info(`[AUTH] 👤 User: ${decoded.email} | Role: ${decoded.role} | Perms: ${JSON.stringify(decoded.permissions)}`);
-
-        // Inject user info into request
+        // Inject user info into request object (Legacy support)
         req.user = {
             ...decoded,
             organizationId: decoded.organizationId,
             permissions: decoded.permissions || [],
-            // TRUE uniquement si un admin a configuré des permissions granulaires (tableau non-vide)
-            // Un tableau vide [] = permissions non configurées → fallback par rôle
             permissionsWasManuallySet: Array.isArray(decoded.permissions) && decoded.permissions.length > 0
         };
 
-        next();
+        // 🚀 CRITICAL: Run request within async context for Prisma multi-tenant filtering
+        runWithContext({ 
+            userId: decoded.id, 
+            organizationId: decoded.organizationId,
+            projectId: req.headers['x-project-id'] || null, 
+            role: decoded.role
+        }, () => {
+            next();
+        });
+
     } catch (error) {
         logger.error('Auth check failed:', error.message);
         res.status(401).json({ error: 'Not authorized, token failed' });

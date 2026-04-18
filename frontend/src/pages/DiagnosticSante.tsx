@@ -60,10 +60,10 @@ export default function DiagnosticSante() {
     },
     server: serverData
       ? {
-          dbStatus: serverData.services.database.status,
-          redisStatus: serverData.services.redis.status,
-          memoryUsage: serverData.system.memory.usage,
-          status: serverData.status,
+          dbStatus: serverData?.services?.database?.status ?? 'N/A',
+          redisStatus: serverData?.services?.redis?.status ?? 'N/A',
+          memoryUsage: serverData?.system?.memory?.usage ?? '---',
+          status: serverData?.status ?? 'UNKNOWN',
         }
       : null,
   };
@@ -336,7 +336,7 @@ export default function DiagnosticSante() {
                       ? 'Attention: Un service serveur est dégradé. Vérifiez les logs Redis/DB.'
                       : 'Serveur Optimal: Tous les services cloud répondent normalement.'}
                 </li>
-                {activeTab === 'server' && serverData?.system.load[0] > 1.5 && (
+                {activeTab === 'server' && (serverData?.system?.load?.[0] ?? 0) > 1.5 && (
                   <li className="text-xs text-rose-500 font-bold flex items-start gap-2">
                     <span className="text-rose-500">•</span>
                     Alerte Charge: Le CPU du serveur montre des signes de fatigue. Envisagez une

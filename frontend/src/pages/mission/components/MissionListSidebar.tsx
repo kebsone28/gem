@@ -7,6 +7,7 @@ interface MissionListSidebarProps {
   currentMissionId: string | null;
   onLoadMission: (mission: any) => void;
   onDeleteMission: (id: string, orderNumber: string) => void;
+  isCertifiedByWorkflow?: boolean;
 }
 
 type StatusFilter = 'all' | 'draft' | 'pending' | 'certified';
@@ -17,9 +18,12 @@ const STATUS_CONFIG: Record<string, { label: string; dot: string; badge: string 
   draft: { label: 'BROUILLON', dot: 'bg-slate-400', badge: 'bg-slate-500/15 text-slate-400' },
 };
 
-const getMissionStatus = (m: any): keyof typeof STATUS_CONFIG => {
-  if (m.isCertified) return 'certified';
-  if (m.isSubmitted) return 'pending';
+const getMissionStatus = (m: any, isCurrentSelectedCertified?: boolean): keyof typeof STATUS_CONFIG => {
+  const hasOfficialNumber = (m.orderNumber && !m.orderNumber.startsWith('TEMP-')) || (m.data?.orderNumber && !m.data?.orderNumber.startsWith('TEMP-'));
+  const isCertified = m.isCertified || m.data?.isCertified || hasOfficialNumber || m.status === 'approuvee' || m.status === 'certified' || isCurrentSelectedCertified;
+  
+  if (isCertified) return 'certified';
+  if (m.isSubmitted || m.data?.isSubmitted || m.status === 'soumise') return 'pending';
   return 'draft';
 };
 
@@ -28,6 +32,7 @@ export const MissionListSidebar: React.FC<MissionListSidebarProps> = ({
   currentMissionId,
   onLoadMission,
   onDeleteMission,
+  isCertifiedByWorkflow = false,
 }) => {
   const { user } = useAuth();
   const [search, setSearch] = useState('');
@@ -53,7 +58,8 @@ export const MissionListSidebar: React.FC<MissionListSidebarProps> = ({
   const filteredMissions = useMemo(() => {
     return visibleMissions
       .filter((m) => {
-        const status = getMissionStatus(m);
+        const isSelected = m.id === currentMissionId;
+        const status = getMissionStatus(m, isSelected ? isCertifiedByWorkflow : false);
         if (filter !== 'all' && status !== filter) return false;
         if (search.trim()) {
           const q = search.toLowerCase();
@@ -75,11 +81,20 @@ export const MissionListSidebar: React.FC<MissionListSidebarProps> = ({
   const counts = useMemo(
     () => ({
       all: visibleMissions.length,
-      certified: visibleMissions.filter((m) => m.isCertified).length,
-      pending: visibleMissions.filter((m) => !m.isCertified && m.isSubmitted).length,
-      draft: visibleMissions.filter((m) => !m.isCertified && !m.isSubmitted).length,
+      certified: visibleMissions.filter((m) => {
+        const isSelected = m.id === currentMissionId;
+        return getMissionStatus(m, isSelected ? isCertifiedByWorkflow : false) === 'certified';
+      }).length,
+      pending: visibleMissions.filter((m) => {
+        const isSelected = m.id === currentMissionId;
+        return getMissionStatus(m, isSelected ? isCertifiedByWorkflow : false) === 'pending';
+      }).length,
+      draft: visibleMissions.filter((m) => {
+        const isSelected = m.id === currentMissionId;
+        return getMissionStatus(m, isSelected ? isCertifiedByWorkflow : false) === 'draft';
+      }).length,
     }),
-    [visibleMissions]
+    [visibleMissions, currentMissionId, isCertifiedByWorkflow]
   );
 
   const filterButtons: { key: StatusFilter; label: string; color: string; activeColor: string }[] =
@@ -165,9 +180,9 @@ export const MissionListSidebar: React.FC<MissionListSidebarProps> = ({
         )}
 
         {filteredMissions.map((m) => {
-          const status = getMissionStatus(m);
-          const cfg = STATUS_CONFIG[status];
           const isActive = currentMissionId === m.id;
+          const status = getMissionStatus(m, isActive ? isCertifiedByWorkflow : false);
+          const cfg = STATUS_CONFIG[status];
 
           return (
             <div

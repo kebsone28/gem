@@ -157,7 +157,7 @@ function SectionHeader({
   isDarkMode: boolean;
 }) {
   return (
-    <tr className={isDarkMode ? 'bg-slate-950/50' : 'bg-slate-50 dark:bg-slate-800/50/50'}>
+    <tr className={isDarkMode ? 'bg-slate-950/50' : 'bg-slate-50 dark:bg-slate-800/50'}>
       <td
         className={`px-8 py-4 font-black text-xs uppercase tracking-widest ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}
       >

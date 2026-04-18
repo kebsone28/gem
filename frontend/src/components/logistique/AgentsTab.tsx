@@ -132,7 +132,7 @@ export default function AgentsTab({ searchQuery = '' }: AgentsTabProps) {
                   <th
                     className={`px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}
                   >
-                    Lastée
+                    Dernière visite
                   </th>
                   <th
                     className={`px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}
@@ -176,7 +176,7 @@ export default function AgentsTab({ searchQuery = '' }: AgentsTabProps) {
                           >
                             <div
                               className="h-full bg-gradient-to-r from-primary to-blue-400"
-                              style={{ width: `${Math.min(a.avgTime * 2, 100)}%` }}
+                              style={{ width: `${Math.min((a.avgTime / 60) * 100, 100)}%` }}
                               /* eslint-disable-line no-inline-styles */
                             />
                           </div>

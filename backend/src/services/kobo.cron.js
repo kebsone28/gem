@@ -56,9 +56,10 @@ async function runGlobalSync() {
         select: {
             id: true,
             name: true,
+            config: true,
             projects: {
-                where: { status: 'active' },
-                select: { id: true, name: true }
+                where: { status: 'active', deletedAt: null },
+                select: { id: true, name: true, config: true }
             }
         }
     });
@@ -71,46 +72,66 @@ async function runGlobalSync() {
     for (const org of orgs) {
         if (!org.projects || org.projects.length === 0) continue;
 
-        // Pour simplifier, on prend le premier projet actif (ou on pourrait itérer sur tous)
-        const targetProjectId = org.projects[0].id;
-
-        try {
-            console.log(`[KOBO-CRON] 📡 Sync pour l'organisation ${org.name} (Projet: ${org.projects[0].name})...`);
+        // Sync TOUS les projets actifs (pas juste le premier)
+        for (const project of org.projects) {
+            // Détermine si ce projet ou l'org a une config Kobo
+            const hasKoboConfig = project.config?.kobo?.token || org.config?.kobo?.token || 
+                                  process.env.KOBO_TOKEN;
             
-            // Appel de la logique de service (Passage du projectId en argument spécifique)
-            const result = await syncKoboToDatabase(org.id, null, null, targetProjectId);
-            
-            // Log en BDD si possible
-            await prisma.syncLog.create({
-                data: {
-                    organizationId: org.id,
-                    source: 'kobo-cron',
-                    applied: result.applied,
-                    skipped: result.skipped,
-                    errors: result.errors,
-                    total: result.total,
-                    syncedAt: new Date()
-                }
-            }).catch(() => {}); // Si la table n'existe pas, non bloquant
-
-            if (result.applied > 0) {
-                console.log(`[KOBO-CRON] ✅ Succès pour ${org.name}: ${result.applied} ménages importés/mis à jour.`);
-                
-                // NOTIFICATION TEMPS RÉEL (Socket.IO)
-                const { socketService } = await import('./socket.service.js');
-                socketService.emit('notification', {
-                    id: Date.now().toString(),
-                    type: 'SYNC',
-                    message: 'Synchronisation Kobo réussie',
-                    detail: `${result.applied} formulaires intégrés avec succès.`,
-                    sender: 'SERVEUR GEM'
-                });
-            } else {
-                console.log(`[KOBO-CRON] ℹ️ Rien de nouveau pour ${org.name}.`);
+            if (!hasKoboConfig) {
+                console.log(`[KOBO-CRON] ⏭️ Pas de config Kobo pour ${org.name} / ${project.name}`);
+                continue;
             }
 
-        } catch (orgError) {
-            console.error(`[KOBO-CRON] ❌ Échec pour l'organisation ${org.name}:`, orgError.message);
+            try {
+                console.log(`[KOBO-CRON] 📡 Sync pour l'organisation ${org.name} (Projet: ${project.name})...`);
+                
+                // Appel de la logique de service avec le projectId spécifique
+                const result = await syncKoboToDatabase(org.id, null, null, project.id);
+                
+                // Log en BDD avec un utilisateur de l'organisation
+                const firstUser = await prisma.user.findFirst({ where: { organizationId: org.id } });
+                
+                if (firstUser) {
+                    await prisma.syncLog.create({
+                        data: {
+                            userId: firstUser.id,
+                            deviceId: 'cron-daemon',
+                            action: 'KOBO_SYNC_AUTO',
+                            details: {
+                                organizationId: org.id,
+                                source: 'kobo-cron',
+                                applied: result.applied,
+                                skipped: result.skipped,
+                                errors: result.errors,
+                                total: result.total,
+                                projectId: project.id,
+                                syncedAt: new Date()
+                            }
+                        }
+                    }).catch(e => console.error('[KOBO-CRON] ❌ Log fail:', e.message));
+                }
+
+                if (result.applied > 0) {
+                    console.log(`[KOBO-CRON] ✅ Succès pour ${org.name}/${project.name}: ${result.applied} ménages importés/mis à jour.`);
+                    
+                    // NOTIFICATION TEMPS RÉEL (Socket.IO)
+                    const { socketService } = await import('./socket.service.js');
+                    socketService.emit('notification', {
+                        id: Date.now().toString(),
+                        type: 'SYNC',
+                        message: 'Synchronisation Kobo réussie',
+                        detail: `${result.applied} formulaires intégrés avec succès (${project.name}).`,
+                        sender: 'SERVEUR GEM'
+                    });
+                } else {
+                    console.log(`[KOBO-CRON] ℹ️ Rien de nouveau pour ${org.name}/${project.name}.`);
+                }
+
+            } catch (projectError) {
+                console.error(`[KOBO-CRON] ❌ Échec pour ${org.name}/${project.name}:`, projectError.message);
+            }
         }
     }
 }
+

@@ -108,16 +108,24 @@ export const triggerKoboSync = async (req, res) => {
         try {
             await prisma.syncLog.create({
                 data: {
-                    organizationId,
-                    source: 'kobo',
-                    applied: result.applied,
-                    skipped: result.skipped,
-                    errors: result.errors,
-                    total: result.total,
-                    syncedAt: new Date()
+                    userId: req.user.id,
+                    deviceId: 'server',
+                    action: 'KOBO_SYNC_MANUAL',
+                    details: {
+                        organizationId,
+                        source: 'kobo',
+                        applied: result.applied,
+                        skipped: result.skipped,
+                        errors: result.errors,
+                        total: result.total,
+                        projectId: targetProjectId,
+                        syncedAt: new Date()
+                    }
                 }
             });
-        } catch (_) { /* Table may not exist yet — non-blocking */ }
+        } catch (e) { 
+            console.error('[KOBO-LOG] Failed to create sync log:', e.message);
+        }
 
         return res.json({
             success: true,

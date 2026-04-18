@@ -18,6 +18,7 @@ import {
   PageBreak,
 } from 'docx';
 import type { MissionOrderData } from '../pages/mission/core/missionTypes';
+import QRCode from 'qrcode';
 import logger from '../utils/logger';
 
 // PROQUELEC Design System
@@ -150,10 +151,16 @@ const createFrontPage = (orderNumber: string, purpose: string) => {
 };
 
 export const generateMissionOrderWord = async (data: MissionOrderData) => {
-  const validationUrl = `https://gem.proquelec.com/mission/${data.orderNumber}`;
-  const qrData = await fetchImageAsArrayBuffer(
-    `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(validationUrl)}`
-  );
+  const validationUrl = `${window.location.origin}/verify/mission/${data.orderNumber || data.id}`;
+  
+  let qrData: ArrayBuffer | null = null;
+  try {
+    const qrDataUrl = await QRCode.toDataURL(validationUrl, { margin: 1, width: 200 });
+    const base64Data = qrDataUrl.split(',')[1];
+    qrData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0)).buffer;
+  } catch (err) {
+    logger.error('QR Code generation failed for Word', err);
+  }
 
   const sections: any[] = [];
 

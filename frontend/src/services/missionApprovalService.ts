@@ -36,7 +36,7 @@ export const getPendingApprovals = async (isArchive = false): Promise<any[]> => 
     const response = await api.get('/missions/approvals/pending', {
       params: { status: isArchive ? 'approuvee' : undefined },
     });
-    return response.data.missions || [];
+    return response.data; // Renvoie { missions: [], stats: { totalBudgetCertified } }
   } catch (err) {
     logger.error('Failed to fetch approvals:', err);
     return [];
@@ -45,9 +45,6 @@ export const getPendingApprovals = async (isArchive = false): Promise<any[]> => 
 
 /**
  * Approuve une étape du workflow de mission
- * @param missionId ID de la mission
- * @param role Rôle qui approuve (CHEF_PROJET, COMPTABLE, ADMIN, DIRECTEUR)
- * @param comments Commentaires optionnels
  */
 export const approveMissionStep = async (
   missionId: string,
@@ -62,8 +59,12 @@ export const approveMissionStep = async (
       signature,
     });
 
-    // Notification locale pour l'archivage
     const wf = response.data;
+    if (wf.integrityHash) {
+      logger.info(`🔐 [INTEGRITY] Success. Mission certified with hash: ${wf.integrityHash.substring(0, 16)}...`);
+    }
+
+    // Notification locale pour l'archivage
     await notificationService.createNotification({
       missionId,
       projectId: wf.projectId,
@@ -82,6 +83,17 @@ export const approveMissionStep = async (
 };
 
 /**
+ * Rejette une mission (alias pour rejectMissionStep pour compatibilité cockpit)
+ */
+export const rejectMission = async (
+  missionId: string,
+  role: ApprovalRole,
+  reason: string
+): Promise<MissionApprovalWorkflow | null> => {
+  return rejectMissionStep(missionId, role, reason);
+};
+
+/**
  * Rejette une étape du workflow de mission
  */
 export const rejectMissionStep = async (
@@ -96,7 +108,6 @@ export const rejectMissionStep = async (
       timestamp: new Date().toISOString(),
     });
 
-    // Notification locale pour l'archivage
     const wf = response.data;
     await notificationService.createNotification({
       missionId,
@@ -111,6 +122,19 @@ export const rejectMissionStep = async (
     return response.data;
   } catch (err) {
     logger.error(`❌ Erreur rejet ${role}:`, err);
+    throw err;
+  }
+};
+
+/**
+ * Analyse IA d'une mission (Cockpit DG)
+ */
+export const analyzeMissionIA = async (missionId: string): Promise<any> => {
+  try {
+    const response = await api.post(`/missions/${missionId}/analyze-ia`);
+    return response.data;
+  } catch (err) {
+    logger.error('❌ Erreur analyse IA mission:', err);
     throw err;
   }
 };
@@ -150,32 +174,23 @@ export const canApproveMissionStep = (
   step: MissionApprovalStep,
   isAdmin: boolean
 ): boolean => {
-  // Admin peut tout approuver
-  if (isAdmin && ['DIRECTEUR', 'ADMIN'].includes(step.role)) {
-    return true;
-  }
+  if (isAdmin && ['DIRECTEUR', 'ADMIN'].includes(step.role)) return true;
 
   const normalizedRole = userRole?.toUpperCase();
   const normalizedStepRole = step.role?.toUpperCase();
 
-  if (!normalizedRole || !normalizedStepRole) {
-    return false;
-  }
+  if (!normalizedRole || !normalizedStepRole) return false;
 
-  // Validation de statut
   const status = step.status?.toString().toUpperCase();
-  if (status !== 'EN_ATTENTE' && status !== 'PENDING') {
-    return false;
-  }
+  if (status !== 'EN_ATTENTE' && status !== 'PENDING') return false;
 
-  // Seul le DG ou DG_PROQUELEC peut approuver l'étape DIRECTEUR
   if (
     (normalizedRole === 'DIRECTEUR' || normalizedRole === 'DG_PROQUELEC') &&
     normalizedStepRole === 'DIRECTEUR'
   )
     return true;
 
-  return false;
+  return (normalizedRole === normalizedStepRole);
 };
 
 /**
@@ -187,6 +202,30 @@ export const deleteMission = async (missionId: string): Promise<void> => {
     logger.log(`🗑️ Mission ${missionId} supprimée de l'approbation`);
   } catch (err) {
     logger.error('❌ Erreur lors de la suppression de la mission :', err);
+    throw err;
+  }
+};
+
+/**
+ * Envoie un document (PDF/Word) généré par email
+ */
+export const sendDocumentByEmail = async (
+  missionId: string,
+  documentBlob: Blob,
+  recipientEmail: string,
+  fileName: string
+): Promise<void> => {
+  try {
+    const formData = new FormData();
+    formData.append('document', documentBlob, fileName);
+    formData.append('recipientEmail', recipientEmail);
+
+    await api.post(`/missions/${missionId}/send-document-email`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    logger.log(`📧 Document envoyé par email à ${recipientEmail}`);
+  } catch (err) {
+    logger.error('❌ Erreur lors de l\'envoi du document par email:', err);
     throw err;
   }
 };

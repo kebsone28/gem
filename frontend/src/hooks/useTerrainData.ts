@@ -157,6 +157,31 @@ export function useTerrainData() {
     stats,
     updateHouseholdStatus,
     updateHouseholdLocation,
+    updateHousehold: useCallback(async (id: string, patch: Partial<Household>) => {
+      const h = await db.households.get(id);
+      if (!h) return;
+
+      // Deep merge for specific JSON fields to avoid overwriting the whole object in Dexie
+      const deepFields = ['constructionData', 'owner', 'koboSync', 'location', 'alerts'];
+      const mergedPatch: any = { ...patch };
+
+      deepFields.forEach(field => {
+        if (patch[field as keyof Household] && typeof patch[field as keyof Household] === 'object' && !Array.isArray(patch[field as keyof Household])) {
+          mergedPatch[field] = {
+            ...(h[field as keyof Household] as object || {}),
+            ...(patch[field as keyof Household] as object)
+          };
+        }
+      });
+
+      // Update Dexie
+      await db.households.update(id, mergedPatch);
+
+      // Update Backend if synced
+      if (h.backendId) {
+        await apiClient.patch(`households/${h.backendId}`, patch);
+      }
+    }, []),
     uploadHouseholdPhoto,
     importHouseholds: async (data: Household[]) => {
       await db.households.bulkPut(data);

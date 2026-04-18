@@ -15,18 +15,6 @@ const app = express();
 app.use(helmet());
 app.use(cors(config.cors));
 
-// Log all 403 responses globally for debugging
-app.use((req, res, next) => {
-    const originalJson = res.json;
-    res.json = function(data) {
-        if (res.statusCode === 403 || res.statusCode === 400) {
-            import('fs').then(fs => fs.appendFileSync(path.join(__dirname, 'debug-mission.log'), `[${res.statusCode} ERROR] ${req.method} ${req.originalUrl} | FULL USER: ${JSON.stringify(req.user || {})} | Body: ${JSON.stringify(data)}\n`));
-        }
-        return originalJson.call(this, data);
-    };
-    next();
-});
-
 app.get('/api/ping', async (req, res) => {
     let dbStatus = 'waiting';
     try {

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, memo, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -8,7 +9,8 @@ import {
   Info, 
   CheckCircle2, 
   Trash2, 
-  ArrowRight
+  ArrowRight,
+  Zap
 } from 'lucide-react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../store/db';
@@ -16,11 +18,12 @@ import { syncEventBus } from '../../utils/syncEventBus';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { audioService } from '../../services/audioService';
+import { toast } from 'react-hot-toast';
 
 /* ─────────────────────────────────────────────────────────────────────────────
    SUB-COMPONENT: NotificationItem (Memoized to prevent massive re-renders)
    ───────────────────────────────────────────────────────────────────────────── */
-const NotificationItem = memo(({ notif, onRead, styles }: { notif: any, onRead: (id: string) => void, styles: any }) => {
+const NotificationItem = memo(({ notif, onRead, onDelete, styles }: { notif: any, onRead: (id: string) => void, onDelete: (id: string, e: React.MouseEvent) => void, styles: any }) => {
   // Memoize date formatting to avoid repeated calculations
   const formattedTime = useMemo(() => 
     format(new Date(notif.createdAt), 'HH:mm', { locale: fr }), 
@@ -55,11 +58,20 @@ const NotificationItem = memo(({ notif, onRead, styles }: { notif: any, onRead: 
             {notif.message}
           </p>
           <div className="flex items-center justify-between mt-3">
-            <span className="text-[8px] font-black uppercase tracking-widest text-slate-600 bg-black/20 px-2 py-0.5 rounded">
-              {notif.sender || 'SYSTÈME'}
-            </span>
+             <div className="flex items-center gap-2">
+                <span className="text-[8px] font-black uppercase tracking-widest text-slate-600 bg-black/20 px-2 py-0.5 rounded">
+                  {notif.sender || 'SYSTÈME'}
+                </span>
+                <button 
+                  onClick={(e) => onDelete(notif.id, e)}
+                  className="p-1 text-slate-600 hover:text-rose-500 transition-colors"
+                  title="Supprimer cette alerte"
+                >
+                  <Trash2 size={12} />
+                </button>
+             </div>
             {!notif.read && (
-              <div className="flex items-center gap-1 text-blue-400 text-[9px] font-black">
+              <div className="flex items-center gap-1 text-blue-400 text-[9px] font-black group-hover:translate-x-1 transition-transform">
                 LIRE
                 <ArrowRight size={10} />
               </div>
@@ -76,6 +88,11 @@ const NotificationItem = memo(({ notif, onRead, styles }: { notif: any, onRead: 
    ───────────────────────────────────────────────────────────────────────────── */
 export default function NotificationCenter() {
   const [isOpen, setIsOpen] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<'all' | 'approval' | 'system'>('all');
+  const [notifPermission, setNotifPermission] = useState<NotificationPermission>(
+    typeof Notification !== 'undefined' ? Notification.permission : 'default'
+  );
+  const navigate = useNavigate();
   const lastCountRef = useRef(0);
   
   // RAW DATA from DB
@@ -106,16 +123,24 @@ export default function NotificationCenter() {
 
   useEffect(() => {
     // S'abonner aux notifications WebSockets via notre EventBus propre
-    const unsubscribe = syncEventBus.subscribe('notification', (data: any) => {
+    const unsubscribe = syncEventBus.subscribe('notification', async (data: any) => {
       const newToast = { id: Date.now(), ...data };
       
       // Afficher le toast flottant
       setToasts(prev => [...prev, newToast]);
       audioService.playPing(); // Son de notification
 
-      // Sauvegarder dans l'historique Dexie
+      // Push Native Notification
+      if (Notification.permission === 'granted') {
+          new Notification(data.title || "Alerte GEM SAAS", {
+              body: data.message || "Nouvel événement système reçu.",
+              icon: '/logo-proquelec.png'
+          });
+      }
+
+      // Sauvegarder dans l'historique Dexie (Utiliser put pour éviter les ConstraintError)
       try {
-        db.notifications.add({
+        await db.notifications.put({
           id: data.id || Date.now().toString(),
           title: data.message || 'Nouvelle notification',
           message: data.type === 'SYNC' ? 'Synchronisation Cloud exécutée' : (data.detail || 'Opération système enregistrée'),
@@ -140,7 +165,6 @@ export default function NotificationCenter() {
 
   const unreadCount = useMemo(() => bufferedNotifs.filter(n => !n.read).length, [bufferedNotifs]);
 
-  // 2️⃣ OPTIMISTIC UI for better perceived performance
   const handleMarkAsRead = async (id: string) => {
     const target = bufferedNotifs.find(n => n.id === id);
     if (!target || target.read) return;
@@ -152,8 +176,43 @@ export default function NotificationCenter() {
     await db.notifications.update(id, { read: true });
   };
 
+  const handleMarkAllAsRead = async () => {
+    const unreadIds = bufferedNotifs.filter(n => !n.read).map(n => n.id);
+    if (unreadIds.length === 0) return;
+
+    setBufferedNotifs(prev => prev.map(n => ({ ...n, read: true })));
+    await db.notifications.where('id').anyOf(unreadIds).modify({ read: true });
+    toast.success(`${unreadIds.length} alertes marquées comme lues`);
+  };
+
+  const handleRequestPermission = async () => {
+      if (typeof Notification !== 'undefined') {
+          const permission = await Notification.requestPermission();
+          setNotifPermission(permission);
+          if (permission === 'granted') toast.success("Notifications système activées");
+      }
+  };
+
+  const filteredNotifs = useMemo(() => {
+    if (activeFilter === 'all') return bufferedNotifs;
+    return bufferedNotifs.filter(n => 
+        activeFilter === 'approval' ? (n.type === 'approval' || n.type === 'rejection') : n.type === 'system'
+    );
+  }, [bufferedNotifs, activeFilter]);
+
+  const handleDelete = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // Avoid triggering onRead
+    setBufferedNotifs(prev => prev.filter(n => n.id !== id));
+    await db.notifications.delete(id);
+  };
+
   const handleClearAll = async () => {
-    await db.notifications.where('read').equals(1).delete();
+    // Correct Dexie query for boolean field 'read'
+    const toDelete = await db.notifications.where('read').equals(true).toArray();
+    if (toDelete.length > 0) {
+      await db.notifications.bulkDelete(toDelete.map(n => n.id));
+      setBufferedNotifs(prev => prev.filter(n => !n.read));
+    }
   };
 
   const getItemStyles = (type: string) => {
@@ -201,39 +260,76 @@ export default function NotificationCenter() {
                 className="fixed left-4 right-4 top-16 lg:left-80 lg:right-auto lg:top-8 w-auto lg:w-96 h-[calc(100vh-100px)] lg:h-[calc(100vh-64px)] bg-slate-900/90 backdrop-blur-md lg:backdrop-blur-2xl border border-white/10 rounded-[2.5rem] shadow-2xl z-[9999] overflow-hidden flex flex-col"
               >
                 {/* Header */}
-                <div className="shrink-0 p-6 border-b border-white/5 flex items-center justify-between bg-gradient-to-r from-blue-500/5 to-transparent">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-xl bg-blue-600/20 flex items-center justify-center">
-                      <Bell size={16} className="text-blue-400" />
+                <div className="shrink-0 p-6 border-b border-white/5 bg-gradient-to-r from-blue-500/5 to-transparent">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-xl bg-blue-600/20 flex items-center justify-center">
+                            <Bell size={16} className="text-blue-400" />
+                        </div>
+                        <h3 className="text-sm font-black text-white uppercase tracking-widest">Flux d'Alertes</h3>
                     </div>
-                    <h3 className="text-sm font-black text-white uppercase tracking-widest">Flux d'Alertes</h3>
+                    <div className="flex items-center gap-1">
+                        {notifPermission !== 'granted' && (
+                            <button 
+                                onClick={handleRequestPermission}
+                                className="p-2 text-rose-500 hover:bg-rose-500/10 rounded-lg transition-all"
+                                title="Activer les notifications Windows"
+                            >
+                                <Zap size={14} />
+                            </button>
+                        )}
+                        <button 
+                            onClick={handleMarkAllAsRead}
+                            className="p-2 text-blue-400 hover:bg-blue-400/10 rounded-lg transition-all"
+                            title="Tout marquer comme lu"
+                        >
+                            <CheckCircle2 size={16} />
+                        </button>
+                        <button 
+                            onClick={handleClearAll}
+                            className="p-2 text-slate-500 hover:text-white transition-colors"
+                            title="Nettoyer l'historique lu"
+                        >
+                            <Trash2 size={16} />
+                        </button>
+                        <button 
+                            onClick={() => setIsOpen(false)}
+                            className="p-2 text-slate-500 hover:text-white transition-colors"
+                        >
+                            <X size={18} />
+                        </button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <button 
-                      onClick={handleClearAll}
-                      className="p-2 text-slate-500 hover:text-white transition-colors"
-                      title="Nettoyer définitivement les notifications lues"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                    <button 
-                      onClick={() => setIsOpen(false)}
-                      className="p-2 text-slate-500 hover:text-white transition-colors"
-                      title="Fermer le panneau des alertes"
-                    >
-                      <X size={18} />
-                    </button>
+
+                  {/* Filter Tabs */}
+                  <div className="flex items-center gap-1 p-1 bg-black/40 rounded-xl">
+                      {[
+                        { id: 'all', label: 'Toutes', count: bufferedNotifs.length },
+                        { id: 'approval', label: 'Missions', count: bufferedNotifs.filter(n => n.type === 'approval' || n.type === 'rejection').length },
+                        { id: 'system', label: 'Système', count: bufferedNotifs.filter(n => n.type === 'system').length }
+                      ].map(tab => (
+                          <button
+                            key={tab.id}
+                            onClick={() => setActiveFilter(tab.id as any)}
+                            className={`flex-1 py-1.5 px-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${
+                                activeFilter === tab.id ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'
+                            }`}
+                          >
+                              {tab.label} ({tab.count})
+                          </button>
+                      ))}
                   </div>
                 </div>
 
                 {/* Scroll Area */}
                 <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3 custom-scrollbar">
-                  {bufferedNotifs.length > 0 ? (
-                    bufferedNotifs.map((notif) => (
+                  {filteredNotifs.length > 0 ? (
+                    filteredNotifs.map((notif) => (
                       <NotificationItem 
                         key={notif.id} 
                         notif={notif} 
                         onRead={handleMarkAsRead}
+                        onDelete={handleDelete}
                         styles={getItemStyles(notif.type)}
                       />
                     ))
@@ -252,6 +348,10 @@ export default function NotificationCenter() {
                 <div className="shrink-0 p-4 bg-black/20 border-t border-white/5">
                   <button 
                     title="Accéder à l'archive complète de vos notifications depuis le début de la mission"
+                    onClick={() => {
+                        setIsOpen(false);
+                        navigate('/admin/alerts');
+                    }}
                     className="w-full py-3 rounded-xl bg-white/5 hover:bg-white/10 text-[10px] font-black text-slate-400 hover:text-white uppercase tracking-[0.2em] transition-all"
                   >
                     Voir tout l'historique

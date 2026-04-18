@@ -18,7 +18,7 @@ const transporter = nodemailer.createTransport({
 /**
  * Service d'envoi de mail général avec template HTML Proquelec
  */
-export const sendMail = async ({ to, subject, title, body, actionLink, actionLabel }) => {
+export const sendMail = async ({ to, subject, title, body, actionLink, actionLabel, attachments }) => {
     try {
         const html = `
         <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 15px;">
@@ -53,7 +53,8 @@ export const sendMail = async ({ to, subject, title, body, actionLink, actionLab
             from: process.env.SMTP_FROM || '"GEM SAAS Notification" <noreply@gem-saas.com>',
             to,
             subject: `[PROQUELEC] ${subject}`,
-            html
+            html,
+            attachments: attachments || []
         });
 
         console.log(`📧 Mail envoyé à: ${to} (Sujet: ${subject})`);

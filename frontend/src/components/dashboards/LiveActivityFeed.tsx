@@ -70,7 +70,7 @@ export default function LiveActivityFeed({ activities }: { activities: ActivityI
                 className={`absolute left-[-5px] top-1 w-2.5 h-2.5 rounded-full ${accentColor} shadow-lg`}
               />
 
-              <div className="bg-white dark:bg-white dark:bg-slate-900/5 border border-slate-100 dark:border-white/5 rounded-2xl p-4 hover:shadow-lg transition-all group">
+              <div className="bg-white dark:bg-slate-900/5 border border-slate-100 dark:border-white/5 rounded-2xl p-4 hover:shadow-lg transition-all group">
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex items-center gap-2">
                     <div

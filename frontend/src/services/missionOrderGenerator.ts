@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import QRCode from 'qrcode';
 import logger from '../utils/logger';
 import type {
   MissionOrderData,
@@ -163,6 +164,29 @@ export const generateMissionOrderPDF = async (data: MissionOrderData) => {
   doc.text(doc.splitTextToSize(note, w - 28), 14, currentY);
   doc.setTextColor(...DARK);
   currentY += 16;
+
+  // ── QR CODE DE VÉRIFICATION GÉNÉRÉ ──
+  try {
+    const integrityToken = data.integrityHash ? `&h=${data.integrityHash.substring(0, 8)}` : '';
+    const verifyUrl = `${window.location.origin}/verify/mission/${data.orderNumber || data.date}${integrityToken}`;
+    const qrDataUrl = await QRCode.toDataURL(verifyUrl, {
+      margin: 1,
+      width: 100,
+      color: { dark: '#0f172a', light: '#ffffff' }
+    });
+    doc.addImage(qrDataUrl, 'PNG', 14, currentY - 5, 20, 20);
+    doc.setFontSize(7);
+    doc.setTextColor(...GRAY);
+    doc.text('SCANNEZ POUR VÉRIFIER', 14, currentY + 18);
+    
+    if (data.integrityHash) {
+      doc.setFontSize(6);
+      doc.text(`ID-HASH: ${data.integrityHash.toUpperCase()}`, 14, currentY + 22);
+    }
+    doc.setTextColor(...DARK);
+  } catch (qrErr) {
+    console.error('QR Generation failed', qrErr);
+  }
 
   // ── BLOC SIGNATURE DG ──
   const dgCenterX = w - 55;
@@ -348,7 +372,9 @@ export const generateMissionOrderPDF = async (data: MissionOrderData) => {
     doc.text(`${footerText} - Page ${p}/${pageCount}`, w / 2, h - 10, { align: 'center' });
   }
 
-  doc.save(`Ordre_Mission_${data.orderNumber.replace('/', '-')}.pdf`);
+  const fileName = (data.orderNumber || 'PROVISOIRE').replace(/\//g, '-');
+  doc.save(`Ordre_Mission_${fileName}.pdf`);
+  return doc.output('blob');
 };
 
 export const generateMissionReportPDF = async (data: MissionOrderData) => {

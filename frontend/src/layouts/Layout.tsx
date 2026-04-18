@@ -2,7 +2,8 @@ import React from 'react';
 import Sidebar from '../components/Sidebar';
 import SyncAlertBanner from '../components/SyncAlertBanner';
 import { useWebSockets } from '../hooks/useWebSockets';
-import CommandPalette from '../components/CommandPalette';
+import { CommandPalette } from '../components/common/CommandPalette';
+import { useBackgroundSync } from '../hooks/useBackgroundSync';
 
 /**
  * Layout – Shell principal de l'application GEM SAAS.
@@ -25,6 +26,7 @@ import CommandPalette from '../components/CommandPalette';
  */
 export default function Layout({ children }: { children: React.ReactNode }) {
   useWebSockets();
+  useBackgroundSync();
 
   return (
     /**

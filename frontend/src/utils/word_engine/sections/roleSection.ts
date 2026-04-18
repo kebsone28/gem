@@ -195,7 +195,11 @@ export const createRoleSection = async (data: any, qrBuffer?: ArrayBuffer | null
   // 5. Pricing Table
   if (pricing) {
     children.push(createSectionHeader('8. Bordereau de Prix Unitaire', COLORS.PRIMARY));
-    const totalHT = pricing.dailyRate * pricing.personnelCount * pricing.durationDays;
+    const safeRate = Number(pricing.dailyRate) || 0;
+    const safeCount = Number(pricing.personnelCount) || 0;
+    const safeDuration = Number(pricing.durationDays) || 0;
+
+    const totalHT = safeRate * safeCount * safeDuration;
     const tva = totalHT * 0.18;
     const totalTTC = totalHT + tva;
 

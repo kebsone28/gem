@@ -1,100 +1,31 @@
 import type { Household } from './types';
-
-// ── Mapping des couleurs pour les 7 statuts ──
-export const STATUS_TO_HEX_COLOR: Record<string, string> = {
-  'Contrôle conforme': '#10b981', // Vert émeraude
-  'Non conforme': '#f43f5e', // Rouge rose
-  'Non éligible': '#64748b', // Slate 500
-  Désistement: '#64748b', // Slate 500
-  Eligible: '#3b82f6', // Bleu
-  Installé: '#10b981', // Vert
-  Refusé: '#f43f5e', // Rouge
-  'Intérieur terminé': '#818cf8', // Indigo clair
-  'Réseau terminé': '#3b82f6', // Bleu
-  'Murs terminés': '#f59e0b', // Orange/Ambre
-  'Livraison effectuée': '#06b6d4', // Cyan
-  'Non encore commencé': '#94a3b8', // Slate/Gris
-  'En attente': '#94a3b8', // Gris
-  'Non débuté': '#94a3b8', // Gris
-};
-
-export const STATUS_TO_TAILWIND_COLORS: Record<string, { text: string; bg: string }> = {
-  'Contrôle conforme': { text: 'text-emerald-500', bg: 'bg-emerald-500/10' },
-  'Non conforme': { text: 'text-rose-500', bg: 'bg-rose-500/10' },
-  'Non éligible': { text: 'text-slate-500', bg: 'bg-slate-500/10' },
-  Désistement: { text: 'text-slate-500', bg: 'bg-slate-500/10' },
-  Eligible: { text: 'text-blue-500', bg: 'bg-blue-500/10' },
-  Installé: { text: 'text-emerald-500', bg: 'bg-emerald-500/10' },
-  Refusé: { text: 'text-rose-500', bg: 'bg-rose-500/10' },
-  'Intérieur terminé': { text: 'text-blue-400', bg: 'bg-blue-400/10' },
-  'Réseau terminé': { text: 'text-blue-500', bg: 'bg-blue-500/10' },
-  'Murs terminés': { text: 'text-amber-500', bg: 'bg-amber-500/10' },
-  'Livraison effectuée': { text: 'text-cyan-500', bg: 'bg-cyan-500/10' },
-  'Non encore commencé': { text: 'text-slate-500', bg: 'bg-slate-500/10' },
-  'En attente': { text: 'text-slate-500', bg: 'bg-slate-500/10' },
-  'Non débuté': { text: 'text-slate-500', bg: 'bg-slate-500/10' },
-};
-
-/**
- * Normalisation robuste des statuts Kobo
- */
-const normalizeText = (text: string): string =>
-  text
-    .toLowerCase()
-    .normalize('NFD')
-
-    .replace(/[\u0300-\u036f]/g, '');
-
-export const normalizeStatus = (status?: string): string => {
-  if (!status) return 'Inconnu';
-
-  const s = normalizeText(status);
-
-  // Priorité haute pour éviter les collisions de "non"
-  if (s.includes('non eligible') || s.includes('inelegible') || s.includes('ineligi'))
-    return 'Non éligible';
-  if (s.includes('desist')) return 'Désistement';
-  if (s.includes('refus')) return 'Refusé';
-
-  if (s.includes('non conforme')) return 'Non conforme';
-  if (s.includes('conforme')) return 'Contrôle conforme';
-  if (s.includes('termine')) return 'Contrôle conforme';
-
-  if (s.includes('install')) return 'Installé';
-  if (s.includes('eligible')) return 'Eligible';
-
-  if (s.includes('interieur')) return 'Intérieur terminé';
-  if (s.includes('reseau')) return 'Réseau terminé';
-  if (s.includes('mur')) return 'Murs terminés';
-  if (s.includes('livraison')) return 'Livraison effectuée';
-
-  if (s.includes('non debut') || s.includes('non demarr') || s.includes('pending'))
-    return 'Non débuté';
-
-  if (s.includes('attente') || s.includes('plan')) return 'En attente';
-
-  return 'Inconnu';
-};
+import { getStatusMeta, normalizeStatus } from '../domain/status/statusUtils';
 
 /**
  * Obtenir la couleur hex d'un statut
  */
 export const getStatusHexColor = (status?: string): string => {
-  const normalized = normalizeStatus(status);
-  return STATUS_TO_HEX_COLOR[normalized] ?? '#94a3b8';
+  const meta = getStatusMeta(status);
+  // Un peu hacky mais on continue de supporter text-XYZ-500 vers hex
+  if (meta.color.includes('emerald')) return '#10b981';
+  if (meta.color.includes('rose')) return '#f43f5e';
+  if (meta.color.includes('blue')) return '#3b82f6';
+  if (meta.color.includes('cyan')) return '#06b6d4';
+  if (meta.color.includes('amber')) return '#f59e0b';
+  if (meta.color.includes('indigo')) return '#818cf8';
+  return '#64748b'; // slate fallback
 };
 
 /**
  * Obtenir les classes Tailwind CSS pour un statut (texte + fond)
+ * @deprecated Use getStatusMeta(status) directly instead
  */
 export const getStatusTailwindClasses = (status?: string) => {
-  const normalized = normalizeStatus(status);
-  return (
-    STATUS_TO_TAILWIND_COLORS[normalized] ?? {
-      text: 'text-slate-500',
-      bg: 'bg-slate-500/10',
-    }
-  );
+  const meta = getStatusMeta(status);
+  return {
+    text: meta.color,
+    bg: meta.bg,
+  };
 };
 
 export const getHouseholdDerivedStatus = (h: Household) => {

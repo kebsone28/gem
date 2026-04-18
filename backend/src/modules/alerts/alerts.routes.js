@@ -3,13 +3,18 @@
  */
 
 import express from 'express';
-import { authenticate } from '../../middleware/auth.js';
+import { authProtect } from '../../api/middlewares/auth.js';
 import * as alertsController from './alerts.controller.js';
 
 const router = express.Router();
 
 // Middlewares d'authentification
-router.use(authenticate);
+router.use(authProtect);
+
+// ⚠️ Routes STATIQUES en premier (avant les routes dynamiques /:id)
+// Configuration
+router.get('/config/organization', alertsController.getAlertConfig);
+router.patch('/config/organization', alertsController.updateAlertConfig);
 
 // Alertes CRUD
 router.get('/:projectId', alertsController.getProjectAlerts);
@@ -19,9 +24,5 @@ router.patch('/:alertId/resolve', alertsController.resolveAlert);
 
 // Stats et analytics
 router.get('/:projectId/stats', alertsController.getAlertStats);
-
-// Configuration
-router.get('/config/organization', alertsController.getAlertConfig);
-router.patch('/config/organization', alertsController.updateAlertConfig);
 
 export default router;

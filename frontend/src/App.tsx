@@ -29,6 +29,7 @@ const DiagnosticSante = lazy(() => import('./pages/DiagnosticSante'));
 const SecuritySettings = lazy(() => import('./pages/SecuritySettings'));
 const MissionOrder = lazy(() => import('./pages/MissionOrder'));
 const Approbation = lazy(() => import('./pages/Approbation'));
+const MissionVerification = lazy(() => import('./pages/MissionVerification'));
 const KoboTerminal = lazy(() => import('./pages/DashboardViews/KoboTerminal'));
 const KoboMappingMaster = lazy(() => import('./pages/KoboMappingMaster'));
 const OrganizationSettings = lazy(() => import('./pages/OrganizationSettings'));
@@ -81,6 +82,7 @@ function App() {
       <Suspense fallback={<PageLoader />}>
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/verify/mission/:identifier" element={<MissionVerification />} />
 
           <Route
             path="/dashboard"

@@ -13,6 +13,7 @@ import { useSync } from '../contexts/SyncContext';
 import { useLogistique } from '../hooks/useLogistique';
 import { useSyncListener } from '../hooks/useSyncListener';
 import { usePermissions } from '../hooks/usePermissions';
+import { isMasterAdmin } from '../utils/permissions';
 import { MapRoutingPanel } from '../components/terrain/MapRoutingPanel';
 import { GeofencingAlerts } from '../components/terrain/GeofencingAlerts';
 import { PhotoLightbox } from '../components/terrain/PhotoLightbox';
@@ -41,7 +42,6 @@ import { useRouting } from '../hooks/useRouting';
 
 import TopBar from './Terrain/TopBar';
 import BottomBar from './Terrain/BottomBar';
-import ProjectModals from './Terrain/ProjectModals';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 
 import '../components/terrain/MapWidgets.css';
@@ -50,7 +50,7 @@ import { ContentArea } from '../components';
 
 const Terrain: React.FC = () => {
   // 1. Core Data & Contexts
-  const { households, updateHouseholdStatus, updateHouseholdLocation, uploadHouseholdPhoto } =
+  const { households, updateHouseholdStatus, updateHouseholdLocation, uploadHouseholdPhoto, updateHousehold } =
     useTerrainData();
 
   const { project, createProject, deleteProject } = useProject();
@@ -59,21 +59,12 @@ const Terrain: React.FC = () => {
   const { user } = useAuth();
   const { peut, PERMISSIONS } = usePermissions();
 
-  // 2. Local State & Refs
   const [mapBounds, setMapBounds] = useState<[number, number, number, number] | null>(null);
   const [isOfflineMode, setIsOfflineMode] = useState(!navigator.onLine);
 
-  // Modals state
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [deletePassword, setDeletePassword] = useState('');
-  const [deleteError, setDeleteError] = useState('');
-  const [deleteAttempts, setDeleteAttempts] = useState(0);
-  const [lockoutUntil, setLockoutUntil] = useState<number | null>(null);
-  const [showCreateProjectModal, setShowCreateProjectModal] = useState(false);
-  const [newProjectName, setNewProjectName] = useState('');
+  // Modals state (Removed unused ProjectModals)
   const [isGeolocationRequestInProgress, setIsGeolocationRequestInProgress] = useState(false);
   const [geolocationToastId, setGeolocationToastId] = useState<string | number | null>(null);
-  const modalInputRef = useRef<HTMLInputElement>(null);
 
   // 3. Zustand Store
   const activePanel = useTerrainUIStore((s) => s.activePanel);
@@ -137,57 +128,7 @@ const Terrain: React.FC = () => {
   const syncInitializedRef = useRef(false);
   const autoCenterInitializedRef = useRef(false);
 
-  // 5. Initial Sync, Auto-Center & Smart Background Sync
-  useEffect(() => {
-    // Guard against StrictMode double-mount
-    if (syncInitializedRef.current) {
-      logger.debug('⏭️ [Terrain] Sync already initialized, skipping (double-mount guard)');
-      return;
-    }
-    syncInitializedRef.current = true;
-    logger.log('🔄 [Terrain] Mounting - Initializing safe sync engine...');
-
-    let isSyncing = false;
-
-    const safeSync = async () => {
-      if (!navigator.onLine) {
-        logger.log('📡 [Terrain] Offline, skipping background sync.');
-        return;
-      }
-      if (document.hidden) {
-        logger.log('👁️ [Terrain] App hidden, skipping background sync.');
-        return;
-      }
-      if (isSyncing) return;
-
-      isSyncing = true;
-      try {
-        // Here we call the manual sync wrapper to trigger UI updates and background events
-        // Fallback to forceSync if handleManualSync isn't available contextually
-        forceSync();
-      } catch (err) {
-        logger.error('Erreur durant SafeSync', err);
-      } finally {
-        isSyncing = false;
-      }
-    };
-
-    // Lancement initial
-    safeSync();
-
-    // Reprise automatique à la connexion internet
-    window.addEventListener('online', safeSync);
-
-    // Boucle 10 minutes
-    const SYNC_INTERVAL = 10 * 60 * 1000;
-    const intervalId = setInterval(safeSync, SYNC_INTERVAL);
-
-    return () => {
-      clearInterval(intervalId);
-      window.removeEventListener('online', safeSync);
-    };
-  }, [forceSync]);
-
+  // 5. Auto-Center
   useEffect(() => {
     // Guard: Only auto-center once on first household load
     if (autoCenterInitializedRef.current) return;
@@ -352,76 +293,8 @@ const Terrain: React.FC = () => {
     toast.success('Itinéraire annulé');
   }, [cancelRouting]);
 
-  const confirmCreateProject = useCallback(async () => {
-    if (newProjectName.trim()) {
-      await createProject(newProjectName.trim());
-      setShowCreateProjectModal(false);
-      setNewProjectName('');
-    }
-  }, [newProjectName, createProject]);
-
-  const handleDeleteProject = useCallback(async () => {
-    if (!project?.id) return;
-
-    // ✅ SECURITY: Check ratelimit
-    if (lockoutUntil && Date.now() < lockoutUntil) {
-      const remainingSeconds = Math.ceil((lockoutUntil - Date.now()) / 1000);
-      setDeleteError(`Trop de tentatives. Réessayez dans ${remainingSeconds}s.`);
-      return;
-    }
-
-    if (!deletePassword) {
-      setDeleteError('Veuillez entrer votre mot de passe.');
-      return;
-    }
-
-    const result = await deleteProject(project.id, deletePassword);
-    if (!result.success) {
-      // ✅ SECURITY: Increment attempts and lock out after 3 tries
-      const newAttempts = deleteAttempts + 1;
-      setDeleteAttempts(newAttempts);
-      if (newAttempts >= 3) {
-        const lockoutTime = Date.now() + 5 * 60 * 1000; // 5 minutes lockout
-        setLockoutUntil(lockoutTime);
-        setDeleteError('Trop de tentatives. Veuillez réessayer dans 5 minutes.');
-      } else {
-        setDeleteError(result.error || 'Mot de passe incorrect.');
-      }
-      // ✅ Clear password for security
-      setDeletePassword('');
-      return;
-    }
-
-    // ✅ Success: Reset all state
-    setShowDeleteModal(false);
-    setDeletePassword('');
-    setDeleteError('');
-    setDeleteAttempts(0);
-    setLockoutUntil(null);
-    toast.success('Projet supprimé avec succès');
-    navigate('/dashboard');
-  }, [project, deletePassword, deleteProject, deleteAttempts, lockoutUntil, navigate]);
-
-  // Keyboard shortcuts for modals
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return;
-      if (showDeleteModal || showCreateProjectModal) {
-        e.preventDefault();
-        setShowDeleteModal(false);
-        setShowCreateProjectModal(false);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showDeleteModal, showCreateProjectModal]);
-
-  useEffect(() => {
-    if (showCreateProjectModal || showDeleteModal) {
-      setTimeout(() => modalInputRef.current?.focus(), 50);
-    }
-  }, [showCreateProjectModal, showDeleteModal]);
-
+  // Keyboard shortcuts removed
+  
   // 7. Memoized Computed Values
   const selectedHousehold = useMemo(
     () => (households || []).find((h) => h.id === selectedHouseholdId) || null,
@@ -728,31 +601,18 @@ const Terrain: React.FC = () => {
           onPhotoOpen={openLightbox}
           onStatusUpdate={(status) => updateHouseholdStatus(selectedHousehold.id, status)}
           onPhotoUpload={(file) => uploadHouseholdPhoto(selectedHousehold.id, file)}
-          isFavorite={isFavorite}
-          toggleFavorite={toggleFavorite}
+          onUpdate={(id, patch) => updateHousehold(id, patch)}
+          isFavorite={isFavorite(selectedHousehold.id)}
+          toggleFavorite={() => toggleFavorite(selectedHousehold.id)}
           onTraceItinerary={handleTraceItinerary}
           onCancelItinerary={handleCancelItinerary}
           routeStats={routeStats || null}
           grappeInfo={selectedHouseholdGrappeInfo}
+          isAdmin={peut(PERMISSIONS.MODIFIER_CARTE)}
         />
       )}
 
       <AnimatePresence>{lightboxPhotos.length > 0 && <PhotoLightbox />}</AnimatePresence>
-
-      <ProjectModals
-        showCreate={showCreateProjectModal}
-        showDelete={showDeleteModal}
-        newProjectName={newProjectName}
-        onNewProjectNameChange={setNewProjectName}
-        deletePassword={deletePassword}
-        onDeletePasswordChange={setDeletePassword}
-        deleteError={deleteError}
-        onCreateConfirm={confirmCreateProject}
-        onDeleteConfirm={handleDeleteProject}
-        onCloseCreate={() => setShowCreateProjectModal(false)}
-        onCloseDelete={() => setShowDeleteModal(false)}
-        modalInputRef={modalInputRef}
-      />
     </div>
   );
 };

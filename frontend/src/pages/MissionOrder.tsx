@@ -45,6 +45,7 @@ import { MissionMiniMap, MissionStatusWidget, MissionSimplifiedMode } from '../c
 import { MissionApprovalStatusBanner } from './mission/components/MissionApprovalStatusBanner';
 import { MissionNotificationCenter } from './mission/components/MissionNotificationCenter';
 import { PageContainer, PageHeader, ContentArea } from '../components';
+import { WidgetErrorBoundary } from '../components/common/WidgetErrorBoundary';
 
 const DEFAULT_PLANNING_STEPS = [
   "Jour 1 : Dakar ➔ Tambacounda (Mise en route)\n• Matin : Départ 06h00 de Dakar.\n• Après-midi : Trajet Dakar-Tamba.\n• Soir : Réunion de cadrage initiale avec l'entrepreneur principal de Tamba.",
@@ -452,6 +453,9 @@ export default function MissionOrder() {
         });
 
         missionState.setCertified(true);
+        if (syncResult?.orderNumber) {
+          missionState.updateFormField('orderNumber', syncResult.orderNumber);
+        }
         missionState.addAuditEntry('Certification DG & Signature confirmée', 'Directeur Général');
         const updated = await db.missions.get(syncResult?.assignedId || state.currentMissionId!);
         if (updated) {
@@ -494,7 +498,8 @@ export default function MissionOrder() {
       <ContentArea>
         {/* BARRE D'ACTIONS - HAUTE PRIORITÉ Z-INDEX */}
         <div className="relative z-50 mb-8 no-print">
-          <MissionOrderActionBar
+          <WidgetErrorBoundary title="Barre d'Actions">
+            <MissionOrderActionBar
             formData={state.formData}
             currentMissionId={state.currentMissionId}
             role={role || ''}
@@ -533,6 +538,7 @@ export default function MissionOrder() {
             isCertified={state.isCertified}
             isSubmitted={state.isSubmitted}
           />
+          </WidgetErrorBoundary>
         </div>
 
         {/* GRILLE PRINCIPALE */}
@@ -544,6 +550,7 @@ export default function MissionOrder() {
               currentMissionId={state.currentMissionId}
               onLoadMission={handleLoadMission}
               onDeleteMission={handleDeleteMission}
+              isCertifiedByWorkflow={workflow?.overallStatus === 'approved'}
             />
           </div>
 
@@ -612,19 +619,21 @@ export default function MissionOrder() {
                   projectBudget={projectBudget}
                   members={state.members}
                 />
+              <WidgetErrorBoundary title="Indicateurs de Statut">
                 <MissionStatusWidget
                   data={state.formData}
                   members={state.members}
-                  isCertified={state.isCertified}
-                  isSubmitted={state.isSubmitted}
+                  isCertified={state.isCertified || workflow?.overallStatus === 'approved'}
+                  isSubmitted={state.isSubmitted || (workflow && workflow.currentStep > 1)}
                   isSyncing={state.isSyncingServer}
-                  lastSync={state.lastSavedAt || 'Jamais'}
+                  lastSync={state.lastSavedAt || 'Synchronisé'}
                   version={state.version}
                   isDirty={missionState.isDirty}
                   healthScore={healthScore}
                   healthStatus={healthStatus}
                   budgetVariance={budgetVariance}
                 />
+              </WidgetErrorBoundary>
               </div>
             </div>
           </div>

@@ -138,12 +138,12 @@ export function extractStatus(row, config = {}) {
     ]);
     if (sit) {
         const str = String(sit).toLowerCase();
-        if (str.includes('non_eligible') || str.includes('non éligible')) return 'Ménage non éligible';
+        if (str.includes('non_eligible') || str.includes('non éligible')) return 'Non éligible';
     }
 
     // 2. Desistement Check
     const just = getValue(row, 'justificatif', config, ['group_wu8kv54/justificatif', 'justificatif']);
-    if (just && String(just).toLowerCase().includes('desistement')) return 'Ménage désisté';
+    if (just && String(just).toLowerCase().includes('desistement')) return 'Désistement';
 
     // 3. Progression Checkpoints from Config (New: Allow projects to define their ok/fail fields)
     const isControlOk = getValue(row, 'status_control_ok', config, ['validation_controleur_final']) === 'true' || row['✅ Je valide le contrôle et l\'installation est conforme'] === 'true';
@@ -156,46 +156,152 @@ export function extractStatus(row, config = {}) {
     if (isInterieurOk) return 'Intérieur terminé';
     if (isReseauOk) return 'Réseau terminé';
     if (isMaconOk) return 'Murs terminés';
-    if (isLivreurOk) return 'Livraison effectuée';
-
-    return 'Non débuté';
+    return 'Non encore commencé';
 }
 
 /**
  * Extract technical construction data (Excel Form mapping)
+ * Exhaustive mapping following aEYZwPujJiFBTNb6mxMGCB XLSForm definition
  */
 export function extractConstructionData(row) {
     return {
+        preparateur: {
+            kits_prepares: row['group_ed3yt17/Nombre_de_KIT_pr_par'] || row['Nombre_de_KIT_pr_par'],
+            kits_charges: row['group_ed3yt17/Nombre_de_KIT_Charg_pour_livraison'] || row['Nombre_de_KIT_Charg_pour_livraison']
+        },
         livreur: {
             situation: row['group_wu8kv54/Situation_du_M_nage'] || row['Situation_du_M_nage'],
-            câble_2_5: row['group_sy9vj14/Longueur_câble_2_5mm_Int_rieure'] || row['Longueur_câble_2_5mm_Int_rieure'],
-            câble_1_5: row['group_sy9vj14/Longueur_câble_1_5mm_Int_rieure'] || row['Longueur_câble_1_5mm_Int_rieure'],
-            tranchee_4: row['group_sy9vj14/Longueur_Tranch_e_câble_arm_4mm'] || row['Longueur_Tranch_e_câble_arm_4mm'],
-            materiel_remis: row['group_sy9vj14/Je_confirme_la_remis_u_materiel_au_m_nage'] === 'true'
+            justificatif: row['group_wu8kv54/justificatif'] || row['justificatif'],
+            menage_status: row['group_wu8kv54/New_Question'] || row['New_Question'], // Ménage avec/sans Mur
+            kit_problems: row['group_wu8kv54/POURQUOI'] || row['POURQUOI'] || '',
+            câble_2_5: row['group_sy9vj14/Longueur_Cable_2_5mm_Int_rieure'] || row['Longueur_Cable_2_5mm_Int_rieure'],
+            câble_1_5: row['group_sy9vj14/Longueur_Cable_1_5mm_Int_rieure'] || row['Longueur_Cable_1_5mm_Int_rieure'],
+            tranchee_4: row['group_sy9vj14/Longueur_Tranch_e_Cable_arm_4mm'] || row['Longueur_Tranch_e_Cable_arm_4mm'],
+            tranchee_1_5: row['group_sy9vj14/Longueur_Tranch_e_C_ble_arm_1_5mm'] || row['Longueur_Tranch_e_C_ble_arm_1_5mm'],
+            materiel_remis: row['group_sy9vj14/Je_confirme_la_remis_u_materiel_au_m_nage'] === 'true' || row['Je_confirme_la_remis_u_materiel_au_m_nage'] === 'true',
+            marquage_mur_coffret: row['group_sy9vj14/Je_confirme_le_marqu_osition_des_coffrets'] === 'true' || row['Je_confirme_le_marqu_osition_des_coffrets'] === 'true',
+            marquage_emplacement: row['group_sy9vj14/Je_confirme_le_marqu_s_coffret_lectrique'] === 'true' || row['Je_confirme_le_marqu_s_coffret_lectrique'] === 'true'
         },
         macon: {
+            kit_disponible: row['etape_macon/kit_disponible_macon'] || row['kit_disponible_macon'],
+            problemes_kit: row['etape_macon/problemes_kit_macon'] || row['problemes_kit_macon'],
             type_mur: row['etape_macon/type_mur_realise_macon'] || row['type_mur_realise_macon'],
-            termine: row['etape_macon/validation_macon_final'] === 'true' || row['validation_macon_final'] === 'true'
+            termine: row['etape_macon/validation_macon_final'] === 'true' || row['validation_macon_final'] === 'true',
+            problemes: row['etape_macon/problemes_travail_macon'] || row['problemes_travail_macon'] || row['PROBLEME'] || ''
         },
         reseau: {
+            verif_mur: row['etape_reseau/verification_mur_reseau'] || row['verification_mur_reseau'],
+            problemes_mur: row['etape_reseau/problemes_mur_reseau'] || row['problemes_mur_reseau'],
             etat: row['etape_reseau/etat_branchement_reseau'] || row['etat_branchement_reseau'],
+            problemes_branchement: row['etape_reseau/problemes_branchement_reseau'] || row['problemes_branchement_reseau'],
             termine: row['etape_reseau/validation_reseau_final'] === 'true' || row['validation_reseau_final'] === 'true'
         },
         interieur: {
+            verif_branchement: row['etape_interieur/verification_branchement_interieur'] || row['verification_branchement_interieur'],
+            problemes_branchement: row['etape_interieur/problemes_branchement_interieur'] || row['problemes_branchement_interieur'],
             etat: row['etape_interieur/etat_installation_interieur'] || row['etat_installation_interieur'],
+            problemes_installation: row['etape_interieur/problemes_installation_interieur'] || row['problemes_installation_interieur'],
             termine: row['etape_interieur/validation_interieur_final'] === 'true' || row['validation_interieur_final'] === 'true'
         },
-        controle: {
+        audit: {
             etat_global: row['etape_controleur/ETAT_DE_L_INSTALLATION'] || row['ETAT_DE_L_INSTALLATION'],
+            problemes_controleur: row['etape_controleur/controleurPROB'] || row['controleurPROB'],
             phase: row['etape_controleur/Phase_de_controle'] || row['Phase_de_controle'],
+            // Branchement Details
+            etat_branchement: row['etape_controleur/group_zw7xz94/ETAT_BRANCHEMENT'] || row['ETAT_BRANCHEMENT'],
+            obs_branchement: row['etape_controleur/group_zw7xz94/OBSERVATION'] || row['OBSERVATION'],
+            pos_branchement: row['etape_controleur/group_wr05k35/Position_du_branchement'] || row['Position_du_branchement'],
+            obs_pos_branchement: row['etape_controleur/group_wr05k35/Observations_sur_la_ition_du_branchement'] || row['Observations_sur_la_ition_du_branchement'],
+            hauteur_branchement: row['etape_controleur/group_wr05k35/Hauteur_branchement'] || row['Hauteur_branchement'],
+            obs_generales: row['etape_controleur/group_wr05k35/Observations'] || row['Observations'],
+            hauteur_coffret: row['etape_controleur/group_wr05k35/Hauteur_coffret'] || row['Hauteur_coffret'],
+            obs_hauteur_coffret: row['etape_controleur/group_wr05k35/Observations_001'] || row['Observations_001'],
+            etat_coupe_circuit: row['etape_controleur/group_wr05k35/Etat_du_coupe_circuit'] || row['Etat_du_coupe_circuit'],
+            obs_coupe_circuit: row['etape_controleur/group_wr05k35/OBSERVATION_001'] || row['OBSERVATION_001'],
+            pvc_isolation: row['etape_controleur/group_wr05k35/Continuit_PVC'] || row['Continuit_PVC'],
+            obs_pvc: row['etape_controleur/group_wr05k35/OBSERVATION_002'] || row['OBSERVATION_002'],
+            mise_en_oeuvre_branchement: row['etape_controleur/group_wr05k35/Mise_en_oeuvre'] || row['Mise_en_oeuvre'],
+            obs_mise_en_oeuvre: row['etape_controleur/group_wr05k35/OBSERVATION_003'] || row['OBSERVATION_003'],
+            // Installation Intérieure Details
+            disjoncteur_tete: row['etape_controleur/group_hx7ae46/DISJONCTEUR_GENERAL_EN_TETE_D_'] || row['DISJONCTEUR_GENERAL_EN_TETE_D_'],
+            obs_disjoncteur: row['etape_controleur/group_hx7ae46/OBSERVATIONS_'] || row['OBSERVATIONS_'],
+            type_disjoncteur: row['etape_controleur/group_hx7ae46/TYPE_DE_DISJONCTEUR_GENERAL'] || row['TYPE_DE_DISJONCTEUR_GENERAL'],
+            protection_ddr_30ma: row['etape_controleur/group_hx7ae46/ENSEMBLE_DE_L_INSTALLATION_PRO'] || row['ENSEMBLE_DE_L_INSTALLATION_PRO'],
+            obs_ddr: row['etape_controleur/group_hx7ae46/OBSERVATIONS__001'] || row['OBSERVATIONS__001'],
+            protection_origine: row['etape_controleur/group_hx7ae46/PROTECTION_L_ORIGINE_DE_CHAQ'] || row['PROTECTION_L_ORIGINE_DE_CHAQ'],
+            obs_protection_origine: row['etape_controleur/group_hx7ae46/OBSERVATIONS_002'] || row['OBSERVATIONS_002'],
+            separation_circuits: row['etape_controleur/group_hx7ae46/S_PARATION_DES_CIRCUITS_Lumi_'] || row['S_PARATION_DES_CIRCUITS_Lumi_'],
+            obs_separation: row['etape_controleur/group_hx7ae46/OBSERVATIONS__002'] || row['OBSERVATIONS__002'],
+            contact_direct: row['etape_controleur/group_hx7ae46/PROTECTION_CONTRE_LES_CONTACTS'] || row['PROTECTION_CONTRE_LES_CONTACTS'],
+            obs_contact_direct: row['etape_controleur/group_hx7ae46/OBSERVATIONS__003'] || row['OBSERVATIONS__003'],
+            mise_en_oeuvre_mat: row['etape_controleur/group_hx7ae46/MISE_EN_OEUVRE_MAT_RIEL_ET_APP'] || row['MISE_EN_OEUVRE_MAT_RIEL_ET_APP'],
+            obs_mat: row['etape_controleur/group_hx7ae46/OBSERVATIONS__004'] || row['OBSERVATIONS__004'],
+            continuite_protection: row['etape_controleur/group_hx7ae46/CONTINUITE_DE_LA_PROTECTION_ME'] || row['CONTINUITE_DE_LA_PROTECTION_ME'],
+            obs_continuite: row['etape_controleur/group_hx7ae46/OBSERVATIONS__005'] || row['OBSERVATIONS__005'],
+            // Terre
+            audit_terre: row['etape_controleur/group_hx7ae46/MISE_EN_UVRE_DU_R_SEAU_DE_TER'] || row['MISE_EN_UVRE_DU_R_SEAU_DE_TER'],
+            obs_terre: row['etape_controleur/group_hx7ae46/OBSERVATIONS__006'] || row['OBSERVATIONS__006'],
+            barrette_terre: row['etape_controleur/group_hx7ae46/ETAT_DE_LA_BARRETTE_DE_TERRE'] || row['ETAT_DE_LA_BARRETTE_DE_TERRE'],
             resistance_terre: row['etape_controleur/group_hx7ae46/VALEUR_DE_LA_RESISTANCE_DE_TER'] || row['VALEUR_DE_LA_RESISTANCE_DE_TER'],
-            conforme: row['etape_controleur/validation_controleur_final'] === 'true' || row['validation_controleur_final'] === 'true'
+            obs_resistance: row['etape_controleur/group_hx7ae46/OBSERVATIONS__007'] || row['OBSERVATIONS__007'],
+            
+            conforme: row['etape_controleur/validation_controleur_final'] === 'true' || row['validation_controleur_final'] === 'true',
+            notes_generales: row['etape_controleur/notes_generales'] || row['notes_generales']
         },
-        photos: {
-            anomalie: row['etape_controleur/group_hx7ae46/_1_photo_anomalie_si_possible'] || row['_1_photo_anomalie_si_possible'],
-            compteur: row['etape_controleur/photo_compteur'] || row['photo_compteur'] || row['Photo']
+        media: {
+            photo_macon: row['etape_macon/photo_mur'] || row['photo_mur'],
+            photo_reseau: row['etape_reseau/photo_branchement'] || row['photo_branchement'],
+            photo_interieur: row['etape_interieur/photo_installation'] || row['photo_installation'],
+            photo_compteur: row['etape_controleur/photo_compteur'] || row['photo_compteur'],
+            photo_anomalie: row['etape_controleur/group_hx7ae46/_1_photo_anomalie_si_possible'] || row['_1_photo_anomalie_si_possible'],
+            signature_client: row['etape_controleur/signature_client'] || row['Signature_du_Chef_de_M_nage'],
+            signature_controleur: row['etape_controleur/signature_controleur'] || row['Signature_du_Contr_leur']
         }
     };
+}
+
+/**
+ * Extract automated alerts based on technical anomalies
+ */
+export function extractAlerts(row) {
+    const alerts = [];
+
+    // 1. Logistique / Livraison
+    const sit = row['group_wu8kv54/Situation_du_M_nage'] || row['Situation_du_M_nage'];
+    if (sit && String(sit).toLowerCase().includes('non_eligible')) {
+        alerts.push({ type: 'ANOMALIE_TERRAIN', message: 'Ménage non éligible déclaré par le livreur', severity: 'HIGH' });
+    }
+
+    const kitProb = row['group_wu8kv54/POURQUOI'] || row['POURQUOI'];
+    if (kitProb && String(kitProb).trim()) {
+        alerts.push({ type: 'ANOMALIE_TERRAIN', message: `Problème livraison : ${kitProb}`, severity: 'MEDIUM' });
+    }
+
+    // 2. Maçonnerie
+    const maconProb = row['etape_macon/problemes_travail_macon'] || row['problemes_travail_macon'] || row['PROBLEME'];
+    if (maconProb && String(maconProb).trim()) {
+        alerts.push({ type: 'ANOMALIE_TERRAIN', message: `Maçon : ${maconProb}`, severity: 'MEDIUM' });
+    }
+
+    // 3. Réseau
+    const reseauProb = row['etape_reseau/problemes_branchement_reseau'] || row['problemes_branchement_reseau'];
+    if (reseauProb && String(reseauProb).trim()) {
+        alerts.push({ type: 'ANOMALIE_TERRAIN', message: `Réseau : ${reseauProb}`, severity: 'MEDIUM' });
+    }
+
+    // 4. Intérieur
+    const interieurProb = row['etape_interieur/problemes_installation_interieur'] || row['problemes_installation_interieur'];
+    if (interieurProb && String(interieurProb).trim()) {
+        alerts.push({ type: 'ANOMALIE_TERRAIN', message: `Intérieur : ${interieurProb}`, severity: 'MEDIUM' });
+    }
+
+    // 5. Audit
+    const auditProb = row['etape_controleur/controleurPROB'] || row['controleurPROB'];
+    if (auditProb && String(auditProb).trim()) {
+        alerts.push({ type: 'ANOMALIE_TERRAIN', message: `Audit : ${auditProb}`, severity: 'HIGH' });
+    }
+
+    return alerts;
 }
 
 /**
@@ -213,6 +319,7 @@ export function transformRowToHousehold(row, organizationId, defaultZoneId, proj
     const { region, departement, village } = extractRegionalInfo(row, config);
     const status = extractStatus(row, config);
     const constructionData = extractConstructionData(row);
+    const alerts = extractAlerts(row);
 
     return {
         numeroOrdre: numeroOrdre,
@@ -235,6 +342,7 @@ export function transformRowToHousehold(row, organizationId, defaultZoneId, proj
         source: 'Kobo',
         koboData: row,
         constructionData: constructionData,
+        alerts: alerts,
         version: 1,
         // Carry the mapping result for koboSync metadata
         _meta: {

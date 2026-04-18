@@ -9,6 +9,15 @@ export default function CostPieChart({ stats }: { stats: any }) {
   ];
 
   const total = data.reduce((sum, item) => sum + item.val, 0);
+  
+  if (total === 0) {
+    return (
+      <div className={`border rounded-[2.5rem] p-10 h-full flex items-center justify-center shadow-2xl ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100'}`}>
+        <p className="text-slate-500 font-medium">Aucune donnée financière disponible.</p>
+      </div>
+    );
+  }
+
   let currentAngle = 0;
 
   return (

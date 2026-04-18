@@ -1,4 +1,4 @@
-import prisma from '../core/utils/prisma.js';
+import { basePrisma as prisma } from '../core/utils/prisma.js';
 import { sendMail } from './mail.service.js';
 
 /**

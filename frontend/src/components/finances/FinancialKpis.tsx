@@ -184,7 +184,8 @@ export default function FinancialKpis({ stats, devis }: { stats: any; devis: any
             className={`h-4 border rounded-full overflow-hidden p-1 shadow-inner transition-all ${isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-100'}`}
           >
             <div
-              className={`h-full bg-gradient-to-r from-indigo-600 to-blue-500 rounded-full shadow-[0_0_15px_rgba(79,70,229,0.3)] transition-all duration-1000 w-[${Math.min(Math.round((devis.totalReal / devis.ceiling) * 100), 100)}%]`}
+              className={`h-full bg-gradient-to-r from-indigo-600 to-blue-500 rounded-full shadow-[0_0_15px_rgba(79,70,229,0.3)] transition-all duration-1000`}
+              style={{ width: `${Math.min(Math.round((devis.totalReal / devis.ceiling) * 100), 100)}%` }}
             />
           </div>
         </div>

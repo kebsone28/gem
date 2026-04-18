@@ -34,26 +34,21 @@ export const config = {
             const allowedOrigins = [
                 'http://localhost:3000',
                 'http://localhost:5173',
-                'http://localhost:5174',
-                'http://localhost:5175',
                 'http://127.0.0.1:3000',
-                'http://127.0.0.1:5173',
                 'http://gem.proquelec.sn',
-                'https://gem.proquelec.sn',
-                'http://www.gem.proquelec.sn',
-                'https://www.gem.proquelec.sn'
+                'https://gem.proquelec.sn'
             ];
-            // En développement, on est plus tolérant sur les erreurs CORS pour éviter les 500
             const isDev = !process.env.NODE_ENV || process.env.NODE_ENV === 'development';
             
-            if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes('*') || isDev) {
+            // En dev, on laisse tout passer pour éviter les blocages de proxy/sockets
+            if (isDev || !origin || allowedOrigins.indexOf(origin) !== -1 || allowedOrigins.includes('*')) {
                 callback(null, true);
             } else {
-                console.warn(`🔒 CORS Blocked attempt from origin: ${origin}`);
-                callback(new Error('CORS non autorisé par la politique PROQUELEC'));
+                callback(new Error('CORS blocked by PROQUELEC Policy'));
             }
         },
-        credentials: true
+        credentials: true,
+        methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS']
     },
     sentry: {
         dsn: process.env.SENTRY_DSN

@@ -5,6 +5,23 @@
  * Support WebSocket (Socket.io) pour notifications du backend
  */
 
+// ─── ANTI-DOUBLON EVENTS ──────────────────────────────────────────────────────
+/** Horodatage de la dernière émission par clé d'event */
+const _lastEventMap = new Map<string, number>();
+
+/**
+ * Retourne true si l'event peut être traité, false si trop récent (anti-doublon).
+ * @param key     Identifiant unique de l'event (ex: 'kobo:syncComplete')
+ * @param cooldown Fenêtre de déduplication en ms (défaut: 2000ms)
+ */
+export const shouldProcessEvent = (key: string, cooldown = 2000): boolean => {
+  const now = Date.now();
+  const last = _lastEventMap.get(key) ?? 0;
+  if (now - last < cooldown) return false;
+  _lastEventMap.set(key, now);
+  return true;
+};
+
 class SyncEventBus {
   private listeners: Map<string, Set<Function>> = new Map();
   private socket: any = null;
@@ -45,6 +62,7 @@ class SyncEventBus {
   }
 
   emit(eventType: string, data?: any) {
+    // Pas de dedup ici — shouldProcessEvent est appelée côté abonné si nécessaire
     console.log(`[SYNC-BUS] Event: ${eventType}`, data);
     this.listeners.get(eventType)?.forEach((callback) => {
       try {

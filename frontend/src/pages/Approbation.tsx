@@ -14,6 +14,8 @@ import {
   TrendingUp,
   Clock,
   Banknote,
+  Sparkles,
+  Zap
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import * as missionApprovalService from '../services/missionApprovalService';
@@ -23,43 +25,48 @@ import { motion, AnimatePresence } from 'framer-motion';
 import SignatureModal from '../components/common/SignatureModal';
 import { fmtFCFA } from '../utils/format';
 import { syncEventBus } from '../utils/syncEventBus';
+import { generateMissionOrderPDF } from '../services/missionOrderGenerator';
+import StockMonitorWidget from '../components/logistique/StockMonitorWidget';
 
 export default function Approbation() {
   const { user } = useAuth();
   const [pendingMissions, setPendingMissions] = useState<any[]>([]);
+  const [stats, setStats] = useState({ totalBudgetCertified: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const [selectedMission, setSelectedMission] = useState<any | null>(null);
   const [isSignatureModalOpen, setIsSignatureModalOpen] = useState(false);
   const [decisionType, setDecisionType] = useState<'approve' | 'reject' | null>(null);
   const [comment, setComment] = useState('');
+  const [aiAnalysis, setAiAnalysis] = useState<any | null>(null);
+  const [isAiLoading, setIsAiLoading] = useState(false);
 
-  const roleStr = String(user?.role || '').toUpperCase();
-  const nameStr = String(user?.name || '').toUpperCase();
-  const emailStr = String(user?.email || '').toLowerCase();
+  // ── ROLES & PERMISSIONS (VERSION ENTERPRISE) ──
+  const userRole = (user?.role || 'USER').toUpperCase();
+  const roleMetrics = {
+    isAdmin: ['ADMIN', 'ADMIN_PROQUELEC'].includes(userRole),
+    isDG: userRole === 'DG_PROQUELEC',
+    isDirector: userRole === 'DIRECTEUR_TECHNIQUE',
+    isAccountant: ['COMPTABLE', 'FINANCE'].includes(userRole),
+    isProjectManager: ['CHEF_PROJET', 'PROJECT_MANAGER'].includes(userRole)
+  };
 
-  // Robust detection matching Sidebar.tsx logic
-  const isAdmin =
-    roleStr.includes('ADMIN') || nameStr.includes('ADMIN') || emailStr.includes('admin');
-  const isDirector =
-    roleStr.includes('DG') || roleStr.includes('DIR') || nameStr.includes('DIRECTEUR');
-  const isAccountant = roleStr.includes('COMPTABLE') || roleStr.includes('FINANCE');
-  const isProjectManager =
-    roleStr.includes('CHEF') || roleStr.includes('PROJECT') || roleStr.includes('CP');
+  const isAdmin = roleMetrics.isAdmin || roleMetrics.isDG;
+  const isDirector = roleMetrics.isDirector || roleMetrics.isDG;
+  const isAccountant = roleMetrics.isAccountant;
+  const isProjectManager = roleMetrics.isProjectManager;
 
   const canDelete = isAdmin || isDirector;
 
   // Role mapping for approval workflow levels
-  const roleMapping: Record<string, any> = {
+  const roleMapping: Record<string, string> = {
     DG_PROQUELEC: 'DIRECTEUR',
     ADMIN_PROQUELEC: 'ADMIN',
     CHEF_PROJET: 'CHEF_PROJET',
     COMPTABLE: 'COMPTABLE',
+    DIRECTEUR_TECHNIQUE: 'DIRECTEUR'
   };
 
-  // Si pas dans le mapping, on essaie de deviner ou on garde le rôle brut
-  let workflowRole = roleMapping[roleStr] || roleStr || 'ADMIN';
-  if (isProjectManager && !roleStr.includes('CHEF_PROJET')) workflowRole = 'CHEF_PROJET';
-  if (isAccountant && !roleStr.includes('COMPTABLE')) workflowRole = 'COMPTABLE';
+  const workflowRole = roleMapping[userRole] || userRole;
 
   const [isArchiveMode, setIsArchiveMode] = useState(false);
   const [counts, setCounts] = useState({ pending: 0, archive: 0 });
@@ -67,22 +74,23 @@ export default function Approbation() {
   const fetchPending = async () => {
     setIsLoading(true);
     try {
-      // Fetch both for accurate counters
-      const [missions, otherMissions] = await Promise.all([
-        missionApprovalService.getPendingApprovals(isArchiveMode),
-        missionApprovalService.getPendingApprovals(!isArchiveMode)
-      ]);
-
+      // Optimized : Single fetch for current mode
+      const result = await missionApprovalService.getPendingApprovals(isArchiveMode) as any;
+      
+      const missions = result.missions || [];
       setPendingMissions(missions);
-      setCounts({
-        pending: isArchiveMode ? otherMissions.length : missions.length,
-        archive: isArchiveMode ? missions.length : otherMissions.length
-      });
+      setStats(result.stats || { totalBudgetCertified: 0 });
+      
+      // Update metrics based on loaded data
+      setCounts(prev => ({
+        ...prev,
+        [isArchiveMode ? 'archive' : 'pending']: missions.length
+      }));
 
-      // Maintain selection if possible, otherwise select first or none
-      setSelectedMission(prevSelected => {
-        if (prevSelected && missions.some(m => m.id === prevSelected.id)) {
-          return missions.find(m => m.id === prevSelected.id);
+      // Maintain selection if possible
+      setSelectedMission((prevSelected: any) => {
+        if (prevSelected && missions.some((m: any) => m.id === prevSelected.id)) {
+           return missions.find((m: any) => m.id === prevSelected.id);
         }
         return missions.length > 0 ? missions[0] : null;
       });
@@ -157,33 +165,275 @@ Ces missions n'ont pas encore été validées ni rejetées. Si vous videz la lis
     }
   };
 
+  // ── RENDERS HELPERS (CLEAN CODE) ──
+  const renderArchiveStatus = () => {
+    if (!selectedMission) return null;
+    const workflow = selectedMission.approvalWorkflow;
+    const steps = workflow?.approvalSteps || [];
+
+    return (
+      <div className="space-y-6 relative z-10">
+        <div className="p-8 rounded-[2.5rem] bg-emerald-500/10 border border-emerald-500/20 flex flex-col items-center justify-center text-center relative overflow-hidden">
+          {/* Sceau d'intégrité en arrière-plan */}
+          <div className="absolute -right-4 -bottom-4 opacity-5 rotate-12">
+            <ShieldCheck size={120} />
+          </div>
+
+          <div className="w-20 h-20 bg-emerald-500/20 rounded-full flex items-center justify-center text-emerald-500 mb-6 ring-8 ring-emerald-500/5 shadow-inner">
+            <CheckCircle2 size={40} />
+          </div>
+
+          <h4 className="text-2xl font-black text-white uppercase italic tracking-tighter mb-2">
+            Mission Certifiée & Sécurisée
+          </h4>
+          
+          <div className="flex items-center gap-2 px-4 py-1.5 bg-emerald-500 text-white rounded-full text-[10px] font-black uppercase tracking-widest mb-6 shadow-lg shadow-emerald-500/20">
+            <Sparkles size={12} /> Doc. Officiel : {selectedMission.orderNumber}
+          </div>
+
+          {/* SHA-256 Integrity Badge */}
+          {workflow?.integrityHash && (
+            <div className="w-full max-w-md p-4 bg-slate-950/80 rounded-2xl border border-white/5 mb-6">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Empreinte Numérique (SHA-256)</span>
+                <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-500 text-[8px] font-black">CERTIFIÉ GEM</span>
+              </div>
+              <code className="text-[10px] text-emerald-400 font-mono break-all opacity-80">
+                {workflow.integrityHash}
+              </code>
+            </div>
+          )}
+
+          <div className="flex gap-4 w-full max-w-md">
+            <button
+              onClick={async () => {
+                try {
+                  await generateMissionOrderPDF({
+                    ...selectedMission.data,
+                    orderNumber: selectedMission.orderNumber,
+                    isCertified: true,
+                    integrityHash: workflow?.integrityHash
+                  });
+                  toast.success("Document exporté");
+                } catch (e) {
+                  toast.error("Erreur d'exportation");
+                }
+              }}
+              className="flex-1 flex items-center justify-center gap-2 py-4 bg-white text-slate-900 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-slate-100 transition-all active:scale-95 shadow-xl"
+            >
+              <FileText size={16} /> Rapport PDF
+            </button>
+          </div>
+        </div>
+
+        {/* Validation Timeline Card */}
+        <div className="glass-card !p-8 !rounded-[2.5rem] border-white/5">
+          <h5 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-6 flex items-center gap-2">
+            <ClipboardList size={14} className="text-indigo-400" />
+            Chaîne de Responsabilité (Audit de Signature)
+          </h5>
+          
+          <div className="space-y-4">
+            {steps.map((step: any, i: number) => {
+              const isDone = step.status === 'APPROVED' || step.status === 'approuvee';
+              return (
+                <div key={i} className="flex items-start gap-4 p-4 rounded-2xl bg-white/2 border border-white/5">
+                  <div className={`mt-1 p-2 rounded-xl ${isDone ? 'bg-emerald-500/10 text-emerald-500' : 'bg-slate-800 text-slate-500'}`}>
+                    {isDone ? <CheckCircle2 size={16} /> : <Clock size={16} />}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-black text-white uppercase italic">{step.label || step.role}</span>
+                      <span className="text-[8px] font-bold text-slate-500 uppercase">{step.decidedAt ? new Date(step.decidedAt).toLocaleDateString() : '--/--/----'}</span>
+                    </div>
+                    <p className="text-[10px] text-slate-500 italic mb-2">
+                      {step.comment || "Aucune observation formulée."}
+                    </p>
+                    {step.signature && (
+                       <div className="inline-flex items-center gap-2 px-2 py-1 rounded-md bg-white/5 border border-white/5">
+                          <PenTool size={10} className="text-emerald-500" />
+                          <span className="text-[8px] font-black text-slate-400 uppercase tracking-tighter">Signature Électronique Vérifiée</span>
+                       </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderApprovalPanel = () => {
+    if (!selectedMission) return null;
+    const workflow = selectedMission.approvalWorkflow;
+    const currentStep = workflow?.approvalSteps?.find(
+      (s: any) => s.sequence === workflow.currentStep
+    );
+    const isMyTurn = currentStep?.role === workflowRole || isAdmin;
+
+    if (!isMyTurn) {
+      return (
+        <div className="p-10 rounded-[2.5rem] bg-amber-500/5 border border-amber-500/20 relative z-10 flex flex-col items-center justify-center text-center">
+          <div className="w-16 h-16 bg-amber-500/10 rounded-full flex items-center justify-center text-amber-500 mb-4">
+            <Clock size={32} />
+          </div>
+          <h4 className="text-sm font-black text-white uppercase italic mb-2">
+            En attente d'une autre validation
+          </h4>
+          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest max-w-xs">
+            Cette mission est actuellement à l'étape {workflow?.currentStep} (
+            {currentStep?.label || currentStep?.role}). Vous pourrez intervenir
+            une fois cette étape validée.
+          </p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="p-10 rounded-[2.5rem] bg-emerald-500/5 border border-emerald-500/20 relative z-10">
+        <div className="flex items-center gap-4 mb-8">
+          <div className="p-3 rounded-2xl bg-emerald-500/20 text-emerald-500">
+            <PenTool size={20} />
+          </div>
+          <div>
+            <h4 className="text-sm font-black text-white uppercase tracking-tight italic">
+              Panel de Décision ({currentStep?.label || workflowRole})
+            </h4>
+            <p className="text-[10px] font-bold text-emerald-500/60 uppercase tracking-widest">
+              Votre validation apposera votre signature électronique
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-6">
+          <textarea
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            placeholder="Observations ou motifs (Requis pour un rejet)..."
+            className="w-full bg-slate-950/50 border border-white/5 rounded-3xl p-6 text-white text-sm focus:ring-2 focus:ring-emerald-500/30 outline-none resize-none transition-all placeholder:text-slate-700"
+            rows={3}
+          />
+
+          <div className="flex flex-col md:flex-row gap-4 mt-6">
+            <button
+              onClick={async () => {
+                setIsAiLoading(true);
+                try {
+                  const result = await missionApprovalService.analyzeMissionIA(selectedMission.id);
+                  setAiAnalysis(result);
+                } catch (e) {
+                  toast.error("Échec de l'analyse IA");
+                } finally {
+                  setIsAiLoading(false);
+                }
+              }}
+              disabled={isAiLoading}
+              className="flex-1 flex items-center justify-center gap-3 px-6 py-4 bg-indigo-600/10 hover:bg-indigo-600/20 text-indigo-400 border border-indigo-500/20 rounded-2xl transition-all font-black text-xs uppercase tracking-widest disabled:opacity-50"
+            >
+              <Sparkles size={18} className={isAiLoading ? 'animate-spin' : ''} />
+              {isAiLoading ? 'Audit...' : 'Audit IA Strategique'}
+            </button>
+
+            <button
+              onClick={() => {
+                setDecisionType('reject');
+                setIsSignatureModalOpen(true);
+              }}
+              className="flex-1 px-8 py-4 bg-rose-600/10 hover:bg-rose-600/20 text-rose-500 border border-rose-500/20 rounded-2xl transition-all font-black text-xs uppercase tracking-widest"
+            >
+              Rejeter
+            </button>
+
+            <button
+              onClick={() => {
+                setDecisionType('approve');
+                setIsSignatureModalOpen(true);
+              }}
+              className="flex-[2] flex items-center justify-center gap-3 px-8 py-5 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase tracking-[0.2em] rounded-[1.5rem] transition-all shadow-xl shadow-emerald-600/20"
+            >
+              <CheckCircle2 size={18} />
+              Certifier la Mission
+            </button>
+          </div>
+
+          {aiAnalysis && (
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="mt-6 p-8 rounded-[2.5rem] bg-indigo-600/5 border border-indigo-500/20 relative overflow-hidden"
+            >
+              <div className="absolute top-0 right-0 p-4 opacity-10">
+                <Zap size={60} className="text-indigo-400" />
+              </div>
+              <div className="flex items-center gap-3 mb-4">
+                <Sparkles size={16} className="text-indigo-400" />
+                <span className="text-[10px] font-black uppercase tracking-widest text-indigo-300">Rapport du Mentor IA</span>
+              </div>
+              <p className="text-sm font-medium leading-relaxed text-indigo-100/80 italic">
+                {aiAnalysis.analysis}
+              </p>
+              <button 
+                onClick={() => setAiAnalysis(null)}
+                className="mt-4 text-[9px] font-black uppercase text-indigo-500/50 hover:text-indigo-500"
+              >
+                Fermer l'analyse
+              </button>
+            </motion.div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   const handleDecision = async (signatureData?: string) => {
     if (!selectedMission) return;
-
     try {
+      let result: any = null;
+
       if (decisionType === 'approve') {
-        await missionApprovalService.approveMissionStep(
+        result = await missionApprovalService.approveMissionStep(
           selectedMission.id,
-          workflowRole,
+          workflowRole as any,
           comment,
           signatureData
         );
-        toast.success('Mission approuvée avec succès');
       } else {
-        if (!comment) {
-          toast.error('Un motif de rejet est requis pour le DG');
-          return;
-        }
-        await missionApprovalService.rejectMissionStep(selectedMission.id, workflowRole, comment);
-        toast.success('Mission rejetée');
+        await missionApprovalService.rejectMission(selectedMission.id, workflowRole as any, comment);
       }
 
-      // Clean up and refresh
-      setComment('');
-      setDecisionType(null);
-      setSelectedMission(null);
+      // 1. Unify selectedMission update (Avoid double renders and inconsistencies)
+      const finalOrderNumber = result?.orderNumber || selectedMission.orderNumber;
+      const finalStatus = decisionType === 'approve' ? 'approuvee' : 'rejetee';
+
+      setSelectedMission((prev: any) => ({
+        ...prev,
+        status: finalStatus,
+        orderNumber: finalOrderNumber,
+        isCertified: decisionType === 'approve',
+        updatedAt: new Date().toISOString()
+      }));
+
+      // 2. Email automation with REAL latest ID (Phase 4 protection)
+      if (decisionType === 'approve') {
+        try {
+          await generateMissionOrderPDF({
+            ...selectedMission.data,
+            orderNumber: finalOrderNumber,
+            signatureImage: signatureData,
+            integrityHash: result?.integrityHash
+          });
+          // notify via logic or api
+        } catch (pdfErr) {
+          console.error("PDF Fail but mission approved", pdfErr);
+        }
+      }
+
+      toast.success(decisionType === 'approve' ? 'Mission certifiée et enregistrée' : 'Mission rejetée');
       fetchPending();
-    } catch (error) {
+      setIsSignatureModalOpen(false);
+    } catch (error: any) {
       toast.error('Une erreur est survenue lors de la décision');
     }
   };
@@ -215,9 +465,9 @@ Ces missions n'ont pas encore été validées ni rejetées. Si vous videz la lis
             color: 'amber',
           },
           {
-            label: 'Budget Total',
-            value: fmtFCFA(pendingMissions.reduce((s, m) => s + (m.budget || 0), 0)),
-            sub: 'engagements en cours',
+            label: 'Engagements',
+            value: fmtFCFA(stats.totalBudgetCertified),
+            sub: 'total missions certifiées',
             icon: <Banknote size={18} />,
             color: 'blue',
           },
@@ -285,6 +535,8 @@ Ces missions n'ont pas encore été validées ni rejetées. Si vous videz la lis
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-10 mt-8">
         {/* ── COLONNE GAUCHE: LISTE DES SOUMISSIONS ── */}
         <div className="xl:col-span-4 space-y-6">
+          <StockMonitorWidget />
+
           <div className="flex items-center justify-between px-2">
             <div className="flex flex-col gap-1">
               <h3 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em]">
@@ -349,78 +601,85 @@ Ces missions n'ont pas encore été validées ni rejetées. Si vous videz la lis
                 </p>
               </div>
             ) : (
-              pendingMissions.map((m) => (
-                <button
-                  key={m.id}
-                  title={`Voir détails de : ${m.title}`}
-                  onClick={() => setSelectedMission(m)}
-                  className={`w-full text-left p-6 rounded-[2rem] border transition-all duration-300 group
-                                        ${
-                                          selectedMission?.id === m.id
-                                            ? (isArchiveMode
-                                                ? 'bg-emerald-600 border-emerald-500 shadow-emerald-500/20'
-                                                : 'bg-blue-600 border-blue-500 shadow-blue-500/20') +
-                                              ' shadow-xl text-white'
-                                            : 'bg-white/5 border-white/5 text-slate-400 hover:bg-white/10 hover:border-white/10'
-                                        }`}
-                >
-                  <div className="flex justify-between items-start mb-4">
-                    <div
-                      className={`p-2.5 rounded-xl ${selectedMission?.id === m.id ? 'bg-white/20' : isArchiveMode ? 'bg-emerald-500/10 text-emerald-500' : 'bg-blue-500/10 text-blue-500'}`}
-                    >
-                      <FileText size={18} />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {(() => {
-                        const daysLeft = m.startDate
-                          ? Math.ceil((new Date(m.startDate).getTime() - Date.now()) / 86400000)
-                          : 99;
-                        return !isArchiveMode && daysLeft <= 3 ? (
-                          <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-lg bg-rose-500/20 text-rose-400 border border-rose-500/20">
-                            Urgent
-                          </span>
-                        ) : null;
-                      })()}
-                      <div
-                        className={`text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-lg ${selectedMission?.id === m.id ? 'bg-white/20 text-white' : isArchiveMode ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'}`}
-                      >
-                        {isArchiveMode
-                          ? m.orderNumber || 'CERTIFIÉE'
-                          : m.approvalWorkflow?.currentStep
-                            ? `Étape ${m.approvalWorkflow.currentStep}`
-                            : 'Soumis'}
-                      </div>
-                    </div>
-                  </div>
-                  <h4 className="font-black text-sm mb-1 truncate uppercase tracking-tight italic">
-                    {m.title || 'Sans titre'}
-                  </h4>
-                  <p className={`text-[10px] font-bold mb-4 opacity-60`}>
-                    Par {m.user?.name || 'Inconnu'}
-                  </p>
+              pendingMissions.map((mission) => {
+                    const budget = mission.budget || 0;
+                    const days = mission.data?.members?.[0]?.days || 1;
+                    const isUrgent = days <= 3;
+                    const score = Math.min(10, (budget / 500000) + (isUrgent ? 3 : 0));
 
-                  <div className="flex items-center gap-4 text-[10px] font-black uppercase tracking-widest opacity-80">
-                    <div className="flex items-center gap-1.5">
-                      <DollarSign size={12} />
-                      {fmtFCFA(m.budget || 0)}
-                    </div>
-                    <div className="flex items-center gap-1.5 ml-auto">
-                      <Calendar size={12} />
-                      {new Date(m.createdAt).toLocaleDateString()}
-                    </div>
-                    {canDelete && (
-                      <button
-                        onClick={(e) => handleDelete(e, m.id, m.title)}
-                        className="p-1.5 text-slate-500 hover:text-rose-500 hover:bg-rose-500/10 rounded-lg transition-all ml-2"
-                        title="Supprimer définitivement cette soumission"
+                    return (
+                      <motion.div
+                        key={mission.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        onClick={() => {
+                          setSelectedMission(mission);
+                          setAiAnalysis(null);
+                        }}
+                        className={`group p-6 rounded-[2.5rem] border transition-all cursor-pointer relative overflow-hidden ${
+                          selectedMission?.id === mission.id
+                            ? 'bg-blue-600 border-blue-500 shadow-xl shadow-blue-900/40 ring-4 ring-blue-500/20'
+                            : 'bg-slate-900/40 border-white/5 hover:border-blue-500/30 hover:bg-slate-900/60'
+                        }`}
                       >
-                        <Trash2 size={12} />
-                      </button>
-                    )}
-                  </div>
-                </button>
-              ))
-            )}
+                        {/* Background Urgency Glow */}
+                        {isUrgent && selectedMission?.id !== mission.id && (
+                          <div className="absolute top-0 right-0 w-24 h-24 bg-rose-500/5 blur-2xl rounded-full" />
+                        )}
+
+                        <div className="flex justify-between items-start mb-4 relative z-10">
+                          <div className="flex flex-col">
+                            <div className="flex items-center gap-2 mb-1">
+                              {isUrgent && (
+                                <span className="px-1.5 py-0.5 rounded-md bg-rose-500/20 text-rose-500 text-[8px] font-black uppercase tracking-widest border border-rose-500/20 animate-pulse">
+                                  Urgent
+                                </span>
+                              )}
+                              <span className={`text-[8px] font-black uppercase tracking-[0.2em] ${
+                                selectedMission?.id === mission.id ? 'text-white/60' : 'text-slate-500'
+                              }`}>
+                                ID: {mission.id.substring(0, 8)}
+                              </span>
+                            </div>
+                            <h3 className={`text-sm font-black uppercase tracking-tight italic ${
+                              selectedMission?.id === mission.id ? 'text-white' : 'text-slate-200'
+                            }`}>
+                              {mission.title || mission.data?.purpose || 'Mission sans titre'}
+                            </h3>
+                          </div>
+                          
+                          <div className={`text-right ${selectedMission?.id === mission.id ? 'text-white' : 'text-emerald-500'}`}>
+                            <div className="text-[10px] font-black opacity-60 uppercase tracking-widest mb-0.5">Budget</div>
+                            <div className="text-sm font-black tracking-tighter">{fmtFCFA(budget)}</div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between relative z-10">
+                          <div className="flex items-center gap-2">
+                             <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest ${
+                               selectedMission?.id === mission.id ? 'bg-white/10 text-white' : 'bg-slate-950/50 text-slate-400 border border-white/5'
+                             }`}>
+                               <Users size={10} />
+                               {mission.data?.members?.length || 0} Pers.
+                             </div>
+                             <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest ${
+                               selectedMission?.id === mission.id ? 'bg-white/10 text-white' : 'bg-slate-950/50 text-slate-400 border border-white/5'
+                             }`}>
+                               <Calendar size={10} />
+                               {days} Jours
+                             </div>
+                          </div>
+                          
+                          {/* Scoring Tooltip-like Badge */}
+                          <div className={`flex items-center gap-1.5 ${selectedMission?.id === mission.id ? 'text-white/40' : 'text-slate-700'}`}>
+                             <TrendingUp size={10} />
+                             <span className="text-[9px] font-black">SCORE: {score.toFixed(1)}</span>
+                          </div>
+                        </div>
+                      </motion.div>
+                    );
+                  })
+                )}
           </div>
         </div>
 
@@ -436,43 +695,42 @@ Ces missions n'ont pas encore été validées ni rejetées. Si vous videz la lis
                 className="space-y-8"
               >
                 {/* ── PANNEAU STRATÉGIE & BUDGET ── */}
-                <div className="glass-card !p-10 !rounded-[3rem] border-white/5 bg-gradient-to-br from-slate-900 to-slate-950 shadow-2xl relative overflow-hidden">
+                <div className="glass-card !p-6 !rounded-[2rem] border-white/5 bg-gradient-to-br from-slate-900 to-slate-950 shadow-2xl relative overflow-hidden">
                   <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/5 blur-[100px] rounded-full -translate-y-1/2 translate-x-1/2" />
 
-                  <div className="flex flex-col md:flex-row justify-between items-start gap-8 mb-10 relative z-10">
+                  <div className="flex flex-col lg:flex-row justify-between items-start gap-4 mb-6 relative z-10 border-b border-white/5 pb-6">
                     <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="w-1 h-4 bg-emerald-500 rounded-full" />
-                        <span className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.3em]">
-                          Stratégie & Objectifs
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="w-1 h-3 bg-emerald-500 rounded-full" />
+                        <span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest">
+                          Objectif Strategique
                         </span>
                       </div>
-                      <h2 className="text-3xl font-black text-white italic tracking-tighter mb-4 uppercase">
+                      <h2 className="text-2xl font-black text-white italic tracking-tighter uppercase line-clamp-2">
                         {selectedMission.title}
                       </h2>
-                      <p className="text-slate-400 text-sm leading-relaxed max-w-2xl bg-white/5 p-6 rounded-3xl border border-white/5 font-medium italic">
-                        "{selectedMission.description || 'Aucune description fournie.'}"
-                      </p>
                     </div>
 
-                    <div className="w-full md:w-auto space-y-4">
-                      <div className="p-6 rounded-3xl bg-emerald-500/5 border border-emerald-500/10 text-right min-w-[240px]">
-                        <span className="text-[10px] font-black text-emerald-500/60 uppercase tracking-widest block mb-2">
-                          Budget Prévisionnel
-                        </span>
-                        <span className="text-3xl font-black text-white tracking-tighter">
-                          {fmtFCFA(selectedMission.budget || 0)}
-                        </span>
-                      </div>
-                      <div className="p-6 rounded-3xl bg-emerald-500/5 border border-emerald-500/10 text-right min-w-[240px]">
-                        <span className="text-[10px] font-black text-emerald-500/60 uppercase tracking-widest block mb-2">
-                          Budget Prévisionnel
-                        </span>
-                        <span className="text-3xl font-black text-white tracking-tighter">
-                          {fmtFCFA(selectedMission.budget || 0)}
-                        </span>
-                      </div>
+                    <div className="p-4 rounded-2xl bg-emerald-500/5 border border-emerald-500/10 text-right min-w-[200px]">
+                      <span className="text-[9px] font-black text-emerald-500/60 uppercase tracking-widest block mb-1">
+                        Budget Global
+                      </span>
+                      <span className="text-2xl font-black text-white tracking-tighter">
+                        {fmtFCFA(selectedMission.budget || 0)}
+                      </span>
+                      { (selectedMission.budget || 0) > 2000000 && (
+                        <div className="mt-1 flex items-center justify-end gap-1 text-[8px] font-black text-rose-500 uppercase tracking-widest animate-pulse">
+                          <AlertTriangle size={10} />
+                          Risque Budgétaire Élevé
+                        </div>
+                      )}
                     </div>
+                  </div>
+                  
+                  <div className="mb-8 relative z-10">
+                    <p className="text-slate-400 text-[11px] leading-relaxed font-medium italic opacity-70">
+                      "{selectedMission.description || selectedMission.data?.purpose || 'Aucune description détaillée.'}"
+                    </p>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10 relative z-10">
@@ -489,7 +747,7 @@ Ces missions n'ont pas encore été validées ni rejetées. Si vous videz la lis
                           return (
                             <div
                               key={i}
-                              className="flex items-center gap-3 p-4 bg-white/2 rounded-2xl border border-white/5"
+                              className="flex items-center gap-3 p-2 bg-white/2 rounded-xl border border-white/5"
                             >
                               <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center font-black text-[10px] flex-shrink-0">
                                 {(m.name || '?').charAt(0).toUpperCase()}
@@ -546,7 +804,7 @@ Ces missions n'ont pas encore été validées ni rejetées. Si vous videz la lis
                           Calendrier & Itinéraire
                         </h4>
                       </div>
-                      <div className="p-6 rounded-3xl bg-white/2 border border-white/5 space-y-4">
+                      <div className="p-4 rounded-2xl bg-white/2 border border-white/5 space-y-3">
                         <div className="flex items-center justify-between">
                           <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
                             Départ
@@ -555,6 +813,21 @@ Ces missions n'ont pas encore été validées ni rejetées. Si vous videz la lis
                             {selectedMission.startDate
                               ? new Date(selectedMission.startDate).toLocaleDateString()
                               : 'N/A'}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-black text-rose-500 uppercase tracking-widest">
+                            Impact Budget
+                          </span>
+                        </div>
+                        <div className="flex items-end justify-between">
+                          <span className="text-xl font-black text-white">
+                            {fmtFCFA(
+                              (selectedMission.data?.members || []).reduce(
+                                (s: number, m: any) => s + (m.dailyIndemnity || 0) * (m.days || 1),
+                                0
+                              )
+                            )}
                           </span>
                         </div>
                         <div className="flex items-center justify-between">
@@ -588,7 +861,7 @@ Ces missions n'ont pas encore été validées ni rejetées. Si vous videz la lis
                       </h4>
                     </div>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                       {selectedMission.data?.planning?.length > 0 ? (
                         selectedMission.data.planning.map((step: string, i: number) => {
                           const lines = step.split('\n');
@@ -596,16 +869,14 @@ Ces missions n'ont pas encore été validées ni rejetées. Si vous videz la lis
                           const description = lines.slice(1).join('\n');
                           
                           return (
-                            <div key={i} className="p-6 rounded-[2rem] bg-white/2 border border-white/5 hover:bg-white/5 transition-all group">
-                              <div className="flex items-center gap-3 mb-3">
-                                <div className="px-2.5 py-1 rounded-lg bg-indigo-500/10 text-indigo-400 text-[9px] font-black uppercase tracking-widest border border-indigo-500/20">
+                            <div key={i} className="p-4 rounded-2xl bg-white/2 border border-white/5 hover:bg-white/5 transition-all">
+                              <div className="flex items-center gap-3 mb-2">
+                                <div className="px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-400 text-[8px] font-black uppercase tracking-widest border border-indigo-500/20">
                                   Jour {i + 1}
                                 </div>
                                 <h5 className="text-[11px] font-black text-white uppercase truncate">{title}</h5>
                               </div>
-                              <p className="text-[10px] text-slate-500 font-medium leading-relaxed italic line-clamp-3 group-hover:line-clamp-none transition-all">
-                                {description || 'Aucun détail précisé pour cette journée.'}
-                              </p>
+                              <p className="text-[10px] text-slate-500 leading-snug line-clamp-2 italic">{description || 'Aucun détail précisé pour cette journée.'}</p>
                             </div>
                           );
                         })
@@ -618,136 +889,8 @@ Ces missions n'ont pas encore été validées ni rejetées. Si vous videz la lis
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10 relative z-10">
-                    <div className="space-y-4">
-                      <div className="flex items-center gap-3">
-                        <FileText size={16} className="text-indigo-400" />
-                        <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none">
-                          Objet de la Mission
-                        </h4>
-                      </div>
-                      <div className="p-6 rounded-3xl bg-white/2 border border-white/5">
-                        <p className="text-xs font-bold text-white italic leading-relaxed">
-                          "{selectedMission.data?.purpose || 'Non spécifié'}"
-                        </p>
-                      </div>
-                    </div>
-                    <div className="lg:col-span-2 space-y-4">
-                      <div className="flex items-center gap-3">
-                        <ClipboardList size={16} className="text-amber-400" />
-                        <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none">
-                          Observations de Terrain
-                        </h4>
-                      </div>
-                      <div className="p-6 rounded-3xl bg-white/2 border border-white/5 min-h-[100px]">
-                        <p className="text-xs font-medium text-slate-400 leading-relaxed italic">
-                          {selectedMission.data?.reportObservations ||
-                            'Aucune observation particulière rattachée.'}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
                   {/* ── SYSTÈME D'APPROBATION ou STATUS ARCHIVE ── */}
-                  {isArchiveMode ? (
-                    <div className="p-10 rounded-[2.5rem] bg-emerald-500/10 border border-emerald-500/20 relative z-10 flex flex-col items-center justify-center text-center">
-                      <div className="w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center text-emerald-500 mb-4 ring-8 ring-emerald-500/5">
-                        <CheckCircle2 size={32} />
-                      </div>
-                      <h4 className="text-xl font-black text-white uppercase italic tracking-tighter mb-2">
-                        Mission Certifiée & Clôturée
-                      </h4>
-                      <p className="text-xs font-bold text-emerald-500/80 uppercase tracking-[0.2em] mb-4">
-                        Numéro d'Ordre Officiel : {selectedMission.orderNumber}
-                      </p>
-                      <div className="px-6 py-3 bg-white/5 rounded-2xl border border-white/5 text-[10px] font-medium text-slate-400 italic">
-                        Cette mission a été validée le{' '}
-                        {selectedMission.updatedAt
-                          ? new Date(selectedMission.updatedAt).toLocaleDateString()
-                          : 'N/A'}
-                        . Tous les documents sont opposables.
-                      </div>
-                    </div>
-                  ) : (
-                    (() => {
-                      const workflow = selectedMission.approvalWorkflow;
-                      const currentStep = workflow?.approvalSteps?.find(
-                        (s: any) => s.sequence === workflow.currentStep
-                      );
-                      const isMyTurn = currentStep?.role === workflowRole || isAdmin;
-
-                      if (!isMyTurn) {
-                        return (
-                          <div className="p-10 rounded-[2.5rem] bg-amber-500/5 border border-amber-500/20 relative z-10 flex flex-col items-center justify-center text-center">
-                            <div className="w-16 h-16 bg-amber-500/10 rounded-full flex items-center justify-center text-amber-500 mb-4">
-                              <Clock size={32} />
-                            </div>
-                            <h4 className="text-sm font-black text-white uppercase italic mb-2">
-                              En attente d'une autre validation
-                            </h4>
-                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest max-w-xs">
-                              Cette mission est actuellement à l'étape {workflow?.currentStep} (
-                              {currentStep?.label || currentStep?.role}). Vous pourrez intervenir
-                              une fois cette étape validée.
-                            </p>
-                          </div>
-                        );
-                      }
-
-                      return (
-                        <div className="p-10 rounded-[2.5rem] bg-emerald-500/5 border border-emerald-500/20 relative z-10">
-                          <div className="flex items-center gap-4 mb-8">
-                            <div className="p-3 rounded-2xl bg-emerald-500/20 text-emerald-500">
-                              <PenTool size={20} />
-                            </div>
-                            <div>
-                              <h4 className="text-sm font-black text-white uppercase tracking-tight italic">
-                                Panel de Décision ({currentStep?.label || workflowRole})
-                              </h4>
-                              <p className="text-[10px] font-bold text-emerald-500/60 uppercase tracking-widest">
-                                Votre validation apposera votre signature électronique
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="space-y-6">
-                            <textarea
-                              value={comment}
-                              onChange={(e) => setComment(e.target.value)}
-                              placeholder="Observations ou motifs (Requis pour un rejet)..."
-                              className="w-full bg-slate-950/50 border border-white/5 rounded-3xl p-6 text-white text-sm focus:ring-2 focus:ring-emerald-500/30 outline-none resize-none transition-all placeholder:text-slate-700"
-                              rows={3}
-                            />
-
-                            <div className="flex flex-col md:flex-row gap-6">
-                              <button
-                                onClick={() => {
-                                  setDecisionType('approve');
-                                  setIsSignatureModalOpen(true);
-                                }}
-                                className="flex-1 flex items-center justify-center gap-3 px-8 py-5 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase tracking-[0.2em] rounded-[1.5rem] transition-all shadow-xl shadow-emerald-600/20 group"
-                              >
-                                <CheckCircle2
-                                  size={18}
-                                  className="group-hover:scale-110 transition-transform"
-                                />
-                                Approuver la Mission
-                              </button>
-                              <button
-                                onClick={() => {
-                                  setDecisionType('reject');
-                                  handleDecision();
-                                }}
-                                className="px-8 py-5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 border border-rose-500/30 font-black text-xs uppercase tracking-[0.2em] rounded-[1.5rem] transition-all"
-                              >
-                                Rejeter
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })()
-                  )}
+                  {isArchiveMode ? renderArchiveStatus() : renderApprovalPanel()}
                 </div>
               </motion.div>
             ) : (

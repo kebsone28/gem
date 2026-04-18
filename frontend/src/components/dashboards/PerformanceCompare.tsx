@@ -10,8 +10,8 @@ export default function PerformanceCompare({ data }: { data: PerformanceCompareD
   // Simulation intelligente basée sur les données réelles si présentes
   const days = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
   const mockDaily = data?.dailyStats?.length
-    ? [12, 18, 15, 22, 19, 10, 8]
-    : [45, 62, 58, 85, 92, 40, 30];
+    ? [45, 62, 58, 85, 92, 40, 30]
+    : [12, 18, 15, 22, 19, 10, 8];
   const avgScoreValue = data?.stats?.find((s: any) => s.status === 'Terminé')?._count?.id || 65.4;
 
   return (

@@ -8,6 +8,7 @@ import apiClient from '../api/client';
 export function DataSection({
   project,
   households,
+  onUpdate,
 }: {
   project: any;
   households: any[];
@@ -106,7 +107,13 @@ export function DataSection({
               </p>
             </div>
           </div>
-          <button className="px-8 py-4 bg-rose-600/20 border border-rose-600/30 text-rose-500 text-xs font-black uppercase tracking-widest rounded-xl transition-all hover:bg-rose-600 hover:text-white active:scale-95 whitespace-nowrap shadow-lg">
+          <button 
+            onClick={() => {
+              if (window.confirm("Voulez-vous vraiment réinitialiser le cache local ? Toutes les modifications non synchronisées pourraient être perdues.")) {
+                if (onUpdate) onUpdate();
+              }
+            }}
+            className="px-8 py-4 bg-rose-600/20 border border-rose-600/30 text-rose-500 text-xs font-black uppercase tracking-widest rounded-xl transition-all hover:bg-rose-600 hover:text-white active:scale-95 whitespace-nowrap shadow-lg">
             RÉINITIALISER LES DONNÉES
           </button>
         </div>

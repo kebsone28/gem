@@ -34,12 +34,15 @@ const toLatLng = (coords: [number, number]): [number, number] => {
   return coords;
 };
 
-const sameHouseholdIds = (a: any[], b: any[]) => {
-  if (a.length !== b.length) return false;
-  for (let i = 0; i < a.length; i++) {
-    if (a[i].id !== b[i].id) return false;
+// Fast hash to detect changes deeply without iterating over every ID on every render
+const computeHouseholdHash = (households: any[]) => {
+  if (!households || households.length === 0) return 'empty';
+  // Use length and sum of versions as a fast proxy for dataset changes
+  let versionSum = 0;
+  for (let i = 0; i < households.length; i++) {
+    versionSum += households[i].version || 0;
   }
-  return true;
+  return `len:${households.length}-vsum:${versionSum}`;
 };
 
 const MapLibreVectorMap: React.FC<any> = ({
@@ -139,7 +142,7 @@ const MapLibreVectorMap: React.FC<any> = ({
 
   // ✅ Sync GeoJSON via worker with debouncing and smart diffing
   const geoJsonDebounceRef = useRef<NodeJS.Timeout | null>(null);
-  const prevHouseholdsRef = useRef<any[]>([]);
+  const prevHashRef = useRef<string>('');
 
   useEffect(() => {
     if (!activeHouseholds || activeHouseholds.length === 0) {
@@ -147,8 +150,9 @@ const MapLibreVectorMap: React.FC<any> = ({
       return;
     }
 
+    const currentHash = computeHouseholdHash(activeHouseholds);
     // Skip if households are essentially the same
-    if (sameHouseholdIds(prevHouseholdsRef.current, activeHouseholds)) {
+    if (prevHashRef.current === currentHash) {
       return;
     }
 
@@ -161,7 +165,7 @@ const MapLibreVectorMap: React.FC<any> = ({
       geoJsonWorker.onmessage = (e) => {
         if (e.data.type === 'GEOJSON_RESULT') {
           setHouseholdGeoJSON(e.data.data);
-          prevHouseholdsRef.current = [...activeHouseholds]; // Update prev after successful processing
+          prevHashRef.current = currentHash; // Update prev hash after successful processing
         }
       };
       geoJsonWorker.postMessage({ households: activeHouseholds });

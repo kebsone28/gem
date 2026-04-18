@@ -73,7 +73,7 @@ const ZoneLayer: React.FC<ZoneLayerProps> = ({
     const setupLayers = () => {
       try {
         // Auto-Grappes (Generated)
-        if (!map.getLayer('auto-grappes-fill')) {
+        if (map.getSource('auto-grappes') && !map.getLayer('auto-grappes-fill')) {
           map.addLayer({
             id: 'auto-grappes-fill',
             type: 'fill',
@@ -93,7 +93,7 @@ const ZoneLayer: React.FC<ZoneLayerProps> = ({
           });
         }
 
-        if (!map.getLayer('auto-grappes-outline')) {
+        if (map.getSource('auto-grappes') && !map.getLayer('auto-grappes-outline')) {
           map.addLayer({
             id: 'auto-grappes-outline',
             type: 'line',
@@ -114,7 +114,7 @@ const ZoneLayer: React.FC<ZoneLayerProps> = ({
           });
         }
 
-        if (!map.getLayer('auto-grappes-labels')) {
+        if (map.getSource('auto-grappes-centroids') && !map.getLayer('auto-grappes-labels')) {
           map.addLayer({
             id: 'auto-grappes-labels',
             type: 'symbol',
@@ -146,7 +146,7 @@ const ZoneLayer: React.FC<ZoneLayerProps> = ({
     };
 
     setupLayers();
-  }, [map, styleIsReady, showZones]);
+  }, [map, styleIsReady, showZones, grappeZonesData, grappeCentroidsData]);
 
   // Update visibility
   useEffect(() => {

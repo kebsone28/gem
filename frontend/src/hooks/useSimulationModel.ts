@@ -105,9 +105,10 @@ export function calculateScenario({
   penaliteHivernageMacon,
   penaliteHivernageReseau,
 }: SimulationInputs): ScenarioBase {
-  const productionRates = projectConfig?.config?.productionRates;
-  const ROLE_CAPACITY = buildRoleCapacities(productionRates);
-  const factor = 1 + tauxImprevu / 100 + (isHivernage ? 0.05 : 0);
+  const safeHouseholds = Math.max(0, householdsCount || 0);
+  const safeDevis = Math.max(0, devisTotalPlanned || 0);
+  const ROLE_CAPACITY = buildRoleCapacities(projectConfig?.config?.productionRates);
+  const factor = 1 + (tauxImprevu || 0) / 100 + (isHivernage ? 0.05 : 0);
 
   const maconCap = ROLE_CAPACITY.macon * (isHivernage ? 1 - penaliteHivernageMacon / 100 : 1);
   const networkCap = ROLE_CAPACITY.network * (isHivernage ? 1 - penaliteHivernageReseau / 100 : 1);
@@ -129,8 +130,8 @@ export function calculateScenario({
       capacities.macon,
     ] as [RoleKey, number])[0];
 
-  const baseHouseholds = householdsCount;
-  const menagesRejetes = Math.ceil(baseHouseholds * (tauxRejet / 100));
+  const baseHouseholds = safeHouseholds;
+  const menagesRejetes = Math.ceil(baseHouseholds * ((tauxRejet || 0) / 100));
   const totalNetworkHouseholds = baseHouseholds + menagesRejetes;
   const totalInteriorHouseholds = baseHouseholds + menagesRejetes;
 
@@ -196,11 +197,11 @@ export function calculateScenario({
     teamsLogisticsCost += config.count * config.vehiclesPerTeam * 60000 * teamCalendarDuration;
   });
 
-  const baseLogisticsCost = baseVehicleCount * 60000 * globalCalendarDuration;
+  const baseLogisticsCost = (baseVehicleCount || 0) * 60000 * globalCalendarDuration;
   const logisticsCost = teamsLogisticsCost + baseLogisticsCost;
-  const materialsCost = devisTotalPlanned * 0.4;
+  const materialsCost = safeDevis * 0.4;
   const totalCost = laborCost + logisticsCost + materialsCost;
-  const margin = devisTotalPlanned - totalCost;
+  const margin = safeDevis - totalCost;
   const tresorerieInitiale = devisTotalPlanned * (tauxAcompte / 100);
   const depenseMax = laborCost + logisticsCost;
   const aRisqueTresorerie = depenseMax > tresorerieInitiale;

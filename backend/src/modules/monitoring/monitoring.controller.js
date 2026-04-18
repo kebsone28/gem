@@ -7,10 +7,12 @@ import os from 'os';
 // @route   GET /api/monitoring/activity
 export const getActivityFeed = async (req, res) => {
     try {
-        const { organizationId } = req.user;
-        const activities = await getRecentActions(organizationId, 15);
+        const organizationId = req.user?.organizationId;
+        if (!organizationId) return res.status(401).json({ error: 'Identification organisation manquante' });
+        
+        const activities = await getRecentActions(organizationId, 1500); // 1500 limit for detailed log view
         res.json({ activities });
-    } catch (error) {
+} catch (error) {
         console.error('Error fetching activity feed:', error.message);
         res.status(500).json({ error: 'Server error', details: error.message });
     }
@@ -20,7 +22,8 @@ export const getActivityFeed = async (req, res) => {
 // @route   GET /api/monitoring/performance
 export const getPerformanceStats = async (req, res) => {
     try {
-        const { organizationId } = req.user;
+        const organizationId = req.user?.organizationId;
+        if (!organizationId) return res.status(401).json({ error: 'Identification organisation manquante' });
 
         // Agrégation des ménages par statut pour cette organisation
         const stats = await prisma.household.groupBy({
@@ -104,9 +107,14 @@ export const getSystemHealth = async (req, res) => {
         }
 
         // Check Redis (optional – may be null in dev)
-        if (redisConnection) {
+        if (redisConnection && typeof redisConnection.ping === 'function') {
             try {
-                const ping = await redisConnection.ping();
+                // Timeout logic for Redis ping
+                const pingPromise = redisConnection.ping();
+                const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Redis Timeout')), 2000));
+                
+                const ping = await Promise.race([pingPromise, timeoutPromise]);
+                
                 if (ping === 'PONG') {
                     health.services.redis.status = 'UP';
                     health.services.redis.details = 'BullMQ Queue Manager Ready';

@@ -35,7 +35,7 @@ export const MissionInfoSection: React.FC<MissionInfoSectionProps> = ({
               id="mission-number"
               type="text"
               readOnly
-              value={formData.orderNumber || ''}
+              value={formData.orderNumber && !formData.orderNumber.startsWith('TEMP-') ? formData.orderNumber : (formData.orderNumber && (formData as any).workflowStatus === 'approved' ? formData.orderNumber : (formData as any).officialNumber || formData.orderNumber || '')}
               placeholder="Génération après validation..."
               className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-[11px] font-black text-indigo-600 dark:text-indigo-400 focus:ring-0 transition-all outline-none cursor-not-allowed group-hover:border-indigo-500/30"
             />

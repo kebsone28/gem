@@ -1,8 +1,128 @@
 import prisma from '../../core/utils/prisma.js';
-import path from 'path';
 import { tracerAction } from '../../services/audit.service.js';
 import logger from '../../utils/logger.js';
 import { missionNotificationService } from '../../services/notification.service.js';
+import { sendMail } from '../../services/mail.service.js';
+import { missionMentorService } from '../assistant/missionMentorService.js';
+import crypto from 'crypto';
+
+// ===============================================
+// PUBLIC VERIFICATION (No Auth Required)
+// ===============================================
+
+/**
+ * Publicly verify a mission by its order number or ID
+ */
+export const verifyMissionPublic = async (req, res) => {
+    try {
+        const { identifier } = req.params;
+
+        const mission = await prisma.mission.findFirst({
+            where: {
+                OR: [
+                    { orderNumber: identifier },
+                    { id: identifier }
+                ],
+                deletedAt: null
+            },
+            include: {
+                organization: {
+                    select: { name: true, config: true }
+                }
+            }
+        });
+
+        if (!mission) {
+            return res.status(404).json({ valid: false, message: 'Ordre de Mission introuvable.' });
+        }
+
+        const missionData = typeof mission.data === 'object' ? mission.data : {};
+
+        // Prepare safe public response
+        return res.json({
+            valid: true,
+            status: mission.status,
+            orderNumber: mission.orderNumber,
+            organization: mission.organization.name,
+            title: mission.title,
+            startDate: mission.startDate,
+            endDate: mission.endDate,
+            purpose: missionData.purpose,
+            region: missionData.region,
+            members: (missionData.members || []).map(m => ({
+                name: m.name,
+                role: m.role
+            })),
+            isCertified: mission.status === 'approuvee',
+            verifiedAt: new Date()
+        });
+    } catch (error) {
+        logger.error('Public verification error:', error);
+        res.status(500).json({ error: 'Internal server error during verification' });
+    }
+};
+
+/**
+ * Endpoint to send a generated document via email
+ * POST /api/missions/:missionId/email-document
+ */
+export const sendMissionDocumentEmail = async (req, res) => {
+    try {
+        const { missionId } = req.params;
+        const { recipientEmail, subject, body } = req.body;
+        const file = req.file; // Provided by multer middleware
+
+        if (!file) {
+            return res.status(400).json({ error: 'Fichier manquant' });
+        }
+
+        const mission = await prisma.mission.findUnique({
+            where: { id: missionId },
+            select: { orderNumber: true, title: true }
+        });
+
+        await sendMail({
+            to: recipientEmail,
+            subject: subject || `Ordre de Mission - ${mission?.orderNumber || mission?.title}`,
+            title: 'Votre Ordre de Mission Officiel',
+            body: body || `Veuillez trouver ci-joint votre ordre de mission officiel n° ${mission?.orderNumber}. <br/><br/>Ce document est certifié numériquement.`,
+            attachments: [{
+                filename: file.originalname || `Ordre_Mission_${mission?.orderNumber}.pdf`,
+                content: file.buffer
+            }]
+        });
+
+        res.json({ success: true, message: 'Email envoyé avec succès' });
+    } catch (error) {
+        logger.error('Send mission document error:', error);
+        res.status(500).json({ error: 'Erreur lors de l\'envoi de l\'email' });
+    }
+};
+
+/**
+ * AI Analysis of a mission
+ * POST /api/missions/:missionId/analyze-ia
+ */
+export const analyzeMissionIA = async (req, res) => {
+    try {
+        const { missionId } = req.params;
+        const { organizationId } = req.user;
+
+        const mission = await prisma.mission.findFirst({
+            where: { id: missionId, organizationId }
+        });
+
+        if (!mission) {
+            return res.status(404).json({ error: 'Mission introuvable' });
+        }
+
+        const result = await missionMentorService.analyzeMission(mission, req.user);
+        res.json(result);
+    } catch (error) {
+        logger.error('Mission AI analysis endpoint error:', error);
+        res.status(500).json({ error: "Erreur lors de l'analyse IA" });
+    }
+};
 
 // ===============================================
 // CORE CRUD
@@ -23,6 +143,7 @@ export const getMissions = async (req, res) => {
             'DG_PROQUELEC': 'DIRECTEUR',
             'DIRECTEUR_GENERAL': 'DIRECTEUR',
             'DIR_GEN': 'DIRECTEUR',
+            'DIRECTION': 'DIRECTEUR',
             'ADMIN': 'ADMIN_PROQUELEC'
         };
         const userRole = ROLE_ALIASES[rawUserRole?.toUpperCase()] || rawUserRole?.toUpperCase();
@@ -126,20 +247,8 @@ export const createMission = async (req, res) => {
             }
         });
 
-        // Debug log
-        try {
-            import('fs').then(fs => fs.appendFileSync(path.join(__dirname, '../../../debug-mission.log'), `[${new Date().toISOString()}] SUCCESS ID: ${mission.id} | Project: ${safeProjectId}\n`));
-        } catch (_e) {
-            // Logging file write failure - non-critical
-        }
-
         res.json(mission);
     } catch (error) {
-        try {
-            import('fs').then(fs => fs.appendFileSync(path.join(__dirname, '../../../debug-mission.log'), `[${new Date().toISOString()}] ERROR: ${String(error.stack || error)}\n`));
-        } catch (_e) {
-            // Logging file write failure - non-critical
-        }
         logger.error('Create mission error:', error);
         res.status(500).json({
             error: 'Server error while creating mission',
@@ -286,9 +395,7 @@ export const updateMission = async (req, res) => {
     }
 };
 
-/**
- * Delete a mission (soft delete)
- */
+
 export const deleteMission = async (req, res) => {
     try {
         const { id } = req.params;
@@ -568,7 +675,8 @@ export const approveMissionStep = async (req, res) => {
                             status: 'APPROUVE',
                             decidedBy: userId,
                             decidedAt: new Date(),
-                            comment: comment || (isAdmin ? `Admin approval` : `Auto-validation par le Directeur (Créateur)`)
+                            comment: comment || (isAdmin ? `Admin approval` : `Auto-validation par le Directeur (Créateur)`),
+                            signature: req.body.signature || null
                         }
                     })
                 )
@@ -588,7 +696,8 @@ export const approveMissionStep = async (req, res) => {
                     currentStep: 99,
                     orderNumber,
                     orderNumberGeneratedAt: new Date(),
-                    orderNumberGeneratedBy: userId
+                    orderNumberGeneratedBy: userId,
+                    integrityHash: crypto.createHash('sha256').update(JSON.stringify({ missionId, orderNumber, timestamp: new Date() })).digest('hex')
                 },
                 include: {
                     approvalSteps: { orderBy: { sequence: 'asc' } }
@@ -622,6 +731,7 @@ export const approveMissionStep = async (req, res) => {
                 message: 'Mission approved by admin (all steps), orderNumber generated',
                 missionId,
                 orderNumber,
+                integrityHash: updatedWorkflow.integrityHash,
                 steps: updatedWorkflow.approvalSteps.map(s => ({
                     role: s.role,
                     status: s.status,
@@ -670,7 +780,8 @@ export const approveMissionStep = async (req, res) => {
                     status: 'APPROUVE',
                     decidedBy: userId,
                     decidedAt: new Date(),
-                    comment: comment || null
+                    comment: comment || null,
+                    signature: req.body.signature || null
                 }
             });
 
@@ -690,6 +801,11 @@ export const approveMissionStep = async (req, res) => {
                         data: { status: 'en_attente_validation' }
                     });
                 }
+                
+                // NOTIFICATION: Inform next role in chain
+                missionNotificationService.notifyNextStep(mission, nextStep.role, organizationId)
+                    .catch(err => logger.error('[WF-NOTIF] Could not notify next step:', err));
+
             } else {
                 orderNumber = await generateOrderNumber(organizationId);
                 newOverallStatus = 'approved';
@@ -697,7 +813,7 @@ export const approveMissionStep = async (req, res) => {
 
                 // Merge signature into mission data
                 const missionData = typeof mission.data === 'object' ? mission.data : {};
-                await tx.mission.update({
+                const updatedMission = await tx.mission.update({
                     where: { id: missionId },
                     data: {
                         status: 'approuvee',
@@ -708,6 +824,14 @@ export const approveMissionStep = async (req, res) => {
                         }
                     }
                 });
+
+                // FINAL NOTIFICATION: Notify Initiator (+ Audit/Financials)
+                const initiatorId = mission.createdBy;
+                const initiator = await tx.user.findUnique({ where: { id: initiatorId } });
+                if (initiator?.email) {
+                    missionNotificationService.notifyFullApproval(updatedMission, orderNumber, initiatorId)
+                        .catch(err => logger.error('[WF-NOTIF] Full approval notification failed:', err));
+                }
             }
 
             // 3. Update workflow
@@ -719,7 +843,8 @@ export const approveMissionStep = async (req, res) => {
                     ...(!nextStep && {
                         orderNumber,
                         orderNumberGeneratedAt: new Date(),
-                        orderNumberGeneratedBy: userId
+                        orderNumberGeneratedBy: userId,
+                        integrityHash: crypto.createHash('sha256').update(JSON.stringify({ missionId, orderNumber, timestamp: new Date() })).digest('hex')
                     })
                 },
                 include: {
@@ -754,6 +879,7 @@ export const approveMissionStep = async (req, res) => {
             orderNumber: result.orderNumber,
             overallStatus: result.updatedWF.overallStatus,
             currentStep: result.updatedWF.currentStep,
+            integrityHash: result.updatedWF.integrityHash,
             nextRole: result.nextStep?.role || 'NONE',
             steps: result.updatedWF.approvalSteps.map(s => ({
                 role: s.role,
@@ -956,6 +1082,10 @@ export const getPendingApprovals = async (req, res) => {
         // Mapping roles from Auth to Workflow
         const roleMapping = {
             'DG_PROQUELEC': 'DIRECTEUR',
+            'DG': 'DIRECTEUR',
+            'DIRECTION': 'DIRECTEUR',
+            'DIRECTEUR_GENERAL': 'DIRECTEUR',
+            'DIR_GEN': 'DIRECTEUR',
             'ADMIN_PROQUELEC': 'ADMIN'
         };
         const workflowRole = roleMapping[userRole] || userRole;
@@ -1029,7 +1159,26 @@ export const getPendingApprovals = async (req, res) => {
             return step && step.sequence === workflow.currentStep && step.status === 'EN_ATTENTE';
         });
 
-        res.json({ missions: filtered });
+        // --- AGGREGATE STATS (Consumed Budget) ---
+        const costAgg = await prisma.mission.aggregate({
+            where: {
+                organizationId,
+                status: 'approuvee',
+                deletedAt: null
+            },
+            _sum: {
+                budget: true
+            }
+        });
+
+        const totalBudgetCertified = Number(costAgg._sum.budget || 0);
+
+        res.json({ 
+            missions: filtered,
+            stats: {
+                totalBudgetCertified
+            }
+        });
     } catch (error) {
         logger.error('Get pending approvals error:', error);
         res.status(500).json({ error: 'Server error while fetching pending approvals' });

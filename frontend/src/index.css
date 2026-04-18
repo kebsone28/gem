@@ -67,14 +67,20 @@
   --transition-slow: 400ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-opacity: 300ms ease;
 
+  /* ── DENSITY TOKENS (HIGH-DENSITY BY DEFAULT) ── */
+  --gem-density-scale: 0.85; /* Facteur de compaction (1.0 = Normal) */
+  --gem-gap-base: calc(1rem * var(--gem-density-scale));
+  --gem-padding-base: calc(1.5rem * var(--gem-density-scale));
+  --gem-radius-base: calc(1rem * var(--gem-density-scale));
+
   /* ── SPACING SCALE ── */
-  --space-xs: 0.25rem; /* 4px  */
-  --space-sm: 0.5rem; /* 8px  */
-  --space-md: 1rem; /* 16px */
-  --space-lg: 1.5rem; /* 24px */
-  --space-xl: 2rem; /* 32px */
-  --space-2xl: 2.5rem; /* 40px */
-  --space-3xl: 3rem; /* 48px */
+  --space-xs: calc(0.25rem * var(--gem-density-scale)); /* ~3.4px */
+  --space-sm: calc(0.5rem * var(--gem-density-scale)); /* ~6.8px */
+  --space-md: calc(1rem * var(--gem-density-scale)); /* ~13.6px */
+  --space-lg: calc(1.5rem * var(--gem-density-scale)); /* ~20px */
+  --space-xl: calc(2rem * var(--gem-density-scale)); /* ~27px */
+  --space-2xl: calc(2.5rem * var(--gem-density-scale)); /* ~34px */
+  --space-3xl: calc(3rem * var(--gem-density-scale)); /* ~40px */
 
   /* ── Z-INDEX ── */
   --z-dropdown: 100;
@@ -134,6 +140,13 @@ textarea,
 select {
   font: inherit;
   color: inherit;
+  background-color: transparent;
+}
+
+/* Fallback pour les dropdowns natifs sur fond clair (Windows/Chromium) */
+option {
+  background-color: var(--color-dark-bg, #020817);
+  color: white;
 }
 
 img,
@@ -306,8 +319,9 @@ h3 {
 /* Glass Card – Now Sleek/Solid */
 .glass-card {
   background: var(--color-surface-elevated);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-xl);
+  border: 1px solid var(--color-dark-border);
+  border-radius: var(--gem-radius-base);
+  padding: var(--gem-padding-base);
   box-shadow: var(--shadow-sm);
   transition: all var(--transition-normal);
 }
@@ -395,8 +409,8 @@ h3 {
 ───────────────────────────────────────────── */
 .page-header {
   background: var(--color-surface-elevated);
-  border-radius: var(--radius-2xl);
-  padding: 1.5rem 2rem;
+  border-radius: var(--gem-radius-base);
+  padding: calc(var(--gem-padding-base) * 0.8) var(--gem-padding-base);
   color: #fff;
   border: 1px solid rgba(255, 255, 255, 0.05);
   position: relative;
