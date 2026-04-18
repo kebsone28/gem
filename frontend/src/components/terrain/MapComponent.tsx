@@ -79,15 +79,10 @@ const MapComponent: React.FC<MapComponentProps> = ({
     const sourceHouseholds = households || [];
 
     return sourceHouseholds.filter((h) => {
-      const coords = h.location?.coordinates;
-      return (
-        Array.isArray(coords) &&
-        coords.length === 2 &&
-        typeof coords[0] === 'number' &&
-        typeof coords[1] === 'number' &&
-        !isNaN(coords[0]) &&
-        !isNaN(coords[1])
-      );
+      // Use || instead of ?? to ensure 0 values trigger the fallback
+      const lng = Number(h.location?.coordinates?.[0] || h.longitude);
+      const lat = Number(h.location?.coordinates?.[1] || h.latitude);
+      return Number.isFinite(lng) && Number.isFinite(lat) && (lng !== 0 || lat !== 0);
     });
   }, [households]);
 

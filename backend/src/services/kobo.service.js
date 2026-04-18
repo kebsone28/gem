@@ -383,11 +383,11 @@ export async function syncKoboToDatabase(organizationId, fallbackZoneId, since =
                 
                 // PROGRESSION "STICKY" (L'admin ou Kobo peut mettre à OK, mais la synchro ne peut pas désélectionner)
                 koboSync: {
-                    maconOk: (existingHousehold?.koboSync as any)?.maconOk || household.koboSync.maconOk,
-                    reseauOk: (existingHousehold?.koboSync as any)?.reseauOk || household.koboSync.reseauOk,
-                    interieurOk: (existingHousehold?.koboSync as any)?.interieurOk || household.koboSync.interieurOk,
-                    controleOk: (existingHousehold?.koboSync as any)?.controleOk || household.koboSync.controleOk,
-                    livreurDate: household.koboSync.livreurDate || (existingHousehold?.koboSync as any)?.livreurDate || null
+                    maconOk: (existingHousehold?.koboSync)?.maconOk || household.koboSync.maconOk,
+                    reseauOk: (existingHousehold?.koboSync)?.reseauOk || household.koboSync.reseauOk,
+                    interieurOk: (existingHousehold?.koboSync)?.interieurOk || household.koboSync.interieurOk,
+                    controleOk: (existingHousehold?.koboSync)?.controleOk || household.koboSync.controleOk,
+                    livreurDate: household.koboSync.livreurDate || (existingHousehold?.koboSync)?.livreurDate || null
                 },
                 
                 // Deep merge indirect pour constructionData (on garde les specs Admin comme meterNumber)

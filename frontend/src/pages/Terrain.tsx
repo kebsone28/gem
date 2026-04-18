@@ -134,15 +134,11 @@ const Terrain: React.FC = () => {
     if (autoCenterInitializedRef.current) return;
 
     if (households && households.length > 0 && !selectedHouseholdId) {
-      const firstWithCoords = households.find(
-        (h) =>
-          h.location?.coordinates &&
-          h.location.coordinates[0] !== 0 &&
-          h.location.coordinates[1] !== 0
-      );
+      const firstWithCoords = households.find(hasValidCoordinates);
       if (firstWithCoords) {
         autoCenterInitializedRef.current = true;
-        const [lng, lat] = firstWithCoords.location!.coordinates;
+        const lng = Number(firstWithCoords.location?.coordinates?.[0] || firstWithCoords.longitude);
+        const lat = Number(firstWithCoords.location?.coordinates?.[1] || firstWithCoords.latitude);
         logger.log('📍 [Terrain] Auto-centering on first household:', firstWithCoords.id);
         setMapCommand({ center: [lng, lat], zoom: 14, timestamp: Date.now() });
       }
@@ -227,19 +223,17 @@ const Terrain: React.FC = () => {
     (result: SearchResult) => {
       if (result.type === 'household') {
         setSelectedHouseholdId(result.data.id);
-        // ✅ Safe coordinate access with full validation
-        const coords = result.data.location?.coordinates;
-        if (coords && Array.isArray(coords) && coords.length === 2) {
-          const [lng, lat] = coords;
-          if (isValidCoordinate(lng, lat)) {
-            setMapCommand({
-              center: [lng, lat],
-              zoom: 18,
-              timestamp: Date.now(),
-            });
-          } else {
-            logger.warn('Invalid coordinates received:', coords);
-          }
+        const lng = Number(result.data.location?.coordinates?.[0] || result.data.longitude);
+        const lat = Number(result.data.location?.coordinates?.[1] || result.data.latitude);
+
+        if (isValidCoordinate(lng, lat)) {
+          setMapCommand({
+            center: [lng, lat],
+            zoom: 18,
+            timestamp: Date.now(),
+          });
+        } else {
+          logger.warn('Invalid coordinates received for household:', result.data.id);
         }
       } else {
         if (isValidCoordinate(result.lon, result.lat)) {
@@ -258,7 +252,9 @@ const Terrain: React.FC = () => {
   const handleTraceItinerary = useCallback(() => {
     const h = households?.find((hh) => hh.id === selectedHouseholdId);
     if (!h || !hasValidCoordinates(h)) return;
-    const [lng, lat] = h.location.coordinates;
+    
+    const lng = Number(h.location?.coordinates?.[0] || h.longitude);
+    const lat = Number(h.location?.coordinates?.[1] || h.latitude);
     const dest: [number, number] = [lng, lat];
 
     setRoutingDest(dest);

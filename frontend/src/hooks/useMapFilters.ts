@@ -30,16 +30,17 @@ export const ALL_STATUSES = [
 ];
 
 export const hasValidCoordinates = (h: Household): boolean => {
-  return !!(
-    h.location?.coordinates &&
-    Array.isArray(h.location.coordinates) &&
-    h.location.coordinates.length === 2 &&
-    typeof h.location.coordinates[0] === 'number' &&
-    typeof h.location.coordinates[1] === 'number' &&
-    !isNaN(h.location.coordinates[0]) &&
-    !isNaN(h.location.coordinates[1]) &&
-    Math.abs(h.location.coordinates[0]) <= 180 &&
-    Math.abs(h.location.coordinates[1]) <= 90
+  // Support either Nested GeoJSON coordinates OR Top-level latitude/longitude
+  // Use || instead of ?? to ensure 0 values trigger the fallback
+  const lng = Number(h.location?.coordinates?.[0] || h.longitude);
+  const lat = Number(h.location?.coordinates?.[1] || h.latitude);
+
+  return (
+    Number.isFinite(lng) &&
+    Number.isFinite(lat) &&
+    (lng !== 0 || lat !== 0) &&
+    Math.abs(lng) <= 180 &&
+    Math.abs(lat) <= 90
   );
 };
 
@@ -133,14 +134,19 @@ export const useMapFilters = (
     const [west, south, east, north] = mapBounds;
 
     return filteredHouseholds.filter((h) => {
-      let lng = h.location!.coordinates[0] as number;
-      let lat = h.location!.coordinates[1] as number;
+      // Use || instead of ?? to ensure 0 values trigger the fallback
+      let lng = Number(h.location?.coordinates?.[0] || h.longitude);
+      let lat = Number(h.location?.coordinates?.[1] || h.latitude);
 
-      // Au Sénégal, lng est négative et lat est positive. Si c'est inversé [lat, lng], on swap.
+      // 🇸🇳 SMART AUTO-CORRECTION FOR SENEGAL (West Africa)
       if (lng > 0 && lat < 0) {
-        const temp = lng;
-        lng = lat;
-        lat = temp;
+        [lng, lat] = [lat, lng];
+      }
+      if (Math.abs(lng) > 11 && Math.abs(lng) < 18) {
+        lng = -Math.abs(lng);
+      }
+      if (Math.abs(lat) > 11 && Math.abs(lat) < 17) {
+        lat = Math.abs(lat);
       }
 
       return lng >= west && lng <= east && lat >= south && lat <= north;

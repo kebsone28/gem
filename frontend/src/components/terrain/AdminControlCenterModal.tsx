@@ -216,6 +216,7 @@ export const AdminControlCenterModal: React.FC<AdminControlCenterModalProps> = (
               { id: 'technical', label: 'Audit Chantier', icon: Settings },
               { id: 'media', label: 'Photos & Sign.', icon: Hash },
               { id: 'logistics', label: 'Position GPS', icon: MapPin },
+              { id: 'conflits', label: 'Conflits', icon: AlertTriangle, color: 'text-rose-500' },
             ].map(tab => (
               <button
                 key={tab.id}
@@ -226,8 +227,11 @@ export const AdminControlCenterModal: React.FC<AdminControlCenterModalProps> = (
                     : 'border-transparent text-slate-500 hover:text-slate-300'
                 }`}
               >
-                <tab.icon className="w-3 h-3 sm:w-4 sm:h-4" />
+                <tab.icon className={`w-3 h-3 sm:w-4 sm:h-4 ${(tab.id === 'conflits' && (household.alerts || []).some((a: any) => a.type === 'DOUBLON_DETECTE')) ? 'animate-pulse text-rose-500' : ''}`} />
                 <span className="whitespace-nowrap">{tab.label}</span>
+                {tab.id === 'conflits' && (household.alerts || []).some((a: any) => a.type === 'DOUBLON_DETECTE') && (
+                   <div className="w-1.5 h-1.5 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)]" />
+                )}
               </button>
             ))}
           </div>
@@ -597,6 +601,22 @@ export const AdminControlCenterModal: React.FC<AdminControlCenterModalProps> = (
                     />
 
                     <div className="pt-2">
+                       <label className="text-[8px] font-black text-slate-500 uppercase px-1 italic">Observations Tech. Réseau</label>
+                       <MultiSelectTagGroup 
+                         fieldName="constructionData.reseau.observations_techniques"
+                         value={(formData.constructionData as any)?.reseau?.observations_techniques || ''}
+                         onChange={val => updateNested('constructionData', 'reseau', { ...(formData.constructionData as any)?.reseau, observations_techniques: val })}
+                         options={[
+                           { id: 'plus_de_2_positions__zone_urbaine', label: 'Pos. > 2 (Urbain)' },
+                           { id: 'plus_de_3_positions__zone_rurale', label: 'Pos. > 3 (Rural)' },
+                           { id: 'longueur_branchement_sup_rieure___40m__z', label: 'L > 40m (Urbain)' },
+                           { id: 'longueur_branchement_sup_rieure___50m__z', label: 'L > 50m (Rural)' },
+                           { id: 'necessite_une_extension', label: 'Besoin Extension' },
+                         ]}
+                       />
+                    </div>
+
+                    <div className="pt-2 border-t border-white/5 mt-2">
                        <label className="text-[8px] font-black text-slate-500 uppercase px-1">État Branchement</label>
                        <select 
                          value={(formData.constructionData as any)?.reseau?.etat || ''} 
@@ -718,6 +738,20 @@ export const AdminControlCenterModal: React.FC<AdminControlCenterModalProps> = (
                         </select>
                       </div>
                     ))}
+                    <div className="pt-4">
+                        <label className="text-[8px] font-black text-slate-500 uppercase px-1 italic">Anomalies Protection (DDR / CC)</label>
+                        <MultiSelectTagGroup 
+                          fieldName="constructionData.audit.anomalies_protection"
+                          value={(formData.constructionData as any)?.audit?.anomalies_protection || ''}
+                          onChange={val => updateNested('constructionData', 'audit', { ...(formData.constructionData as any)?.audit, anomalies_protection: val })}
+                          options={[
+                            { id: 'pas_de_coupe_circuit__cc', label: 'Pas de CC' },
+                            { id: 'calibre_fusible_superieur_25a', label: 'Calibre CC > 25A' },
+                            { id: 'pas_de_differentiel_30ma', label: 'Pas de DDR 30mA' },
+                            { id: 'differentiel_30ma_d_t_rior', label: 'DDR Détérioré' },
+                          ]}
+                        />
+                    </div>
                   </div>
 
                   {/* Branchement & Terre */}
@@ -736,25 +770,40 @@ export const AdminControlCenterModal: React.FC<AdminControlCenterModalProps> = (
                            <span className="text-[10px] text-slate-600">Ω</span>
                          </div>
                       </div>
-                      {[
-                        { f: 'pvc_isolation', l: 'Isolation PVC / Câble' },
-                        { f: 'hauteur_coffret', l: 'Hauteur Coffret' },
-                        { f: 'etat_coupe_circuit', l: 'Coupe-circuit' },
-                      ].map(audit => (
-                        <div key={audit.f} className="flex items-center justify-between gap-4">
-                          <label className="text-[10px] font-bold text-slate-300 uppercase shrink-0">{audit.l}</label>
-                          <select 
-                            value={(formData.constructionData as any)?.audit?.[audit.f] || ''}
-                            onChange={e => updateNested('constructionData', 'audit', { ...(formData.constructionData as any)?.audit, [audit.f]: e.target.value })}
-                            className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-[9px] outline-none"
-                          >
-                            <option value="conforme">C</option>
-                            <option value="non_conforme">NC</option>
-                          </select>
-                        </div>
-                      ))}
+                      <div className="pt-2">
+                        <label className="text-[8px] font-black text-slate-500 uppercase px-1 italic">Anomalies Terre</label>
+                        <MultiSelectTagGroup 
+                          fieldName="constructionData.audit.anomalies_terre"
+                          value={(formData.constructionData as any)?.audit?.anomalies_terre || ''}
+                          onChange={val => updateNested('constructionData', 'audit', { ...(formData.constructionData as any)?.audit, anomalies_terre: val })}
+                          options={[
+                            { id: 'absence_de_piquet_de_terre', label: 'Pas de piquet' },
+                            { id: 'terre_non_raccord__sur_boite_de_d_rivati', label: 'Pas raccordé boîte' },
+                            { id: 'piquet_de_terre_d_connect', label: 'Piquet déconnecté' },
+                            { id: 'pas_de_barrette_de_terre', label: 'Pas de barrette' },
+                          ]}
+                        />
+                      </div>
                     </div>
                   </div>
+                </div>
+
+                <div className="pt-4 space-y-4">
+                    <label className="text-[9px] font-black text-slate-500 uppercase px-1 italic">Détails de l'Installation</label>
+                    <MultiSelectTagGroup 
+                      fieldName="constructionData.audit.anomalies_installation"
+                      value={(formData.constructionData as any)?.audit?.anomalies_installation || ''}
+                      onChange={val => updateNested('constructionData', 'audit', { ...(formData.constructionData as any)?.audit, anomalies_installation: val })}
+                      options={[
+                        { id: 'cable_1_5mm__jonctionn__par__pissure', label: 'Épissure 1.5' },
+                        { id: 'cable_2_5mm__jonctionn__par__pissure', label: 'Épissure 2.5' },
+                        { id: 'c_ble_arm__non_enterr', label: 'Alim non enterrée' },
+                        { id: 'profondeur_tranch_e_non_ad_quate__minimu', label: 'Tranchée NC' },
+                        { id: 'douille_mal_fix', label: 'Douille mal fixée' },
+                        { id: 'interrupteur_mal_fix', label: 'Interrupteur mal fixé' },
+                        { id: 'boite_de_derivation_sans_couvercle', label: 'Boîte sans couvercle' },
+                      ]}
+                    />
                 </div>
 
                 <div className="pt-4 space-y-4">
@@ -800,7 +849,7 @@ export const AdminControlCenterModal: React.FC<AdminControlCenterModalProps> = (
 
           {activeTab === 'logistics' && (
             <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="space-y-8">
-              <div className="space-y-4">
+               <div className="space-y-4">
                 <div className="space-y-2">
                   <label className="text-[9px] font-black uppercase tracking-[0.1em] text-slate-500 ml-1">Zone Géographique</label>
                   <select 
@@ -857,6 +906,54 @@ export const AdminControlCenterModal: React.FC<AdminControlCenterModalProps> = (
                   </p>
                 </div>
               </div>
+            </motion.div>
+          )}
+
+          {activeTab === 'conflits' && (
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="space-y-8 pb-20">
+               <div className="p-8 rounded-[2.5rem] bg-rose-500/10 border border-rose-500/20 shadow-2xl">
+                  <div className="flex items-center gap-4 mb-6">
+                     <div className="w-12 h-12 rounded-2xl bg-rose-500/20 flex items-center justify-center text-rose-500">
+                        <AlertTriangle size={24} />
+                     </div>
+                     <div>
+                        <h4 className="text-lg font-black text-rose-500 uppercase italic tracking-widest">Résolution de Conflit</h4>
+                        <p className="text-xs text-rose-400/60 font-medium tracking-tight">ID collision détecté sur KoboToolbox</p>
+                     </div>
+                  </div>
+
+                  <p className="text-sm text-slate-300 leading-relaxed mb-8">
+                    Ce dossier (ID N°{household.numeroordre}) possède plusieurs soumissions actives sur le serveur Kobo. 
+                    <br /><br />
+                    En cliquant sur le bouton ci-dessous, vous confirmez que les données affichées dans ce panneau administratif sont les données définitives. L'alerte sera levée et la génération du PV sera débloquée.
+                  </p>
+
+                  <div className="flex flex-col sm:flex-row gap-4">
+                     <button 
+                       onClick={async () => {
+                         if (!onUpdate) return;
+                         try {
+                           const updatedAlerts = (household.alerts || []).filter((a: any) => a.type !== 'DOUBLON_DETECTE');
+                           await onUpdate(household.id, { alerts: updatedAlerts as any });
+                           setFormData({ ...formData, alerts: updatedAlerts as any });
+                           toast.success("Conflit résolu ✓");
+                           setActiveTab('technical');
+                         } catch (err) {
+                           toast.error("Échec de la résolution");
+                         }
+                       }}
+                       className="flex-1 py-5 bg-rose-600 hover:bg-rose-500 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] transition-all shadow-xl shadow-rose-900/40 active:scale-95"
+                     >
+                       Valider cette version
+                     </button>
+                     <button 
+                       onClick={() => setActiveTab('technical')}
+                       className="flex-1 py-5 bg-slate-800 text-slate-400 rounded-2xl font-black text-[10px] uppercase tracking-widest border border-white/5"
+                     >
+                       Inspecter les données
+                     </button>
+                  </div>
+               </div>
             </motion.div>
           )}
         </div>

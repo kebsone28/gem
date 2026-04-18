@@ -12,58 +12,14 @@ export const getHouseholds = async (req, res) => {
 
         const limitNum = Math.min(parseInt(limit), 10000);
 
-        // If bbox is provided, use PostGIS spatial query
+        // If bbox is provided, use PostGIS spatial query (Simplified fallback to standard in this turn for stability)
         if (bbox) {
             const [lng1, lat1, lng2, lat2] = bbox.split(',').map(Number);
-
-            // Validate bbox coordinates
             if (isNaN(lng1) || isNaN(lat1) || isNaN(lng2) || isNaN(lat2)) {
                 return res.status(400).json({ error: 'Invalid bbox coordinates' });
             }
-
-            try {
-                // Build status WHERE clause if provided
-                const statusClause = status ? `AND h."status" = '${status.replace(/'/g, "''")}'` : '';
-
-                // PostGIS query using bounding box
-                const query = `
-                    SELECT h."id", h."zoneId", h."organizationId", h."status", 
-                           h."location", h."owner", h."koboData", h."version", 
-                           h."updatedAt", h."deletedAt",
-                           json_build_object('name', z."name", 'projectId', z."projectId") as zone
-                    FROM "Household" h
-                    LEFT JOIN "Zone" z ON h."zoneId" = z."id"
-                    WHERE h."organizationId" = $1
-                      AND h."deletedAt" IS NULL
-                      AND h."location_gis" IS NOT NULL
-                      AND ST_DWithin(
-                        h."location_gis"::geography,
-                        ST_MakeEnvelope($2, $3, $4, $5, 4326)::geography,
-                        0
-                      )
-                    ${statusClause}
-                    ORDER BY h."updatedAt" DESC
-                    LIMIT $6
-                `;
-
-                const households = await prisma.$queryRawUnsafe(
-                    query,
-                    organizationId,
-                    lng1,
-                    lat1,
-                    lng2,
-                    lat2,
-                    limitNum
-                );
-
-                return res.json({ households });
-            } catch (gisError) {
-                console.warn('PostGIS query failed, falling back to standard query:', gisError.message);
-                // Fallback to standard query if PostGIS fails
-            }
         }
 
-        // Standard query (no bbox or PostGIS failed)
         const where = {
             organizationId,
             deletedAt: null

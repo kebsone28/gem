@@ -136,8 +136,12 @@ const MapLibreVectorMap: React.FC<any> = ({
     return households?.find((h: any) => h.id === selectedHouseholdId) || null;
   }, [households, selectedHouseholdId]);
 
-  const selectedHouseholdCoords: [number, number] | null =
-    selectedHousehold?.location?.coordinates || null;
+  const selectedHouseholdCoords: [number, number] | null = React.useMemo(() => {
+    if (!selectedHousehold) return null;
+    const lng = Number(selectedHousehold.location?.coordinates?.[0] ?? selectedHousehold.longitude);
+    const lat = Number(selectedHousehold.location?.coordinates?.[1] ?? selectedHousehold.latitude);
+    return Number.isFinite(lng) && Number.isFinite(lat) ? [lng, lat] : null;
+  }, [selectedHousehold]);
   const [householdGeoJSON, setHouseholdGeoJSON] = useState<any>(null);
 
   // ✅ Sync GeoJSON via worker with debouncing and smart diffing

@@ -88,20 +88,29 @@ export function getClusterColor(pointCount: number): string {
  * @returns Cleaned object or null if geolocation is missing (avoids 0,0 Atlantic Ocean artifacts)
  */
 function sanitizeHouseholdForMap(h: any): any | null {
-  // Extract coordinates safely
-  let lng = Number(h.location?.coordinates?.[0]);
-  let lat = Number(h.location?.coordinates?.[1]);
+  // ✅ SUPPORT MULTI-SOURCE COORDINATES (Nested GeoJSON OR Top-level Lat/Lon)
+  // CRITICAL: use || instead of ?? to ensure 0 values trigger fallback
+  let lng = Number(h.location?.coordinates?.[0] || h.longitude);
+  let lat = Number(h.location?.coordinates?.[1] || h.latitude);
 
-  // Drop household if coordinates are invalid (better than putting them in the ocean)
-  if (!Number.isFinite(lng) || !Number.isFinite(lat)) {
+  // Drop household if coordinates are invalid or 0,0 (avoids Atlantic Ocean artifacts)
+  if (!Number.isFinite(lng) || !Number.isFinite(lat) || (lng === 0 && lat === 0)) {
     return null;
   }
 
-  // Auto-correction: Au Sénégal, Lng est négatif (~-17) et Lat positif (~14).
+  // 🇸🇳 SMART AUTO-CORRECTION FOR SENEGAL (West Africa)
+  // 1. Swap if obviously inverted (Lng 11-16 vs Lat 11-16 is tricky, but Lng > 0 in Senegal range is likely Lat)
   if (lng > 0 && lat < 0) {
-    const temp = lng;
-    lng = lat;
-    lat = temp;
+    [lng, lat] = [lat, lng];
+  }
+
+  // 2. Force Negative Longitude if it's in the Senegal longitude range (11-18) but positive
+  if (Math.abs(lng) > 11 && Math.abs(lng) < 18) {
+    lng = -Math.abs(lng);
+  }
+  // 3. Force Positive Latitude
+  if (Math.abs(lat) > 11 && Math.abs(lat) < 17) {
+    lat = Math.abs(lat);
   }
 
   return {

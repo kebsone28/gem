@@ -387,13 +387,42 @@ function usePVAutomation() {
     }
   }, [selectedSubmission]);
 
+  const handleExportAnomalies = useCallback(async () => {
+    const anomalyHouseholds = submissions.filter(h => (h.alerts || []).length > 0);
+    if (anomalyHouseholds.length === 0) {
+      toast.success("Aucune anomalie détectée ✓");
+      return;
+    }
+
+    try {
+      const data = anomalyHouseholds.map(h => ({
+        'N° Ordre': h.numeroordre,
+        'Nom': h.name,
+        'Village': h.village,
+        'Région': h.region,
+        'Nb Alertes': h.alerts?.length || 0,
+        'Détails Alertes': h.alerts?.map((a: any) => `[${a.type}] ${a.message}`).join(' | '),
+        'Statut': h.status,
+        'Synchronisé': h.source === 'KOBO' ? 'OUI' : 'NON'
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Anomalies Terrain");
+      XLSX.writeFile(wb, `GEM_Anomalies_Export_${format(new Date(), 'yyyyMMdd_HHmm')}.xlsx`);
+      toast.success(`${anomalyHouseholds.length} anomalies exportées`);
+    } catch (err) {
+      toast.error("Échec de l'export des anomalies");
+    }
+  }, [submissions]);
+
   return {
     searchTerm, setSearchTerm, selectedType, setSelectedType,
     selectedSubmission, setSelectedSubmission, isGenerating,
     isSignatureOpen, setIsSignatureOpen, signatureData, setSignatureData,
     archivedPVs, filteredSubmissions, getRecommendedType, handleCreatePV, handleResetPVs, isLoadingDB,
     isBossSignatureOpen, setIsBossSignatureOpen, bossSignatureData, setBossSignatureData,
-    handleExportGlobalDoc,
+    handleExportGlobalDoc, handleExportAnomalies,
     hseTeam, setHseTeam, hseDescription, setHseDescription, teams
   };
 }
@@ -448,15 +477,24 @@ export default function PVAutomation() {
 function PVSubmissionsList({ logic }: { logic: any }) {
   return (
     <div className="bg-slate-900/50 backdrop-blur-xl border border-white/5 rounded-2xl p-4">
-      <div className="relative mb-4">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
-        <input
-          type="text"
-          placeholder="Rechercher..."
-          value={logic.searchTerm}
-          onChange={(e) => logic.setSearchTerm(e.target.value)}
-          className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 pl-10 pr-4 text-sm outline-none"
-        />
+      <div className="flex items-center gap-2 mb-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+          <input
+            type="text"
+            placeholder="Rechercher..."
+            value={logic.searchTerm}
+            onChange={(e) => logic.setSearchTerm(e.target.value)}
+            className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 pl-10 pr-4 text-sm outline-none"
+          />
+        </div>
+        <button 
+          onClick={logic.handleExportAnomalies}
+          className="p-2.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 rounded-xl border border-rose-500/20 transition-all shadow-lg shadow-rose-950/20"
+          title="Exporter les anomalies (Excel)"
+        >
+          <Database size={16} />
+        </button>
       </div>
       <div className="space-y-2 max-h-[600px] overflow-y-auto custom-scrollbar">
         {logic.isLoadingDB ? (
@@ -468,7 +506,14 @@ function PVSubmissionsList({ logic }: { logic: any }) {
         ) : logic.filteredSubmissions.map((s: any) => (
           <div key={s.id} onClick={() => logic.setSelectedSubmission(s)} className={`p-4 rounded-xl border cursor-pointer transition-all ${logic.selectedSubmission?.id === s.id ? 'bg-blue-500/10 border-blue-500/30' : 'bg-white/5 border-transparent hover:border-white/10'}`}>
             <div className="flex justify-between items-center mb-1">
-              <span className="text-xs font-black text-white truncate max-w-[150px]">{s.name || 'Ménage Inconnu'}</span>
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-xs font-black text-white truncate max-w-[150px]">{s.name || 'Ménage Inconnu'}</span>
+                {s.alerts?.length > 0 && (
+                  <div className="relative">
+                    <AlertTriangle size={12} className="text-rose-500 animate-pulse" />
+                  </div>
+                )}
+              </div>
               <span className="text-[10px] font-bold text-slate-500">{logic.getRecommendedType(s)}</span>
             </div>
             {/* PROGRESS INDICATORS */}
@@ -513,24 +558,44 @@ function PVGenerator({ logic }: { logic: any }) {
           <p className="text-[10px] md:text-xs text-slate-500 mt-1 uppercase tracking-widest font-black">LOT REF: {logic.selectedSubmission.numeroordre}</p>
         </div>
         <div className="flex flex-wrap justify-center lg:justify-end gap-2 w-full lg:w-auto">
-          {PVRulesEngine.evaluateAll(logic.selectedSubmission).map(type => {
-            const tmpl = PV_TEMPLATES[type as PVType];
-            if (!tmpl) return null;
-            const Icon = PV_ICONS[type as PVType] || FileText;
-            const colors = COLOR_MAP[tmpl.color as keyof typeof COLOR_MAP];
-            const isSelected = logic.selectedSubmission.activePVType === type;
-            return (
-              <button
-                key={type}
-                onClick={() => logic.handleCreatePV(type as PVType, logic.selectedSubmission)}
-                disabled={logic.isGenerating || (type === 'PVHSE' && (!logic.hseTeam || !logic.hseDescription))}
-                title={tmpl.title}
-                className={`flex-1 sm:flex-none px-3 md:px-4 py-2 rounded-xl text-[9px] md:text-[10px] font-black uppercase transition-all duration-300 ${isSelected ? `${colors.bg} text-white ${colors.shadow} scale-105` : 'bg-slate-800/50 text-slate-400 hover:text-white'} ${(type === 'PVHSE' && (!logic.hseTeam || !logic.hseDescription)) ? 'opacity-30 grayscale cursor-not-allowed' : ''}`}
-              >
-                {['PVR', 'PVNC'].includes(type) ? 'PV' : 'Rapport'} {type}
-              </button>
+          {(() => {
+            const hasCriticalAlert = logic.selectedSubmission.alerts?.some((a: any) => 
+               a.type === 'DOUBLON_DETECTE' || a.type === 'MISMATCH_GPS'
             );
-          })}
+
+            if (hasCriticalAlert) {
+              return (
+                <div className="px-4 py-2 bg-rose-500/10 border border-rose-500/20 rounded-xl flex items-center gap-3">
+                   <div className="w-8 h-8 rounded-lg bg-rose-500/20 flex items-center justify-center text-rose-500">
+                      <ShieldAlert size={18} />
+                   </div>
+                   <div className="text-left">
+                      <p className="text-[9px] font-black text-rose-500 uppercase tracking-widest italic leading-none">Blocage Sécurité</p>
+                      <p className="text-[7px] font-bold text-rose-400/60 uppercase tracking-tighter">Arbitrage requis dans le Control Center</p>
+                   </div>
+                </div>
+              );
+            }
+
+            return PVRulesEngine.evaluateAll(logic.selectedSubmission).map(type => {
+              const tmpl = PV_TEMPLATES[type as PVType];
+              if (!tmpl) return null;
+              const Icon = PV_ICONS[type as PVType] || FileText;
+              const colors = COLOR_MAP[tmpl.color as keyof typeof COLOR_MAP];
+              const isSelected = logic.selectedSubmission.activePVType === type;
+              return (
+                <button
+                  key={type}
+                  onClick={() => logic.handleCreatePV(type as PVType, logic.selectedSubmission)}
+                  disabled={logic.isGenerating || (type === 'PVHSE' && (!logic.hseTeam || !logic.hseDescription))}
+                  title={tmpl.title}
+                  className={`flex-1 sm:flex-none px-3 md:px-4 py-2 rounded-xl text-[9px] md:text-[10px] font-black uppercase transition-all duration-300 ${isSelected ? `${colors.bg} text-white ${colors.shadow} scale-105` : 'bg-slate-800/50 text-slate-400 hover:text-white'} ${(type === 'PVHSE' && (!logic.hseTeam || !logic.hseDescription)) ? 'opacity-30 grayscale cursor-not-allowed' : ''}`}
+                >
+                  {['PVR', 'PVNC'].includes(type) ? 'PV' : 'Rapport'} {type}
+                </button>
+              );
+            });
+          })()}
           <button
             onClick={() => logic.handleResetPVs(logic.selectedSubmission.id)}
             className="p-2 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition-all"
