@@ -14,6 +14,7 @@ export interface Mission {
   data: any;
   createdAt?: string;
   updatedAt?: string;
+  version?: number;
 }
 
 /**

@@ -623,8 +623,8 @@ export default function MissionOrder() {
                 <MissionStatusWidget
                   data={state.formData}
                   members={state.members}
-                  isCertified={state.isCertified || workflow?.overallStatus === 'approved'}
-                  isSubmitted={state.isSubmitted || (workflow && workflow.currentStep > 1)}
+                  isCertified={!!state.isCertified || workflow?.overallStatus === 'approved'}
+                  isSubmitted={!!state.isSubmitted || (workflow ? (workflow.currentStep || 0) > 1 : false)}
                   isSyncing={state.isSyncingServer}
                   lastSync={state.lastSavedAt || 'Synchronisé'}
                   version={state.version}

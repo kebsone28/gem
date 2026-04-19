@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   X, Save, User, Settings, MapPin, 
@@ -22,7 +23,7 @@ export const AdminControlCenterModal: React.FC<AdminControlCenterModalProps> = (
   household,
   onUpdate
 }) => {
-  const [activeTab, setActiveTab] = useState<'identity' | 'technical' | 'logistics' | 'social' | 'media'>('identity');
+  const [activeTab, setActiveTab] = useState<'identity' | 'social' | 'technical' | 'media' | 'logistics' | 'conflits'>('identity');
   const [formData, setFormData] = useState<Partial<Household>>(household);
   const [isSaving, setIsSaving] = useState(false);
   const [zones, setZones] = useState<any[]>([]);
@@ -180,7 +181,7 @@ export const AdminControlCenterModal: React.FC<AdminControlCenterModalProps> = (
               </p>
               <div className="w-1 h-1 rounded-full bg-slate-800" />
               <p className="text-[7px] font-bold uppercase text-slate-600 tracking-widest italic">
-                Dernière MàJ : {new Date(household.updatedAt).toLocaleDateString()} {new Date(household.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                Dernière MàJ : {new Date(household.updatedAt || Date.now()).toLocaleDateString()} {new Date(household.updatedAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </p>
             </div>
           </div>
@@ -273,13 +274,13 @@ export const AdminControlCenterModal: React.FC<AdminControlCenterModalProps> = (
                 <div className="space-y-2">
                   <label className="text-[9px] font-black uppercase tracking-[0.1em] text-slate-500 ml-1">Source de données</label>
                   <select 
-                    value={formData.source || ''} 
-                    onChange={e => setFormData({...formData, source: e.target.value})}
+                    value={formData.source || 'local'} 
+                    onChange={e => setFormData({...formData, source: e.target.value as any})}
                     className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white font-medium focus:border-blue-500/50 transition-all outline-none"
                   >
-                    <option value="KOBO">KOBO</option>
-                    <option value="MANUAL">MANUEL</option>
-                    <option value="IMPORT">IMPORT</option>
+                    <option value="kobo">KOBO</option>
+                    <option value="local">MANUEL</option>
+                    <option value="import">IMPORT</option>
                   </select>
                 </div>
               </div>

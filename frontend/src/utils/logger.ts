@@ -15,9 +15,14 @@ function debug(...args: any[]) {
   if (!isProd) console.debug(...args);
 }
 
+function info(...args: any[]) {
+  if (!isProd) console.info(...args);
+}
+
 export default {
   log,
   warn,
   error,
   debug,
+  info,
 };

@@ -82,6 +82,7 @@ export class ProquelecDatabase extends Dexie {
     projectId: string;
     type: string;
     content: string;
+    createdBy: string;
     createdAt: string;
     metadata?: any;
   }>;

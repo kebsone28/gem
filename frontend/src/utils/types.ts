@@ -103,6 +103,8 @@ export interface Household {
   koboSubmissionId?: string;
   version: number;
   lastModified?: number; // Timestamp local de la dernière modif
+  createdAt?: string;    // ✅ AJOUT
+  manualOverrides?: string[]; // ✅ AJOUT: Liste des champs forcés manuellement
   source?: 'local' | 'kobo' | 'import';
   deletedAt?: Date | null;
 }

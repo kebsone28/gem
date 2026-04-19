@@ -208,11 +208,11 @@ function usePVAutomation() {
       let sigs: any[] = [];
       if (bossSignatureData) {
         const b = new Uint8Array(window.atob(bossSignatureData.split(',')[1]).split('').map(c => c.charCodeAt(0)));
-        sigs.push(new ImageRun({ data: b, transformation: { width: 150, height: 50 } }));
+        sigs.push(new ImageRun({ data: b, transformation: { width: 150, height: 50 }, type: 'png' }));
       }
       if (signatureData) {
         const b = new Uint8Array(window.atob(signatureData.split(',')[1]).split('').map(c => c.charCodeAt(0)));
-        sigs.push(new ImageRun({ data: b, transformation: { width: 150, height: 50 } }));
+        sigs.push(new ImageRun({ data: b, transformation: { width: 150, height: 50 }, type: 'png' }));
       }
 
       const doc = new Document({
@@ -258,7 +258,7 @@ function usePVAutomation() {
                       new TableCell({ margins: { top: 100, bottom: 100, left: 100 }, children: [new Paragraph({ text: pv.metadata?.numeroordre || '-' })] }),
                       new TableCell({ margins: { top: 100, bottom: 100, left: 100 }, children: [new Paragraph({ text: format(new Date(pv.createdAt), 'dd/MM/yyyy HH:mm') })] }),
                       new TableCell({ margins: { top: 100, bottom: 100, left: 100 }, children: [new Paragraph({ text: pv.createdBy || 'N/A' })] }),
-                      new TableCell({ margins: { top: 100, bottom: 100, left: 100 }, children: [new Paragraph({ text: h?.latitude ? `${h.latitude}, ${h.longitude}` : 'N/A' })] }),
+                      new TableCell({ margins: { top: 100, bottom: 100, left: 100 }, children: [new Paragraph({ children: [new TextRun({ text: h?.latitude ? `${h.latitude}, ${h.longitude}` : 'N/A' })] })] }),
                     ]
                   });
                 })
@@ -271,13 +271,13 @@ function usePVAutomation() {
               rows: [
                 new TableRow({
                   children: [
-                    new TableCell({ shading: { fill: "f8fafc" }, children: [new Paragraph({ text: "NOMBRE DE MÉNAGES", bold: true })] }),
+                    new TableCell({ shading: { fill: "f8fafc" }, children: [new Paragraph({ children: [new TextRun({ text: "NOMBRE DE MÉNAGES", bold: true })] })] }),
                     new TableCell({ children: [new Paragraph({ text: String(pvs.length), alignment: AlignmentType.CENTER })] }),
                   ]
                 }),
                 new TableRow({
                   children: [
-                    new TableCell({ shading: { fill: "f8fafc" }, children: [new Paragraph({ text: "TAUX DE CONFORMITÉ (LOT)", bold: true })] }),
+                    new TableCell({ shading: { fill: "f8fafc" }, children: [new Paragraph({ children: [new TextRun({ text: "TAUX DE CONFORMITÉ (LOT)", bold: true })] })] }),
                     new TableCell({ children: [new Paragraph({ text: type === 'PVR' ? '100% (Conforme)' : (['PVINE', 'PVHSE', 'PVRET'].includes(type)) ? 'N/A (Constat)' : '0% (Non Conforme)', alignment: AlignmentType.CENTER })] }),
                   ]
                 })
@@ -325,8 +325,8 @@ function usePVAutomation() {
                   const h = households.find(hh => hh?.id === pv.householdId);
                   return new TableRow({
                     children: [
-                      new TableCell({ margins: { left: 100 }, children: [new Paragraph({ text: pv.metadata?.numeroordre || '-' })] }),
-                      new TableCell({ margins: { left: 100 }, children: [new Paragraph({ text: h?.latitude ? `${h.latitude}, ${h.longitude}` : 'Non géo-référencé', size: 16 })] }),
+                      new TableCell({ margins: { left: 100 }, children: [new Paragraph({ children: [new TextRun({ text: pv.metadata?.numeroordre || '-' })] })] }),
+                      new TableCell({ margins: { left: 100 }, children: [new Paragraph({ children: [new TextRun({ text: h?.latitude ? `${h.latitude}, ${h.longitude}` : 'Non géo-référencé', size: 16 })] })] }),
                     ]
                   });
                 })
@@ -344,8 +344,8 @@ function usePVAutomation() {
               rows: [
                 new TableRow({
                   children: [
-                    new TableCell({ children: [new Paragraph({ text: "VISA DIRECTION", bold: true, alignment: AlignmentType.CENTER }), ...(sigs[0] ? [new Paragraph({ alignment: AlignmentType.CENTER, children: [sigs[0]] })] : [])] }),
-                    new TableCell({ children: [new Paragraph({ text: "VISA PRESTATAIRE", bold: true, alignment: AlignmentType.CENTER }), ...(sigs[1] ? [new Paragraph({ alignment: AlignmentType.CENTER, children: [sigs[1]] })] : [])] })
+                    new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "VISA DIRECTION", bold: true })], alignment: AlignmentType.CENTER }), ...(sigs[0] ? [new Paragraph({ alignment: AlignmentType.CENTER, children: [sigs[0]] })] : [])] }),
+                    new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "VISA PRESTATAIRE", bold: true })], alignment: AlignmentType.CENTER }), ...(sigs[1] ? [new Paragraph({ alignment: AlignmentType.CENTER, children: [sigs[1]] })] : [])] })
                   ]
                 })
               ]
@@ -402,8 +402,7 @@ function usePVAutomation() {
         'Région': h.region,
         'Nb Alertes': h.alerts?.length || 0,
         'Détails Alertes': h.alerts?.map((a: any) => `[${a.type}] ${a.message}`).join(' | '),
-        'Statut': h.status,
-        'Synchronisé': h.source === 'KOBO' ? 'OUI' : 'NON'
+        'Synchronisé': h.source === 'kobo' ? 'OUI' : 'NON'
       }));
 
       const ws = XLSX.utils.json_to_sheet(data);
@@ -879,7 +878,7 @@ function PVArchivePanel({ logic, archivedPVs }: { logic: any, archivedPVs: any[]
     const selected = archivedPVs.filter(pv => selectedIds.has(pv.id));
     if (selected.length === 0) return toast.error("Aucune sélection");
     
-    toast.info(`Préparation de ${selected.length} rapports...`);
+    toast(`Préparation de ${selected.length} rapports...`, { icon: 'ℹ️' });
     for (const pv of selected) {
       const sub = await db.households.get(pv.householdId);
       if (sub) {
@@ -947,7 +946,7 @@ function PVArchivePanel({ logic, archivedPVs }: { logic: any, archivedPVs: any[]
               onClick={async () => {
                 const filtered = archivedPVs.filter(p => logic.selectedType === 'ALL' || p.type === logic.selectedType);
                 if (filtered.length === 0) return toast.error("Rien à télécharger");
-                toast.info(`Démarrage du téléchargement groupé (${filtered.length} fichiers)...`);
+                toast(`Démarrage du téléchargement groupé (${filtered.length} fichiers)...`, { icon: 'ℹ️' });
                 
                 for (const pv of filtered) {
                   const sub = logic.filteredSubmissions.find((s: any) => s.id === pv.householdId);

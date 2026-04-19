@@ -16,17 +16,16 @@ export const PVDocGenerator = {
     const qrDataUrl = await QRCode.toDataURL(aiContent.referenceContractuelle, { margin: 1, scale: 4, color: { dark: '#1e293b' } });
     const qrBytes = new Uint8Array(window.atob(qrDataUrl.split(',')[1]).split('').map(c => c.charCodeAt(0)));
 
-    // Signatures
     let sigPrestataire = null;
     if (signatures.prestataire) {
       const b = new Uint8Array(window.atob(signatures.prestataire.split(',')[1]).split('').map(c => c.charCodeAt(0)));
-      sigPrestataire = new ImageRun({ data: b, transformation: { width: 180, height: 60 } });
+      sigPrestataire = new ImageRun({ data: b, transformation: { width: 180, height: 60 }, type: 'png' });
     }
 
     let sigBoss = null;
     if (signatures.boss) {
       const b = new Uint8Array(window.atob(signatures.boss.split(',')[1]).split('').map(c => c.charCodeAt(0)));
-      sigBoss = new ImageRun({ data: b, transformation: { width: 180, height: 60 } });
+      sigBoss = new ImageRun({ data: b, transformation: { width: 180, height: 60 }, type: 'png' });
     }
 
     const doc = new Document({
@@ -58,8 +57,8 @@ export const PVDocGenerator = {
                   new TableCell({
                     width: { size: 25, type: WidthType.PERCENTAGE },
                     children: [
-                      new Paragraph({ alignment: AlignmentType.RIGHT, children: [new ImageRun({ data: qrBytes, transformation: { width: 60, height: 60 } })] }),
-                      new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: "Authenticité Vérifiée", size: 12, italic: true, color: "64748b" })] })
+                      new Paragraph({ alignment: AlignmentType.RIGHT, children: [new ImageRun({ data: qrBytes, transformation: { width: 60, height: 60 }, type: 'png' })] }),
+                      new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: "Authenticité Vérifiée", size: 12, italics: true, color: "64748b" })] })
                     ]
                   })
                 ]
@@ -149,8 +148,8 @@ export const PVDocGenerator = {
             rows: [
               new TableRow({
                 children: [
-                  new TableCell({ children: [new Paragraph({ text: "VISA DIRECTION", bold: true, alignment: AlignmentType.CENTER }), ...(sigBoss ? [new Paragraph({ alignment: AlignmentType.CENTER, children: [sigBoss] })] : [])] }),
-                  new TableCell({ children: [new Paragraph({ text: "VISA PRESTATAIRE", bold: true, alignment: AlignmentType.CENTER }), ...(sigPrestataire ? [new Paragraph({ alignment: AlignmentType.CENTER, children: [sigPrestataire] })] : [])] })
+                  new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "VISA DIRECTION", bold: true })], alignment: AlignmentType.CENTER }), ...(sigBoss ? [new Paragraph({ alignment: AlignmentType.CENTER, children: [sigBoss] })] : [])] }),
+                  new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "VISA PRESTATAIRE", bold: true })], alignment: AlignmentType.CENTER }), ...(sigPrestataire ? [new Paragraph({ alignment: AlignmentType.CENTER, children: [sigPrestataire] })] : [])] })
                 ]
               })
             ]

@@ -169,8 +169,9 @@ export async function handleServerConflicts(
         // le serveur prenne connaissance de cette fusion au prochain cycle.
         if (record.strategy === 'merge') {
             await enqueue({
-                action: 'UPDATE', // La plupart du temps ce sera un update qui pousse la nouvelle version
+                action: 'UPDATE', 
                 endpoint: `/api/${record.entityType}`,
+                method: 'POST', // Missing method added
                 payload: record.resolvedData
             });
             logger.debug('CONFLICT', `Re-enqueued post-merge ${record.entityType}/${record.entityId}`);

@@ -208,7 +208,7 @@ export default function NotificationCenter() {
 
   const handleClearAll = async () => {
     // Correct Dexie query for boolean field 'read'
-    const toDelete = await db.notifications.where('read').equals(true).toArray();
+    const toDelete = await db.notifications.where('read').equals(true as any).toArray();
     if (toDelete.length > 0) {
       await db.notifications.bulkDelete(toDelete.map(n => n.id));
       setBufferedNotifs(prev => prev.filter(n => !n.read));

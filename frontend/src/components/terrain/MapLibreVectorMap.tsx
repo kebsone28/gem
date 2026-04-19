@@ -76,6 +76,7 @@ const MapLibreVectorMap: React.FC<any> = ({
   const isMeasuring = useTerrainUIStore((s) => s.isMeasuring);
   const mapStyle = useTerrainUIStore((s) => s.mapStyle);
   const { isDarkMode } = useTheme();
+  const [mapInstance, setMapInstance] = useState<maplibregl.Map | null>(null);
 
   // ── Interactive State (Tooltips) ──
   const [hoverData, setHoverData] = useState<any>(null);

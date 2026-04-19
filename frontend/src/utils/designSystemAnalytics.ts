@@ -176,19 +176,18 @@ class DesignSystemAnalytics {
 
 export const analytics = DesignSystemAnalytics.getInstance();
 
-// HOC pour tracker l'usage des composants
+// HOC pour tracker l'usage des composants (Simplifié pour React 19)
 export function withAnalytics<P extends object>(
   Component: React.ComponentType<P>,
   componentName: string
-) {
-  const AnalyticsWrapper = React.forwardRef<any, P>((props, ref) => {
+): React.FC<P> {
+  const AnalyticsWrapper: React.FC<P> = (props) => {
     React.useEffect(() => {
       analytics.trackUsage(componentName, props as Record<string, any>);
     }, [props]);
 
-    // En React 19, ref est une prop normale
-    return React.createElement(Component, { ...props, ref });
-  });
+    return React.createElement(Component, props);
+  };
 
   AnalyticsWrapper.displayName = `withAnalytics(${componentName})`;
   return AnalyticsWrapper;

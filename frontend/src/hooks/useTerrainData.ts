@@ -212,7 +212,18 @@ export function useTerrainData() {
     updateHousehold,
     uploadHouseholdPhoto,
     // Methods removed as they are Dexie-specific and no longer needed for Server-First
-    importHouseholds: async () => {}, 
+    importHouseholds: async (data: Household[]) => {
+      await db.households.bulkPut(data);
+      setHouseholdsRaw(prev => {
+        const next = [...prev];
+        data.forEach(newItem => {
+          const idx = next.findIndex(h => h.id === newItem.id);
+          if (idx > -1) next[idx] = newItem;
+          else next.push(newItem);
+        });
+        return next;
+      });
+    }, 
     repairSyncQueue: async () => 0,
     clearHouseholds: async () => {
        // Optional: could trigger a re-fetch

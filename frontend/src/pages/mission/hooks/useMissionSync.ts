@@ -161,14 +161,11 @@ export const useMissionSync = (
                 actions.setSyncStatus('synced');
                 
                 // 🔥 CRITIQUE: Injecter le numéro officiel s'il est présent
-                const officialOrderNumber = (result as any).orderNumber || (result as any).data?.orderNumber;
+                let officialOrderNumber = (result as any).orderNumber || (result as any).data?.orderNumber;
                 if (officialOrderNumber) {
                   missionData.orderNumber = officialOrderNumber;
-                  // Si le numéro est présent au top-level mais pas dans data, on le synchronise
-                  if (missionData.data) {
-                    missionData.data.orderNumber = officialOrderNumber;
-                  } else {
-                    (missionData as any).orderNumber = officialOrderNumber;
+                  if ((missionData as any).data) { // Keep cast if really needed, but it's safer
+                    (missionData as any).data.orderNumber = officialOrderNumber;
                   }
                   
                   // Mettre à jour l'écran immédiatement via loadMission
@@ -301,7 +298,14 @@ export const useMissionSync = (
         actions.clearDirty();
         actions.setStatus('success');
 
-        return { assignedId, serverSuccess };
+        let officialOrderNumber = undefined;
+        if (navigator.onLine && serverSuccess) {
+           // We don't have easy access to the result here unless we refactor, 
+           // but wait, I can just grab it from missionData if it was updated
+           officialOrderNumber = (missionData as any).orderNumber;
+        }
+
+        return { assignedId, serverSuccess, orderNumber: officialOrderNumber };
       } catch (err) {
         actions.setStatus('error');
         logger.error('Erreur critique sync', err);
@@ -338,7 +342,7 @@ export const useMissionSync = (
       let conflicts = 0;
 
       for (const m of missions) {
-        const serverVersion = m.version || m.data?.version || 1;
+        const serverVersion = m.version || (m as any).data?.version || 1;
         const local = await db.missions.get(m.id);
 
         const normalized = {

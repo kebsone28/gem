@@ -57,6 +57,9 @@ export interface MissionOrderData {
   createdBy?: string;
   creatorId?: string;
   integrityHash?: string;
+  version?: number; // ✅ AJOUT
+  data?: any;      // ✅ AJOUT pour compatibilité sync
+  id?: string;    // ✅ AJOUT pour compatibilité word generator
 }
 
 export type MissionStatus = 'idle' | 'saving' | 'error' | 'success';
@@ -109,6 +112,9 @@ export type MissionAction =
   | { type: 'UPDATE_MEMBER'; index: number; payload: Partial<MissionMember> }
   | { type: 'REMOVE_MEMBER'; index: number }
   | { type: 'SET_STATUS'; payload: MissionStatus }
+  | { type: 'FORCE_PUSH'; payload: any }           // ✅ FIX: added payload
+  | { type: 'RETRY_SYNC'; payload: any }           // ✅ FIX: added payload
+  | { type: 'OFFLINE_SAVE'; payload: any }         // ✅ FIX: added payload
   | {
       type: 'LOAD_MISSION';
       payload: {
