@@ -6,7 +6,13 @@ import { redisConnection } from '../../core/utils/queueManager.js';
 export const getProjectKPIs = async (req, res) => {
     try {
         const { projectId } = req.params;
-        const { organizationId } = req.user;
+        const organizationId = req.user?.organizationId;
+
+        // --- VALIDATION CRITIQUE ---
+        if (!projectId || !organizationId) {
+            console.warn('[KPI] Paramètres manquants:', { projectId, organizationId });
+            return res.status(400).json({ error: 'ID de projet ou organisation manquant' });
+        }
 
         // 0. Tentative de récupération depuis le cache Redis
         const cacheKey = `kpi:${organizationId}:${projectId}`;
@@ -32,11 +38,12 @@ export const getProjectKPIs = async (req, res) => {
         });
 
         if (!project) {
+            console.warn(`[KPI] Projet non trouvé: ${projectId} pour l'organisation ${organizationId}`);
             // Return 200 with null metrics to verify project existence without console error noise
             // This happens for newly created local projects not yet synced
             return res.status(200).json({
                 projectId,
-                projectName: 'Project pending sync',
+                projectName: 'Projet en attente de synchro',
                 metrics: null
             });
         }
@@ -253,7 +260,10 @@ export const getProjectKPIs = async (req, res) => {
 // @route   GET /api/kpi/summary
 export const getGlobalSummary = async (req, res) => {
     try {
-        const { organizationId } = req.user;
+        const organizationId = req.user?.organizationId;
+        if (!organizationId) {
+            return res.status(401).json({ error: 'Non autorisé : OrganizationId manquant' });
+        }
 
         const projects = await prisma.project.findMany({
             where: { organizationId, deletedAt: null },

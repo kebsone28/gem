@@ -36,17 +36,23 @@ export const tracerAction = async (dataOrOrgId, userId, action, resource, resour
         } = finalData;
 
         // 1. Enregistrement en base de données
+        const auditData = {
+            organizationId: orgId,
+            action: act,
+            resource: resrc,
+            resourceId: resId,
+            details: det || {},
+            ipAddress: request ? request.ip : null,
+            userAgent: request ? request.headers['user-agent'] : null
+        };
+
+        // N'ajouter userId que s'il est présent pour éviter les erreurs de relation Prisma
+        if (uId) {
+            auditData.userId = uId;
+        }
+
         prisma.auditLog.create({
-            data: {
-                userId: uId,
-                organizationId: orgId,
-                action: act,
-                resource: resrc,
-                resourceId: resId,
-                details: det || {},
-                ipAddress: request ? request.ip : null,
-                userAgent: request ? request.headers['user-agent'] : null
-            }
+            data: auditData
         }).catch(err => console.error('[ERREUR AUDIT DB] :', err.message));
 
         // 2. Notification Email pour les actions CRITIQUES

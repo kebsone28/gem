@@ -20,6 +20,7 @@ router.post('/register', registerOrganization);
 router.post('/login', login);
 router.post('/verify-2fa', verify2FA);
 router.post('/refresh', refreshToken);
+router.get('/me', authProtect, getMe);
 router.post('/logout', logout);
 router.post('/impersonate', authProtect, impersonateUser);
 router.post('/stop-impersonation', authProtect, stopImpersonation);

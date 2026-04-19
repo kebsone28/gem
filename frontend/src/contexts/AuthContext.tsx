@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { User, UserRole } from '../utils/types';
 import logger from '../utils/logger';
 import * as safeStorage from '../utils/safeStorage';
+import { useAuthStore, normalizeRole } from '../store/authStore';
 
 interface AuthContextType {
   user: User | null;
@@ -67,17 +68,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     accessToken?: string,
     organizationConfig?: any
   ) => {
+    logger.info(`[AUTH-CONTEXT] Login called for ${email}. AccessToken provided: ${accessToken ? 'YES' : 'NO'}`);
+    
+    if (accessToken && (accessToken === 'undefined' || accessToken === 'null')) {
+      logger.error('[AUTH-CONTEXT] Received invalid token string:', accessToken);
+      accessToken = undefined;
+    }
+
     const newUser: User = {
       id: id || 'temp-id-' + Date.now(),
       email,
-      role: role as UserRole,
+      role: normalizeRole(role) as UserRole || role as UserRole,
       name,
       organization,
       organizationConfig: organizationConfig || {},
     };
 
+    // Update LOCAL state
+    setUser(newUser);
+    
+    // Update GLOBAL store
+    useAuthStore.getState().login(email, role, name, organization, id, accessToken);
+
     if (accessToken) {
       safeStorage.setItem('access_token', accessToken);
+      
       // Auto-resolve and cache the real server project ID on login
       fetch('/api/projects', {
         headers: { Authorization: `Bearer ${accessToken}` },
@@ -89,16 +104,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             safeStorage.setItem('active_project_id', projects[0].id);
           }
         })
-        .catch(() => {}); // Silent fail - useProject hook handles fallback
+        .catch(() => {});
     }
+    
     safeStorage.setItem('user', JSON.stringify(newUser));
-    setUser(newUser);
   };
 
   const logout = () => {
+    useAuthStore.getState().logout();
     safeStorage.removeItem('access_token');
     safeStorage.removeItem('user');
-    // Nettoyage complet des états de simulation
     safeStorage.removeItem('admin_access_token');
     safeStorage.removeItem('admin_user_data');
     setUser(null);

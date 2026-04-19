@@ -65,8 +65,8 @@ const MapLibreVectorMap: React.FC<any> = ({
   drawnZones = [],
   pendingPoints = [],
 }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<maplibregl.Map | null>(null);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<maplibregl.Map | null>(null);
   const hasInitialized = useRef(false);
   const [styleIsReady, setStyleIsReady] = useState(false);
   const [iconsReady, setIconsReady] = useState(false);
@@ -76,7 +76,7 @@ const MapLibreVectorMap: React.FC<any> = ({
   const isMeasuring = useTerrainUIStore((s) => s.isMeasuring);
   const mapStyle = useTerrainUIStore((s) => s.mapStyle);
   const { isDarkMode } = useTheme();
-  const [mapInstance, setMapInstance] = useState<maplibregl.Map | null>(null);
+  const [isMapReady, setIsMapReady] = useState(false);
 
   // ── Interactive State (Tooltips) ──
   const [hoverData, setHoverData] = useState<any>(null);
@@ -187,7 +187,7 @@ const MapLibreVectorMap: React.FC<any> = ({
   
   // ✅ INITIALIZATION (DOM + Basic Listeners)
   useEffect(() => {
-    if (!containerRef.current || hasInitialized.current) return;
+    if (!mapContainerRef.current || hasInitialized.current) return;
     let isMounted = true;
 
     const initGlobalMap = async () => {
@@ -195,11 +195,13 @@ const MapLibreVectorMap: React.FC<any> = ({
       if (!isMounted) return;
 
       hasInitialized.current = true;
-      containerRef.current!.appendChild(container);
+      if (mapContainerRef.current) {
+        mapContainerRef.current.appendChild(container);
+      }
       map.resize();
 
-      mapRef.current = map;
-      setMapInstance(map);
+      mapInstanceRef.current = map;
+      setIsMapReady(true);
       
       const checkAndLoad = async () => {
         if (map.isStyleLoaded()) {
@@ -273,10 +275,10 @@ const MapLibreVectorMap: React.FC<any> = ({
         map.off('move', handleMove);
         map.off('moveend', handleMoveEnd);
         map.off('style.load', handleStyleLoad);
-        if (container.parentNode === containerRef.current) {
-          containerRef.current?.removeChild(container);
+        if (container && container.parentNode === mapContainerRef.current) {
+          mapContainerRef.current?.removeChild(container);
         }
-        mapRef.current = null;
+        mapInstanceRef.current = null;
       };
     };
 
@@ -293,7 +295,8 @@ const MapLibreVectorMap: React.FC<any> = ({
 
   // ✅ Unified Style switcher (via Singleton)
   useEffect(() => {
-    if (!mapInstance || (mapInstance as any)._removed) return;
+    const currentMap = mapInstanceRef.current;
+    if (!currentMap || (currentMap as any)._removed) return;
 
     const targetSource = mapStyle;
     if (lastTargetSourceRef.current === targetSource) return;
@@ -304,23 +307,26 @@ const MapLibreVectorMap: React.FC<any> = ({
     // Lock layers until new style AND new icons are ready
     setStyleIsReady(false);
     setIconsReady(false);
+    setIsMapReady(false);
 
     globalSingletonMap.switchStyle(targetSource, isDarkMode).then(() => {
       setStyleIsReady(true);
       setIconsReady(true);
+      setIsMapReady(true);
     });
-  }, [mapStyle, isDarkMode, mapInstance]);
+  }, [mapStyle, isDarkMode]);
 
   // ✅ Commands handler
   useEffect(() => {
-    if (!mapRef.current || !mapCommand || !styleIsReady) return;
+    const currentMap = mapInstanceRef.current;
+    if (!currentMap || !mapCommand || !styleIsReady) return;
     const { center, zoom, bounds } = mapCommand;
     if (bounds) {
-      mapRef.current.fitBounds(bounds, { padding: 50, maxZoom: 18 });
+      currentMap.fitBounds(bounds, { padding: 50, maxZoom: 18 });
     } else if (center) {
-      mapRef.current.flyTo({
+      currentMap.flyTo({
         center,
-        zoom: zoom || mapRef.current.getZoom(),
+        zoom: zoom || currentMap.getZoom(),
         duration: 2000,
         essential: true,
       });
@@ -331,7 +337,8 @@ const MapLibreVectorMap: React.FC<any> = ({
 
   // ✅ Baseline Tools Initialization (One-time or on style change)
   useEffect(() => {
-    if (!mapInstance || !styleIsReady || !iconsReady || !mapInstance.isStyleLoaded()) return;
+    const currentMap = mapInstanceRef.current;
+    if (!currentMap || !styleIsReady || !iconsReady || !currentMap.isStyleLoaded()) return;
 
     // Token for double-init prevention (style + features + projectId)
     const initToken = `${lastTargetSourceRef.current}-${householdGeoJSON?.features?.length || 0}-${projectId}`;
@@ -340,15 +347,16 @@ const MapLibreVectorMap: React.FC<any> = ({
 
     console.log(`[Terrain] 🛠️ Initializing map baseline tools (${initToken})...`);
     try {
-      setupInteractions(mapInstance);
-      setupClusteringEvents(mapInstance);
-      setupUserMarker(mapInstance, userLocation);
+      setupInteractions(currentMap);
+      setupClusteringEvents(currentMap);
+      setupUserMarker(currentMap, userLocation);
     } catch (e) {
       console.error('[Terrain] ❌ Failed to initialize baseline tools:', e);
     }
   }, [
-    mapInstance,
+    isMapReady,
     styleIsReady,
+    iconsReady, // Added explicit dependencies
     setupInteractions,
     setupClusteringEvents,
     setupUserMarker,
@@ -359,65 +367,69 @@ const MapLibreVectorMap: React.FC<any> = ({
 
   // ✅ REACTIVE TOOL: RULER (Mesure)
   useEffect(() => {
-    if (!mapInstance || !styleIsReady || !iconsReady) return;
-    const cleanup = setupMeasureTool(mapInstance, isMeasuring);
+    const currentMap = mapInstanceRef.current;
+    if (!currentMap || !styleIsReady || !iconsReady) return;
+    const cleanup = setupMeasureTool(currentMap, isMeasuring);
     return () => cleanup && cleanup();
-  }, [mapInstance, styleIsReady, iconsReady, isMeasuring, setupMeasureTool]);
+  }, [isMapReady, styleIsReady, iconsReady, isMeasuring, setupMeasureTool]);
 
   // ✅ REACTIVE TOOL: LASSO (Sélection)
   useEffect(() => {
-    if (!mapInstance || !styleIsReady || !iconsReady) return;
-    const cleanup = setupLasso(mapInstance);
+    const currentMap = mapInstanceRef.current;
+    if (!currentMap || !styleIsReady || !iconsReady) return;
+    const cleanup = setupLasso(currentMap);
     return () => cleanup && cleanup();
-  }, [mapInstance, styleIsReady, iconsReady, isSelecting, setupLasso]);
+  }, [isMapReady, styleIsReady, iconsReady, isSelecting, setupLasso]);
 
 
-  // 🎥 Cinematic 3D Immersion: Progressive Pitch on Zoom
   useEffect(() => {
-    if (!mapInstance) return;
+    const currentMap = mapInstanceRef.current;
+    if (!currentMap) return;
 
     const handleZoom = () => {
-      const zoom = mapInstance.getZoom();
+      const zoom = currentMap.getZoom();
       const minZ = 14;
       const maxZ = 17;
       const maxPitch = 45;
 
       if (zoom <= minZ) {
-        if (mapInstance.getPitch() !== 0) mapInstance.setPitch(0);
+        if (currentMap.getPitch() !== 0) currentMap.setPitch(0);
       } else if (zoom >= maxZ) {
-        if (mapInstance.getPitch() !== maxPitch) mapInstance.setPitch(maxPitch);
+        if (currentMap.getPitch() !== maxPitch) currentMap.setPitch(maxPitch);
       } else {
         // Interpolation linéaire pour l'effet "Caméra Drone"
         const progress = (zoom - minZ) / (maxZ - minZ);
-        mapInstance.setPitch(progress * maxPitch);
+        currentMap.setPitch(progress * maxPitch);
       }
     };
 
-    mapInstance.on('zoom', handleZoom);
+    currentMap.on('zoom', handleZoom);
     return () => {
-      mapInstance.off('zoom', handleZoom);
+      currentMap.off('zoom', handleZoom);
     };
-  }, [mapInstance]);
+  }, [isMapReady]);
 
   // Force cluster update when households change (OR style reload OR zone toggle)
   useEffect(() => {
-    if (mapInstance && styleIsReady) {
+    const currentMap = mapInstanceRef.current;
+    if (currentMap && styleIsReady) {
       if (showZones) {
         // Force clear generic clusters
-        const clusterSource = mapInstance.getSource('supercluster-generated') as any;
+        const clusterSource = currentMap.getSource('supercluster-generated') as any;
         if (clusterSource?.setData) clusterSource.setData({ type: 'FeatureCollection', features: [] });
-        const hullSource = mapInstance.getSource('cluster-hulls') as any;
+        const hullSource = currentMap.getSource('cluster-hulls') as any;
         if (hullSource?.setData) hullSource.setData({ type: 'FeatureCollection', features: [] });
       } else {
-        updateClusterDisplay(mapInstance, true);
+        updateClusterDisplay(currentMap, true);
       }
     }
-  }, [households, mapInstance, styleIsReady, updateClusterDisplay, showZones]);
+  }, [households, isMapReady, styleIsReady, updateClusterDisplay, showZones]);
 
   // ── 9. LAYER VISIBILITY HARMONIZATION ──
   // Si on affiche les Zones (Villages), on cache les grappes circulaires standard
   useEffect(() => {
-    if (!mapInstance || !styleIsReady) return;
+    const currentMap = mapInstanceRef.current;
+    if (!currentMap || !styleIsReady) return;
     
     const clusterLayers = ['cluster-halo', 'cluster-circles', 'cluster-counts'];
     const pointLayers = [
@@ -429,22 +441,22 @@ const MapLibreVectorMap: React.FC<any> = ({
     ];
     
     clusterLayers.forEach(layerId => {
-      if (mapInstance.getLayer(layerId)) {
+      if (currentMap.getLayer(layerId)) {
         // Mode zones : on masque les grappes génériques (cercles/chiffres)
-        mapInstance.setLayoutProperty(layerId, 'visibility', showZones ? 'none' : 'visible');
+        currentMap.setLayoutProperty(layerId, 'visibility', showZones ? 'none' : 'visible');
       }
     });
 
     pointLayers.forEach(layerId => {
-      if (mapInstance.getLayer(layerId)) {
+      if (currentMap.getLayer(layerId)) {
         // On GARDE les ménages visibles
-        mapInstance.setLayoutProperty(layerId, 'visibility', 'visible');
+        currentMap.setLayoutProperty(layerId, 'visibility', 'visible');
         
         // MAIS on réduit drastiquement l'effet "cercle" (halo) pour ne pas polluer les trapèzes
         if (layerId === 'households-glow-layer') {
-          mapInstance.setPaintProperty(layerId, 'circle-opacity', showZones ? 0.2 : 0.85);
-          mapInstance.setPaintProperty(layerId, 'circle-stroke-width', showZones ? 0 : 1.5);
-          mapInstance.setPaintProperty(layerId, 'circle-radius', showZones ? 2 : 6);
+          currentMap.setPaintProperty(layerId, 'circle-opacity', showZones ? 0.2 : 0.85);
+          currentMap.setPaintProperty(layerId, 'circle-stroke-width', showZones ? 0 : 1.5);
+          currentMap.setPaintProperty(layerId, 'circle-radius', showZones ? 2 : 6);
         }
       }
     });
@@ -452,22 +464,22 @@ const MapLibreVectorMap: React.FC<any> = ({
     // ── NOUVEAU : On s'assure que les Grappes Proximité (Hulls) sont affichées
     const superclusterHulls = ['supercluster-hulls-fill', 'supercluster-hulls-outline'];
     superclusterHulls.forEach(id => {
-      if (mapInstance.getLayer(id)) {
-        mapInstance.setLayoutProperty(id, 'visibility', showZones ? 'visible' : 'none');
+      if (currentMap.getLayer(id)) {
+        currentMap.setLayoutProperty(id, 'visibility', showZones ? 'visible' : 'none');
       }
     });
-  }, [mapInstance, styleIsReady, showZones]);
+  }, [isMapReady, styleIsReady, showZones]);
 
   return (
     <div
-      ref={containerRef}
+      ref={mapContainerRef}
       className="w-full h-full relative outline-none bg-slate-900 overflow-hidden"
     >
       {/* Modular Layers */}
-      <BackgroundLayer map={mapInstance} />
+      <BackgroundLayer map={mapInstanceRef.current} />
 
       <HouseholdLayer
-        map={mapInstance}
+        map={mapInstanceRef.current}
         householdGeoJSON={householdGeoJSON}
         households={activeHouseholds}
         projectId={projectId}
@@ -476,17 +488,17 @@ const MapLibreVectorMap: React.FC<any> = ({
         styleIsReady={styleIsReady && iconsReady}
       />
       <ZoneLayer
-        map={mapInstance}
+        map={mapInstanceRef.current}
         styleIsReady={styleIsReady}
         grappeZonesData={grappeZonesData}
         grappeCentroidsData={grappeCentroidsData}
         showZones={showZones}
       />
 
-      <LogisticsLayer map={mapInstance} styleIsReady={styleIsReady} warehouses={warehouses} />
+      <LogisticsLayer map={mapInstanceRef.current} styleIsReady={styleIsReady} warehouses={warehouses} />
 
       <InteractionLayer
-        map={mapInstance}
+        map={mapInstanceRef.current}
         styleIsReady={styleIsReady}
         drawnZones={drawnZones}
         pendingPoints={pendingPoints}

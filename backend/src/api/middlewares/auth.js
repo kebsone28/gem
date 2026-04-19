@@ -7,21 +7,55 @@ export const authProtect = async (req, res, next) => {
     try {
         let token;
         const endpoint = req.path || req.url;
+        const authHeader = req.headers.authorization;
 
-        if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-            token = req.headers.authorization.split(' ')[1];
-        } else if (req.cookies.accessToken) {
+        if (authHeader && authHeader.startsWith('Bearer')) {
+            token = authHeader.split(' ')[1];
+        } else if (req.cookies && req.cookies.accessToken) {
             token = req.cookies.accessToken;
         }
 
         if (!token) {
-            logger.error(`[AUTH-ERROR] No token available. Endpoint: ${endpoint}.`);
-            return res.status(401).json({ error: 'Not authorized, no token' });
+            logger.warn(`[AUTH-401] No token provided. Endpoint: ${endpoint}. Header Present: ${!!authHeader}`);
+            return res.status(401).json({ 
+                error: 'Not authorized, no token',
+                code: 'NO_TOKEN'
+            });
         }
 
-        const decoded = verifyAccessToken(token);
+        // Check if token is a string "undefined" or "null" (safety net for storage issues)
+        if (token === 'undefined' || token === 'null' || token.length < 20) {
+            logger.error(`[AUTH-401] Malformed or corrupt token string: "${token.substring(0, 20)}..."`);
+            return res.status(401).json({ 
+                error: 'Malformed session token',
+                code: 'MALFORMED_TOKEN'
+            });
+        }
 
-        // Inject user info into request object (Legacy support)
+        let decoded;
+        try {
+            decoded = verifyAccessToken(token);
+            
+            // Critical Payload Validation
+            if (!decoded.id || !decoded.organizationId) {
+                logger.error(`[AUTH-401] Incomplete Token Payload: id=${decoded.id}, org=${decoded.organizationId}`);
+                return res.status(401).json({ 
+                    error: 'Invalid session payload',
+                    code: 'INCOMPLETE_PAYLOAD'
+                });
+            }
+        } catch (jwtError) {
+            const isExpired = jwtError.name === 'TokenExpiredError';
+            logger.error(`[AUTH-401] Token verification failed: ${jwtError.message}. Reason: ${isExpired ? 'EXPIRED' : 'INVALID'}. Endpoint: ${endpoint}`);
+            
+            return res.status(401).json({ 
+                error: 'Not authorized, token failed', 
+                reason: isExpired ? 'expired' : 'invalid',
+                code: isExpired ? 'TOKEN_EXPIRED' : 'TOKEN_INVALID'
+            });
+        }
+
+        // Inject user info into request object
         req.user = {
             ...decoded,
             organizationId: decoded.organizationId,
@@ -40,8 +74,8 @@ export const authProtect = async (req, res, next) => {
         });
 
     } catch (error) {
-        logger.error('Auth check failed:', error.message);
-        res.status(401).json({ error: 'Not authorized, token failed' });
+        logger.error('[AUTH-CRITICAL] Unexpected error in auth middleware:', error);
+        res.status(500).json({ error: 'Internal server error during authentication' });
     }
 };
 

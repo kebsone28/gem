@@ -14,8 +14,8 @@ if (process.env.DATABASE_URL) {
     // eslint-disable-next-line no-console
     console.log('🔍 Loaded DB_URL from env: MISSING');
 }
-// eslint-disable-next-line no-console
 console.log('🔍 Loaded REDIS_URL from env:', process.env.REDIS_URL ? 'PRESENT' : 'MISSING (Defaults to localhost)');
+console.log('🔍 JWT Secrets from env:', process.env.JWT_SECRET ? 'PRESENT' : 'MISSING (FALLBACK TO DEFAULT)', '| Refresh:', process.env.REFRESH_TOKEN_SECRET ? 'PRESENT' : 'MISSING');
 // eslint-disable-next-line no-console
 console.log('🔍 Current Working Directory:', process.cwd());
 

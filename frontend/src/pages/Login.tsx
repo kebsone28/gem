@@ -44,7 +44,8 @@ export default function Login() {
         password: password,
       });
 
-      const { accessToken, user: userPayload } = response.data;
+      const { accessToken: token1, token: token2, user: userPayload } = response.data;
+      const accessToken = token1 || token2;
       console.log('🔐 LOGIN RESPONSE DEBUG:', { userPayload, accessToken });
       const emailResp = userPayload?.email || '';
       const roleResp = userPayload?.role || '';
@@ -114,7 +115,8 @@ export default function Login() {
         answer: twoFAAnswer,
       });
 
-      const { user, accessToken } = data;
+      const { user, accessToken: token1, token: token2 } = data;
+      const accessToken = token1 || token2;
       login(
         user.email,
         user.role,

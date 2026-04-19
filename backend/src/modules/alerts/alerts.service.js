@@ -144,6 +144,10 @@ export const alertsService = {
    */
   async handleEscalation() {
     try {
+      if (!prisma.alertConfiguration) {
+        logger.warn('[ALERTS] prisma.alertConfiguration is undefined. Skipping escalation (Prisma client might need regeneration).');
+        return;
+      }
       const configs = await prisma.alertConfiguration.findMany({});
 
       for (const config of configs) {

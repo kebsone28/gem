@@ -192,6 +192,10 @@ export const login = async (req, res) => {
             console.log('🗝️ Token Payload Logic:', { role: tokenPayload.role, email: tokenPayload.email });
 
             const { accessToken, refreshToken } = generateTokens(tokenPayload);
+            
+            logger.info(`[AUTH-DEBUG] Login success for ${email}, generating tokens...`);
+            // logger.debug(`[AUTH-DEBUG] AccessToken: ${accessToken.substring(0, 15)}...`);
+
             console.log('✅ Tokens generated');
 
             // Set refresh token in cookie
@@ -303,6 +307,36 @@ export const refreshToken = async (req, res) => {
         res.json({ accessToken: tokens.accessToken });
     } catch (error) {
         res.status(401).json({ error: 'Invalid refresh token' });
+    }
+};
+
+// @desc    Get current user session info
+// @route   GET /api/auth/me
+export const getMe = async (req, res) => {
+    try {
+        // En mode debug/diagnostic, on renvoie ce qui est dans req.user (injecté par authProtect)
+        // et on valide en base pour être sûr.
+        const user = await prisma.user.findUnique({
+            where: { id: req.user.id },
+            include: { organization: { select: { name: true, id: true } } }
+        });
+
+        if (!user) return res.status(404).json({ error: 'Session user not found in DB' });
+
+        res.json({
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            role: req.user.role,
+            organizationId: user.organizationId,
+            organizationName: user.organization?.name,
+            permissions: req.user.permissions,
+            iat: req.user.iat,
+            exp: req.user.exp,
+            serverTime: new Date().toISOString()
+        });
+    } catch (error) {
+        res.status(500).json({ error: 'Error fetching session info' });
     }
 };
 
@@ -453,7 +487,16 @@ export const verify2FA = async (req, res) => {
 
         const user = await prisma.user.findUnique({
             where: id ? { id } : { email: email.toLowerCase() },
-            include: { organization: true }
+            include: { 
+                organization: true,
+                role: {
+                    include: {
+                        permissions: {
+                            include: { permission: true }
+                        }
+                    }
+                }
+            }
         });
 
         if (!user) {
@@ -495,7 +538,26 @@ export const verify2FA = async (req, res) => {
             req
         });
 
-        const tokens = generateTokens(user);
+        // Gestion des permissions (Audit REINFORCEMENT: Override total)
+        const rolePermissions = user.role?.permissions?.map(p => p.permission.key) || [];
+        const userOverrides = Array.isArray(user.permissions) ? user.permissions : [];
+        const mergedPermissions = userOverrides.length > 0 ? userOverrides : rolePermissions;
+
+        const tokenPayload = {
+            id: user.id,
+            email: user.email,
+            organizationId: user.organizationId,
+            role: user.role?.name || user.roleLegacy || 'user',
+            permissions: mergedPermissions || []
+        };
+
+        console.log('🗝️ [2FA] Token Payload Logic:', { role: tokenPayload.role, email: tokenPayload.email });
+
+        const tokens = generateTokens(tokenPayload);
+        
+        logger.info(`[AUTH-DEBUG] 2FA verified for ${user.email}, generating tokens...`);
+        // logger.debug(`[AUTH-DEBUG] AccessToken: ${tokens.accessToken.substring(0, 15)}...`);
+
         console.log('✅ [2FA] Tokens générés');
 
         // Set refresh token in cookie
@@ -511,8 +573,9 @@ export const verify2FA = async (req, res) => {
             user: {
                 id: user.id,
                 email: user.email,
-                role: user.role,
+                role: user.role?.name || user.roleLegacy,
                 name: user.name,
+                permissions: mergedPermissions,
                 organization: user.organization ? user.organization.name : 'N/A',
                 organizationConfig: user.organization?.config || {}
             },

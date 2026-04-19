@@ -19,7 +19,15 @@ apiClient.interceptors.request.use(
     const activeProjectId = safeStorage.getItem('active_project_id');
 
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+      if (token === 'undefined' || token === 'null') {
+        logger.warn('API-CLIENT', `Found invalid token string in storage: "${token}". Removing.`);
+        safeStorage.removeItem('access_token');
+      } else {
+        config.headers.Authorization = `Bearer ${token}`;
+        // logger.debug('API-CLIENT', `Request to ${config.url} with token: ${token.substring(0, 10)}...`);
+      }
+    } else {
+      logger.warn('API-CLIENT', `Request to ${config.url} sent WITHOUT token`);
     }
 
     if (activeProjectId) {
@@ -64,10 +72,16 @@ apiClient.interceptors.response.use(
         if (data.accessToken) {
           logger.log('✅ [AUTH] Token refreshed successfully');
           safeStorage.setItem('access_token', data.accessToken);
-          // Re-run the original request with the new token
+          
+          // Force update the original request header
           originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
+          
+          // Re-set global store if needed (CustomEvent to update AuthStore if not done automatically)
+          window.dispatchEvent(new CustomEvent('auth:token-refreshed', { detail: data.accessToken }));
+          
           return apiClient(originalRequest);
         } else {
+          logger.error('❌ [AUTH] Refresh response missing accessToken');
           throw new Error('No token in refresh response');
         }
       } catch (refreshError: any) {
