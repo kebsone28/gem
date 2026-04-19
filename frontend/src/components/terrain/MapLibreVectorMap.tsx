@@ -304,9 +304,8 @@ const MapLibreVectorMap: React.FC<any> = ({
     setStyleIsReady(false);
     setIconsReady(false);
 
-    globalSingletonMap.switchStyle(targetSource, isDarkMode).then(async () => {
+    globalSingletonMap.switchStyle(targetSource, isDarkMode).then(() => {
       setStyleIsReady(true);
-      await registerIcons(mapInstance);
       setIconsReady(true);
     });
   }, [mapStyle, isDarkMode, mapInstance]);

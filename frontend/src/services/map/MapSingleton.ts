@@ -79,39 +79,54 @@ export class MapManager {
   /**
    * Helper to safely switch styles on the global instance
    */
-  public async switchStyle(targetSource: string, isDarkMode: boolean) {
-    if (!this.map) return;
+  public switchStyle(targetSource: string, isDarkMode: boolean): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (!this.map) return resolve();
 
-    // Prevent updates if interrupted
-    if ((this.map as any)._removed) return;
-    if (!this.map.getStyle()) return;
+      // Prevent updates if interrupted
+      if ((this.map as any)._removed) return resolve();
 
-    let styleObj: any = isDarkMode ? MAP_STYLE_DARK : MAP_STYLE_LIGHT_VECTOR;
-    if (targetSource === 'satellite')
-      styleObj = { ...MAP_STYLE_SATELLITE, metadata: { source: 'satellite' } };
-    if (targetSource === 'light') styleObj = MAP_STYLE_LIGHT_VECTOR;
-    if (targetSource === 'dark') styleObj = MAP_STYLE_DARK;
+      let styleObj: any = isDarkMode ? MAP_STYLE_DARK : MAP_STYLE_LIGHT_VECTOR;
+      if (targetSource === 'satellite')
+        styleObj = { ...MAP_STYLE_SATELLITE, metadata: { source: 'satellite' } };
+      if (targetSource === 'light') styleObj = MAP_STYLE_LIGHT_VECTOR;
+      if (targetSource === 'dark') styleObj = MAP_STYLE_DARK;
 
-    const applyStyle = () => {
-      if ((this.map as any)._removed) return;
-      try {
-        this.map!.setStyle(styleObj as any, { diff: false });
-      } catch (e) {
-        console.warn('[SingletonMap] Style aborted safely');
-        return;
+      const applyStyle = () => {
+        if ((this.map as any)._removed) return resolve();
+        
+        try {
+          // Force clear placement to avoid "reading get" crash during transition
+          (this.map as any)._placement = undefined; 
+          
+          this.map!.setStyle(styleObj as any, { diff: false });
+
+          // We wait for 'style.load' which is the official "all good" signal
+          const onStyleLoad = async () => {
+            try {
+              console.log('[MapSingleton] Style loaded, registering icons...');
+              await registerIcons(this.map!);
+              console.log('[MapSingleton] Style transition complete.');
+              resolve();
+            } catch (err) {
+              console.warn('[MapSingleton] Icon registration failed:', err);
+              resolve(); // Still resolve to let app continue
+            }
+          };
+
+          this.map!.once('style.load', onStyleLoad);
+        } catch (e) {
+          console.warn('[SingletonMap] Style aborted safely', e);
+          resolve();
+        }
+      };
+
+      if (!this.map.isStyleLoaded()) {
+        this.map.once('load', applyStyle);
+      } else {
+        applyStyle();
       }
-
-      this.map!.once('styledata', async () => {
-        if (!this.map!.isStyleLoaded()) return;
-        await registerIcons(this.map!); // ✅ Re-register icons on every style switch
-      });
-    };
-
-    if (!this.map.isStyleLoaded()) {
-      this.map.once('load', applyStyle);
-    } else {
-      applyStyle();
-    }
+    });
   }
 }
 
