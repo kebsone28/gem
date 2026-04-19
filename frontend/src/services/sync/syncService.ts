@@ -251,3 +251,15 @@ export async function performSync(): Promise<void> {
 export function updatePendingCount(count: number): void {
   useSyncStore.getState().setPendingCount(count);
 }
+
+/** Bulk import households */
+export async function importBulk(data: any): Promise<{ success: boolean; count: number }> {
+  const response = await apiClient.post('sync/import-bulk', data);
+  return response.data;
+}
+
+/** Clear entity data on server */
+export async function clearEntity(entity: string): Promise<{ success: boolean }> {
+  const response = await apiClient.delete(`sync/clear/${entity}`);
+  return response.data;
+}

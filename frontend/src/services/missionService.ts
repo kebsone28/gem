@@ -104,3 +104,16 @@ export const duplicateMission = async (id: string): Promise<Mission | null> => {
     return null;
   }
 };
+
+/**
+ * Vérifie publiquement une mission via son identifiant unique
+ */
+export const verifyMission = async (identifier: string): Promise<any> => {
+  try {
+    const response = await api.get(`/missions/verify/${identifier}`);
+    return response.data;
+  } catch (err) {
+    logger.error(`Failed to verify mission ${identifier}:`, err);
+    return null;
+  }
+};

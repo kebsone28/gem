@@ -5,7 +5,10 @@ import {
     getHouseholdByNumero,
     createHousehold,
     updateHousehold,
-    getHouseholdsCount
+    getHouseholdsCount,
+    getHouseholdApprovalHistory,
+    approveHouseholdStep,
+    rejectHouseholdStep
 } from '../../modules/household/household.controller.js';
 import { authProtect } from '../middlewares/auth.js';
 import { verifierPermission, verifierAssignation } from '../../middleware/verifierPermission.js';
@@ -34,6 +37,9 @@ router.get('/by-numero/:numeroordre', getHouseholdByNumero);
 router.get('/:id', getHouseholdById);
 router.post('/', verifierPermission(PERMISSIONS.MODIFIER_CARTE), verifierAssignation('menage'), createHousehold);
 router.patch('/:id', verifierPermission(PERMISSIONS.MODIFIER_CARTE), verifierAssignation('menage'), updateHousehold);
-// NOTE: Approval moved to mission.routes.js (/:missionId/approve)
+// Workflow d'approbation
+router.get('/:householdId/approval-history', getHouseholdApprovalHistory);
+router.post('/:householdId/approve', approveHouseholdStep);
+router.post('/:householdId/reject', rejectHouseholdStep);
 
 export default router;

@@ -4,21 +4,12 @@ import { logPerformance } from '../../services/performance.service.js';
 
 // @desc    Get all households for an organization
 // @route   GET /api/households
-// @query   bbox: lng1,lat1,lng2,lat2 for spatial filtering
 export const getHouseholds = async (req, res) => {
     try {
         const { organizationId } = req.user;
         const { projectId, zoneId, status, bbox, limit = '5000' } = req.query;
 
         const limitNum = Math.min(parseInt(limit), 10000);
-
-        // If bbox is provided, use PostGIS spatial query (Simplified fallback to standard in this turn for stability)
-        if (bbox) {
-            const [lng1, lat1, lng2, lat2] = bbox.split(',').map(Number);
-            if (isNaN(lng1) || isNaN(lat1) || isNaN(lng2) || isNaN(lat2)) {
-                return res.status(400).json({ error: 'Invalid bbox coordinates' });
-            }
-        }
 
         const where = {
             organizationId,
@@ -95,29 +86,22 @@ export const getHouseholdById = async (req, res) => {
 };
 
 // @desc    Create new household
-// @route   POST /api/households
 export const createHousehold = async (req, res) => {
     try {
         const { 
             zoneId: requestedZoneId, status, location, owner, 
             koboData, koboSync, assignedTeams,
-            name, phone, region, departement, village
+            name, phone, region, departement, village, numeroordre
         } = req.body;
         const { organizationId } = req.user;
 
-        // ── ZONE RESOLUTION (zone fallback automatique) ──
         let resolvedZoneId = requestedZoneId;
 
         if (resolvedZoneId) {
-            // Vérifier que la zone existe bien dans la DB
             const zone = await prisma.zone.findUnique({ where: { id: resolvedZoneId } });
-            if (!zone) {
-                console.warn(`⚠️ Zone ${resolvedZoneId} introuvable → fallback`);
-                resolvedZoneId = null;
-            }
+            if (!zone) resolvedZoneId = null;
         }
 
-        // Fallback : chercher la première zone de l'organisation
         if (!resolvedZoneId) {
             const defaultZone = await prisma.zone.findFirst({
                 where: { organizationId },
@@ -125,12 +109,9 @@ export const createHousehold = async (req, res) => {
             });
 
             if (!defaultZone) {
-                return res.status(400).json({ 
-                    error: 'Aucune zone disponible pour cette organisation. Créez une zone d\'abord.' 
-                });
+                return res.status(400).json({ error: 'Aucune zone disponible.' });
             }
             resolvedZoneId = defaultZone.id;
-            console.log(`ℹ️ Zone fallback utilisée: ${resolvedZoneId}`);
         }
 
         const household = await prisma.household.create({
@@ -148,10 +129,11 @@ export const createHousehold = async (req, res) => {
                 region: region || null,
                 departement: departement || null,
                 village: village || null,
+                numeroordre: numeroordre || null
             }
         });
 
-        // Sync PostGIS point
+        // Sync PostGIS
         if (location && Array.isArray(location.coordinates)) {
             await prisma.$executeRaw`
                 UPDATE "Household"
@@ -160,7 +142,6 @@ export const createHousehold = async (req, res) => {
             `;
         }
 
-        // Audit Log
         await tracerAction({
             userId: req.user.id,
             organizationId,
@@ -173,22 +154,12 @@ export const createHousehold = async (req, res) => {
 
         res.status(201).json(household);
     } catch (error) {
-        const prismaCode = error?.code;
-        const prismaMessage = error?.message;
-        console.error('🔥 Create household error:', { code: prismaCode, message: prismaMessage, meta: error?.meta });
-        
-        // Retourner le détail Prisma pour debugging
-        res.status(500).json({ 
-            error: 'Server error while creating household',
-            details: prismaMessage,
-            code: prismaCode,
-            meta: error?.meta
-        });
+        console.error('Create household error:', error);
+        res.status(500).json({ error: 'Server error while creating household' });
     }
 };
 
 // @desc    Update household
-// @route   PATCH /api/households/:id
 export const updateHousehold = async (req, res) => {
     try {
         const { id } = req.params;
@@ -196,7 +167,7 @@ export const updateHousehold = async (req, res) => {
         const updates = req.body;
 
         const household = await prisma.household.findFirst({
-            where: { id, organizationId },
+            where: { id, organizationId, deletedAt: null },
             include: { zone: { select: { projectId: true } } }
         });
 
@@ -204,61 +175,9 @@ export const updateHousehold = async (req, res) => {
             return res.status(404).json({ error: 'Household not found' });
         }
 
-        // --- MANAGE OVERRIDES ---
-        let currentOverrides = household.manualOverrides || [];
-        const { unlockFields, ...otherUpdates } = updates;
-        
-        // 1. Remove unlocked fields
-        if (Array.isArray(unlockFields)) {
-            currentOverrides = currentOverrides.filter(f => !unlockFields.includes(f));
-        }
-
-        // 2. Add modified fields to overrides (if they are basic model fields)
-        const trackableFields = [
-            'name', 'phone', 'numeroordre', 'region', 'departement', 'village', 
-            'latitude', 'longitude', 'zoneId', 'source', 'assignedTeams',
-            'owner', 'constructionData', 'koboSync'
-        ];
-
-        Object.keys(otherUpdates).forEach(key => {
-            if (trackableFields.includes(key) && !currentOverrides.includes(key)) {
-                currentOverrides.push(key);
-            }
-        });
-
-        // Logic for deep merge on JSON fields if they are objects
-        const prepareJsonField = (field, newVal) => {
-            if (newVal === undefined) return household[field];
-            if (newVal === null) return null;
-            if (typeof newVal === 'object' && !Array.isArray(newVal) && typeof household[field] === 'object') {
-                return { ...(household[field] || {}), ...newVal };
-            }
-            return newVal;
-        };
-
         const data = {
-            status: updates.status !== undefined ? updates.status : household.status,
-            name: updates.name !== undefined ? updates.name : household.name,
-            phone: updates.phone !== undefined ? updates.phone : household.phone,
-            numeroordre: updates.numeroordre !== undefined ? updates.numeroordre : household.numeroordre,
-            region: updates.region !== undefined ? updates.region : household.region,
-            departement: updates.departement !== undefined ? updates.departement : household.departement,
-            village: updates.village !== undefined ? updates.village : household.village,
-            latitude: updates.latitude !== undefined ? Number(updates.latitude) : household.latitude,
-            longitude: updates.longitude !== undefined ? Number(updates.longitude) : household.longitude,
-            zoneId: updates.zoneId !== undefined ? updates.zoneId : household.zoneId,
-            source: updates.source !== undefined ? updates.source : household.source,
-            assignedTeams: updates.assignedTeams !== undefined ? updates.assignedTeams : household.assignedTeams,
-            
-            // JSON Fields with merging capability
-            owner: prepareJsonField('owner', updates.owner),
-            constructionData: prepareJsonField('constructionData', updates.constructionData),
-            koboSync: prepareJsonField('koboSync', updates.koboSync),
-            location: prepareJsonField('location', updates.location),
-            alerts: prepareJsonField('alerts', updates.alerts),
-            
-            manualOverrides: currentOverrides,
-            version: household.version + 1
+            ...updates,
+            version: (household.version || 0) + 1
         };
 
         const updated = await prisma.household.update({
@@ -266,44 +185,15 @@ export const updateHousehold = async (req, res) => {
             data
         });
 
-        // Sync PostGIS point if coordinates changed
-        const finalLat = data.latitude;
-        const finalLng = data.longitude;
-        if (finalLat !== null && finalLng !== null && (updates.latitude !== undefined || updates.longitude !== undefined || updates.location !== undefined)) {
-            await prisma.$executeRaw`
-                UPDATE "Household"
-                SET location_gis = ST_SetSRID(ST_MakePoint(${finalLng}, ${finalLat}), 4326)
-                WHERE id = ${id}
-            `;
-        }
-
-        // Audit Log
         await tracerAction({
             userId: req.user.id,
             organizationId,
             action: 'MODIFICATION_MENAGE',
             resource: 'Ménage',
             resourceId: id,
-            details: {
-                oldStatus: household.status,
-                newStatus: updates.status
-            },
+            details: { oldStatus: household.status, newStatus: updates.status },
             req
         });
-        
-        // --- PERFORMANCE LOGGING ---
-        if (updates.status && updates.status !== household.status) {
-            await logPerformance({
-                organizationId,
-                projectId: household.zone?.projectId,
-                userId: req.user.id,
-                householdId: id,
-                action: 'STATUS_CHANGE',
-                oldStatus: household.status,
-                newStatus: updates.status,
-                details: { source: 'WEB_REALTIME' }
-            });
-        }
 
         res.json(updated);
     } catch (error) {
@@ -312,37 +202,190 @@ export const updateHousehold = async (req, res) => {
     }
 };
 
-// @desc    Get household by numeroordre (business identifier for Kobo matching)
-// @route   GET /api/households/by-numero/:numeroordre
+// @desc    Get household by numeroordre
 export const getHouseholdByNumero = async (req, res) => {
     try {
         const { organizationId } = req.user;
         const { numeroordre } = req.params;
 
-        if (!numeroordre) {
-            return res.status(400).json({ error: 'numeroordre is required' });
-        }
-
         const household = await prisma.household.findFirst({
-            where: {
-                organizationId,
-                numeroordre: String(numeroordre),
-                deletedAt: null
-            },
-            include: {
-                zone: {
-                    select: { name: true, projectId: true }
-                }
-            }
+            where: { organizationId, numeroordre: String(numeroordre), deletedAt: null },
+            include: { zone: { select: { name: true, projectId: true } } }
         });
 
-        if (!household) {
-            return res.status(404).json({ error: 'Household not found' });
-        }
-
+        if (!household) return res.status(404).json({ error: 'Household not found' });
         res.json({ household });
     } catch (error) {
         console.error('Get household by numero error:', error);
         res.status(500).json({ error: 'Server error while fetching household' });
+    }
+};
+
+// ===============================================
+// HOUSEHOLD APPROVAL WORKFLOW
+// ===============================================
+
+/**
+ * Get household approval history
+ */
+export const getHouseholdApprovalHistory = async (req, res) => {
+    try {
+        const { householdId } = req.params;
+        const { organizationId } = req.user;
+
+        const household = await prisma.household.findFirst({
+            where: { id: householdId, organizationId },
+            select: { id: true, constructionData: true, createdAt: true, updatedAt: true }
+        });
+
+        if (!household) return res.status(404).json({ error: 'Household not found' });
+
+        const constructionData = household.constructionData || {};
+        let workflow = constructionData.approvalWorkflow;
+
+        if (!workflow) {
+            workflow = {
+                householdId: household.id,
+                steps: [
+                    { role: 'CHEF_PROJET', status: 'pending', label: 'Validation Chef de Projet' },
+                    { role: 'ADMIN', status: 'pending', label: 'Validation Administration' },
+                    { role: 'DIRECTEUR', status: 'pending', label: 'Approbation Direction' }
+                ],
+                overallStatus: 'pending',
+                createdAt: household.createdAt,
+                updatedAt: household.updatedAt
+            };
+        }
+
+        res.json(workflow);
+    } catch (error) {
+        console.error('Get approval history error:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+};
+
+/**
+ * Approve a household step
+ */
+export const approveHouseholdStep = async (req, res) => {
+    try {
+        const { householdId } = req.params;
+        const { role, comments } = req.body;
+        const { organizationId, id: userId } = req.user;
+
+        const household = await prisma.household.findFirst({
+            where: { id: householdId, organizationId }
+        });
+
+        if (!household) return res.status(404).json({ error: 'Household not found' });
+
+        const constructionData = household.constructionData || {};
+        let workflow = constructionData.approvalWorkflow || {
+            householdId: household.id,
+            steps: [
+                { role: 'CHEF_PROJET', status: 'pending', label: 'Validation Chef de Projet' },
+                { role: 'ADMIN', status: 'pending', label: 'Validation Administration' },
+                { role: 'DIRECTEUR', status: 'pending', label: 'Approbation Direction' }
+            ],
+            overallStatus: 'pending',
+            createdAt: new Date().toISOString()
+        };
+
+        const stepIndex = workflow.steps.findIndex(s => s.role === role);
+        if (stepIndex === -1) return res.status(400).json({ error: 'Role invalid' });
+
+        workflow.steps[stepIndex] = {
+            ...workflow.steps[stepIndex],
+            status: 'approved',
+            approvedBy: userId,
+            approvedAt: new Date().toISOString(),
+            comments: comments
+        };
+
+        const allApproved = workflow.steps.every(s => s.status === 'approved');
+        workflow.overallStatus = allApproved ? 'approved' : 'in_progress';
+        workflow.updatedAt = new Date().toISOString();
+
+        await prisma.household.update({
+            where: { id: householdId },
+            data: {
+                constructionData: {
+                    ...constructionData,
+                    approvalWorkflow: workflow
+                },
+                status: allApproved ? 'validated' : household.status
+            }
+        });
+
+        await tracerAction({
+            userId, organizationId,
+            action: 'HOUSEHOLD_STEP_APPROVED',
+            resource: 'Ménage', resourceId: householdId,
+            details: { role }, req
+        });
+
+        res.json(workflow);
+    } catch (error) {
+        console.error('Approve step error:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+};
+
+/**
+ * Reject a household step
+ */
+export const rejectHouseholdStep = async (req, res) => {
+    try {
+        const { householdId } = req.params;
+        const { role, reason } = req.body;
+        const { organizationId, id: userId } = req.user;
+
+        const household = await prisma.household.findFirst({
+            where: { id: householdId, organizationId }
+        });
+
+        if (!household) return res.status(404).json({ error: 'Household not found' });
+
+        const constructionData = household.constructionData || {};
+        let workflow = constructionData.approvalWorkflow;
+
+        if (!workflow) return res.status(400).json({ error: 'No workflow' });
+
+        const stepIndex = workflow.steps.findIndex(s => s.role === role);
+        if (stepIndex === -1) return res.status(400).json({ error: 'Role invalid' });
+
+        workflow.steps[stepIndex] = {
+            ...workflow.steps[stepIndex],
+            status: 'rejected',
+            approvedBy: userId,
+            approvedAt: new Date().toISOString(),
+            comments: reason
+        };
+
+        workflow.overallStatus = 'rejected';
+        workflow.updatedAt = new Date().toISOString();
+
+        await prisma.household.update({
+            where: { id: householdId },
+            data: {
+                constructionData: {
+                    ...constructionData,
+                    approvalWorkflow: workflow
+                },
+                status: 'rejected'
+            }
+        });
+
+        await tracerAction({
+            userId, organizationId,
+            action: 'HOUSEHOLD_STEP_REJECTED',
+            resource: 'Ménage', resourceId: householdId,
+            details: { role, reason }, req
+        });
+
+        res.json(workflow);
+    } catch (error) {
+        console.error('Reject step error:', error);
+        res.status(500).json({ error: 'Server error' });
     }
 };

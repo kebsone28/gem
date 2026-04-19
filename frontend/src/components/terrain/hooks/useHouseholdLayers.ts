@@ -28,6 +28,15 @@ export const useHouseholdLayers = (
     console.log('💎 [useHouseholdLayers] Building Gold Standard layers...');
 
     try {
+      // 🚨 CRITICAL FIX 1: Prevent fatal crashes if sources are not yet initialized by other hooks
+      if (!map.getSource('households') || !map.getSource('supercluster-generated')) {
+        console.warn('⚠️ [useHouseholdLayers] Core sources unavailable. Retrying later...');
+        return;
+      }
+
+      // Safe wrapper to prevent breaking Layer Ordering when dependencies are missing
+      const safeInsertLayer = (target: string) => map.getLayer(target) ? target : undefined;
+
       const initialVisibility = showZones ? 'none' : 'visible';
 
       // ── 1. CLUSTER HALO (Thin subtle aura)
@@ -113,32 +122,34 @@ export const useHouseholdLayers = (
       }
 
       // ── 3b. PROXIMITY HULLS (The "Trapezoidal" encirclement for GPS proximity)
-      if (!map.getLayer('supercluster-hulls-fill')) {
-        map.addLayer({
-          id: 'supercluster-hulls-fill',
-          type: 'fill',
-          source: 'cluster-hulls', // Needs to be populated by useMapClustering
-          layout: { visibility: 'none' }, // Visible only in Zone mode
-          paint: {
-            'fill-color': '#ffffff',
-            'fill-opacity': 0.15,
-          },
-        }, 'cluster-halo');
-      }
+      if (map.getSource('cluster-hulls')) {
+        if (!map.getLayer('supercluster-hulls-fill')) {
+          map.addLayer({
+            id: 'supercluster-hulls-fill',
+            type: 'fill',
+            source: 'cluster-hulls', // Needs to be populated by useMapClustering
+            layout: { visibility: 'none' }, // Visible only in Zone mode
+            paint: {
+              'fill-color': '#ffffff',
+              'fill-opacity': 0.15,
+            },
+          }, safeInsertLayer('cluster-halo'));
+        }
 
-      if (!map.getLayer('supercluster-hulls-outline')) {
-        map.addLayer({
-          id: 'supercluster-hulls-outline',
-          type: 'line',
-          source: 'cluster-hulls',
-          layout: { visibility: 'none' },
-          paint: {
-            'line-color': '#ffffff',
-            'line-width': 2,
-            'line-dasharray': [2, 2],
-            'line-opacity': 0.6,
-          },
-        }, 'cluster-halo');
+        if (!map.getLayer('supercluster-hulls-outline')) {
+          map.addLayer({
+            id: 'supercluster-hulls-outline',
+            type: 'line',
+            source: 'cluster-hulls',
+            layout: { visibility: 'none' },
+            paint: {
+              'line-color': '#ffffff',
+              'line-width': 2,
+              'line-dasharray': [2, 2],
+              'line-opacity': 0.6,
+            },
+          }, safeInsertLayer('cluster-halo'));
+        }
       }
 
       // ── 4. POINT FALLBACK CIRCLES (Always visible, always interactive)
@@ -187,15 +198,16 @@ export const useHouseholdLayers = (
           type: 'symbol',
           source: 'households',
           layout: {
+            // 🚨 CRITICAL FIX 2: Apply COALESCE to prevent crash "Expected string but found null" in concat
             'icon-image': [
               'step',
               ['zoom'],
-              ['concat', 'icon-', ['get', 'status'], '-small'], 
+              ['concat', 'icon-', ['coalesce', ['get', 'status'], 'default'], '-small'], 
               14.5,
               [
                 'case',
                 ['==', ['get', 'status'], 'Non conforme'], 'pulsing-Non conforme',
-                ['concat', 'icon-', ['get', 'status'], '-large']
+                ['concat', 'icon-', ['coalesce', ['get', 'status'], 'default'], '-large']
               ]
             ],
             'icon-size': [
@@ -251,7 +263,7 @@ export const useHouseholdLayers = (
       }
 
       // ── 6. SELECTED HOUSEHOLD (GPS Focus state)
-      if (!map.getLayer('selected-household-layer')) {
+      if (map.getSource('selected-household') && !map.getLayer('selected-household-layer')) {
         map.addLayer({
           id: 'selected-household-layer',
           type: 'circle',
@@ -297,7 +309,7 @@ export const useHouseholdLayers = (
             // Visibility transition
             'heatmap-opacity': ['interpolate', ['linear'], ['zoom'], 14, 0.9, 20, 0.4], // More persistent
           },
-        }, 'cluster-halo'); // Place below clusters
+        }, safeInsertLayer('cluster-halo')); // Place below clusters
       }
 
       // ── 8. HOUSEHOLD LABELS (Numeric)

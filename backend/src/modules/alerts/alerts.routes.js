@@ -16,13 +16,13 @@ router.use(authProtect);
 router.get('/config/organization', alertsController.getAlertConfig);
 router.patch('/config/organization', alertsController.updateAlertConfig);
 
+// Stats et analytics
+router.get('/:projectId/stats', alertsController.getAlertStats);
+
 // Alertes CRUD
 router.get('/:projectId', alertsController.getProjectAlerts);
 router.post('/', alertsController.createAlert);
 router.patch('/:alertId/acknowledge', alertsController.acknowledgeAlert);
 router.patch('/:alertId/resolve', alertsController.resolveAlert);
-
-// Stats et analytics
-router.get('/:projectId/stats', alertsController.getAlertStats);
 
 export default router;
