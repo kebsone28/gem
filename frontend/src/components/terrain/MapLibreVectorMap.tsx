@@ -69,8 +69,7 @@ const MapLibreVectorMap: React.FC<any> = ({
   const mapRef = useRef<maplibregl.Map | null>(null);
   const hasInitialized = useRef(false);
   const [styleIsReady, setStyleIsReady] = useState(false);
-  const [mapInstance, setMapInstance] = useState<maplibregl.Map | null>(null);
-
+  const [iconsReady, setIconsReady] = useState(false);
   const showHeatmap = useTerrainUIStore((s) => s.showHeatmap);
   const showZones = useTerrainUIStore((s) => s.showZones);
   const isSelecting = useTerrainUIStore((s) => s.isSelecting);
@@ -101,23 +100,6 @@ const MapLibreVectorMap: React.FC<any> = ({
   useEffect(() => {
     onBoundsChangeRef.current = onBoundsChange;
   }, [onBoundsChange]);
-  useEffect(() => {
-    onMoveRef.current = onMove;
-  }, [onMove]);
-
-  // ── VIEWPORT LOADING ──
-  // ❌ Désactivé : peut tromper l'utilisateur en ne montrant que les ménages visibles
-  // On garde le chargement complet de tous les ménages pour une vue d'ensemble fidèle
-  useViewportLoading({
-    enabled: false, // Désactivé pour éviter la confusion utilisateur
-    projectId,
-    debounceMs: 300,
-    onHouseholdsLoaded: (loadedHouseholds) => {
-      logger.debug(`📍 Viewport loaded ${loadedHouseholds.length} households`);
-    },
-  });
-
-  // ✅ Utiliser TOUS les ménages chargés pour une vue complète et fidèle
   const activeHouseholds = households;
 
   // Workers & supercluster
@@ -201,11 +183,10 @@ const MapLibreVectorMap: React.FC<any> = ({
   const { setupUserMarker, cleanup: cleanupMarkers } = useMapMarkers(userLocation);
   const { setupMeasureTool } = useMapMeasure();
   const { setupLasso } = useMapLasso(isSelecting, householdsRef, onLassoSelection);
-
-  // ── INITIALIZATION ──
+  
+  // ✅ INITIALIZATION (DOM + Basic Listeners)
   useEffect(() => {
     if (!containerRef.current || hasInitialized.current) return;
-
     let isMounted = true;
 
     const initGlobalMap = async () => {
@@ -213,23 +194,34 @@ const MapLibreVectorMap: React.FC<any> = ({
       if (!isMounted) return;
 
       hasInitialized.current = true;
-
-      // 🔄 Emboîter le Singleton dans le composant React (DOM Injection)
       containerRef.current!.appendChild(container);
-      map.resize(); // Force recalculation des marges
+      map.resize();
 
       mapRef.current = map;
       setMapInstance(map);
-      setStyleIsReady(!!map.isStyleLoaded());
+      
+      const checkAndLoad = async () => {
+        if (map.isStyleLoaded()) {
+          setStyleIsReady(true);
+          await registerIcons(map);
+          setIconsReady(true);
+        }
+      };
 
-      // ✅ TOOLTIP HOVER HANDLERS
+      const handleStyleLoad = async () => {
+        setStyleIsReady(true);
+        setIconsReady(false); // Reset while loading new icons
+        await registerIcons(map);
+        setIconsReady(true);
+      };
+
       const handleMouseMove = (e: any) => {
-        if (!map.isStyleLoaded()) return;
+        if (!map.isStyleLoaded() || !iconsReady) return;
         try {
           const existingStyle = map.getStyle();
           const targetLayers = [
             'households-local-layer',
-            'households-glow-layer',   // ✅ fallback: always visible circles
+            'households-glow-layer',
           ].filter((id) => existingStyle.layers?.some((l: any) => l.id === id));
 
           if (targetLayers.length === 0) return;
@@ -256,7 +248,6 @@ const MapLibreVectorMap: React.FC<any> = ({
         setHoverPos(null);
       };
 
-      const handleStyleLoad = () => setStyleIsReady(true);
       const handleMove = () => {
         if (onMoveRef.current) {
           const center = map.getCenter();
@@ -264,23 +255,23 @@ const MapLibreVectorMap: React.FC<any> = ({
         }
       };
       const handleMoveEnd = () => {
-        // Notifier Terrain.tsx des nouvelles bornes (filtre local)
         onBoundsChangeRef.current?.(map.getBounds().toArray().flat() as any);
       };
 
       map.on('mousemove', handleMouseMove);
       map.on('mouseleave', handleMouseLeave);
-      map.on('style.load', handleStyleLoad);
       map.on('move', handleMove);
       map.on('moveend', handleMoveEnd);
+      map.on('style.load', handleStyleLoad);
+      
+      checkAndLoad();
 
       return () => {
         map.off('mousemove', handleMouseMove);
         map.off('mouseleave', handleMouseLeave);
-        map.off('style.load', handleStyleLoad);
         map.off('move', handleMove);
         map.off('moveend', handleMoveEnd);
-
+        map.off('style.load', handleStyleLoad);
         if (container.parentNode === containerRef.current) {
           containerRef.current?.removeChild(container);
         }
@@ -293,8 +284,6 @@ const MapLibreVectorMap: React.FC<any> = ({
     return () => {
       isMounted = false;
       cleanupMarkers();
-
-      // Le cleanup doit retirer les Listeners et détacher le DIV sans détruire le Worker
       cleanupPromise.then((cleanup) => cleanup && cleanup());
     };
   }, []);
@@ -305,16 +294,20 @@ const MapLibreVectorMap: React.FC<any> = ({
   useEffect(() => {
     if (!mapInstance || (mapInstance as any)._removed) return;
 
-    const targetSource = mapStyle; // 'light', 'dark', or 'satellite'
-
+    const targetSource = mapStyle;
     if (lastTargetSourceRef.current === targetSource) return;
 
     console.log(`[Terrain] 🚀 Singleton switching style to: ${targetSource}`);
     lastTargetSourceRef.current = targetSource;
+    
+    // Lock layers until new style AND new icons are ready
     setStyleIsReady(false);
+    setIconsReady(false);
 
-    globalSingletonMap.switchStyle(targetSource, isDarkMode).then(() => {
+    globalSingletonMap.switchStyle(targetSource, isDarkMode).then(async () => {
       setStyleIsReady(true);
+      await registerIcons(mapInstance);
+      setIconsReady(true);
     });
   }, [mapStyle, isDarkMode, mapInstance]);
 
@@ -338,7 +331,7 @@ const MapLibreVectorMap: React.FC<any> = ({
 
   // ✅ Baseline Tools Initialization (One-time or on style change)
   useEffect(() => {
-    if (!mapInstance || !styleIsReady || !mapInstance.isStyleLoaded()) return;
+    if (!mapInstance || !styleIsReady || !iconsReady || !mapInstance.isStyleLoaded()) return;
 
     // Token for double-init prevention (style + features + projectId)
     const initToken = `${lastTargetSourceRef.current}-${householdGeoJSON?.features?.length || 0}-${projectId}`;
@@ -366,26 +359,18 @@ const MapLibreVectorMap: React.FC<any> = ({
 
   // ✅ REACTIVE TOOL: RULER (Mesure)
   useEffect(() => {
-    if (!mapInstance || !styleIsReady) return;
+    if (!mapInstance || !styleIsReady || !iconsReady) return;
     const cleanup = setupMeasureTool(mapInstance, isMeasuring);
     return () => cleanup && cleanup();
-  }, [mapInstance, styleIsReady, isMeasuring, setupMeasureTool]);
+  }, [mapInstance, styleIsReady, iconsReady, isMeasuring, setupMeasureTool]);
 
   // ✅ REACTIVE TOOL: LASSO (Sélection)
   useEffect(() => {
-    if (!mapInstance || !styleIsReady) return;
+    if (!mapInstance || !styleIsReady || !iconsReady) return;
     const cleanup = setupLasso(mapInstance);
     return () => cleanup && cleanup();
-  }, [mapInstance, styleIsReady, isSelecting, setupLasso]);
+  }, [mapInstance, styleIsReady, iconsReady, isSelecting, setupLasso]);
 
-  // 🖼️ Icons and Images loading
-  useEffect(() => {
-    if (mapInstance && styleIsReady) {
-      registerIcons(mapInstance).then(() => {
-        console.log('✅ [MapLibreVectorMap] All premium icons registered');
-      });
-    }
-  }, [mapInstance, styleIsReady]);
 
   // 🎥 Cinematic 3D Immersion: Progressive Pitch on Zoom
   useEffect(() => {
@@ -488,7 +473,7 @@ const MapLibreVectorMap: React.FC<any> = ({
         projectId={projectId}
         selectedHouseholdCoords={selectedHouseholdCoords}
         showHeatmap={showHeatmap}
-        styleIsReady={styleIsReady}
+        styleIsReady={styleIsReady && iconsReady}
       />
       <ZoneLayer
         map={mapInstance}
