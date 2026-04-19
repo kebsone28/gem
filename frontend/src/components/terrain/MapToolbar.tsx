@@ -12,6 +12,11 @@ import {
   Moon,
   Satellite,
   Info,
+  BarChart3,
+  Ruler,
+  MousePointer2,
+  PenTool,
+  Cloud,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -70,6 +75,12 @@ export const MapToolbar: React.FC<MapToolbarProps> = ({ onRecenter }) => {
   const toggleDatabaseStats = useTerrainUIStore((s) => s.toggleDatabaseStats);
   const showLegend = useTerrainUIStore((s) => s.showLegend);
   const toggleLegend = useTerrainUIStore((s) => s.toggleLegend);
+  const isMeasuring = useTerrainUIStore((s) => s.isMeasuring);
+  const toggleMeasuring = useTerrainUIStore((s) => s.toggleMeasuring);
+  const isSelecting = useTerrainUIStore((s) => s.isSelecting);
+  const toggleSelecting = useTerrainUIStore((s) => s.toggleSelecting);
+  const isDrawing = useTerrainUIStore((s) => s.isDrawing);
+  const setIsDrawing = useTerrainUIStore((s) => s.setIsDrawing);
 
   const mapStyle = useTerrainUIStore((s) => s.mapStyle);
   const setMapStyle = (style: 'dark' | 'light' | 'satellite') => {
@@ -230,9 +241,53 @@ export const MapToolbar: React.FC<MapToolbarProps> = ({ onRecenter }) => {
         />
         <ToolbarButton
           icon={<Database />}
-          title="Analytique"
+          title="Liste des Grappes"
+          onClick={() => setPanel('grappe')}
+          active={activePanel === 'grappe'}
+        />
+        <ToolbarButton
+          icon={<BarChart3 />}
+          title="Stats Analytique"
           onClick={toggleDatabaseStats}
-          active={showDatabaseStats}
+        />
+      </div>
+
+      <div className="toolbar-divider" />
+      
+      {/* GIS TOOLS GROUP */}
+      <div className="toolbar-group">
+        <ToolbarButton
+          icon={<Ruler />}
+          title="Mesurer Distance"
+          onClick={toggleMeasuring}
+          active={isMeasuring}
+          danger={isMeasuring}
+        />
+        <ToolbarButton
+          icon={<MousePointer2 />}
+          title="Lasso de Sélection"
+          onClick={toggleSelecting}
+          active={isSelecting}
+          danger={isSelecting}
+        />
+        <ToolbarButton
+          icon={<PenTool />}
+          title="Dessiner Zone"
+          onClick={() => setPanel('draw')}
+          active={activePanel === 'draw'}
+          danger={activePanel === 'draw'}
+        />
+      </div>
+
+      <div className="toolbar-divider" />
+      
+      {/* DATA & CLOUD */}
+      <div className="toolbar-group">
+        <ToolbarButton
+          icon={<Cloud />}
+          title="Data Hub (Kobo)"
+          onClick={() => setPanel('datahub')}
+          active={activePanel === 'datahub'}
         />
       </div>
 

@@ -74,6 +74,7 @@ const MapLibreVectorMap: React.FC<any> = ({
   const showHeatmap = useTerrainUIStore((s) => s.showHeatmap);
   const showZones = useTerrainUIStore((s) => s.showZones);
   const isSelecting = useTerrainUIStore((s) => s.isSelecting);
+  const isMeasuring = useTerrainUIStore((s) => s.isMeasuring);
   const mapStyle = useTerrainUIStore((s) => s.mapStyle);
   const { isDarkMode } = useTheme();
 
@@ -335,24 +336,22 @@ const MapLibreVectorMap: React.FC<any> = ({
 
   const initializedToolsRef = useRef<string | null>(null);
 
-  // ✅ Legacy Tools Initialization
+  // ✅ Baseline Tools Initialization (One-time or on style change)
   useEffect(() => {
     if (!mapInstance || !styleIsReady || !mapInstance.isStyleLoaded()) return;
 
-    // Token for double-init prevention (style + geojson features count + projectId)
+    // Token for double-init prevention (style + features + projectId)
     const initToken = `${lastTargetSourceRef.current}-${householdGeoJSON?.features?.length || 0}-${projectId}`;
     if (initializedToolsRef.current === initToken) return;
     initializedToolsRef.current = initToken;
 
-    console.log(`[Terrain] 🛠️ Initializing map tools (${initToken})...`);
+    console.log(`[Terrain] 🛠️ Initializing map baseline tools (${initToken})...`);
     try {
       setupInteractions(mapInstance);
       setupClusteringEvents(mapInstance);
       setupUserMarker(mapInstance, userLocation);
-      setupMeasureTool(mapInstance, false); // Initial state
-      setupLasso(mapInstance);
     } catch (e) {
-      console.error('[Terrain] ❌ Failed to initialize tools:', e);
+      console.error('[Terrain] ❌ Failed to initialize baseline tools:', e);
     }
   }, [
     mapInstance,
@@ -360,11 +359,24 @@ const MapLibreVectorMap: React.FC<any> = ({
     setupInteractions,
     setupClusteringEvents,
     setupUserMarker,
-    setupMeasureTool,
-    setupLasso,
     userLocation,
-    households,
+    projectId,
+    householdGeoJSON?.features?.length
   ]);
+
+  // ✅ REACTIVE TOOL: RULER (Mesure)
+  useEffect(() => {
+    if (!mapInstance || !styleIsReady) return;
+    const cleanup = setupMeasureTool(mapInstance, isMeasuring);
+    return () => cleanup && cleanup();
+  }, [mapInstance, styleIsReady, isMeasuring, setupMeasureTool]);
+
+  // ✅ REACTIVE TOOL: LASSO (Sélection)
+  useEffect(() => {
+    if (!mapInstance || !styleIsReady) return;
+    const cleanup = setupLasso(mapInstance);
+    return () => cleanup && cleanup();
+  }, [mapInstance, styleIsReady, isSelecting, setupLasso]);
 
   // 🖼️ Icons and Images loading
   useEffect(() => {
