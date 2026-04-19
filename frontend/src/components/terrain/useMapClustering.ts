@@ -37,9 +37,18 @@ export const useMapClustering = (
    * Met à jour les clusters pour la vue actuelle via le Worker
    */
   const updateClusterDisplay = useCallback(
-    (map: maplibregl.Map, force = false) => {
+    (map: maplibregl.Map, force = false, showZones = false) => {
       // DEFENSIVE: Verify map is still initialized and worker is ready
       if (!map || !(map as any).style || !map.isStyleLoaded() || !worker.isLoaded) return;
+
+      // SI MODE ZONE ACTIVÉ : On vide les clusters et on arrête là
+      if (showZones) {
+        const source = map.getSource('supercluster-generated') as maplibregl.GeoJSONSource;
+        if (source?.setData) source.setData({ type: 'FeatureCollection', features: [] });
+        const hullSource = map.getSource('cluster-hulls') as maplibregl.GeoJSONSource;
+        if (hullSource?.setData) hullSource.setData({ type: 'FeatureCollection', features: [] });
+        return;
+      }
 
       const now = Date.now();
       if (!force && now - lastUpdateTimeRef.current < THROTTLE_MS) {
@@ -119,7 +128,18 @@ export const useMapClustering = (
 
           if (source?.setData) {
             source.setData(clustersGeoJSON as any);
-            const hullSource = map.getSource('cluster-hulls') as maplibregl.GeoJSONSource;
+            
+            let hullSource = map.getSource('cluster-hulls') as maplibregl.GeoJSONSource;
+            if (!hullSource && map.isStyleLoaded()) {
+              try {
+                map.addSource('cluster-hulls', {
+                  type: 'geojson',
+                  data: hullsGeoJSON as any,
+                });
+                hullSource = map.getSource('cluster-hulls') as maplibregl.GeoJSONSource;
+              } catch (e) { /* ignore */ }
+            }
+
             if (hullSource && hullSource.setData) {
               hullSource.setData(hullsGeoJSON as any);
             }

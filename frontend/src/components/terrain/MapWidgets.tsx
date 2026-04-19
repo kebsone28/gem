@@ -123,19 +123,27 @@ export const UnifiedStatusWidget: React.FC<UnifiedStatusWidgetProps> = ({
   const [activeTab, setActiveTab] = useState<'phases' | 'stats' | 'teams'>('phases');
 
   const phases = [
-    { label: 'Toutes', color: 'bg-indigo-500', value: 'all' },
-    { label: 'Non installé', color: 'bg-red-500', value: 'Non débuté' },
-    { label: 'Murs', color: 'bg-amber-500', value: 'Murs' },
-    { label: 'Réseau', color: 'bg-blue-500', value: 'Réseau' },
-    { label: 'Intérieur', color: 'bg-indigo-500', value: 'Intérieur' },
-    { label: 'Terminé', color: 'bg-emerald-500', value: 'Terminé' },
-    { label: 'Bloqué', color: 'bg-rose-500', value: 'Problème' },
+    { label: 'Tout sélectionner', color: 'bg-indigo-500', value: 'all' },
+    { label: 'Non encore installée', color: 'bg-slate-500', value: 'Non encore installée' },
+    { label: 'Éligible', color: 'bg-blue-500', value: 'Eligible' },
+    { label: 'En attente', color: 'bg-slate-400', value: 'En attente' },
+    { label: 'Livraison', color: 'bg-emerald-600', value: 'Livraison effectuée' },
+    { label: 'Murs', color: 'bg-amber-500', value: 'Murs terminés' },
+    { label: 'Réseau', color: 'bg-cyan-500', value: 'Réseau terminé' },
+    { label: 'Intérieur', color: 'bg-indigo-500', value: 'Intérieur terminé' },
+    { label: 'Conforme ✓', color: 'bg-emerald-500', value: 'Contrôle conforme' },
+    { label: 'Non conforme', color: 'bg-rose-500', value: 'Non conforme' },
+    { label: 'Non éligible', color: 'bg-slate-500', value: 'Non éligible' },
+    { label: 'Désistement', color: 'bg-slate-500', value: 'Désistement' },
+    { label: 'Refusé', color: 'bg-rose-500', value: 'Refusé' },
   ];
 
+
   const isPhaseSelected = (value: string) => {
-    if (value === 'all') return selectedPhases.length === phases.length - 1;
+    if (value === 'all') return selectedPhases.length === (phases.length - 1); // phases includes 'all' item
     return selectedPhases.includes(value);
   };
+
 
   const teamRows = [
     {

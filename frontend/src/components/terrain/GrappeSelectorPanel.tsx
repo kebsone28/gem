@@ -20,19 +20,6 @@ interface Props {
   isLoading?: boolean;
 }
 
-// Couleurs utilisées de manière déterministe par MapLibre et le Panel
-const COLORS = [
-  '#3b82f6',
-  '#ef4444',
-  '#10b981',
-  '#f59e0b',
-  '#8b5cf6',
-  '#ec4899',
-  '#06b6d4',
-  '#14b8a6',
-  '#f43f5e',
-  '#6366f1',
-];
 
 export function GrappeSelectorPanel({
   isDarkMode = true,
@@ -83,7 +70,7 @@ export function GrappeSelectorPanel({
               )}
             </h3>
             <p className={`text-xs ${subText}`}>
-              {isLoading ? 'Analyse spatiale en cours...' : `${clusters.length} grappes générées`}
+              {isLoading ? 'Analyse spatiale en cours...' : `${clusters.length} villages détectés`}
             </p>
           </div>
         </div>
@@ -99,7 +86,7 @@ export function GrappeSelectorPanel({
       <div className="p-3">
         <input
           type="text"
-          placeholder="Chercher une grappe..."
+          placeholder="Chercher un village..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className={`w-full px-3 py-2 text-sm rounded-xl border focus:outline-none focus:ring-2 focus:ring-indigo-500/50 ${
@@ -168,7 +155,7 @@ export function GrappeSelectorPanel({
         {!isLoading &&
           renderClusters.map((c) => {
             const isActive = activeGrappeId === c.id;
-            const color = COLORS[parseInt(c.id.replace(/\D/g, '')) % COLORS.length] || COLORS[0];
+            const color = (c as any).color || '#6366F1';
 
             return (
               <button

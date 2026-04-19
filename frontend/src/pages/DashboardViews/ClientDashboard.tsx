@@ -29,11 +29,11 @@ export default function ClientDashboard() {
   ).length;
   const inProgress = households.filter(
     (h) =>
-      !['Non débuté', 'Terminé', 'Réception: Validée', 'Inéligible', 'Problème'].includes(
+      !['Non encore installée', 'Terminé', 'Réception: Validée', 'Inéligible', 'Problème'].includes(
         h.status ?? ''
       )
   ).length;
-  const pending = households.filter((h) => h.status === 'Non débuté').length;
+  const pending = households.filter((h) => h.status === 'Non encore installée').length;
   const pct = total > 0 ? Math.round((done / total) * 100) : 0;
 
   // Recent validated households (last 5 "Terminé")

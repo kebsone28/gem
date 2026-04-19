@@ -199,10 +199,10 @@ export function generateRapportAvancement(data: {
   const byRegion: Record<string, { total: number; done: number }> = {};
 
   households.forEach((h) => {
-    const status = h.status || 'Non débuté';
+    const status = h.status || 'Non encore installée';
     const isDone = status === 'Terminé' || status === 'Conforme';
     const isPending =
-      status === 'Non débuté' || status === 'En attente' || status === 'Attente démarrage';
+      status === 'Non encore installée' || status === 'En attente' || status === 'Attente démarrage';
 
     if (isDone) done++;
     else if (progressStatuses.includes(status) || (!!h.koboSync && status !== 'Inéligible'))

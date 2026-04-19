@@ -53,9 +53,9 @@ export function extractCoordinates(row, config = {}) {
     let latitude = null;
     let longitude = null;
 
-    // 1. Try Configured GPS field
+    // 1. Try Configured GPS field (Standard Kobo Geopoint)
     const geopointStr = getValue(row, 'gps_geopoint', config, [
-        'LOCALISATION_CLIENT', 'TYPE_DE_VISITE/LOCALISATION_CLIENT'
+        'LOCALISATION_CLIENT', 'TYPE_DE_VISITE/LOCALISATION_CLIENT', 'Lieu_du_M_nage'
     ]);
 
     if (geopointStr && typeof geopointStr === 'string' && geopointStr.includes(' ')) {
@@ -66,22 +66,32 @@ export function extractCoordinates(row, config = {}) {
         }
     }
 
-    // 2. Try Split Lat/Lon from config
-    if (!latitude || !longitude) {
-        const preciseLat = getValue(row, 'gps_latitude', config, ['latitude_key', 'preciser_gps/latitude']);
-        const preciseLon = getValue(row, 'gps_longitude', config, ['longitude_key', 'preciser_gps/longitude']);
-        if (preciseLat && preciseLon) {
-            latitude = parseFloat(preciseLat);
-            longitude = parseFloat(preciseLon);
-        }
+    // 2. Try Manual Split Lat/Lon fields (Often more precise in the field)
+    const hasValidManual = (lat, lon) => {
+        const la = parseFloat(lat);
+        const lo = parseFloat(lon);
+        return Number.isFinite(la) && Number.isFinite(lo) && (la !== 0 || lo !== 0);
+    };
+
+    // Check various common manual field names (C2/C4 are high-priority manual overrides)
+    const manualLat = getValue(row, 'gps_latitude', config, ['latitude_key', 'preciser_gps/latitude', 'C2', 'lat', 'LATITUDE']);
+    const manualLon = getValue(row, 'gps_longitude', config, ['longitude_key', 'preciser_gps/longitude', 'C4', 'lon', 'LONGITUDE', 'lng']);
+
+    if (hasValidManual(manualLat, manualLon)) {
+        latitude = parseFloat(manualLat);
+        longitude = parseFloat(manualLon);
     }
 
-    // 3. Native Kobo Fallback
-    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    // 3. Native Kobo Metadata Fallback (Last resort)
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || (latitude === 0 && longitude === 0)) {
         const koboGeo = row['_geolocation'];
         if (Array.isArray(koboGeo) && koboGeo.length >= 2 && koboGeo[0] !== null) {
-            latitude = parseFloat(koboGeo[0]);
-            longitude = parseFloat(koboGeo[1]);
+            const kl = parseFloat(koboGeo[0]);
+            const klo = parseFloat(koboGeo[1]);
+            if (kl !== 0 || klo !== 0) {
+                latitude = kl;
+                longitude = klo;
+            }
         }
     }
 
@@ -114,16 +124,21 @@ export function extractOwner(row, config = {}) {
  */
 export function extractRegionalInfo(row, config = {}) {
     const region = getValue(row, 'region', config, [
-        'region_key', 'TYPE_DE_VISITE/region_key', 'Region'
+        'region_key', 'TYPE_DE_VISITE/region_key', 'Region', 'REGION', 'C5'
     ]) || '';
 
-    const departement = getValue(row, 'departement', config, ['departement', 'dept']) || '';
-    const village = getValue(row, 'village', config, ['village']) || '';
+    const departement = getValue(row, 'departement', config, [
+        'departement', 'dept', 'DEPARTEMENT', 'departement_key', 'TYPE_DE_VISITE/departement_key'
+    ]) || '';
+
+    const village = getValue(row, 'village', config, [
+        'village', 'VILLAGE', 'village_key', 'TYPE_DE_VISITE/village_key', 'localite', 'Localite', 'commune'
+    ]) || '';
 
     return {
         region: String(region).trim(),
         departement: String(departement).trim(),
-        commune: String(row['commune'] || '').trim(),
+        commune: String(row['commune'] || row['COMMUNE'] || '').trim(),
         village: String(village).trim()
     };
 }
@@ -156,7 +171,7 @@ export function extractStatus(row, config = {}) {
     if (isInterieurOk) return 'Intérieur terminé';
     if (isReseauOk) return 'Réseau terminé';
     if (isMaconOk) return 'Murs terminés';
-    return 'Non encore commencé';
+    return 'Non encore installée';
 }
 
 /**
@@ -301,13 +316,31 @@ export function extractAlerts(row) {
         alerts.push({ type: 'ANOMALIE_TERRAIN', message: `Audit : ${auditProb}`, severity: 'HIGH' });
     }
 
+    // 6. Détection de Stagnation (Nouveau)
+    const submissionTime = row['_submission_time'] || row['today'] || row['start'];
+    if (submissionTime) {
+        const subDate = new Date(submissionTime);
+        const now = new Date();
+        const diffDays = (now.getTime() - subDate.getTime()) / (1000 * 3600 * 24);
+        
+        // Si le ménage n'a pas bougé depuis 7 jours et n'est toujours pas commencé
+        const currentStatus = extractStatus(row);
+        if (currentStatus === 'Non encore installée' && diffDays > 7) {
+            alerts.push({ 
+                type: 'STAGNATION_DETECTED', 
+                message: `Ménage stagnant : aucune progression depuis ${Math.round(diffDays)} jours.`, 
+                severity: 'MEDIUM' 
+            });
+        }
+    }
+
     return alerts;
 }
 
 /**
  * Master transformation function
  */
-export function transformRowToHousehold(row, organizationId, defaultZoneId, projectId, config = {}) {
+export function transformRowToHousehold(row, organizationId, defaultZoneId, projectId, config = {}, existingHousehold = null) {
     const numeroOrdre = extractNumeroOrdre(row, config);
 
     if (!numeroOrdre) {
@@ -316,7 +349,13 @@ export function transformRowToHousehold(row, organizationId, defaultZoneId, proj
 
     const { latitude, longitude } = extractCoordinates(row, config);
     const { name, phone } = extractOwner(row, config);
-    const { region, departement, village } = extractRegionalInfo(row, config);
+    const regional = extractRegionalInfo(row, config);
+
+    // 🧠 INTELLIGENCE: Priority to existing DB info if Kobo is empty
+    const finalRegion = regional.region || existingHousehold?.region || null;
+    const finalDepartement = regional.departement || existingHousehold?.departement || null;
+    const finalVillage = regional.village || existingHousehold?.village || null;
+
     const status = extractStatus(row, config);
     const constructionData = extractConstructionData(row);
     const alerts = extractAlerts(row);
@@ -326,9 +365,9 @@ export function transformRowToHousehold(row, organizationId, defaultZoneId, proj
         name: name,
         phone: phone,
         owner: { nom: name, telephone: phone },
-        region: region,
-        departement: departement,
-        village: village,
+        region: finalRegion,
+        departement: finalDepartement,
+        village: finalVillage,
         latitude: latitude,
         longitude: longitude,
         location: {

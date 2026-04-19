@@ -4,7 +4,7 @@ import {
   MAP_STYLE_LIGHT_VECTOR,
   MAP_STYLE_SATELLITE,
 } from '../../components/terrain/mapConfig';
-import { loadMapImages } from '../../components/terrain/mapUtils';
+import { registerIcons } from '../../components/terrain/mapUtils';
 
 export class MapManager {
   public container: HTMLDivElement | null = null;
@@ -66,7 +66,7 @@ export class MapManager {
     // 4. Await internal setup
     await new Promise<void>((resolve) => {
       this.map!.once('load', async () => {
-        await loadMapImages(this.map!);
+        await registerIcons(this.map!); // ✅ Gold Standard Registration
         resolve();
       });
     });
@@ -103,7 +103,7 @@ export class MapManager {
 
       this.map!.once('styledata', async () => {
         if (!this.map!.isStyleLoaded()) return;
-        await loadMapImages(this.map!);
+        await registerIcons(this.map!); // ✅ Re-register icons on every style switch
       });
     };
 

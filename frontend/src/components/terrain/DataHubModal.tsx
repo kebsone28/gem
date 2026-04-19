@@ -226,7 +226,7 @@ export const DataHubModal: React.FC<DataHubModalProps> = ({ isOpen, onClose }) =
         .map((household: any) => {
           const hId = findValue(household, aliases.id);
           if (hId) {
-            const status = findValue(household, aliases.status) || 'Non débuté';
+            const status = findValue(household, aliases.status) || 'Non encore installée';
             const owner = findValue(household, aliases.owner) || '';
             const phone = findValue(household, aliases.phone) || '';
             const region = findValue(household, aliases.region) || '';

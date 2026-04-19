@@ -1,163 +1,96 @@
 import { useEffect } from 'react';
 import type { MutableRefObject } from 'react';
 import maplibregl from 'maplibre-gl';
+import { STATUS_CONFIG } from '../mapConfig';
 
 /**
- * Hook: Household Layers Creation
+ * Hook: Household Layers Creation (Gold Standard Architecture)
  *
- * Creates all map layers for households visualization (heatmap, clusters, markers, labels).
- * Waits for sources to be ready first (setupCompleteRef guard).
- *
- * @param map - MapLibre GL map instance
- * @param styleIsReady - Whether Zustand styleIsReady flag is true
- * @param setupCompleteRef - Ref to track when sources are ready
+ * Implements a high-performance, field-ready layer hierarchy:
+ * 1. Cluster Halo (Circle)
+ * 2. Cluster Circle (Gradient)
+ * 3. Cluster Count (Symbol)
+ * 4. Point Halo (Circle - GPU accelerated)
+ * 5. Point Icons (Symbol - Smart overlap + Fluid scaling)
+ * 6. Selected Household (Priority Circle)
+ * 7. Household Labels (Numeric)
  */
 export const useHouseholdLayers = (
   map: maplibregl.Map | null,
   styleIsReady: boolean,
-  setupCompleteRef: MutableRefObject<boolean>
+  setupCompleteRef: MutableRefObject<boolean>,
+  showZones: boolean = false
 ): void => {
   useEffect(() => {
     if (!map || !styleIsReady) return;
-    if (!setupCompleteRef.current) return; // Wait for sources first
+    if (!setupCompleteRef.current) return;
 
-    console.log('🔵 [useHouseholdLayers] Creating all layers...');
+    console.log('💎 [useHouseholdLayers] Building Gold Standard layers...');
 
     try {
-      // ── HEATMAP LAYER
-      if (!map.getLayer('heatmap')) {
+      const initialVisibility = showZones ? 'none' : 'visible';
+
+      // ── 1. CLUSTER HALO (Thin subtle aura)
+      if (!map.getLayer('cluster-halo')) {
         map.addLayer({
-          id: 'heatmap',
-          type: 'heatmap',
-          source: 'households',
-          layout: { visibility: 'none' },
+          id: 'cluster-halo',
+          type: 'circle',
+          source: 'supercluster-generated',
+          filter: ['==', ['get', 'cluster'], true],
+          layout: { visibility: initialVisibility },
           paint: {
-            'heatmap-weight': ['interpolate', ['linear'], ['zoom'], 0, 0.3, 15, 1],
-            'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 0, 1, 15, 3],
-            'heatmap-color': [
+            'circle-radius': [
               'interpolate',
               ['linear'],
-              ['heatmap-density'],
-              0,
-              'rgba(33,102,172,0)',
-              0.2,
-              'rgb(103,169,207)',
-              0.4,
-              'rgb(209,229,240)',
-              0.6,
-              'rgb(253,219,199)',
-              0.8,
-              'rgb(239,138,98)',
-              1,
-              'rgb(178,24,43)',
+              ['get', 'point_count'],
+              10, 24,
+              100, 48
             ],
-            'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 0, 2, 15, 20],
-            'heatmap-opacity': ['interpolate', ['linear'], ['zoom'], 14, 1, 16, 0],
+            'circle-color': '#ffffff',
+            'circle-opacity': 0.15,
+            'circle-blur': 1,
           },
         });
-        console.log('✅ Created layer: heatmap');
       }
 
-      // ── CLUSTER HULLS
-      if (!map.getLayer('cluster-hulls')) {
-        map.addLayer({
-          id: 'cluster-hulls',
-          type: 'fill',
-          source: 'cluster-hulls',
-          paint: {
-            'fill-color': '#10b981',
-            'fill-opacity': 0.15,
-            'fill-outline-color': '#10b981',
-          },
-        });
-        console.log('✅ Created layer: cluster-hulls');
-      }
-
-      // ── CLUSTER CIRCLES
+      // ── 2. CLUSTER CIRCLES (Vibrant Gradients style)
       if (!map.getLayer('cluster-circles')) {
         map.addLayer({
           id: 'cluster-circles',
           type: 'circle',
           source: 'supercluster-generated',
           filter: ['==', ['get', 'cluster'], true],
-          layout: { visibility: 'none' },
+          layout: { visibility: initialVisibility },
           paint: {
             'circle-color': [
               'step',
               ['to-number', ['coalesce', ['get', 'point_count'], 0]],
-              '#10b981', // 0-20 points: Vert (Low)
-              20, '#fbbf24', // 20-50: Jaune (Medium)
-              50, '#f59e0b', // 50-80: Orange (High)
-              80, '#f43f5e'  // 80+: Rose (Very High)
+              '#00D084', // 0-20 points: Emerald
+              20, '#FFD60A', // 20-50: Gold
+              50, '#FF9500', // 50-80: Orange
+              80, '#FF3B30'  // 80+: Red Pop
             ],
             'circle-radius': [
-              'step',
-              ['to-number', ['coalesce', ['get', 'point_count'], 0]],
-              15, 20, 20, 50, 25, 100, 30
+              'interpolate',
+              ['linear'],
+              ['get', 'point_count'],
+              10, 20,
+              100, 40
             ],
-            'circle-opacity': 0.85,
+            'circle-opacity': [
+              'interpolate',
+              ['linear'],
+              ['get', 'point_count'],
+              10, 0.75,
+              100, 0.95
+            ],
             'circle-stroke-width': 2,
             'circle-stroke-color': '#ffffff'
           }
         });
-        console.log('✅ Created layer: cluster-circles');
       }
 
-      // ── RED CIRCLE FALLBACK (Distrubution View)
-      if (!map.getLayer('households-circles-simple')) {
-        map.addLayer({
-          id: 'households-circles-simple',
-          type: 'circle',
-          source: 'supercluster-generated',
-          filter: ['!', ['has', 'point_count']],
-          paint: {
-            'circle-radius': [
-              'interpolate',
-              ['linear'],
-              ['zoom'],
-              3, 1.5,   // Point minuscule (pixel)
-              8, 3,     // Point visible
-              15, 6     // Point large avant passage aux icônes
-            ],
-            'circle-color': '#10b981', // Émeraude PROQUELEC
-            'circle-opacity': 0.8,
-            'circle-stroke-color': '#ffffff',
-            'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 10, 0, 14, 1.5],
-            'circle-blur': ['interpolate', ['linear'], ['zoom'], 5, 0.8, 10, 0],
-          },
-          layout: { visibility: 'visible' },
-        });
-        console.log('✅ Created layer: households-circles-simple');
-      }
-
-      // ── HOUSEHOLD LABELS
-      if (!map.getLayer('households-labels-simple')) {
-        map.addLayer({
-          id: 'households-labels-simple',
-          type: 'symbol',
-          source: 'supercluster-generated',
-          filter: ['!', ['has', 'point_count']],
-          layout: {
-            'text-field': ['coalesce', ['get', 'numeroordre'], ['get', 'name'], 'HH'],
-            'text-font': ['Open Sans Bold', 'Inter Bold'],
-            'text-size': 12,
-            'text-variable-anchor': ['bottom', 'top', 'right', 'left'],
-            'text-radial-offset': 1.2,
-            'text-justify': 'auto',
-            'text-optional': true,
-            'text-allow-overlap': false,
-            visibility: 'visible',
-          },
-          paint: {
-            'text-color': '#ffffff',
-            'text-halo-color': '#000000',
-            'text-halo-width': 2,
-          },
-        });
-        console.log('✅ Created layer: households-labels-simple');
-      }
-
-      // ── CLUSTER COUNTS
+      // ── 3. CLUSTER COUNTS (Sharp Typography)
       if (!map.getLayer('cluster-counts')) {
         map.addLayer({
           id: 'cluster-counts',
@@ -165,134 +98,235 @@ export const useHouseholdLayers = (
           source: 'supercluster-generated',
           filter: ['==', ['get', 'cluster'], true],
           layout: {
-            'text-field': [
-              'to-string',
-              ['coalesce', ['get', 'point_count_abbreviated'], ['get', 'point_count'], 0],
-            ],
+            'text-field': ['to-string', ['get', 'point_count']],
             'text-font': ['Open Sans Bold', 'Inter Bold'],
             'text-size': 14,
-            visibility: 'none',
+            'text-allow-overlap': true,
+            'visibility': initialVisibility
           },
-          paint: { 'text-color': '#ffffff' },
+          paint: { 
+            'text-color': '#ffffff',
+            'text-halo-color': 'rgba(0,0,0,0.5)',
+            'text-halo-width': 1,
+          },
         });
-        console.log('✅ Created layer: cluster-counts');
       }
 
-      // ── GLOW LAYER (SCINTILLANTE)
+      // ── 3b. PROXIMITY HULLS (The "Trapezoidal" encirclement for GPS proximity)
+      if (!map.getLayer('supercluster-hulls-fill')) {
+        map.addLayer({
+          id: 'supercluster-hulls-fill',
+          type: 'fill',
+          source: 'cluster-hulls', // Needs to be populated by useMapClustering
+          layout: { visibility: 'none' }, // Visible only in Zone mode
+          paint: {
+            'fill-color': '#ffffff',
+            'fill-opacity': 0.15,
+          },
+        }, 'cluster-halo');
+      }
+
+      if (!map.getLayer('supercluster-hulls-outline')) {
+        map.addLayer({
+          id: 'supercluster-hulls-outline',
+          type: 'line',
+          source: 'cluster-hulls',
+          layout: { visibility: 'none' },
+          paint: {
+            'line-color': '#ffffff',
+            'line-width': 2,
+            'line-dasharray': [2, 2],
+            'line-opacity': 0.6,
+          },
+        }, 'cluster-halo');
+      }
+
+      // ── 4. POINT FALLBACK CIRCLES (Always visible, always interactive)
+      // This layer renders for ALL households regardless of icon registration state
       if (!map.getLayer('households-glow-layer')) {
         map.addLayer({
           id: 'households-glow-layer',
           type: 'circle',
-          source: 'supercluster-generated',
-          filter: ['!', ['has', 'point_count']], // Uniquement sur les points individuels pour l'instant
+          source: 'households',
           paint: {
-            'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 10, 18, 25],
+            'circle-radius': [
+              'interpolate', ['linear'], ['zoom'],
+              4, 2,
+              8, 3,
+              14, 5,
+              18, 8
+            ],
             'circle-color': [
               'match',
               ['coalesce', ['get', 'status'], 'default'],
-              'Contrôle conforme', '#10b981',
-              'Non conforme', '#f43f5e',
-              'Intérieur terminé', '#6366f1',
-              'Réseau terminé', '#3b82f6',
-              'Murs terminés', '#f59e0b',
-              'Livraison effectuée', '#06b6d4',
-              'Non encore commencé', '#64748b',
-              'Non éligible', '#f43f5e',
-              'Désistement', '#64748b',
-              '#ffffff'
+              'Contrôle conforme', '#00FF9D',
+              'Non conforme', '#FF0055',
+              'Intérieur terminé', '#6366F1',
+              'Réseau terminé', '#00D2FF',
+              'Murs terminés', '#FFD60A',
+              'Livraison effectuée', '#059669',
+              'Non éligible', '#64748B',
+              'Désistement', '#64748B',
+              'Refusé', '#F43F5E',
+              'Eligible', '#3B82F6',
+              'En attente', '#64748B',
+              '#6366F1' // default: indigo
             ],
-            'circle-opacity': 0.3,
-            'circle-blur': 0.8,
+            'circle-opacity': 0.85,
+            'circle-stroke-width': 1.5,
+            'circle-stroke-color': 'rgba(255,255,255,0.4)',
           },
         });
-        console.log('✅ Created layer: households-glow-layer');
       }
 
-      // ── LOCAL LAYER (Household markers)
+
+      // ── 5. POINT ICONS (The Heart of the system)
       if (!map.getLayer('households-local-layer')) {
         map.addLayer({
           id: 'households-local-layer',
           type: 'symbol',
-          source: 'supercluster-generated',
-          filter: ['!', ['has', 'point_count']],
+          source: 'households',
           layout: {
             'icon-image': [
-              'match',
-              ['coalesce', ['get', 'status'], 'default'],
-              'Contrôle conforme', 'icon-Contrôle conforme',
-              'Non conforme', 'icon-Non conforme',
-              'Intérieur terminé', 'icon-Intérieur terminé',
-              'Réseau terminé', 'icon-Réseau terminé',
-              'Murs terminés', 'icon-Murs terminés',
-              'Livraison effectuée', 'icon-Livraison effectuée',
-              'Non encore commencé', 'icon-Non encore commencé',
-              'Non éligible', 'icon-Non conforme',
-              'Désistement', 'icon-Non conforme',
-              'icon-default',
+              'step',
+              ['zoom'],
+              ['concat', 'icon-', ['get', 'status'], '-small'], 
+              14.5,
+              [
+                'case',
+                ['==', ['get', 'status'], 'Non conforme'], 'pulsing-Non conforme',
+                ['concat', 'icon-', ['get', 'status'], '-large']
+              ]
             ],
             'icon-size': [
               'interpolate',
-              ['linear'],
-              ['zoom'],
-              3,
-              0.12,
-              6,
-              0.25,
-              10,
-              0.45,
-              14,
-              0.65,
-              18,
-              1,
+              ['linear'], ['zoom'],
+              0, 0.35,
+              13, 0.65,
+              15, 0.9,
+              18, 1.1
             ],
             'icon-allow-overlap': true,
-            'text-field': [
-              'to-string',
-              ['coalesce', ['get', 'numeroordre'], ['get', 'household_id'], ''],
+            'icon-ignore-placement': true,
+            'icon-optional': true,
+            'symbol-sort-key': [
+              'case',
+              ['==', ['get', 'status'], 'Non conforme'], 100,
+              ['==', ['get', 'status'], 'Contrôle conforme'], 80,
+              10
             ],
-            'text-font': ['Open Sans Bold', 'Inter Bold'],
-            'text-size': 11,
-            'text-variable-anchor': ['bottom', 'top', 'right', 'left'],
-            'text-radial-offset': 1.5,
-            'text-justify': 'auto',
-            'text-optional': true,
-            'text-allow-overlap': false,
-            // 'icon-allow-overlap: true' allows circles to group, while text avoids them!
-            visibility: 'none',
+            'symbol-z-order': 'viewport-y'
           },
           paint: {
-            'icon-opacity': 1.0,
-            'icon-halo-color': 'rgba(255,255,255,0.5)',
-            'icon-halo-width': 1,
-            'text-color': '#ffffff',
-            'text-halo-color': '#0f172a',
-            'text-halo-width': 2.5,
-            'text-opacity': ['interpolate', ['linear'], ['zoom'], 14.5, 0, 16, 1],
-          },
+            'icon-opacity': 1
+          }
         });
-        console.log('✅ Created layer: households-local-layer');
       }
 
-      // ── SELECTED HOUSEHOLD
+      // ── 5b. PHOTO MONITORING BADGES (Subtle overlay for documented sites)
+      if (!map.getLayer('households-photo-badge')) {
+        map.addLayer({
+          id: 'households-photo-badge',
+          type: 'symbol',
+          source: 'households',
+          filter: ['==', ['get', 'hasPhotos'], true],
+          layout: {
+            'icon-image': 'photo-indicator',
+            'icon-size': [
+              'interpolate',
+              ['linear'], ['zoom'],
+              13, 0.25,
+              15, 0.35,
+              18, 0.5
+            ],
+            'icon-offset': [14, -14],
+            'icon-allow-overlap': true,
+            'icon-ignore-placement': true,
+            'visibility': 'visible'
+          },
+          paint: {
+            'icon-opacity': ['step', ['zoom'], 0, 14, 1]
+          }
+        });
+      }
+
+      // ── 6. SELECTED HOUSEHOLD (GPS Focus state)
       if (!map.getLayer('selected-household-layer')) {
         map.addLayer({
           id: 'selected-household-layer',
           type: 'circle',
           source: 'selected-household',
           paint: {
-            'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 12, 14, 18, 18, 26],
-            'circle-color': '#f59e0b',
-            'circle-stroke-color': '#ffffff',
-            'circle-stroke-width': 4,
-            'circle-opacity': 0.95,
+            'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 14, 15, 24, 18, 32],
+            'circle-color': 'transparent',
+            'circle-stroke-color': '#3b82f6',
+            'circle-stroke-width': 3,
+            'circle-opacity': 1,
+            // Infinite slight pulse logic would go here if we used a direct animation, 
+            // but for now a static high-contrast blue focus is baseline.
           },
         });
-        console.log('✅ Created layer: selected-household-layer');
       }
 
-      console.log('✅ [useHouseholdLayers] All layers created successfully');
+      // ── 7. HEATMAP LAYER (Density visualization)
+      if (!map.getLayer('heatmap')) {
+        map.addLayer({
+          id: 'heatmap',
+          type: 'heatmap',
+          source: 'households',
+          maxzoom: 17,
+          paint: {
+            // Increase the heatmap weight based on frequency and property magnitude
+            'heatmap-weight': 1,
+            // Increase the heatmap color weight by zoom level
+            'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 0, 1, 15, 8], // Boost intensity
+            // Color ramp for heatmap.
+            'heatmap-color': [
+              'interpolate',
+              ['linear'],
+              ['heatmap-density'],
+              0, 'rgba(67,56,202,0)',    // Transparent Indigo
+              0.2, 'rgba(79,70,229,0.3)', // Indigo
+              0.4, 'rgba(59,130,246,0.6)', // Blue
+              0.6, 'rgba(16,185,129,0.8)', // Emerald
+              0.8, 'rgba(245,158,11,0.9)', // Amber
+              1, 'rgba(239,68,68,1)'       // Red
+            ],
+            // Adjust the heatmap radius by zoom level
+            'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 0, 4, 15, 45], // Larger radius
+            // Visibility transition
+            'heatmap-opacity': ['interpolate', ['linear'], ['zoom'], 14, 0.9, 20, 0.4], // More persistent
+          },
+        }, 'cluster-halo'); // Place below clusters
+      }
+
+      // ── 8. HOUSEHOLD LABELS (Numeric)
+      if (!map.getLayer('households-labels-simple')) {
+        map.addLayer({
+          id: 'households-labels-simple',
+          type: 'symbol',
+          source: 'households',
+          layout: {
+            'text-field': ['coalesce', ['get', 'numeroordre'], ''],
+            'text-font': ['Open Sans Bold', 'Inter Bold'],
+            'text-size': 11,
+            'text-variable-anchor': ['top'],
+            'text-radial-offset': 1.8,
+            'visibility': 'visible',
+            'text-allow-overlap': false
+          },
+          paint: {
+            'text-color': '#ffffff',
+            'text-halo-color': 'rgba(0,0,0,0.8)',
+            'text-halo-width': 1.5,
+            'text-opacity': ['step', ['zoom'], 0, 15, 1], // Only at deep zoom
+          },
+        });
+      }
+
+      console.log('✅ [useHouseholdLayers] Gold Standard hierarchy complete');
     } catch (err) {
-      console.error('🔴 [useHouseholdLayers] Failed to create layers:', err);
+      console.error('🔴 [useHouseholdLayers] Layer construction failed:', err);
     }
   }, [map, styleIsReady, setupCompleteRef]);
 };

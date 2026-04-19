@@ -21,19 +21,28 @@ export type SearchResult =
     };
 
 export const ALL_STATUSES = [
+  'Contrôle conforme',
+  'Non conforme',
+  'Intérieur terminé',
+  'Réseau terminé',
+  'Murs terminés',
+  'Livraison effectuée',
   'Eligible',
-  'Non éligible',
-  'Désistement',
-  'Installé',
+  'Non encore installée',
+  'Non débuté',
+  'Non commencé',
   'En attente',
   'Refusé',
+  'Non éligible',
+  'Désistement',
 ];
+
 
 export const hasValidCoordinates = (h: Household): boolean => {
   // Support either Nested GeoJSON coordinates OR Top-level latitude/longitude
-  // Use || instead of ?? to ensure 0 values trigger the fallback
-  const lng = Number(h.location?.coordinates?.[0] || h.longitude);
-  const lat = Number(h.location?.coordinates?.[1] || h.latitude);
+  // Use ?? instead of || to ensure 0 values are preserved
+  const lng = Number(h.location?.coordinates?.[0] ?? h.longitude);
+  const lat = Number(h.location?.coordinates?.[1] ?? h.latitude);
 
   return (
     Number.isFinite(lng) &&
@@ -132,11 +141,10 @@ export const useMapFilters = (
   const visibleHouseholds = useMemo(() => {
     if (!mapBounds) return filteredHouseholds;
     const [west, south, east, north] = mapBounds;
-
     return filteredHouseholds.filter((h) => {
-      // Use || instead of ?? to ensure 0 values trigger the fallback
-      let lng = Number(h.location?.coordinates?.[0] || h.longitude);
-      let lat = Number(h.location?.coordinates?.[1] || h.latitude);
+      // Use ?? instead of || to ensure 0 values are preserved
+      let lng = Number(h.location?.coordinates?.[0] ?? h.longitude);
+      let lat = Number(h.location?.coordinates?.[1] ?? h.latitude);
 
       // 🇸🇳 SMART AUTO-CORRECTION FOR SENEGAL (West Africa)
       if (lng > 0 && lat < 0) {

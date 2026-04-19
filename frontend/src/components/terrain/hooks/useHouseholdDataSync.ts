@@ -16,159 +16,92 @@ export const useHouseholdDataSync = (
   householdGeoJSON?: any,
   households?: any[]
 ): void => {
+  /**
+   * REFINED: Lightweight hash instead of JSON.stringify.
+   * To prevent the 'String Meat Grinder' effect, we use length and total versions.
+   */
   const lastDataHashRef = useRef<string>('');
-  const lastSourceAvailableRef = useRef<boolean>(false);
-  const setDataTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const setDataTimeoutRef = useRef<any>(null);
 
-  /**
-   * Deduplicate by numeroordre (household order number) - keep only OLDEST GPS per ménage
-   * numeroordre is the immutable identifier, id may differ between old/new GPS records
-   */
-  const deduplicateKeepOldestGPS = (features: any[]) => {
-    const seenNumeros = new Map<string, any>();
-
-    features.forEach((feature) => {
-      // Use numeroordre as the identifier, fallback to ID if missing
-      const identifier = feature.properties?.numeroordre || feature.properties?.id || feature.id;
-      if (!identifier) return;
-
-      // Keep only first occurrence (oldest GPS)
-      if (!seenNumeros.has(identifier)) {
-        seenNumeros.set(identifier, feature);
-      } else {
-        console.log(
-          `🔄 [Dedup] Ménage ${identifier}: removing newer GPS [${feature.geometry.coordinates}], keeping old [${seenNumeros.get(identifier).geometry.coordinates}]`
-        );
-      }
-    });
-
-    return Array.from(seenNumeros.values());
-  };
-
-  /**
-   * Lightweight hash instead of JSON.stringify
-   * Format: source:count:numeroordre1|numeroordre2|numeroordre3 (using immutable numeroordre)
-   */
   const dataHash = useMemo(() => {
-    if (householdGeoJSON?.features?.length > 0) {
-      const deduplicatedFeatures = deduplicateKeepOldestGPS(householdGeoJSON.features);
-      const identifiers = deduplicatedFeatures
-        .map((f: any) => f.properties?.numeroordre || f.properties?.id || f.id)
-        .sort()
-        .join('|');
-      return `worker:${deduplicatedFeatures.length}:${identifiers}`;
+    if (householdGeoJSON?.features) {
+       // Worker result is already deduplicated
+       return `worker:${householdGeoJSON.features.length}`;
     }
     if (households && households.length > 0) {
-      const numeroordres = households
-        .map((h: any) => h.numeroordre || h.id)
-        .sort()
-        .join('|');
-      return `fallback:${households.length}:${numeroordres}`;
+      // Calculate a fast numeric checksum of versions to detect changes without string joining
+      const versionChecksum = households.reduce((sum, h) => sum + (h.version || 0), 0);
+      return `fallback:${households.length}:${versionChecksum}`;
     }
     return 'empty:0';
   }, [householdGeoJSON, households]);
 
   // ── Main GeoJSON Sync ──
   useEffect(() => {
-    console.log(
-      `🔍 [useHouseholdDataSync] useEffect triggered (dataHash: ${dataHash.substring(0, 30)}...)`
-    );
+    if (!map) return;
 
-    if (!map) {
-      console.log('⏳ [useHouseholdDataSync] No map, skipping');
-      return;
-    }
+    const applyData = () => {
+      if (!map.isStyleLoaded()) return;
 
-    const source = map.getSource('households') as maplibregl.GeoJSONSource | undefined;
-    const sourceNowAvailable = !!source;
+      const source = map.getSource('households') as maplibregl.GeoJSONSource | undefined;
+      if (!source) return;
 
-    if (!source) {
-      console.log('⏳ [useHouseholdDataSync] Source not yet available, skipping data sync');
-      lastSourceAvailableRef.current = false;
-      return;
-    }
+      // Hash unchanged + source was already available = no update needed
+      if (dataHash === lastDataHashRef.current) return;
+      lastDataHashRef.current = dataHash;
 
-    // Detect if source just became available (source was unavailable, now available)
-    const sourceJustBecameAvailable = !lastSourceAvailableRef.current && sourceNowAvailable;
-    lastSourceAvailableRef.current = true;
+      // Debounce setData to prevent rapid successive updates
+      if (setDataTimeoutRef.current) clearTimeout(setDataTimeoutRef.current);
 
-    // Hash unchanged + source was already available = no update needed
-    if (dataHash === lastDataHashRef.current && !sourceJustBecameAvailable) {
-      console.log('📊 [useHouseholdDataSync] Data hash unchanged, skipping setData()');
-      return;
-    }
+      setDataTimeoutRef.current = setTimeout(() => {
+        let dataToApply: any;
 
-    if (sourceJustBecameAvailable) {
-      console.log('🟢 [useHouseholdDataSync] Source just became available, forcing data sync...');
-    }
+        if (householdGeoJSON?.features) {
+          // ✅ Direct use of worker result (already deduplicated in background thread)
+          dataToApply = householdGeoJSON;
+        } else if (households && households.length > 0) {
+          // Fallback for direct data (rare)
+          dataToApply = {
+            type: 'FeatureCollection',
+            features: households.map((h: any) => {
+              // Minimal quick normalization for the fallback using domain tool
+              let safeStatus = h.status || 'Non encore installée';
+              try {
+                // If the string starts with Non, let's roughly classify it if it slips
+                const lower = safeStatus.toLowerCase();
+                if (lower.includes('début') || lower.includes('debut') || lower.includes('demarr') || lower.includes('démarr') || lower.includes('pending') || lower.includes('install')) {
+                   safeStatus = 'Non encore installée';
+                }
+              } catch (e) {}
 
-    console.log('🔵 [useHouseholdDataSync] Data changed, scheduling GeoJSON update...');
-    lastDataHashRef.current = dataHash;
+              return {
+                type: 'Feature',
+                geometry: { type: 'Point', coordinates: h.location?.coordinates || [0, 0] },
+                properties: { id: h.id, status: safeStatus },
+              };
+            }),
+          };
+        } else {
+          dataToApply = { type: 'FeatureCollection', features: [] };
+        }
 
-    // Debounce setData to prevent rapid successive updates
-    if (setDataTimeoutRef.current) {
-      clearTimeout(setDataTimeoutRef.current);
-    }
+        source.setData(dataToApply);
+        console.log(`🚀 [MapPerformance] Fast-Sync: ${dataToApply.features?.length || 0} pts`);
+      }, 16); // 16ms = 1 frame delay (smooth update)
+    };
 
-    setDataTimeoutRef.current = setTimeout(() => {
-      // Prepare data inside timeout to use latest values
-      let dataToApply: any;
+    // Try immediately — style may already be loaded
+    applyData();
 
-      if (householdGeoJSON?.features?.length > 0) {
-        console.log(
-          `🔍 [useHouseholdDataSync] Using householdGeoJSON (${householdGeoJSON.features.length} raw features)`
-        );
-        // Log first few features for inspection
-        householdGeoJSON.features.slice(0, 3).forEach((f: any, i: number) => {
-          console.log(
-            `  Feature ${i}: id=${f.properties?.id || f.id}, coords=${f.geometry.coordinates}, numeroordre=${f.properties?.numeroordre || 'N/A'}`
-          );
-        });
+    // ✅ Retry when style becomes ready (handles race conditions on initial load)
+    map.on('styledata', applyData);
+    map.on('idle', applyData);
 
-        const deduplicated = deduplicateKeepOldestGPS(householdGeoJSON.features);
-        console.log(`✅ After dedup: ${deduplicated.length} features`);
-
-        dataToApply = {
-          type: 'FeatureCollection',
-          features: deduplicated,
-        };
-      } else if (households && households.length > 0) {
-        console.log(
-          `🔍 [useHouseholdDataSync] Using households array (${households.length} raw households)`
-        );
-
-        // Convert households to features first
-        const householdFeatures = households.map((h: any) => ({
-          type: 'Feature',
-          geometry: {
-            type: 'Point',
-            coordinates: h.location?.coordinates || [0, 0],
-          },
-          properties: {
-            id: h.id,
-            name: h.name || h.owner?.name || 'HH',
-            numeroordre: h.numeroordre || h.id,
-            status: h.status || 'unknown',
-          },
-        }));
-
-        // Apply deduplication to households as well
-        const deduplicated = deduplicateKeepOldestGPS(householdFeatures);
-        console.log(`✅ After dedup: ${deduplicated.length} features`);
-
-        dataToApply = {
-          type: 'FeatureCollection',
-          features: deduplicated,
-        };
-      } else {
-        dataToApply = { type: 'FeatureCollection', features: [] };
-      }
-
-      source.setData(dataToApply);
-      console.log(
-        `✅ [useHouseholdDataSync] Updated with ${dataToApply.features?.length || 0} features`
-      );
-    }, 100); // 100ms debounce for setData
+    return () => {
+      map.off('styledata', applyData);
+      map.off('idle', applyData);
+      if (setDataTimeoutRef.current) clearTimeout(setDataTimeoutRef.current);
+    };
   }, [map, dataHash, householdGeoJSON, households]);
 
   // Cleanup timeout on unmount

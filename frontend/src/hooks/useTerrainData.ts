@@ -1,9 +1,9 @@
-import { useState, useMemo, useCallback } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../store/db';
+import { useState, useMemo, useCallback, useEffect } from 'react';
+import { db } from '../store/db'; 
 import type { Household } from '../utils/types';
 import { useProject } from '../contexts/ProjectContext';
 import apiClient from '../api/client';
+import logger from '../utils/logger';
 
 export function mapToApiPayload(household: Partial<Household>, overrides: any = {}) {
   const id = household.backendId || household.id || crypto.randomUUID();
@@ -79,36 +79,69 @@ export function useTerrainData() {
   const currentProjectId = project?.id || activeProjectId;
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  
+  // ✅ SERVER-FIRST: React State instead of useLiveQuery (Dexie)
+  const [householdsRaw, setHouseholdsRaw] = useState<Household[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const households = useLiveQuery(async () => {
-    if (!currentProjectId) return [];
-    let all = await db.households.where('projectId').equals(currentProjectId).toArray();
-    if (all.length === 0) {
-      const zones = await db.zones.where('projectId').equals(currentProjectId).toArray();
-      const zoneIds = zones.map((z: any) => z.id);
-      if (zoneIds.length > 0) {
-        all = await db.households.where('zoneId').anyOf(zoneIds).toArray();
-      }
+  // 🔄 Fetch directly from API on mount or project change
+  useEffect(() => {
+    if (!currentProjectId) {
+      setHouseholdsRaw([]);
+      setIsLoading(false);
+      return;
     }
-    return all
-      .map((h) => normalizeHousehold(h as Household))
-      .filter((h) => {
-        const matchesSearch =
-          searchTerm === '' ||
-          h.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          (h as any).owner?.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesStatus = statusFilter === 'all' || h.status === statusFilter;
-        return matchesSearch && matchesStatus;
-      });
-  }, [activeProjectId, searchTerm, statusFilter]);
+
+    const fetchHouseholds = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        logger.log(`📡 [Server-First] Fetching households for Project: ${currentProjectId}`);
+        // API ensures consistency (handles merges, deletions, etc. on server side)
+        const response = await apiClient.get('/households', {
+          params: { projectId: currentProjectId, limit: 10000 }
+        });
+        
+        const data = response.data.households || [];
+        const normalized = data.map((h: Household) => normalizeHousehold(h));
+        
+        logger.log(`✅ [Server-First] Retrieved ${normalized.length} unique households from backend`);
+        setHouseholdsRaw(normalized);
+
+        // 🧹 ONE-TIME CLEANUP: Purge local Dexie households to avoid stale ghosts
+        const localCount = await db.households.count();
+        if (localCount > 0) {
+           logger.warn(`🧹 [Server-First] Purging ${localCount} stale households from local Dexie database...`);
+           await db.households.clear();
+        }
+      } catch (err: any) {
+        logger.error('❌ Failed to fetch server-direct households:', err);
+        setError(err.message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchHouseholds();
+  }, [currentProjectId]);
+
+  // Derived filtered households
+  const households = useMemo(() => {
+    return householdsRaw.filter((h) => {
+      const matchesSearch =
+        searchTerm === '' ||
+        h.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (h.name || '').toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesStatus = statusFilter === 'all' || h.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [householdsRaw, searchTerm, statusFilter]);
 
   const stats = useMemo(() => {
     if (!households) return null;
     const total = households.length;
-    let enAttente = 0,
-      enCours = 0,
-      termine = 0,
-      bloque = 0;
+    let enAttente = 0, enCours = 0, termine = 0, bloque = 0;
     households.forEach((h) => {
       if (h.status === 'En attente') enAttente++;
       else if (['En cours', 'Travaux'].includes(h.status)) enCours++;
@@ -118,17 +151,38 @@ export function useTerrainData() {
     return { total, enAttente, enCours, termine, bloque };
   }, [households]);
 
+  // Direct Server Mutations
   const updateHouseholdStatus = useCallback(async (id: string, newStatus: string) => {
-    await db.households.update(id, { status: newStatus });
-    const h = await db.households.get(id);
-    if (h?.backendId) await apiClient.patch(`households/${h.backendId}`, { status: newStatus });
+    try {
+      await apiClient.patch(`households/${id}`, { status: newStatus });
+      // Optimistic state update
+      setHouseholdsRaw(prev => prev.map(h => h.id === id ? { ...h, status: newStatus } : h));
+    } catch (err) {
+      logger.error('Failed to update status on server:', err);
+      throw err;
+    }
   }, []);
 
   const updateHouseholdLocation = useCallback(async (id: string, lat: number, lng: number) => {
-    const loc = { type: 'Point', coordinates: [lng, lat] } as any;
-    await db.households.update(id, { location: loc });
-    const h = await db.households.get(id);
-    if (h?.backendId) await apiClient.patch(`households/${h.backendId}`, { location: loc });
+    try {
+      const loc = { type: 'Point', coordinates: [lng, lat] };
+      await apiClient.patch(`households/${id}`, { location: loc, latitude: lat, longitude: lng });
+      setHouseholdsRaw(prev => prev.map(h => h.id === id ? { ...h, location: loc as any, latitude: lat, longitude: lng } : h));
+    } catch (err) {
+      logger.error('Failed to update location on server:', err);
+      throw err;
+    }
+  }, []);
+
+  const updateHousehold = useCallback(async (id: string, patch: Partial<Household>) => {
+    try {
+      const response = await apiClient.patch(`households/${id}`, patch);
+      const updated = normalizeHousehold(response.data);
+      setHouseholdsRaw(prev => prev.map(h => h.id === id ? updated : h));
+    } catch (err) {
+      logger.error('Failed to update household on server:', err);
+      throw err;
+    }
   }, []);
 
   const uploadHouseholdPhoto = useCallback(async (id: string, file: File) => {
@@ -138,18 +192,16 @@ export function useTerrainData() {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
     const { url, key } = resp.data;
-    const h = await db.households.get(id);
-    if (h) {
-      const koboData = { ...(h.koboData || {}), photo_installation: key, photoUrl: url };
-      await db.households.update(id, { koboData });
-      if (h.backendId) await apiClient.patch(`households/${h.backendId}`, { koboData });
-    }
+    
+    const patch = { koboData: { photo_installation: key, photoUrl: url } };
+    await updateHousehold(id, patch as any);
     return url;
-  }, []);
+  }, [updateHousehold]);
 
   return {
     households,
-    isLoading: households === undefined,
+    isLoading,
+    error,
     searchTerm,
     setSearchTerm,
     statusFilter,
@@ -157,38 +209,14 @@ export function useTerrainData() {
     stats,
     updateHouseholdStatus,
     updateHouseholdLocation,
-    updateHousehold: useCallback(async (id: string, patch: Partial<Household>) => {
-      const h = await db.households.get(id);
-      if (!h) return;
-
-      // Deep merge for specific JSON fields to avoid overwriting the whole object in Dexie
-      const deepFields = ['constructionData', 'owner', 'koboSync', 'location', 'alerts'];
-      const mergedPatch: any = { ...patch };
-
-      deepFields.forEach(field => {
-        if (patch[field as keyof Household] && typeof patch[field as keyof Household] === 'object' && !Array.isArray(patch[field as keyof Household])) {
-          mergedPatch[field] = {
-            ...(h[field as keyof Household] as object || {}),
-            ...(patch[field as keyof Household] as object)
-          };
-        }
-      });
-
-      // Update Dexie
-      await db.households.update(id, mergedPatch);
-
-      // Update Backend if synced
-      if (h.backendId) {
-        await apiClient.patch(`households/${h.backendId}`, patch);
-      }
-    }, []),
+    updateHousehold,
     uploadHouseholdPhoto,
-    importHouseholds: async (data: Household[]) => {
-      await db.households.bulkPut(data);
-    },
+    // Methods removed as they are Dexie-specific and no longer needed for Server-First
+    importHouseholds: async () => {}, 
     repairSyncQueue: async () => 0,
     clearHouseholds: async () => {
-      await db.households.clear();
+       // Optional: could trigger a re-fetch
+       setHouseholdsRaw([]);
     },
   };
 }

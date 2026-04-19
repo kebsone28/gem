@@ -71,6 +71,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [selectedNewStatus, setSelectedNewStatus] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
+  const alerts = Array.isArray(household.alerts) ? household.alerts : [];
 
   // Kobo sometimes saves photos in different fields depending on the sync phase
   const extractPhotoUrl = () => {
@@ -95,11 +96,11 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
     'Réseau terminé',
     'Murs terminés',
     'Livraison effectuée',
-    'Non encore commencé',
+    'Non encore installée',
   ];
 
   const timelineStages = [
-    'Non encore commencé',
+    'Non encore installée',
     'Livraison effectuée',
     'Murs terminés',
     'Réseau terminé',
@@ -134,7 +135,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
                        (household.constructionData as any)?.livreur?.kit_problems || 
                        household.koboData?.justificatif;
 
-  const hasConflict = household.alerts?.some((a: any) => a.type === 'DOUBLON_DETECTE');
+  const hasConflict = alerts.some((a: any) => a.type === 'DOUBLON_DETECTE');
 
   const handleConfirmStatusChange = async () => {
     if (!selectedNewStatus) return;
@@ -227,16 +228,16 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
       <div className="flex-1 px-6 md:px-10 py-6 space-y-8 pb-40">
         <div className="space-y-10 animate-in fade-in slide-in-from-bottom-2 duration-500">
           {/* ALERTES BLOQUANTES & SYSTÈME */}
-          {household.alerts && household.alerts.length > 0 && (
+          {alerts.length > 0 && (
             <div className="space-y-4">
                {/* Alertes Critiques (High Severity) */}
-               {household.alerts.some((a: any) => a.severity === 'HIGH') && (
+               {alerts.some((a: any) => a.severity === 'HIGH') && (
                  <div className="p-6 rounded-[2rem] bg-rose-500/10 border-2 border-rose-500/20 shadow-inner flex flex-col gap-4 animate-pulse-slow">
                     <h4 className="text-[10px] font-black uppercase tracking-[0.25em] flex items-center gap-2 text-rose-500 italic">
                       <AlertTriangle size={16} /> ALERTES CRITIQUES
                     </h4>
                     <div className="space-y-3">
-                      {household.alerts.filter((a: any) => a.severity === 'HIGH').map((alert: any, i: number) => (
+                      {alerts.filter((a: any) => a.severity === 'HIGH').map((alert: any, i: number) => (
                         <div
                           key={i}
                           className="flex items-start gap-3 p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs font-bold text-rose-400 uppercase tracking-widest shadow-inner"
@@ -250,13 +251,13 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
                )}
 
                {/* Alertes Moyennes (GPS, Anomalies mineures) */}
-               {household.alerts.some((a: any) => a.severity === 'MEDIUM' || !a.severity) && (
+               {alerts.some((a: any) => a.severity === 'MEDIUM' || !a.severity) && (
                  <div className="p-6 rounded-[2rem] bg-amber-500/5 border-2 border-amber-500/10 shadow-inner flex flex-col gap-4">
                     <h4 className="text-[10px] font-black uppercase tracking-[0.25em] flex items-center gap-2 text-amber-500/70 italic">
                       <Zap size={14} /> ALERTES SYSTÈME
                     </h4>
                     <div className="space-y-3">
-                      {household.alerts.filter((a: any) => a.severity !== 'HIGH').map((alert: any, i: number) => (
+                      {alerts.filter((a: any) => a.severity !== 'HIGH').map((alert: any, i: number) => (
                         <div
                           key={i}
                           className="flex items-start gap-3 p-3 rounded-xl bg-white/5 border border-white/5 text-[10px] font-bold text-amber-400/80 uppercase tracking-widest"
@@ -427,7 +428,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
                 TITULAIRE DU COMPTE
               </p>
               <p className="text-white font-black text-3xl italic uppercase tracking-tighter leading-none mb-1">
-                {household.name || household.owner || 'SANS NOM'}
+                {(typeof household.owner === 'string' ? household.owner : null) || (household.owner as any)?.name || household.name || 'SANS NOM'}
               </p>
             </div>
           </div>
@@ -472,12 +473,12 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
             </div>
 
             {/* Localisation & Administratif */}
-            <div className={`p-6 rounded-[2rem] border space-y-6 relative overflow-hidden transition-colors ${household.alerts?.some((a: any) => a.type === 'MISMATCH_GPS') ? 'bg-amber-900/10 border-amber-500/30 ring-1 ring-amber-500/20' : 'bg-white/5 border-white/5'}`}>
+            <div className={`p-6 rounded-[2rem] border space-y-6 relative overflow-hidden transition-colors ${alerts.some((a: any) => a.type === 'MISMATCH_GPS') ? 'bg-amber-900/10 border-amber-500/30 ring-1 ring-amber-500/20' : 'bg-white/5 border-white/5'}`}>
               <div className="absolute top-0 right-0 p-4 opacity-5">
                 <Database size={100} />
               </div>
               
-              {household.alerts?.some((a: any) => a.type === 'MISMATCH_GPS') && (
+              {alerts.some((a: any) => a.type === 'MISMATCH_GPS') && (
                 <div className="p-3 bg-amber-500/20 border border-amber-500/30 rounded-xl mb-4 flex items-center gap-3">
                    <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center text-amber-500">
                       <AlertTriangle size={18} />

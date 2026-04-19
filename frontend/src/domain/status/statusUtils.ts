@@ -12,25 +12,40 @@ export const normalizeStatus = (status?: string): string => {
 
   const s = normalizeText(status);
 
+  // 1. STATUTS NÉGATIFS (Prioritaires)
   if (s.includes('non eligible') || s.includes('inelegible') || s.includes('ineligi'))
     return 'Non éligible';
   if (s.includes('desist')) return 'Désistement';
   if (s.includes('refus')) return 'Refusé';
 
+  // 2. STATUT "NON ENCORE" (Doit être vérifié AVANT "installé")
+  if (
+    s.includes('non encore install') || 
+    s.includes('pas encore install') ||
+    s.includes('non install') ||
+    s.includes('non debut') || 
+    s.includes('pas debut') || 
+    s.includes('non demarr') || 
+    s.includes('non commenc') ||
+    s.includes('pending') ||
+    s.includes('a faire') ||
+    s.includes('nouveau') ||
+    s.includes('start') ||
+    s.includes('non fait')
+  )
+    return 'Non encore installée';
+
+  // 3. STATUTS POSITIFS / CHANTIER
   if (s.includes('non conforme')) return 'Non conforme';
   if (s.includes('conforme')) return 'Contrôle conforme';
   if (s.includes('termine')) return 'Contrôle conforme';
-
-  if (s.includes('install')) return 'Installé'; // Peut être aliasé vers Contrôle conforme
+  if (s.includes('install')) return 'Installé'; 
   if (s.includes('eligible')) return 'Eligible';
 
   if (s.includes('interieur')) return 'Intérieur terminé';
   if (s.includes('reseau')) return 'Réseau terminé';
   if (s.includes('mur')) return 'Murs terminés';
   if (s.includes('livraison')) return 'Livraison effectuée';
-
-  if (s.includes('non debut') || s.includes('non demarr') || s.includes('pending'))
-    return 'Non encore commencé';
 
   if (s.includes('attente') || s.includes('plan')) return 'En attente';
 

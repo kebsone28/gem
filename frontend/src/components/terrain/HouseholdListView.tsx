@@ -1,4 +1,4 @@
-﻿import React, { useCallback } from 'react';
+import React, { useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { FileDown, MapPin, Home } from 'lucide-react';
 import type { Household } from '../../utils/types';
@@ -23,7 +23,11 @@ const HouseholdRow = React.memo(
   }) => {
     const status = getHouseholdDerivedStatus(h);
     const statusClasses = getStatusTailwindClasses(status);
-    const ownerName = (h as any).owner?.name || (h as any).name || 'Propriétaire inconnu';
+    const ownerName = 
+      (typeof (h as any).owner === 'string' ? (h as any).owner : null) ||
+      (h as any).owner?.name || 
+      (h as any).name || 
+      'Propriétaire inconnu';
     const location =
       (h as any).region || (h as any).departement || (h as any).village || 'Localisation inconnue';
 

@@ -48,6 +48,7 @@ const HouseholdLayer: React.FC<HouseholdLayerProps> = ({
 }) => {
   const selectedPhases = useTerrainUIStore((s) => s.selectedPhases);
   const selectedTeam = useTerrainUIStore((s) => s.selectedTeam);
+  const showZones = useTerrainUIStore((s) => s.showZones);
 
   // ══════════════════════════════════════════════════════════════
   // PHASE 1: STYLE LIFECYCLE
@@ -64,7 +65,7 @@ const HouseholdLayer: React.FC<HouseholdLayerProps> = ({
   // ══════════════════════════════════════════════════════════════
   // PHASE 3: CREATE LAYERS (after sources ready)
   // ══════════════════════════════════════════════════════════════
-  useHouseholdLayers(map, styleIsReady, setupCompleteRef);
+  useHouseholdLayers(map, styleIsReady, setupCompleteRef, showZones);
 
   // ══════════════════════════════════════════════════════════════
   // PHASE 4: DATA SYNC (lightweight, hash-based)
@@ -75,7 +76,7 @@ const HouseholdLayer: React.FC<HouseholdLayerProps> = ({
   // ══════════════════════════════════════════════════════════════
   // PHASE 5: VISIBILITY & FILTERS (reactive)
   // ══════════════════════════════════════════════════════════════
-  useHouseholdVisibility(map);
+  useHouseholdVisibility(map, showZones);
   useHeatmapVisibility(map, showHeatmap);
   useHouseholdFilters(map, selectedPhases, selectedTeam);
   useHouseholdAnimation(map, styleIsReady);

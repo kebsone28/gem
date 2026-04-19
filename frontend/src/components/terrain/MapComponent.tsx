@@ -79,9 +79,9 @@ const MapComponent: React.FC<MapComponentProps> = ({
     const sourceHouseholds = households || [];
 
     return sourceHouseholds.filter((h) => {
-      // Use || instead of ?? to ensure 0 values trigger the fallback
-      const lng = Number(h.location?.coordinates?.[0] || h.longitude);
-      const lat = Number(h.location?.coordinates?.[1] || h.latitude);
+      // Use ?? instead of || to ensure 0 values are preserved
+      const lng = Number(h.location?.coordinates?.[0] ?? h.longitude);
+      const lat = Number(h.location?.coordinates?.[1] ?? h.latitude);
       return Number.isFinite(lng) && Number.isFinite(lat) && (lng !== 0 || lat !== 0);
     });
   }, [households]);
@@ -176,45 +176,45 @@ const MapComponent: React.FC<MapComponentProps> = ({
             {[
               {
                 label: 'Contrôle conforme',
-                tailwindClass: 'bg-[#10b981]',
-                icon: '✓',
+                color: '#00FF9D',
+                icon: '✔',
                 status: 'Contrôle conforme',
               },
               {
                 label: 'Non conforme',
-                tailwindClass: 'bg-[#f43f5e]',
-                icon: '!',
+                color: '#FF0055',
+                icon: '⚠',
                 status: 'Non conforme',
               },
               {
                 label: 'Intérieur terminé',
-                tailwindClass: 'bg-[#818cf8]',
-                icon: '🔧',
+                color: '#6366F1',
+                icon: '⚡',
                 status: 'Intérieur terminé',
               },
               {
                 label: 'Réseau terminé',
-                tailwindClass: 'bg-[#3b82f6]',
-                icon: '🔧',
+                color: '#00D2FF',
+                icon: '📡',
                 status: 'Réseau terminé',
               },
               {
                 label: 'Murs terminés',
-                tailwindClass: 'bg-[#f59e0b]',
-                icon: '🔧',
+                color: '#FFD60A',
+                icon: '🏗',
                 status: 'Murs terminés',
               },
               {
                 label: 'Livraison effectuée',
-                tailwindClass: 'bg-[#06b6d4]',
-                icon: '🚚',
+                color: '#059669',
+                icon: '📦',
                 status: 'Livraison effectuée',
               },
               {
-                label: 'Non débuté',
-                tailwindClass: 'bg-[#94a3b8]',
-                icon: '·',
-                status: 'Non encore commencé',
+                label: 'Non encore installée',
+                color: '#64748B',
+                icon: '●',
+                status: 'Non encore installée',
               },
             ].map((item) => (
               <div
@@ -224,7 +224,8 @@ const MapComponent: React.FC<MapComponentProps> = ({
                 className={`flex items-center gap-2.5 cursor-pointer transition-all duration-200 hover:translate-x-1 select-none ${selectedPhases.includes(item.status) ? 'opacity-100' : 'opacity-30'}`}
               >
                 <div
-                  className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-md flex-shrink-0 ${item.tailwindClass}`}
+                  className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-md flex-shrink-0`}
+                  style={{ backgroundColor: item.color }}
                 >
                   {item.icon}
                 </div>

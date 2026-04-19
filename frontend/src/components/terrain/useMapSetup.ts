@@ -9,7 +9,7 @@
 
 import { useCallback, useRef } from 'react';
 import maplibregl from 'maplibre-gl';
-import { loadMapImages } from './mapUtils';
+import { registerIcons } from './mapUtils';
 import { senegalRegions } from '../../data/senegal-regions';
 
 export const useMapSetup = () => {
@@ -30,7 +30,7 @@ export const useMapSetup = () => {
 
       try {
         setupLayersLock.current = true;
-        await loadMapImages(map);
+        await registerIcons(map);
 
         if (map.getSource('households')) {
           onSetStyleReady();

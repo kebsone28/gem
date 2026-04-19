@@ -4,15 +4,10 @@ import {
   Crosshair,
   Flame,
   Layers,
-  Ruler,
   Database,
   Navigation,
-  MousePointer2,
   Map as MapIcon,
   Truck,
-  PenLine,
-  CloudDownload,
-  Loader2,
   Sun,
   Moon,
   Satellite,
@@ -36,13 +31,13 @@ const ToolbarButton: React.FC<ToolbarButtonProps> = ({ icon, title, onClick, act
       onClick={onClick}
       title={title}
       aria-label={title}
-      className={`toolbar-btn-lg group ${active ? 'active' : ''} ${danger && !active ? 'hover:bg-rose-500/10 hover:text-rose-400' : ''}`}
+      className={`toolbar-btn-lg group pointer-events-auto relative z-20 ${active ? 'active' : ''} ${danger && !active ? 'hover:bg-rose-500/10 hover:text-rose-400' : ''}`}
     >
       {React.cloneElement(icon as React.ReactElement<any>, {
         size: 14,
         strokeWidth: active ? 2.2 : 1.5,
       })}
-      <div className="absolute top-full mt-3 left-1/2 -translate-x-1/2 px-3 py-1.5 text-[9px] font-black rounded-lg opacity-0 group-hover:opacity-100 whitespace-nowrap pointer-events-none transition-all z-[2000] uppercase tracking-widest translate-y-2 group-hover:translate-y-0 shadow-2xl bg-slate-900 text-white border border-white/5">
+      <div className="absolute top-full mt-3 left-1/2 -translate-x-1/2 px-3 py-1.5 text-[9px] font-black rounded-lg opacity-0 group-hover:opacity-100 whitespace-nowrap pointer-events-none transition-all z-[3000] uppercase tracking-widest translate-y-2 group-hover:translate-y-0 shadow-2xl bg-slate-900 text-white border border-white/5">
         {title}
       </div>
     </button>
@@ -71,12 +66,6 @@ export const MapToolbar: React.FC<MapToolbarProps> = ({ onRecenter }) => {
   const showZones = useTerrainUIStore((s) => s.showZones);
   const toggleZones = useTerrainUIStore((s) => s.toggleZones);
 
-  const isMeasuring = useTerrainUIStore((s) => s.isMeasuring);
-  const toggleMeasuring = useTerrainUIStore((s) => s.toggleMeasuring);
-
-  const isSelecting = useTerrainUIStore((s) => s.isSelecting);
-  const toggleSelecting = useTerrainUIStore((s) => s.toggleSelecting);
-
   const showDatabaseStats = useTerrainUIStore((s) => s.showDatabaseStats);
   const toggleDatabaseStats = useTerrainUIStore((s) => s.toggleDatabaseStats);
   const showLegend = useTerrainUIStore((s) => s.showLegend);
@@ -90,8 +79,6 @@ export const MapToolbar: React.FC<MapToolbarProps> = ({ onRecenter }) => {
     useTerrainUIStore.setState({ mapStyle: style });
     localStorage.setItem('gem-map-style', style);
   };
-
-  const isDownloadingOffline = useTerrainUIStore((s) => s.isDownloadingOffline);
 
   // Navigation Handlers
   const handleZoomIn = () => {
@@ -236,28 +223,10 @@ export const MapToolbar: React.FC<MapToolbarProps> = ({ onRecenter }) => {
       {/* EXPERT TOOLS GROUP */}
       <div className="toolbar-group">
         <ToolbarButton
-          icon={<Ruler />}
-          title="Mesurer"
-          onClick={toggleMeasuring}
-          active={isMeasuring}
-        />
-        <ToolbarButton
-          icon={<MousePointer2 />}
-          title="Sélection Lasso"
-          onClick={toggleSelecting}
-          active={isSelecting}
-        />
-        <ToolbarButton
           icon={<Truck />}
           title="Tournée Camion"
           onClick={() => setPanel('routing')}
           active={activePanel === 'routing'}
-        />
-        <ToolbarButton
-          icon={<PenLine />}
-          title="Dessiner Zones"
-          onClick={() => setPanel('draw')}
-          active={activePanel === 'draw'}
         />
         <ToolbarButton
           icon={<Database />}
@@ -271,12 +240,6 @@ export const MapToolbar: React.FC<MapToolbarProps> = ({ onRecenter }) => {
 
       {/* UTILS */}
       <div className="toolbar-group">
-        <ToolbarButton
-          icon={isDownloadingOffline ? <Loader2 className="animate-spin" /> : <CloudDownload />}
-          title="Cartes Offline"
-          onClick={() => setPanel('region')}
-          active={activePanel === 'region'}
-        />
         <ToolbarButton
           icon={<Maximize2 />}
           title="Plein Écran"

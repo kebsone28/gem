@@ -105,9 +105,9 @@ export async function fetchKoboSubmissions(token, assetUid, since = null) {
  * @param {string} projectId
  * @param {object} config - The mapping configuration
  */
-function mapSubmissionToHousehold(submission, organizationId, defaultZoneId, projectId, config = {}) {
+function mapSubmissionToHousehold(submission, organizationId, defaultZoneId, projectId, config = {}, existingHousehold = null) {
     // Use professional mapping function with dynamic config
-    const household = transformRowToHousehold(submission, organizationId, defaultZoneId, projectId, config);
+    const household = transformRowToHousehold(submission, organizationId, defaultZoneId, projectId, config, existingHousehold);
 
     if (!household) {
         return null; // Skip if mapping failed (missing numeroOrdre)
@@ -288,19 +288,10 @@ export async function syncKoboToDatabase(organizationId, fallbackZoneId, since =
                 }
             }
 
-            // Map Kobo submission to unified Household format
-            const household = mapSubmissionToHousehold(submission, organizationId, zoneId, targetProjectId, mappingConfig);
-
-            // Skip if mapping failed (happens when numeroOrdre is missing)
-            if (!household) {
-                skipped++;
-                continue;
-            }
-
             // 🔑 RECHERCHE PRÉALABLE: Chercher le ménage existant par numeroordre (clé métier unique)
-            // numeroOrdre comes from the mapping module and is guaranteed to exist if household is not null
-            // NORMALISATION: On s'assure que la recherche est insensible aux espaces et à la casse
-            const numeroDemande = household.numeroOrdre ? String(household.numeroOrdre).trim().toUpperCase() : null;
+            const { extractNumeroOrdre } = await import('./kobo.mapping.js');
+            const numeroDemandeRaw = extractNumeroOrdre(submission, mappingConfig);
+            const numeroDemande = numeroDemandeRaw ? String(numeroDemandeRaw).trim().toUpperCase() : null;
             let existingHousehold = null;
 
             if (numeroDemande) {
@@ -318,7 +309,6 @@ export async function syncKoboToDatabase(organizationId, fallbackZoneId, since =
                     });
 
                     // 2. Fallback: If no match and it ends with a '0', it's likely a Kobo artifact
-                    // Example: Kobo sends '45260' but DB has '4526'
                     if (!existingHousehold && numeroDemande.endsWith('0')) {
                         const fallbackNumero = numeroDemande.substring(0, numeroDemande.length - 1);
                         existingHousehold = await prisma.household.findFirst({
@@ -336,6 +326,15 @@ export async function syncKoboToDatabase(organizationId, fallbackZoneId, since =
                 } catch (e) {
                      console.warn(`[KOBO-SYNC] Could not search for existing household by numeroordre [${numeroDemande}]:`, e.message);
                 }
+            }
+
+            // Map Kobo submission to unified Household format (Passing existingHousehold for intelligent merge)
+            const household = mapSubmissionToHousehold(submission, organizationId, zoneId, targetProjectId, mappingConfig, existingHousehold);
+
+            // Skip if mapping failed (happens when numeroOrdre is missing)
+            if (!household) {
+                skipped++;
+                continue;
             }
 
             // 🔑 UPSERT STRATEGY: Match by koboSubmissionId OR by existing N° Demande

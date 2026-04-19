@@ -28,12 +28,12 @@ self.onmessage = (e: MessageEvent) => {
     case 'GET_CLUSTERS': {
       if (!index) return;
       
-      const { bbox, zoom } = payload;
+      const { bbox, zoom, requestId } = payload;
       try {
         const clusters = index.getClusters(bbox, zoom);
         self.postMessage({ 
           type: 'CLUSTERS_DATA', 
-          payload: { clusters, zoom } 
+          payload: { clusters, zoom, requestId } 
         });
       } catch (err) {
         console.error('[Worker] Cluster calculation error:', err);
@@ -43,17 +43,17 @@ self.onmessage = (e: MessageEvent) => {
 
     case 'GET_CHILDREN': {
       if (!index) return;
-      const { clusterId } = payload;
+      const { clusterId, requestId } = payload;
       const children = index.getChildren(clusterId);
-      self.postMessage({ type: 'CHILDREN_DATA', payload: { children } });
+      self.postMessage({ type: 'CHILDREN_DATA', payload: { children, requestId } });
       break;
     }
 
     case 'GET_EXPANSION_ZOOM': {
       if (!index) return;
-      const { clusterId } = payload;
+      const { clusterId, requestId } = payload;
       const zoom = index.getClusterExpansionZoom(clusterId);
-      self.postMessage({ type: 'EXPANSION_ZOOM_DATA', payload: { zoom } });
+      self.postMessage({ type: 'EXPANSION_ZOOM_DATA', payload: { zoom, requestId } });
       break;
     }
 

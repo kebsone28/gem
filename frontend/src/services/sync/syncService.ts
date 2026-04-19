@@ -37,6 +37,8 @@ async function pullUpdates(): Promise<void> {
 
   if (changes.projects) await syncData('projects', changes.projects);
 
+  /* 🚫 SERVER-FIRST: Households are no longer pulled into Dexie. 
+     The API /api/households is now the direct source of truth for the Map.
   if (changes.households?.length > 0) {
     logger.debug('SYNC', `Applying ${changes.households.length} household changes`, {
       ids: changes.households.slice(0, 5).map((h: any) => h.id),
@@ -47,6 +49,7 @@ async function pullUpdates(): Promise<void> {
       await syncData('households', changes.households.slice(i, i + CHUNK));
     }
   }
+  */
 
   if (changes.zones) await syncData('zones', changes.zones);
   if (changes.teams) await syncData('teams', changes.teams);

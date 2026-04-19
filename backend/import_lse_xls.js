@@ -7,9 +7,9 @@ const prisma = new PrismaClient();
 async function main() {
     console.log('🚀 Starting XLS Import from Liste-LSE.xlsx...');
 
-    const ORG_ID = 'org_test_2026';
-    const PROJECT_ID = 'proj_test_2026';
-    const filePath = 'c:/Mes-Sites-Web/GEM_SAAS/Liste/Liste-LSE.xlsx';
+    const ORG_ID = 'a607ff88-e28d-4194-b42a-77f364050e5e';
+    const PROJECT_ID = 'project_lse';
+    const filePath = 'c:/Mes-Sites-Web/GEM_SAAS/archive/Liste/Liste-LSE.xlsx';
 
     // 1. Clear existing households to start fresh with the correct list
     console.log('🧹 Clearing old households...');
@@ -60,7 +60,12 @@ async function main() {
                 where: { id: householdId },
                 update: {
                     numeroordre: rawOrder,
-                    status: 'Non débuté',
+                    name: row['Prénom et Nom'] || 'Inconnu',
+                    phone: String(row['Telephone'] || ''),
+                    region: row['region'] || null,
+                    departement: row['departement'] || null,
+                    village: row['village'] || row['commune'] || null,
+                    status: 'Non encore installée',
                     location: { type: 'Point', coordinates: [longitude, latitude] },
                     owner: {
                         name: row['Prénom et Nom'] || 'Inconnu',
@@ -78,9 +83,14 @@ async function main() {
                 create: {
                     id: householdId,
                     numeroordre: rawOrder,
+                    name: row['Prénom et Nom'] || 'Inconnu',
+                    phone: String(row['Telephone'] || ''),
+                    region: row['region'] || null,
+                    departement: row['departement'] || null,
+                    village: row['village'] || row['commune'] || null,
                     zoneId: zoneId,
                     organizationId: ORG_ID,
-                    status: 'Non débuté',
+                    status: 'Non encore installée',
                     location: { type: 'Point', coordinates: [longitude, latitude] },
                     owner: {
                         name: row['Prénom et Nom'] || 'Inconnu',
@@ -101,6 +111,7 @@ async function main() {
             if (successCount % 500 === 0) console.log(`✅ Processed ${successCount} households...`);
 
         } catch (e) {
+            console.error(`❌ Error logic:`, e.message);
             errorCount++;
         }
     }

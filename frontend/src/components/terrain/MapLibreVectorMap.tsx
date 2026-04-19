@@ -26,6 +26,7 @@ import InteractionLayer from './layers/InteractionLayer';
 import MapTooltip from './MapTooltip';
 import { useSuperclusterWorker } from '../../hooks/useSuperclusterWorker';
 import { householdsToGeoJSON } from '../../utils/clusteringUtils';
+import { registerIcons } from './mapUtils';
 
 registerTileCacheProtocol();
 
@@ -61,6 +62,8 @@ const MapLibreVectorMap: React.FC<any> = ({
   projectId,
   warehouses = [],
   onLassoSelection,
+  drawnZones = [],
+  pendingPoints = [],
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -225,8 +228,7 @@ const MapLibreVectorMap: React.FC<any> = ({
           const existingStyle = map.getStyle();
           const targetLayers = [
             'households-local-layer',
-            'households-server-layer',
-            'supercluster-generated',
+            'households-glow-layer',   // ✅ fallback: always visible circles
           ].filter((id) => existingStyle.layers?.some((l: any) => l.id === id));
 
           if (targetLayers.length === 0) return;
@@ -364,12 +366,100 @@ const MapLibreVectorMap: React.FC<any> = ({
     households,
   ]);
 
-  // Force cluster update when households change (OR style reload)
+  // 🖼️ Icons and Images loading
   useEffect(() => {
-    if (mapInstance && styleIsReady && households.length > 0) {
-      updateClusterDisplay(mapInstance, true); // ✅ Force update on style change/data sync
+    if (mapInstance && styleIsReady) {
+      registerIcons(mapInstance).then(() => {
+        console.log('✅ [MapLibreVectorMap] All premium icons registered');
+      });
     }
-  }, [households, mapInstance, styleIsReady, updateClusterDisplay]);
+  }, [mapInstance, styleIsReady]);
+
+  // 🎥 Cinematic 3D Immersion: Progressive Pitch on Zoom
+  useEffect(() => {
+    if (!mapInstance) return;
+
+    const handleZoom = () => {
+      const zoom = mapInstance.getZoom();
+      const minZ = 14;
+      const maxZ = 17;
+      const maxPitch = 45;
+
+      if (zoom <= minZ) {
+        if (mapInstance.getPitch() !== 0) mapInstance.setPitch(0);
+      } else if (zoom >= maxZ) {
+        if (mapInstance.getPitch() !== maxPitch) mapInstance.setPitch(maxPitch);
+      } else {
+        // Interpolation linéaire pour l'effet "Caméra Drone"
+        const progress = (zoom - minZ) / (maxZ - minZ);
+        mapInstance.setPitch(progress * maxPitch);
+      }
+    };
+
+    mapInstance.on('zoom', handleZoom);
+    return () => {
+      mapInstance.off('zoom', handleZoom);
+    };
+  }, [mapInstance]);
+
+  // Force cluster update when households change (OR style reload OR zone toggle)
+  useEffect(() => {
+    if (mapInstance && styleIsReady) {
+      if (showZones) {
+        // Force clear generic clusters
+        const clusterSource = mapInstance.getSource('supercluster-generated') as any;
+        if (clusterSource?.setData) clusterSource.setData({ type: 'FeatureCollection', features: [] });
+        const hullSource = mapInstance.getSource('cluster-hulls') as any;
+        if (hullSource?.setData) hullSource.setData({ type: 'FeatureCollection', features: [] });
+      } else {
+        updateClusterDisplay(mapInstance, true);
+      }
+    }
+  }, [households, mapInstance, styleIsReady, updateClusterDisplay, showZones]);
+
+  // ── 9. LAYER VISIBILITY HARMONIZATION ──
+  // Si on affiche les Zones (Villages), on cache les grappes circulaires standard
+  useEffect(() => {
+    if (!mapInstance || !styleIsReady) return;
+    
+    const clusterLayers = ['cluster-halo', 'cluster-circles', 'cluster-counts'];
+    const pointLayers = [
+      'households-local-layer', 
+      'households-glow-layer', 
+      'households-symbol-layer',
+      'households-labels-simple',
+      'households-photo-badge'
+    ];
+    
+    clusterLayers.forEach(layerId => {
+      if (mapInstance.getLayer(layerId)) {
+        // Mode zones : on masque les grappes génériques (cercles/chiffres)
+        mapInstance.setLayoutProperty(layerId, 'visibility', showZones ? 'none' : 'visible');
+      }
+    });
+
+    pointLayers.forEach(layerId => {
+      if (mapInstance.getLayer(layerId)) {
+        // On GARDE les ménages visibles
+        mapInstance.setLayoutProperty(layerId, 'visibility', 'visible');
+        
+        // MAIS on réduit drastiquement l'effet "cercle" (halo) pour ne pas polluer les trapèzes
+        if (layerId === 'households-glow-layer') {
+          mapInstance.setPaintProperty(layerId, 'circle-opacity', showZones ? 0.2 : 0.85);
+          mapInstance.setPaintProperty(layerId, 'circle-stroke-width', showZones ? 0 : 1.5);
+          mapInstance.setPaintProperty(layerId, 'circle-radius', showZones ? 2 : 6);
+        }
+      }
+    });
+
+    // ── NOUVEAU : On s'assure que les Grappes Proximité (Hulls) sont affichées
+    const superclusterHulls = ['supercluster-hulls-fill', 'supercluster-hulls-outline'];
+    superclusterHulls.forEach(id => {
+      if (mapInstance.getLayer(id)) {
+        mapInstance.setLayoutProperty(id, 'visibility', showZones ? 'visible' : 'none');
+      }
+    });
+  }, [mapInstance, styleIsReady, showZones]);
 
   return (
     <div
@@ -401,8 +491,8 @@ const MapLibreVectorMap: React.FC<any> = ({
       <InteractionLayer
         map={mapInstance}
         styleIsReady={styleIsReady}
-        drawnZones={[]}
-        pendingPoints={[]}
+        drawnZones={drawnZones}
+        pendingPoints={pendingPoints}
       />
 
       {/* PREMIUN HOVER TOOLTIP */}

@@ -189,7 +189,7 @@ function computeGlobalStatus(constructionData) {
     if (constructionData.wallType !== "UNKNOWN") return "Murs terminés";
     
     // Fallback par défaut
-    return "Non encore commencé";
+    return "Non encore installée";
 }
 
 function calculateAlerts(constructionData) {
@@ -225,19 +225,39 @@ function mapCoreIdentity(submission) {
 
     if (!numeroOrdreStr || numeroOrdreStr === 'undefined') return null;
 
-    const manualLatKeys = ['C2', 'TYPE_DE_VISITE/latitude_key', 'TYPE_DE_VISITE/latitude', 'latitude_key', 'latitude', 'Latitude', '_latitude'];
-    const manualLonKeys = ['C4', 'TYPE_DE_VISITE/longitude_key', 'TYPE_DE_VISITE/longitude', 'longitude_key', 'longitude', 'Longitude', '_longitude'];
-    const gpsLatKeys = ['gps/latitude'];
-    const gpsLonKeys = ['gps/longitude'];
+    const manualLatKeys = ['C2', 'TYPE_DE_VISITE/latitude_key', 'TYPE_DE_VISITE/latitude', 'latitude_key', 'latitude', 'Latitude', '_latitude', 'LATITUDE'];
+    const manualLonKeys = ['C4', 'TYPE_DE_VISITE/longitude_key', 'TYPE_DE_VISITE/longitude', 'longitude_key', 'longitude', 'Longitude', '_longitude', 'LONGITUDE', 'lng'];
+    const gpsLatKeys = ['gps/latitude', 'LOCALISATION_CLIENT/latitude'];
+    const gpsLonKeys = ['gps/longitude', 'LOCALISATION_CLIENT/longitude'];
 
     const manualCoords = extractCoordinatesFromKeys(submission, manualLatKeys, manualLonKeys);
     let baseGpsCoords = extractGpsArray(submission);
 
-    if ((baseGpsCoords.lat === null || baseGpsCoords.lon === null)) {
+    // If base GPS array is missing, try dedicated GPS fields
+    if ((baseGpsCoords.lat === null || baseGpsCoords.lon === null || (baseGpsCoords.lat === 0 && baseGpsCoords.lon === 0))) {
         baseGpsCoords = extractCoordinatesFromKeys(submission, gpsLatKeys, gpsLonKeys);
     }
 
-    const chosenCoords = chooseBestCoordinates(baseGpsCoords, manualCoords, 100);
+    // Selection logic: favor manual C2/C4 if they exist and are plausible
+    const chosenCoords = chooseBestCoordinates(baseGpsCoords, manualCoords, 150); // Increased threshold to 150m for rural areas
+
+    // Extract village and departement from multiple possible keys
+    const village = (
+        submission['TYPE_DE_VISITE/village_key'] ||
+        submission['village'] ||
+        submission['Village'] ||
+        submission['VILLAGE'] ||
+        submission['localite'] ||
+        submission['Localite'] ||
+        null
+    );
+    const departement = (
+        submission['TYPE_DE_VISITE/departement_key'] ||
+        submission['departement'] ||
+        submission['Departement'] ||
+        submission['DEPARTEMENT'] ||
+        null
+    );
 
     return {
         id: String(submission['_id']),
@@ -245,6 +265,8 @@ function mapCoreIdentity(submission) {
         name: submission['TYPE_DE_VISITE/nom_key'] || submission['nom'] || submission['owner_name'] || 'Maodo Diallo',
         phone: submission['TYPE_DE_VISITE/telephone_key'] || submission['telephone'] || submission['phone'],
         region: submission['TYPE_DE_VISITE/region_key'] || submission['region'],
+        village,
+        departement,
         latitude: chosenCoords.lat,
         longitude: chosenCoords.lon
     };
@@ -310,16 +332,18 @@ export async function syncKoboData(orgIdOverride = null) {
                     numeroordre: identity.numeroordre,
                     name: identity.name,
                     phone: identity.phone,
-                    region: identity.region,
+                    region: identity.region || null,
+                    village: identity.village || null,
+                    departement: identity.departement || null,
                     latitude: identity.latitude,
                     longitude: identity.longitude,
                     constructionData,
                     alerts,
                     status: globalStatus,
                     koboData: raw,
-                    koboSync: {}, // Nettoyage de l'ancien mapping pour éviter les conflits de statut
+                    koboSync: {},
                     koboSubmissionId: identity.id,
-                    ...(zoneId && { zoneId }), // Only set zoneId if it's truthy
+                    ...(zoneId && { zoneId }),
                     updatedAt: new Date(),
                     location: { type: 'Point', coordinates: [identity.longitude || 0, identity.latitude || 0] }
                 };

@@ -67,7 +67,7 @@ const TopBar: React.FC<TopBarProps> = ({
                     top-0 md:top-4
                     left-0 md:left-4
                     right-0 md:right-4
-                    z-50
+                    z-[1100]
 
                     bg-[#050F1F]/95 md:bg-transparent
                     backdrop-blur-xl md:backdrop-blur-0

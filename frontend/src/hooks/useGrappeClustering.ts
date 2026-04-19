@@ -30,16 +30,15 @@ export const useGrappeClustering = (households: Household[] | undefined) => {
       };
 
       const workerData = households
-        .filter(
-          (h: any) =>
-            h.location?.coordinates &&
-            !isNaN(Number(h.location.coordinates[0])) &&
-            !isNaN(Number(h.location.coordinates[1]))
-        )
+        .filter((h: any) => {
+          const lng = Number(h.location?.coordinates?.[0] ?? h.longitude);
+          const lat = Number(h.location?.coordinates?.[1] ?? h.latitude);
+          return !isNaN(lng) && !isNaN(lat) && (lng !== 0 || lat !== 0);
+        })
         .map((h: any) => ({
           id: h.id,
-          lat: Number(h.location.coordinates[1]),
-          lon: Number(h.location.coordinates[0]),
+          lat: Number(h.location?.coordinates?.[1] ?? h.latitude),
+          lon: Number(h.location?.coordinates?.[0] ?? h.longitude),
           village: h.village || h.departement || '',
           region: h.region || '',
           status: h.status,

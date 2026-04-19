@@ -12,7 +12,7 @@ const CORE_KNOWLEDGE = [
   'La collecte terrain est réalisée via Kobo Collect et synchronisée par numeroordre.',
   'La norme applicâble est NS 01-001 pour les installations basse tension (BT ≤ 1000 V).',
   'Le branchement Senelec doit respecter le coffret en limite de propriété et la hauteur réglementaire.',
-  'Les statuts métier des ménages sont : Non débuté, Murs, Réseau, Intérieur, Contrôle conforme, Ménage non éligible, Problème.',
+  'Les statuts métier des ménages sont : Non encore installée, Murs, Réseau, Intérieur, Contrôle conforme, Ménage non éligible, Problème.',
   'Le calcul des indemnités de mission se base sur les coûts de matériel, main-d’œuvre, logistique et barème PROQUELEC.',
   'Les indemnités sont validées après certification DG et peuvent être consultées par les rôles autorisés.',
   'La sécurité électrique repose sur DDR, prise terre PE vert/jaune, et protections mécanique PVC.',
@@ -112,7 +112,7 @@ FINANCES & INDEMNITÉS:
 - Les indemnités sont validées une fois la mission certifiée par la DG.
 
 STATUTS MÉNAGES:
-- Les statuts sont : Non débuté, Murs, Réseau, Intérieur, Contrôle conforme, Ménage non éligible, Problème.
+- Les statuts sont : Non encore installée, Murs, Réseau, Intérieur, Contrôle conforme, Ménage non éligible, Problème.
 
 INSTRUCTION:
 - Utilise uniquement les informations de la base de connaissances ci-dessus.

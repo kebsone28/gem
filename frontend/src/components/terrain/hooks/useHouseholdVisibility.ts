@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import maplibregl from 'maplibre-gl';
+import { ALL_STATUSES } from '../../../store/terrainUIStore';
 
 /**
  * Hook: Household Layer Visibility
@@ -9,67 +10,66 @@ import maplibregl from 'maplibre-gl';
  *
  * @param map - MapLibre GL map instance
  */
-export const useHouseholdVisibility = (map: maplibregl.Map | null): void => {
+export const useHouseholdVisibility = (
+  map: maplibregl.Map | null,
+  showZones: boolean = false
+): void => {
   useEffect(() => {
     if (!map) return;
 
     const updateVisibility = () => {
       const zoom = map.getZoom();
 
-      // Tier 1: zoom < 8    → Points microscopiques (Vue nationale)
-      // Tier 2: zoom 8-15   → Clusters / Grappes (Vue village)
-      // Tier 3: zoom >= 15  → Icônes détaillées (Vue précise)
-
-      const isNationalView = zoom < 8;
       const isVillageView = zoom >= 8 && zoom < 15;
-      const isPreciseView = zoom >= 15;
 
-      // Supercluster circles + counts (Visibles de Tier 1 à Tier 2)
-      const clusterVisible = zoom < 15;
+      // Supercluster circles + counts (Visibles uniquement si zoom < 15 ET zones désactivées)
+      const clusterVisible = zoom < 15 && !showZones;
+      
       if (map.getLayer('cluster-circles')) {
         map.setLayoutProperty('cluster-circles', 'visibility', clusterVisible ? 'visible' : 'none');
       }
       if (map.getLayer('cluster-counts')) {
         map.setLayoutProperty('cluster-counts', 'visibility', clusterVisible ? 'visible' : 'none');
       }
+      if (map.getLayer('cluster-halo')) {
+        map.setLayoutProperty('cluster-halo', 'visibility', clusterVisible ? 'visible' : 'none');
+      }
 
-      // Glow / Scintillement visibility
+      // Glow / Scintillement visibility - Toujours visible (Glow/Halo)
       if (map.getLayer('households-glow-layer')) {
-        map.setLayoutProperty(
-          'households-glow-layer',
-          'visibility',
-          zoom < 15 ? 'visible' : 'none'
-        );
+        map.setLayoutProperty('households-glow-layer', 'visibility', 'visible');
       }
 
-      // Points simples (Vue distribution) - Toujours visibles mais très petits en dézoom
+      // Points simples - DÉSACTIVÉS car on affiche directement les icônes
       if (map.getLayer('households-circles-simple')) {
-        map.setLayoutProperty(
-          'households-circles-simple',
-          'visibility',
-          zoom < 15 ? 'visible' : 'none'
-        );
+        map.setLayoutProperty('households-circles-simple', 'visibility', 'none');
       }
 
-      // Full icon markers + labels (Tier 3 only)
+      // Full icon markers - TOUJOURS VISIBLES (Google Earth Mode)
       if (map.getLayer('households-local-layer')) {
-        map.setLayoutProperty(
-          'households-local-layer',
-          'visibility',
-          isPreciseView ? 'visible' : 'none'
-        );
+        map.setLayoutProperty('households-local-layer', 'visibility', 'visible');
       }
+
+      // Labels - Uniquement à partir du zoom 15 pour performance
       if (map.getLayer('households-labels-simple')) {
         map.setLayoutProperty(
           'households-labels-simple',
           'visibility',
-          isPreciseView ? 'visible' : 'none'
+          zoom >= 15 ? 'visible' : 'none'
         );
       }
     };
 
     // Initial render
     updateVisibility();
+
+    // ✅ Correction immédiate : forcer icon-opacity = 1 si le layer existe déjà
+    // (corrige le cas où le layer a été créé avec icon-opacity:0 au zoom < 14)
+    if (map.getLayer('households-local-layer')) {
+      try {
+        map.setPaintProperty('households-local-layer', 'icon-opacity', 1);
+      } catch (_) { /* ignore */ }
+    }
 
     map.on('zoomend', updateVisibility);
     map.on('zoom', updateVisibility); // smooth transition during pinch/scroll
@@ -78,8 +78,9 @@ export const useHouseholdVisibility = (map: maplibregl.Map | null): void => {
       map.off('zoomend', updateVisibility);
       map.off('zoom', updateVisibility);
     };
-  }, [map]);
+  }, [map, showZones]);
 };
+
 
 /**
  * Hook: Heatmap Visibility Control
@@ -124,7 +125,9 @@ export const useHouseholdFilters = (
     const buildFilter = () => {
       const filters: any[] = ['all'];
 
-      if (selectedPhases.length > 0) {
+      // Only apply status filter if we have a non-empty, partial selection
+      // When ALL statuses are selected (or more), don't apply any filter (show everything)
+      if (selectedPhases.length > 0 && selectedPhases.length < ALL_STATUSES.length) {
         filters.push(['in', ['coalesce', ['get', 'status'], ''], ['literal', selectedPhases]]);
       }
 
@@ -132,16 +135,18 @@ export const useHouseholdFilters = (
         filters.push(['in', selectedTeam, ['coalesce', ['get', 'assignedTeams'], ['literal', []]]]);
       }
 
+      // Return null filter if no restrictions (show all features)
       return filters.length > 1 ? filters : null;
     };
 
     const filter = buildFilter();
 
     // Apply to affected layers
-    ['heatmap', 'households-local-layer'].forEach((layerId) => {
+    ['heatmap', 'households-local-layer', 'households-glow-layer'].forEach((layerId) => {
       if (map.getLayer(layerId)) {
         map.setFilter(layerId, filter as any);
       }
     });
   }, [map, selectedPhases, selectedTeam]);
 };
+

@@ -757,22 +757,24 @@ export const bulkImportHouseholds = async (req, res) => {
             }
         }
 
-        // 2. Préparation des données pour l'insertion
-        const dataToInsert = households.map(h => {
+        // 2. Préparation des données pour l'insertion + DÉDOUBLONNAGE DANS LE FICHIER
+        const processedBatch = new Map();
+        
+        households.forEach(h => {
             const lat = (h.location?.coordinates?.[1] !== undefined) ? parseFloat(h.location.coordinates[1]) : (h.latitude ? parseFloat(h.latitude) : null);
             const lon = (h.location?.coordinates?.[0] !== undefined) ? parseFloat(h.location.coordinates[0]) : (h.longitude ? parseFloat(h.longitude) : null);
 
-            // Important: Normalize numeroordre here too for the import
             let numeroordre = h.numeroordre || h.Numero_ordre || h.id;
             if (numeroordre && String(numeroordre).endsWith('.0')) {
                 numeroordre = String(numeroordre).substring(0, String(numeroordre).length - 2);
             }
+            const normalizedNum = numeroordre ? String(numeroordre).toUpperCase().trim() : null;
 
-            return {
+            const item = {
                 id: String(h.id),
                 organizationId,
                 zoneId: zoneId,
-                numeroordre: numeroordre ? String(numeroordre).toUpperCase().trim() : null,
+                numeroordre: normalizedNum,
                 status: h.status || 'planned',
                 owner: h.owner || {},
                 location: h.location || {},
@@ -786,32 +788,68 @@ export const bulkImportHouseholds = async (req, res) => {
                 source: h.source || 'Excel-Import',
                 version: 1
             };
+
+            // If business key exists, ensure we only take the one with a valid ID or the first occurrence
+            // This prevents duplicates if the same numeroordre is twice in the EXCEL file
+            if (normalizedNum) {
+                if (!processedBatch.has(normalizedNum)) {
+                    processedBatch.set(normalizedNum, item);
+                } else {
+                    console.log(`⚠️ [Dedup-File] Duplicate numeroordre ${normalizedNum} found in file, skipping secondary entry.`);
+                }
+            } else {
+                processedBatch.set(item.id, item);
+            }
         });
 
-        // 3. Insertion Massive avec gestion d'erreur par lot
-        // Note: createMany skipDuplicates ne gère QUE la clé primaire sur Postgres
-        // On va essayer d'insérer, si ça échoue on bascule sur un mode plus lent mais sûr (un par un ou upsert)
+        const dataToInsert = Array.from(processedBatch.values());
+
+        // 3. SECURE MATCHING: Resolve existing records by numeroordre to prevent duplicates
+        console.log(`[SYNC-BULK] 🔍 Scanning for existing business keys (numeroordre)...`);
+        const incomingNums = dataToInsert.map(d => d.numeroordre).filter(Boolean);
+        const existingRecords = await prisma.household.findMany({
+            where: {
+                organizationId,
+                numeroordre: { in: incomingNums },
+                deletedAt: null
+            },
+            select: { id: true, numeroordre: true }
+        });
+
+        const numToIdMap = new Map();
+        existingRecords.forEach(r => numToIdMap.set(r.numeroordre.toUpperCase().trim(), r.id));
+
+        // 4. Processing imports (Sequential Upsert to guarantee integrity)
         let importedCount = 0;
-        try {
-            const result = await prisma.household.createMany({
-                data: dataToInsert,
-                skipDuplicates: true
-            });
-            importedCount = result.count;
-        } catch (bulkError) {
-            console.warn('[SYNC-BULK] createMany failed (likely Unique Constraint). Falling back to safe sequential upsert.');
-            // Fallback: Upsert one by one (slower but ignores duplicates on numeroordre)
-            for (const item of dataToInsert) {
-                try {
-                    await prisma.household.upsert({
-                        where: { id: item.id },
-                        create: item,
-                        update: { ...item, updatedAt: new Date() }
-                    });
-                    importedCount++;
-                } catch (e) {
-                    console.error(`[SYNC-BULK-ITEM-ERROR] Failed to import household ${item.id}:`, e.message);
-                }
+        let createdCount = 0;
+        let updatedCount = 0;
+
+        for (const item of dataToInsert) {
+            try {
+                // Determine the best primary key (Business Key match > Provided ID)
+                const existingId = item.numeroordre ? numToIdMap.get(item.numeroordre) : null;
+                const targetId = existingId || item.id;
+
+                const result = await prisma.household.upsert({
+                    where: { id: targetId },
+                    update: {
+                        ...item,
+                        id: targetId, // Keep existing ID if matched
+                        updatedAt: new Date(),
+                        version: { increment: 1 }
+                    },
+                    create: {
+                        ...item,
+                        id: targetId // Use matched ID or provided ID
+                    }
+                });
+
+                if (existingId || result.version > 1) updatedCount++;
+                else createdCount++;
+                
+                importedCount++;
+            } catch (e) {
+                console.error(`[SYNC-BULK-ITEM-ERROR] Failed to import household ${item.id}:`, e.message);
             }
         }
 

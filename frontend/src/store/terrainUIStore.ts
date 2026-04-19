@@ -2,22 +2,22 @@ import { create } from 'zustand';
 import * as safeStorage from '../utils/safeStorage';
 
 export const ALL_STATUSES = [
-  'Eligible',
-  'Non éligible',
-  'Désistement',
-  'Installé',
-  'En attente',
-  'Refusé',
-  'Inconnu',
   'Contrôle conforme',
   'Non conforme',
   'Intérieur terminé',
   'Réseau terminé',
   'Murs terminés',
   'Livraison effectuée',
-  'Non encore commencé',
+  'Eligible',
+  'Non encore installée',
   'Non débuté',
+  'Non commencé',
+  'En attente',
+  'Refusé',
+  'Non éligible',
+  'Désistement',
 ];
+
 
 export type PanelType =
   | 'none'

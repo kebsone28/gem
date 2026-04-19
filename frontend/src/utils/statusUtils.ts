@@ -29,7 +29,7 @@ export const getStatusTailwindClasses = (status?: string) => {
 };
 
 export const getHouseholdDerivedStatus = (h: Household) => {
-  if (!h) return 'Non encore commencé';
+  if (!h) return 'Non encore installée';
 
   // 1. Statuts bloquants et normalisés
   const normalized = normalizeStatus(h.status);
@@ -37,7 +37,7 @@ export const getHouseholdDerivedStatus = (h: Household) => {
 
   // 2. Alertes critiques
   const alerts = Array.isArray(h.alerts) ? h.alerts : [];
-  if (alerts.some((a) => a.severity === 'HIGH' || a.type === 'CRITICAL')) return 'Non conforme';
+  if (alerts.some((a: any) => a.severity === 'HIGH' || a.type === 'CRITICAL')) return 'Non conforme';
 
   // 3. Nouvelle architecture (constructionData)
   const cData = h.constructionData as any;
@@ -78,5 +78,5 @@ export const getHouseholdDerivedStatus = (h: Household) => {
     if (finalStatus !== 'Inconnu') return finalStatus;
   }
 
-  return 'Non encore commencé';
+  return 'Non encore installée';
 };

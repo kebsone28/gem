@@ -286,13 +286,13 @@ export const updateHousehold = async (req, res) => {
             resourceId: id,
             details: {
                 oldStatus: household.status,
-                newStatus: status
+                newStatus: updates.status
             },
             req
         });
         
         // --- PERFORMANCE LOGGING ---
-        if (status && status !== household.status) {
+        if (updates.status && updates.status !== household.status) {
             await logPerformance({
                 organizationId,
                 projectId: household.zone?.projectId,
@@ -300,7 +300,7 @@ export const updateHousehold = async (req, res) => {
                 householdId: id,
                 action: 'STATUS_CHANGE',
                 oldStatus: household.status,
-                newStatus: status,
+                newStatus: updates.status,
                 details: { source: 'WEB_REALTIME' }
             });
         }

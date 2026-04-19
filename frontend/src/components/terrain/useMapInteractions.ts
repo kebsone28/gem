@@ -60,8 +60,8 @@ export const useMapInteractions = (
       };
 
       [
-        'households-server-layer',
         'households-local-layer',
+        'households-glow-layer',
         'grappes-layer',
         'sous-grappes-layer',
         'grappes-labels',
@@ -117,7 +117,8 @@ export const useMapInteractions = (
       };
 
       // Mouse drag
-      map.on('mousedown', 'households-local-layer', (e) => {
+      ['households-local-layer', 'households-glow-layer'].forEach(layerId => {
+        map.on('mousedown', layerId, (e) => {
         if (readOnly) return;
         const feature = e.features?.[0];
         if (!feature) return;
@@ -131,10 +132,12 @@ export const useMapInteractions = (
             feature.properties.household_id || feature.properties.id || String(feature.id),
         };
         map.getCanvas().style.cursor = 'grabbing';
+        });
       });
 
       // Touch drag
-      map.on('touchstart', 'households-local-layer', (e) => {
+      ['households-local-layer', 'households-glow-layer'].forEach(layerId => {
+        map.on('touchstart', layerId, (e) => {
         if (readOnly) return;
         const feature = e.features?.[0];
         if (!feature) return;
@@ -146,6 +149,7 @@ export const useMapInteractions = (
             feature.properties.household_id || feature.properties.id || String(feature.id),
         };
         map.getCanvas().style.cursor = 'grabbing';
+        });
       });
 
       // Move callback
@@ -177,12 +181,14 @@ export const useMapInteractions = (
       });
 
       // Safety: mouseleave during drag
-      map.on('mouseleave', 'households-local-layer', () => {
-        if (dragStateRef.current.isDragging) endDrag(null);
+      ['households-local-layer', 'households-glow-layer'].forEach(layerId => {
+        map.on('mouseleave', layerId, () => {
+          if (dragStateRef.current.isDragging) endDrag(null);
+        });
       });
 
       // ── CLICK HANDLERS ──
-      ['households-server-layer', 'households-local-layer'].forEach((layerId) => {
+      ['households-local-layer', 'households-glow-layer'].forEach((layerId) => {
         map.on('click', layerId, (e) => {
           const feature = e.features?.[0];
           if (feature && popupRef.current) {

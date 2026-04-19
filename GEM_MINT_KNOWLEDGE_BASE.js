@@ -39,16 +39,16 @@ export const GEM_MINT_KNOWLEDGE_BASE = {
       DG: "Certification finale et approbation"
     },
     statuts_menage: [
-      "Non débuté",
-      "Murs (construction murs)",
-      "Réseau (tirage réseau)",
-      "Intérieur (installation intérieure)",
+      "Non encore installée",
+      "Murs terminés",
+      "Réseau terminé",
+      "Intérieur terminé",
       "Contrôle conforme",
       "Ménage non éligible",
       "Problème"
     ]
   },
-
+q
   // RÈGLES TECHNIQUES (NS 01-001)
   regles_techniques: {
     domaine_application: "Installations BT ≤1000V (alternatif) et ≤1500V (continu)",
@@ -105,7 +105,8 @@ export const GEM_MINT_KNOWLEDGE_BASE = {
       "status (checkpoints validation)"
     ],
     strategie_merge: "UPDATE si numeroordre existe, CREATE sinon",
-    formats_gps: ["lat lon", "lon lat", "GeoJSON Point"],
+    formats_gps: ["Smart Selection: Favorise C2/C4 si distance < 150m de _geolocation", "lat lon", "lon lat", "GeoJSON Point"],
+    monitoring_photo: "Détection automatique des médias (hasPhotos) pour affichage badges sur carte",
     validation: "Checkpoints: murs, réseau, intérieur, contrôle"
   },
 
@@ -198,7 +199,7 @@ export const GEM_MINT_KNOWLEDGE_BASE = {
     },
     {
       question: "Quels sont les statuts possibles d'un ménage?",
-      reponse: "Non débuté → Murs → Réseau → Intérieur → Contrôle conforme\nOu: Ménage non éligible, Problème"
+      reponse: "Non encore installée → Murs terminés → Réseau terminé → Intérieur terminé → Contrôle conforme\nOu: Ménage non éligible, Problème (Désistement, Refusé, Non conforme)"
     },
     {
       question: "Comment fonctionne l'approbation des missions?",
@@ -209,7 +210,8 @@ export const GEM_MINT_KNOWLEDGE_BASE = {
   // ERREURS COURANTES & SOLUTIONS
   erreurs_courantes: {
     doublons_kobo: "Vérifier numeroordre UNIQUE, utiliser UPDATE si existe",
-    statut_ignore: "Priorité: 'Situation du Ménage' > checkpoints validation > fallback 'Non débuté'",
+    statut_ignore: "Priorité: 'Situation du Ménage' > checkpoints validation > fallback 'Non encore installée'",
+    gps_decale: "Le système Smart GPS utilise C2/C4 en priorité si la distance avec le GPS auto est cohérente",
     memoire_carte: "Supercluster pour clustering, limit 5000 points par requête bbox",
     sync_conflits: "version + updatedAt pour résolution, master local gagne",
     auth_expire: "Auto-refresh token, fallback login si refresh expiré"
