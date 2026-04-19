@@ -51,6 +51,11 @@ const BottomBar: React.FC<BottomBarProps> = ({
             <Wifi size={10} />
             {isOfflineMode ? 'Hors-Ligne' : 'Connecté'}
           </div>
+
+          {/* 🏷️ Deployment Marker (to verify update success on VPS) */}
+          <span className="hidden sm:block text-[8px] font-black text-white/20 tracking-tighter pr-1">
+            v2.1
+          </span>
         </div>
       </div>
     </div>
