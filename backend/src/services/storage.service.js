@@ -90,9 +90,12 @@ export const deleteFile = async (key) => {
             await s3Client.send(command);
         } else {
             const filePath = path.join(LOCAL_UPLOADS_DIR, key);
-            await fs.unlink(filePath).catch(() => {});
+            await fs.unlink(filePath).catch((err) => {
+                if (err.code !== 'ENOENT') throw err;
+            });
         }
     } catch (error) {
         console.error('[STORAGE SERVICE] Delete error:', error);
+        throw new Error('Échec de la suppression du fichier.');
     }
 };

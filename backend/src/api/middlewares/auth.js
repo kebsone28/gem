@@ -1,6 +1,7 @@
 import { verifyAccessToken } from '../../core/utils/jwt.js';
 import logger from '../../utils/logger.js';
 import { runWithContext } from '../../core/context/storage.js';
+import { normalizeRole } from '../../core/utils/roles.js';
 
 export const authProtect = async (req, res, next) => {
     try {
@@ -69,31 +70,6 @@ export const authorize = (...args) => {
     //   ADMIN_PROQUELEC = Super Admin (bypass total, voit tout)
     //   DIRECTEUR       = Directeur Général (approuve tout, passe par les routes normales)
     //   CHEF_PROJET/CP  = Chef de Projet (voit ses missions uniquement)
-    const ROLE_ALIASES = {
-        // Chef de Projet — toutes variantes
-        'CP':                  'CHEF_PROJET',
-        'CHEF_PROJET':         'CHEF_PROJET',
-        'CHEF_DE_PROJET':      'CHEF_PROJET',
-        'CHEF DE PROJET':      'CHEF_PROJET',   // ← stocké en base avec espaces
-        'CHEF PROJET':         'CHEF_PROJET',
-        // Directeur Général — toutes variantes
-        'DG':                  'DIRECTEUR',
-        'DG_PROQUELEC':        'DIRECTEUR',
-        'DIRECTEUR_GENERAL':   'DIRECTEUR',
-        'DIRECTEUR GENERAL':   'DIRECTEUR',     // ← avec espaces
-        'DIR_GEN':             'DIRECTEUR',
-        'DIRECTEUR':           'DIRECTEUR',
-        // Admin — toutes variantes
-        'ADMIN':               'ADMIN_PROQUELEC',
-        'ADMIN_PROQUELEC':     'ADMIN_PROQUELEC',
-        // Autres rôles standard
-        'COMPTABLE':           'COMPTABLE',
-        'SUPERVISEUR':         'SUPERVISEUR',
-        'AGENT':               'AGENT',
-        'TERRAIN':             'TERRAIN',
-    };
-
-    const normalizeRole = (role) => ROLE_ALIASES[role?.toUpperCase()] || role?.toUpperCase();
 
     return (req, res, next) => {
         const rawUserRole = req.user.role?.toUpperCase();

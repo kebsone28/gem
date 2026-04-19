@@ -30,8 +30,61 @@ import { PVDocGenerator } from '../services/ai/PVDocGenerator';
 import { audioService } from '../services/audioService';
 import { AnimatedCounter } from '../components/common/AnimatedCounter';
 import { useAuthStore } from '../store/authStore';
+import { Household, Team } from '../utils/types';
 
 // --- Constants & Types ---
+
+export interface PVRecord {
+  id: string;
+  householdId: string;
+  projectId: string;
+  type: PVType;
+  content: string;
+  createdBy: string;
+  createdAt: string;
+  metadata?: {
+    numeroordre?: string;
+    recommended?: boolean;
+    manualTeam?: string;
+    manualDescription?: string;
+  };
+}
+
+export interface AlertRecord {
+  type: string;
+  message: string;
+}
+
+export interface PVLogic {
+  searchTerm: string;
+  setSearchTerm: (t: string) => void;
+  selectedType: PVType | 'ALL';
+  setSelectedType: (t: PVType | 'ALL') => void;
+  selectedSubmission: Household & { activePVType?: PVType, generatedPvId?: string } | null;
+  setSelectedSubmission: (h: Household & { activePVType?: PVType, generatedPvId?: string } | null) => void;
+  isGenerating: boolean;
+  isSignatureOpen: boolean;
+  setIsSignatureOpen: (o: boolean) => void;
+  signatureData: string | null;
+  setSignatureData: (d: string | null) => void;
+  archivedPVs: PVRecord[];
+  filteredSubmissions: Household[];
+  getRecommendedType: (s: Household) => PVType;
+  handleCreatePV: (type: PVType, submission: Household) => Promise<void>;
+  handleResetPVs: (householdId: string) => Promise<void>;
+  isLoadingDB: boolean;
+  isBossSignatureOpen: boolean;
+  setIsBossSignatureOpen: (o: boolean) => void;
+  bossSignatureData: string | null;
+  setBossSignatureData: (d: string | null) => void;
+  handleExportGlobalDoc: (type: string, pvs: PVRecord[]) => Promise<void>;
+  handleExportAnomalies: () => Promise<void>;
+  hseTeam: string;
+  setHseTeam: (t: string) => void;
+  hseDescription: string;
+  setHseDescription: (d: string) => void;
+  teams: Team[];
+}
 
 
 const COLOR_MAP = {
@@ -43,7 +96,7 @@ const COLOR_MAP = {
   rose: { bg: 'bg-rose-600', lightBg: 'bg-rose-500/10', border: 'border-rose-500/20', text: 'text-rose-400', shadow: 'shadow-rose-500/20' },
 } as const;
 
-const PV_ICONS: Record<PVType, any> = {
+const PV_ICONS: Record<PVType, React.ElementType> = {
   PVR: CheckCircle2,
   PVNC: AlertTriangle,
   PVHSE: ShieldAlert,
@@ -55,10 +108,10 @@ const PV_ICONS: Record<PVType, any> = {
 
 
 // --- Custom Hook (Logic Isolation) ---
-function usePVAutomation() {
+function usePVAutomation(): PVLogic {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState<PVType | 'ALL'>('ALL');
-  const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
+  const [selectedSubmission, setSelectedSubmission] = useState<Household & { activePVType?: PVType, generatedPvId?: string } | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSignatureOpen, setIsSignatureOpen] = useState(false);
   const [signatureData, setSignatureData] = useState<string | null>(localStorage.getItem('gem_pv_sig') || null);
@@ -89,7 +142,7 @@ function usePVAutomation() {
   const archivedPVs = archivedPVsQuery || [];
   const submissions = submissionsQuery || [];
 
-  const getRecommendedType = useCallback((s: any): PVType => {
+  const getRecommendedType = useCallback((s: Household): PVType => {
     return PVRulesEngine.evaluate(s);
   }, []);
 
@@ -108,7 +161,7 @@ function usePVAutomation() {
   const [hseDescription, setHseDescription] = useState('');
   const teams = useLiveQuery(() => db.teams.toArray()) || [];
 
-  const handleCreatePV = useCallback(async (type: PVType, submission: any) => {
+  const handleCreatePV = useCallback(async (type: PVType, submission: Household) => {
     if (!submission) return;
     setIsGenerating(true);
     try {
@@ -170,7 +223,7 @@ function usePVAutomation() {
     }
   }, [getRecommendedType]);
 
-  const handleExportGlobalDoc = async (type: string, pvs: any[]) => {
+  const handleExportGlobalDoc = async (type: string, pvs: PVRecord[]) => {
     if (pvs.length === 0) {
       toast.error("Aucun PV de ce type à exporter");
       return;
@@ -205,7 +258,7 @@ function usePVAutomation() {
       const qrBytes = new Uint8Array(window.atob(qrDataUrl.split(',')[1]).split('').map(c => c.charCodeAt(0)));
 
       // ✍️ Signatures (Persistées)
-      let sigs: any[] = [];
+      let sigs: ImageRun[] = [];
       if (bossSignatureData) {
         const b = new Uint8Array(window.atob(bossSignatureData.split(',')[1]).split('').map(c => c.charCodeAt(0)));
         sigs.push(new ImageRun({ data: b, transformation: { width: 150, height: 50 }, type: 'png' }));
@@ -401,7 +454,7 @@ function usePVAutomation() {
         'Village': h.village,
         'Région': h.region,
         'Nb Alertes': h.alerts?.length || 0,
-        'Détails Alertes': h.alerts?.map((a: any) => `[${a.type}] ${a.message}`).join(' | '),
+        'Détails Alertes': h.alerts?.map((a: AlertRecord) => `[${a.type}] ${a.message}`).join(' | '),
         'Synchronisé': h.source === 'kobo' ? 'OUI' : 'NON'
       }));
 
@@ -473,7 +526,7 @@ export default function PVAutomation() {
   );
 }
 
-function PVSubmissionsList({ logic }: { logic: any }) {
+function PVSubmissionsList({ logic }: { logic: PVLogic }) {
   return (
     <div className="bg-slate-900/50 backdrop-blur-xl border border-white/5 rounded-2xl p-4">
       <div className="flex items-center gap-2 mb-4">
@@ -502,7 +555,7 @@ function PVSubmissionsList({ logic }: { logic: any }) {
           <div className="text-center py-8 bg-white/5 border border-white/5 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-500">
             Aucun ménage en attente
           </div>
-        ) : logic.filteredSubmissions.map((s: any) => (
+        ) : logic.filteredSubmissions.map((s: Household) => (
           <div key={s.id} onClick={() => logic.setSelectedSubmission(s)} className={`p-4 rounded-xl border cursor-pointer transition-all ${logic.selectedSubmission?.id === s.id ? 'bg-blue-500/10 border-blue-500/30' : 'bg-white/5 border-transparent hover:border-white/10'}`}>
             <div className="flex justify-between items-center mb-1">
               <div className="flex items-center gap-2 min-w-0">
@@ -541,7 +594,7 @@ function PVSubmissionsList({ logic }: { logic: any }) {
   );
 }
 
-function PVGenerator({ logic }: { logic: any }) {
+function PVGenerator({ logic }: { logic: PVLogic }) {
   if (!logic.selectedSubmission) return (
     <div className="h-full flex flex-col items-center justify-center border-2 border-dashed border-white/5 rounded-[3rem] py-20">
       <Search size={48} className="text-slate-800 mb-4" />
@@ -558,7 +611,7 @@ function PVGenerator({ logic }: { logic: any }) {
         </div>
         <div className="flex flex-wrap justify-center lg:justify-end gap-2 w-full lg:w-auto">
           {(() => {
-            const hasCriticalAlert = logic.selectedSubmission.alerts?.some((a: any) => 
+            const hasCriticalAlert = logic.selectedSubmission.alerts?.some((a: AlertRecord) => 
                a.type === 'DOUBLON_DETECTE' || a.type === 'MISMATCH_GPS'
             );
 
@@ -619,7 +672,7 @@ function PVGenerator({ logic }: { logic: any }) {
   );
 }
 
-function PVContentView({ submission, logic }: { submission: any, logic: any }) {
+function PVContentView({ submission, logic }: { submission: Household & { activePVType?: PVType, generatedPvId?: string }, logic: PVLogic }) {
   const type = submission.activePVType as PVType;
   const tmpl = PV_TEMPLATES[type];
   const aiContent = useMemo(() => PVAIEngine.generateContent(submission, type), [submission, type]);
@@ -667,7 +720,7 @@ function PVContentView({ submission, logic }: { submission: any, logic: any }) {
                     className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-2.5 text-white text-[11px] outline-none focus:border-red-500/50 transition-all font-bold"
                   >
                     <option value="">-- Sélectionner l'équipe --</option>
-                    {logic.teams?.map((t: any) => (
+                    {logic.teams?.map((t: Team) => (
                       <option key={t.id} value={t.id}>{t.name} ({t.role})</option>
                     ))}
                   </select>
@@ -770,7 +823,7 @@ function PVContentView({ submission, logic }: { submission: any, logic: any }) {
   );
 }
 
-function PVStatsBoard({ archivedPVs, isLoadingDB }: { archivedPVs: any[], isLoadingDB?: boolean }) {
+function PVStatsBoard({ archivedPVs, isLoadingDB }: { archivedPVs: PVRecord[], isLoadingDB?: boolean }) {
   const stats = useMemo(() => {
     const total = archivedPVs.length;
     let label = "CONFORME";
@@ -846,7 +899,7 @@ function PVStatsBoard({ archivedPVs, isLoadingDB }: { archivedPVs: any[], isLoad
   );
 }
 
-function StatWidget({ label, value, color, icon: Icon, suffix = "", isString = false }: any) {
+function StatWidget({ label, value, color, icon: Icon, suffix = "", isString = false }: { label: string, value: string | number, color: string, icon: React.ElementType, suffix?: string, isString?: boolean }) {
   const styles = COLOR_MAP[color as keyof typeof COLOR_MAP];
   return (
     <div className={`p-6 bg-slate-900/40 border ${styles.border} rounded-[2rem] relative overflow-hidden shadow-lg transition-all border-l-4`}>
@@ -859,7 +912,7 @@ function StatWidget({ label, value, color, icon: Icon, suffix = "", isString = f
   );
 }
 
-function PVArchivePanel({ logic, archivedPVs }: { logic: any, archivedPVs: any[] }) {
+function PVArchivePanel({ logic, archivedPVs }: { logic: PVLogic, archivedPVs: PVRecord[] }) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const handleToggleSelect = (id: string) => {
@@ -869,7 +922,7 @@ function PVArchivePanel({ logic, archivedPVs }: { logic: any, archivedPVs: any[]
     setSelectedIds(next);
   };
 
-  const handleSelectAll = (filtered: any[]) => {
+  const handleSelectAll = (filtered: PVRecord[]) => {
     if (selectedIds.size === filtered.length) setSelectedIds(new Set());
     else setSelectedIds(new Set(filtered.map(p => p.id)));
   };
@@ -882,7 +935,7 @@ function PVArchivePanel({ logic, archivedPVs }: { logic: any, archivedPVs: any[]
     for (const pv of selected) {
       const sub = await db.households.get(pv.householdId);
       if (sub) {
-        await PVDocGenerator.generateIndividualDoc(sub, pv.type as any, {
+        await PVDocGenerator.generateIndividualDoc(sub, pv.type, {
           prestataire: logic.signatureData,
           boss: logic.bossSignatureData
         });
@@ -949,7 +1002,7 @@ function PVArchivePanel({ logic, archivedPVs }: { logic: any, archivedPVs: any[]
                 toast(`Démarrage du téléchargement groupé (${filtered.length} fichiers)...`, { icon: 'ℹ️' });
                 
                 for (const pv of filtered) {
-                  const sub = logic.filteredSubmissions.find((s: any) => s.id === pv.householdId);
+                  const sub = logic.filteredSubmissions.find((s: Household) => s.id === pv.householdId);
                   if (sub) {
                     try {
                       await PVDocGenerator.generateIndividualDoc(sub, pv.type, {

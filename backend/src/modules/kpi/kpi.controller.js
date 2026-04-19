@@ -11,15 +11,18 @@ export const getProjectKPIs = async (req, res) => {
         // 0. Tentative de récupération depuis le cache Redis
         const cacheKey = `kpi:${organizationId}:${projectId}`;
         try {
-            if (redisConnection) {
-                const cachedData = await redisConnection.get(cacheKey);
+            if (redisConnection && redisConnection.status === 'ready') {
+                const cachedData = await Promise.race([
+                    redisConnection.get(cacheKey),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('Redis GET timeout')), 500))
+                ]);
                 if (cachedData) {
                     console.log(`[CACHE HIT] KPI pour le projet ${projectId}`);
                     return res.json(JSON.parse(cachedData));
                 }
             }
         } catch (cacheError) {
-            console.error('[REDIS CACHE ERROR]', cacheError);
+            console.error('[REDIS CACHE ERROR] Pass bypass:', cacheError.message);
         }
 
         console.log(`[CACHE MISS] Calcul des KPI pour le projet ${projectId}`);
@@ -229,11 +232,14 @@ export const getProjectKPIs = async (req, res) => {
 
         // Enregistrement dans le cache pour 5 minutes (300 secondes)
         try {
-            if (redisConnection) {
-                await redisConnection.setex(cacheKey, 300, JSON.stringify(result));
+            if (redisConnection && redisConnection.status === 'ready') {
+                await Promise.race([
+                    redisConnection.setex(cacheKey, 300, JSON.stringify(result)),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('Redis SET timeout')), 500))
+                ]);
             }
         } catch (cacheError) {
-            console.error('[REDIS CACHE SET ERROR]', cacheError);
+            console.error('[REDIS CACHE SET ERROR]', cacheError.message);
         }
 
         res.json(result);

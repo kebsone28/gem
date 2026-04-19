@@ -56,13 +56,6 @@ function validateGPSRegion(latitude, longitude, region, submissionId = null) {
     return { isValid: true };
 }
 
-/**
- * Fetches submissions from KoboToolbox API since a given date.
- * @param {string} token - Project specific Kobo token
- * @param {string} assetUid - Project specific Asset UID
- * @param {string|null} since - ISO timestamp for incremental sync
- * @returns {Promise<any[]>} Array of raw Kobo submissions
- */
 export async function fetchKoboSubmissions(token, assetUid, since = null) {
     const finalToken = token || KOBO_TOKEN;
     const finalAssetUid = assetUid || KOBO_FORM_ID;
@@ -71,28 +64,44 @@ export async function fetchKoboSubmissions(token, assetUid, since = null) {
         throw new Error('KOBO_TOKEN ou KOBO_FORM_ID non configurés (ni en variable d\'env, ni dans le projet).');
     }
 
-    // Build query — Kobo supports ?query= with MongoDB-style JSON filter
-    let url = `${KOBO_API_URL}/api/v2/assets/${finalAssetUid}/data/?format=json&limit=5000`;
-    if (since) {
-        const sinceDate = new Date(since).toISOString();
-        // Kobo filter on submission time
-        url += `&query={"_submission_time":{"$gte":"${sinceDate}"}}`;
-    }
+    let allResults = [];
+    let start = 0;
+    const limit = 5000;
+    let hasMore = true;
 
-    const response = await fetch(url, {
-        headers: {
-            Authorization: `Token ${finalToken}`,
-            'Content-Type': 'application/json'
+    while (hasMore) {
+        // Build query — Kobo supports ?query= with MongoDB-style JSON filter
+        let url = `${KOBO_API_URL}/api/v2/assets/${finalAssetUid}/data/?format=json&limit=${limit}&start=${start}`;
+        
+        if (since) {
+            const sinceDate = new Date(since).toISOString();
+            url += `&query={"_submission_time":{"$gte":"${sinceDate}"}}`;
         }
-    });
 
-    if (!response.ok) {
-        const text = await response.text();
-        throw new Error(`KoboToolbox API error ${response.status}: ${text}`);
+        const response = await fetch(url, {
+            headers: {
+                Authorization: `Token ${finalToken}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            const text = await response.text();
+            throw new Error(`KoboToolbox API error ${response.status}: ${text}`);
+        }
+
+        const data = await response.json();
+        const results = data.results || [];
+        allResults = allResults.concat(results);
+
+        if (results.length < limit) {
+            hasMore = false;
+        } else {
+            start += limit;
+        }
     }
 
-    const data = await response.json();
-    return data.results || [];
+    return allResults;
 }
 
 /**

@@ -31,20 +31,21 @@ export const config = {
     },
     cors: {
         origin: (origin, callback) => {
-            const allowedOrigins = [
-                'http://localhost:3000',
-                'http://localhost:5173',
-                'http://127.0.0.1:3000',
-                'http://gem.proquelec.sn',
-                'https://gem.proquelec.sn'
-            ];
-            const isDev = !process.env.NODE_ENV || process.env.NODE_ENV === 'development';
+            const isDev = process.env.NODE_ENV !== 'production';
             
-            // En dev, on laisse tout passer pour éviter les blocages de proxy/sockets
-            if (isDev || !origin || allowedOrigins.indexOf(origin) !== -1 || allowedOrigins.includes('*')) {
+            // Origins strictly loaded from env in prod, with secure default fallback
+            let allowedOrigins = process.env.CORS_ORIGINS 
+                ? process.env.CORS_ORIGINS.split(',').map(o => o.trim())
+                : ['https://gem.proquelec.sn'];
+                
+            if (isDev) {
+                allowedOrigins.push('http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:3000');
+            }
+            
+            if (isDev || !origin || allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
                 callback(null, true);
             } else {
-                callback(new Error('CORS blocked by PROQUELEC Policy'));
+                callback(new Error('CORS blocked by PROQUELEC Policy for ' + origin));
             }
         },
         credentials: true,

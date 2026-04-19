@@ -5,6 +5,7 @@ import { missionNotificationService } from '../../services/notification.service.
 import { sendMail } from '../../services/mail.service.js';
 import { missionMentorService } from '../assistant/missionMentorService.js';
 import crypto from 'crypto';
+import { normalizeRole } from '../../core/utils/roles.js';
 
 // ===============================================
 // PUBLIC VERIFICATION (No Auth Required)
@@ -136,17 +137,7 @@ export const getMissions = async (req, res) => {
         const { projectId } = req.query;
         const { organizationId, id: userId, role: rawUserRole } = req.user;
 
-        // Normalisation des alias de rôles
-        const ROLE_ALIASES = {
-            'CP': 'CHEF_PROJET',
-            'DG': 'DIRECTEUR',
-            'DG_PROQUELEC': 'DIRECTEUR',
-            'DIRECTEUR_GENERAL': 'DIRECTEUR',
-            'DIR_GEN': 'DIRECTEUR',
-            'DIRECTION': 'DIRECTEUR',
-            'ADMIN': 'ADMIN_PROQUELEC'
-        };
-        const userRole = ROLE_ALIASES[rawUserRole?.toUpperCase()] || rawUserRole?.toUpperCase();
+        const userRole = normalizeRole(rawUserRole);
 
         let whereClause = {
             organizationId,
