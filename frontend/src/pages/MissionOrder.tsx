@@ -70,6 +70,9 @@ export default function MissionOrder() {
   // Toujours initialiser à 'prep' pour éviter l'accès prématuré à state
   const [activeTab, setActiveTab] = useState<'prep' | 'report' | 'approval'>('prep');
 
+  // Sélecteur de mission pour l'archivage
+  const [selectedArchiveMission, setSelectedArchiveMission] = useState<string | null>(null);
+
   // DG PIN Signature Workflow
   const [isPinModalOpen, setIsPinModalOpen] = useState(false);
   const [pinCode, setPinCode] = useState('');
@@ -175,8 +178,13 @@ export default function MissionOrder() {
 
   // Handlers
   const handleNewMission = () => {
-    const orderNumber = `TEMP-${Date.now().toString().slice(-6)}`;
-    const date = new Date().toLocaleDateString('fr-FR');
+    // Format professionnel : OM-AAAA-MM-NNN (Ordre de Mission - Année - Mois - Numéro séquentiel)
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const randomSeq = String(Math.floor(Math.random() * 999) + 1).padStart(3, '0');
+    const orderNumber = `OM-${year}-${month}-${randomSeq}`;
+    const date = now.toLocaleDateString('fr-FR');
     missionState.resetMission(orderNumber, date, DEFAULT_PLANNING_STEPS, user?.email || 'inconnu', user?.id);
     missionState.addAuditEntry('Nouvelle mission créée (Brouillon)', user?.name || 'Utilisateur');
   };
@@ -187,8 +195,13 @@ export default function MissionOrder() {
 
   const handleDuplicate = async () => {
     if (!state.currentMissionId) return;
-    const newId = `temp-${crypto.randomUUID()}`;
-    const newOrderNumber = `${state.formData.orderNumber || 'MISSION'}-COPY`;
+    const newId = `om-${crypto.randomUUID()}`;
+    // Format professionnel pour la duplication
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const randomSeq = String(Math.floor(Math.random() * 999) + 1).padStart(3, '0');
+    const newOrderNumber = `OM-${year}-${month}-${randomSeq}-COPY`;
 
     // Strip out status, workflow, metadata, AND strict boolean flags so it's a true "draft"
     const {
@@ -222,9 +235,14 @@ export default function MissionOrder() {
   };
 
   const handleTemplateSelect = (templateId: string) => {
-    const orderNumber = `TEMP-${Date.now().toString().slice(-6)}`;
+    // Format professionnel : OM-AAAA-MM-NNN
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const randomSeq = String(Math.floor(Math.random() * 999) + 1).padStart(3, '0');
+    const orderNumber = `OM-${year}-${month}-${randomSeq}`;
     const mission = createMissionFromTemplate(templateId as any, { orderNumber });
-    missionState.loadMission(`temp-${crypto.randomUUID()}`, mission.formData, mission.members);
+    missionState.loadMission(`om-${crypto.randomUUID()}`, mission.formData, mission.members);
     setShowTemplates(false);
     missionState.addAuditEntry(`Modèle appliqué: ${templateId}`, 'Utilisateur');
   };
@@ -764,6 +782,102 @@ export default function MissionOrder() {
                                 className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm"
                                 placeholder="Notes du jour..."
                               />
+
+                              {/* Zone photos responsive */}
+                              <div className="mt-2">
+                                <div className="flex flex-wrap gap-2 items-center">
+                                  {(day.photos || []).map((photo: import('./mission/core/missionTypes').MissionPhoto, pidx: number) => (
+                                    <div key={photo.id || pidx} className="relative group w-16 h-16 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-900 flex flex-col items-center justify-center">
+                                      <img
+                                        src={photo.data}
+                                        alt={`Photo ${pidx + 1}`}
+                                        className="object-cover w-full h-2/3"
+                                      />
+                                      <input
+                                        type="text"
+                                        value={photo.comment || ''}
+                                        onChange={e => {
+                                          const days = [...(state.formData.reportDays || [])];
+                                          const photos = [...(days[idx].photos || [])];
+                                          photos[pidx] = { ...photos[pidx], comment: e.target.value };
+                                          days[idx].photos = photos as import('./mission/core/missionTypes').MissionPhoto[];
+                                          missionState.updateFormField('reportDays', days);
+                                        }}
+                                        placeholder="Commentaire..."
+                                        className="w-full px-1 py-0.5 text-[10px] rounded-b bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                                        style={{ minHeight: 18, maxHeight: 28 }}
+                                      />
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const days = [...(state.formData.reportDays || [])];
+                                          days[idx].photos = (days[idx].photos || []).filter((_: unknown, i: number) => i !== pidx);
+                                          missionState.updateFormField('reportDays', days);
+                                        }}
+                                        className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-0.5 opacity-80 hover:opacity-100 text-xs"
+                                        title="Supprimer la photo"
+                                      >✕</button>
+                                    </div>
+                                  ))}
+                                  {/* Bouton ajout photo */}
+                                  <label className="w-16 h-16 flex flex-col items-center justify-center border-2 border-dashed border-indigo-400 dark:border-indigo-700 rounded-lg cursor-pointer hover:border-indigo-600 bg-white dark:bg-slate-800 text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900 transition-all">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                                    <span className="text-[10px] font-bold">Photo</span>
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      capture="environment"
+                                      className="hidden"
+                                      onChange={async (e) => {
+                                        const file = e.target.files && e.target.files[0];
+                                        if (!file) return;
+                                        const reader = new FileReader();
+                                        reader.onload = (ev) => {
+                                          const days = [...(state.formData.reportDays || [])];
+                                          const photoObj = {
+                                            id: crypto.randomUUID(),
+                                            data: ev.target.result,
+                                            comment: '',
+                                            timestamp: new Date().toISOString(),
+                                          };
+                                          missionState.updateFormField('reportDays', days);
+                                        };
+                                        reader.readAsDataURL(file);
+                                        // Reset input pour permettre de reprendre une photo
+                                        e.target.value = '';
+                                      }}
+                                    />
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      capture="environment"
+                                      className="hidden"
+                                      onChange={async (e) => {
+                                        const file = e.target.files && e.target.files[0];
+                                        if (!file) return;
+                                        const reader = new FileReader();
+                                        reader.onload = (ev: ProgressEvent<FileReader>) => {
+                                          const result = ev.target?.result;
+                                          if (typeof result === 'string' && result) {
+                                            const days = [...(state.formData.reportDays || [])];
+                                            const photoObj = {
+                                              id: crypto.randomUUID(),
+                                              data: result as string,
+                                              comment: '',
+                                              timestamp: new Date().toISOString(),
+                                            } as import('./mission/core/missionTypes').MissionPhoto;
+                                            days[idx].photos = ([...(days[idx].photos || []), photoObj] as import('./mission/core/missionTypes').MissionPhoto[]);
+                                            missionState.updateFormField('reportDays', days);
+                                          }
+                                        };
+                                        reader.readAsDataURL(file);
+                                        // Reset input pour permettre de reprendre une photo
+                                        e.target.value = '';
+                                      }}
+                                    />
+                                  </label>
+                                </div>
+                              </div>
                             </div>
                           ))}
                           <button
@@ -796,15 +910,157 @@ export default function MissionOrder() {
                   </div>
                 )}
 
-                {/* ONGLET APPROBATION */}
+                {/* ONGLET ARCHIVAGE */}
                 {activeTab === 'approval' && (
                   <div className="space-y-6">
+                    {/* Sélecteur de mission */}
                     <div className="glass-card !p-6">
                       <h3 className="text-lg font-black text-slate-900 dark:text-white mb-4 flex items-center gap-2">
-                        <span className="w-2 h-8 bg-amber-500 rounded-full"></span>
-                        Workflow d'Approbation
+                        <span className="w-2 h-8 bg-indigo-500 rounded-full"></span>
+                        Archivage & Rapports
                       </h3>
-                      <MissionApprovalStatusBanner workflow={workflow} />
+                      
+                      <div className="mb-4">
+                        <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+                          Sélectionner une mission
+                        </label>
+                        <select
+                          value={selectedArchiveMission || ''}
+                          onChange={(e) => setSelectedArchiveMission(e.target.value || null)}
+                          className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                          title="Sélectionner une mission archivée"
+                        >
+                          <option value="">-- Choisir une mission --</option>
+                          {savedMissions
+                            .sort((a: any, b: any) => {
+                              const titleA = (a.title || a.orderNumber || '').toLowerCase();
+                              const titleB = (b.title || b.orderNumber || '').toLowerCase();
+                              return titleA.localeCompare(titleB);
+                            })
+                            .map((m: any) => {
+                              const missionDate = m.date || m.missionDate || m.createdAt || null;
+                              const dateStr = missionDate ? new Date(missionDate).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Date non définie';
+                              return (
+                                <option key={m.id} value={m.id}>
+                                  {m.title || m.orderNumber || 'Sans titre'} - {dateStr}
+                                </option>
+                              );
+                            })}
+                        </select>
+                      </div>
+
+                      {!selectedArchiveMission ? (
+                        <div className="text-center py-8 text-slate-500 dark:text-slate-400">
+                          <span className="text-4xl mb-2 block">📁</span>
+                          <p className="text-sm">Sélectionnez une mission pour voir ses rapports</p>
+                        </div>
+                      ) : (
+                      <div className="space-y-4">
+                        {/* Rapport Word Post-Mission */}
+                        <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+                                <span className="text-xl">📄</span>
+                              </div>
+                              <div>
+                                <p className="text-sm font-bold text-slate-900 dark:text-white">Rapport Post-Mission (Word)</p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400">Généré le {new Date().toLocaleDateString('fr-FR')}</p>
+                              </div>
+                            </div>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={handleExportReportWord}
+                                className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg flex items-center gap-1"
+                              >
+                                <span>⬇️</span> Télécharger
+                              </button>
+                              <button
+                                onClick={() => setActiveTab('report')}
+                                className="px-3 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 text-xs font-bold rounded-lg"
+                              >
+                                Modifier
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Ordre de Mission Word */}
+                        <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg flex items-center justify-center">
+                                <span className="text-xl">📋</span>
+                              </div>
+                              <div>
+                                <p className="text-sm font-bold text-slate-900 dark:text-white">Ordre de Mission</p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400">Document officiel</p>
+                              </div>
+                            </div>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={handleExportWord}
+                                className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg flex items-center gap-1"
+                              >
+                                <span>⬇️</span> Télécharger
+                              </button>
+                              <button
+                                onClick={() => setActiveTab('prep')}
+                                className="px-3 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 text-xs font-bold rounded-lg"
+                              >
+                                Modifier
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* PDF Rapport */}
+                        <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 bg-red-100 dark:bg-red-900/30 rounded-lg flex items-center justify-center">
+                                <span className="text-xl">📑</span>
+                              </div>
+                              <div>
+                                <p className="text-sm font-bold text-slate-900 dark:text-white">Rapport PDF</p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400">Version imprimable</p>
+                              </div>
+                            </div>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={handleExportPDF}
+                                className="px-3 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg flex items-center gap-1"
+                              >
+                                <span>⬇️</span> Télécharger
+                              </button>
+                              <button
+                                onClick={() => setActiveTab('report')}
+                                className="px-3 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 text-xs font-bold rounded-lg"
+                              >
+                                Modifier
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Statut de la mission */}
+                        <div className="mt-6 p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl border border-indigo-200 dark:border-indigo-800">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-3 h-3 rounded-full ${state.isCertified || state.isSubmitted ? 'bg-emerald-500' : 'bg-amber-500'}`}></div>
+                            <div>
+                              <p className="text-sm font-bold text-indigo-900 dark:text-indigo-300">
+                                {state.isCertified || state.isSubmitted ? 'Mission Certifiée & Archivée' : 'En attente de certification'}
+                              </p>
+                              <p className="text-xs text-indigo-600 dark:text-indigo-400">
+                                {state.isCertified || state.isSubmitted 
+                                  ? `Archivé le ${new Date().toLocaleDateString('fr-FR')}` 
+                                  : 'Finalisez le rapport et certifiez la mission pour archiver'}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      )}
                     </div>
                   </div>
                 )}
