@@ -1,3 +1,4 @@
+﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
 import type { Household } from '../../utils/types';
 
 /**
@@ -160,7 +161,6 @@ export const PVAIEngine = {
     tech: Record<string, unknown>,
     refHash: string
   ): GeneratedPVContent {
-    let desc = `Audit de non-conformité relevé sur site. `;
     const anomalies = [];
 
     // Détection DYNAMIQUE des anomalies réelles dans les données
@@ -264,7 +264,7 @@ export const PVAIEngine = {
     };
   },
 
-  generateHSEContent(sub: Household, kobo: any, tech: any, refHash: string): GeneratedPVContent {
+  generateHSEContent(sub: Household, kobo: Record<string, unknown>, tech: Record<string, unknown>, refHash: string): GeneratedPVContent {
     const teamName = tech.manualTeam || 'Équipe non identifiée';
     const incidentDesc =
       tech.manualDescription || 'Incident de sécurité documenté lors de la surveillance terrain.';

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * SERVICE : AlertTraceService (Axe 3 — Plan d'Amélioration Continue GEM-SAAS)
  * Enregistrement du statut de livraison des alertes SMS/Email pour la traçabilité

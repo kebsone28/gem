@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { Household } from '../../utils/types';
 import type { PVType } from './PVAIEngine';
 

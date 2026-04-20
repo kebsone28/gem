@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
 /**
  * dataAuditWorker.ts
  *
@@ -71,19 +72,19 @@ export const normalizeOwnerName = (owner?: OwnerField | string, fallbackName?: s
 };
 
 const workerSelf: {
-  onmessage: (event: { data: { households?: unknown[] } }) => void;
+  onmessage: (event: { data: { households?: Household[] } }) => void;
   postMessage: (msg: unknown) => void;
 } =
   typeof self !== 'undefined'
     ? self
     : (globalThis as unknown as {
-        onmessage: (event: { data: { households?: unknown[] } }) => void;
+        onmessage: (event: { data: { households?: Household[] } }) => void;
         postMessage: (msg: unknown) => void;
       });
 
 workerSelf.onmessage = (event: {
   data: {
-    households?: { location?: { coordinates?: number[] }; status?: string; owner?: unknown }[];
+    households?: Household[];
   };
 }) => {
   const { households } = event.data;

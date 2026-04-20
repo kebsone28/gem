@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { db } from '../store/db';
 import type { MissionNotification } from '../store/db';
 

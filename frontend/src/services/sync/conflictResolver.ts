@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Conflict Resolver Service
  * Handles data conflicts between local and server versions.
@@ -172,7 +173,7 @@ export async function handleServerConflicts(
                 action: 'UPDATE', 
                 endpoint: `/api/${record.entityType}`,
                 method: 'POST', // Missing method added
-                payload: record.resolvedData
+                payload: record.resolvedData as Record<string, unknown>
             });
             logger.debug('CONFLICT', `Re-enqueued post-merge ${record.entityType}/${record.entityId}`);
         }
@@ -191,7 +192,7 @@ export async function handleServerConflicts(
     records.map((r) => ({
       timestamp: new Date(r.resolvedAt),
       action: `Conflict resolved: ${r.entityType}/${r.entityId} (${r.strategy})`,
-      details: r,
+      details: r as unknown as Record<string, unknown>,
     }))
   );
 

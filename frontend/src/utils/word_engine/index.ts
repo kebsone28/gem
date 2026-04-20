@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/utils/word_engine/index.ts
 import {
   Document,

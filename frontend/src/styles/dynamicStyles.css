@@ -51,7 +51,15 @@
 
 /* OrganizationSettings component - dynamic branding colors using data attributes */
 
-/* Background gradient blob - uses CSS variable set via style prop */
+/* Planning component - progress bar width using data attribute */
+[data-progress] {
+  width: attr(data-progress);
+}
+
+/* Support percentage values in data-progress */
+[data-progress$="%"] {
+  width: attr(data-progress);
+}
 .org-blob {
   background-color: var(--org-primary, #0066ff);
 }

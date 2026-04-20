@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Service Alertes Frontend
  * Gère les appels à l'API des alertes

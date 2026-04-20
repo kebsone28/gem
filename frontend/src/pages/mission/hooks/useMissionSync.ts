@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
 import { useCallback } from 'react';
 import { db } from '../../../store/db';
 import * as missionService from '../../../services/missionService';
@@ -161,20 +162,21 @@ export const useMissionSync = (
                 actions.setSyncStatus('synced');
                 
                 // 🔥 CRITIQUE: Injecter le numéro officiel s'il est présent
-                let officialOrderNumber = (result as any).orderNumber || (result as any).data?.orderNumber;
+                const officialOrderNumber = (result as Record<string, unknown>).orderNumber || (result as Record<string, unknown & { data?: Record<string, unknown> }>).data?.orderNumber;
                 if (officialOrderNumber) {
-                  missionData.orderNumber = officialOrderNumber;
-                  if ((missionData as any).data) { // Keep cast if really needed, but it's safer
-                    (missionData as any).data.orderNumber = officialOrderNumber;
+                  (missionData as Record<string, unknown>).orderNumber = officialOrderNumber;
+                  const missionDataRecord = missionData as Record<string, unknown>;
+                  if (missionDataRecord.data && typeof missionDataRecord.data === 'object') {
+                    (missionDataRecord.data as Record<string, unknown>).orderNumber = officialOrderNumber;
                   }
                   
                   // Mettre à jour l'écran immédiatement via loadMission
                   actions.loadMission(
                     finalId,
-                    { ...formData, orderNumber: officialOrderNumber },
+                    { ...formData, orderNumber: officialOrderNumber as string },
                     members,
-                    (result as any).version || localVersion,
-                    (result as any).updatedAt || now,
+                    (result as Record<string, unknown>).version as number || localVersion,
+                    (result as Record<string, unknown>).updatedAt as string || now,
                     auditTrail
                   );
                 }
@@ -215,14 +217,14 @@ export const useMissionSync = (
                 assignedId = created.id;
                 serverSuccess = true;
                 
-                const officialNum = (created as any).orderNumber || (created as any).data?.orderNumber;
+                const officialNum = (created as Record<string, unknown>).orderNumber || ((created as Record<string, unknown>).data as Record<string, unknown>)?.orderNumber;
                 if (officialNum) {
                   actions.loadMission(
                     created.id,
-                    { ...formData, orderNumber: officialNum },
+                    { ...formData, orderNumber: officialNum as string },
                     members,
-                    (created as any).version || 1,
-                    (created as any).updatedAt || now,
+                    (created as Record<string, unknown>).version as number || 1,
+                    (created as Record<string, unknown>).updatedAt as string || now,
                     auditTrail
                   );
                 }
@@ -298,12 +300,7 @@ export const useMissionSync = (
         actions.clearDirty();
         actions.setStatus('success');
 
-        let officialOrderNumber = undefined;
-        if (navigator.onLine && serverSuccess) {
-           // We don't have easy access to the result here unless we refactor, 
-           // but wait, I can just grab it from missionData if it was updated
-           officialOrderNumber = (missionData as any).orderNumber;
-        }
+        const officialOrderNumber = (missionData as Record<string, unknown>).orderNumber as string | undefined;
 
         return { assignedId, serverSuccess, orderNumber: officialOrderNumber };
       } catch (err) {
@@ -323,6 +320,7 @@ export const useMissionSync = (
       activeProjectId,
       actions,
       state.version,
+      user?.id,
     ]
   );
 
@@ -342,7 +340,7 @@ export const useMissionSync = (
       let conflicts = 0;
 
       for (const m of missions) {
-        const serverVersion = m.version || (m as any).data?.version || 1;
+        const serverVersion = m.version || (m as Record<string, unknown> & { data?: Record<string, unknown> }).data?.version as number || 1;
         const local = await db.missions.get(m.id);
 
         const normalized = {

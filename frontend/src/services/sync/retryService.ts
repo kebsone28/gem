@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Retry Service
  * Implements exponential backoff with jitter for failed sync operations.

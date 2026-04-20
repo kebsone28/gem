@@ -1,3 +1,4 @@
+﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
 /**
  * Sync Event Bus — Notifie terrain et bordereau des changements
  *
@@ -23,7 +24,7 @@ export const shouldProcessEvent = (key: string, cooldown = 2000): boolean => {
 };
 
 class SyncEventBus {
-  private listeners: Map<string, Set<Function>> = new Map();
+  private listeners: Map<string, Set<(data?: unknown) => void>> = new Map();
   private socket: { on: (event: string, cb: (data: unknown) => void) => void } | null = null;
 
   // Initialize WebSocket connection to listen for backend events

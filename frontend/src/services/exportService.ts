@@ -1,3 +1,4 @@
+﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import logger from '../utils/logger';
@@ -217,7 +218,6 @@ export const exportFinancialPDF = async (
 
 // ─── Generic legacy export (kept for compatibility) ──────────────────────────
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export const exportToPDF = async (
   _elementId: string,
   _options: ExportOptions

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Sync Service
  * Core push/pull synchronisation logic extracted from useOfflineSync.ts.

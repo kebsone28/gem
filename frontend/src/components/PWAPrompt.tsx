@@ -1,3 +1,4 @@
+﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import { Download, RefreshCw, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';

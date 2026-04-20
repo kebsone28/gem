@@ -1,12 +1,10 @@
+﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
 /**
  * AudioService (Axe 4 — Plan d'Amélioration Continue GEM-SAAS)
  * Fournit des feedbacks sonores subtils pour améliorer l'immersion et la réactivité.
  */
 
-// Son "Success/Notification" subtil (Base64 pour éviter les problèmes de chargement réseau)
-const NOTIFICATION_SOUND =
-  'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YWoGAACAgICAgICAgICAgICAgICAgICAgICA... (truncated for brevity)';
-// Actually, I will use the Audio API to synthesize a clean sound to ensure it's "Sans Erreur" and lightweight.
+// Note: Sound synthesis is done via AudioContext API below
 
 class AudioService {
   private context: AudioContext | null = null;

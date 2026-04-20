@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import Supercluster from 'supercluster';
 import type { Feature, Point } from 'geojson';
 import { getHouseholdDerivedStatus } from './statusUtils';

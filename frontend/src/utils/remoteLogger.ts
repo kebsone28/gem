@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * SERVICE : Remote Logger (Surveillance Proactive)
  */

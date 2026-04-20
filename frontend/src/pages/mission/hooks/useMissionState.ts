@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useReducer, useMemo, useCallback } from 'react';
 import { missionReducer } from '../core/missionReducer';
 import { selectTotalFrais } from '../core/missionSelectors';

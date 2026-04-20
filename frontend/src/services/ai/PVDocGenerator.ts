@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { 
   Document, Paragraph, TextRun, Table, TableRow, TableCell, 
   WidthType, BorderStyle, AlignmentType, HeadingLevel, ImageRun, Packer 

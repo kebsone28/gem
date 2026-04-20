@@ -1,6 +1,5 @@
 /* eslint-disable react/no-unknown-property */
 import React, { useState, useMemo, useEffect } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Calendar, Users, Home, CheckCircle2, Clock, AlertTriangle, 
@@ -289,6 +288,7 @@ export default function Planning() {
                 value={phaseFilter}
                 onChange={(e) => setPhaseFilter(e.target.value as PhaseFilter)}
                 className="bg-transparent text-xs font-bold text-slate-400 outline-none py-1"
+                title="Filtrer par phase"
               >
                 <option value="ALL">Toutes phases</option>
                 <option value="PREPARATION">Préparation</option>
@@ -305,6 +305,7 @@ export default function Planning() {
               value={selectedTeam}
               onChange={(e) => setSelectedTeam(e.target.value)}
               className="bg-slate-900/50 border border-white/10 rounded-xl px-3 py-2 text-xs font-bold text-slate-400 outline-none"
+              title="Filtrer par équipe"
             >
               <option value="ALL">Toutes équipes</option>
               {teams.map(team => (
@@ -440,7 +441,7 @@ export default function Planning() {
                               <div className="w-20 h-1.5 bg-slate-800 rounded-full overflow-hidden">
                                 <div 
                                   className={`h-full rounded-full ${PHASE_COLORS[task.phase]}`}
-                                  style={{ width: `${task.phaseProgress}%` }}
+                                  data-progress={task.phaseProgress}
                                 />
                               </div>
                               <span className="text-[10px] font-bold text-slate-500">{task.phaseProgress}%</span>
@@ -522,6 +523,7 @@ export default function Planning() {
                 <button
                   onClick={() => setCurrentDate(addDays(currentDate, -7))}
                   className="p-2 hover:bg-slate-800 rounded-lg transition-colors"
+                  title="Semaine précédente"
                 >
                   <ChevronLeft size={20} className="text-slate-400" />
                 </button>
@@ -531,6 +533,7 @@ export default function Planning() {
                 <button
                   onClick={() => setCurrentDate(addDays(currentDate, 7))}
                   className="p-2 hover:bg-slate-800 rounded-lg transition-colors"
+                  title="Semaine suivante"
                 >
                   <ChevronRight size={20} className="text-slate-400" />
                 </button>
@@ -615,7 +618,7 @@ export default function Planning() {
                         tp.utilization > 100 ? 'bg-rose-500' :
                         tp.utilization > 70 ? 'bg-amber-500' : 'bg-emerald-500'
                       }`}
-                      style={{ width: `${Math.min(tp.utilization, 100)}%` }}
+                      data-progress={Math.min(tp.utilization, 100)}
                     />
                   </div>
                 </div>

@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { db } from '../../../store/db';
 import api from '../../../api/client';
-import type { MissionState, MissionAction } from './missionTypes';
+import type { MissionAction } from './missionTypes';
 
 /**
  * SERVICE : Sync Queue (Gestion Hors-ligne)

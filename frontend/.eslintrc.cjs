@@ -14,15 +14,23 @@ module.exports = {
       'warn',
       { allowConstantExport: true },
     ],
-    // ── Local Design System Rules ──
+    // ── Local Design System Rules (warn only) ──
     'local-rules/no-tiny-text': 'warn',
     'local-rules/flex-child-min-w-0': 'warn',
     'local-rules/icon-button-aria-label': 'warn',
     'local-rules/no-typos-jsx': 'warn',
 
-    // ── TypeScript: all downgraded to warn (SaaS velocity) ──
+    // ── TypeScript: all downgraded to warn ──
     '@typescript-eslint/no-explicit-any': 'warn',
-    '@typescript-eslint/no-unused-vars': 'warn',
+    '@typescript-eslint/no-unused-vars': [
+      'warn',
+      {
+        argsIgnorePattern: '^_',
+        varsIgnorePattern: '^_',
+        caughtErrorsIgnorePattern: '^_',
+        destructuredArrayIgnorePattern: '^_',
+      },
+    ],
     '@typescript-eslint/no-unused-expressions': 'warn',
     '@typescript-eslint/no-empty-object-type': 'warn',
     '@typescript-eslint/no-unsafe-function-type': 'warn',
@@ -37,12 +45,14 @@ module.exports = {
     'no-prototype-builtins': 'warn',
     'no-undef': 'warn',
     'no-fallthrough': 'warn',
+    'prefer-const': 'warn',
+    'no-var': 'warn',
 
     // ── React Hooks ──
     'react-hooks/exhaustive-deps': 'warn',
-    'react-hooks/refs': 'warn',
+    'react-hooks/preserve-manual-memoization': 'warn',
 
-    // ── Other ──
+    // ── Other: off ──
     'react/no-unknown-property': 'off',
     'jsx-a11y/no-inline-styles': 'off',
     'no-inline-styles/no-inline-styles': 'off',

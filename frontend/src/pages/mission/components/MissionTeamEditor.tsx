@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React from 'react';
 import { Users, Trash2, Plus, Sparkles } from 'lucide-react';
 import type { MissionMember } from '../core/missionTypes';

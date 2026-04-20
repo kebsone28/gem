@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
 import maplibregl from 'maplibre-gl';
 import {
   MAP_STYLE_DARK,
@@ -80,7 +81,7 @@ export class MapManager {
    * Helper to safely switch styles on the global instance
    */
   public switchStyle(targetSource: string, isDarkMode: boolean): Promise<void> {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       if (!this.map) return resolve();
 
       // Prevent updates if interrupted

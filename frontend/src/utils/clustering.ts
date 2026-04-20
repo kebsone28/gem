@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // Simple k-means clustering implementation for geographic coordinates
 // Coordinates are [longitude, latitude] to match GeoJSON Point format.
 

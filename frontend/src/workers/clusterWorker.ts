@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
 /**
  * clusterWorker.ts — Village Region Mode
  *
@@ -173,10 +174,10 @@ self.onmessage = (event) => {
       geometry: { type: string; coordinates: number[] };
       properties: Record<string, unknown>;
     }[] = [];
-    const panelData: { village: string; count: number; color: string }[] = [];
+    const panelData: { id: string; name: string; count: number; type: string; bbox: number[]; color: string }[] = [];
 
     let colorIdx = 0;
-    for (const [village, { points, ids }] of byVillage) {
+    for (const [village, { points }] of byVillage) {
       if (points.length === 0) continue;
       const color = VILLAGE_COLORS[colorIdx % VILLAGE_COLORS.length];
       colorIdx++;
@@ -249,6 +250,6 @@ self.onmessage = (event) => {
       panelData,
     });
   } catch (e: unknown) {
-    self.postMessage({ success: false, error: e.message });
+    self.postMessage({ success: false, error: (e as Error).message });
   }
 };

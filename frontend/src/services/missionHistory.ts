@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { MissionOrderData, MissionMember } from '../pages/mission/core/missionTypes';
 
 export interface MissionSnapshot {

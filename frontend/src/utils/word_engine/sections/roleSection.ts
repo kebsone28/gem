@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/utils/word_engine/sections/roleSection.ts
 import {
   Paragraph,
@@ -21,6 +22,19 @@ interface RoleSectionData {
   days: number;
   signatureImage?: string;
   isCertified?: boolean;
+  introduction?: string;
+  missions?: string[];
+  materials?: string[];
+  hse?: string[];
+  subcontracting?: string[];
+  finances?: string[];
+  legal?: string[];
+  responsible?: string;
+  imagePath?: string;
+  technicalImages?: any[];
+  startDate?: string;
+  endDate?: string;
+  pricing?: { dailyRate: number; personnelCount: number; durationDays: number; currency: string; };
 }
 
 export const createRoleSection = async (data: RoleSectionData, qrBuffer?: ArrayBuffer | null) => {

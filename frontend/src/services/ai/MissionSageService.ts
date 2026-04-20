@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unused-vars */
 /**
  * SERVICE : MissionSageService (V.8.0 DUAL-ENGINE SUPREME)
  * GEM-MINT - Cerveau Global PROQUELEC

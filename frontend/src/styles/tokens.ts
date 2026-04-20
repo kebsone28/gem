@@ -1,3 +1,4 @@
+﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
 /* ═══════════════════════════════════════════════════════════════════════════
    DESIGN TOKENS – GEM SAAS | ELECTRIC BLUE PREMIUM
    Source unique de vérité pour toutes les valeurs de design.

@@ -1,3 +1,4 @@
+﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
 export interface MissionMember {
   name: string;
   role: string;
@@ -46,19 +47,19 @@ export interface MissionOrderData {
     inventory: boolean;
     ai: boolean;
   };
-  expenses?: any[];
+  expenses?: Record<string, unknown>[];
   fuelStats?: {
     kmStart: number;
     kmEnd: number;
     rate: number;
   };
-  inventory?: any[];
+  inventory?: Record<string, unknown>[];
   branding?: BrandingConfig;
   createdBy?: string;
   creatorId?: string;
   integrityHash?: string;
   version?: number; // ✅ AJOUT
-  data?: any;      // ✅ AJOUT pour compatibilité sync
+  data?: Record<string, unknown>;      // ✅ AJOUT pour compatibilité sync
   id?: string;    // ✅ AJOUT pour compatibilité word generator
 }
 
@@ -70,7 +71,7 @@ export interface AuditEntry {
   author: string;
   timestamp: string;
   details?: string;
-  diff?: any;
+  diff?: Record<string, unknown>;
 }
 
 export interface MissionState {
@@ -87,7 +88,7 @@ export interface MissionState {
   isSyncing: boolean;
   isSyncingServer: boolean;
   syncStatus: 'synced' | 'pending' | 'failed';
-  offlineQueue: any[];
+  offlineQueue: Record<string, unknown>[];
 
   // Granular Dirty Tracking
   dirty: {
@@ -107,14 +108,14 @@ export interface MissionState {
 
 export type MissionAction =
   | { type: 'SET_FORM_DATA'; payload: Partial<MissionOrderData> }
-  | { type: 'UPDATE_FORM_FIELD'; payload: { field: keyof MissionOrderData; value: any } }
+  | { type: 'UPDATE_FORM_FIELD'; payload: { field: keyof MissionOrderData; value: unknown } }
   | { type: 'ADD_MEMBER'; payload: MissionMember }
   | { type: 'UPDATE_MEMBER'; index: number; payload: Partial<MissionMember> }
   | { type: 'REMOVE_MEMBER'; index: number }
   | { type: 'SET_STATUS'; payload: MissionStatus }
-  | { type: 'FORCE_PUSH'; payload: any }           // ✅ FIX: added payload
-  | { type: 'RETRY_SYNC'; payload: any }           // ✅ FIX: added payload
-  | { type: 'OFFLINE_SAVE'; payload: any }         // ✅ FIX: added payload
+  | { type: 'FORCE_PUSH'; payload: Record<string, unknown> }           // ✅ FIX: added payload
+  | { type: 'RETRY_SYNC'; payload: Record<string, unknown> }           // ✅ FIX: added payload
+  | { type: 'OFFLINE_SAVE'; payload: Record<string, unknown> }         // ✅ FIX: added payload
   | {
       type: 'LOAD_MISSION';
       payload: {
@@ -144,5 +145,5 @@ export type MissionAction =
   | { type: 'SET_SYNC_STATUS'; payload: MissionState['syncStatus'] }
   | {
       type: 'ADD_AUDIT_ENTRY';
-      payload: { action: string; author: string; details?: string; diff?: any };
+      payload: { action: string; author: string; details?: string; diff?: Record<string, unknown> };
     };

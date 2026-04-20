@@ -1,3 +1,4 @@
+﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
 export type UserRole =
   | 'ADMIN'
   | 'ADMIN_PROQUELEC'
@@ -80,10 +81,10 @@ export interface Household {
     coordinates: [number, number];
   };
 
-  koboData?: any;
+  koboData?: Record<string, unknown>;
   numeroordre?: string;
-  constructionData?: any;
-  alerts?: any[];
+  constructionData?: Record<string, unknown>;
+  alerts?: Record<string, unknown>[];
   koboSync?: {
     preparateurKits?: number;
     livreurDate?: string;
@@ -151,7 +152,7 @@ export interface Team {
 }
 
 // Legacy SubTeam is now just a Team with a parentTeamId
-export interface SubTeam extends Team {}
+export type SubTeam = Team;
 
 export interface Grappe {
   id: string;

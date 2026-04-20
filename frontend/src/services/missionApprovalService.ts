@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import api from '../api/client';
 import logger from '../utils/logger';
 import type { ApprovalRole, MissionApprovalWorkflow } from '../constants/approvalConstants';

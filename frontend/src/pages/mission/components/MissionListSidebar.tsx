@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useMemo } from 'react';
 import { ChevronRight, Trash2, Search, Clock, CheckCircle2, FileText } from 'lucide-react';
 import { useAuth } from '../../../contexts/AuthContext';

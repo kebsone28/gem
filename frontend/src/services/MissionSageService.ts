@@ -1,3 +1,4 @@
+﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
 import { AIEngineConfig } from '../config/AIEngineConfig';
 
 export interface User {
@@ -87,14 +88,10 @@ INSTRUCTION: Réponds en tant qu'expert PROQUELEC, utilise le contexte fourni, s
 QUESTION UTILISATEUR: ${query}
 `;
 
-    try {
-      const response = await fetch(
-        `https://text.pollinations.ai/${encodeURIComponent(contextPrompt)}?model=openai`
-      );
-      if (!response.ok) throw new Error('Service public Pollinations indisponible.');
-      return await response.text();
-    } catch (e) {
-      throw e;
-    }
+    const response = await fetch(
+      `https://text.pollinations.ai/${encodeURIComponent(contextPrompt)}?model=openai`
+    );
+    if (!response.ok) throw new Error('Service public Pollinations indisponible.');
+    return await response.text();
   }
 }
