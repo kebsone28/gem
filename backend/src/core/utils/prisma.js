@@ -39,8 +39,18 @@ export const prisma = basePrisma.$extends({
           }
 
           // Application globale des filtres
-          if (['findMany', 'findFirst', 'findUnique', 'findUniqueOrThrow', 'count', 'groupBy', 'aggregate'].includes(operation)) {
+          if (['findMany', 'findFirst', 'count', 'groupBy', 'aggregate'].includes(operation)) {
             args.where = { ...(args.where || {}), ...filter };
+          }
+
+          // ✅ Cas spécifique pour findUnique: Prisma impose que le WHERE 
+          // corresponde EXACTEMENT à un index unique. Comme organizationId n'est pas 
+          // toujours dans un index composite avec l'ID, on "downgrade" en findFirst.
+          if (['findUnique', 'findUniqueOrThrow'].includes(operation)) {
+            const newOp = operation === 'findUnique' ? 'findFirst' : 'findFirstOrThrow';
+            args.where = { ...(args.where || {}), ...filter };
+            const modelName = model.charAt(0).toLowerCase() + model.slice(1);
+            return basePrisma[modelName][newOp](args);
           }
           
           if (['create', 'createMany'].includes(operation)) {
