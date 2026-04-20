@@ -103,12 +103,12 @@ export default function Planning() {
   const [households, setHouseholds] = useState<Household[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
 
-  const { currentProjectId } = useProject();
+  const { activeProjectId } = useProject();
 
   // Requête directe depuis le serveur API
   useEffect(() => {
     const fetchData = async () => {
-      if (!currentProjectId) {
+      if (!activeProjectId) {
         setIsLoading(false);
         return;
       }
@@ -117,8 +117,8 @@ export default function Planning() {
       try {
         // Fetch ménages depuis le serveur
         const [householdsRes, teamsRes] = await Promise.all([
-          apiClient.get('/households', { params: { projectId: currentProjectId, limit: 10000 } }),
-          apiClient.get('/teams', { params: { projectId: currentProjectId } })
+          apiClient.get('/households', { params: { projectId: activeProjectId, limit: 10000 } }),
+          apiClient.get('/teams', { params: { projectId: activeProjectId } })
         ]);
 
         setHouseholds(householdsRes.data.households || []);
@@ -138,7 +138,7 @@ export default function Planning() {
     };
 
     fetchData();
-  }, [currentProjectId]);
+  }, [activeProjectId]);
 
   // Transformer les données en tâches de planning
   const tasks = useMemo(() => {
@@ -242,17 +242,17 @@ export default function Planning() {
   }, [tasks, phaseFilter, selectedTeam]);
 
   const handleRefresh = async () => {
-    if (!currentProjectId) return;
+    if (!activeProjectId) return;
     
     setIsRefreshing(true);
     setIsLoading(true);
     try {
       const [householdsRes, teamsRes] = await Promise.all([
-        apiClient.get('/households', { params: { projectId: currentProjectId, limit: 10000 } }),
-        apiClient.get('/teams', { params: { projectId: currentProjectId } })
+        apiClient.get('/households', { params: { projectId: activeProjectId, limit: 10000 } }),
+        apiClient.get('/teams', { params: { projectId: activeProjectId } })
       ]);
-      setHouseholds(householdsRes.data.households || []);
-      setTeams(teamsRes.data.teams?.filter((t: Team) => t.status === 'active') || []);
+      setHouseholds((householdsRes.data as any).households || []);
+      setTeams((teamsRes.data as any).teams?.filter((t: Team) => t.status === 'active') || []);
     } catch (err) {
       console.error('Erreur refresh:', err);
     } finally {

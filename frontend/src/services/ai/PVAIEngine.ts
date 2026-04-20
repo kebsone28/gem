@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
 import type { Household } from '../../utils/types';
 
 /**
@@ -18,7 +18,7 @@ const extractChecklist = (
     reseau?: { etat?: string; termine?: boolean };
     interieur?: { etat?: string; termine?: boolean };
     controle?: { resistance_terre?: string; conforme?: boolean };
-  } = {}
+  } | any = {}
 ) => {
   return [
     {
@@ -58,9 +58,9 @@ export interface GeneratedPVContent {
 }
 
 // Fonction utilitaire pour extraire dynamiquement les matériels réels saisis
-function extractRealMaterials(tech: Record<string, unknown>, kobo: Record<string, unknown>) {
+function extractRealMaterials(tech: any, kobo: any) {
   const materials = [];
-  const source = { ...kobo, ...(tech?.livreur || {}), ...tech };
+  const source: any = { ...kobo, ...(tech?.livreur || {}), ...tech };
 
   // Priorité aux deux piliers : Câbles et Tranchées
   const c25 = Number(
@@ -157,8 +157,8 @@ export const PVAIEngine = {
 
   generateNonConformityContent(
     sub: Household,
-    kobo: Record<string, unknown>,
-    tech: Record<string, unknown>,
+    kobo: any,
+    tech: any,
     refHash: string
   ): GeneratedPVContent {
     const anomalies = [];
@@ -225,16 +225,16 @@ export const PVAIEngine = {
 
   generateIneligibleContent(
     sub: Household,
-    kobo: Record<string, unknown>,
-    tech: Record<string, unknown>,
+    kobo: any,
+    tech: any,
     refHash: string
   ): GeneratedPVContent {
     let cause =
       'Motifs probables : Contrainte technique insurmontable, désistement du bénéficiaire ou critères hors projet.';
 
     // Analyse des champs réels du formulaire
-    const situation = kobo.Situation_du_M_nage || kobo['group_wu8kv54/Situation_du_M_nage'] || '';
-    const justificatif = kobo.justificatif || kobo['group_wu8kv54/justificatif'] || '';
+    const situation = (kobo.Situation_du_M_nage || kobo['group_wu8kv54/Situation_du_M_nage'] || '') as string;
+    const justificatif = (kobo.justificatif || kobo['group_wu8kv54/justificatif'] || '') as string;
 
     if (situation.toLowerCase().includes('menage_non_eligible')) {
       cause = 'Le ménage a été déclaré NON ÉLIGIBLE suite au passage des équipes de terrain.';
@@ -264,7 +264,7 @@ export const PVAIEngine = {
     };
   },
 
-  generateHSEContent(sub: Household, kobo: Record<string, unknown>, tech: Record<string, unknown>, refHash: string): GeneratedPVContent {
+  generateHSEContent(sub: Household, kobo: any, tech: any, refHash: string): GeneratedPVContent {
     const teamName = tech.manualTeam || 'Équipe non identifiée';
     const incidentDesc =
       tech.manualDescription || 'Incident de sécurité documenté lors de la surveillance terrain.';
@@ -283,8 +283,8 @@ export const PVAIEngine = {
 
   generateRetardContent(
     sub: Household,
-    kobo: Record<string, unknown>,
-    tech: Record<string, unknown>,
+    kobo: any,
+    tech: any,
     refHash: string
   ): GeneratedPVContent {
     const defaultDate = new Date();
@@ -306,8 +306,8 @@ export const PVAIEngine = {
 
   generateConformityContent(
     sub: Household,
-    kobo: Record<string, unknown>,
-    tech: Record<string, unknown>,
+    kobo: any,
+    tech: any,
     mode: 'PROVISOIRE' | 'DÉFINITIVE',
     refHash: string
   ): GeneratedPVContent {
@@ -338,8 +338,8 @@ export const PVAIEngine = {
 
   generateReserveContent(
     sub: Household,
-    kobo: Record<string, unknown>,
-    tech: Record<string, unknown>,
+    kobo: any,
+    tech: any,
     refHash: string
   ): GeneratedPVContent {
     return {

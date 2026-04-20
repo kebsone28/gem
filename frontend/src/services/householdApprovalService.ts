@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
 import api from '../api/client';
 import logger from '../utils/logger';
 
@@ -27,7 +27,7 @@ export const getApprovalHistory = async (
   try {
     const response = await api.get(`/households/${householdId}/approval-history`);
     return response.data;
-  } catch (err: unknown) {
+  } catch (err: any) {
     // 404 = workflow pas encore créé pour ce ménage → comportement normal, pas d'erreur
     if (err?.response?.status === 404) {
       return null;
@@ -53,7 +53,7 @@ export const approveHouseholdStep = async (
       role,
       comments,
       timestamp: new Date().toISOString(),
-    });
+    } as any);
     logger.log(`✅ Approbation ${role} enregistrée pour ${householdId}`);
     return response.data;
   } catch (err) {
@@ -75,7 +75,7 @@ export const rejectHouseholdStep = async (
       role,
       reason,
       timestamp: new Date().toISOString(),
-    });
+    } as any);
     logger.log(`⛔ Rejet ${role} enregistré pour ${householdId}`);
     return response.data;
   } catch (err) {

@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
 import { useState, useCallback } from 'react';
 import apiClient from '../api/client';
 import type { Team } from '../utils/types';
@@ -36,10 +36,10 @@ export function useTeams(projectId?: string) {
 
       try {
         const allLocalTeams = await (
-          db as unknown as { teams: { toArray: () => Promise<Record<string, unknown>[]> } }
+          db as any
         ).teams.toArray();
         const localOfflineTeams = allLocalTeams.filter(
-          (t: Record<string, unknown>) => t.syncStatus === 'pending' && t.projectId === projectId
+          (t: any) => t.syncStatus === 'pending' && t.projectId === projectId
         );
 
         if (localOfflineTeams.length > 0) {
@@ -116,7 +116,7 @@ export function useTeams(projectId?: string) {
         await (db as unknown as { teams: { add: (item: unknown) => Promise<void> } }).teams.add(
           newLocalTeam
         );
-        setTeams((prev) => [...prev, newLocalTeam as Record<string, unknown>]);
+        setTeams((prev) => [...prev, newLocalTeam as any]);
         await fetchTeamTree();
         return newLocalTeam;
       } catch (dbErr) {
@@ -141,7 +141,7 @@ export function useTeams(projectId?: string) {
           await (
             db as unknown as { teams: { update: (id: unknown, item: unknown) => Promise<void> } }
           ).teams.update(id, { ...data, syncStatus: 'pending' });
-          setTeams((prev) => prev.map((t) => (t.id === id ? { ...t, ...data } : t)));
+          setTeams((prev) => prev.map((t) => (t.id === id ? { ...t, ...data } as any : t)));
           await fetchTeamTree();
           return { id, ...data };
         } catch (dbErr) {

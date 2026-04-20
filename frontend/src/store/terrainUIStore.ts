@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
 import { create } from 'zustand';
 import * as safeStorage from '../utils/safeStorage';
 
@@ -108,8 +108,8 @@ interface TerrainUIState {
   ) => void;
 
   // --- NEW: Layers & High-Level UI ---
-  externalLayers: { id: string; name: string; data: unknown }[];
-  setExternalLayers: (layers: { id: string; name: string; data: unknown }[]) => void;
+  externalLayers: any[];
+  setExternalLayers: (layers: any[]) => void;
   activeGrappeId: string | null;
   setActiveGrappeId: (id: string | null) => void;
 
@@ -117,9 +117,9 @@ interface TerrainUIState {
   setIsDownloadingOffline: (loading: boolean) => void;
 
   // Zones
-  drawnZones: { id: string; coordinates: [number, number][]; name?: string }[];
-  setDrawnZones: (zones: { id: string; coordinates: [number, number][]; name?: string }[]) => void;
-  addZone: (zone: { id: string; coordinates: [number, number][]; name?: string }) => void;
+  drawnZones: any[];
+  setDrawnZones: (zones: any[]) => void;
+  addZone: (zone: any) => void;
   deleteZone: (id: string) => void;
 
   // Lightbox
@@ -156,7 +156,7 @@ export const useTerrainUIStore = create<TerrainUIState>((set) => ({
   isSelecting: false,
   showDatabaseStats: false,
   showLegend: true,
-  mapStyle: (safeStorage.getItem('gem-map-theme') as string | null) || 'light',
+  mapStyle: ((safeStorage.getItem('gem-map-theme') as any) || 'light') as 'light' | 'dark' | 'satellite',
 
   toggleHeatmap: () => set((state) => ({ showHeatmap: !state.showHeatmap })),
   toggleZones: () => set((state) => ({ showZones: !state.showZones })),

@@ -163,8 +163,8 @@ export const updateUser = async (req, res) => {
              }
         }
 
-        // 5. Audit Log
-        tracerAction({
+        // 5. Audit Log (Maintenu avec await pour la fiabilité post-refresh)
+        await tracerAction({
             userId: req.user.id,
             organizationId,
             action: 'MISE_A_JOUR_UTILISATEUR',
@@ -183,6 +183,22 @@ export const updateUser = async (req, res) => {
 
     } catch (error) {
         console.error('Update user error:', error);
+        
+        // Handling specific Prisma errors to provide better feedback to the frontend
+        if (error.code === 'P2002') {
+            return res.status(400).json({ 
+                error: 'Cet email est déjà utilisé par un autre compte',
+                code: 'EMAIL_ALREADY_EXISTS'
+            });
+        }
+        
+        if (error.code === 'P2025') {
+            return res.status(404).json({ 
+                error: 'Utilisateur non trouvé ou accès refusé (périmètre organisation)',
+                code: 'USER_NOT_FOUND'
+            });
+        }
+
         res.status(500).json({ error: 'Server error while updating user' });
     }
 };

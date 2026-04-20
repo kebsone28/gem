@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { db } from '../store/db';
 import type { Household } from '../utils/types';
@@ -31,10 +31,10 @@ export function mapToApiPayload(
   };
 }
 
-const getNormalizedCoords = (h: Record<string, unknown>): [number, number] | null => {
+const getNormalizedCoords = (h: any): [number, number] | null => {
   try {
-    let lat: number | null = null;
-    let lng: number | null = null;
+    let lat: any = null;
+    let lng: any = null;
     if (
       h.location?.coordinates &&
       Array.isArray(h.location.coordinates) &&
@@ -123,9 +123,8 @@ export function useTerrainData() {
           );
           await db.households.clear();
         }
-      } catch (err: unknown) {
-        logger.error('❌ Failed to fetch server-direct households:', err);
-        setError(err.message);
+      } catch (err: any) {
+        setError(err.message || 'Failed to load households');
       } finally {
         setIsLoading(false);
       }
@@ -133,6 +132,16 @@ export function useTerrainData() {
 
     fetchHouseholds();
   }, [currentProjectId]);
+
+  const fetchKoboStats = async () => {
+    try {
+      const response = await apiClient.get(`households/stats?projectId=${currentProjectId}`);
+      return response.data;
+    } catch (err: any) {
+      logger.error('Failed to fetch kobo stats:', err);
+      return null;
+    }
+  };
 
   // Derived filtered households
   const households = useMemo(() => {
@@ -168,9 +177,9 @@ export function useTerrainData() {
       await apiClient.patch(`households/${id}`, { status: newStatus });
       // Optimistic state update
       setHouseholdsRaw((prev) => prev.map((h) => (h.id === id ? { ...h, status: newStatus } : h)));
-    } catch (err) {
-      logger.error('Failed to update status on server:', err);
-      throw err;
+    } catch (error: any) {
+      logger.error('Failed to update status on server:', error);
+      throw error;
     }
   }, []);
 
@@ -181,7 +190,7 @@ export function useTerrainData() {
       setHouseholdsRaw((prev) =>
         prev.map((h) =>
           h.id === id
-            ? { ...h, location: loc as Record<string, unknown>, latitude: lat, longitude: lng }
+            ? ({ ...h, location: loc, latitude: lat, longitude: lng } as any)
             : h
         )
       );

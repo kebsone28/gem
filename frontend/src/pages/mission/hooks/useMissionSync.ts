@@ -94,7 +94,7 @@ export const useMissionSync = (
         /**
          * 1. SAUVEGARDE LOCALE (TOUJOURS)
          */
-        await db.missions.put(missionData);
+        await db.missions.put(missionData as any);
 
         /**
          * 2. VALIDATION (uniquement si soumission)
@@ -155,19 +155,18 @@ export const useMissionSync = (
              * UPDATE OU CREATE
              */
             if (!isNewMission) {
-              const result = await missionService.updateMission(finalId, serverPayload);
+              const result = await missionService.updateMission(finalId, serverPayload as any);
 
               if (result && !('error' in result)) {
                 serverSuccess = true;
                 actions.setSyncStatus('synced');
                 
-                // 🔥 CRITIQUE: Injecter le numéro officiel s'il est présent
-                const officialOrderNumber = (result as Record<string, unknown>).orderNumber || (result as Record<string, unknown & { data?: Record<string, unknown> }>).data?.orderNumber;
+                 // 🔥 CRITIQUE: Injecter le numéro officiel s'il est présent
+                const officialOrderNumber = (result as any).orderNumber || (result as any).data?.orderNumber;
                 if (officialOrderNumber) {
-                  (missionData as Record<string, unknown>).orderNumber = officialOrderNumber;
-                  const missionDataRecord = missionData as Record<string, unknown>;
-                  if (missionDataRecord.data && typeof missionDataRecord.data === 'object') {
-                    (missionDataRecord.data as Record<string, unknown>).orderNumber = officialOrderNumber;
+                  (missionData as any).orderNumber = officialOrderNumber;
+                  if ((missionData as any).data) {
+                    (missionData as any).data.orderNumber = officialOrderNumber;
                   }
                   
                   // Mettre à jour l'écran immédiatement via loadMission
@@ -175,8 +174,8 @@ export const useMissionSync = (
                     finalId,
                     { ...formData, orderNumber: officialOrderNumber as string },
                     members,
-                    (result as Record<string, unknown>).version as number || localVersion,
-                    (result as Record<string, unknown>).updatedAt as string || now,
+                    (result as any).version as number || localVersion,
+                    (result as any).updatedAt as string || now,
                     auditTrail
                   );
                 }
@@ -189,7 +188,7 @@ export const useMissionSync = (
                 const serverMission = await missionService.getMission(finalId);
 
                 if (serverMission) {
-                  await db.missions.put(serverMission);
+                  await db.missions.put(serverMission as any);
                   actions.addAuditEntry(
                     'Conflit résolu (serveur prioritaire)',
                     'System'
@@ -201,9 +200,9 @@ export const useMissionSync = (
                 /**
                  * 🔥 MISSION PERDUE SERVEUR
                  */
-                const created = await missionService.createMission(serverPayload);
+                const created = await missionService.createMission(serverPayload as any);
                 if (created) {
-                  assignedId = created.id;
+                  assignedId = (created as any).id;
                   serverSuccess = true;
                 } else {
                   serverSuccess = false;
@@ -212,19 +211,19 @@ export const useMissionSync = (
                 serverSuccess = false;
               }
             } else {
-              const created = await missionService.createMission(serverPayload);
+              const created = await missionService.createMission(serverPayload as any);
               if (created) {
-                assignedId = created.id;
+                assignedId = (created as any).id;
                 serverSuccess = true;
                 
-                const officialNum = (created as Record<string, unknown>).orderNumber || ((created as Record<string, unknown>).data as Record<string, unknown>)?.orderNumber;
+                const officialNum = (created as any).orderNumber || (created as any).data?.orderNumber;
                 if (officialNum) {
                   actions.loadMission(
-                    created.id,
+                    (created as any).id,
                     { ...formData, orderNumber: officialNum as string },
                     members,
-                    (created as Record<string, unknown>).version as number || 1,
-                    (created as Record<string, unknown>).updatedAt as string || now,
+                    (created as any).version as number || 1,
+                    (created as any).updatedAt as string || now,
                     auditTrail
                   );
                 }
@@ -247,8 +246,8 @@ export const useMissionSync = (
             }
 
             await db.missions.delete(finalId);
-            missionData.id = assignedId;
-            await db.missions.put(missionData);
+            (missionData as any).id = assignedId;
+            await db.missions.put(missionData as any);
 
             actions.loadMission(
               assignedId,
@@ -280,7 +279,7 @@ export const useMissionSync = (
             actions.setSyncStatus('failed');
             await syncQueue.enqueue(finalId, {
               type: 'RETRY_SYNC',
-              payload: missionData,
+              payload: missionData as any,
             });
           }
         } else {
@@ -291,7 +290,7 @@ export const useMissionSync = (
 
           await syncQueue.enqueue(finalId, {
             type: 'OFFLINE_SAVE',
-            payload: missionData,
+            payload: missionData as any,
           });
 
           actions.addAuditEntry('Mode offline - synchronisation différée', 'System');
@@ -340,30 +339,30 @@ export const useMissionSync = (
       let conflicts = 0;
 
       for (const m of missions) {
-        const serverVersion = m.version || (m as Record<string, unknown> & { data?: Record<string, unknown> }).data?.version as number || 1;
-        const local = await db.missions.get(m.id);
+        const serverVersion = (m as any).version || (m as any).data?.version || 1;
+        const local = await db.missions.get((m as any).id);
 
         const normalized = {
-          id: m.id,
-          projectId: m.projectId,
-          ...(m.data || {}),
+          id: (m as any).id,
+          projectId: (m as any).projectId,
+          ...((m as any).data || {}),
           version: serverVersion,
-          updatedAt: m.updatedAt || now,
+          updatedAt: (m as any).updatedAt || now,
         };
 
         if (!local) {
-          await db.missions.put(normalized);
+          await db.missions.put(normalized as any);
           merged++;
         } else if (serverVersion > (local.version || 0)) {
-          await db.missions.put(normalized);
+          await db.missions.put(normalized as any);
           merged++;
         } else if ((local.version || 0) > serverVersion) {
           /**
            * 🔥 CONFLIT LOCAL PRIORITAIRE
            */
-          await syncQueue.enqueue(local.id, {
+          await syncQueue.enqueue((local as any).id, {
             type: 'FORCE_PUSH',
-            payload: local,
+            payload: local as any,
           });
           conflicts++;
         }

@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 /**
  * GeoJsonOverlay.tsx
  *
@@ -173,6 +173,8 @@ export function GeoJsonOverlayPanel({ isDarkMode = true }: { isDarkMode?: boolea
           type="file"
           accept=".geojson,.json,.kml"
           className="hidden"
+          title="Importer un fichier GeoJSON ou KML"
+          aria-label="Sélectionner un fichier géographique"
           onChange={handleFileImport}
         />
         <button
@@ -202,7 +204,7 @@ export function GeoJsonOverlayPanel({ isDarkMode = true }: { isDarkMode?: boolea
         {/* Liste couches */}
         {layers.length > 0 && (
           <div className="space-y-2 max-h-60 overflow-y-auto pt-1">
-            {layers.map((layer) => (
+            {(layers as any[]).map((layer: ExternalLayer) => (
               <div
                 key={layer.id}
                 className={`flex items-center gap-3 p-3 rounded-xl border ${isDarkMode ? 'bg-slate-800/50 border-slate-700' : 'bg-slate-50 border-slate-200'}`}
@@ -212,9 +214,9 @@ export function GeoJsonOverlayPanel({ isDarkMode = true }: { isDarkMode?: boolea
                   onClick={() => toggleLayer(layer.id)}
                   className="w-3 h-3 rounded-sm border-2 flex-shrink-0 transition-all"
                   style={{
-                    backgroundColor: layer.visible ? layer.color : 'transparent',
-                    borderColor: layer.color,
-                  }}
+                    backgroundColor: layer.visible ? (layer as any).color : 'transparent',
+                    borderColor: (layer as any).color,
+                  } as React.CSSProperties}
                 />
                 <div className="flex-1 min-w-0">
                   <p className={`text-xs font-bold truncate ${text}`}>{layer.name}</p>

@@ -238,7 +238,7 @@ self.onmessage = (event) => {
         name: village,
         count: points.length,
         type: 'village',
-        bbox: computeBBox(points),
+        bbox: computeBBox(points) as any,
         color,
       });
     }

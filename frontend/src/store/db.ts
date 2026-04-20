@@ -1,6 +1,5 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
 import Dexie, { type Table } from 'dexie';
-import type { Project, Household, AuditLog } from '../utils/types';
+import type { Project, Household, AuditLog, Team } from '../utils/types';
 
 export interface SyncLog {
   id?: number;
@@ -47,11 +46,11 @@ export class ProquelecDatabase extends Dexie {
   users!: Table<{ id: string; email: string; name: string; role: string }>;
   /** projects stored locally using the Project interface above */
   projects!: Table<Project>;
-  zones!: Table<{ id: string; name: string; projectId: string }>;
+  zones!: Table<{ id: string; name: string; projectId: string; region?: string }>;
   households!: Table<Household>;
   grappes!: Table<{ id: string; name: string; projectId: string }>; // Add grappes table for bordereau caching
-  teams!: Table<{ id: string; name: string; projectId: string }>;
-  missions!: Table<{ id: string; projectId: string; status: string }>;
+  teams!: Table<Team>;
+  missions!: Table<{ id: string; projectId: string; status: string; [key: string]: any }>;
   notifications!: Table<MissionNotification>;
   sync_logs!: Table<SyncLog>;
   app_security!: Table<AppSecurity>;

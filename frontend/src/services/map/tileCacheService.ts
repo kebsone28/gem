@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
 import maplibregl from 'maplibre-gl';
 import { db } from '../../store/db';
 import logger from '../../utils/logger';
@@ -14,7 +14,7 @@ export const registerTileCacheProtocol = () => {
 
   maplibregl.addProtocol(
     'cached',
-    (params: { url: string }, abortController: { abort: () => void }) => {
+    (params: { url: string }, abortController: any) => {
       const url = params.url.replace('cached://', '');
 
       // Extraction approximative du zoom depuis l'url (souvent /{z}/{x}/{y}.png)

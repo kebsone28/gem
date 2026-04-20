@@ -127,7 +127,7 @@ export const generateMissionOrderPDF = async (data: MissionOrderData) => {
 
   autoTable(doc, {
     startY: currentY,
-    body: detailsData as { colSpan?: number; content: string }[],
+    body: detailsData as any,
     theme: 'grid',
     styles: { fontSize: 10, cellPadding: 5, halign: 'left', font: 'helvetica' },
     columnStyles: {
@@ -353,7 +353,7 @@ export const generateMissionOrderPDF = async (data: MissionOrderData) => {
   autoTable(doc, {
     startY: currentY,
     head: [['JOUR', "DESCRIPTION DÉTAILLÉE DE L'ACTIVITÉ"]],
-    body: planningBody as { colSpan?: number; content: string }[],
+    body: planningBody as any,
     theme: 'grid',
     headStyles: { fillColor: DARK, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 9 },
     styles: { fontSize: 9, cellPadding: 5 },

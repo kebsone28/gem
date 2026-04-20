@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
 import { useEffect, useRef, useMemo } from 'react';
 import Supercluster from 'supercluster';
 import { householdsToGeoJSON, initializeSupercluster } from '../../utils/clusteringUtils';
@@ -31,11 +31,11 @@ export const useMemorizedSupercluster = (households: Record<string, unknown>[]) 
     const samples = [0, Math.floor(count / 2), count - 1]
       .map((idx) => data[idx])
       .filter(Boolean)
-      .map((h) => `${h.id}:${h.location?.coordinates?.[0] || 0}`)
+      .map((h: any) => `${h.id}:${h.location?.coordinates?.[0] || 0}`)
       .join('|');
 
     // Sum versions to detect updates (incremental change)
-    const versionSum = data.slice(0, 100).reduce((acc, h) => acc + (h.version || 1), 0);
+    const versionSum = data.slice(0, 100).reduce((acc, h: any) => acc + (h.version || 1), 0);
 
     return `${count}:${versionSum}:${samples}`;
   };
@@ -58,10 +58,10 @@ export const useMemorizedSupercluster = (households: Record<string, unknown>[]) 
       dataFingerprintRef.current = currentFingerprint;
 
       // ✅ Step 1: GeoJSON conversion
-      const geoJSON = householdsToGeoJSON(households);
+      const geoJSON = householdsToGeoJSON(households as any);
 
       // ✅ Step 2: Supercluster Load (Optimized inside clusteringUtils)
-      superclusterRef.current = initializeSupercluster(geoJSON);
+      superclusterRef.current = initializeSupercluster(geoJSON as any);
 
       logger.log(
         `📍 Supercluster rebuilt [${geoJSON.length} pts] (Source: ${households.length} total)`

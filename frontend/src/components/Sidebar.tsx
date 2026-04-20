@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
 import { useState, useMemo } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
@@ -166,7 +166,7 @@ export default function Sidebar() {
         label: 'Terminal Kobo',
         title: 'Interface de commande directe pour la sync KoboToolbox',
         permission: PERMISSIONS.ACCES_TERMINAL_KOBO,
-        visible: user?.organizationConfig?.features?.koboTerminal === true,
+        visible: (user?.organizationConfig as any)?.features?.koboTerminal === true,
         category: 'SYSTÈME',
       },
       {
@@ -201,7 +201,7 @@ export default function Sidebar() {
         category: 'SYSTÈME' 
       },
     ],
-    [nRole, isMaster, PERMISSIONS, user?.organizationConfig?.features?.koboTerminal]
+    [nRole, isMaster, PERMISSIONS, (user?.organizationConfig as any)?.features?.koboTerminal]
   );
 
   // 🚀 [REACTIVITY] Re-calculate items when user or permissions change
@@ -368,9 +368,9 @@ export default function Sidebar() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-2xl bg-electric-gradient flex items-center justify-center shadow-electric-sm p-1 shrink-0">
-                {user?.organizationConfig?.branding?.logo ? (
+                {(user?.organizationConfig as any)?.branding?.logo ? (
                   <img
-                    src={user.organizationConfig.branding.logo}
+                    src={(user.organizationConfig as any).branding.logo}
                     alt="Logo"
                     className="max-w-full max-h-full object-contain"
                   />
@@ -380,7 +380,7 @@ export default function Sidebar() {
               </div>
               <div className="min-w-0">
                 <h1 className="text-xl font-black tracking-tighter text-white italic leading-none truncate">
-                  {user?.organizationConfig?.branding?.organizationName || 'GEM SAAS'}
+                  {(user?.organizationConfig as any)?.branding?.organizationName || 'GEM SAAS'}
                 </h1>
                 <div className="flex flex-col mt-1">
                   <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-500 transition-all">

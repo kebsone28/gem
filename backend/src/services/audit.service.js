@@ -53,7 +53,12 @@ export const tracerAction = async (dataOrOrgId, userId, action, resource, resour
 
         prisma.auditLog.create({
             data: auditData
-        }).catch(err => console.error('[ERREUR AUDIT DB] :', err.message));
+        })
+        .then(() => console.log(`[AUDIT] Action enregistrée en base : ${act}`))
+        .catch(err => {
+            console.error(`[ERREUR AUDIT DB] Échec pour ${act}:`, err.message);
+            // On ne crash pas le process, mais on log l'erreur critique
+        });
 
         // 2. Notification Email pour les actions CRITIQUES
         const criticalActions = ['SUPPRESSION_PROJET', 'MODIFICATION_SECURITE', 'RESET_DATA', 'CREATION_MISSION'];

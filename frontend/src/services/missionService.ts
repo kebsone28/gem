@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
 import api from '../api/client';
 import logger from '../utils/logger';
 
@@ -52,7 +52,7 @@ export const createMission = async (missionData: Partial<Mission>): Promise<Miss
     console.log('🚀 [API] PAYLOAD SENT (CREATE):', missionData);
     const response = await api.post('/missions', missionData);
     return response.data;
-  } catch (err: unknown) {
+  } catch (err: any) {
     logger.error('❌ [API] Failed to create mission:', err);
     console.error('❌ FULL BACKEND ERROR:', err.response?.data);
     return null;
@@ -70,7 +70,7 @@ export const updateMission = async (
     console.log(`🚀 [API] PAYLOAD SENT (UPDATE ${id}):`, missionData);
     const response = await api.patch(`/missions/${id}`, missionData);
     return response.data;
-  } catch (err: unknown) {
+  } catch (err: any) {
     logger.error(`❌ [API] Failed to update mission ${id}:`, err);
     console.error('❌ FULL BACKEND ERROR:', err.response?.data);
     if (err.response?.status === 404) {

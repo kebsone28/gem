@@ -76,11 +76,8 @@ const workerSelf: {
   postMessage: (msg: unknown) => void;
 } =
   typeof self !== 'undefined'
-    ? self
-    : (globalThis as unknown as {
-        onmessage: (event: { data: { households?: Household[] } }) => void;
-        postMessage: (msg: unknown) => void;
-      });
+    ? (self as any)
+    : (globalThis as any);
 
 workerSelf.onmessage = (event: {
   data: {

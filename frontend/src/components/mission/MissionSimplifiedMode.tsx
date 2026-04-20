@@ -1,16 +1,18 @@
 ﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
 import React, { useState } from 'react';
-import { Camera, MapPin, Mic, CheckCircle2, ChevronRight, Menu } from 'lucide-react';
+import { Camera, MapPin, Mic, CheckCircle2, ChevronRight, Menu, X, Plus, Image } from 'lucide-react';
 import type {
   MissionOrderData,
   MissionMember,
   MissionReportDay,
+  MissionPhoto,
 } from '../../pages/mission/core/missionTypes';
 
 interface MissionSimplifiedModeProps {
   missionData: MissionOrderData;
   members: MissionMember[];
   onBack: () => void;
+  onSave?: (reportDays: MissionReportDay[]) => void; // Callback pour sauvegarder le rapport terrain
 }
 
 /**
@@ -21,11 +23,13 @@ export const MissionSimplifiedMode: React.FC<MissionSimplifiedModeProps> = ({
   missionData,
   members,
   onBack,
+  onSave,
 }) => {
   const [reportDays, setReportDays] = useState<MissionReportDay[]>(missionData.reportDays || []);
   const [currentDayIndex, setCurrentDayIndex] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
   const [isFullScreenMode, setIsFullScreenMode] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
 
   console.log('Techniciens sur cette mission:', members.length);
 
@@ -38,12 +42,27 @@ export const MissionSimplifiedMode: React.FC<MissionSimplifiedModeProps> = ({
   };
 
   const onPhotoCapture = (index: number) => {
-    // Simulation de capture photo (Update local pour démo)
-    onUpdateDay(
-      index,
-      'photo',
-      'https://images.unsplash.com/photo-1541888946425-d81bb19480c5?auto=format&fit=crop&q=80&w=300'
-    );
+    // Simulation de capture photo - Ajout d'une nouvelle photo avec commentaire vide
+    const newPhoto: MissionPhoto = {
+      id: crypto.randomUUID(),
+      data: 'https://images.unsplash.com/photo-1541888946425-d81bb19480c5?auto=format&fit=crop&q=80&w=300',
+      comment: '',
+      timestamp: new Date().toISOString(),
+    };
+    const currentPhotos = reportDays[index]?.photos || [];
+    onUpdateDay(index, 'photos', [...currentPhotos, newPhoto]);
+  };
+
+  const onDeletePhoto = (dayIndex: number, photoId: string) => {
+    const currentPhotos = reportDays[dayIndex]?.photos || [];
+    onUpdateDay(dayIndex, 'photos', currentPhotos.filter((p: MissionPhoto) => p.id !== photoId));
+  };
+
+  const onUpdatePhotoComment = (dayIndex: number, photoId: string, comment: string) => {
+    const currentPhotos = reportDays[dayIndex]?.photos || [];
+    onUpdateDay(dayIndex, 'photos', currentPhotos.map((p: MissionPhoto) => 
+      p.id === photoId ? { ...p, comment } : p
+    ));
   };
 
   const handleVoiceNote = () => {
@@ -170,35 +189,59 @@ export const MissionSimplifiedMode: React.FC<MissionSimplifiedModeProps> = ({
           </div>
         </div>
 
-        {/* Capture Photo */}
+        {/* Multiple Photos with Comments - Responsive */}
         <div className="space-y-3">
-          <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.2em] block pl-1">
-            Documentation Visuelle
-          </label>
-          <button
-            onClick={() => onPhotoCapture(currentDayIndex)}
-            title="Prendre une photo de terrain"
-            aria-label="Prendre une photo de terrain"
-            className={`w-full aspect-[4/3] rounded-2xl border-2 border-dashed flex flex-col items-center justify-center transition-all bg-white dark:bg-slate-800 relative overflow-hidden ${
-              currentDay.photo ? 'border-indigo-500' : 'border-slate-300 dark:border-slate-700'
-            }`}
-          >
-            {currentDay.photo ? (
-              <img src={currentDay.photo} alt="Terrain" className="w-full h-full object-cover" />
-            ) : (
-              <div className="flex flex-col items-center gap-2">
-                <Camera size={40} className="text-slate-400" />
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                  Prendre une photo
-                </span>
+          <div className="flex items-center justify-between">
+            <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.2em]">
+              Documentation Visuelle ({currentDay.photos?.length || 0})
+            </label>
+            <button
+              onClick={() => onPhotoCapture(currentDayIndex)}
+              className="flex items-center gap-1 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-bold rounded-lg"
+            >
+              <Plus size={14} /> Ajouter
+            </button>
+          </div>
+          
+          {/* Photo Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {(currentDay.photos || []).map((photo: MissionPhoto, idx: number) => (
+              <div key={photo.id} className="relative group rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700">
+                <img 
+                  src={photo.data} 
+                  alt={`Photo ${idx + 1}`} 
+                  className="w-full aspect-square object-cover"
+                />
+                {/* Delete button */}
+                <button
+                  onClick={() => onDeletePhoto(currentDayIndex, photo.id)}
+                  className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                  title="Supprimer"
+                >
+                  <X size={12} />
+                </button>
+                {/* Comment input */}
+                <div className="p-2 bg-white dark:bg-slate-800">
+                  <input
+                    type="text"
+                    value={photo.comment}
+                    onChange={(e) => onUpdatePhotoComment(currentDayIndex, photo.id, e.target.value)}
+                    placeholder="Commentaire..."
+                    className="w-full text-[10px] font-bold bg-transparent border-none outline-none text-slate-700 dark:text-slate-300 placeholder:text-slate-400"
+                  />
+                </div>
               </div>
-            )}
-            {currentDay.photo && (
-              <div className="absolute top-3 right-3 p-1.5 bg-indigo-600 text-white rounded-lg shadow-lg">
-                <CheckCircle2 size={16} />
-              </div>
-            )}
-          </button>
+            ))}
+            
+            {/* Add Photo Button */}
+            <button
+              onClick={() => onPhotoCapture(currentDayIndex)}
+              className="aspect-square rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 flex flex-col items-center justify-center gap-1 text-slate-400 hover:border-indigo-500 hover:text-indigo-500 transition-colors"
+            >
+              <Camera size={20} />
+              <span className="text-[9px] font-bold">Ajouter</span>
+            </button>
+          </div>
         </div>
 
         {/* Observation Jour */}
@@ -252,6 +295,54 @@ export const MissionSimplifiedMode: React.FC<MissionSimplifiedModeProps> = ({
           {currentDay.location
             ? `GPS Verrouillé: ${currentDay.location.lat.toFixed(4)}, ${currentDay.location.lng.toFixed(4)}`
             : 'Verrouiller Position GPS'}
+        </button>
+
+        {/* Bouton Sauvegarder le rapport terrain */}
+        <button
+          onClick={async () => {
+            console.log('Bouton enregistrer cliqué - Début');
+            if (isSaving) {
+              console.log('Sauvegarde en cours, ignoré');
+              return;
+            }
+            setIsSaving(true);
+            console.log('isSaving = true');
+            try {
+              if (onSave) {
+                console.log('Appel de onSave avec reportDays:', reportDays);
+                await onSave(reportDays);
+                console.log('Sauvegarde terminée avec succès');
+                alert('Rapport terrain enregistré et synchronisé sur le serveur !');
+              } else {
+                console.warn('onSave est undefined!');
+                alert('Fonction de sauvegarde non disponible.');
+              }
+            } catch (error) {
+              console.error('Erreur lors de la sauvegarde:', error);
+              alert('Erreur lors de la sauvegarde. Veuillez réessayer.');
+            } finally {
+              setIsSaving(false);
+              console.log('isSaving = false');
+            }
+          }}
+          disabled={isSaving}
+          className={`w-full mt-4 py-4 font-black text-[11px] uppercase tracking-widest rounded-2xl shadow-lg flex items-center justify-center gap-2 transition-all ${
+            isSaving 
+              ? 'bg-slate-400 text-slate-200 cursor-not-allowed' 
+              : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-500/30'
+          }`}
+        >
+          {isSaving ? (
+            <>
+              <span className="animate-spin">⏳</span>
+              Synchronisation...
+            </>
+          ) : (
+            <>
+              <CheckCircle2 size={18} />
+              Enregistrer le Rapport Terrain
+            </>
+          )}
         </button>
       </div>
 

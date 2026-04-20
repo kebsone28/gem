@@ -241,11 +241,11 @@ function usePVAutomation(): PVLogic {
           ...(h.koboData || h.koboSync || {}), 
           ...(h.constructionData?.livreur || {}), 
           ...h.constructionData 
-        };
+        } as Record<string, unknown>;
         
-        const c25 = Number(source.câble_2_5 || source['group_sy9vj14/Longueur_câble_2_5mm_Int_rieure'] || 0);
-        const c15 = Number(source.câble_1_5 || source['group_sy9vj14/Longueur_câble_1_5mm_Int_rieure'] || 0);
-        const tr4 = Number(source.tranchee_4 || source['group_sy9vj14/Longueur_Tranch_e_câble_arm_4mm'] || 0);
+        const c25 = Number(source['câble_2_5'] || source['group_sy9vj14/Longueur_câble_2_5mm_Int_rieure'] || 0);
+        const c15 = Number(source['câble_1_5'] || source['group_sy9vj14/Longueur_câble_1_5mm_Int_rieure'] || 0);
+        const tr4 = Number(source['tranchee_4'] || source['group_sy9vj14/Longueur_Tranch_e_câble_arm_4mm'] || 0);
 
         acc.cable += (c25 + c15);
         acc.tranchee += tr4;
@@ -456,7 +456,7 @@ function usePVAutomation(): PVLogic {
         'Village': h.village,
         'Région': h.region,
         'Nb Alertes': h.alerts?.length || 0,
-        'Détails Alertes': h.alerts?.map((a: AlertRecord) => `[${a.type}] ${a.message}`).join(' | '),
+        'Détails Alertes': (h.alerts as AlertRecord[] | undefined)?.map((a) => `[${a.type}] ${a.message}`).join(' | ') || '',
         'Synchronisé': h.source === 'kobo' ? 'OUI' : 'NON'
       }));
 
@@ -613,7 +613,8 @@ function PVGenerator({ logic }: { logic: PVLogic }) {
         </div>
         <div className="flex flex-wrap justify-center lg:justify-end gap-2 w-full lg:w-auto">
           {(() => {
-            const hasCriticalAlert = logic.selectedSubmission.alerts?.some((a: AlertRecord) => 
+            const alerts = logic.selectedSubmission.alerts as AlertRecord[] | undefined;
+            const hasCriticalAlert = alerts?.some((a) => 
                a.type === 'DOUBLON_DETECTE' || a.type === 'MISMATCH_GPS'
             );
 

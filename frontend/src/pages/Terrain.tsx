@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
 import React, { useState, useMemo, Suspense, useRef, useEffect, useCallback } from 'react';
 import logger from '../utils/logger';
 import toast from 'react-hot-toast';
@@ -177,6 +177,11 @@ const Terrain: React.FC = () => {
     }
   }, [forceSync]);
 
+  const handleRefresh = async () => {
+    if (!project?.id) return;
+    await forceSync();
+  };
+
   const handleRecenterOnUser = useCallback(() => {
     if (isGeolocationRequestInProgress) {
       return;
@@ -337,7 +342,7 @@ const Terrain: React.FC = () => {
     };
 
     if (gId) {
-      const grappeDef = allGrappes.find((g: GrappeDefinition) => g.id === gId);
+      const grappeDef = (allGrappes as any[]).find((g: any) => g.id === gId);
       const grappeName =
         selectedHousehold.grappeName || grappeDef?.nom || grappeDef?.name || `Grappe ${gId}`;
       const grappeCount = (households || []).filter((h: Household) => h.grappeId === gId).length;
@@ -345,19 +350,19 @@ const Terrain: React.FC = () => {
     }
 
     const coords = selectedHousehold.location?.coordinates;
-    if (!coords || allGrappes.length === 0) return undefined;
+    if (!coords || (allGrappes as any[]).length === 0) return undefined;
     const [lng, lat] = coords;
 
     const hRegion =
       selectedHousehold.region ||
-      selectedHousehold.koboData?.region ||
-      selectedHousehold.koboSync?.region;
+      (selectedHousehold.koboData as any)?.region ||
+      (selectedHousehold.koboSync as any)?.region;
     const pool = hRegion
-      ? allGrappes.filter(
-          (g: GrappeDefinition) =>
+      ? (allGrappes as any[]).filter(
+          (g: any) =>
             (g.region && g.region.toLowerCase() === hRegion.toLowerCase()) || !g.region
         )
-      : allGrappes;
+      : (allGrappes as any[]);
 
     let nearest: GrappeDefinition | null = null;
     let minDist = Infinity;
@@ -371,7 +376,7 @@ const Terrain: React.FC = () => {
     }
 
     if (!nearest || minDist > 150) return undefined;
-    const count = (households || []).filter((h: Household) => h.grappeId === nearest.id).length;
+    const count = (households || []).filter((h: Household) => h.grappeId === (nearest as any).id).length;
     return {
       id: nearest.id,
       name: nearest.nom || nearest.name || `Grappe ${nearest.id}`,
@@ -491,7 +496,7 @@ const Terrain: React.FC = () => {
           setSearchQuery(value);
           debouncedSearch(value);
         }}
-        searchResults={searchResults}
+        searchResults={searchResults as any}
         isSearching={isSearching}
         onSelectResult={handleSelectResult}
         selectedTeam={selectedTeam}
@@ -525,7 +530,7 @@ const Terrain: React.FC = () => {
             onClose={closePanel}
             households={households || []}
             isDarkMode
-            turnByTurnInstructions={turnByTurnInstructions}
+            turnByTurnInstructions={turnByTurnInstructions as any}
             routeDistance={routeStats?.distance}
             routeDuration={routeStats?.duration}
           />

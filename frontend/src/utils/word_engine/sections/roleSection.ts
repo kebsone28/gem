@@ -201,17 +201,17 @@ export const createRoleSection = async (data: RoleSectionData, qrBuffer?: ArrayB
   children.push(createSectionHeader('1. Objet et Obligations', COLORS.SECONDARY));
   children.push(
     new Paragraph({
-      children: [createText(introduction, { italics: true })],
+      children: [createText(introduction || '', { italics: true })],
       spacing: { before: 100, after: 200 },
     })
   );
 
-  addListSection('2. Missions et Tâches', missions, COLORS.PRIMARY);
-  addListSection('3. Matériels et Logistique', materials, COLORS.ACCENT);
-  addListSection('4. Hygiène, Sécurité et Environnement (HSE)', hse, COLORS.DANGER);
-  addListSection('5. Sous-traitance', subcontracting, COLORS.SLATE);
-  addListSection('6. Finances et Paiements', finances, COLORS.SUCCESS);
-  addListSection('7. Juridique', legal, COLORS.SECONDARY);
+  addListSection('2. Missions et Tâches', missions || [], COLORS.PRIMARY);
+  addListSection('3. Matériels et Logistique', materials || [], COLORS.ACCENT);
+  addListSection('4. Hygiène, Sécurité et Environnement (HSE)', hse || [], COLORS.DANGER);
+  addListSection('5. Sous-traitance', subcontracting || [], COLORS.SLATE);
+  addListSection('6. Finances et Paiements', finances || [], COLORS.SUCCESS);
+  addListSection('7. Juridique', legal || [], COLORS.SECONDARY);
 
   // 5. Pricing Table
   if (pricing) {

@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
 import React, { createContext, useContext, useMemo } from 'react';
 import { useAuth } from './AuthContext';
 
@@ -59,7 +59,7 @@ export const LabelsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const { user } = useAuth();
 
   const labels = useMemo(() => {
-    const configLabels = user?.organizationConfig?.labels || {};
+    const configLabels = (user?.organizationConfig as any)?.labels || {};
     return {
       household: { ...DEFAULT_LABELS.household, ...(configLabels.household || {}) },
       zone: { ...DEFAULT_LABELS.zone, ...(configLabels.zone || {}) },

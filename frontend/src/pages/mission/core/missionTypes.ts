@@ -7,12 +7,21 @@ export interface MissionMember {
   days: number;
 }
 
+export interface MissionPhoto {
+  id: string;
+  data: string; // Base64
+  comment: string;
+  timestamp: string;
+}
+
 export interface MissionReportDay {
   day: number;
   title: string;
+  detail?: string; // Détail de l'étape du planning
   observation: string;
+  notes: string;
   isCompleted: boolean;
-  photo?: string; // Base64
+  photos: MissionPhoto[]; // Plusieurs photos par étape
   location?: { lat: number; lng: number };
 }
 
@@ -59,8 +68,8 @@ export interface MissionOrderData {
   creatorId?: string;
   integrityHash?: string;
   version?: number; // ✅ AJOUT
-  data?: Record<string, unknown>;      // ✅ AJOUT pour compatibilité sync
-  id?: string;    // ✅ AJOUT pour compatibilité word generator
+  data?: Record<string, unknown>; // ✅ AJOUT pour compatibilité sync
+  id?: string; // ✅ AJOUT pour compatibilité word generator
 }
 
 export type MissionStatus = 'idle' | 'saving' | 'error' | 'success';
@@ -113,9 +122,9 @@ export type MissionAction =
   | { type: 'UPDATE_MEMBER'; index: number; payload: Partial<MissionMember> }
   | { type: 'REMOVE_MEMBER'; index: number }
   | { type: 'SET_STATUS'; payload: MissionStatus }
-  | { type: 'FORCE_PUSH'; payload: Record<string, unknown> }           // ✅ FIX: added payload
-  | { type: 'RETRY_SYNC'; payload: Record<string, unknown> }           // ✅ FIX: added payload
-  | { type: 'OFFLINE_SAVE'; payload: Record<string, unknown> }         // ✅ FIX: added payload
+  | { type: 'FORCE_PUSH'; payload: Record<string, unknown> } // ✅ FIX: added payload
+  | { type: 'RETRY_SYNC'; payload: Record<string, unknown> } // ✅ FIX: added payload
+  | { type: 'OFFLINE_SAVE'; payload: Record<string, unknown> } // ✅ FIX: added payload
   | {
       type: 'LOAD_MISSION';
       payload: {

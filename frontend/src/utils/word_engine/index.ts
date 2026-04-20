@@ -138,7 +138,7 @@ export const exportCahiersToWord = async (
 
   // 3. Trade Sections
   for (const task of tasks) {
-    const children = await createRoleSection(task, qrBuffer);
+    const children = await createRoleSection(task as any, qrBuffer);
     if (tasks.indexOf(task) < tasks.length - 1) {
       children.push(new Paragraph({ children: [new PageBreak()] }));
     }

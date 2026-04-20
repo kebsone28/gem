@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -9,7 +9,7 @@ import { toast } from 'react-hot-toast';
 
 // Services & Store
 import { generateMissionOrderPDF } from '../services/missionOrderGenerator';
-import { generateMissionOrderWord } from '../services/missionOrderWordGenerator';
+import { generateMissionOrderWord, generateMissionReportWord } from '../services/missionOrderWordGenerator';
 import * as XLSX from 'xlsx';
 import { db } from '../store/db';
 import { createMissionFromTemplate } from '../services/missionTemplates';
@@ -67,6 +67,8 @@ export default function MissionOrder() {
   const [showAudit, setShowAudit] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Toujours initialiser à 'prep' pour éviter l'accès prématuré à state
+  const [activeTab, setActiveTab] = useState<'prep' | 'report' | 'approval'>('prep');
 
   // DG PIN Signature Workflow
   const [isPinModalOpen, setIsPinModalOpen] = useState(false);
@@ -98,7 +100,7 @@ export default function MissionOrder() {
     if (isPowerful) return allMissions;
     
     // Inclure les missions créées par l'utilisateur OU les missions sans 'createdBy' (données legacy)
-    return allMissions.filter(m => !m.createdBy || m.createdBy === user?.id || m.createdBy === 'inconnu');
+    return allMissions.filter((m: any) => !m.createdBy || m.createdBy === user?.id || m.createdBy === 'inconnu');
   }, [allMissions, role, user?.id]);
 
   const unreadCount = useLiveQuery(() => db.notifications.where('read').equals(0).count(), []) || 0;
@@ -291,6 +293,20 @@ export default function MissionOrder() {
     }
   };
 
+  const handleExportReportWord = async () => {
+    const blob = await generateMissionReportWord(state.formData);
+    if (blob) {
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `${state.formData.orderNumber || 'Mission'}_Rapport.docx`;
+      link.click();
+      missionState.addAuditEntry('Rapport Word post-mission généré', 'Système');
+      toast.success('Rapport Word exporté avec succès');
+    } else {
+      toast.error('Erreur lors de la génération du rapport');
+    }
+  };
+
   const handleExportExcel = () => {
     const data = state.formData as MissionOrderData;
     const wb = XLSX.utils.book_new();
@@ -477,13 +493,57 @@ export default function MissionOrder() {
     }
   };
 
-  // Main Render
+
+  // Si la mission est signée/certifiée, forcer l'onglet rapport
+  useEffect(() => {
+    if ((state.isCertified || state.isSubmitted) && activeTab !== 'report') {
+      setActiveTab('report');
+    }
+  }, [state.isCertified, state.isSubmitted]);
+
+  // Mode terrain simplifié : accès direct au rapport
   if (state.isSimplifiedMode) {
+    // Générer un planning terrain à partir du planning validé si la mission est signée/certifiée et qu'il n'y a pas de rapport terrain
+    let missionData = state.formData as MissionOrderData;
+    if ((state.isCertified || state.isSubmitted) && (!missionData.reportDays || missionData.reportDays.length === 0) && Array.isArray(missionData.planning) && missionData.planning.length > 0) {
+      // Générer un rapport terrain basé sur le planning validé
+      missionData = {
+        ...missionData,
+        reportDays: missionData.planning.map((step, idx) => {
+          // Extraction du titre et du détail
+          const [title, ...rest] = step.split('\n');
+          return {
+            day: idx + 1,
+            title: title || `Jour ${idx + 1}`,
+            detail: rest.join('\n') || '', // Détail de l'étape
+            notes: '',
+            observation: '',
+            isCompleted: false,
+            photos: [], // Nouveau format: tableau de photos
+            location: undefined,
+          };
+        })
+      };
+    }
     return (
       <MissionSimplifiedMode
-        missionData={state.formData as MissionOrderData}
+        missionData={missionData}
         members={state.members}
         onBack={() => missionState.setSimplifiedMode(false)}
+        onSave={async (updatedReportDays) => {
+          console.log('=== onSave appelé ===', updatedReportDays);
+          // Sauvegarder les données du rapport terrain
+          missionState.updateFormField('reportDays', updatedReportDays);
+          console.log('reportDays mis à jour dans le state');
+          // Sauvegarder et synchroniser
+          if (handleSaveMission) {
+            console.log('Appel de handleSaveMission...');
+            const result = await handleSaveMission();
+            console.log('Résultat de handleSaveMission:', result);
+          } else {
+            console.error('handleSaveMission est undefined!');
+          }
+        }}
       />
     );
   }
@@ -564,6 +624,43 @@ export default function MissionOrder() {
                   <MissionApprovalStatusBanner workflow={workflow} />
                 )}
 
+                {/* ONGLETS PRÉPARATION / RAPPORT / APPROBATION */}
+                <div className="flex gap-2 mb-6 border-b-2 border-slate-300 dark:border-slate-700 pb-2">
+                  <button
+                    onClick={() => setActiveTab('prep')}
+                    className={`min-w-[180px] px-6 py-3 text-base font-extrabold uppercase tracking-wider rounded-t-lg focus:outline-none transition-all duration-200
+                      ${activeTab === 'prep'
+                        ? 'text-indigo-600 dark:text-indigo-300 border-b-4 border-indigo-500 bg-white dark:bg-slate-900 shadow-lg'
+                        : 'text-slate-500 dark:text-slate-400 hover:text-indigo-500 dark:hover:text-indigo-400 bg-transparent'}
+                    `}
+                  >
+                    PRÉPARATION
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('report')}
+                    className={`min-w-[220px] px-6 py-3 text-base font-extrabold uppercase tracking-wider rounded-t-lg focus:outline-none transition-all duration-200
+                      ${activeTab === 'report'
+                        ? 'text-emerald-600 dark:text-emerald-300 border-b-4 border-emerald-500 bg-white dark:bg-slate-900 shadow-lg'
+                        : 'text-slate-500 dark:text-slate-400 hover:text-emerald-500 dark:hover:text-emerald-400 bg-transparent'}
+                    `}
+                  >
+                    RAPPORT POST-MISSION
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('approval')}
+                    className={`min-w-[180px] px-6 py-3 text-base font-extrabold uppercase tracking-wider rounded-t-lg focus:outline-none transition-all duration-200
+                      ${activeTab === 'approval'
+                        ? 'text-amber-600 dark:text-amber-300 border-b-4 border-amber-500 bg-white dark:bg-slate-900 shadow-lg'
+                        : 'text-slate-500 dark:text-slate-400 hover:text-amber-500 dark:hover:text-amber-400 bg-transparent'}
+                    `}
+                  >
+                    APPROBATION
+                  </button>
+                </div>
+
+                {/* CONTENU SELON L'ONGLET */}
+                {activeTab === 'prep' && (
+                  <>
                 <MissionInfoSection
                   formData={state.formData}
                   isReadOnly={state.isCertified || state.isSubmitted}
@@ -611,6 +708,106 @@ export default function MissionOrder() {
                 />
 
                 {showAudit && <MissionAuditTrail entries={state.auditTrail} />}
+                  </>
+                )}
+
+                {/* ONGLET RAPPORT POST-MISSION */}
+                {activeTab === 'report' && (
+                  <div className="space-y-6">
+                    <div className="glass-card !p-6">
+                      <h3 className="text-lg font-black text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+                        <span className="w-2 h-8 bg-emerald-500 rounded-full"></span>
+                        Rapport Post-Mission
+                      </h3>
+                      
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+                            Observations générales
+                          </label>
+                          <textarea
+                            value={state.formData.reportObservations || ''}
+                            onChange={(e) => missionState.updateFormField('reportObservations', e.target.value)}
+                            rows={6}
+                            className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                            placeholder="Saisissez les observations et conclusions de la mission..."
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+                            Rapports journaliers
+                          </label>
+                          {(state.formData.reportDays || []).map((day: any, idx: number) => (
+                            <div key={idx} className="mb-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                              <div className="flex justify-between items-center mb-2">
+                                <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400">Jour {idx + 1}</span>
+                                <button
+                                  onClick={() => {
+                                    const days = [...(state.formData.reportDays || [])];
+                                    days.splice(idx, 1);
+                                    missionState.updateFormField('reportDays', days);
+                                  }}
+                                  className="text-red-500 hover:text-red-700 text-xs font-bold"
+                                >
+                                  Supprimer
+                                </button>
+                              </div>
+                              <textarea
+                                value={day.notes || ''}
+                                onChange={(e) => {
+                                  const days = [...(state.formData.reportDays || [])];
+                                  days[idx] = { ...day, notes: e.target.value };
+                                  missionState.updateFormField('reportDays', days);
+                                }}
+                                rows={3}
+                                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm"
+                                placeholder="Notes du jour..."
+                              />
+                            </div>
+                          ))}
+                          <button
+                            onClick={() => {
+                              const days = [...(state.formData.reportDays || []), { date: new Date().toISOString().split('T')[0], notes: '' }];
+                              missionState.updateFormField('reportDays', days);
+                            }}
+                            className="mt-2 px-4 py-2 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 rounded-lg text-sm font-bold hover:bg-emerald-200 dark:hover:bg-emerald-900/50"
+                          >
+                            + Ajouter un jour
+                          </button>
+                        </div>
+
+                        <div className="flex gap-3 pt-4">
+                          <button
+                            onClick={handleExportReportWord}
+                            className="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl flex items-center justify-center gap-2"
+                          >
+                            <span>📄</span> Exporter Word Rapport
+                          </button>
+                          <button
+                            onClick={handleExportPDF}
+                            className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl flex items-center justify-center gap-2"
+                          >
+                            <span>📑</span> Exporter PDF
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* ONGLET APPROBATION */}
+                {activeTab === 'approval' && (
+                  <div className="space-y-6">
+                    <div className="glass-card !p-6">
+                      <h3 className="text-lg font-black text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+                        <span className="w-2 h-8 bg-amber-500 rounded-full"></span>
+                        Workflow d'Approbation
+                      </h3>
+                      <MissionApprovalStatusBanner workflow={workflow} />
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* WIDGETS : COL-4 (interne) */}

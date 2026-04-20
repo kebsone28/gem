@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
@@ -36,7 +36,7 @@ interface GrappeData {
 /**
  * Robustly resolves the name of a household
  */
-const resolveName = (h: Record<string, unknown>): string => {
+const resolveName = (h: any): string => {
   if (h.name && h.name.trim()) return h.name.trim();
   if (h.owner) {
     if (typeof h.owner === 'string' && h.owner.trim()) return h.owner.trim();
@@ -56,7 +56,7 @@ const resolveName = (h: Record<string, unknown>): string => {
 /**
  * Robustly resolves the village
  */
-const resolveVillage = (h: Record<string, unknown>): string => {
+const resolveVillage = (h: any): string => {
   if (h.village && h.village.trim()) return h.village.trim();
   const kobo = h.koboData || h.koboSync || {};
   if (kobo.village) return kobo.village;
@@ -67,7 +67,7 @@ const resolveVillage = (h: Record<string, unknown>): string => {
 /**
  * Extract coordinates
  */
-const resolveGPS = (h: Record<string, unknown>): { lat: string; lon: string } => {
+const resolveGPS = (h: any): { lat: string; lon: string } => {
   let lat = h.latitude;
   let lon = h.longitude;
 

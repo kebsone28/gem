@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { formatBboxForAPI, type BoundingBox } from '../utils/viewportLoading';
 import apiClient from '../api/client';
@@ -45,7 +45,7 @@ function getOverlapRatio(a: BoundingBox, b: BoundingBox): number {
   return intersection / minArea;
 }
 
-function isHouseholdEqual(a: Record<string, unknown>, b: Record<string, unknown>) {
+function isHouseholdEqual(a: any, b: any) {
   return (
     a.id === b.id &&
     a.status === b.status &&

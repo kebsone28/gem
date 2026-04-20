@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
 /**
  * Memory Optimizer
  * Helps reduce memory usage by clearing unused data and optimizing storage
@@ -77,7 +77,7 @@ export async function optimizeMemory(activeProjectId?: string) {
         .limit(toDelete)
         .toArray();
 
-      for (const h of oldest) {
+      for (const h of oldest as any[]) {
         await (
           db as unknown as { households: { delete: (id: string) => Promise<void> } }
         ).households.delete(h.id);

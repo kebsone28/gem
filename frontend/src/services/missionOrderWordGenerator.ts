@@ -164,7 +164,7 @@ export const generateMissionOrderWord = async (data: MissionOrderData) => {
     logger.error('QR Code generation failed for Word', err);
   }
 
-  const sections: { children: (Paragraph | Table | PageBreak)[] }[] = [];
+  const sections: any[] = [];
 
   // 1. Front Page
   sections.push({
@@ -177,10 +177,7 @@ export const generateMissionOrderWord = async (data: MissionOrderData) => {
       alignment: AlignmentType.RIGHT,
       children: [
         qrData
-          ? new ImageRun({ data: qrData, transformation: { width: 70, height: 70 } } as Record<
-              string,
-              unknown
-            >)
+          ? new ImageRun({ data: qrData, transformation: { width: 70, height: 70 } } as any)
           : new TextRun(''),
       ],
     }),
@@ -559,7 +556,393 @@ export const generateMissionOrderWord = async (data: MissionOrderData) => {
   return await Packer.toBlob(doc);
 };
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export const generateMissionReportWord = async (_data: unknown): Promise<null> => {
-  return null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const generateMissionReportWord = async (data: any): Promise<Blob | null> => {
+  try {
+    const sections: any[] = [];
+
+    // Page de garde
+    sections.push({
+      properties: {},
+      children: [
+        new Paragraph({ text: '', spacing: { before: 2000 } }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [
+            new TextRun({
+              text: 'RÉPUBLIQUE DU SÉNÉGAL',
+              bold: true,
+              size: 24,
+              color: COLORS.SECONDARY,
+            }),
+          ],
+        }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [
+            new TextRun({
+              text: 'Un Peuple - Un But - Une Foi',
+              italics: true,
+              size: 18,
+              color: COLORS.SLATE,
+            }),
+          ],
+        }),
+        new Paragraph({ text: '', spacing: { before: 1000 } }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [
+            new TextRun({
+              text: 'PROQUELEC',
+              bold: true,
+              size: 32,
+              color: COLORS.PRIMARY,
+            }),
+          ],
+        }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [
+            new TextRun({
+              text: "Plateforme d'Électrification de Masse",
+              size: 18,
+              color: COLORS.SLATE,
+            }),
+          ],
+        }),
+        new Paragraph({ text: '', spacing: { before: 2000 } }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [
+            new TextRun({
+              text: 'RAPPORT POST-MISSION',
+              bold: true,
+              size: 28,
+              color: COLORS.DANGER,
+            }),
+          ],
+        }),
+        new Paragraph({ text: '', spacing: { before: 500 } }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [
+            new TextRun({
+              text: data.orderNumber || 'N/A',
+              bold: true,
+              size: 24,
+              color: COLORS.PRIMARY,
+            }),
+          ],
+        }),
+        new Paragraph({ text: '', spacing: { before: 1000 } }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [
+            new TextRun({
+              text: data.region || 'Région non définie',
+              size: 20,
+            }),
+          ],
+        }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [
+            new TextRun({
+              text: `Du ${data.startDate || '?'} au ${data.endDate || '?'}`,
+              size: 18,
+              color: COLORS.SLATE,
+            }),
+          ],
+        }),
+      ],
+    });
+
+    // Section Observations
+    sections.push({
+      properties: {},
+      children: [
+        createSectionHeader('I. OBSERVATIONS GÉNÉRALES', COLORS.PRIMARY),
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: data.reportObservations || 'Aucune observation enregistrée.',
+              size: 20,
+            }),
+          ],
+          spacing: { before: 200, after: 200 },
+        }),
+      ],
+    });
+
+    // Section Rapports journaliers avec photos et détails terrain
+    if (data.reportDays && data.reportDays.length > 0) {
+      const reportDaysChildren: any[] = [
+        createSectionHeader('II. RAPPORTS JOURNALIERS', COLORS.SUCCESS),
+      ];
+
+      for (let idx = 0; idx < data.reportDays.length; idx++) {
+        const day = data.reportDays[idx];
+
+        // Titre du jour avec statut
+        reportDaysChildren.push(
+          new Paragraph({
+            children: [
+              new TextRun({
+                text: `JOUR ${idx + 1} : ${day.title || 'Étape ' + (idx + 1)}`,
+                bold: true,
+                size: 24,
+                color: COLORS.SUCCESS,
+              }),
+            ],
+            spacing: { before: 400, after: 150 },
+          })
+        );
+
+        // Détail de l'étape (provenant du planning)
+        if (day.detail) {
+          reportDaysChildren.push(
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: 'Activité prévue : ',
+                  bold: true,
+                  size: 18,
+                }),
+                new TextRun({
+                  text: day.detail,
+                  size: 18,
+                }),
+              ],
+              spacing: { after: 150 },
+            })
+          );
+        }
+
+        // Statut de complétion
+        reportDaysChildren.push(
+          new Paragraph({
+            children: [
+              new TextRun({
+                text: 'Statut : ',
+                bold: true,
+                size: 18,
+              }),
+              new TextRun({
+                text: day.isCompleted ? 'TERMINÉ ✓' : 'En cours',
+                color: day.isCompleted ? COLORS.SUCCESS : COLORS.ACCENT,
+                size: 18,
+              }),
+            ],
+            spacing: { after: 150 },
+          })
+        );
+
+        // Observations terrain
+        if (day.observation) {
+          reportDaysChildren.push(
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: 'Observations terrain : ',
+                  bold: true,
+                  size: 18,
+                }),
+                new TextRun({
+                  text: day.observation,
+                  size: 18,
+                }),
+              ],
+              spacing: { after: 150 },
+            })
+          );
+        }
+
+        // Notes complémentaires
+        if (day.notes) {
+          reportDaysChildren.push(
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: 'Notes complémentaires : ',
+                  bold: true,
+                  size: 18,
+                }),
+                new TextRun({
+                  text: day.notes,
+                  size: 18,
+                }),
+              ],
+              spacing: { after: 150 },
+            })
+          );
+        }
+
+        // Photos avec commentaires
+        if (day.photos && day.photos.length > 0) {
+          reportDaysChildren.push(
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: `Documentation visuelle (${day.photos.length} photo(s)) :`,
+                  bold: true,
+                  size: 18,
+                  color: COLORS.PRIMARY,
+                }),
+              ],
+              spacing: { before: 200, after: 100 },
+            })
+          );
+
+          // Pour chaque photo, ajouter le commentaire
+          day.photos.forEach((photo: any, pIdx: number) => {
+            if (photo.comment) {
+              reportDaysChildren.push(
+                new Paragraph({
+                  children: [
+                    new TextRun({
+                      text: `Photo ${pIdx + 1} : `,
+                      bold: true,
+                      size: 16,
+                    }),
+                    new TextRun({
+                      text: photo.comment,
+                      size: 16,
+                      italics: true,
+                    }),
+                  ],
+                  spacing: { after: 50 },
+                })
+              );
+            }
+          });
+        }
+
+        // Séparateur entre les jours
+        reportDaysChildren.push(
+          new Paragraph({
+            text: '',
+            spacing: { before: 200, after: 200 },
+          })
+        );
+      }
+
+      sections.push({
+        properties: {},
+        children: reportDaysChildren,
+      });
+    }
+
+    // Section Équipe
+    if (data.members && data.members.length > 0) {
+      const teamChildren: any[] = [
+        createSectionHeader('III. ÉQUIPE DE MISSION', COLORS.ACCENT),
+        new Table({
+          width: { size: 100, type: WidthType.PERCENTAGE },
+          rows: [
+            new TableRow({
+              children: [
+                new TableCell({
+                  shading: { fill: COLORS.ACCENT },
+                  children: [
+                    new Paragraph({
+                      children: [new TextRun({ text: 'Nom', color: COLORS.WHITE, bold: true })],
+                      alignment: AlignmentType.CENTER,
+                    }),
+                  ],
+                }),
+                new TableCell({
+                  shading: { fill: COLORS.ACCENT },
+                  children: [
+                    new Paragraph({
+                      children: [new TextRun({ text: 'Rôle', color: COLORS.WHITE, bold: true })],
+                      alignment: AlignmentType.CENTER,
+                    }),
+                  ],
+                }),
+                new TableCell({
+                  shading: { fill: COLORS.ACCENT },
+                  children: [
+                    new Paragraph({
+                      children: [new TextRun({ text: 'Jours', color: COLORS.WHITE, bold: true })],
+                      alignment: AlignmentType.CENTER,
+                    }),
+                  ],
+                }),
+              ],
+            }),
+            ...data.members.map(
+              (m: any) =>
+                new TableRow({
+                  children: [
+                    new TableCell({
+                      children: [new Paragraph({ text: m.name || 'N/A' })],
+                    }),
+                    new TableCell({
+                      children: [new Paragraph({ text: m.role || 'N/A' })],
+                    }),
+                    new TableCell({
+                      children: [
+                        new Paragraph({
+                          text: (m.days || 0).toString(),
+                          alignment: AlignmentType.CENTER,
+                        }),
+                      ],
+                    }),
+                  ],
+                })
+            ),
+          ],
+        }),
+      ];
+
+      sections.push({
+        properties: {},
+        children: teamChildren,
+      });
+    }
+
+    // Section Signature
+    sections.push({
+      properties: {},
+      children: [
+        createSectionHeader('IV. VALIDATION', COLORS.SLATE),
+        new Paragraph({ text: '', spacing: { before: 500 } }),
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: 'Rapport généré le ',
+              size: 18,
+            }),
+            new TextRun({
+              text: new Date().toLocaleDateString('fr-FR'),
+              bold: true,
+              size: 18,
+            }),
+          ],
+        }),
+        new Paragraph({ text: '', spacing: { before: 1000 } }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [
+            new TextRun({
+              text: 'Signature du Responsable de Mission',
+              italics: true,
+              size: 20,
+            }),
+          ],
+        }),
+      ],
+    });
+
+    const doc = new Document({
+      creator: 'GEM-SAAS PROQUELEC',
+      title: `Rapport Post-Mission ${data.orderNumber}`,
+      sections: sections,
+    });
+
+    return await Packer.toBlob(doc);
+  } catch (error) {
+    logger.error('Erreur génération rapport Word:', error);
+    return null;
+  }
 };

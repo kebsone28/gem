@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
 import * as XLSX from 'xlsx';
 import { db } from '../store/db';
 import type { MissionOrderData, MissionMember } from '../pages/mission/core/missionTypes';
@@ -21,7 +21,7 @@ export const missionStatsService = {
    * Calcule les stats globales (Admin/DG/Comptable)
    */
   async getGlobalStats(): Promise<MissionStats> {
-    const missions = await db.missions.toArray();
+    const missions = await db.missions.toArray() as any[];
     return this.processMissions(missions);
   },
 
@@ -30,8 +30,8 @@ export const missionStatsService = {
    */
   async getUserStats(userEmail: string, userId: string): Promise<MissionStats> {
     const missions = await db.missions
-      .filter((m) => m.createdBy === userEmail || m.creatorId === userId)
-      .toArray();
+      .filter((m) => (m as any).createdBy === userEmail || (m as any).creatorId === userId)
+      .toArray() as any[];
     return this.processMissions(missions);
   },
 
@@ -39,7 +39,7 @@ export const missionStatsService = {
    * Moteur de calcul partagé
    */
   processMissions(
-    missions: { data?: unknown; formData?: unknown; isCertified?: boolean }[]
+    missions: any[]
   ): MissionStats {
     let totalIndemnities = 0;
     let certifiedCount = 0;
@@ -81,7 +81,7 @@ export const missionStatsService = {
    * EXPORT COMPTABLE : Génère un fichier Excel des missions certifiées
    */
   async exportCertifiedMissionsToExcel(): Promise<void> {
-    const allMissions = await db.missions.toArray();
+    const allMissions = await db.missions.toArray() as any[];
 
     // On ne garde que les missions certifiées
     const certifiedMissions = allMissions.filter((m) => {

@@ -42,7 +42,7 @@ export const getPendingApprovals = async (
     return response.data; // Renvoie { missions: [], stats: { totalBudgetCertified } }
   } catch (err) {
     logger.error('Failed to fetch approvals:', err);
-    return [];
+    return { missions: [], stats: { totalBudgetCertified: 0 } };
   }
 };
 

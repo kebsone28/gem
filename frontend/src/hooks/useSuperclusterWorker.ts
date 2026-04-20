@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
 import { useEffect, useRef, useState, useCallback } from 'react';
 import type { Feature, Point } from 'geojson';
 import logger from '../utils/logger';
@@ -10,7 +10,7 @@ import logger from '../utils/logger';
 export const useSuperclusterWorker = () => {
   const workerRef = useRef<Worker | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
-  const callbacksRef = useRef<Record<string, (data: Record<string, unknown>) => void>>({});
+  const callbacksRef = useRef<Record<string, (data: any) => void>>({});
 
   useEffect(() => {
     // Initialisation du worker (Vite syntax)

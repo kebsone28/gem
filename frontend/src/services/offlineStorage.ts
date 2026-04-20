@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
 import Dexie from 'dexie';
 import type { Table } from 'dexie';
 
@@ -33,7 +33,7 @@ export const offlineDB = new GemOfflineDB();
  */
 export const cacheHouseholdsForOffline = async (householdsArray: Record<string, unknown>[]) => {
   try {
-    const records: LocalHousehold[] = householdsArray.map((h) => ({
+    const records: LocalHousehold[] = householdsArray.map((h: any) => ({
       id: String(h.id || h.household_id),
       grappeId: h.grappeId,
       zoneId: h.zoneId,

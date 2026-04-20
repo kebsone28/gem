@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
 import simplify from '@turf/simplify';
 import convex from '@turf/convex';
 import buffer from '@turf/buffer';
@@ -129,13 +129,13 @@ export async function hybridCluster(
         break; // On prend la première région valide trouvée (les ménages d'un même cluster sont proches et généralement de la même région)
       }
     }
-    (c as unknown as Record<string, unknown>)._region = region;
+    (c as any)._region = region;
   });
 
   // Trier les clusters par ordre alphabétique de la région
   result.sort((a, b) => {
-    const rA = (a as unknown as Record<string, unknown>)._region || 'ZZZ';
-    const rB = (b as unknown as Record<string, unknown>)._region || 'ZZZ';
+    const rA = (a as any)._region || 'ZZZ';
+    const rB = (b as any)._region || 'ZZZ';
     return rA.localeCompare(rB);
   });
 
@@ -172,7 +172,7 @@ export const getClusterName = (c: ClusterResult) => {
   return `Grappe ${c.id.replace('G-', '')}`;
 };
 
-export function clustersToGeoJSON(clusters: ClusterResult[]): Record<string, unknown> {
+export function clustersToGeoJSON(clusters: ClusterResult[]): any {
   const collection = featureCollection([]);
 
   clusters.forEach((c, i) => {
@@ -187,7 +187,7 @@ export function clustersToGeoJSON(clusters: ClusterResult[]): Record<string, unk
       // 2. Sécurité : Fallback si convex retourne null (ex: points alignés ou < 3 points)
       if (!poly) {
         // Créer un petit buffer autour des points pour simuler une zone
-        poly = buffer(points, 0.015, { units: 'kilometers' }) as Record<string, unknown>;
+        poly = buffer(points, 0.015, { units: 'kilometers' }) as any;
       }
 
       if (!poly) return;
@@ -202,16 +202,16 @@ export function clustersToGeoJSON(clusters: ClusterResult[]): Record<string, unk
       let needsInflation = false;
       for (const h of c.households) {
         if (
-          !booleanPointInPolygon(turfPoint([h.lon, h.lat]), buffered as Record<string, unknown>)
+          !booleanPointInPolygon(turfPoint([h.lon, h.lat]), buffered as any)
         ) {
           needsInflation = true;
           break;
         }
       }
       if (needsInflation && buffered) {
-        buffered = buffer(buffered as Record<string, unknown>, 0.01, {
+        buffered = buffer(buffered as any, 0.01, {
           units: 'kilometers',
-        }) as Record<string, unknown>;
+        }) as any;
       }
 
       if (!buffered) return;
@@ -228,23 +228,23 @@ export function clustersToGeoJSON(clusters: ClusterResult[]): Record<string, unk
       };
 
       // 6. Simplification pour fluidité (Tolerance 10m env.)
-      const optimized = simplify(buffered as Record<string, unknown>, {
+      const optimized = simplify(buffered as any, {
         tolerance: 0.0001,
         highQuality: false,
       });
-      (optimized as Record<string, unknown>).id = intId;
+      (optimized as any).id = intId;
 
-      collection.features.push(optimized as Record<string, unknown>);
+      collection.features.push(optimized as any);
     } catch (e) {
       logger.error('❌ [GEO ERROR] Polygone non généré:', e);
     }
   });
 
-  return collection;
+  return collection as any;
 }
 
 // GeoJSON "Centroids" pour les labels HTML / MapLibre (symbol layer)
-export function centroidsToGeoJSON(clusters: ClusterResult[]): Record<string, unknown> {
+export function centroidsToGeoJSON(clusters: ClusterResult[]): any {
   return {
     type: 'FeatureCollection',
     features: clusters.map((c, i) => {

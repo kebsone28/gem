@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
 import React, { useState, useEffect } from 'react';
 import {
   AlertTriangle,
@@ -83,7 +83,7 @@ export default function AlertsPage() {
   const handleSaveConfig = async () => {
     try {
       setSaving(true);
-      await alertsAPI.updateAlertConfig(config);
+      await alertsAPI.updateAlertConfig(config as any);
       toast.success('Configuration mise à jour avec succès');
       // On garde le panneau ouvert ou on le ferme selon préférence, ici on le laisse
     } catch (err) {

@@ -87,7 +87,7 @@ export class MapManager {
       // Prevent updates if interrupted
       if ((this.map as unknown as { _removed?: boolean })._removed) return resolve();
 
-      let styleObj: object = isDarkMode ? MAP_STYLE_DARK : MAP_STYLE_LIGHT_VECTOR;
+      let styleObj: any = isDarkMode ? MAP_STYLE_DARK : MAP_STYLE_LIGHT_VECTOR;
       if (targetSource === 'satellite')
         styleObj = { ...MAP_STYLE_SATELLITE, metadata: { source: 'satellite' } };
       if (targetSource === 'light') styleObj = MAP_STYLE_LIGHT_VECTOR;

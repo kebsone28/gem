@@ -25,12 +25,12 @@ const resolveName = (h: {
   if (h.name && h.name.trim()) return h.name.trim();
   if (h.owner) {
     if (typeof h.owner === 'string' && h.owner.trim()) return h.owner.trim();
-    if (h.owner.nom && h.owner.nom.trim()) return h.owner.nom.trim();
-    if (h.owner.name && h.owner.name.trim()) return h.owner.name.trim();
+    if ((h.owner as any).nom && (h.owner as any).nom.trim()) return (h.owner as any).nom.trim();
+    if ((h.owner as any).name && (h.owner as any).name.trim()) return (h.owner as any).name.trim();
   }
   const kobo = h.koboData || h.koboSync || {};
-  if (kobo.nom_complet) return kobo.nom_complet;
-  if (kobo.nom) return kobo.nom;
+  if ((kobo as any).nom_complet) return (kobo as any).nom_complet;
+  if ((kobo as any).nom) return (kobo as any).nom;
   return 'Inconnu';
 };
 
@@ -184,7 +184,7 @@ function drawFooter(doc: jsPDF) {
 // RAPPORT 1 — Avancement Journalier (tous les rôles)
 // ─────────────────────────────────────────────────────────────────
 export function generateRapportAvancement(data: {
-  households: { status?: string; koboSync?: unknown; region?: string }[];
+  households: any[];
   zones?: { name: string }[];
   projectName?: string;
   userName?: string;
@@ -336,13 +336,13 @@ export function generateRapportAvancement(data: {
 // RAPPORT 2 — Analyse Économique (Admin + DG only)
 // ─────────────────────────────────────────────────────────────────
 export function generateRapportFinancier(data: {
-  devisReport: { item: string; planned: number; real: number }[];
+  devisReport: any[];
   totalPlanned: number;
   totalReal: number;
   globalMargin: number;
   marginPct: number;
   ceiling: number;
-  stats: { totalHouseholds: number; completed: number };
+  stats: any;
   projectName?: string;
 }) {
   const {
@@ -454,7 +454,7 @@ export function generateRapportFinancier(data: {
 // RAPPORT 3 — Validation Kobo / Liste de contrôle (Admin)
 // ─────────────────────────────────────────────────────────────────
 export function generateRapportKobo(data: {
-  households: { name?: string; status: string; koboData?: Record<string, unknown> }[];
+  households: any[];
 }) {
   const { households } = data;
 

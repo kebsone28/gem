@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import logger from '../utils/logger';
@@ -100,7 +100,7 @@ export const exportFinancialPDF = async (
     addHeader(
       pdf,
       'Bilan Financier Prévisionnel',
-      `Projet : ${projectName || 'N/A'} — Plafond devis : ${fmtFCFA(devis.ceiling)}`
+      `Projet : ${projectName || 'N/A'} — Plafond devis : ${fmtFCFA(devis.ceiling as any)}`
     );
 
     // ── KPI summary ──────────────────────────────────────────────────────
@@ -108,11 +108,11 @@ export const exportFinancialPDF = async (
     const kpiData = [
       ['Total Estimé', "Main d'Œuvre", 'Logistique', 'Marge Globale', 'Performance'],
       [
-        fmtFCFA(stats.total),
-        fmtFCFA(stats.teams + stats.supervision),
-        fmtFCFA(stats.logistics),
-        fmtFCFA(devis.globalMargin),
-        `${devis.marginPct.toFixed(1)} %`,
+        fmtFCFA(stats.total as any),
+        fmtFCFA((stats.teams as any) + (stats.supervision as any)),
+        fmtFCFA(stats.logistics as any),
+        fmtFCFA(devis.globalMargin as any),
+        `${(devis.marginPct as any).toFixed(1)} %`,
       ],
     ];
 
@@ -129,7 +129,7 @@ export const exportFinancialPDF = async (
       },
       bodyStyles: { fontSize: 10, fontStyle: 'bold', halign: 'center', textColor: [30, 41, 59] },
       columnStyles: {
-        3: { textColor: devis.globalMargin >= 0 ? [16, 185, 129] : [239, 68, 68] },
+        3: { textColor: (devis as any).globalMargin >= 0 ? [16, 185, 129] : [239, 68, 68] },
         4: { textColor: [79, 70, 229] },
       },
       margin: { left: 10, right: 10 },
@@ -160,16 +160,16 @@ export const exportFinancialPDF = async (
           'Ecart / Marge',
         ],
       ],
-      body: devisReport.map((item: Record<string, unknown>) => [
+      body: devisReport.map((item: any) => [
         item.label,
         item.region,
-        fmtNum(item.qty),
-        fmtFCFA(item.unit),
-        fmtFCFA(item.planned),
-        fmtNum(item.rq),
-        fmtFCFA(item.ru),
-        fmtFCFA(item.realTotal),
-        fmtFCFA(item.margin),
+        fmtNum(item.qty as any),
+        fmtFCFA(item.unit as any),
+        fmtFCFA(item.planned as any),
+        fmtNum(item.rq as any),
+        fmtFCFA(item.ru as any),
+        fmtFCFA(item.realTotal as any),
+        fmtFCFA(item.margin as any),
       ]),
       foot: [
         [
@@ -177,11 +177,11 @@ export const exportFinancialPDF = async (
           '',
           '',
           '',
-          fmtFCFA(devis.totalPlanned),
+          fmtFCFA(devis.totalPlanned as any),
           '',
           '',
-          fmtFCFA(devis.totalReal),
-          fmtFCFA(devis.globalMargin),
+          fmtFCFA(devis.totalReal as any),
+          fmtFCFA(devis.globalMargin as any),
         ],
       ],
       headStyles: { fillColor: [79, 70, 229], textColor: 255, fontSize: 7, fontStyle: 'bold' },
@@ -191,12 +191,13 @@ export const exportFinancialPDF = async (
         0: { cellWidth: 55 },
         8: {
           fontStyle: 'bold',
-          textColor: devis.globalMargin >= 0 ? [16, 185, 129] : [239, 68, 68],
+          textColor: (devis as any).globalMargin >= 0 ? [16, 185, 129] : [239, 68, 68],
         },
       },
-      didParseCell: (data: Record<string, unknown>) => {
+      didParseCell: (data: any) => {
         if (data.section === 'body' && data.column.index === 8) {
-          const margin = parseFloat(data.row.raw[8]?.replace(/[^\d-]/g, '') || '0');
+          const marginStr = data.row.raw[8];
+          const margin = parseFloat(String(marginStr || '0').replace(/[^\d-]/g, ''));
           data.cell.styles.textColor = margin >= 0 ? [16, 185, 129] : [239, 68, 68];
         }
       },
