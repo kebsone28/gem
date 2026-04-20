@@ -26,7 +26,7 @@ export const projectService = {
     await apiClient.delete(`/projects/${id}`);
   },
 
-  getProjectBordereau: async (id: string): Promise<any> => {
+  getProjectBordereau: async (id: string): Promise<{ households: unknown[]; summary: unknown }> => {
     const res = await apiClient.get(`/projects/${id}/bordereau`);
     return res.data;
   },
@@ -41,15 +41,15 @@ export const projectService = {
     return res.data;
   },
 
-  deployServerUpdate: async (): Promise<any> => {
+  deployServerUpdate: async (): Promise<{ success: boolean; message?: string }> => {
     const res = await apiClient.post('/projects/system/deploy');
     return res.data;
   },
 
-  dbMaintenance: async (): Promise<any> => {
+  dbMaintenance: async (): Promise<{ success: boolean; message?: string }> => {
     const res = await apiClient.post('/projects/system/db-maintenance');
     return res.data;
-  }
+  },
 };
 
 export default projectService;

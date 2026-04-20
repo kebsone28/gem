@@ -1,13 +1,5 @@
 // src/utils/word_engine/utils/styles.ts
-import {
-  BorderStyle,
-  Paragraph,
-  TextRun,
-  TableCell,
-  AlignmentType,
-  ShadingType,
-  HeadingLevel,
-} from 'docx';
+import { Paragraph, TextRun, TableCell, AlignmentType, HeadingLevel, BorderStyle, ShadingType } from 'docx';
 
 export const COLORS = {
   PRIMARY: '2563eb',
@@ -28,7 +20,7 @@ export const noBorder = {
   right: { style: BorderStyle.NONE },
 };
 
-export const createText = (text: string, options: any = {}) =>
+export const createText = (text: string, options: Record<string, unknown> = {}) =>
   new TextRun({
     text,
     font: 'Segoe UI',

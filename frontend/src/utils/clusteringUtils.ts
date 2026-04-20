@@ -9,7 +9,7 @@ export interface ClusterProperties {
   cluster?: boolean;
   cluster_id?: number;
   point_count?: number;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface ClusteredPoint {
@@ -25,8 +25,8 @@ export interface ClusteredPoint {
  * Initialize Supercluster with map points
  */
 export function initializeSupercluster(
-  points: Feature<Point, any>[], 
-  options?: Supercluster.Options<any, any>
+  points: Feature<Point, ClusterProperties>[],
+  options?: Supercluster.Options<ClusterProperties, ClusterProperties>
 ) {
   const cluster = new Supercluster({
     radius: 70, // Visual stability
@@ -52,14 +52,14 @@ export function getClustersForZoom(
 ): ClusteredPoint[] {
   // Use Math.round for smoother transition at high scale
   const integerZoom = zoom > 14 ? 16 : Math.round(zoom);
-  return supercluster.getClusters(bbox, integerZoom) as any;
+  return supercluster.getClusters(bbox, integerZoom) as unknown as ClusteredPoint[];
 }
 
 /**
  * Expand a cluster to get child points
  */
 export function expandCluster(supercluster: Supercluster, clusterId: number): Feature<Point>[] {
-  return supercluster.getChildren(clusterId) as any;
+  return supercluster.getChildren(clusterId) as unknown as Feature<Point>[];
 }
 
 /**

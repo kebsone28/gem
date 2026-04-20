@@ -26,7 +26,7 @@ export const getApprovalHistory = async (
   try {
     const response = await api.get(`/households/${householdId}/approval-history`);
     return response.data;
-  } catch (err: any) {
+  } catch (err: unknown) {
     // 404 = workflow pas encore créé pour ce ménage → comportement normal, pas d'erreur
     if (err?.response?.status === 404) {
       return null;

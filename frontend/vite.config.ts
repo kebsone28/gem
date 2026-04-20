@@ -51,8 +51,9 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
-        maximumFileSizeToCacheInBytes: 5000000,
-        // Augmenté à 5 Mo pour supporter les gros bundles/images
+        maximumFileSizeToCacheInBytes: 20 * 1024 * 1024,
+        // Exclure les images très volumineuses du precache
+        globIgnores: ['assets/images/**/*.png', 'assets/images/**/*.jpg', 'assets/images/**/*.webp'],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/kf\.kobotoolbox\.org\/api\/v2\/.*/i,

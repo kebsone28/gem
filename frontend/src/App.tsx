@@ -34,6 +34,7 @@ const KoboTerminal = lazy(() => import('./pages/DashboardViews/KoboTerminal'));
 const KoboMappingMaster = lazy(() => import('./pages/KoboMappingMaster'));
 const OrganizationSettings = lazy(() => import('./pages/OrganizationSettings'));
 const PVAutomation = lazy(() => import('./pages/PVAutomation'));
+const Planning = lazy(() => import('./pages/Planning'));
 const Alerts = lazy(() => import('./pages/Alerts'));
 
 // Dev-only: MemoryDiagnostic loaded conditionally — zero cost in production
@@ -282,6 +283,17 @@ function App() {
               <ProtectedRoute>
                 <PermissionRoute permission={PERMISSIONS.GERER_PV}>
                   <PVAutomation />
+                </PermissionRoute>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/planning"
+            element={
+              <ProtectedRoute>
+                <PermissionRoute permission={PERMISSIONS.VOIR_CARTE}>
+                  <Planning />
                 </PermissionRoute>
               </ProtectedRoute>
             }

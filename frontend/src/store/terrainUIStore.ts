@@ -18,7 +18,6 @@ export const ALL_STATUSES = [
   'Désistement',
 ];
 
-
 export type PanelType =
   | 'none'
   | 'routing'
@@ -73,23 +72,23 @@ interface TerrainUIState {
 
   // --- NEW: Search State ---
   searchQuery: string;
-  searchResults: any[];
+  searchResults: Record<string, unknown>[];
   isSearching: boolean;
   setSearchQuery: (query: string) => void;
-  setSearchResults: (results: any[]) => void;
+  setSearchResults: (results: Record<string, unknown>[]) => void;
   setIsSearching: (isSearching: boolean) => void;
 
   // --- NEW: Routing State ---
   routingStart: [number, number] | null;
   routingDest: [number, number] | null;
   routeStats: { distance: number; duration: number } | null;
-  turnByTurnInstructions: any[];
+  turnByTurnInstructions: Record<string, unknown>[];
   isRoutingLoading: boolean;
 
   setRoutingStart: (start: [number, number] | null) => void;
   setRoutingDest: (dest: [number, number] | null) => void;
   setRouteStats: (stats: { distance: number; duration: number } | null) => void;
-  setInstructions: (instructions: any[]) => void;
+  setInstructions: (instructions: Record<string, unknown>[]) => void;
   setIsRoutingLoading: (loading: boolean) => void;
   clearRouting: () => void;
 
@@ -108,8 +107,8 @@ interface TerrainUIState {
   ) => void;
 
   // --- NEW: Layers & High-Level UI ---
-  externalLayers: any[];
-  setExternalLayers: (layers: any[]) => void;
+  externalLayers: { id: string; name: string; data: unknown }[];
+  setExternalLayers: (layers: { id: string; name: string; data: unknown }[]) => void;
   activeGrappeId: string | null;
   setActiveGrappeId: (id: string | null) => void;
 
@@ -117,9 +116,9 @@ interface TerrainUIState {
   setIsDownloadingOffline: (loading: boolean) => void;
 
   // Zones
-  drawnZones: any[];
-  setDrawnZones: (zones: any[]) => void;
-  addZone: (zone: any) => void;
+  drawnZones: { id: string; coordinates: [number, number][]; name?: string }[];
+  setDrawnZones: (zones: { id: string; coordinates: [number, number][]; name?: string }[]) => void;
+  addZone: (zone: { id: string; coordinates: [number, number][]; name?: string }) => void;
   deleteZone: (id: string) => void;
 
   // Lightbox
@@ -156,7 +155,7 @@ export const useTerrainUIStore = create<TerrainUIState>((set) => ({
   isSelecting: false,
   showDatabaseStats: false,
   showLegend: true,
-  mapStyle: (safeStorage.getItem('gem-map-theme') as any) || 'light',
+  mapStyle: (safeStorage.getItem('gem-map-theme') as string | null) || 'light',
 
   toggleHeatmap: () => set((state) => ({ showHeatmap: !state.showHeatmap })),
   toggleZones: () => set((state) => ({ showZones: !state.showZones })),

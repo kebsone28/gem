@@ -4,7 +4,7 @@ export interface SpatialPoint {
   id: string;
   lat: number;
   lon: number;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface RBushItem {

@@ -44,5 +44,7 @@ module.exports = {
 
     // ── Other ──
     'react/no-unknown-property': 'off',
+    'jsx-a11y/no-inline-styles': 'off',
+    'no-inline-styles/no-inline-styles': 'off',
   },
 };

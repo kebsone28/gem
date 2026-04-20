@@ -1,3 +1,5 @@
+/* eslint-disable react/no-unknown-property */
+/* eslint-disable react-inline-styles/no-inline-styles */
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Building2,
@@ -300,9 +302,8 @@ export default function OrganizationSettings() {
         >
           {/* Background gradient blob */}
           <div
-            className="absolute -top-20 -right-20 w-80 h-80 rounded-full opacity-10 blur-3xl bg-[var(--org-primary)]"
-            // eslint-disable-next-line react/no-unknown-property
-            style={{ '--org-primary': primaryColor } as React.CSSProperties}
+            className="absolute -top-20 -right-20 w-80 h-80 rounded-full opacity-10 blur-3xl org-blob"
+            data-primary-color={primaryColor}
           />
 
           <div className="relative p-8 flex flex-col lg:flex-row gap-8 items-start lg:items-center">
@@ -391,9 +392,8 @@ export default function OrganizationSettings() {
 
           {/* Color strip at bottom */}
           <div
-            className="h-1 w-full bg-gradient-to-r from-[var(--org-primary)] to-transparent"
-            // eslint-disable-next-line react/no-unknown-property
-            style={{ '--org-primary': primaryColor } as React.CSSProperties}
+            className="h-1 w-full bg-gradient-to-r from-[var(--org-primary)] to-transparent color-strip"
+            data-primary-color={primaryColor}
           />
         </motion.div>
 
@@ -522,9 +522,8 @@ export default function OrganizationSettings() {
                                 key={c}
                                 title={c}
                                 onClick={() => updateBranding('primaryColor', c)}
-                                // eslint-disable-next-line react/no-unknown-property
-                                style={{ '--preset-c': c } as React.CSSProperties}
-                                className={`w-7 h-7 rounded-full border-2 transition-all bg-[var(--preset-c)] ${config.branding?.primaryColor === c ? 'border-white scale-110' : 'border-transparent hover:scale-105'}`}
+                                data-color-preset={c}
+                                className={`w-7 h-7 rounded-full border-2 transition-all color-preset-btn ${config.branding?.primaryColor === c ? 'border-white scale-110' : 'border-transparent hover:scale-105'}`}
                               />
                             )
                           )}

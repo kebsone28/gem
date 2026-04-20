@@ -1,0 +1,16 @@
+/* Progress Bar Styles - Répartition Contractuelle */
+.pv-bar-conformes {
+  width: var(--width-conformes, 0%);
+}
+
+.pv-bar-nc {
+  width: var(--width-nc, 0%);
+}
+
+.pv-bar-ine {
+  width: var(--width-ine, 0%);
+}
+
+.pv-bar-critique {
+  width: var(--width-critique, 0%);
+}

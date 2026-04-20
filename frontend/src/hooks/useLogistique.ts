@@ -27,8 +27,8 @@ export function useLogistique() {
     try {
       const response = await apiClient.get(`/teams?projectId=${project.id}`);
       const mappedTeams = (response.data.teams || [])
-        .filter((t: any) => !t.status || t.status === 'active')
-        .map((t: any) => ({
+        .filter((t: Record<string, unknown>) => !t.status || t.status === 'active')
+        .map((t: Record<string, unknown>) => ({
           ...t,
           regionId: t.region?.name ? t.region.name.toLowerCase().replace(/\s+/g, '_') : t.regionId,
         }));
@@ -50,27 +50,31 @@ export function useLogistique() {
   const grappesConfig = project?.config?.grappesConfig || GRAPPES_CONFIG;
 
   // --- Warehouse Multi-Region Logic ---
-  const warehouses: any[] = useMemo(() => {
+  const warehouses: Record<string, unknown>[] = useMemo(() => {
     const configured = project?.config?.warehouses;
 
     // If warehouses are explicitly defined in config (even if empty), use them
     if (configured !== undefined) {
-      return configured.filter((w: any) => !w.deletedAt);
+      return configured.filter((w: Record<string, unknown>) => !w.deletedAt);
     }
 
     // Auto-generate one warehouse per region ONLY if no configuration exists at all
     const allGrappes = grappesConfig?.grappes || [];
     const regions = Array.from(
-      new Set(allGrappes.map((g: any) => g.region).filter(Boolean))
+      new Set(allGrappes.map((g: Record<string, unknown>) => g.region).filter(Boolean))
     ) as string[];
     return regions.map((region) => {
-      const regionGrappes = allGrappes.filter((g: any) => g.region === region);
+      const regionGrappes = allGrappes.filter((g: Record<string, unknown>) => g.region === region);
       const avgLat =
-        regionGrappes.reduce((s: number, g: any) => s + (g.centroide_lat || 0), 0) /
-        (regionGrappes.length || 1);
+        regionGrappes.reduce(
+          (s: number, g: Record<string, unknown>) => s + ((g.centroide_lat as number) || 0),
+          0
+        ) / (regionGrappes.length || 1);
       const avgLng =
-        regionGrappes.reduce((s: number, g: any) => s + (g.centroide_lon || 0), 0) /
-        (regionGrappes.length || 1);
+        regionGrappes.reduce(
+          (s: number, g: Record<string, unknown>) => s + ((g.centroide_lon as number) || 0),
+          0
+        ) / (regionGrappes.length || 1);
       return {
         id: `wh_${region.toLowerCase().replace(/\s+/g, '_')}`,
         name: `Magasin ${region}`,
@@ -92,22 +96,27 @@ export function useLogistique() {
     const kitComposition = project?.config?.kitComposition || KIT_COMPOSITION;
 
     return warehouses.map((wh) => {
-      const kitsLoadedToday = (wh.preparatorTeams || []).reduce((sum: number, team: any) => {
-        const todayLoading = (team.loadings || []).find((l: any) => l.date === today);
-        return sum + (todayLoading?.kitsLoaded || 0);
-      }, 0);
+      const kitsLoadedToday = (wh.preparatorTeams || []).reduce(
+        (sum: number, team: Record<string, unknown>) => {
+          const todayLoading = ((team.loadings as Record<string, unknown>[]) || []).find(
+            (l: Record<string, unknown>) => l.date === today
+          );
+          return sum + (todayLoading?.kitsLoaded || 0);
+        },
+        0
+      );
 
       const regionHouseholds =
         households?.filter((h) => {
           const grappe = grappesConfig?.grappes?.find(
-            (g: any) => g.id === h.grappeId || g.region === wh.region
+            (g: Record<string, unknown>) => g.id === h.grappeId || g.region === wh.region
           );
           const isConsumed = ['Conforme', 'Contrôle conforme', 'Terminé'].includes(h.status);
           return isConsumed && grappe;
         }) || [];
       const kitsConsumed = regionHouseholds.length;
 
-      const stockRealtime = kitComposition.map((item: any) => ({
+      const stockRealtime = kitComposition.map((item: Record<string, unknown>) => ({
         ...item,
         initial: item.qty * kitsLoadedToday,
         consumed: item.qty * kitsConsumed,
@@ -116,19 +125,26 @@ export function useLogistique() {
 
       const recentConforming =
         households?.filter((h) => {
-          const grappe = grappesConfig?.grappes?.find((g: any) => g.region === wh.region);
+          const grappe = grappesConfig?.grappes?.find(
+            (g: Record<string, unknown>) => g.region === wh.region
+          );
           const isConsumed = ['Conforme', 'Contrôle conforme', 'Terminé'].includes(h.status);
           return isConsumed && grappe && (h.updatedAt || h.delivery?.date || '') >= sevenDaysAgo;
         }) || [];
       const teamVelocity = recentConforming.length / 7;
 
       const alerts = stockRealtime.filter(
-        (item: any) => teamVelocity > 0 && item.remaining < item.qty * teamVelocity * 3
+        (item: Record<string, unknown>) =>
+          teamVelocity > 0 && (item.remaining as number) < (item.qty as number) * teamVelocity * 3
       );
 
       const kitsLoadedAllTime = (wh.preparatorTeams || []).reduce(
-        (sum: number, team: any) =>
-          sum + (team.loadings || []).reduce((s: number, l: any) => s + (l.kitsLoaded || 0), 0),
+        (sum: number, team: Record<string, unknown>) =>
+          sum +
+          ((team.loadings as Record<string, unknown>[]) || []).reduce(
+            (s: number, l: Record<string, unknown>) => s + ((l.kitsLoaded as number) || 0),
+            0
+          ),
         0
       );
 
@@ -164,7 +180,10 @@ export function useLogistique() {
 
   const movementHistory = useMemo(() => project?.config?.logistique?.history || [], [project]);
 
-  const logMovement = async (type: 'ENTRY' | 'EXIT' | 'TRANSFER', details: any) => {
+  const logMovement = async (
+    type: 'ENTRY' | 'EXIT' | 'TRANSFER',
+    details: Record<string, unknown>
+  ) => {
     if (!project) return;
     const newConfig = { ...project.config };
     const logistique = newConfig.logistique || { history: [] };
@@ -196,7 +215,7 @@ export function useLogistique() {
   const stockOverrides = project?.config?.stock_overrides || {};
 
   const kitComposition = project?.config?.kitComposition || KIT_COMPOSITION;
-  const stockData = kitComposition.map((item: any) => {
+  const stockData = kitComposition.map((item: Record<string, unknown>) => {
     const calculated = item.qty * kitsLoaded;
     const hasOverride = stockOverrides[item.id] !== undefined;
     const current = hasOverride ? stockOverrides[item.id] : calculated;
@@ -297,11 +316,17 @@ export function useLogistique() {
     if (!assignments) return 0;
     if (!teams || teams.length === 0) return 0;
     const trades = Array.from(
-      new Set(teams.map((t) => (t as any).type || t.tradeKey).filter(Boolean))
+      new Set(
+        teams
+          .map(
+            (t) => (t as Record<string, unknown>).type || (t as Record<string, unknown>).tradeKey
+          )
+          .filter(Boolean)
+      )
     );
     if (trades.length === 0) return 0;
     let count = 0;
-    trades.forEach((t: any) => {
+    trades.forEach((t: Record<string, unknown>) => {
       if (assignments[t]?.length > 0) count++;
     });
     return Math.round((count / trades.length) * 100);
@@ -346,7 +371,7 @@ export function useLogistique() {
   };
 
   // --- Warehouse Mutation Functions ---
-  const _saveWarehouseConfig = async (updatedWarehouses: any[]) => {
+  const _saveWarehouseConfig = async (updatedWarehouses: Record<string, unknown>[]) => {
     if (!project) return;
     const newConfig = { ...project.config, warehouses: updatedWarehouses };
     await db.projects.update(project.id, { config: newConfig });
@@ -419,7 +444,7 @@ export function useLogistique() {
     const updated = warehouses.map((wh) => {
       if (wh.id !== warehouseId) return wh;
       const teams = [...(wh.preparatorTeams || [])];
-      const sysIdx = teams.findIndex((t: any) => t.teamId === 'supply_system');
+      const sysIdx = teams.findIndex((t: Record<string, unknown>) => t.teamId === 'supply_system');
       const loading = { date: today, kitsLoaded: kitsCount, isEntry: true };
 
       if (sysIdx >= 0) {

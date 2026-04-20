@@ -57,12 +57,12 @@ export const useWebSockets = () => {
       // S'authentifier auprès du backend pour rejoindre ses Salles (Rooms)
       socket.emit('authenticate', {
         userId: user?.id,
-        role: user?.role
+        role: user?.role,
       });
     });
 
     // Handle generic real-time notifications via standard event bus
-    socket.on('notification', (data: any) => {
+    socket.on('notification', (data: Record<string, unknown>) => {
       // Ignorer les notifications destinées à UN AUTRE utilisateur spécifiquement
       if (data?.data?.user && data.data.user !== user?.id) {
         return;

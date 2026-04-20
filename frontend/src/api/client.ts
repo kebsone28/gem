@@ -72,20 +72,22 @@ apiClient.interceptors.response.use(
         if (data.accessToken) {
           logger.log('✅ [AUTH] Token refreshed successfully');
           safeStorage.setItem('access_token', data.accessToken);
-          
+
           // Force update the original request header
           originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
-          
+
           // Re-set global store if needed (CustomEvent to update AuthStore if not done automatically)
-          window.dispatchEvent(new CustomEvent('auth:token-refreshed', { detail: data.accessToken }));
-          
+          window.dispatchEvent(
+            new CustomEvent('auth:token-refreshed', { detail: data.accessToken })
+          );
+
           return apiClient(originalRequest);
         } else {
           logger.error('❌ [AUTH] Refresh response missing accessToken');
           throw new Error('No token in refresh response');
         }
-      } catch (refreshError: any) {
-        logger.error('❌ [AUTH] Refresh failed, clearing session:', refreshError.message);
+      } catch (refreshError: unknown) {
+        const error = refreshError as { message?: string };
         safeStorage.removeItem('access_token');
         safeStorage.removeItem('user');
 
@@ -115,7 +117,9 @@ apiClient.interceptors.response.use(
         await db.syncOutbox.add({
           action: `Mutation: ${originalRequest.url}`,
           endpoint: originalRequest.url || '',
-          method: originalRequest.method?.toUpperCase() as any,
+          method:
+            (originalRequest.method?.toUpperCase() as 'POST' | 'PUT' | 'DELETE' | 'PATCH') ||
+            'POST',
           payload: JSON.parse(originalRequest.data || '{}'),
           timestamp: Date.now(),
           status: 'pending',

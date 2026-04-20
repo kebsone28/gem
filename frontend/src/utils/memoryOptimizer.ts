@@ -26,26 +26,60 @@ export async function optimizeMemory(activeProjectId?: string) {
 
     // 1. Clear households from other projects if we have active project
     if (activeProjectId) {
-      const outsideProject = await (db as any).households
+      const outsideProject = await (
+        db as unknown as {
+          households: {
+            where: (key: string) => {
+              notEqual: (val: string) => { toArray: () => Promise<unknown[]> };
+            };
+          };
+        }
+      ).households
         .where('projectId')
         .notEqual(activeProjectId)
         .toArray();
 
       if (outsideProject.length > 0) {
         logger.log(`🧹 [MEMORY] Clearing ${outsideProject.length} households from other projects`);
-        await (db as any).households.where('projectId').notEqual(activeProjectId).delete();
+        await (
+          db as unknown as {
+            households: {
+              where: (key: string) => {
+                notEqual: (val: string) => { delete: () => Promise<void> };
+              };
+            };
+          }
+        ).households
+          .where('projectId')
+          .notEqual(activeProjectId)
+          .delete();
       }
     }
 
     // 2. If we still have too many households, keep only most recent
-    const totalHouseholds = await (db as any).households.count();
+    const totalHouseholds = await (
+      db as unknown as { households: { count: () => Promise<number> } }
+    ).households.count();
     if (totalHouseholds > MAX_HOUSEHOLDS_IN_MEMORY) {
       logger.warn(`⚠️ [MEMORY] Too many households (${totalHouseholds}), trimming to most recent`);
       const toDelete = totalHouseholds - MAX_HOUSEHOLDS_IN_MEMORY;
-      const oldest = await (db as any).households.orderBy('updatedAt').limit(toDelete).toArray();
+      const oldest = await (
+        db as unknown as {
+          households: {
+            orderBy: (key: string) => {
+              limit: (n: number) => { toArray: () => Promise<unknown[]> };
+            };
+          };
+        }
+      ).households
+        .orderBy('updatedAt')
+        .limit(toDelete)
+        .toArray();
 
       for (const h of oldest) {
-        await (db as any).households.delete(h.id);
+        await (
+          db as unknown as { households: { delete: (id: string) => Promise<void> } }
+        ).households.delete(h.id);
       }
     }
 

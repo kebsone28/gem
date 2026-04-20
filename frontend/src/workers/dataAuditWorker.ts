@@ -70,9 +70,22 @@ export const normalizeOwnerName = (owner?: OwnerField | string, fallbackName?: s
   return valid || '';
 };
 
-const workerSelf: any = typeof self !== 'undefined' ? self : globalThis;
+const workerSelf: {
+  onmessage: (event: { data: { households?: unknown[] } }) => void;
+  postMessage: (msg: unknown) => void;
+} =
+  typeof self !== 'undefined'
+    ? self
+    : (globalThis as unknown as {
+        onmessage: (event: { data: { households?: unknown[] } }) => void;
+        postMessage: (msg: unknown) => void;
+      });
 
-workerSelf.onmessage = (event: any) => {
+workerSelf.onmessage = (event: {
+  data: {
+    households?: { location?: { coordinates?: number[] }; status?: string; owner?: unknown }[];
+  };
+}) => {
   const { households } = event.data;
   if (!households || !Array.isArray(households)) return;
 
@@ -198,7 +211,8 @@ workerSelf.onmessage = (event: any) => {
     };
 
     self.postMessage({ type: 'AUDIT_RESULT', result });
-  } catch (error: any) {
-    self.postMessage({ type: 'ERROR', message: error.message });
+  } catch (error: unknown) {
+    const err = error as { message?: string };
+    self.postMessage({ type: 'ERROR', message: err.message ?? 'Unknown error' });
   }
 };

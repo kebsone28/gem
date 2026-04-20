@@ -24,32 +24,32 @@ export const shouldProcessEvent = (key: string, cooldown = 2000): boolean => {
 
 class SyncEventBus {
   private listeners: Map<string, Set<Function>> = new Map();
-  private socket: any = null;
+  private socket: { on: (event: string, cb: (data: unknown) => void) => void } | null = null;
 
   // Initialize WebSocket connection to listen for backend events
-  initSocket(socketInstance: any) {
+  initSocket(socketInstance: { on: (event: string, cb: (data: unknown) => void) => void }) {
     this.socket = socketInstance;
 
     // Listen for backend events
     if (this.socket) {
-      this.socket.on('import:complete', (data: any) => {
+      this.socket.on('import:complete', (data: unknown) => {
         console.log('[SYNC-BUS] Received import:complete from backend');
         this.emit('import:complete', data);
       });
 
-      this.socket.on('kobo:syncComplete', (data: any) => {
+      this.socket.on('kobo:syncComplete', (data: unknown) => {
         console.log('[SYNC-BUS] Received kobo:syncComplete from backend');
         this.emit('kobo:syncComplete', data);
       });
 
-      this.socket.on('project:reset', (data: any) => {
+      this.socket.on('project:reset', (data: unknown) => {
         console.log('[SYNC-BUS] Received project:reset from backend');
         this.emit('project:reset', data);
       });
     }
   }
 
-  subscribe(eventType: string, callback: Function) {
+  subscribe(eventType: string, callback: (data?: unknown) => void) {
     if (!this.listeners.has(eventType)) {
       this.listeners.set(eventType, new Set());
     }
@@ -61,7 +61,7 @@ class SyncEventBus {
     };
   }
 
-  emit(eventType: string, data?: any) {
+  emit(eventType: string, data?: unknown) {
     // Pas de dedup ici — shouldProcessEvent est appelée côté abonné si nécessaire
     console.log(`[SYNC-BUS] Event: ${eventType}`, data);
     this.listeners.get(eventType)?.forEach((callback) => {

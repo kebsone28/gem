@@ -1,14 +1,5 @@
 // src/utils/exportWord/sections/frontPage.ts
-import {
-  Paragraph,
-  AlignmentType,
-  BorderStyle,
-  Table,
-  TableRow,
-  TableCell,
-  WidthType,
-  ImageRun,
-} from 'docx';
+import { Paragraph, AlignmentType, BorderStyle, Table, TableRow, TableCell, WidthType } from 'docx';
 import { COLORS, createText } from '../utils/styles';
 
 export const createFrontPage = (title: string) => {

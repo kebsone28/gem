@@ -66,6 +66,7 @@ const NotificationItem = memo(({ notif, onRead, onDelete, styles }: { notif: any
                   onClick={(e) => onDelete(notif.id, e)}
                   className="p-1 text-slate-600 hover:text-rose-500 transition-colors"
                   title="Supprimer cette alerte"
+                  aria-label="Supprimer cette alerte"
                 >
                   <Trash2 size={12} />
                 </button>
@@ -229,6 +230,7 @@ export default function NotificationCenter() {
       <button 
         onClick={() => setIsOpen(!isOpen)}
         title="Ouvrir le flux des alertes système"
+        aria-label={`Ouvrir le flux des alertes système. ${unreadCount} non lues.`}
         className="relative p-2.5 rounded-2xl bg-slate-900/50 border border-white/5 hover:bg-slate-800 transition-all group active:scale-95"
       >
         <Bell size={20} className={`text-slate-400 group-hover:text-white transition-colors ${unreadCount > 0 ? 'animate-swing' : ''}`} />
@@ -274,6 +276,7 @@ export default function NotificationCenter() {
                                 onClick={handleRequestPermission}
                                 className="p-2 text-rose-500 hover:bg-rose-500/10 rounded-lg transition-all"
                                 title="Activer les notifications Windows"
+                                aria-label="Activer les notifications Windows"
                             >
                                 <Zap size={14} />
                             </button>
@@ -282,6 +285,7 @@ export default function NotificationCenter() {
                             onClick={handleMarkAllAsRead}
                             className="p-2 text-blue-400 hover:bg-blue-400/10 rounded-lg transition-all"
                             title="Tout marquer comme lu"
+                            aria-label="Tout marquer comme lu"
                         >
                             <CheckCircle2 size={16} />
                         </button>
@@ -289,12 +293,15 @@ export default function NotificationCenter() {
                             onClick={handleClearAll}
                             className="p-2 text-slate-500 hover:text-white transition-colors"
                             title="Nettoyer l'historique lu"
+                            aria-label="Nettoyer l'historique lu"
                         >
                             <Trash2 size={16} />
                         </button>
                         <button 
                             onClick={() => setIsOpen(false)}
                             className="p-2 text-slate-500 hover:text-white transition-colors"
+                            title="Fermer le panneau"
+                            aria-label="Fermer le panneau"
                         >
                             <X size={18} />
                         </button>
@@ -348,6 +355,7 @@ export default function NotificationCenter() {
                 <div className="shrink-0 p-4 bg-black/20 border-t border-white/5">
                   <button 
                     title="Accéder à l'archive complète de vos notifications depuis le début de la mission"
+                    aria-label="Voir tout l'historique des notifications"
                     onClick={() => {
                         setIsOpen(false);
                         navigate('/admin/alerts');

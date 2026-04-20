@@ -1,0 +1,78 @@
+/* CSS for Dynamic Inline Styles - Using CSS Custom Properties */
+/* Components pass dynamic values via style={{ '--variable-name': value }} */
+/* These rules apply the CSS variables to the proper CSS properties */
+
+/* Usage bar width - DevisVsReel component */
+.devis-usage-bar {
+  width: var(--usage-pct, 0%);
+}
+
+/* Mission status bar width - MissionStatusWidget component */
+.mission-status-bar {
+  width: var(--status-width, 0%);
+}
+
+/* Household progress bar height - HouseholdDetailsPanel component */
+.household-progress-bar {
+  height: var(--progress-percent, 0%);
+}
+
+/* Map item background color - MapComponent */
+.map-item-indicator {
+  background-color: var(--item-bg-color, #64748b);
+}
+
+/* Workflow progress bar width - MissionWorkflowPanel component */
+.workflow-progress-bar {
+  width: var(--workflow-progress, 0%);
+}
+
+/* PV automation progress bars - PVAutomation component */
+.pv-bar-conformes {
+  width: var(--width-conformes, 0%);
+}
+
+.pv-bar-nc {
+  width: var(--width-nc, 0%);
+}
+
+.pv-bar-ine {
+  width: var(--width-ine, 0%);
+}
+
+.pv-bar-critique {
+  width: var(--width-critique, 0%);
+}
+
+/* Dashboard components using CSS custom properties */
+[style*="--progress"] {
+  width: var(--progress, 0%);
+}
+
+/* OrganizationSettings component - dynamic branding colors using data attributes */
+
+/* Background gradient blob - uses CSS variable set via style prop */
+.org-blob {
+  background-color: var(--org-primary, #0066ff);
+}
+
+/* Color strip at bottom */
+.color-strip {
+  --org-primary: #0066ff;
+}
+.color-strip[data-primary-color] {
+  --org-primary: attr(data-primary-color color, #0066ff);
+}
+
+/* Color preset buttons */
+.color-preset-btn {
+  background-color: var(--preset-c, #1e90ff);
+}
+.color-preset-btn[data-color-preset] {
+  background-color: attr(data-color-preset color, #1e90ff);
+}
+
+/* Generic fallback for CSS custom properties on any element */
+[style*="--"] {
+  /* CSS variables are automatically available in these elements */
+}

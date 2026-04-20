@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import prisma from '../../core/utils/prisma.js';
 import { generateTokens, verifyRefreshToken } from '../../core/utils/jwt.js';
 import { tracerAction } from '../../services/audit.service.js';
+import logger from '../../utils/logger.js';
 
 // @desc    Register a new organization and its first admin user
 // @route   POST /api/auth/register-org

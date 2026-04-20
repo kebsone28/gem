@@ -7,7 +7,7 @@ import React from 'react';
 interface ComponentUsage {
   component: string;
   timestamp: number;
-  props?: Record<string, any>;
+  props?: Record<string, unknown>;
   page?: string;
 }
 
@@ -28,7 +28,7 @@ class DesignSystemAnalytics {
     return DesignSystemAnalytics.instance;
   }
 
-  trackUsage(component: string, props?: Record<string, any>, page?: string) {
+  trackUsage(component: string, props?: Record<string, unknown>, page?: string) {
     if (!this.isEnabled || typeof window === 'undefined') return;
 
     const usage: ComponentUsage = {

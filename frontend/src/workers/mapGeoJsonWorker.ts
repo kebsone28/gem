@@ -64,20 +64,29 @@ const STATUS_RENDER_CONFIG: Record<string, { color: string; icon: string }> = {
   'Livraison effectuée': { color: '#059669', icon: 'delivery' },
   'Non éligible': { color: '#64748B', icon: 'dot' },
   'Non encore installée': { color: '#6366F1', icon: 'dot' },
-  'Désistement': { color: '#64748B', icon: 'warning' },
-  'Refusé': { color: '#F43F5E', icon: 'warning' },
-  'Eligible': { color: '#3B82F6', icon: 'dot' },
+  Désistement: { color: '#64748B', icon: 'warning' },
+  Refusé: { color: '#F43F5E', icon: 'warning' },
+  Eligible: { color: '#3B82F6', icon: 'dot' },
   'En attente': { color: '#64748B', icon: 'dot' },
-  'default': { color: '#6366F1', icon: 'dot' },
+  default: { color: '#6366F1', icon: 'dot' },
 };
 
 // ── Helpers ──
 
 // Canonical status keys — must match STATUS_CONFIG in mapConfig.ts exactly
 const CANONICAL_STATUSES = new Set([
-  'Contrôle conforme', 'Non conforme', 'Intérieur terminé', 'Réseau terminé',
-  'Murs terminés', 'Livraison effectuée', 'Non éligible', 'Non encore installée',
-  'Désistement', 'Refusé', 'Eligible', 'En attente',
+  'Contrôle conforme',
+  'Non conforme',
+  'Intérieur terminé',
+  'Réseau terminé',
+  'Murs terminés',
+  'Livraison effectuée',
+  'Non éligible',
+  'Non encore installée',
+  'Désistement',
+  'Refusé',
+  'Eligible',
+  'En attente',
 ]);
 
 function normalizeText(text: string): string {
@@ -95,12 +104,14 @@ function normalizeStatus(status?: string): string {
 
   const s = normalizeText(status);
 
-  if (s.includes('non eligible') || s.includes('ineligi') || s.includes('ineligible')) return 'Non éligible';
+  if (s.includes('non eligible') || s.includes('ineligi') || s.includes('ineligible'))
+    return 'Non éligible';
   if (s.includes('desist')) return 'Désistement';
   if (s.includes('refus')) return 'Refusé';
 
   if (s.includes('non conforme')) return 'Non conforme';
-  if (s.includes('conforme') || s.includes('termine') || s.includes('installe')) return 'Contrôle conforme';
+  if (s.includes('conforme') || s.includes('termine') || s.includes('installe'))
+    return 'Contrôle conforme';
 
   if (s.includes('eligible')) return 'Eligible';
 
@@ -110,11 +121,11 @@ function normalizeStatus(status?: string): string {
   if (s.includes('livraison')) return 'Livraison effectuée';
 
   if (
-    s.includes('non encore install') || 
+    s.includes('non encore install') ||
     s.includes('pas encore install') ||
     s.includes('non install') ||
-    s.includes('non debut') || 
-    s.includes('non demarr') || 
+    s.includes('non debut') ||
+    s.includes('non demarr') ||
     s.includes('non commenc') ||
     s.includes('pending') ||
     s.includes('a faire') ||
@@ -171,7 +182,12 @@ function getHouseholdDerivedStatus(h: Household): string {
   if (h.koboSync?.maconOk) return 'Murs terminés';
   if (h.koboSync?.livreurDate) return 'Livraison effectuée';
 
-  if (h.status && h.status !== 'Non encore installée' && h.status !== 'Pending' && h.status !== 'NON_DEMARRE') {
+  if (
+    h.status &&
+    h.status !== 'Non encore installée' &&
+    h.status !== 'Pending' &&
+    h.status !== 'NON_DEMARRE'
+  ) {
     const norm = normalizeStatus(h.status);
     if (norm !== 'Non encore installée') return norm;
   }
@@ -202,7 +218,7 @@ self.onmessage = (event) => {
     console.log(`📡 [Worker] Processing ${households.length} households...`);
 
     const features = households
-      .map((h: any) => {
+      .map((h: Record<string, unknown>) => {
         // ✅ SUPPORT MULTI-SOURCE COORDINATES (Nested GeoJSON OR Top-level Lat/Lon)
         // CRITICAL: use ?? instead of || to ensure 0 values are preserved
         let lng = Number(h.location?.coordinates?.[0] ?? h.longitude);
@@ -254,20 +270,26 @@ self.onmessage = (event) => {
             iconId: `icon-${derivedStatus}`,
             longitude: lng,
             latitude: lat,
-            hasPhotos: h.constructionData?.media ? Object.values(h.constructionData.media).some(m => !!m && String(m).startsWith('http')) : false,
+            hasPhotos: h.constructionData?.media
+              ? Object.values(h.constructionData.media).some(
+                  (m) => !!m && String(m).startsWith('http')
+                )
+              : false,
             name: h.owner?.name || h.name || 'N/A',
           }),
         };
       })
-      .filter((f: any) => {
-        // Validation AFTER correction: ignore points that are still invalid or exactly 0,0
-        const [lng, lat] = f.geometry.coordinates;
-        return Number.isFinite(lng) && Number.isFinite(lat) && (lng !== 0 || lat !== 0);
-      });
+      .filter(
+        (f: { geometry: { coordinates: number[] }; properties?: Record<string, unknown> }) => {
+          // Validation AFTER correction: ignore points that are still invalid or exactly 0,0
+          const [lng, lat] = f.geometry.coordinates;
+          return Number.isFinite(lng) && Number.isFinite(lat) && (lng !== 0 || lat !== 0);
+        }
+      );
 
     // ── Business Key Deduplication ── (Deduplicate by numeroordre, keep oldest)
     const seenNumeros = new Map<string, any>();
-    features.forEach((feature: any) => {
+    features.forEach((feature: { properties?: Record<string, unknown>; id?: string }) => {
       const identifier = feature.properties?.numeroordre || feature.properties?.id || feature.id;
       if (!identifier) return;
       if (!seenNumeros.has(identifier)) {
@@ -277,7 +299,9 @@ self.onmessage = (event) => {
 
     const finalFeatures = Array.from(seenNumeros.values());
 
-    console.log(`✅ [Worker] Output: ${finalFeatures.length} / ${households.length} features (Deduplicated)`);
+    console.log(
+      `✅ [Worker] Output: ${finalFeatures.length} / ${households.length} features (Deduplicated)`
+    );
 
     self.postMessage({
       type: 'GEOJSON_RESULT',
@@ -287,6 +311,9 @@ self.onmessage = (event) => {
       },
     });
   } catch (error) {
-    self.postMessage({ type: 'ERROR', message: error instanceof Error ? error.message : 'Unknown Error' });
+    self.postMessage({
+      type: 'ERROR',
+      message: error instanceof Error ? error.message : 'Unknown Error',
+    });
   }
 };

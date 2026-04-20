@@ -10,7 +10,8 @@ import {
     verify2FA,
     impersonateUser,
     stopImpersonation,
-    verifyPassword
+    verifyPassword,
+    getMe
 } from '../../modules/auth/auth.controller.js';
 import { authProtect } from '../../api/middlewares/auth.js';
 

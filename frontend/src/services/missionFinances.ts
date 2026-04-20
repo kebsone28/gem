@@ -26,7 +26,7 @@ interface FinancialSummary {
 }
 
 export const calculateFinancialSummary = (
-  members: any[],
+  members: { dailyIndemnity: number; days: number }[],
   expenses: ExpenseItem[] | undefined,
   fuelStats: FuelStats | undefined
 ): FinancialSummary => {

@@ -35,15 +35,26 @@ const MATERIALS = [
 
 export async function seedMaterials(projectId: string) {
   // Clear existing for this project to avoid duplicates if re-run
-  const existing = await (db as any).inventory.where('projectId').equals(projectId).toArray();
+  const existing = await (
+    db as unknown as {
+      inventory: {
+        where: (key: string) => { equals: (val: string) => { toArray: () => Promise<unknown[]> } };
+      };
+    }
+  ).inventory
+    .where('projectId')
+    .equals(projectId)
+    .toArray();
   if (existing.length > 0) return;
 
   for (const mat of MATERIALS) {
-    await (db as any).inventory.add({
-      ...mat,
-      projectId,
-      id: `mat_seed_${mat.name.toLowerCase().replace(/ /g, '_')}`,
-      isActive: true,
-    });
+    await (db as unknown as { inventory: { add: (item: unknown) => Promise<void> } }).inventory.add(
+      {
+        ...mat,
+        projectId,
+        id: `mat_seed_${mat.name.toLowerCase().replace(/ /g, '_')}`,
+        isActive: true,
+      }
+    );
   }
 }

@@ -7,7 +7,10 @@
  */
 
 // ── Monotone Chain Convex Hull (O(n log n)) ──────────────────────────
-interface Point { lat: number; lon: number; }
+interface Point {
+  lat: number;
+  lon: number;
+}
 
 function cross(o: Point, a: Point, b: Point): number {
   return (a.lon - o.lon) * (b.lat - o.lat) - (a.lat - o.lat) * (b.lon - o.lon);
@@ -17,7 +20,7 @@ function convexHull(pts: Point[]): Point[] {
   if (pts.length === 0) return [];
   if (pts.length <= 3) return [...pts, pts[0]]; // Close the ring
 
-  const sorted = [...pts].sort((a, b) => a.lon !== b.lon ? a.lon - b.lon : a.lat - b.lat);
+  const sorted = [...pts].sort((a, b) => (a.lon !== b.lon ? a.lon - b.lon : a.lat - b.lat));
 
   const lower: Point[] = [];
   for (const p of sorted) {
@@ -51,7 +54,7 @@ function bufferHull(hull: Point[]): Point[] {
   const cx = hull.reduce((s, p) => s + p.lon, 0) / hull.length;
   const cy = hull.reduce((s, p) => s + p.lat, 0) / hull.length;
 
-  return hull.map(p => {
+  return hull.map((p) => {
     const dx = p.lon - cx;
     const dy = p.lat - cy;
     const dist = Math.sqrt(dx * dx + dy * dy) || 0.0001;
@@ -65,7 +68,10 @@ function bufferHull(hull: Point[]): Point[] {
 // ── BBox helper ────────────────────────────────────────────────────────
 function computeBBox(points: Point[]) {
   if (!points || points.length === 0) return null;
-  let minLat = 90, maxLat = -90, minLon = 180, maxLon = -180;
+  let minLat = 90,
+    maxLat = -90,
+    minLon = 180,
+    maxLon = -180;
   for (const p of points) {
     if (p.lat < minLat) minLat = p.lat;
     if (p.lat > maxLat) maxLat = p.lat;
@@ -80,9 +86,18 @@ function computeBBox(points: Point[]) {
 
 // ── Palette: one color per village (cycles through) ───────────────────
 const VILLAGE_COLORS = [
-  '#6366F1', '#0EA5E9', '#10B981', '#F59E0B',
-  '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6',
-  '#F97316', '#84CC16', '#06B6D4', '#A855F7',
+  '#6366F1',
+  '#0EA5E9',
+  '#10B981',
+  '#F59E0B',
+  '#EF4444',
+  '#8B5CF6',
+  '#EC4899',
+  '#14B8A6',
+  '#F97316',
+  '#84CC16',
+  '#06B6D4',
+  '#A855F7',
 ];
 
 // ── Main Worker ────────────────────────────────────────────────────────
@@ -90,16 +105,22 @@ self.onmessage = (event) => {
   try {
     const { households } = event.data;
 
-    const valid = (households || []).filter((h: any) => {
+    const valid = (households || []).filter((h: Record<string, unknown>) => {
       const lat = Number(h.lat);
       const lng = Number(h.lon);
-      return !isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0
-        && Math.abs(lat) <= 90 && Math.abs(lng) <= 180;
+      return (
+        !isNaN(lat) &&
+        !isNaN(lng) &&
+        lat !== 0 &&
+        lng !== 0 &&
+        Math.abs(lat) <= 90 &&
+        Math.abs(lng) <= 180
+      );
     });
 
     // ── Group by village ─────────────────────────────────────────────
     const byVillage = new Map<string, { points: Point[]; ids: string[] }>();
-    const inconnuPoints: { h: any; p: Point }[] = [];
+    const inconnuPoints: { h: Record<string, unknown>; p: Point }[] = [];
 
     for (const h of valid) {
       const vName = (h.village || h.departement || '').trim();
@@ -127,7 +148,7 @@ self.onmessage = (event) => {
         if (used.has(j)) continue;
         const dist = Math.sqrt(
           Math.pow(inconnuPoints[i].p.lat - inconnuPoints[j].p.lat, 2) +
-          Math.pow(inconnuPoints[i].p.lon - inconnuPoints[j].p.lon, 2)
+            Math.pow(inconnuPoints[i].p.lon - inconnuPoints[j].p.lon, 2)
         );
         if (dist < MAX_DIST) {
           currentCluster.push(inconnuPoints[j].p);
@@ -142,9 +163,17 @@ self.onmessage = (event) => {
       byVillage.set(`Zone Proximité ${idx + 1}`, { points: pts, ids: [] });
     });
 
-    const zonesFeatures: any[] = [];
-    const centroidFeatures: any[] = [];
-    const panelData: any[] = [];
+    const zonesFeatures: {
+      type: string;
+      geometry: { type: string; coordinates: number[][][] };
+      properties: Record<string, unknown>;
+    }[] = [];
+    const centroidFeatures: {
+      type: string;
+      geometry: { type: string; coordinates: number[] };
+      properties: Record<string, unknown>;
+    }[] = [];
+    const panelData: { village: string; count: number; color: string }[] = [];
 
     let colorIdx = 0;
     for (const [village, { points, ids }] of byVillage) {
@@ -179,12 +208,16 @@ self.onmessage = (event) => {
         const minY = Math.min(p1.lat, p2.lat) - r;
         const maxY = Math.max(p1.lat, p2.lat) + r;
         ring = [
-          [minX, minY], [maxX, minY], [maxX, maxY], [minX, maxY], [minX, minY]
+          [minX, minY],
+          [maxX, minY],
+          [maxX, maxY],
+          [minX, maxY],
+          [minX, minY],
         ];
       } else {
         const hull = convexHull(points);
         const buffered = bufferHull(hull);
-        ring = buffered.map(p => [p.lon, p.lat]);
+        ring = buffered.map((p) => [p.lon, p.lat]);
       }
 
       zonesFeatures.push({
@@ -215,7 +248,7 @@ self.onmessage = (event) => {
       centroids: { type: 'FeatureCollection', features: centroidFeatures },
       panelData,
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     self.postMessage({ success: false, error: e.message });
   }
 };

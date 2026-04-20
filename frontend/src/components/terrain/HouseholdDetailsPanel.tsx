@@ -288,8 +288,8 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
               <div className="relative pt-4 pb-2">
                 <div className="absolute left-0 top-6 bottom-0 w-1 bg-white/10 rounded-full" />
                 <div
-                  className="absolute left-0 top-6 w-1 bg-gradient-to-b from-emerald-400 to-blue-500 rounded-full transition-all duration-1000"
-                  style={{ height: `${progressPercent}%` } as React.CSSProperties}
+                  className="absolute left-0 top-6 w-1 bg-gradient-to-b from-emerald-400 to-blue-500 rounded-full transition-all duration-1000 household-progress-bar"
+                  style={{ '--progress-percent': `${progressPercent}%` } as React.CSSProperties}
                 />
 
                 <div className="space-y-6">

@@ -41,8 +41,8 @@ async function pullUpdates(): Promise<void> {
      The API /api/households is now the direct source of truth for the Map.
   if (changes.households?.length > 0) {
     logger.debug('SYNC', `Applying ${changes.households.length} household changes`, {
-      ids: changes.households.slice(0, 5).map((h: any) => h.id),
-      projectIds: [...new Set(changes.households.map((h: any) => h.projectId))],
+      ids: changes.households.slice(0, 5).map((h: Record<string, unknown>) => h.id),
+      projectIds: [...new Set(changes.households.map((h: Record<string, unknown>) => h.projectId))],
     });
     const CHUNK = 100;
     for (let i = 0; i < changes.households.length; i += CHUNK) {

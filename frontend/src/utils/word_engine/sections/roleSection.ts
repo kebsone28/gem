@@ -8,15 +8,22 @@ import {
   WidthType,
   ImageRun,
   TextRun,
-  ShadingType,
-  VerticalAlign,
-  BorderStyle,
   HeadingLevel,
 } from 'docx';
 import { COLORS, createText, createSectionHeader, noBorder } from '../utils/styles';
 import { fetchImageCached } from '../utils/imageLoader';
 
-export const createRoleSection = async (data: any, qrBuffer?: ArrayBuffer | null) => {
+interface RoleSectionData {
+  role: string;
+  name: string;
+  dailyIndemnity: number;
+  transport: number;
+  days: number;
+  signatureImage?: string;
+  isCertified?: boolean;
+}
+
+export const createRoleSection = async (data: RoleSectionData, qrBuffer?: ArrayBuffer | null) => {
   const {
     role,
     introduction,

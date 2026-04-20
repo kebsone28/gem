@@ -9,30 +9,33 @@ import logger from '../../utils/logger';
  * PRO SCALE: Hook to memoize Supercluster initialization
  * Prevents expensive recalculation of clusters for identical datasets
  */
-export const useMemorizedSupercluster = (households: any[]) => {
-  const superclusterRef = useRef<Supercluster<any, any> | null>(null);
+export const useMemorizedSupercluster = (households: Record<string, unknown>[]) => {
+  const superclusterRef = useRef<Supercluster<
+    Record<string, unknown>,
+    Record<string, unknown>
+  > | null>(null);
   const dataFingerprintRef = useRef<string>('');
 
   /**
    * Smart Fingerprint: Unique identifier for the dataset state.
    * Based on length + sampling to stay ultra-fast even with 200k points.
    */
-  const getFingerprint = (data: any[]) => {
+  const getFingerprint = (data: Record<string, unknown>[]) => {
     if (!data || data.length === 0) return 'empty';
-    
+
     // Quick fingerprint: Length + sampled version sum + sampled locations
     const count = data.length;
-    
+
     // Sample few key points to detect movements (start, middle, end)
     const samples = [0, Math.floor(count / 2), count - 1]
-      .map(idx => data[idx])
+      .map((idx) => data[idx])
       .filter(Boolean)
-      .map(h => `${h.id}:${h.location?.coordinates?.[0] || 0}`)
+      .map((h) => `${h.id}:${h.location?.coordinates?.[0] || 0}`)
       .join('|');
-      
+
     // Sum versions to detect updates (incremental change)
     const versionSum = data.slice(0, 100).reduce((acc, h) => acc + (h.version || 1), 0);
-    
+
     return `${count}:${versionSum}:${samples}`;
   };
 
@@ -52,13 +55,13 @@ export const useMemorizedSupercluster = (households: any[]) => {
 
     try {
       dataFingerprintRef.current = currentFingerprint;
-      
+
       // ✅ Step 1: GeoJSON conversion
       const geoJSON = householdsToGeoJSON(households);
-      
+
       // ✅ Step 2: Supercluster Load (Optimized inside clusteringUtils)
       superclusterRef.current = initializeSupercluster(geoJSON);
-      
+
       logger.log(
         `📍 Supercluster rebuilt [${geoJSON.length} pts] (Source: ${households.length} total)`
       );

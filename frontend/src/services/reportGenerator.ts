@@ -15,7 +15,12 @@ const num = (n: number): string => {
 /**
  * Robustly resolves the name of a household (shared logic for reports)
  */
-const resolveName = (h: any): string => {
+const resolveName = (h: {
+  name?: string;
+  owner?: string | { nom?: string; name?: string };
+  koboData?: Record<string, unknown>;
+  koboSync?: Record<string, unknown>;
+}): string => {
   if (h.name && h.name.trim()) return h.name.trim();
   if (h.owner) {
     if (typeof h.owner === 'string' && h.owner.trim()) return h.owner.trim();
@@ -157,7 +162,9 @@ function drawProgressBar(
 }
 
 function drawFooter(doc: jsPDF) {
-  const pageCount = (doc as any).internal.getNumberOfPages();
+  const pageCount = (
+    doc as unknown as { internal: { getNumberOfPages: () => number } }
+  ).internal.getNumberOfPages();
   const w = doc.internal.pageSize.getWidth();
   const h = doc.internal.pageSize.getHeight();
   for (let p = 1; p <= pageCount; p++) {
@@ -176,8 +183,8 @@ function drawFooter(doc: jsPDF) {
 // RAPPORT 1 — Avancement Journalier (tous les rôles)
 // ─────────────────────────────────────────────────────────────────
 export function generateRapportAvancement(data: {
-  households: any[];
-  zones?: any[];
+  households: { status?: string; koboSync?: unknown; region?: string }[];
+  zones?: { name: string }[];
   projectName?: string;
   userName?: string;
 }) {
@@ -202,7 +209,9 @@ export function generateRapportAvancement(data: {
     const status = h.status || 'Non encore installée';
     const isDone = status === 'Terminé' || status === 'Conforme';
     const isPending =
-      status === 'Non encore installée' || status === 'En attente' || status === 'Attente démarrage';
+      status === 'Non encore installée' ||
+      status === 'En attente' ||
+      status === 'Attente démarrage';
 
     if (isDone) done++;
     else if (progressStatuses.includes(status) || (!!h.koboSync && status !== 'Inéligible'))
@@ -326,13 +335,13 @@ export function generateRapportAvancement(data: {
 // RAPPORT 2 — Analyse Économique (Admin + DG only)
 // ─────────────────────────────────────────────────────────────────
 export function generateRapportFinancier(data: {
-  devisReport: any[];
+  devisReport: { item: string; planned: number; real: number }[];
   totalPlanned: number;
   totalReal: number;
   globalMargin: number;
   marginPct: number;
   ceiling: number;
-  stats: any;
+  stats: { totalHouseholds: number; completed: number };
   projectName?: string;
 }) {
   const {
@@ -422,7 +431,8 @@ export function generateRapportFinancier(data: {
   });
 
   // Summary line at the bottom
-  const finalY = (doc as any).lastAutoTable.finalY + 8;
+  const finalY =
+    (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 200 + 8;
   doc.setFillColor(marginPct >= 0 ? 5 : 220, marginPct >= 0 ? 150 : 38, marginPct >= 0 ? 105 : 38);
   doc.rect(14, finalY, w - 28, 10, 'F');
   doc.setTextColor(255, 255, 255);
@@ -442,7 +452,9 @@ export function generateRapportFinancier(data: {
 // ─────────────────────────────────────────────────────────────────
 // RAPPORT 3 — Validation Kobo / Liste de contrôle (Admin)
 // ─────────────────────────────────────────────────────────────────
-export function generateRapportKobo(data: { households: any[] }) {
+export function generateRapportKobo(data: {
+  households: { name?: string; status: string; koboData?: Record<string, unknown> }[];
+}) {
   const { households } = data;
 
   const doc = new jsPDF({ orientation: 'portrait', format: 'a4' });
@@ -616,7 +628,7 @@ export function generateRapportLogistique(data: { households: any[]; zones?: any
     alternateRowStyles: { fillColor: [254, 252, 232] },
     margin: { left: 14, right: 14 },
   });
-  y = (doc as any).lastAutoTable.finalY + 8;
+  y = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 200 + 8;
 
   y = drawSectionTitle(doc, 'Planning des Livraisons', y);
   const deliveries = [

@@ -7,7 +7,7 @@ interface UseViewportLoadingOptions {
   enabled?: boolean;
   projectId?: string;
   debounceMs?: number;
-  onHouseholdsLoaded?: (households: any[]) => void;
+  onHouseholdsLoaded?: (households: Record<string, unknown>[]) => void;
 }
 
 const MAX_CACHE_SIZE = 50;
@@ -44,7 +44,7 @@ function getOverlapRatio(a: BoundingBox, b: BoundingBox): number {
   return intersection / minArea;
 }
 
-function isHouseholdEqual(a: any, b: any) {
+function isHouseholdEqual(a: Record<string, unknown>, b: Record<string, unknown>) {
   return (
     a.id === b.id &&
     a.status === b.status &&
@@ -54,7 +54,7 @@ function isHouseholdEqual(a: any, b: any) {
   );
 }
 
-function mergeStable(prev: any[], next: any[]) {
+function mergeStable(prev: Record<string, unknown>[], next: Record<string, unknown>[]) {
   const prevMap = new Map(prev.map((item) => [item.id, item]));
 
   return next.map((item) => {
@@ -148,8 +148,9 @@ export function useViewportLoading(options: UseViewportLoadingOptions = {}) {
         onHouseholdsLoadedRef.current?.(households);
 
         logger.debug(`✅ Loaded ${households.length} households`);
-      } catch (error: any) {
-        if (error.name !== 'AbortError') {
+      } catch (error: unknown) {
+        const err = error as { name?: string; message?: string };
+        if (err.name !== 'AbortError') {
           logger.error('Viewport load failed:', error);
         }
       } finally {

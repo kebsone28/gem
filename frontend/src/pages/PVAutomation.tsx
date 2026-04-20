@@ -30,7 +30,7 @@ import { PVDocGenerator } from '../services/ai/PVDocGenerator';
 import { audioService } from '../services/audioService';
 import { AnimatedCounter } from '../components/common/AnimatedCounter';
 import { useAuthStore } from '../store/authStore';
-import { Household, Team } from '../utils/types';
+import type { Household, Team } from '../utils/types';
 
 // --- Constants & Types ---
 
@@ -159,7 +159,8 @@ function usePVAutomation(): PVLogic {
 
   const [hseTeam, setHseTeam] = useState('');
   const [hseDescription, setHseDescription] = useState('');
-  const teams = useLiveQuery(() => db.teams.toArray()) || [];
+  const teamsQuery = useLiveQuery(() => db.teams.toArray()) || [];
+  const teams = teamsQuery as unknown as Team[];
 
   const handleCreatePV = useCallback(async (type: PVType, submission: Household) => {
     if (!submission) return;
@@ -191,7 +192,7 @@ function usePVAutomation(): PVLogic {
 
       await dispatchPVAlerts({
         pvId: stableId, householdId: submission.id, projectId: submission.projectId || 'N/A',
-        pvType: type, phoneNumber: submission.phone, email: submission.owner?.email,
+        pvType: type, phoneNumber: submission.phone, email: undefined,
         prestataireName: submission.name, numerolot: submission.numeroordre
       });
 
@@ -433,7 +434,7 @@ function usePVAutomation(): PVLogic {
       await db.pvs.bulkDelete(pvs.map(p => p.id));
       toast.success("Historique remis à zéro");
       if (selectedSubmission?.id === householdId) {
-        setSelectedSubmission({ ...selectedSubmission, activePVType: null, generatedPvId: null });
+        setSelectedSubmission({ ...selectedSubmission, activePVType: undefined, generatedPvId: undefined });
       }
     } catch (err) {
       toast.error("Erreur lors de la remise à zéro");
@@ -560,7 +561,7 @@ function PVSubmissionsList({ logic }: { logic: PVLogic }) {
             <div className="flex justify-between items-center mb-1">
               <div className="flex items-center gap-2 min-w-0">
                 <span className="text-xs font-black text-white truncate max-w-[150px]">{s.name || 'Ménage Inconnu'}</span>
-                {s.alerts?.length > 0 && (
+                {(s.alerts?.length ?? 0) > 0 && (
                   <div className="relative">
                     <AlertTriangle size={12} className="text-rose-500 animate-pulse" />
                   </div>
@@ -634,11 +635,11 @@ function PVGenerator({ logic }: { logic: PVLogic }) {
               if (!tmpl) return null;
               const Icon = PV_ICONS[type as PVType] || FileText;
               const colors = COLOR_MAP[tmpl.color as keyof typeof COLOR_MAP];
-              const isSelected = logic.selectedSubmission.activePVType === type;
+              const isSelected = logic.selectedSubmission?.activePVType === type;
               return (
                 <button
                   key={type}
-                  onClick={() => logic.handleCreatePV(type as PVType, logic.selectedSubmission)}
+                  onClick={() => logic.selectedSubmission && logic.handleCreatePV(type as PVType, logic.selectedSubmission)}
                   disabled={logic.isGenerating || (type === 'PVHSE' && (!logic.hseTeam || !logic.hseDescription))}
                   title={tmpl.title}
                   className={`flex-1 sm:flex-none px-3 md:px-4 py-2 rounded-xl text-[9px] md:text-[10px] font-black uppercase transition-all duration-300 ${isSelected ? `${colors.bg} text-white ${colors.shadow} scale-105` : 'bg-slate-800/50 text-slate-400 hover:text-white'} ${(type === 'PVHSE' && (!logic.hseTeam || !logic.hseDescription)) ? 'opacity-30 grayscale cursor-not-allowed' : ''}`}
@@ -649,7 +650,7 @@ function PVGenerator({ logic }: { logic: PVLogic }) {
             });
           })()}
           <button
-            onClick={() => logic.handleResetPVs(logic.selectedSubmission.id)}
+            onClick={() => logic.selectedSubmission && logic.handleResetPVs(logic.selectedSubmission.id)}
             className="p-2 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition-all"
             title="Remettre à zéro l'historique de ce lot"
           >
@@ -659,7 +660,7 @@ function PVGenerator({ logic }: { logic: PVLogic }) {
       </div>
       <div className="p-4 md:p-8 min-h-[300px] md:min-h-[400px]">
         <AnimatePresence mode="wait">
-          {logic.selectedSubmission.activePVType ? (
+          {logic.selectedSubmission?.activePVType ? (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} key={logic.selectedSubmission.activePVType}>
               <PVContentView submission={logic.selectedSubmission} logic={logic} />
             </motion.div>
@@ -717,6 +718,8 @@ function PVContentView({ submission, logic }: { submission: Household & { active
                   <select 
                     value={logic.hseTeam}
                     onChange={(e) => logic.setHseTeam(e.target.value)}
+                    title="Sélectionner l'équipe en cause"
+                    aria-label="Sélectionner l'équipe responsable de l'incident HSE"
                     className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-2.5 text-white text-[11px] outline-none focus:border-red-500/50 transition-all font-bold"
                   >
                     <option value="">-- Sélectionner l'équipe --</option>
@@ -752,7 +755,7 @@ function PVContentView({ submission, logic }: { submission: Household & { active
                 <div key={i} className="group relative aspect-square rounded-xl overflow-hidden border border-white/5 bg-slate-800">
                   <img src={url} className="w-full h-full object-cover transition-transform group-hover:scale-110" alt={`Anomalie ${i+1}`} onError={(e) => (e.currentTarget.src = 'https://placehold.co/400x400/1e293b/64748b?text=Image+Kobo')} />
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <button onClick={() => window.open(url, '_blank')} className="p-2 bg-white/20 backdrop-blur-md rounded-lg text-white"><Eye size={16}/></button>
+                    <button onClick={() => window.open(url, '_blank')} title="Ouvrir l'image en plein écran" aria-label="Ouvrir l'image en plein écran" className="p-2 bg-white/20 backdrop-blur-md rounded-lg text-white"><Eye size={16}/></button>
                   </div>
                 </div>
               ))}
@@ -872,20 +875,16 @@ function PVStatsBoard({ archivedPVs, isLoadingDB }: { archivedPVs: PVRecord[], i
         </div>
         <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden flex shadow-inner">
           <div 
-            style={{ width: `${(archivedPVs.filter(pv => pv.type === 'PVR').length / (stats.total || 1)) * 100}%` }} 
-            className="h-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)] transition-all duration-1000" 
+            className="h-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)] transition-all duration-1000 pv-bar-conformes" 
           />
           <div 
-            style={{ width: `${(archivedPVs.filter(pv => pv.type === 'PVNC').length / (stats.total || 1)) * 100}%` }} 
-            className="h-full bg-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.3)] transition-all duration-1000" 
+            className="h-full bg-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.3)] transition-all duration-1000 pv-bar-nc" 
           />
           <div 
-            style={{ width: `${(archivedPVs.filter(pv => pv.type === 'PVINE').length / (stats.total || 1)) * 100}%` }} 
-            className="h-full bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.3)] transition-all duration-1000" 
+            className="h-full bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.3)] transition-all duration-1000 pv-bar-ine" 
           />
           <div 
-            style={{ width: `${(archivedPVs.filter(pv => ['PVHSE', 'PVRET'].includes(pv.type)).length / (stats.total || 1)) * 100}%` }} 
-            className="h-full bg-red-600 shadow-[0_0_10px_rgba(220,38,38,0.3)] transition-all duration-1000" 
+            className="h-full bg-red-600 shadow-[0_0_10px_rgba(220,38,38,0.3)] transition-all duration-1000 pv-bar-critique" 
           />
         </div>
         <div className="flex flex-wrap gap-x-6 gap-y-2 mt-5">
@@ -906,7 +905,7 @@ function StatWidget({ label, value, color, icon: Icon, suffix = "", isString = f
       <Icon className={`absolute top-4 right-4 opacity-5`} size={64} />
       <p className={`text-[10px] font-black uppercase tracking-widest ${styles.text} mb-1`}>{label}</p>
       <div className="text-xl font-black text-white">
-        {isString ? <span>{value}</span> : <AnimatedCounter value={value} suffix={suffix} />}
+        {isString ? <span>{value}</span> : <AnimatedCounter value={typeof value === 'number' ? value : 0} suffix={suffix} />}
       </div>
     </div>
   );
@@ -1089,6 +1088,8 @@ function PVArchivePanel({ logic, archivedPVs }: { logic: PVLogic, archivedPVs: P
               <th className="px-4 py-4 w-10">
                 <input 
                   type="checkbox" 
+                  title="Sélectionner tous"
+                  aria-label="Sélectionner tous les documents"
                   checked={selectedIds.size > 0 && selectedIds.size === archivedPVs.filter(p => logic.selectedType === 'ALL' || p.type === logic.selectedType).length}
                   onChange={() => handleSelectAll(archivedPVs.filter(p => logic.selectedType === 'ALL' || p.type === logic.selectedType))}
                   className="rounded border-white/10 bg-slate-800 text-blue-500 focus:ring-blue-500"
@@ -1110,6 +1111,8 @@ function PVArchivePanel({ logic, archivedPVs }: { logic: PVLogic, archivedPVs: P
                   <td className="px-4 py-4 border-y border-l border-white/5">
                     <input 
                       type="checkbox" 
+                      title={`Sélectionner le document ${pv.id}`}
+                      aria-label={`Sélectionner le document ${pv.id}`}
                       checked={isSelected}
                       onChange={() => handleToggleSelect(pv.id)}
                       className="rounded border-white/10 bg-slate-800 text-blue-500 focus:ring-blue-500"

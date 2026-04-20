@@ -1,21 +1,21 @@
 // simple abstraction over console to disable logs in production
 const isProd = import.meta.env?.PROD;
 
-function log(...args: any[]) {
+function log(...args: unknown[]) {
   if (!isProd) console.log(...args);
 }
-function warn(...args: any[]) {
+function warn(...args: unknown[]) {
   if (!isProd) console.warn(...args);
 }
-function error(...args: any[]) {
+function error(...args: unknown[]) {
   if (!isProd) console.error(...args);
 }
 
-function debug(...args: any[]) {
+function debug(...args: unknown[]) {
   if (!isProd) console.debug(...args);
 }
 
-function info(...args: any[]) {
+function info(...args: unknown[]) {
   if (!isProd) console.info(...args);
 }
 

@@ -16,7 +16,7 @@ export interface User {
   role: UserRole;
   password?: string;
   organization?: string;
-  organizationConfig?: any;
+  organizationConfig?: Record<string, unknown>;
   teamId?: string; // If CHEF_EQUIPE
   active?: boolean;
   createdAt?: string;
@@ -103,7 +103,7 @@ export interface Household {
   koboSubmissionId?: string;
   version: number;
   lastModified?: number; // Timestamp local de la dernière modif
-  createdAt?: string;    // ✅ AJOUT
+  createdAt?: string; // ✅ AJOUT
   manualOverrides?: string[]; // ✅ AJOUT: Liste des champs forcés manuellement
   source?: 'local' | 'kobo' | 'import';
   deletedAt?: Date | null;
@@ -216,7 +216,7 @@ export interface CahierTaskPricing {
 
 export interface CahierTask {
   color: string;
-  icon: any;
+  icon: string;
   image: string;
   defaultCadence: string;
   introduction: string;
@@ -256,8 +256,8 @@ export interface Warehouse {
 
 export interface ProjectConfig {
   teams?: Team[];
-  grappesConfig?: any;
-  kitComposition?: any[];
+  grappesConfig?: Record<string, unknown>;
+  kitComposition?: { item: string; quantity: number }[];
   warehouses?: Warehouse[]; // NEW: per-region warehouses
   logisticsEquipment?: Partial<Record<TradeKey, LogisticsEquipment>>;
   stock_overrides?: Record<string, number>;
@@ -265,7 +265,7 @@ export interface ProjectConfig {
   clientProvidesMaterials?: boolean; // Legacy/Labor toggle
   includeSupply?: boolean; // NEW: Toggle to include material procurement costs
   logistique?: {
-    history: any[];
+    history: { date: string; action: string }[];
     geofencingRadius?: number;
     variantPricing?: Record<string, number>;
   };

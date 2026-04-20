@@ -224,8 +224,8 @@ const MapComponent: React.FC<MapComponentProps> = ({
                 className={`flex items-center gap-2.5 cursor-pointer transition-all duration-200 hover:translate-x-1 select-none ${selectedPhases.includes(item.status) ? 'opacity-100' : 'opacity-30'}`}
               >
                 <div
-                  className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-md flex-shrink-0`}
-                  style={{ backgroundColor: item.color }}
+                  className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-md flex-shrink-0 map-item-indicator`}
+                  style={{ '--item-bg-color': item.color } as React.CSSProperties}
                 >
                   {item.icon}
                 </div>

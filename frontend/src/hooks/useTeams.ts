@@ -34,17 +34,25 @@ export function useTeams(projectId?: string) {
       const serverTree = response.data.tree || [];
 
       try {
-        const allLocalTeams = await (db as any).teams.toArray();
+        const allLocalTeams = await (
+          db as unknown as { teams: { toArray: () => Promise<Record<string, unknown>[]> } }
+        ).teams.toArray();
         const localOfflineTeams = allLocalTeams.filter(
-          (t: any) => t.syncStatus === 'pending' && t.projectId === projectId
+          (t: Record<string, unknown>) => t.syncStatus === 'pending' && t.projectId === projectId
         );
 
         if (localOfflineTeams.length > 0) {
           // Build proper tree structure for offline teams
-          const offlineParents = localOfflineTeams.filter((t: any) => !t.parentTeamId);
-          const offlineChildren = localOfflineTeams.filter((t: any) => !!t.parentTeamId);
-          offlineParents.forEach((parent: any) => {
-            parent.children = offlineChildren.filter((c: any) => c.parentTeamId === parent.id);
+          const offlineParents = localOfflineTeams.filter(
+            (t: Record<string, unknown>) => !t.parentTeamId
+          );
+          const offlineChildren = localOfflineTeams.filter(
+            (t: Record<string, unknown>) => !!t.parentTeamId
+          );
+          offlineParents.forEach((parent: Record<string, unknown>) => {
+            (parent as Record<string, any>).children = offlineChildren.filter(
+              (c: Record<string, unknown>) => c.parentTeamId === parent.id
+            );
           });
           setTeamTree([...serverTree, ...offlineParents]);
         } else {
@@ -104,8 +112,10 @@ export function useTeams(projectId?: string) {
           syncStatus: 'pending',
           path: data.parentTeamId ? `${data.parentTeamId}/${newLocalId}` : newLocalId,
         };
-        await (db as any).teams.add(newLocalTeam);
-        setTeams((prev) => [...prev, newLocalTeam as any]);
+        await (db as unknown as { teams: { add: (item: unknown) => Promise<void> } }).teams.add(
+          newLocalTeam
+        );
+        setTeams((prev) => [...prev, newLocalTeam as Record<string, unknown>]);
         await fetchTeamTree();
         return newLocalTeam;
       } catch (dbErr) {
@@ -127,7 +137,9 @@ export function useTeams(projectId?: string) {
       if (err.response?.status === 404 || !err.response) {
         logger.warn('Update offline: patching Dexie locally', id);
         try {
-          await (db as any).teams.update(id, { ...data, syncStatus: 'pending' });
+          await (
+            db as unknown as { teams: { update: (id: unknown, item: unknown) => Promise<void> } }
+          ).teams.update(id, { ...data, syncStatus: 'pending' });
           setTeams((prev) => prev.map((t) => (t.id === id ? { ...t, ...data } : t)));
           await fetchTeamTree();
           return { id, ...data };
@@ -150,7 +162,9 @@ export function useTeams(projectId?: string) {
       if (err.response?.status === 404 || err.response?.status === 401) {
         logger.warn('Delete offline: removing from Dexie only', id);
         try {
-          await (db as any).teams.delete(id);
+          await (
+            db as unknown as { teams: { delete: (id: unknown) => Promise<void> } }
+          ).teams.delete(id);
           setTeams((prev) => prev.filter((t) => t.id !== id));
           await fetchTeamTree();
           return;

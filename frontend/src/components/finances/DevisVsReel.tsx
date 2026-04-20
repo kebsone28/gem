@@ -490,8 +490,8 @@ export default function DevisVsReel() {
                               className={`flex-1 max-w-20 h-1 rounded-full overflow-hidden ${isDarkMode ? 'bg-slate-800' : 'bg-slate-200'}`}
                             >
                               <div
-                                className={`h-full rounded-full transition-all ${isOver ? 'bg-rose-500' : usagePct > 80 ? 'bg-amber-500' : 'bg-emerald-500'}`}
-                                style={usagePct > 0 ? { width: `${usagePct}%` } : { width: '0%' }}
+                                className={`h-full rounded-full transition-all devis-usage-bar ${isOver ? 'bg-rose-500' : usagePct > 80 ? 'bg-amber-500' : 'bg-emerald-500'}`}
+                                style={{ '--usage-pct': `${usagePct}%` } as React.CSSProperties}
                               />
                             </div>
                             <span

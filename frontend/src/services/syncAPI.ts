@@ -1,6 +1,8 @@
 import apiClient from '../api/client';
 
-export const importBulkHouseholds = async (data: any): Promise<{ success: boolean; count: number }> => {
+export const importBulkHouseholds = async (data: {
+  households: unknown[];
+}): Promise<{ success: boolean; count: number }> => {
   const response = await apiClient.post('/sync/import-bulk', data);
   return response.data;
 };

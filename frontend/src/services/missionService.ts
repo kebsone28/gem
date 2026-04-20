@@ -11,7 +11,7 @@ export interface Mission {
   budget?: number | null;
   status: string;
   orderNumber?: string;
-  data: any;
+  data: Record<string, unknown>;
   createdAt?: string;
   updatedAt?: string;
   version?: number;
@@ -51,7 +51,7 @@ export const createMission = async (missionData: Partial<Mission>): Promise<Miss
     console.log('🚀 [API] PAYLOAD SENT (CREATE):', missionData);
     const response = await api.post('/missions', missionData);
     return response.data;
-  } catch (err: any) {
+  } catch (err: unknown) {
     logger.error('❌ [API] Failed to create mission:', err);
     console.error('❌ FULL BACKEND ERROR:', err.response?.data);
     return null;
@@ -69,7 +69,7 @@ export const updateMission = async (
     console.log(`🚀 [API] PAYLOAD SENT (UPDATE ${id}):`, missionData);
     const response = await api.patch(`/missions/${id}`, missionData);
     return response.data;
-  } catch (err: any) {
+  } catch (err: unknown) {
     logger.error(`❌ [API] Failed to update mission ${id}:`, err);
     console.error('❌ FULL BACKEND ERROR:', err.response?.data);
     if (err.response?.status === 404) {
@@ -108,7 +108,7 @@ export const duplicateMission = async (id: string): Promise<Mission | null> => {
 /**
  * Vérifie publiquement une mission via son identifiant unique
  */
-export const verifyMission = async (identifier: string): Promise<any> => {
+export const verifyMission = async (identifier: string): Promise<Mission | null> => {
   try {
     const response = await api.get(`/missions/verify/${identifier}`);
     return response.data;

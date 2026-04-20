@@ -313,19 +313,19 @@ export function formatApprovalDate(dateString?: string): string {
 /**
  * Valide les données d'approbation
  */
-export function validateApprovalData(data: any): { valid: boolean; errors: string[] } {
+export function validateApprovalData(data: unknown): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
-
-  if (!data.role) errors.push('Role is required');
-  if (!['ADMIN', 'DIRECTEUR'].includes(data.role)) {
+  const typedData = data as Record<string, unknown>;
+  if (!typedData.role) errors.push('Role is required');
+  if (!['ADMIN', 'DIRECTEUR'].includes(typedData.role as string)) {
     errors.push('Invalid role');
   }
 
-  if (data.comments && typeof data.comments !== 'string') {
+  if (typedData.comments && typeof typedData.comments !== 'string') {
     errors.push('Comments must be a string');
   }
 
-  if (!data.timestamp) errors.push('Timestamp is required');
+  if (!typedData.timestamp) errors.push('Timestamp is required');
 
   return {
     valid: errors.length === 0,
@@ -336,19 +336,23 @@ export function validateApprovalData(data: any): { valid: boolean; errors: strin
 /**
  * Valide les données de rejet
  */
-export function validateRejectionData(data: any): { valid: boolean; errors: string[] } {
+export function validateRejectionData(data: unknown): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
-
-  if (!data.role) errors.push('Role is required');
-  if (!['ADMIN', 'DIRECTEUR'].includes(data.role)) {
+  const typedData = data as Record<string, unknown>;
+  if (!typedData.role) errors.push('Role is required');
+  if (!['ADMIN', 'DIRECTEUR'].includes(typedData.role as string)) {
     errors.push('Invalid role');
   }
 
-  if (!data.reason || typeof data.reason !== 'string' || data.reason.trim() === '') {
+  if (
+    !typedData.reason ||
+    typeof typedData.reason !== 'string' ||
+    (typedData.reason as string).trim() === ''
+  ) {
     errors.push('Rejection reason is required and must not be empty');
   }
 
-  if (!data.timestamp) errors.push('Timestamp is required');
+  if (!typedData.timestamp) errors.push('Timestamp is required');
 
   return {
     valid: errors.length === 0,

@@ -2,12 +2,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import QRCode from 'qrcode';
 import logger from '../utils/logger';
-import type {
-  MissionOrderData,
-  MissionMember,
-  MissionReportDay,
-  BrandingConfig,
-} from '../pages/mission/core/missionTypes';
+import type { MissionOrderData } from '../pages/mission/core/missionTypes';
 
 let INDIGO = [67, 56, 202] as [number, number, number];
 const DARK = [15, 23, 42] as [number, number, number];
@@ -65,7 +60,7 @@ export const generateMissionOrderPDF = async (data: MissionOrderData) => {
     } else {
       doc.addImage('/logo-proquelec.png', 'PNG', 14, 10, 45, 16);
     }
-  } catch (e) {
+  } catch {
     /* logo non trouvé, continuer */
   }
 
@@ -131,7 +126,7 @@ export const generateMissionOrderPDF = async (data: MissionOrderData) => {
 
   autoTable(doc, {
     startY: currentY,
-    body: detailsData as any[],
+    body: detailsData as { colSpan?: number; content: string }[],
     theme: 'grid',
     styles: { fontSize: 10, cellPadding: 5, halign: 'left', font: 'helvetica' },
     columnStyles: {
@@ -141,7 +136,8 @@ export const generateMissionOrderPDF = async (data: MissionOrderData) => {
     margin: { left: 14, right: 14 },
   });
 
-  currentY = (doc as any).lastAutoTable.finalY + 12;
+  currentY =
+    (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 200 + 12;
 
   if (data.reportObservations) {
     doc.setFontSize(10);
@@ -172,13 +168,13 @@ export const generateMissionOrderPDF = async (data: MissionOrderData) => {
     const qrDataUrl = await QRCode.toDataURL(verifyUrl, {
       margin: 1,
       width: 100,
-      color: { dark: '#0f172a', light: '#ffffff' }
+      color: { dark: '#0f172a', light: '#ffffff' },
     });
     doc.addImage(qrDataUrl, 'PNG', 14, currentY - 5, 20, 20);
     doc.setFontSize(7);
     doc.setTextColor(...GRAY);
     doc.text('SCANNEZ POUR VÉRIFIER', 14, currentY + 18);
-    
+
     if (data.integrityHash) {
       doc.setFontSize(6);
       doc.text(`ID-HASH: ${data.integrityHash.toUpperCase()}`, 14, currentY + 22);
@@ -221,7 +217,7 @@ export const generateMissionOrderPDF = async (data: MissionOrderData) => {
     doc.setFontSize(7);
     doc.setFont('helvetica', 'italic');
     doc.text('Signature numérique certifiée', dgCenterX, currentY + 22, { align: 'center' });
-    
+
     // Remettre couleur par défaut
     doc.setTextColor(...DARK);
     currentY += 32;
@@ -294,7 +290,8 @@ export const generateMissionOrderPDF = async (data: MissionOrderData) => {
     styles: { fontSize: 10, cellPadding: 6 },
   });
 
-  currentY = (doc as any).lastAutoTable.finalY + 30;
+  currentY =
+    (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 200 + 30;
   doc.setFontSize(11);
   doc.setFont('helvetica', 'bold');
   doc.text('Le Directeur Général', dgCenterX, currentY, { align: 'center' });
@@ -355,7 +352,7 @@ export const generateMissionOrderPDF = async (data: MissionOrderData) => {
   autoTable(doc, {
     startY: currentY,
     head: [['JOUR', "DESCRIPTION DÉTAILLÉE DE L'ACTIVITÉ"]],
-    body: planningBody as any[],
+    body: planningBody as { colSpan?: number; content: string }[],
     theme: 'grid',
     headStyles: { fillColor: DARK, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 9 },
     styles: { fontSize: 9, cellPadding: 5 },
@@ -364,7 +361,9 @@ export const generateMissionOrderPDF = async (data: MissionOrderData) => {
   });
 
   // Footer on all pages
-  const pageCount = (doc as any).internal.getNumberOfPages();
+  const pageCount = (
+    doc as unknown as { internal: { getNumberOfPages: () => number } }
+  ).internal.getNumberOfPages();
   for (let p = 1; p <= pageCount; p++) {
     doc.setPage(p);
     doc.setFontSize(8);

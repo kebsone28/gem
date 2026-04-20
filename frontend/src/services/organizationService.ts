@@ -17,7 +17,7 @@ export const organizationService = {
   /**
    * Met à jour la configuration
    */
-  updateConfig: async (config: any) => {
+  updateConfig: async (config: Record<string, unknown>) => {
     try {
       const res = await apiClient.patch('/organization/config', { config });
       return res.data;

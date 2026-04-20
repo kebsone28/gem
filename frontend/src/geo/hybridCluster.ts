@@ -128,13 +128,13 @@ export async function hybridCluster(
         break; // On prend la première région valide trouvée (les ménages d'un même cluster sont proches et généralement de la même région)
       }
     }
-    (c as any)._region = region;
+    (c as unknown as Record<string, unknown>)._region = region;
   });
 
   // Trier les clusters par ordre alphabétique de la région
   result.sort((a, b) => {
-    const rA = (a as any)._region || 'ZZZ';
-    const rB = (b as any)._region || 'ZZZ';
+    const rA = (a as unknown as Record<string, unknown>)._region || 'ZZZ';
+    const rB = (b as unknown as Record<string, unknown>)._region || 'ZZZ';
     return rA.localeCompare(rB);
   });
 
@@ -171,7 +171,7 @@ export const getClusterName = (c: ClusterResult) => {
   return `Grappe ${c.id.replace('G-', '')}`;
 };
 
-export function clustersToGeoJSON(clusters: ClusterResult[]): any {
+export function clustersToGeoJSON(clusters: ClusterResult[]): Record<string, unknown> {
   const collection = featureCollection([]);
 
   clusters.forEach((c, i) => {
@@ -186,7 +186,7 @@ export function clustersToGeoJSON(clusters: ClusterResult[]): any {
       // 2. Sécurité : Fallback si convex retourne null (ex: points alignés ou < 3 points)
       if (!poly) {
         // Créer un petit buffer autour des points pour simuler une zone
-        poly = buffer(points, 0.015, { units: 'kilometers' }) as any;
+        poly = buffer(points, 0.015, { units: 'kilometers' }) as Record<string, unknown>;
       }
 
       if (!poly) return;
@@ -200,13 +200,17 @@ export function clustersToGeoJSON(clusters: ClusterResult[]): any {
       // 4. Garantie Inclusion 100%
       let needsInflation = false;
       for (const h of c.households) {
-        if (!booleanPointInPolygon(turfPoint([h.lon, h.lat]), buffered as any)) {
+        if (
+          !booleanPointInPolygon(turfPoint([h.lon, h.lat]), buffered as Record<string, unknown>)
+        ) {
           needsInflation = true;
           break;
         }
       }
       if (needsInflation && buffered) {
-        buffered = buffer(buffered as any, 0.01, { units: 'kilometers' }) as any;
+        buffered = buffer(buffered as Record<string, unknown>, 0.01, {
+          units: 'kilometers',
+        }) as Record<string, unknown>;
       }
 
       if (!buffered) return;
@@ -223,10 +227,13 @@ export function clustersToGeoJSON(clusters: ClusterResult[]): any {
       };
 
       // 6. Simplification pour fluidité (Tolerance 10m env.)
-      const optimized = simplify(buffered as any, { tolerance: 0.0001, highQuality: false });
-      (optimized as any).id = intId;
+      const optimized = simplify(buffered as Record<string, unknown>, {
+        tolerance: 0.0001,
+        highQuality: false,
+      });
+      (optimized as Record<string, unknown>).id = intId;
 
-      collection.features.push(optimized as any);
+      collection.features.push(optimized as Record<string, unknown>);
     } catch (e) {
       logger.error('❌ [GEO ERROR] Polygone non généré:', e);
     }
@@ -236,7 +243,7 @@ export function clustersToGeoJSON(clusters: ClusterResult[]): any {
 }
 
 // GeoJSON "Centroids" pour les labels HTML / MapLibre (symbol layer)
-export function centroidsToGeoJSON(clusters: ClusterResult[]): any {
+export function centroidsToGeoJSON(clusters: ClusterResult[]): Record<string, unknown> {
   return {
     type: 'FeatureCollection',
     features: clusters.map((c, i) => {

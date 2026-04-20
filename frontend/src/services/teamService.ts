@@ -17,7 +17,7 @@ export const teamService = {
     return response.data;
   },
 
-  async getTeamsTree(): Promise<any> {
+  async getTeamsTree(): Promise<{ id: string; name: string; children?: unknown[] }[]> {
     const response = await apiClient.get('/teams/tree');
     return response.data;
   },
@@ -27,7 +27,7 @@ export const teamService = {
     return response.data;
   },
 
-  async getGrappes(): Promise<any[]> {
+  async getGrappes(): Promise<{ id: string; name: string; region?: string }[]> {
     const response = await apiClient.get('/teams/grappes');
     return response.data;
   },
@@ -56,8 +56,8 @@ export const teamService = {
     await apiClient.delete(`/teams/${id}`);
   },
 
-  async assignTeamToZone(teamId: string, zoneId: string): Promise<any> {
+  async assignTeamToZone(teamId: string, zoneId: string): Promise<{ success: boolean }> {
     const response = await apiClient.post(`/teams/${teamId}/assign`, { zoneId });
     return response.data;
-  }
+  },
 };

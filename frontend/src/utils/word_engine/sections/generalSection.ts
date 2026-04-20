@@ -1,9 +1,16 @@
 // src/utils/exportWord/sections/generalSection.ts
-import { Paragraph, PageBreak, AlignmentType, HeadingLevel, BorderStyle, TextRun } from 'docx';
-import { COLORS, createSectionHeader, createText } from '../utils/styles';
+import {
+  Paragraph,
+  PageBreak,
+  AlignmentType,
+  HeadingLevel,
+  BorderStyle,
+  TextRun,
+} from 'docx';
+import { COLORS, createText } from '../utils/styles';
 
-export const createGeneralSection = (clauses: string[]) => {
-  const children: any[] = [
+export const createGeneralSection = (clauses: string[]): Paragraph[] => {
+  const children: Paragraph[] = [
     new Paragraph({
       alignment: AlignmentType.CENTER,
       heading: HeadingLevel.HEADING_1,

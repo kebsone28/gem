@@ -35,11 +35,11 @@ class RemoteLogger {
             ...context,
             url: window.location.href,
             userAgent: navigator.userAgent,
-            timestamp: new Date().toISOString()
-          }
-        })
+            timestamp: new Date().toISOString(),
+          },
+        }),
       });
-    } catch (err) {
+    } catch {
       // Échec silencieux
     }
   }

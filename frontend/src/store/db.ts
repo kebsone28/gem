@@ -5,7 +5,7 @@ export interface SyncLog {
   id?: number;
   timestamp: Date;
   action: string;
-  details?: any;
+  details?: Record<string, unknown>;
 }
 
 export interface SyncQueueItem {
@@ -13,7 +13,7 @@ export interface SyncQueueItem {
   action: string;
   endpoint: string;
   method: 'POST' | 'PUT' | 'DELETE' | 'PATCH';
-  payload: any;
+  payload: Record<string, unknown>;
   timestamp: number;
   status: 'pending' | 'failed';
   retryCount: number;
@@ -43,14 +43,14 @@ export interface AppSecurity {
 
 export class ProquelecDatabase extends Dexie {
   organizations!: Table<{ id: string; name: string }>;
-  users!: Table<any>;
+  users!: Table<{ id: string; email: string; name: string; role: string }>;
   /** projects stored locally using the Project interface above */
   projects!: Table<Project>;
-  zones!: Table<any>;
+  zones!: Table<{ id: string; name: string; projectId: string }>;
   households!: Table<Household>;
-  grappes!: Table<any>; // Add grappes table for bordereau caching
-  teams!: Table<any>;
-  missions!: Table<any>;
+  grappes!: Table<{ id: string; name: string; projectId: string }>; // Add grappes table for bordereau caching
+  teams!: Table<{ id: string; name: string; projectId: string }>;
+  missions!: Table<{ id: string; projectId: string; status: string }>;
   notifications!: Table<MissionNotification>;
   sync_logs!: Table<SyncLog>;
   app_security!: Table<AppSecurity>;
@@ -84,7 +84,7 @@ export class ProquelecDatabase extends Dexie {
     content: string;
     createdBy: string;
     createdAt: string;
-    metadata?: any;
+    metadata?: Record<string, unknown>;
   }>;
 
   constructor() {
@@ -309,9 +309,17 @@ export class ProquelecDatabase extends Dexie {
 
 export const db = new ProquelecDatabase();
 
-export const syncData = async (table: string, items: any[]) => {
+export const syncData = async (table: string, items: Record<string, unknown>[]) => {
   return await db.transaction('rw', table, async () => {
-    const dbTable = (db as any)[table];
+    const dbTable = (
+      db as unknown as Record<
+        string,
+        {
+          bulkDelete: (ids: unknown[]) => Promise<void>;
+          bulkPut: (items: unknown[]) => Promise<void>;
+        }
+      >
+    )[table];
 
     const toDelete = items.filter((item) => item.deletedAt).map((item) => item.id);
     const toPut = items.filter((item) => !item.deletedAt);

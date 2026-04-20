@@ -1,11 +1,14 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { db } from '../store/db'; 
+import { db } from '../store/db';
 import type { Household } from '../utils/types';
 import { useProject } from '../contexts/ProjectContext';
 import apiClient from '../api/client';
 import logger from '../utils/logger';
 
-export function mapToApiPayload(household: Partial<Household>, overrides: any = {}) {
+export function mapToApiPayload(
+  household: Partial<Household>,
+  overrides: Record<string, unknown> = {}
+) {
   const id = household.backendId || household.id || crypto.randomUUID();
   return {
     id,
@@ -27,16 +30,16 @@ export function mapToApiPayload(household: Partial<Household>, overrides: any = 
   };
 }
 
-const getNormalizedCoords = (h: any): [number, number] | null => {
+const getNormalizedCoords = (h: Record<string, unknown>): [number, number] | null => {
   try {
-    let lat: any = null;
-    let lng: any = null;
+    let lat: number | null = null;
+    let lng: number | null = null;
     if (
       h.location?.coordinates &&
       Array.isArray(h.location.coordinates) &&
       h.location.coordinates.length === 2
     ) {
-      const [cLng, cLat] = h.location.coordinates.map((val: any) =>
+      const [cLng, cLat] = (h.location?.coordinates || []).map((val: unknown) =>
         typeof val === 'string' ? parseFloat(val.replace(',', '.')) : Number(val)
       );
       if (!isNaN(cLng) && !isNaN(cLat)) {
@@ -79,7 +82,7 @@ export function useTerrainData() {
   const currentProjectId = project?.id || activeProjectId;
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  
+
   // ✅ SERVER-FIRST: React State instead of useLiveQuery (Dexie)
   const [householdsRaw, setHouseholdsRaw] = useState<Household[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -100,22 +103,26 @@ export function useTerrainData() {
         logger.log(`📡 [Server-First] Fetching households for Project: ${currentProjectId}`);
         // API ensures consistency (handles merges, deletions, etc. on server side)
         const response = await apiClient.get('/households', {
-          params: { projectId: currentProjectId, limit: 10000 }
+          params: { projectId: currentProjectId, limit: 10000 },
         });
-        
+
         const data = response.data.households || [];
         const normalized = data.map((h: Household) => normalizeHousehold(h));
-        
-        logger.log(`✅ [Server-First] Retrieved ${normalized.length} unique households from backend`);
+
+        logger.log(
+          `✅ [Server-First] Retrieved ${normalized.length} unique households from backend`
+        );
         setHouseholdsRaw(normalized);
 
         // 🧹 ONE-TIME CLEANUP: Purge local Dexie households to avoid stale ghosts
         const localCount = await db.households.count();
         if (localCount > 0) {
-           logger.warn(`🧹 [Server-First] Purging ${localCount} stale households from local Dexie database...`);
-           await db.households.clear();
+          logger.warn(
+            `🧹 [Server-First] Purging ${localCount} stale households from local Dexie database...`
+          );
+          await db.households.clear();
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         logger.error('❌ Failed to fetch server-direct households:', err);
         setError(err.message);
       } finally {
@@ -141,7 +148,10 @@ export function useTerrainData() {
   const stats = useMemo(() => {
     if (!households) return null;
     const total = households.length;
-    let enAttente = 0, enCours = 0, termine = 0, bloque = 0;
+    let enAttente = 0,
+      enCours = 0,
+      termine = 0,
+      bloque = 0;
     households.forEach((h) => {
       if (h.status === 'En attente') enAttente++;
       else if (['En cours', 'Travaux'].includes(h.status)) enCours++;
@@ -156,7 +166,7 @@ export function useTerrainData() {
     try {
       await apiClient.patch(`households/${id}`, { status: newStatus });
       // Optimistic state update
-      setHouseholdsRaw(prev => prev.map(h => h.id === id ? { ...h, status: newStatus } : h));
+      setHouseholdsRaw((prev) => prev.map((h) => (h.id === id ? { ...h, status: newStatus } : h)));
     } catch (err) {
       logger.error('Failed to update status on server:', err);
       throw err;
@@ -167,7 +177,13 @@ export function useTerrainData() {
     try {
       const loc = { type: 'Point', coordinates: [lng, lat] };
       await apiClient.patch(`households/${id}`, { location: loc, latitude: lat, longitude: lng });
-      setHouseholdsRaw(prev => prev.map(h => h.id === id ? { ...h, location: loc as any, latitude: lat, longitude: lng } : h));
+      setHouseholdsRaw((prev) =>
+        prev.map((h) =>
+          h.id === id
+            ? { ...h, location: loc as Record<string, unknown>, latitude: lat, longitude: lng }
+            : h
+        )
+      );
     } catch (err) {
       logger.error('Failed to update location on server:', err);
       throw err;
@@ -178,25 +194,28 @@ export function useTerrainData() {
     try {
       const response = await apiClient.patch(`households/${id}`, patch);
       const updated = normalizeHousehold(response.data);
-      setHouseholdsRaw(prev => prev.map(h => h.id === id ? updated : h));
+      setHouseholdsRaw((prev) => prev.map((h) => (h.id === id ? updated : h)));
     } catch (err) {
       logger.error('Failed to update household on server:', err);
       throw err;
     }
   }, []);
 
-  const uploadHouseholdPhoto = useCallback(async (id: string, file: File) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    const resp = await apiClient.post('/upload', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
-    const { url, key } = resp.data;
-    
-    const patch = { koboData: { photo_installation: key, photoUrl: url } };
-    await updateHousehold(id, patch as any);
-    return url;
-  }, [updateHousehold]);
+  const uploadHouseholdPhoto = useCallback(
+    async (id: string, file: File) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      const resp = await apiClient.post('/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      const { url, key } = resp.data;
+
+      const patch = { koboData: { photo_installation: key, photoUrl: url } };
+      await updateHousehold(id, patch as Record<string, unknown>);
+      return url;
+    },
+    [updateHousehold]
+  );
 
   return {
     households,
@@ -214,20 +233,20 @@ export function useTerrainData() {
     // Methods removed as they are Dexie-specific and no longer needed for Server-First
     importHouseholds: async (data: Household[]) => {
       await db.households.bulkPut(data);
-      setHouseholdsRaw(prev => {
+      setHouseholdsRaw((prev) => {
         const next = [...prev];
-        data.forEach(newItem => {
-          const idx = next.findIndex(h => h.id === newItem.id);
+        data.forEach((newItem) => {
+          const idx = next.findIndex((h) => h.id === newItem.id);
           if (idx > -1) next[idx] = newItem;
           else next.push(newItem);
         });
         return next;
       });
-    }, 
+    },
     repairSyncQueue: async () => 0,
     clearHouseholds: async () => {
-       // Optional: could trigger a re-fetch
-       setHouseholdsRaw([]);
+      // Optional: could trigger a re-fetch
+      setHouseholdsRaw([]);
     },
   };
 }

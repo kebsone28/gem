@@ -11,11 +11,11 @@ export const MISSION_TEMPLATES = {
       transport: 'Véhicule 4x4 - Pick-up',
       planning: [
         "Jour 1 : Mobilisation & Briefing\n• Départ matinal depuis Dakar\n• Installation bases vie\n• Préparation des axes avec l'équipe locale",
-        "Jour 2 : Prospection\n• Repérage des grappes\n• Audit accès routier\n• Photos état initial des sites\n• Identification lieux stockage\n• Sensibilisation chefs villages\n• Mesures distances axes routiers\n• Repérage lieu de Formation\n• Diagnostic des typologies d’habitation",
-        "Jour 3 : Prospection\n• Repérage des grappes\n• Audit accès routier\n• Photos état initial des sites\n• Identification lieux stockage\n• Sensibilisation chefs villages\n• Mesures distances axes routiers\n• Documentation contraintes terrain\n• Diagnostic des typologies d’habitation",
+        'Jour 2 : Prospection\n• Repérage des grappes\n• Audit accès routier\n• Photos état initial des sites\n• Identification lieux stockage\n• Sensibilisation chefs villages\n• Mesures distances axes routiers\n• Repérage lieu de Formation\n• Diagnostic des typologies d’habitation',
+        'Jour 3 : Prospection\n• Repérage des grappes\n• Audit accès routier\n• Photos état initial des sites\n• Identification lieux stockage\n• Sensibilisation chefs villages\n• Mesures distances axes routiers\n• Documentation contraintes terrain\n• Diagnostic des typologies d’habitation',
         "Jour 4 : Négociations Entrepreneurs et électricien\n• Séance d'imprégnation sur le projet\n• Clarifier normes qualité et cahier de charge\n• Recueil des engagements",
-        "Jour 5 : Consolidation & Finalisation Terrain\n• Upload des données SIG et photos\n• Séance de synthèse avec les autorités locales\n• Préparation des documents de synthèse",
-        "Jour 6 : Repli vers Dakar\n• Inventaire final\n• Débriefing direction\n• Préparation rapport",
+        'Jour 5 : Consolidation & Finalisation Terrain\n• Upload des données SIG et photos\n• Séance de synthèse avec les autorités locales\n• Préparation des documents de synthèse',
+        'Jour 6 : Repli vers Dakar\n• Inventaire final\n• Débriefing direction\n• Préparation rapport',
       ],
     } as Partial<MissionOrderData>,
   },
@@ -189,7 +189,7 @@ export const importMissionFromJSON = async (
           data: imported.mission,
           members: imported.members || [],
         });
-      } catch (err) {
+      } catch {
         reject(new Error('Erreur lecture fichier JSON'));
       }
     };

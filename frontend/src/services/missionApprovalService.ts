@@ -31,7 +31,9 @@ export const getMissionApprovalHistory = async (
 /**
  * Récupère toutes les missions en attente d'approbation ou archivées
  */
-export const getPendingApprovals = async (isArchive = false): Promise<any[]> => {
+export const getPendingApprovals = async (
+  isArchive = false
+): Promise<{ missions: unknown[]; stats: { totalBudgetCertified: number } }> => {
   try {
     const response = await api.get('/missions/approvals/pending', {
       params: { status: isArchive ? 'approuvee' : undefined },
@@ -61,7 +63,9 @@ export const approveMissionStep = async (
 
     const wf = response.data;
     if (wf.integrityHash) {
-      logger.info(`🔐 [INTEGRITY] Success. Mission certified with hash: ${wf.integrityHash.substring(0, 16)}...`);
+      logger.info(
+        `🔐 [INTEGRITY] Success. Mission certified with hash: ${wf.integrityHash.substring(0, 16)}...`
+      );
     }
 
     // Notification locale pour l'archivage
@@ -190,7 +194,7 @@ export const canApproveMissionStep = (
   )
     return true;
 
-  return (normalizedRole === normalizedStepRole);
+  return normalizedRole === normalizedStepRole;
 };
 
 /**
@@ -225,7 +229,7 @@ export const sendDocumentByEmail = async (
     });
     logger.log(`📧 Document envoyé par email à ${recipientEmail}`);
   } catch (err) {
-    logger.error('❌ Erreur lors de l\'envoi du document par email:', err);
+    logger.error("❌ Erreur lors de l'envoi du document par email:", err);
     throw err;
   }
 };

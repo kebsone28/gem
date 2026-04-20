@@ -32,6 +32,24 @@ import { DataSection } from '../components/DataSection';
 import apiClient from '../api/client';
 import toast from 'react-hot-toast';
 
+// ─── TYPE DEFINITIONS ───────────────────────────────────────────────────
+type ProjectConfig = Record<string, unknown> & {
+  financials?: Record<string, unknown> & {
+    devisItems?: Array<Record<string, unknown>>;
+    realCosts?: Record<string, Record<string, number>>;
+    plannedCosts?: Record<string, Record<string, number>>;
+  };
+  costs?: Record<string, unknown> & {
+    staffRates?: Record<string, Record<string, unknown>>;
+  };
+  materialCatalog?: Array<Record<string, unknown>>;
+  productionRates?: Record<string, number>;
+};
+
+type ProjectData = Record<string, unknown> & {
+  config?: ProjectConfig;
+};
+
 type TabType =
   | 'teams'
   | 'costs'
@@ -46,6 +64,10 @@ export default function Settings() {
   const [activeTab, setActiveTab] = useState<TabType>('teams');
   const { project, updateProject, isLoading: isProjectLoading } = useProject();
   const { households, isLoading: isHouseholdsLoading } = useTerrainData();
+
+  // Cast project config once at the top for type safety
+  const cfg = ((project?.config || {}) as ProjectConfig) || ({} as ProjectConfig);
+
 
   const isLoading = isProjectLoading || isHouseholdsLoading;
 

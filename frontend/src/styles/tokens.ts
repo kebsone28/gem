@@ -245,11 +245,11 @@ export const DESIGN_TOKENS = {
 
 export const getColor = (path: string): string => {
   const keys = path.split('.');
-  let value: any = DESIGN_TOKENS.colors;
+  let value: Record<string, unknown> = DESIGN_TOKENS.colors as Record<string, unknown>;
   for (const key of keys) {
-    value = value?.[key];
+    value = (value?.[key] as Record<string, unknown>) ?? {};
   }
-  return value ?? '';
+  return (value as unknown as string) ?? '';
 };
 
 export const getSpacing = (key: keyof typeof DESIGN_TOKENS.spacing) => DESIGN_TOKENS.spacing[key];

@@ -22,7 +22,7 @@ export const alertsAPI = {
   /**
    * Crée une nouvelle alerte
    */
-  async createAlert(payload: any) {
+  async createAlert(payload: Record<string, unknown>) {
     try {
       const response = await apiClient.post('/alerts', payload);
       return response.data.data;
@@ -87,7 +87,7 @@ export const alertsAPI = {
   /**
    * Met à jour la configuration d'alertes
    */
-  async updateAlertConfig(updates: any) {
+  async updateAlertConfig(updates: Record<string, unknown>) {
     try {
       const response = await apiClient.patch('/alerts/config/organization', updates);
       return response.data.data;

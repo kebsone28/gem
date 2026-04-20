@@ -37,7 +37,9 @@ export const missionStatsService = {
   /**
    * Moteur de calcul partagé
    */
-  processMissions(missions: any[]): MissionStats {
+  processMissions(
+    missions: { data?: unknown; formData?: unknown; isCertified?: boolean }[]
+  ): MissionStats {
     let totalIndemnities = 0;
     let certifiedCount = 0;
     const memberSet = new Set();

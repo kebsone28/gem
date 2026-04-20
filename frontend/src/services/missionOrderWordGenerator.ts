@@ -38,12 +38,13 @@ const formatCurrency = (n: number): string => {
   return n.toLocaleString('fr-FR') + ' FCFA';
 };
 
-const fetchImageAsArrayBuffer = async (url: string): Promise<ArrayBuffer | null> => {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _fetchImageAsArrayBuffer = async (url: string): Promise<ArrayBuffer | null> => {
   try {
     const response = await fetch(url);
     if (response.ok) return await response.arrayBuffer();
-  } catch (e) {
-    logger.error(`Could not load image from ${url}`, e);
+  } catch {
+    logger.error(`Could not load image from ${url}`);
   }
   return null;
 };
@@ -152,17 +153,17 @@ const createFrontPage = (orderNumber: string, purpose: string) => {
 
 export const generateMissionOrderWord = async (data: MissionOrderData) => {
   const validationUrl = `${window.location.origin}/verify/mission/${data.orderNumber || data.id}`;
-  
+
   let qrData: ArrayBuffer | null = null;
   try {
     const qrDataUrl = await QRCode.toDataURL(validationUrl, { margin: 1, width: 200 });
     const base64Data = qrDataUrl.split(',')[1];
-    qrData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0)).buffer;
+    qrData = Uint8Array.from(atob(base64Data), (c) => c.charCodeAt(0)).buffer;
   } catch (err) {
     logger.error('QR Code generation failed for Word', err);
   }
 
-  const sections: any[] = [];
+  const sections: { children: (Paragraph | Table | PageBreak)[] }[] = [];
 
   // 1. Front Page
   sections.push({
@@ -170,12 +171,15 @@ export const generateMissionOrderWord = async (data: MissionOrderData) => {
   });
 
   // 2. Main Mission Order Page
-  const mainChildren: any[] = [
+  const mainChildren: (Paragraph | Table)[] = [
     new Paragraph({
       alignment: AlignmentType.RIGHT,
       children: [
         qrData
-          ? new ImageRun({ data: qrData, transformation: { width: 70, height: 70 } } as any)
+          ? new ImageRun({ data: qrData, transformation: { width: 70, height: 70 } } as Record<
+              string,
+              unknown
+            >)
           : new TextRun(''),
       ],
     }),
@@ -340,7 +344,7 @@ export const generateMissionOrderWord = async (data: MissionOrderData) => {
                             ],
                           }),
                         ];
-                      } catch (e) {
+                      } catch {
                         return [
                           new Paragraph({
                             alignment: AlignmentType.CENTER,
@@ -349,31 +353,47 @@ export const generateMissionOrderWord = async (data: MissionOrderData) => {
                         ];
                       }
                     })()
-                  : data.isCertified ? [
-                      new Paragraph({
-                        alignment: AlignmentType.CENTER,
-                        children: [
-                          new TextRun({ text: 'PROQUELEC - DIRECTION GÉNÉRALE', size: 16, color: COLORS.DANGER }),
-                        ],
-                      }),
-                      new Paragraph({
-                        alignment: AlignmentType.CENTER,
-                        children: [
-                          new TextRun({ text: 'VU ET APPROUVÉ', size: 20, bold: true, color: COLORS.DANGER }),
-                        ],
-                      }),
-                      new Paragraph({
-                        alignment: AlignmentType.CENTER,
-                        children: [
-                          new TextRun({ text: 'Signature numérique certifiée', size: 14, italics: true, color: COLORS.DANGER }),
-                        ],
-                      }),
-                    ] : [
-                      new Paragraph({
-                        alignment: AlignmentType.CENTER,
-                        text: '(Signature Électronique)',
-                      }),
-                    ]),
+                  : data.isCertified
+                    ? [
+                        new Paragraph({
+                          alignment: AlignmentType.CENTER,
+                          children: [
+                            new TextRun({
+                              text: 'PROQUELEC - DIRECTION GÉNÉRALE',
+                              size: 16,
+                              color: COLORS.DANGER,
+                            }),
+                          ],
+                        }),
+                        new Paragraph({
+                          alignment: AlignmentType.CENTER,
+                          children: [
+                            new TextRun({
+                              text: 'VU ET APPROUVÉ',
+                              size: 20,
+                              bold: true,
+                              color: COLORS.DANGER,
+                            }),
+                          ],
+                        }),
+                        new Paragraph({
+                          alignment: AlignmentType.CENTER,
+                          children: [
+                            new TextRun({
+                              text: 'Signature numérique certifiée',
+                              size: 14,
+                              italics: true,
+                              color: COLORS.DANGER,
+                            }),
+                          ],
+                        }),
+                      ]
+                    : [
+                        new Paragraph({
+                          alignment: AlignmentType.CENTER,
+                          text: '(Signature Électronique)',
+                        }),
+                      ]),
               ],
             }),
             new TableCell({
@@ -417,11 +437,11 @@ export const generateMissionOrderWord = async (data: MissionOrderData) => {
         ],
       }),
     },
-    children: mainChildren,
+    children: mainChildren as (Paragraph | Table | PageBreak)[],
   });
 
   // 3. Financial Breakdown Page
-  const financeChildren: any[] = [
+  const financeChildren: (Paragraph | Table)[] = [
     new Paragraph({ text: '', pageBreakBefore: true }),
     createSectionHeader('DÉCOMPTE DES FRAIS DE MISSION ESTIMATIFS', COLORS.ACCENT),
     new Table({
@@ -538,6 +558,7 @@ export const generateMissionOrderWord = async (data: MissionOrderData) => {
   return await Packer.toBlob(doc);
 };
 
-export const generateMissionReportWord = async (_data: any) => {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export const generateMissionReportWord = async (_data: unknown): Promise<null> => {
   return null;
 };

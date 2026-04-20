@@ -23,19 +23,19 @@ interface GrappeData {
     village?: string;
     departement?: string;
     status: string;
-    owner?: any;
-    location?: any;
+    owner?: Record<string, unknown>;
+    location?: Record<string, unknown>;
     latitude?: number;
     longitude?: number;
-    koboData?: any;
-    koboSync?: any;
+    koboData?: Record<string, unknown>;
+    koboSync?: Record<string, unknown>;
   }>;
 }
 
 /**
  * Robustly resolves the name of a household
  */
-const resolveName = (h: any): string => {
+const resolveName = (h: Record<string, unknown>): string => {
   if (h.name && h.name.trim()) return h.name.trim();
   if (h.owner) {
     if (typeof h.owner === 'string' && h.owner.trim()) return h.owner.trim();
@@ -55,7 +55,7 @@ const resolveName = (h: any): string => {
 /**
  * Robustly resolves the village
  */
-const resolveVillage = (h: any): string => {
+const resolveVillage = (h: Record<string, unknown>): string => {
   if (h.village && h.village.trim()) return h.village.trim();
   const kobo = h.koboData || h.koboSync || {};
   if (kobo.village) return kobo.village;
@@ -66,7 +66,7 @@ const resolveVillage = (h: any): string => {
 /**
  * Extract coordinates
  */
-const resolveGPS = (h: any): { lat: string; lon: string } => {
+const resolveGPS = (h: Record<string, unknown>): { lat: string; lon: string } => {
   let lat = h.latitude;
   let lon = h.longitude;
 

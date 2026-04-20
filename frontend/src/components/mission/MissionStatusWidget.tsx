@@ -202,8 +202,8 @@ export const MissionStatusWidget: React.FC<MissionStatusWidgetProps> = ({
         </div>
         <div className="w-full h-2 bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden">
           <div
-            className={`h-full transition-all duration-700 ease-out ${config?.color || 'bg-slate-500'}`}
-            style={{ width: `${isCertified ? 100 : percentage}%` }}
+            className={`h-full transition-all duration-700 ease-out mission-status-bar ${config?.color || 'bg-slate-500'}`}
+            style={{ '--status-width': `${isCertified ? 100 : percentage}%` } as React.CSSProperties}
           />
         </div>
       </div>

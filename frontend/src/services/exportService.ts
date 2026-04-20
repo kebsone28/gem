@@ -66,7 +66,9 @@ const addHeader = (pdf: jsPDF, title: string, subtitle?: string) => {
 };
 
 const addFooters = (pdf: jsPDF) => {
-  const totalPages = (pdf as any).internal.getNumberOfPages();
+  const totalPages = (
+    pdf as unknown as { internal: { getNumberOfPages: () => number } }
+  ).internal.getNumberOfPages();
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
   for (let p = 1; p <= totalPages; p++) {
@@ -86,9 +88,9 @@ const addFooters = (pdf: jsPDF) => {
 // ─── Financial PDF export (structured, no screenshot) ────────────────────────
 
 export const exportFinancialPDF = async (
-  devisReport: any[],
-  devis: any,
-  stats: any,
+  devisReport: Record<string, unknown>[],
+  devis: Record<string, unknown>,
+  stats: Record<string, unknown>,
   projectName?: string
 ): Promise<true | string> => {
   try {
@@ -133,7 +135,8 @@ export const exportFinancialPDF = async (
       theme: 'grid',
     });
 
-    const afterKPI = (pdf as any).lastAutoTable.finalY + 8;
+    const afterKPI =
+      (pdf as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 200 + 8;
 
     // ── Devis vs Réel table ───────────────────────────────────────────────
     pdf.setFontSize(10);
@@ -156,7 +159,7 @@ export const exportFinancialPDF = async (
           'Ecart / Marge',
         ],
       ],
-      body: devisReport.map((item: any) => [
+      body: devisReport.map((item: Record<string, unknown>) => [
         item.label,
         item.region,
         fmtNum(item.qty),
@@ -190,7 +193,7 @@ export const exportFinancialPDF = async (
           textColor: devis.globalMargin >= 0 ? [16, 185, 129] : [239, 68, 68],
         },
       },
-      didParseCell: (data: any) => {
+      didParseCell: (data: Record<string, unknown>) => {
         if (data.section === 'body' && data.column.index === 8) {
           const margin = parseFloat(data.row.raw[8]?.replace(/[^\d-]/g, '') || '0');
           data.cell.styles.textColor = margin >= 0 ? [16, 185, 129] : [239, 68, 68];
@@ -205,14 +208,16 @@ export const exportFinancialPDF = async (
 
     pdf.save(`bilan_financier_${projectName || 'rapport'}_${Date.now()}.pdf`);
     return true;
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const err = error as { message?: string; toString?: () => string };
     logger.error('Export error:', error);
-    return error?.message || error?.toString() || 'Erreur inconnue jsPDF';
+    return err.message || (err.toString?.() as string) || 'Erreur inconnue jsPDF';
   }
 };
 
 // ─── Generic legacy export (kept for compatibility) ──────────────────────────
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export const exportToPDF = async (
   _elementId: string,
   _options: ExportOptions

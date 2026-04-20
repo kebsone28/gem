@@ -4,7 +4,8 @@
  */
 
 // Son "Success/Notification" subtil (Base64 pour éviter les problèmes de chargement réseau)
-const NOTIFICATION_SOUND = "data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YWoGAACAgICAgICAgICAgICAgICAgICAgICA... (truncated for brevity)"; 
+const NOTIFICATION_SOUND =
+  'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YWoGAACAgICAgICAgICAgICAgICAgICAgICA... (truncated for brevity)';
 // Actually, I will use the Audio API to synthesize a clean sound to ensure it's "Sans Erreur" and lightweight.
 
 class AudioService {
@@ -12,7 +13,10 @@ class AudioService {
 
   private initContext() {
     if (!this.context) {
-      this.context = new (window.AudioContext || (window as any).webkitAudioContext)();
+      this.context = new (
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: AudioContext }).webkitAudioContext
+      )();
     }
   }
 

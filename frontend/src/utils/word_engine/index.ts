@@ -3,7 +3,6 @@ import {
   Document,
   Packer,
   Paragraph,
-  HeadingLevel,
   AlignmentType,
   PageBreak,
   Header,
@@ -71,10 +70,10 @@ const DOCUMENT_FOOTER = new Footer({
           size: 16,
           color: COLORS.SLATE,
         }),
-        //@ts-ignore
+        // @ts-expect-error - PAGE_NUMBER field requires special handling
         new TextRun({ children: ['PAGE_NUMBER'], field: 'PAGE_NUMBER', size: 16, bold: true }),
         createText(' sur ', { size: 16, color: COLORS.SLATE }),
-        //@ts-ignore
+        // @ts-expect-error - NUMPAGES field requires special handling
         new TextRun({ children: ['NUMPAGES'], field: 'NUMPAGES', size: 16, bold: true }),
       ],
     }),
@@ -99,7 +98,7 @@ export const exportCahiersToWord = async (
   };
 
   // 1. Front Page
-  const mainTitle = isMultiple ? 'Cahiers des Charges Complets' : (tasks[0].role || 'Sans titre');
+  const mainTitle = isMultiple ? 'Cahiers des Charges Complets' : tasks[0].role || 'Sans titre';
   const safeRole = tasks[0].role?.replace(/\s+/g, '_') || 'lot';
   const qrText = `https://gem-saas.proquelec.sn/verify/${safeRole}_${Date.now()}`;
   const qrBuffer = await generateQRCodeBuffer(qrText);

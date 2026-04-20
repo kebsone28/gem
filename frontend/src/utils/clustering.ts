@@ -15,7 +15,11 @@ function getDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
   return R * c;
 }
 
-export function kMeansClustering(points: any[], k: number, maxIterations = 50) {
+export function kMeansClustering(
+  points: { coords: { lat: number; lon: number } }[],
+  k: number,
+  maxIterations = 50
+) {
   if (points.length === 0 || k <= 0) return [];
   if (k >= points.length) {
     return points.map((p) => ({
@@ -35,11 +39,14 @@ export function kMeansClustering(points: any[], k: number, maxIterations = 50) {
     }
   }
 
-  let clusters = Array.from({ length: k }, () => [] as any[]);
+  let clusters = Array.from({ length: k }, () => [] as { coords: { lat: number; lon: number } }[]);
 
   for (let iter = 0; iter < maxIterations; iter++) {
     // Assign points to closest centroid
-    const newClusters = Array.from({ length: k }, () => [] as any[]);
+    const newClusters = Array.from(
+      { length: k },
+      () => [] as { coords: { lat: number; lon: number } }[]
+    );
 
     for (const point of points) {
       let minDistance = Infinity;

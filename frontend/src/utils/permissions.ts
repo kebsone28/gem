@@ -3,6 +3,8 @@
  * Version : High-Precision Enterprise (Audit-Refined)
  */
 
+import type { User } from './types';
+
 // 1️⃣ RÉFÉRENTIEL DES RÔLES (Canonical)
 export const ROLES = {
   ADMIN: 'ADMIN_PROQUELEC',
@@ -65,7 +67,7 @@ export const PERMISSIONS = {
 };
 
 // 4️⃣ MATRICE DE DROITS (Standard)
-//@ts-ignore
+// @ts-expect-error - ROLE_PERMISSIONS type depends on UserRole which is dynamically loaded
 export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
   [ROLES.ADMIN]: Object.values(PERMISSIONS),
 
@@ -118,14 +120,14 @@ export const normalizeRole = (role?: string): UserRole | null => {
   return ROLE_ALIASES[role.trim().toUpperCase()] || null;
 };
 
-export const isMasterAdmin = (user: any): boolean => {
+export const isMasterAdmin = (user: unknown): boolean => {
   if (!user) return false;
-  const nRole = normalizeRole(user.role);
-  return nRole === ROLES.ADMIN || user.email?.toLowerCase() === 'admingem';
+  const nRole = normalizeRole((user as Record<string, unknown>).role as string);
+  return nRole === ROLES.ADMIN || (user as Record<string, unknown>).email?.valueOf() === 'admingem';
 };
 
-export const getMissionLabel = (user: any): string => {
-  const nRole = normalizeRole(user?.role);
+export const getMissionLabel = (user: unknown): string => {
+  const nRole = normalizeRole((user as Record<string, unknown>)?.role as string);
   if (!nRole) return 'Missions OM';
   if (nRole === ROLES.ADMIN) return 'Registre des Missions';
   if (nRole === ROLES.DG) return 'Mes Ordres de Mission';
@@ -135,8 +137,9 @@ export const getMissionLabel = (user: any): string => {
 /**
  * 🔐 COEUR DU MOTEUR : Vérifie une permission avec système de Blacklist
  */
-export const hasPermission = (user: any, permission: string): boolean => {
+export const hasPermission = (user: unknown, permission: string): boolean => {
   if (!user) return false;
+  const typedUser = user as Record<string, unknown>;
 
   // 1️⃣ PRIORITÉ HAUTE SÉCURITÉ (Bypass Admin)
   if (isMasterAdmin(user)) return true;
@@ -144,20 +147,24 @@ export const hasPermission = (user: any, permission: string): boolean => {
   // 2️⃣ BLACKLIST STRICTE (Denied Permissions)
   // Utile pour retirer un droit spécifique même si le rôle de base le permet
   if (
-    user.deniedPermissions &&
-    Array.isArray(user.deniedPermissions) &&
-    user.deniedPermissions.includes(permission)
+    typedUser.deniedPermissions &&
+    Array.isArray(typedUser.deniedPermissions) &&
+    (typedUser.deniedPermissions as string[]).includes(permission)
   ) {
     return false;
   }
 
   // 3️⃣ OVERRIDE PERSONNALISÉ (Additifs)
-  if (user.permissions && Array.isArray(user.permissions) && user.permissions.length > 0) {
-    return user.permissions.includes(permission);
+  if (
+    typedUser.permissions &&
+    Array.isArray(typedUser.permissions) &&
+    (typedUser.permissions as string[]).length > 0
+  ) {
+    return (typedUser.permissions as string[]).includes(permission);
   }
 
   // 4️⃣ DROITS PAR DÉFAUT DU RÔLE
-  const nRole = normalizeRole(user.role);
+  const nRole = normalizeRole(typedUser.role as string);
   if (!nRole) return false;
   return ROLE_PERMISSIONS[nRole]?.includes(permission) || false;
 };

@@ -20,6 +20,7 @@ import {
   HelpCircle,
   Building2,
   Eye,
+  Calendar,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSync } from '../hooks/useSync';
@@ -107,6 +108,14 @@ export default function Sidebar() {
         icon: MapIcon,
         label: 'Terrain',
         title: 'Suivez les ménages sur la carte interactive en temps réel',
+        permission: PERMISSIONS.VOIR_CARTE,
+        category: 'OPÉRATIONS',
+      },
+      {
+        to: '/planning',
+        icon: Calendar,
+        label: 'Planning',
+        title: 'Planification intelligente des travaux par équipe',
         permission: PERMISSIONS.VOIR_CARTE,
         category: 'OPÉRATIONS',
       },

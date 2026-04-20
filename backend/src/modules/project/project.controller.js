@@ -397,7 +397,7 @@ export const getProjectBordereau = async (req, res) => {
 
     } catch (error) {
         console.error('Bordereau calculation error:', error);
-        res.status(500).json({ error: 'Failed to generate bordereau' });
+        res.status(500).json({ error: 'Failed to generate bordereau', details: error.message, stack: error.stack });
     }
 };
 

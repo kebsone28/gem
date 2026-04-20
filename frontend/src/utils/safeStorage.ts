@@ -10,7 +10,7 @@ export function getItem(key: string): string | null {
   try {
     const val = localStorage.getItem(key);
     if (isTooLarge(val)) {
-      console.warn(`safeStorage: key \"${key}\" is too large (${val?.length} chars), purging`);
+      console.warn(`safeStorage: key "${key}" is too large (${val?.length} chars), purging`);
       localStorage.removeItem(key);
       return null;
     }
@@ -25,7 +25,7 @@ export function setItem(key: string, value: string): void {
   try {
     if (isTooLarge(value)) {
       console.warn(
-        `safeStorage: attempt to store oversized value under \"${key}\" (${value.length} chars), ignoring`
+        `safeStorage: attempt to store oversized value under "${key}" (${value.length} chars), ignoring`
       );
       return;
     }

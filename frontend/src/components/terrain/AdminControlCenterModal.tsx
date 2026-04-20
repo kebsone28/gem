@@ -86,6 +86,8 @@ export const AdminControlCenterModal: React.FC<AdminControlCenterModalProps> = (
           onClick={() => toggleLock(name)}
           className={`p-1 rounded-lg transition-all ${isLocked ? 'text-rose-500 bg-rose-500/10' : 'text-slate-500 hover:text-blue-400 bg-white/5'}`}
           title={isLocked ? 'Verrouillé : Kobo ne peut pas écraser ce champ' : 'Synchronisé : Kobo peut mettre à jour ce champ'}
+          aria-label={isLocked ? 'Verrouillé : Cliquez pour autoriser la mise à jour par Kobo' : 'Synchronisé : Cliquez pour verrouiller la valeur'}
+          aria-pressed={isLocked}
         >
           {isLocked ? <Database className="w-3 h-3" /> : <Activity className="w-3 h-3" />}
         </button>
@@ -131,6 +133,8 @@ export const AdminControlCenterModal: React.FC<AdminControlCenterModalProps> = (
                     ? 'bg-blue-600/20 border-blue-500/30 text-blue-400 shadow-[0_0_10px_rgba(59,130,246,0.1)]' 
                     : 'bg-white/5 border-white/5 text-slate-500 hover:border-white/10'
                 }`}
+                aria-pressed={isSelected}
+                title={opt.label}
               >
                 {opt.label}
               </button>
@@ -188,6 +192,8 @@ export const AdminControlCenterModal: React.FC<AdminControlCenterModalProps> = (
           <button 
             onClick={onClose}
             className="p-3 bg-white/5 hover:bg-white/10 rounded-2xl text-slate-400 transition-all active:scale-95"
+            title="Fermer le centre de contrôle"
+            aria-label="Fermer le centre de contrôle"
           >
             <X className="w-6 h-6" />
           </button>
@@ -222,13 +228,17 @@ export const AdminControlCenterModal: React.FC<AdminControlCenterModalProps> = (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
+                role="tab"
+                aria-selected={activeTab === tab.id}
+                aria-controls={`tab-panel-${tab.id}`}
+                id={`tab-btn-${tab.id}`}
                 className={`flex items-center gap-2 px-4 py-4 sm:px-6 sm:py-5 text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all border-b-2 shrink-0 ${
                   activeTab === tab.id 
                     ? 'border-blue-500 text-blue-400 bg-blue-500/5' 
                     : 'border-transparent text-slate-500 hover:text-slate-300'
                 }`}
               >
-                <tab.icon className={`w-3 h-3 sm:w-4 sm:h-4 ${(tab.id === 'conflits' && (household.alerts || []).some((a: any) => a.type === 'DOUBLON_DETECTE')) ? 'animate-pulse text-rose-500' : ''}`} />
+                <tab.icon className={`w-3 h-3 sm:w-4 sm:h-4 ${(tab.id === 'conflits' && (household.alerts || []).some((a: any) => a.type === 'DOUBLON_DETECTE')) ? 'animate-pulse text-rose-500' : ''}`} aria-hidden="true" />
                 <span className="whitespace-nowrap">{tab.label}</span>
                 {tab.id === 'conflits' && (household.alerts || []).some((a: any) => a.type === 'DOUBLON_DETECTE') && (
                    <div className="w-1.5 h-1.5 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)]" />
@@ -241,11 +251,22 @@ export const AdminControlCenterModal: React.FC<AdminControlCenterModalProps> = (
         {/* Content Area */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-8 space-y-6 sm:space-y-8 custom-scrollbar">
           {activeTab === 'identity' && (
-            <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
+            <motion.div 
+              initial={{ opacity: 0, x: -10 }} 
+              animate={{ opacity: 1, x: 0 }} 
+              className="space-y-6"
+              role="tabpanel"
+              id="tab-panel-identity"
+              aria-labelledby="tab-btn-identity"
+            >
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <FieldLock name="name" label="Nom Complet" />
+                  <div className="flex items-center gap-2">
+                    <label htmlFor="identity-name" className="text-[9px] font-black uppercase tracking-[0.1em] text-slate-500 italic">Nom Complet</label>
+                    <FieldLock name="name" />
+                  </div>
                   <input 
+                    id="identity-name"
                     value={formData.name || ''} 
                     onChange={e => setFormData({...formData, name: e.target.value})}
                     className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white font-medium focus:border-blue-500/50 transition-all outline-none"
@@ -253,8 +274,12 @@ export const AdminControlCenterModal: React.FC<AdminControlCenterModalProps> = (
                   />
                 </div>
                 <div className="space-y-2">
-                  <FieldLock name="phone" label="Téléphone" />
+                  <div className="flex items-center gap-2">
+                    <label htmlFor="identity-phone" className="text-[9px] font-black uppercase tracking-[0.1em] text-slate-500 italic">Téléphone</label>
+                    <FieldLock name="phone" />
+                  </div>
                   <input 
+                    id="identity-phone"
                     value={formData.phone || ''} 
                     onChange={e => setFormData({...formData, phone: e.target.value})}
                     className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white font-medium focus:border-blue-500/50 transition-all outline-none"
@@ -264,19 +289,23 @@ export const AdminControlCenterModal: React.FC<AdminControlCenterModalProps> = (
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <label className="text-[9px] font-black uppercase tracking-[0.1em] text-slate-500 ml-1">Numéro d'Ordre</label>
+                  <label htmlFor="identity-num-ordre" className="text-[9px] font-black uppercase tracking-[0.1em] text-slate-500 ml-1">Numéro d'Ordre</label>
                   <input 
+                    id="identity-num-ordre"
                     value={formData.numeroordre || ''} 
                     onChange={e => setFormData({...formData, numeroordre: e.target.value})}
                     className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white font-black italic focus:border-blue-500/50 transition-all outline-none"
+                    title="Numéro d'Ordre"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[9px] font-black uppercase tracking-[0.1em] text-slate-500 ml-1">Source de données</label>
+                  <label htmlFor="identity-source" className="text-[9px] font-black uppercase tracking-[0.1em] text-slate-500 ml-1">Source de données</label>
                   <select 
+                    id="identity-source"
                     value={formData.source || 'local'} 
                     onChange={e => setFormData({...formData, source: e.target.value as any})}
                     className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white font-medium focus:border-blue-500/50 transition-all outline-none"
+                    title="Source de données"
                   >
                     <option value="kobo">KOBO</option>
                     <option value="local">MANUEL</option>
@@ -289,27 +318,33 @@ export const AdminControlCenterModal: React.FC<AdminControlCenterModalProps> = (
                 <h4 className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 italic">Hiérarchie Administrative</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="space-y-2">
-                    <label className="text-[8px] font-black uppercase text-slate-600 ml-1">Région</label>
+                    <label htmlFor="identity-region" className="text-[8px] font-black uppercase text-slate-600 ml-1">Région</label>
                     <input 
+                      id="identity-region"
                       value={formData.region || ''} 
                       onChange={e => setFormData({...formData, region: e.target.value})}
                       className="w-full bg-white/5 border border-white/5 rounded-xl px-4 py-3 text-white text-xs outline-none focus:border-blue-500/30"
+                      title="Région"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[8px] font-black uppercase text-slate-600 ml-1">Département</label>
+                    <label htmlFor="identity-dept" className="text-[8px] font-black uppercase text-slate-600 ml-1">Département</label>
                     <input 
+                      id="identity-dept"
                       value={formData.departement || ''} 
                       onChange={e => setFormData({...formData, departement: e.target.value})}
                       className="w-full bg-white/5 border border-white/5 rounded-xl px-4 py-3 text-white text-xs outline-none focus:border-blue-500/30"
+                      title="Département"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[8px] font-black uppercase text-slate-600 ml-1">Village/Quartier</label>
+                    <label htmlFor="identity-village" className="text-[8px] font-black uppercase text-slate-600 ml-1">Village/Quartier</label>
                     <input 
+                      id="identity-village"
                       value={formData.village || ''} 
                       onChange={e => setFormData({...formData, village: e.target.value})}
                       className="w-full bg-white/5 border border-white/5 rounded-xl px-4 py-3 text-orange-400 font-bold text-xs outline-none focus:border-blue-500/30"
+                      title="Village/Quartier"
                     />
                   </div>
                 </div>
@@ -321,28 +356,34 @@ export const AdminControlCenterModal: React.FC<AdminControlCenterModalProps> = (
             <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
               <div className="space-y-6">
                 <div className="space-y-2">
-                  <label className="text-[9px] font-black uppercase tracking-[0.1em] text-slate-500 ml-1">Nom Complet (Propriétaire)</label>
+                  <label htmlFor="social-owner-nom" className="text-[9px] font-black uppercase tracking-[0.1em] text-slate-500 ml-1">Nom Complet (Propriétaire)</label>
                   <input 
+                    id="social-owner-nom"
                     value={(formData.owner as any)?.nom || ''} 
                     onChange={e => updateNested('owner', 'nom', e.target.value)}
                     className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white font-medium focus:border-blue-500/50 transition-all outline-none"
+                    placeholder="Nom du propriétaire"
                   />
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <label className="text-[9px] font-black uppercase tracking-[0.1em] text-slate-500 ml-1">Numéro CIN / ID</label>
+                    <label htmlFor="social-owner-cin" className="text-[9px] font-black uppercase tracking-[0.1em] text-slate-500 ml-1">Numéro CIN / ID</label>
                     <input 
+                      id="social-owner-cin"
                       value={(formData.owner as any)?.cin || ''} 
                       onChange={e => updateNested('owner', 'cin', e.target.value)}
                       className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white font-mono focus:border-blue-500/50 transition-all outline-none"
+                      placeholder="N° CIN"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[9px] font-black uppercase tracking-[0.1em] text-slate-500 ml-1">Contact Secondaire</label>
+                    <label htmlFor="social-owner-phone" className="text-[9px] font-black uppercase tracking-[0.1em] text-slate-500 ml-1">Contact Secondaire</label>
                     <input 
+                      id="social-owner-phone"
                       value={(formData.owner as any)?.telephone || ''} 
                       onChange={e => updateNested('owner', 'telephone', e.target.value)}
                       className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white font-medium focus:border-blue-500/50 transition-all outline-none"
+                      placeholder="Téléphone"
                     />
                   </div>
                 </div>
@@ -371,21 +412,25 @@ export const AdminControlCenterModal: React.FC<AdminControlCenterModalProps> = (
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <label className="text-[8px] font-black uppercase text-slate-500 px-1">Kits Préparés</label>
+                    <label htmlFor="tech-kits-prepares" className="text-[8px] font-black uppercase text-slate-500 px-1">Kits Préparés</label>
                     <input 
+                      id="tech-kits-prepares"
                       type="number"
                       value={(formData.constructionData as any)?.preparateur?.kits_prepares || ''}
                       onChange={e => updateNested('constructionData', 'preparateur', { ...(formData.constructionData as any)?.preparateur, kits_prepares: e.target.value })}
                       className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white font-mono text-[10px]"
+                      placeholder="0"
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[8px] font-black uppercase text-slate-500 px-1">Kits Chargés</label>
+                    <label htmlFor="tech-kits-charges" className="text-[8px] font-black uppercase text-slate-500 px-1">Kits Chargés</label>
                     <input 
+                      id="tech-kits-charges"
                       type="number"
                       value={(formData.constructionData as any)?.preparateur?.kits_charges || ''}
                       onChange={e => updateNested('constructionData', 'preparateur', { ...(formData.constructionData as any)?.preparateur, kits_charges: e.target.value })}
                       className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white font-mono text-[10px]"
+                      placeholder="0"
                     />
                   </div>
                 </div>
@@ -414,8 +459,9 @@ export const AdminControlCenterModal: React.FC<AdminControlCenterModalProps> = (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div className="space-y-6">
                     <div className="space-y-2">
-                       <label className="text-[9px] font-black uppercase text-slate-500 px-1">Situation Client</label>
+                       <label htmlFor="tech-situation" className="text-[9px] font-black uppercase text-slate-500 px-1">Situation Client</label>
                        <select 
+                         id="tech-situation"
                          value={(formData.constructionData as any)?.livreur?.situation || ''} 
                          onChange={e => updateNested('constructionData', 'livreur', { ...(formData.constructionData as any)?.livreur, situation: e.target.value })}
                          className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white text-xs outline-none"
@@ -440,8 +486,9 @@ export const AdminControlCenterModal: React.FC<AdminControlCenterModalProps> = (
                     />
 
                     <div className="space-y-2">
-                       <label className="text-[9px] font-black uppercase text-slate-500 px-1">Observation Kit (POURQUOI)</label>
+                       <label htmlFor="tech-kit-problems" className="text-[9px] font-black uppercase text-slate-500 px-1">Observation Kit (POURQUOI)</label>
                        <input 
+                         id="tech-kit-problems"
                          value={(formData.constructionData as any)?.livreur?.kit_problems || ''}
                          onChange={e => updateNested('constructionData', 'livreur', { ...(formData.constructionData as any)?.livreur, kit_problems: e.target.value })}
                          className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white text-[10px] italic outline-none"
@@ -474,18 +521,20 @@ export const AdminControlCenterModal: React.FC<AdminControlCenterModalProps> = (
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                   {[
-                    { f: 'câble_2_5', l: '2.5mm' },
-                    { f: 'câble_1_5', l: '1.5mm' },
-                    { f: 'tranchee_4', l: '4mm Armé' },
-                    { f: 'tranchee_1_5', l: '1.5mm Armé' },
+                    { f: 'câble_2_5', l: '2.5mm', id: 'tech-cable-2-5' },
+                    { f: 'câble_1_5', l: '1.5mm', id: 'tech-cable-1-5' },
+                    { f: 'tranchee_4', l: '4mm Armé', id: 'tech-cable-4-arme' },
+                    { f: 'tranchee_1_5', l: '1.5mm Armé', id: 'tech-cable-1-5-arme' },
                   ].map(c => (
                     <div key={c.f} className="space-y-1">
-                      <label className="text-[7px] font-black uppercase text-slate-600 px-1">{c.l} (m)</label>
+                      <label htmlFor={c.id} className="text-[7px] font-black uppercase text-slate-600 px-1">{c.l} (m)</label>
                       <input 
+                        id={c.id}
                         type="number"
                         value={(formData.constructionData as any)?.livreur?.[c.f] || ''}
                         onChange={e => updateNested('constructionData', 'livreur', { ...(formData.constructionData as any)?.livreur, [c.f]: e.target.value })}
                         className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white font-mono text-[10px]"
+                        placeholder="0"
                       />
                     </div>
                   ))}
@@ -515,15 +564,16 @@ export const AdminControlCenterModal: React.FC<AdminControlCenterModalProps> = (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div className="space-y-4">
                     <div className="space-y-2">
-                      <label className="text-[9px] font-black uppercase text-slate-500 px-1">Disponibilité Kit</label>
-                      <select 
-                        value={(formData.constructionData as any)?.macon?.kit_disponible || ''} 
-                        onChange={e => updateNested('constructionData', 'macon', { ...(formData.constructionData as any)?.macon, kit_disponible: e.target.value })}
-                        className="w-full bg-slate-950 border border-white/10 rounded-2xl px-5 py-4 text-white text-xs outline-none focus:border-blue-500/50"
-                      >
-                        <option className="bg-slate-950 text-white" value="oui">Oui - Kit complet</option>
-                        <option className="bg-slate-950 text-white" value="non">Non - Problème kit</option>
-                      </select>
+                       <label htmlFor="tech-kit-disponible" className="text-[9px] font-black uppercase text-slate-500 px-1">Disponibilité Kit</label>
+                       <select 
+                         id="tech-kit-disponible"
+                         value={(formData.constructionData as any)?.macon?.kit_disponible || ''} 
+                         onChange={e => updateNested('constructionData', 'macon', { ...(formData.constructionData as any)?.macon, kit_disponible: e.target.value })}
+                         className="w-full bg-slate-950 border border-white/10 rounded-2xl px-5 py-4 text-white text-xs outline-none focus:border-blue-500/50"
+                       >
+                         <option className="bg-slate-950 text-white" value="oui">Oui - Kit complet</option>
+                         <option className="bg-slate-950 text-white" value="non">Non - Problème kit</option>
+                       </select>
                     </div>
 
                     <MultiSelectTagGroup 
@@ -540,8 +590,9 @@ export const AdminControlCenterModal: React.FC<AdminControlCenterModalProps> = (
                   </div>
                   <div className="space-y-4">
                     <div className="space-y-2">
-                       <label className="text-[9px] font-black uppercase text-slate-500 px-1">Type de Mur</label>
+                       <label htmlFor="tech-type-mur" className="text-[9px] font-black uppercase text-slate-500 px-1">Type de Mur</label>
                        <select 
+                         id="tech-type-mur"
                          value={(formData.constructionData as any)?.macon?.type_mur || ''} 
                          onChange={e => updateNested('constructionData', 'macon', { ...(formData.constructionData as any)?.macon, type_mur: e.target.value })}
                          className="w-full bg-slate-950 border border-white/10 rounded-2xl px-5 py-4 text-white text-xs outline-none focus:border-blue-500/50"
@@ -579,8 +630,9 @@ export const AdminControlCenterModal: React.FC<AdminControlCenterModalProps> = (
                   
                   <div className="space-y-4">
                     <div className="space-y-1">
-                       <label className="text-[8px] font-black text-slate-500 uppercase px-1">Conformité Mur (Réseau)</label>
+                       <label htmlFor="tech-verif-mur" className="text-[8px] font-black text-slate-500 uppercase px-1">Conformité Mur (Réseau)</label>
                        <select 
+                         id="tech-verif-mur"
                          value={(formData.constructionData as any)?.reseau?.verif_mur || ''} 
                          onChange={e => updateNested('constructionData', 'reseau', { ...(formData.constructionData as any)?.reseau, verif_mur: e.target.value })}
                          className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-[10px]"
@@ -618,8 +670,9 @@ export const AdminControlCenterModal: React.FC<AdminControlCenterModalProps> = (
                     </div>
 
                     <div className="pt-2 border-t border-white/5 mt-2">
-                       <label className="text-[8px] font-black text-slate-500 uppercase px-1">État Branchement</label>
+                       <label htmlFor="tech-etat-branchement" className="text-[8px] font-black text-slate-500 uppercase px-1">État Branchement</label>
                        <select 
+                         id="tech-etat-branchement"
                          value={(formData.constructionData as any)?.reseau?.etat || ''} 
                          onChange={e => updateNested('constructionData', 'reseau', { ...(formData.constructionData as any)?.reseau, etat: e.target.value })}
                          className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-[10px] mt-1"
@@ -654,8 +707,9 @@ export const AdminControlCenterModal: React.FC<AdminControlCenterModalProps> = (
 
                   <div className="space-y-4">
                     <div className="space-y-1">
-                       <label className="text-[8px] font-black text-slate-500 uppercase px-1">Conformité Branchement (Interieur)</label>
+                       <label htmlFor="tech-verif-branchement" className="text-[8px] font-black text-slate-500 uppercase px-1">Conformité Branchement (Interieur)</label>
                        <select 
+                         id="tech-verif-branchement"
                          value={(formData.constructionData as any)?.interieur?.verif_branchement || ''} 
                          onChange={e => updateNested('constructionData', 'interieur', { ...(formData.constructionData as any)?.interieur, verif_branchement: e.target.value })}
                          className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-[10px]"
@@ -677,8 +731,9 @@ export const AdminControlCenterModal: React.FC<AdminControlCenterModalProps> = (
                     />
 
                     <div className="pt-2">
-                       <label className="text-[8px] font-black text-slate-500 uppercase px-1">État Installation</label>
+                       <label htmlFor="tech-etat-installation" className="text-[8px] font-black text-slate-500 uppercase px-1">État Installation</label>
                        <select 
+                         id="tech-etat-installation"
                          value={(formData.constructionData as any)?.interieur?.etat || ''} 
                          onChange={e => updateNested('constructionData', 'interieur', { ...(formData.constructionData as any)?.interieur, etat: e.target.value })}
                          className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-[10px] mt-1"
@@ -728,8 +783,9 @@ export const AdminControlCenterModal: React.FC<AdminControlCenterModalProps> = (
                       { f: 'contact_direct', l: 'Protec. contact direct' },
                     ].map(audit => (
                       <div key={audit.f} className="flex items-center justify-between gap-4">
-                        <label className="text-[10px] font-bold text-slate-300 uppercase shrink-0">{audit.l}</label>
+                        <label htmlFor={`audit-${audit.f}`} className="text-[10px] font-bold text-slate-300 uppercase shrink-0">{audit.l}</label>
                         <select 
+                          id={`audit-${audit.f}`}
                           value={(formData.constructionData as any)?.audit?.[audit.f] || ''}
                           onChange={e => updateNested('constructionData', 'audit', { ...(formData.constructionData as any)?.audit, [audit.f]: e.target.value })}
                           className={`bg-white/5 border rounded-lg px-2 py-1 text-[9px] outline-none ${(formData.constructionData as any)?.audit?.[audit.f] === 'non_conforme' ? 'border-rose-500/50 text-rose-400' : 'border-white/10 text-emerald-400'}`}
@@ -767,6 +823,7 @@ export const AdminControlCenterModal: React.FC<AdminControlCenterModalProps> = (
                              value={(formData.constructionData as any)?.audit?.resistance_terre || ''}
                              onChange={e => updateNested('constructionData', 'audit', { ...(formData.constructionData as any)?.audit, resistance_terre: e.target.value })}
                              className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-[10px] w-20 text-right font-mono"
+                             title="Résistance de Terre"
                            />
                            <span className="text-[10px] text-slate-600">Ω</span>
                          </div>
@@ -808,13 +865,15 @@ export const AdminControlCenterModal: React.FC<AdminControlCenterModalProps> = (
                 </div>
 
                 <div className="pt-4 space-y-4">
-                   <label className="text-[9px] font-black text-slate-500 uppercase px-1">Observations Générales de l'Audit</label>
-                   <textarea 
-                     value={(formData.constructionData as any)?.audit?.notes_generales || ''}
-                     onChange={e => updateNested('constructionData', 'audit', { ...(formData.constructionData as any)?.audit, notes_generales: e.target.value })}
-                     className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white text-xs min-h-[100px] outline-none focus:border-blue-500/50"
-                     placeholder="Saisissez les observations détaillées du contrôleur..."
-                   />
+                    <label htmlFor="audit-notes-generales" className="text-[9px] font-black text-slate-500 uppercase px-1">Observations Générales de l'Audit</label>
+                    <textarea 
+                      id="audit-notes-generales"
+                      value={(formData.constructionData as any)?.audit?.notes_generales || ''}
+                      onChange={e => updateNested('constructionData', 'audit', { ...(formData.constructionData as any)?.audit, notes_generales: e.target.value })}
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white text-xs min-h-[100px] outline-none focus:border-blue-500/50"
+                      placeholder="Saisissez les observations détaillées du contrôleur..."
+                      title="Observations Générales"
+                    />
                 </div>
               </div>
             </motion.div>
@@ -852,11 +911,13 @@ export const AdminControlCenterModal: React.FC<AdminControlCenterModalProps> = (
             <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="space-y-8">
                <div className="space-y-4">
                 <div className="space-y-2">
-                  <label className="text-[9px] font-black uppercase tracking-[0.1em] text-slate-500 ml-1">Zone Géographique</label>
+                  <label htmlFor="logistics-zone" className="text-[9px] font-black uppercase tracking-[0.1em] text-slate-500 ml-1">Zone Géographique</label>
                   <select 
+                    id="logistics-zone"
                     value={formData.zoneId || ''} 
                     onChange={e => setFormData({...formData, zoneId: e.target.value})}
                     className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white font-medium focus:border-blue-500/50 transition-all outline-none"
+                    title="Zone Géographique"
                   >
                     <option value="">Sélectionner une zone...</option>
                     {zones.map(z => <option key={z.id} className="bg-slate-900 text-white" value={z.id}>{z.name}</option>)}
@@ -873,28 +934,32 @@ export const AdminControlCenterModal: React.FC<AdminControlCenterModalProps> = (
               <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <div className="flex items-center justify-between px-1">
-                    <label className="text-[9px] font-black uppercase tracking-[0.1em] text-slate-500">Latitude</label>
+                    <label htmlFor="logistics-lat" className="text-[9px] font-black uppercase tracking-[0.1em] text-slate-500">Latitude</label>
                     <FieldLock name="latitude" />
                   </div>
                   <input 
+                    id="logistics-lat"
                     type="number"
                     step="0.0000000001"
                     value={formData.latitude || ''} 
                     onChange={e => setFormData({...formData, latitude: parseFloat(e.target.value)})}
                     className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white font-mono text-xs focus:border-blue-500/50 transition-all outline-none"
+                    title="Latitude"
                   />
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between px-1">
-                    <label className="text-[9px] font-black uppercase tracking-[0.1em] text-slate-500">Longitude</label>
+                    <label htmlFor="logistics-lon" className="text-[9px] font-black uppercase tracking-[0.1em] text-slate-500">Longitude</label>
                     <FieldLock name="longitude" />
                   </div>
                   <input 
+                    id="logistics-lon"
                     type="number"
                     step="0.0000000001"
                     value={formData.longitude || ''} 
                     onChange={e => setFormData({...formData, longitude: parseFloat(e.target.value)})}
                     className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white font-mono text-xs focus:border-blue-500/50 transition-all outline-none"
+                    title="Longitude"
                   />
                 </div>
               </div>

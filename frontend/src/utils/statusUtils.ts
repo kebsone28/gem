@@ -37,10 +37,17 @@ export const getHouseholdDerivedStatus = (h: Household) => {
 
   // 2. Alertes critiques
   const alerts = Array.isArray(h.alerts) ? h.alerts : [];
-  if (alerts.some((a: any) => a.severity === 'HIGH' || a.type === 'CRITICAL')) return 'Non conforme';
+  if (
+    alerts.some(
+      (a: { severity?: string; type?: string }) => a.severity === 'HIGH' || a.type === 'CRITICAL'
+    )
+  )
+    return 'Non conforme';
 
   // 3. Nouvelle architecture (constructionData)
-  const cData = h.constructionData as any;
+  const cData = h.constructionData as {
+    audit?: { installation_conforme?: string; branchement_conforme?: string };
+  } | null;
   if (cData) {
     if (
       cData.audit?.installation_conforme === 'conforme' ||

@@ -53,7 +53,7 @@ export const saveMissionSnapshot = (
         const minimalHistory = history.slice(-3);
         localStorage.setItem(historyKey, JSON.stringify(minimalHistory));
         console.log('Managed storage quota by reducing history depth to 3.');
-      } catch (innerError) {
+      } catch {
         console.warn('LocalStorage fully exhausted, could not even save minimal history.');
       }
     } else {

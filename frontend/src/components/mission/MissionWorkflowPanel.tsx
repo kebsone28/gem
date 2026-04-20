@@ -97,14 +97,14 @@ export const MissionWorkflowPanel: React.FC<MissionWorkflowPanelProps> = ({
         <div className="space-y-2">
           <div className="w-full h-2 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
             <div
-              className={`h-full transition-all duration-500 ${
+              className={`h-full transition-all duration-500 workflow-progress-bar ${
                 workflow.overallStatus === 'approved'
                   ? 'bg-emerald-500'
                   : workflow.overallStatus === 'rejected'
                     ? 'bg-rose-500'
                     : 'bg-amber-500'
               }`}
-              style={{ width: `${progress}%` }}
+              style={{ '--workflow-progress': `${progress}%` } as React.CSSProperties}
             />
           </div>
           <div className="text-xs font-bold text-right text-slate-500 dark:text-slate-400">

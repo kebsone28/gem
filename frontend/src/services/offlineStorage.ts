@@ -8,8 +8,8 @@ export interface LocalHousehold {
   region?: string | null;
   village?: string | null;
   status: string;
-  location: any;
-  data: any; // Complete JSON payload
+  location: { lat: number; lng: number };
+  data: Record<string, unknown>; // Complete JSON payload
   synced: boolean;
 }
 
@@ -30,7 +30,7 @@ export const offlineDB = new GemOfflineDB();
 /**
  * Sync server-side households into the resilient offline IndexedDB.
  */
-export const cacheHouseholdsForOffline = async (householdsArray: any[]) => {
+export const cacheHouseholdsForOffline = async (householdsArray: Record<string, unknown>[]) => {
   try {
     const records: LocalHousehold[] = householdsArray.map((h) => ({
       id: String(h.id || h.household_id),
@@ -59,7 +59,7 @@ export const cacheHouseholdsForOffline = async (householdsArray: any[]) => {
 /**
  * Retrieve all valid households from local IndexedDB when the network is dead.
  */
-export const getOfflineHouseholds = async (): Promise<any[]> => {
+export const getOfflineHouseholds = async (): Promise<Record<string, unknown>[]> => {
   const raw = await offlineDB.households.toArray();
   return raw.map((r) => r.data);
 };

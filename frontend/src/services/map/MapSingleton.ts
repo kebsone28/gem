@@ -42,7 +42,7 @@ export class MapManager {
     // 2. Instantiate the global MapLibre Map
     this.map = new maplibregl.Map({
       container: this.container,
-      style: isDarkMode ? (MAP_STYLE_DARK as any) : (MAP_STYLE_LIGHT_VECTOR as any),
+      style: isDarkMode ? MAP_STYLE_DARK : MAP_STYLE_LIGHT_VECTOR,
       center: [-14.45, 14.5], // PROQUELEC default focus
       zoom: 7,
       pitch: 0,
@@ -84,22 +84,22 @@ export class MapManager {
       if (!this.map) return resolve();
 
       // Prevent updates if interrupted
-      if ((this.map as any)._removed) return resolve();
+      if ((this.map as unknown as { _removed?: boolean })._removed) return resolve();
 
-      let styleObj: any = isDarkMode ? MAP_STYLE_DARK : MAP_STYLE_LIGHT_VECTOR;
+      let styleObj: object = isDarkMode ? MAP_STYLE_DARK : MAP_STYLE_LIGHT_VECTOR;
       if (targetSource === 'satellite')
         styleObj = { ...MAP_STYLE_SATELLITE, metadata: { source: 'satellite' } };
       if (targetSource === 'light') styleObj = MAP_STYLE_LIGHT_VECTOR;
       if (targetSource === 'dark') styleObj = MAP_STYLE_DARK;
 
       const applyStyle = () => {
-        if ((this.map as any)._removed) return resolve();
-        
+        if ((this.map as unknown as { _removed?: boolean })._removed) return resolve();
+
         try {
           // Force clear placement to avoid "reading get" crash during transition
-          (this.map as any)._placement = undefined; 
-          
-          this.map!.setStyle(styleObj as any, { diff: false });
+          (this.map as unknown as { _placement?: unknown })._placement = undefined;
+
+          this.map!.setStyle(styleObj, { diff: false });
 
           // We wait for 'style.load' which is the official "all good" signal
           const onStyleLoad = async () => {
