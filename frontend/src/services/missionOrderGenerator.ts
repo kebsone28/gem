@@ -624,7 +624,7 @@ export const generateMissionReportPDF = async (data: MissionOrderData) => {
     
     currentY += 15;
 
-    daysWithPhotos.forEach((day, dIdx) => {
+    daysWithPhotos.forEach((day) => {
       // Titre du jour
       if (currentY > h - 40) {
         doc.addPage();
