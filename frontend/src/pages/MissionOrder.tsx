@@ -15,7 +15,7 @@ import { db } from '../store/db';
 import { createMissionFromTemplate } from '../services/missionTemplates';
 
 // Types
-import type { MissionOrderData, MissionMember } from './mission/core/missionTypes';
+import { MissionOrderData, MissionMember, KAFFRINE_TEMPLATE } from './mission/core/missionTypes';
 
 // Hooks
 import { usePermissions } from '../hooks/usePermissions';
@@ -754,142 +754,123 @@ export default function MissionOrder() {
 
                         <div>
                           <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
-                            Rapports journaliers
+                            Mode de Reporting
                           </label>
-                          {(state.formData.reportDays || []).map((day: any, idx: number) => (
-                            <div key={idx} className="mb-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
-                              <div className="flex justify-between items-center mb-2">
-                                <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400">Jour {idx + 1}</span>
-                                <button
-                                  onClick={() => {
+                          <div className="flex gap-2 p-1 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl mb-4">
+                            <button
+                              onClick={() => missionState.updateFormField('reportingMode', 'daily')}
+                              className={`flex-1 py-2 px-4 rounded-lg text-xs font-bold transition-all ${
+                                (state.formData.reportingMode || 'daily') === 'daily'
+                                  ? 'bg-emerald-500 text-white shadow-lg'
+                                  : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                              }`}
+                            >
+                              Suivi Journalier (Jalons)
+                            </button>
+                            <button
+                              onClick={() => {
+                                missionState.updateFormField('reportingMode', 'narrative');
+                                if (!state.formData.narrativeReport) {
+                                  missionState.updateFormField('narrativeReport', KAFFRINE_TEMPLATE);
+                                }
+                              }}
+                              className={`flex-1 py-2 px-4 rounded-lg text-xs font-bold transition-all ${
+                                state.formData.reportingMode === 'narrative'
+                                  ? 'bg-emerald-500 text-white shadow-lg'
+                                  : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                              }`}
+                            >
+                              Rapport Global de Synthèse
+                            </button>
+                          </div>
+                        </div>
+
+                        {(state.formData.reportingMode || 'daily') === 'daily' ? (
+                          <div>
+                            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+                              Rapports journaliers
+                            </label>
+                            {(state.formData.reportDays || []).map((day: any, idx: number) => (
+                              <div key={idx} className="mb-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                                <div className="flex justify-between items-center mb-2">
+                                  <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400">Jour {idx + 1}</span>
+                                  <button
+                                    onClick={() => {
+                                      const days = [...(state.formData.reportDays || [])];
+                                      days.splice(idx, 1);
+                                      missionState.updateFormField('reportDays', days);
+                                    }}
+                                    className="text-red-500 hover:text-red-700 text-xs font-bold"
+                                  >
+                                    Supprimer
+                                  </button>
+                                </div>
+                                <textarea
+                                  value={day.notes || ''}
+                                  onChange={(e) => {
                                     const days = [...(state.formData.reportDays || [])];
-                                    days.splice(idx, 1);
+                                    days[idx] = { ...day, notes: e.target.value };
                                     missionState.updateFormField('reportDays', days);
                                   }}
-                                  className="text-red-500 hover:text-red-700 text-xs font-bold"
-                                >
-                                  Supprimer
-                                </button>
-                              </div>
-                              <textarea
-                                value={day.notes || ''}
-                                onChange={(e) => {
-                                  const days = [...(state.formData.reportDays || [])];
-                                  days[idx] = { ...day, notes: e.target.value };
-                                  missionState.updateFormField('reportDays', days);
-                                }}
-                                rows={3}
-                                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm"
-                                placeholder="Notes du jour..."
-                              />
+                                  rows={3}
+                                  className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm"
+                                  placeholder="Notes du jour..."
+                                />
 
-                              {/* Zone photos responsive */}
-                              <div className="mt-2">
-                                <div className="flex flex-wrap gap-2 items-center">
-                                  {(day.photos || []).map((photo: import('./mission/core/missionTypes').MissionPhoto, pidx: number) => (
-                                    <div key={photo.id || pidx} className="relative group w-16 h-16 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-900 flex flex-col items-center justify-center">
-                                      <img
-                                        src={photo.data}
-                                        alt={`Photo ${pidx + 1}`}
-                                        className="object-cover w-full h-2/3"
-                                      />
-                                      <input
-                                        type="text"
-                                        value={photo.comment || ''}
-                                        onChange={e => {
-                                          const days = [...(state.formData.reportDays || [])];
-                                          const photos = [...(days[idx].photos || [])];
-                                          photos[pidx] = { ...photos[pidx], comment: e.target.value };
-                                          days[idx].photos = photos as import('./mission/core/missionTypes').MissionPhoto[];
-                                          missionState.updateFormField('reportDays', days);
-                                        }}
-                                        placeholder="Commentaire..."
-                                        className="w-full px-1 py-0.5 text-[10px] rounded-b bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-indigo-400"
-                                        style={{ minHeight: 18, maxHeight: 28 }}
-                                      />
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          const days = [...(state.formData.reportDays || [])];
-                                          days[idx].photos = (days[idx].photos || []).filter((_: unknown, i: number) => i !== pidx);
-                                          missionState.updateFormField('reportDays', days);
-                                        }}
-                                        className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-0.5 opacity-80 hover:opacity-100 text-xs"
-                                        title="Supprimer la photo"
-                                      >✕</button>
-                                    </div>
-                                  ))}
-                                  {/* Bouton ajout photo */}
-                                  <label className="w-16 h-16 flex flex-col items-center justify-center border-2 border-dashed border-indigo-400 dark:border-indigo-700 rounded-lg cursor-pointer hover:border-indigo-600 bg-white dark:bg-slate-800 text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900 transition-all">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-                                    <span className="text-[10px] font-bold">Photo</span>
-                                    <input
-                                      type="file"
-                                      accept="image/*"
-                                      capture="environment"
-                                      className="hidden"
-                                      onChange={async (e) => {
-                                        const file = e.target.files && e.target.files[0];
-                                        if (!file) return;
-                                        const reader = new FileReader();
-                                        reader.onload = (ev) => {
-                                          const days = [...(state.formData.reportDays || [])];
-                                          const photoObj = {
-                                            id: crypto.randomUUID(),
-                                            data: ev.target.result,
-                                            comment: '',
-                                            timestamp: new Date().toISOString(),
-                                          };
-                                          missionState.updateFormField('reportDays', days);
-                                        };
-                                        reader.readAsDataURL(file);
-                                        // Reset input pour permettre de reprendre une photo
-                                        e.target.value = '';
-                                      }}
-                                    />
-                                    <input
-                                      type="file"
-                                      accept="image/*"
-                                      capture="environment"
-                                      className="hidden"
-                                      onChange={async (e) => {
-                                        const file = e.target.files && e.target.files[0];
-                                        if (!file) return;
-                                        const reader = new FileReader();
-                                        reader.onload = (ev: ProgressEvent<FileReader>) => {
-                                          const result = ev.target?.result;
-                                          if (typeof result === 'string' && result) {
+                                {/* Zone photos responsive */}
+                                <div className="mt-2">
+                                  <div className="flex flex-wrap gap-2 items-center">
+                                    {(day.photos || []).map((photo: import('./mission/core/missionTypes').MissionPhoto, pidx: number) => (
+                                      <div key={photo.id || pidx} className="relative group w-16 h-16 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-900 flex flex-col items-center justify-center">
+                                        <img
+                                          src={photo.data || photo.url}
+                                          alt={`Photo ${pidx + 1}`}
+                                          className="object-cover w-full h-2/3"
+                                        />
+                                        <input
+                                          type="text"
+                                          value={photo.comment || ''}
+                                          onChange={e => {
                                             const days = [...(state.formData.reportDays || [])];
-                                            const photoObj = {
-                                              id: crypto.randomUUID(),
-                                              data: result as string,
-                                              comment: '',
-                                              timestamp: new Date().toISOString(),
-                                            } as import('./mission/core/missionTypes').MissionPhoto;
-                                            days[idx].photos = ([...(days[idx].photos || []), photoObj] as import('./mission/core/missionTypes').MissionPhoto[]);
+                                            const photos = [...(days[idx].photos || [])];
+                                            photos[pidx] = { ...photos[pidx], comment: e.target.value };
+                                            days[idx].photos = photos as import('./mission/core/missionTypes').MissionPhoto[];
                                             missionState.updateFormField('reportDays', days);
-                                          }
-                                        };
-                                        reader.readAsDataURL(file);
-                                        // Reset input pour permettre de reprendre une photo
-                                        e.target.value = '';
-                                      }}
-                                    />
-                                  </label>
+                                          }}
+                                          placeholder="Commentaire..."
+                                          className="w-full px-1 py-0.5 text-[10px] rounded-b bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                                          style={{ minHeight: 18, maxHeight: 28 }}
+                                        />
+                                      </div>
+                                    ))}
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          ))}
-                          <button
-                            onClick={() => {
-                              const days = [...(state.formData.reportDays || []), { date: new Date().toISOString().split('T')[0], notes: '' }];
-                              missionState.updateFormField('reportDays', days);
-                            }}
-                            className="mt-2 px-4 py-2 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 rounded-lg text-sm font-bold hover:bg-emerald-200 dark:hover:bg-emerald-900/50"
-                          >
-                            + Ajouter un jour
-                          </button>
-                        </div>
+                            ))}
+                            <button
+                              onClick={() => {
+                                const days = [...(state.formData.reportDays || []), { day: (state.formData.reportDays?.length || 0) + 1, title: 'Nouveau jour', notes: '', photos: [] }];
+                                missionState.updateFormField('reportDays', days);
+                              }}
+                              className="mt-2 px-4 py-2 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 rounded-lg text-sm font-bold hover:bg-emerald-200 dark:hover:bg-emerald-900/50"
+                            >
+                              + Ajouter un jour
+                            </button>
+                          </div>
+                        ) : (
+                          <div>
+                            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+                              Synthèse narrative (Rapport Global)
+                            </label>
+                            <textarea
+                              value={state.formData.narrativeReport || ''}
+                              onChange={(e) => missionState.updateFormField('narrativeReport', e.target.value)}
+                              rows={15}
+                              className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-mono text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                              placeholder="Rédigez votre synthèse globale ici..."
+                            />
+                          </div>
+                        )}
 
                         <div className="flex gap-3 pt-4">
                           <button

@@ -23,56 +23,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { uploadFile } from '../../services/uploadService';
-
-const KAFFRINE_TEMPLATE = `# **RAPPORT DE MISSION TERRAIN**
-
-## **Projet de Raccordement Électrique LSE – Région de Kaffrine**
-### **Période : du 08 au 13 Avril**
-### **Mission : Dakar → Kaffrine → Dakar**
-
----
-
-## **1. Objet de la mission**
-Dans le cadre du projet de raccordement électrique LSE, une mission de terrain a été effectuée dans la région de Kaffrine du 08 au 13 avril, avec pour objectif principal d’évaluer l’état d’avancement du réseau, d’échanger avec les autorités locales, d’identifier les contraintes terrain et de préparer le déploiement opérationnel des travaux.
-
-## **2. Localités visitées et situation du réseau**
-### **1. Nguane Villane**
-Chef de village : El Hadji Samba Thiombane - 78 614 86 17
-* Situation réseau : presque finalisé
-* Accord : favorable au stockage du matériel
-
-### **2. Lodoyéle** (Moussa Ba - 78 157 83 65)
-* Situation réseau : presque finalisé
-
-### **3. Cassa Wally Ndour** (Waly Ndour - 77 262 67 46)
-* Situation réseau : presque finalisé
-
-### **4. Cassa Dierry** (Sassy Sow - 78 116 80 64)
-* Situation réseau : presque finalisé
-
-### **... [Liste des 13 villages visités]**
-
-👉 **Constat global :** Dans l’ensemble des villages visités, le réseau est presque entièrement finalisé.
-
-## **3. Situation des ménages et observations terrain**
-* Beaucoup de ménages n’ont pas attendu le projet pour s’alimenter en électricité.
-* Risques techniques : câbles 2,5 mm², tubes orange non conventionnels.
-
-## **4. Acteurs locaux rencontrés**
-### **Réseau d’électriciens (Mr Bamba Ndao – 75 550 78 66)**
-* Groupes d'électriciens identifiés et entrepreneurs disponibles.
-
-## **5. Ressources locales**
-* Usine de briques de Kaffrine (Mr Oumar Cissé – 77 579 77 49). Briques en béton noir de haute qualité.
-
-## **6. Analyse des risques**
-* Difficulté sur le nombre exact de ménages bénéficiaires.
-* Problèmes potentiels de conformité technique.
-
-## **7. Stratégie de déploiement**
-* Organisation par village (grappe).
-* Workflow : Maçons -> Équipes réseau -> Contrôle final.
-`;
+import { KAFFRINE_TEMPLATE } from '../../pages/mission/core/missionTypes';
 
 interface MissionContext {
   // Équipe
