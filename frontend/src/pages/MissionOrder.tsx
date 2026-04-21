@@ -15,7 +15,8 @@ import { db } from '../store/db';
 import { createMissionFromTemplate } from '../services/missionTemplates';
 
 // Types
-import { MissionOrderData, MissionMember, KAFFRINE_TEMPLATE } from './mission/core/missionTypes';
+import type { MissionOrderData, MissionMember } from './mission/core/missionTypes';
+import { KAFFRINE_TEMPLATE } from './mission/core/missionTypes';
 
 // Hooks
 import { usePermissions } from '../hooks/usePermissions';
