@@ -3,7 +3,9 @@ import React, { useState, useMemo, Suspense, useRef, useEffect, useCallback } fr
 import logger from '../utils/logger';
 import toast from 'react-hot-toast';
 
-import { useTerrainData } from '../hooks/useTerrainData';
+import { useTerrainPhoto } from '../hooks/useTerrainPhoto';
+import { QuickActions, OfflineIndicator, FloatingPhotoButton } from '../components/terrain/QuickActions';
+import { TerrainMissionEditor } from '../components/terrain/TerrainMissionEditor';
 import { useAuth } from '../contexts/AuthContext';
 const MapComponent = React.lazy(() => import('../components/terrain/MapComponent'));
 import type { Household } from '../utils/types';
@@ -62,6 +64,8 @@ const Terrain: React.FC = () => {
 
   const [mapBounds, setMapBounds] = useState<[number, number, number, number] | null>(null);
   const [isOfflineMode, setIsOfflineMode] = useState(!navigator.onLine);
+  const [showMissionEditor, setShowMissionEditor] = useState(false);
+  const [pendingSyncCount, setPendingSyncCount] = useState(0);
 
   // Modals state (Removed unused ProjectModals)
   const [isGeolocationRequestInProgress, setIsGeolocationRequestInProgress] = useState(false);
@@ -124,6 +128,14 @@ const Terrain: React.FC = () => {
   } = useRouting();
 
   const { isFavorite, toggleFavorite, favorites: localFavorites } = useFavorites(project?.id);
+
+  // Terrain photo hook
+  const { capturePhoto, selectFromGallery, isCapturing, lastPhoto } = useTerrainPhoto({
+    onPhotoCapture: (photoData) => {
+      logger.log('📸 Photo capturée:', photoData);
+      // Could trigger upload or store locally
+    },
+  });
 
   // ✅ GUARD: Prevent double-initialization from StrictMode
   const syncInitializedRef = useRef(false);
@@ -615,6 +627,61 @@ const Terrain: React.FC = () => {
       )}
 
       <AnimatePresence>{lightboxPhotos.length > 0 && <PhotoLightbox />}</AnimatePresence>
+
+      {/* 🆕 Terrain Mode Enhancements */}
+      <OfflineIndicator isOffline={isOfflineMode} pendingCount={pendingSyncCount} />
+      
+      <QuickActions
+        onPhoto={() => capturePhoto()}
+        onStatus={() => setShowMissionEditor(true)}
+        onNote={() => setShowMissionEditor(true)}
+        onNavigate={handleRecenterOnUser}
+      />
+
+      <FloatingPhotoButton
+        onCapture={capturePhoto}
+        onSelect={selectFromGallery}
+        disabled={isCapturing}
+      />
+
+      {/* Mission Editor Modal */}
+      <AnimatePresence>
+        {showMissionEditor && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[80] bg-black/50 flex items-center justify-center p-4"
+            onClick={() => setShowMissionEditor(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="w-full max-w-lg max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <TerrainMissionEditor
+                context={{
+                  teamId: selectedTeam !== 'all' ? selectedTeam : undefined,
+                  regionName: selectedHousehold?.region,
+                  householdCount: filteredHouseholds.length,
+                }}
+                onSave={(mission) => {
+                  logger.log('💾 Mission sauvegardée:', mission);
+                  toast.success('Mission sauvegardée comme brouillon');
+                  setShowMissionEditor(false);
+                }}
+                onSubmit={(mission) => {
+                  logger.log('📤 Mission soumise:', mission);
+                  toast.success('Mission soumise avec succès');
+                  setShowMissionEditor(false);
+                }}
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
