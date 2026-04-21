@@ -561,126 +561,63 @@ export const generateMissionReportWord = async (data: any): Promise<Blob | null>
   try {
     const sections: any[] = [];
 
-    // Page de garde
-    sections.push({
-      properties: {},
-      children: [
-        new Paragraph({ text: '', spacing: { before: 2000 } }),
-        new Paragraph({
-          alignment: AlignmentType.CENTER,
-          children: [
-            new TextRun({
-              text: 'RÉPUBLIQUE DU SÉNÉGAL',
-              bold: true,
-              size: 24,
-              color: COLORS.SECONDARY,
-            }),
-          ],
-        }),
-        new Paragraph({
-          alignment: AlignmentType.CENTER,
-          children: [
-            new TextRun({
-              text: 'Un Peuple - Un But - Une Foi',
-              italics: true,
-              size: 18,
-              color: COLORS.SLATE,
-            }),
-          ],
-        }),
-        new Paragraph({ text: '', spacing: { before: 1000 } }),
-        new Paragraph({
-          alignment: AlignmentType.CENTER,
-          children: [
-            new TextRun({
-              text: 'PROQUELEC',
-              bold: true,
-              size: 32,
-              color: COLORS.PRIMARY,
-            }),
-          ],
-        }),
-        new Paragraph({
-          alignment: AlignmentType.CENTER,
-          children: [
-            new TextRun({
-              text: "Plateforme d'Électrification de Masse",
-              size: 18,
-              color: COLORS.SLATE,
-            }),
-          ],
-        }),
-        new Paragraph({ text: '', spacing: { before: 2000 } }),
-        new Paragraph({
-          alignment: AlignmentType.CENTER,
-          children: [
-            new TextRun({
-              text: 'RAPPORT POST-MISSION',
-              bold: true,
-              size: 28,
-              color: COLORS.DANGER,
-            }),
-          ],
-        }),
-        new Paragraph({ text: '', spacing: { before: 500 } }),
-        new Paragraph({
-          alignment: AlignmentType.CENTER,
-          children: [
-            new TextRun({
-              text: data.orderNumber || 'N/A',
-              bold: true,
-              size: 24,
-              color: COLORS.PRIMARY,
-            }),
-          ],
-        }),
-        new Paragraph({ text: '', spacing: { before: 1000 } }),
-        new Paragraph({
-          alignment: AlignmentType.CENTER,
-          children: [
-            new TextRun({
-              text: data.region || 'Région non définie',
-              size: 20,
-            }),
-          ],
-        }),
-        new Paragraph({
-          alignment: AlignmentType.CENTER,
-          children: [
-            new TextRun({
-              text: `Du ${data.startDate || '?'} au ${data.endDate || '?'}`,
-              size: 18,
-              color: COLORS.SLATE,
-            }),
-          ],
-        }),
-      ],
-    });
-
-    // Section Observations
-    sections.push({
-      properties: {},
-      children: [
-        createSectionHeader('I. OBSERVATIONS GÉNÉRALES', COLORS.PRIMARY),
-        new Paragraph({
-          children: [
-            new TextRun({
-              text: data.reportObservations || 'Aucune observation enregistrée.',
-              size: 20,
-            }),
-          ],
-          spacing: { before: 200, after: 200 },
-        }),
-      ],
-    });
-
-    // III. RAPPORT NARRATIF GLOBAL (si activé)
     if (data.reportingMode === 'narrative' && data.narrativeReport) {
-      const narrativeChildren: any[] = [
-        createSectionHeader('RAPPORT GLOBAL DE SYNTHÈSE', COLORS.PRIMARY),
-      ];
-
+      // ==========================================
+      // MODE NARRATIF (Rapport Global Premium)
+      // ==========================================
+      const narrativeChildren: any[] = [];
       const lines = data.narrativeReport.split('\n');
+
+      // 1. Extraction et génération du Sommaire
+      const headings: { text: string; level: number }[] = [];
+      lines.forEach((line: string) => {
+        const trimmed = line.trim();
+        if (trimmed.startsWith('#')) {
+          const level = (trimmed.match(/#/g) || []).length;
+          const text = trimmed.replace(/#/g, '').replace(/\*\*/g, '').trim();
+          headings.push({ text, level });
+        }
+      });
+
+      if (headings.length > 0) {
+        narrativeChildren.push(
+          new Paragraph({
+            children: [
+              new TextRun({ text: 'SOMMAIRE', bold: true, size: 28, color: COLORS.SECONDARY }),
+            ],
+            spacing: { before: 200, after: 200 },
+          })
+        );
+
+        headings.forEach((heading) => {
+          if (heading.level > 1 && heading.level <= 3) {
+            narrativeChildren.push(
+              new Paragraph({
+                children: [
+                  new TextRun({ 
+                    text: heading.text, 
+                    size: 20, 
+                    bold: heading.level === 2 
+                  }),
+                ],
+                indent: { left: heading.level === 3 ? 720 : 360 },
+                spacing: { after: 100 },
+              })
+            );
+          }
+        });
+        
+        // Ligne de séparation sous le sommaire
+        narrativeChildren.push(
+          new Paragraph({
+            text: '',
+            border: { bottom: { color: COLORS.BORDER, space: 1, style: BorderStyle.SINGLE, size: 12 } },
+            spacing: { after: 400 },
+          })
+        );
+      }
+
+      // 2. Rendu du contenu narratif global (sans saut de page artificiel)
       lines.forEach((line: string) => {
         const trimmed = line.trim();
         
@@ -690,8 +627,8 @@ export const generateMissionReportWord = async (data: any): Promise<Blob | null>
           return parts.map((part, index) => new TextRun({
             text: part,
             size: defaultSize,
-            bold: index % 2 === 1 // Odd indices are inside **...**
-          })).filter(tr => tr.text !== ''); // Remove empty runs
+            bold: index % 2 === 1
+          })).filter(tr => tr.text !== '');
         };
 
         if (trimmed.startsWith('#')) {
@@ -725,78 +662,213 @@ export const generateMissionReportWord = async (data: any): Promise<Blob | null>
         }
       });
 
+      // 3. Observations Générales (à la suite)
+      if (data.reportObservations) {
+        narrativeChildren.push(
+          new Paragraph({
+            children: [
+              new TextRun({ text: 'OBSERVATIONS GÉNÉRALES ET RECOMMANDATIONS', bold: true, size: 24, color: COLORS.PRIMARY }),
+            ],
+            spacing: { before: 400, after: 200 },
+          })
+        );
+        narrativeChildren.push(
+          new Paragraph({
+            text: data.reportObservations || '',
+            spacing: { after: 200 },
+          })
+        );
+      }
+
       sections.push({
         properties: {},
         children: narrativeChildren,
       });
-    }
 
-    // Section Rapports journaliers avec photos et détails terrain
-    if (data.reportDays && data.reportDays.length > 0) {
-      const reportDaysChildren: any[] = [
-        createSectionHeader('II. RAPPORTS JOURNALIERS', COLORS.SUCCESS),
-      ];
+    } else {
+      // ==========================================
+      // MODE CLASSIC DAILY (Page de garde + Tableau)
+      // ==========================================
+      
+      // Page de garde
+      sections.push({
+        properties: {},
+        children: [
+          new Paragraph({ text: '', spacing: { before: 2000 } }),
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            children: [
+              new TextRun({
+                text: 'RÉPUBLIQUE DU SÉNÉGAL',
+                bold: true,
+                size: 24,
+                color: COLORS.SECONDARY,
+              }),
+            ],
+          }),
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            children: [
+              new TextRun({
+                text: 'Un Peuple - Un But - Une Foi',
+                italics: true,
+                size: 18,
+                color: COLORS.SLATE,
+              }),
+            ],
+          }),
+          new Paragraph({ text: '', spacing: { before: 1000 } }),
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            children: [
+              new TextRun({
+                text: 'PROQUELEC',
+                bold: true,
+                size: 32,
+                color: COLORS.PRIMARY,
+              }),
+            ],
+          }),
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            children: [
+              new TextRun({
+                text: "Plateforme d'Électrification de Masse",
+                size: 18,
+                color: COLORS.SLATE,
+              }),
+            ],
+          }),
+          new Paragraph({ text: '', spacing: { before: 2000 } }),
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            children: [
+              new TextRun({
+                text: 'RAPPORT POST-MISSION',
+                bold: true,
+                size: 28,
+                color: COLORS.DANGER,
+              }),
+            ],
+          }),
+          new Paragraph({ text: '', spacing: { before: 500 } }),
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            children: [
+              new TextRun({
+                text: data.orderNumber || 'N/A',
+                bold: true,
+                size: 24,
+                color: COLORS.PRIMARY,
+              }),
+            ],
+          }),
+          new Paragraph({ text: '', spacing: { before: 1000 } }),
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            children: [
+              new TextRun({
+                text: data.region || 'Région non définie',
+                size: 20,
+              }),
+            ],
+          }),
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            children: [
+              new TextRun({
+                text: `Du ${data.startDate || '?'} au ${data.endDate || '?'}`,
+                size: 18,
+                color: COLORS.SLATE,
+              }),
+            ],
+          }),
+        ],
+      });
 
-      for (let idx = 0; idx < data.reportDays.length; idx++) {
-        const day = data.reportDays[idx];
-
-        // Titre du jour avec statut
-        reportDaysChildren.push(
+      // Section Observations
+      sections.push({
+        properties: {},
+        children: [
+          createSectionHeader('I. OBSERVATIONS GÉNÉRALES', COLORS.PRIMARY),
           new Paragraph({
             children: [
               new TextRun({
-                text: `JOUR ${idx + 1} : ${day.title || 'Étape ' + (idx + 1)}`,
-                bold: true,
-                size: 24,
-                color: COLORS.SUCCESS,
+                text: data.reportObservations || 'Aucune observation enregistrée.',
+                size: 20,
               }),
             ],
-            spacing: { before: 400, after: 150 },
-          })
-        );
+            spacing: { before: 200, after: 200 },
+          }),
+        ],
+      });
 
-        // Détail de l'étape (provenant du planning)
-        if (day.detail) {
+      // Section Rapports journaliers avec photos et détails terrain
+      if (data.reportDays && data.reportDays.length > 0) {
+        const reportDaysChildren: any[] = [
+          createSectionHeader('II. RAPPORTS JOURNALIERS', COLORS.SUCCESS),
+        ];
+
+        for (let idx = 0; idx < data.reportDays.length; idx++) {
+          const day = data.reportDays[idx];
+
+          // Titre du jour avec statut
           reportDaysChildren.push(
             new Paragraph({
               children: [
                 new TextRun({
-                  text: 'Activité prévue : ',
+                  text: `JOUR ${idx + 1} : ${day.title || 'Étape ' + (idx + 1)}`,
+                  bold: true,
+                  size: 24,
+                  color: COLORS.SUCCESS,
+                }),
+              ],
+              spacing: { before: 400, after: 150 },
+            })
+          );
+
+          // Détail de l'étape (provenant du planning)
+          if (day.detail) {
+            reportDaysChildren.push(
+              new Paragraph({
+                children: [
+                  new TextRun({
+                    text: 'Activité prévue : ',
+                    bold: true,
+                    size: 18,
+                  }),
+                  new TextRun({
+                    text: day.detail,
+                    size: 18,
+                  }),
+                ],
+                spacing: { after: 150 },
+              })
+            );
+          }
+
+          // Statut de complétion
+          reportDaysChildren.push(
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: 'Statut : ',
                   bold: true,
                   size: 18,
                 }),
                 new TextRun({
-                  text: day.detail,
+                  text: day.isCompleted ? 'TERMINÉ ✓' : 'En cours',
+                  color: day.isCompleted ? COLORS.SUCCESS : COLORS.ACCENT,
                   size: 18,
                 }),
               ],
               spacing: { after: 150 },
             })
           );
-        }
 
-        // Statut de complétion
-        reportDaysChildren.push(
-          new Paragraph({
-            children: [
-              new TextRun({
-                text: 'Statut : ',
-                bold: true,
-                size: 18,
-              }),
-              new TextRun({
-                text: day.isCompleted ? 'TERMINÉ ✓' : 'En cours',
-                color: day.isCompleted ? COLORS.SUCCESS : COLORS.ACCENT,
-                size: 18,
-              }),
-            ],
-            spacing: { after: 150 },
-          })
-        );
-
-        // Observations terrain
-        if (day.observation) {
-          reportDaysChildren.push(
+          // Observations terrain
+          if (day.observation) {
+            reportDaysChildren.push(
             new Paragraph({
               children: [
                 new TextRun({
@@ -919,6 +991,8 @@ export const generateMissionReportWord = async (data: any): Promise<Blob | null>
         children: reportDaysChildren,
       });
     }
+
+    } // Clôture du bloc "else" (Mode Classic Daily)
 
     // Section Équipe
     if (data.members && data.members.length > 0) {

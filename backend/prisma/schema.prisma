@@ -571,10 +571,11 @@ model FormationModule {
   id          String   @id @default(uuid())
   name        String   // Nom du module
   description String?  // Description du module
-  duration    Int      // Durée en jours
+  duration    Int      // Durée par défaut en jours
   order       Int      @default(0) // Ordre d'affichage
+  isActive    Boolean  @default(true) // Module actif
   
-  sessions    FormationSession[]
+  sessionModules FormationSessionModule[]
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -582,22 +583,21 @@ model FormationModule {
 
 model FormationSession {
   id                String   @id @default(uuid())
-  moduleId          String
   region            String   // Région du Sénégal
   salle             String   // Nom de la salle
   maxParticipants   Int      // Nombre max de participants par session
   
   startDate         DateTime // Date de début de la session
-  durationDays      Int      // Durée en jours
+  endDate           DateTime? // Date de fin calculée
   
   workSaturday     Boolean  @default(false) // Samedi travaillé
   workSunday       Boolean  @default(false) // Dimanche travaillé
   
   status            String   @default("PLANIFIEE") // PLANIFIEE, EN_COURS, TERMINEE, ANNULEE
+  notes             String?  // Notes additionnelles
   
   participants      FormationParticipant[]
-  
-  module            FormationModule @relation(fields: [moduleId], references: [id])
+  sessionModules    FormationSessionModule[]
   
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
@@ -605,6 +605,26 @@ model FormationSession {
   @@index([region])
   @@index([startDate])
   @@index([status])
+}
+
+// Table de liaison session <-> modules (plusieurs modules par session)
+model FormationSessionModule {
+  id          String   @id @default(uuid())
+  sessionId   String
+  moduleId    String
+  duration    Int      // Durée spécifique pour ce module dans cette session (surécrit la durée par défaut)
+  orderIndex  Int      @default(0) // Ordre du module dans la session
+  notes       String?  // Notes spécifiques au module
+  
+  session     FormationSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  module      FormationModule  @relation(fields: [moduleId], references: [id])
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@unique([sessionId, moduleId]) // Un module ne peut être ajouté qu'une fois par session
+  @@index([sessionId])
+  @@index([moduleId])
 }
 
 model FormationParticipant {

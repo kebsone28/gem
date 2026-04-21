@@ -9,12 +9,18 @@ const router = Router();
 // Routes modules
 router.get('/modules', formationController.getModules);
 router.post('/modules', formationController.createModule);
+router.put('/modules/:id', formationController.updateModule);
+router.delete('/modules/:id', formationController.deleteModule);
 
 // Routes sessions
 router.get('/sessions', formationController.getSessions);
 router.post('/sessions', formationController.createSession);
 router.put('/sessions/:id', formationController.updateSession);
 router.delete('/sessions/:id', formationController.deleteSession);
+
+// Routes modules d'une session
+router.post('/sessions/:id/modules', formationController.addModuleToSession);
+router.delete('/sessions/:sessionId/modules/:moduleId', formationController.removeModuleFromSession);
 
 // Routes participants
 router.post('/sessions/:id/participants', formationController.addParticipant);

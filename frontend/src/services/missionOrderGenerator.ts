@@ -389,74 +389,45 @@ export const generateMissionReportPDF = async (data: MissionOrderData) => {
   doc.text(`Dakar, le ${new Date().toLocaleDateString('fr-FR')}`, w - 14, 15, { align: 'right' });
 
   doc.setFontSize(18);
-  doc.setFont('helvetica', 'bold');
-  doc.text('RAPPORT DE MISSION', w / 2, 40, { align: 'center' });
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`Réf: OM N°${data.orderNumber} - ${cleanMangledText(data.purpose)}`, w / 2, 46, {
-    align: 'center',
-  });
-
-  // Executive Summary Box
-  doc.setDrawColor(...GRAY);
-  doc.setLineWidth(0.1);
-  doc.roundedRect(14, 55, w - 28, 30, 2, 2, 'D');
-
-  const completed = data.reportDays?.filter((d) => d.isCompleted).length || 0;
-  const total = data.reportDays?.length || 0;
-  const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
-
-  doc.setFont('helvetica', 'bold');
-  doc.text("RÉSUMÉ D'EXÉCUTION", 20, 62);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`• Taux de complétion : ${pct}% (${completed}/${total} étapes réalisées)`, 20, 68);
-  doc.text(`• Période : du ${data.startDate} au ${data.endDate}`, 20, 74);
-  doc.text(
-    `• Équipe : ${data.members[0]?.name} (Chef de mission) + ${data.members.length - 1} pers.`,
-    20,
-    80
-  );
-
-  // Detail Table
-  autoTable(doc, {
-    startY: 95,
-    head: [['Jour', 'Activité prévue', 'Statut', 'Observations Terrain']],
-    body:
-      data.reportDays?.map((rd) => [
-        `J${rd.day}`,
-        rd.title,
-        rd.isCompleted ? (rd.location ? 'RÉALISÉ (GPS ✓)' : 'RÉALISÉ') : 'NON RÉALISÉ',
-        rd.observation || '-',
-      ]) || [],
-    theme: 'grid',
-    headStyles: { fillColor: DARK, textColor: [255, 255, 255] },
-    columnStyles: {
-      2: { fontStyle: 'bold', halign: 'center' },
-      3: { cellWidth: 80, fontSize: 8 },
-    },
-    didDrawCell: (data) => {
-      if (data.section === 'body' && data.column.index === 2) {
-        const txt = data.cell.text[0];
-        if (txt === 'RÉALISÉ') doc.setTextColor(...SUCCESS);
-        else doc.setTextColor(...DANGER);
-      }
-    },
-  });
-
-  let currentY = (doc as any).lastAutoTable.finalY + 15;
-
-  // Global Narrative Report
+  
   if (data.reportingMode === 'narrative' && data.narrativeReport) {
-    doc.addPage();
-    currentY = 25;
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(14);
-    doc.setTextColor(...INDIGO);
-    doc.text('RAPPORT GLOBAL DE SYNTHÈSE', 14, currentY);
-    currentY += 10;
+    let currentY = 35;
+    const lines = data.narrativeReport.split('\n');
     
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
+    // --- Extraction pour le Sommaire ---
+    const headings: { text: string, level: number }[] = [];
+    lines.forEach(line => {
+      const trimmed = line.trim();
+      if (trimmed.startsWith('#')) {
+         const level = (trimmed.match(/#/g) || []).length;
+         const text = trimmed.replace(/#/g, '').replace(/\*\*/g, '').trim();
+         headings.push({ text, level });
+      }
+    });
+
+    if (headings.length > 0) {
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(14);
+      doc.setTextColor(...INDIGO);
+      doc.text('SOMMAIRE', 14, currentY);
+      currentY += 8;
+      doc.setTextColor(...DARK);
+
+      headings.forEach(heading => {
+        // Optionnel : ne lister que les H2 et H3 pour ne pas surcharger
+        if (heading.level > 1 && heading.level <= 3) {
+           doc.setFont('helvetica', heading.level === 2 ? 'bold' : 'normal');
+           doc.setFontSize(10);
+           const indent = heading.level === 3 ? 20 : 14;
+           doc.text(heading.text, indent, currentY);
+           currentY += 6;
+        }
+      });
+      currentY += 10;
+      doc.setDrawColor(200, 200, 200);
+      doc.line(14, currentY - 5, w - 14, currentY - 5);
+    }
+
     doc.setTextColor(...DARK);
     
     const lines = data.narrativeReport.split('\n');
@@ -496,40 +467,131 @@ export const generateMissionReportPDF = async (data: MissionOrderData) => {
     });
     
     currentY += 10;
-  }
 
-  // General Observation
-  if (data.reportObservations) {
-    if (currentY > h - 40) {
-      doc.addPage();
-      currentY = 20;
+    // --- Signatures et observations pour narratif (sans saut de page systématique) ---
+    if (data.reportObservations) {
+      if (currentY > h - 40) {
+        doc.addPage();
+        currentY = 20;
+      }
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.text('OBSERVATIONS GÉNÉRALES ET RECOMMANDATIONS', 14, currentY);
+      currentY += 8;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      const splitObs = doc.splitTextToSize(data.reportObservations, w - 28);
+      doc.text(splitObs, 14, currentY);
+      currentY += splitObs.length * 5 + 15;
     }
+
+    if (currentY > h - 50) {
+      doc.addPage();
+      currentY = 30;
+    }
+
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11);
-    doc.text('OBSERVATIONS GÉNÉRALES ET RECOMMANDATIONS', 14, currentY);
-    currentY += 8;
+    doc.text('Le Chef de Mission', 40, currentY, { align: 'center' });
+    doc.text('Direction Technique (Visa)', w - 60, currentY, { align: 'center' });
+
+    if (data.signatureImage) {
+      try {
+        doc.addImage(data.signatureImage, 'PNG', 20, currentY + 2, 40, 20);
+      } catch (e) {
+        logger.error("Erreur lors de l'ajout de la signature au PDF", e);
+      }
+    }
+  } else {
+    // ---- MODE DAILY SÉPARÉ ----
+    doc.setFont('helvetica', 'bold');
+    doc.text('RAPPORT DE MISSION', w / 2, 40, { align: 'center' });
+    doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
-    const splitObs = doc.splitTextToSize(data.reportObservations, w - 28);
-    doc.text(splitObs, 14, currentY);
-    currentY += splitObs.length * 5 + 15;
-  }
+    doc.text(`Réf: OM N°${data.orderNumber} - ${cleanMangledText(data.purpose)}`, w / 2, 46, {
+      align: 'center',
+    });
 
-  // Signatures
-  if (currentY > h - 50) {
-    doc.addPage();
-    currentY = 30;
-  }
+    // Executive Summary Box
+    doc.setDrawColor(...GRAY);
+    doc.setLineWidth(0.1);
+    doc.roundedRect(14, 55, w - 28, 30, 2, 2, 'D');
 
-  doc.setFont('helvetica', 'bold');
-  doc.text('Le Chef de Mission', 40, currentY, { align: 'center' });
-  doc.text('Direction Technique (Visa)', w - 60, currentY, { align: 'center' });
+    const completed = data.reportDays?.filter((d) => d.isCompleted).length || 0;
+    const total = data.reportDays?.length || 0;
+    const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
 
-  if (data.signatureImage) {
-    try {
-      doc.addImage(data.signatureImage, 'PNG', 20, currentY + 2, 40, 20);
-    } catch (e) {
-      logger.error("Erreur lors de l'ajout de la signature au PDF", e);
+    doc.setFont('helvetica', 'bold');
+    doc.text("RÉSUMÉ D'EXÉCUTION", 20, 62);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`• Taux de complétion : ${pct}% (${completed}/${total} étapes réalisées)`, 20, 68);
+    doc.text(`• Période : du ${data.startDate} au ${data.endDate}`, 20, 74);
+    doc.text(
+      `• Équipe : ${data.members[0]?.name} (Chef de mission) + ${data.members.length - 1} pers.`,
+      20,
+      80
+    );
+
+    // Detail Table
+    autoTable(doc, {
+      startY: 95,
+      head: [['Jour', 'Activité prévue', 'Statut', 'Observations Terrain']],
+      body:
+        data.reportDays?.map((rd) => [
+          `J${rd.day}`,
+          rd.title,
+          rd.isCompleted ? (rd.location ? 'RÉALISÉ (GPS ✓)' : 'RÉALISÉ') : 'NON RÉALISÉ',
+          rd.observation || '-',
+        ]) || [],
+      theme: 'grid',
+      headStyles: { fillColor: DARK, textColor: [255, 255, 255] },
+      columnStyles: {
+        2: { fontStyle: 'bold', halign: 'center' },
+        3: { cellWidth: 80, fontSize: 8 },
+      },
+      didDrawCell: (data) => {
+        if (data.section === 'body' && data.column.index === 2) {
+          const txt = data.cell.text[0];
+          if (txt === 'RÉALISÉ') doc.setTextColor(...SUCCESS);
+          else doc.setTextColor(...DANGER);
+        }
+      },
+    });
+
+    let currentY = (doc as any).lastAutoTable.finalY + 15;
+
+    // General Observation
+    if (data.reportObservations) {
+      if (currentY > h - 40) {
+        doc.addPage();
+        currentY = 20;
+      }
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.text('OBSERVATIONS GÉNÉRALES ET RECOMMANDATIONS', 14, currentY);
+      currentY += 8;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      const splitObs = doc.splitTextToSize(data.reportObservations, w - 28);
+      doc.text(splitObs, 14, currentY);
+      currentY += splitObs.length * 5 + 15;
+    }
+
+    // Signatures
+    if (currentY > h - 50) {
+      doc.addPage();
+      currentY = 30;
+    }
+
+    doc.setFont('helvetica', 'bold');
+    doc.text('Le Chef de Mission', 40, currentY, { align: 'center' });
+    doc.text('Direction Technique (Visa)', w - 60, currentY, { align: 'center' });
+
+    if (data.signatureImage) {
+      try {
+        doc.addImage(data.signatureImage, 'PNG', 20, currentY + 2, 40, 20);
+      } catch (e) {
+        logger.error("Erreur lors de l'ajout de la signature au PDF", e);
+      }
     }
   }
 

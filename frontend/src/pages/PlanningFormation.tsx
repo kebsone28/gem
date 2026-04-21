@@ -24,22 +24,34 @@ interface FormationModule {
   description: string | null;
   duration: number;
   order: number;
+  isActive?: boolean;
+}
+
+interface SessionModule {
+  id: string;
+  sessionId: string;
+  moduleId: string;
+  duration: number | null;
+  orderIndex: number;
+  notes: string | null;
+  module: FormationModule;
 }
 
 interface FormationSession {
   id: string;
-  moduleId: string;
-  module?: FormationModule;
   region: string;
   salle: string;
   maxParticipants: number;
   startDate: string;
   endDate?: string;
-  durationDays: number;
   workSaturday: boolean;
   workSunday: boolean;
   status: string;
+  notes?: string | null;
+  sessionModules: SessionModule[];
   participants: FormationParticipant[];
+  totalDays?: number;
+  moduleCount?: number;
   participantCount?: number;
   availableSlots?: number;
 }
@@ -57,18 +69,35 @@ interface FormationParticipant {
 const API_BASE = '/api/formations';
 
 const formationApi = {
+  // Modules
   getModules: () => fetch(`${API_BASE}/modules`).then(r => r.json()),
+  createModule: (data: Partial<FormationModule>) =>
+    fetch(`${API_BASE}/modules`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }).then(r => r.json()),
+  updateModule: (id: string, data: Partial<FormationModule>) =>
+    fetch(`${API_BASE}/modules/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }).then(r => r.json()),
+  deleteModule: (id: string) =>
+    fetch(`${API_BASE}/modules/${id}`, { method: 'DELETE' }).then(r => r.json()),
+  
+  // Sessions
   getSessions: (filters?: Record<string, string>) => {
     const params = new URLSearchParams(filters);
     return fetch(`${API_BASE}/sessions?${params}`).then(r => r.json());
   },
-  createSession: (data: Partial<FormationSession>) => 
+  createSession: (data: { region: string; salle: string; maxParticipants: number; startDate: string; workSaturday: boolean; workSunday: boolean; notes?: string; modules: { moduleId: string; duration?: number; notes?: string }[] }) => 
     fetch(`${API_BASE}/sessions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     }).then(r => r.json()),
-  updateSession: (id: string, data: Partial<FormationSession>) =>
+  updateSession: (id: string, data: Partial<FormationSession> & { modules?: { moduleId: string; duration?: number; notes?: string }[] }) =>
     fetch(`${API_BASE}/sessions/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -76,6 +105,18 @@ const formationApi = {
     }).then(r => r.json()),
   deleteSession: (id: string) =>
     fetch(`${API_BASE}/sessions/${id}`, { method: 'DELETE' }).then(r => r.json()),
+  
+  // Session modules
+  addModuleToSession: (sessionId: string, moduleId: string, duration?: number, notes?: string) =>
+    fetch(`${API_BASE}/sessions/${sessionId}/modules`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ moduleId, duration, notes })
+    }).then(r => r.json()),
+  removeModuleFromSession: (sessionId: string, moduleId: string) =>
+    fetch(`${API_BASE}/sessions/${sessionId}/modules/${moduleId}`, { method: 'DELETE' }).then(r => r.json()),
+  
+  // Participants
   addParticipant: (sessionId: string, data: Partial<FormationParticipant>) =>
     fetch(`${API_BASE}/sessions/${sessionId}/participants`, {
       method: 'POST',
@@ -84,6 +125,8 @@ const formationApi = {
     }).then(r => r.json()),
   removeParticipant: (id: string) =>
     fetch(`${API_BASE}/participants/${id}`, { method: 'DELETE' }).then(r => r.json()),
+  
+  // Planning & Stats
   getPlanning: (startDate?: string, endDate?: string) => {
     const params = new URLSearchParams();
     if (startDate) params.set('startDate', startDate);
@@ -112,16 +155,28 @@ export default function PlanningFormation() {
   const [showModal, setShowModal] = useState(false);
   const [editingSession, setEditingSession] = useState<FormationSession | null>(null);
   
-  // Formulaire nouvelle session
+  // Modal création/modification module
+  const [showModuleModal, setShowModuleModal] = useState(false);
+  const [editingModule, setEditingModule] = useState<FormationModule | null>(null);
+  
+  // Formulaire nouvelle session - multi-modules
   const [formData, setFormData] = useState({
-    moduleId: '',
     region: 'Dakar',
     salle: '',
     maxParticipants: 20,
     startDate: '',
-    durationDays: 3,
     workSaturday: false,
     workSunday: false,
+    notes: '',
+    selectedModules: [] as { moduleId: string; duration: number; notes: string }[],
+  });
+  
+  // Formulaire module
+  const [moduleFormData, setModuleFormData] = useState({
+    name: '',
+    description: '',
+    duration: 1,
+    order: 0,
   });
 
   // Charger les données
@@ -137,12 +192,17 @@ export default function PlanningFormation() {
         formationApi.getSessions(),
         formationApi.getStats()
       ]);
-      setModules(mods);
-      setSessions(sess);
-      setStats(st);
+      // Ensure we always have arrays
+      setModules(Array.isArray(mods) ? mods : []);
+      setSessions(Array.isArray(sess) ? sess : []);
+      setStats(st || null);
     } catch (error) {
       console.error('Erreur chargement données:', error);
       toast.error('Erreur lors du chargement des données');
+      // Initialize with empty arrays on error
+      setModules([]);
+      setSessions([]);
+      setStats(null);
     } finally {
       setLoading(false);
     }
@@ -166,26 +226,38 @@ export default function PlanningFormation() {
   const filteredSessions = useMemo(() => {
     return sessions.filter(s => {
       if (filterRegion !== 'ALL' && s.region !== filterRegion) return false;
-      if (filterModule !== 'ALL' && s.moduleId !== filterModule) return false;
       if (filterStatus !== 'ALL' && s.status !== filterStatus) return false;
+      // Filter by module if any session module matches
+      if (filterModule !== 'ALL') {
+        const hasModule = s.sessionModules?.some(sm => sm.moduleId === filterModule);
+        if (!hasModule) return false;
+      }
       return true;
     });
   }, [sessions, filterRegion, filterModule, filterStatus]);
 
-  // Créer une session
+  // Créer une session avec plusieurs modules
   const handleCreateSession = async () => {
+    if (formData.selectedModules.length === 0) {
+      toast.error('Sélectionnez au moins un module');
+      return;
+    }
+    
     try {
-      const endDate = calculateEndDate(
-        formData.startDate, 
-        formData.durationDays, 
-        formData.workSaturday, 
-        formData.workSunday
-      );
-      
       const session = await formationApi.createSession({
-        ...formData,
+        region: formData.region,
+        salle: formData.salle,
+        maxParticipants: formData.maxParticipants,
         startDate: formData.startDate,
-        endDate
+        workSaturday: formData.workSaturday,
+        workSunday: formData.workSunday,
+        notes: formData.notes || undefined,
+        modules: formData.selectedModules.map((m, idx) => ({
+          moduleId: m.moduleId,
+          duration: m.duration,
+          notes: m.notes || undefined,
+          orderIndex: idx,
+        })),
       });
       
       setSessions([...sessions, session]);
@@ -194,8 +266,84 @@ export default function PlanningFormation() {
       toast.success('Session créée avec succès');
       loadData();
     } catch (error) {
+      console.error('Erreur création session:', error);
       toast.error('Erreur lors de la création');
     }
+  };
+
+  // Créer/modifier un module
+  const handleSaveModule = async () => {
+    if (!moduleFormData.name) {
+      toast.error('Le nom du module est requis');
+      return;
+    }
+    
+    try {
+      if (editingModule) {
+        await formationApi.updateModule(editingModule.id, moduleFormData);
+        toast.success('Module mis à jour');
+      } else {
+        await formationApi.createModule(moduleFormData);
+        toast.success('Module créé');
+      }
+      setShowModuleModal(false);
+      setModuleFormData({ name: '', description: '', duration: 1, order: 0 });
+      setEditingModule(null);
+      loadData();
+    } catch (error) {
+      toast.error('Erreur lors de l\'enregistrement');
+    }
+  };
+
+  // Supprimer un module
+  const handleDeleteModule = async (id: string) => {
+    if (!confirm('Êtes-vous sûr de vouloir supprimer ce module?')) return;
+    
+    try {
+      const result = await formationApi.deleteModule(id);
+      if (result.deactivated) {
+        toast.success('Module désactivé (utilisé dans des sessions)');
+      } else {
+        toast.success('Module supprimé');
+      }
+      loadData();
+    } catch (error) {
+      toast.error('Erreur lors de la suppression');
+    }
+  };
+
+  // Ajouter un module à la session en cours de création
+  const addModuleToForm = (moduleId: string) => {
+    const module = modules.find(m => m.id === moduleId);
+    if (!module) return;
+    
+    if (formData.selectedModules.find(m => m.moduleId === moduleId)) {
+      toast.error('Module déjà ajouté');
+      return;
+    }
+    
+    setFormData({
+      ...formData,
+      selectedModules: [...formData.selectedModules, { moduleId, duration: module.duration, notes: '' }],
+    });
+  };
+
+  // Retirer un module de la session en cours de création
+  const removeModuleFromForm = (moduleId: string) => {
+    setFormData({
+      ...formData,
+      selectedModules: formData.selectedModules.filter(m => m.moduleId !== moduleId),
+    });
+  };
+
+  // Mettre à jour la durée d'un module dans le formulaire
+  const updateModuleDuration = (moduleId: string, duration: number) => {
+    setFormData({
+      ...formData,
+      selectedModules: formData.selectedModules.map(m => 
+        m.moduleId === moduleId ? { ...m, duration } : m
+      ),
+    });
   };
 
   // Supprimer une session
@@ -215,16 +363,22 @@ export default function PlanningFormation() {
   // Réinitialiser le formulaire
   const resetForm = () => {
     setFormData({
-      moduleId: '',
       region: 'Dakar',
       salle: '',
       maxParticipants: 20,
       startDate: '',
-      durationDays: 3,
       workSaturday: false,
       workSunday: false,
+      notes: '',
+      selectedModules: [],
     });
     setEditingSession(null);
+  };
+
+  // Réinitialiser le formulaire module
+  const resetModuleForm = () => {
+    setModuleFormData({ name: '', description: '', duration: 1, order: 0 });
+    setEditingModule(null);
   };
 
   // Exporter en Word (simulation - génère un HTML imprimable)
@@ -466,8 +620,12 @@ export default function PlanningFormation() {
                           </div>
                         </td>
                         <td className="px-4 py-3">
-                          <div className="text-white font-medium">{session.module?.name}</div>
-                          <div className="text-slate-500 text-sm">{session.durationDays} jours</div>
+                          <div className="text-white font-medium">
+                            {session.sessionModules?.map(sm => sm.module?.name).join(', ') || 'Aucun module'}
+                          </div>
+                          <div className="text-slate-500 text-sm">
+                            {session.totalDays || session.sessionModules?.reduce((sum, sm) => sum + (sm.duration || sm.module?.duration || 1), 0)} jours • {session.sessionModules?.length || 0} module(s)
+                          </div>
                         </td>
                         <td className="px-4 py-3 text-slate-300">{session.salle}</td>
                         <td className="px-4 py-3">
@@ -522,24 +680,76 @@ export default function PlanningFormation() {
       )}
 
       {activeTab === 'modules' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {modules.map(module => (
-            <div key={module.id} className="bg-slate-900 rounded-xl p-4 border border-slate-800">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h3 className="text-white font-semibold text-lg">{module.name}</h3>
-                  <p className="text-slate-400 text-sm mt-1">{module.description}</p>
+        <div className="space-y-4">
+          {/* Bouton ajouter module */}
+          <div className="flex justify-end">
+            <button
+              onClick={() => { resetModuleForm(); setShowModuleModal(true); }}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg"
+            >
+              <Plus className="w-4 h-4" />
+              Nouveau Module
+            </button>
+          </div>
+          
+          {/* Liste des modules */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {modules.filter(m => m.isActive !== false).map(module => (
+              <div key={module.id} className="bg-slate-900 rounded-xl p-4 border border-slate-800">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <h3 className="text-white font-semibold text-lg">{module.name}</h3>
+                    <p className="text-slate-400 text-sm mt-1">{module.description}</p>
+                  </div>
+                  <div className="bg-blue-500/20 text-blue-400 px-2 py-1 rounded text-sm">
+                    {module.duration} jours
+                  </div>
                 </div>
-                <div className="bg-blue-500/20 text-blue-400 px-2 py-1 rounded text-sm">
-                  {module.duration} jours
+                <div className="mt-4 flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-slate-500 text-sm">
+                    <Clock className="w-4 h-4" />
+                    Durée: {module.duration} jour{module.duration > 1 ? 's' : ''}
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => { setEditingModule(module); setModuleFormData({ name: module.name, description: module.description || '', duration: module.duration, order: module.order }); setShowModuleModal(true); }}
+                      className="p-1 text-blue-400 hover:text-blue-300"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteModule(module.id)}
+                      className="p-1 text-red-400 hover:text-red-300"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
-              <div className="mt-4 flex items-center gap-2 text-slate-500 text-sm">
-                <Clock className="w-4 h-4" />
-                Durée: {module.duration} jour{module.duration > 1 ? 's' : ''}
+            ))}
+          </div>
+          
+          {/* Modules désactivés */}
+          {modules.filter(m => m.isActive === false).length > 0 && (
+            <div className="mt-6">
+              <h3 className="text-slate-400 font-medium mb-3">Modules désactivés</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 opacity-60">
+                {modules.filter(m => m.isActive === false).map(module => (
+                  <div key={module.id} className="bg-slate-900 rounded-xl p-4 border border-slate-800">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h3 className="text-white font-semibold text-lg">{module.name}</h3>
+                        <p className="text-slate-400 text-sm mt-1">{module.description}</p>
+                      </div>
+                      <div className="bg-slate-500/20 text-slate-400 px-2 py-1 rounded text-sm">
+                        {module.duration} jours
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
-          ))}
+          )}
         </div>
       )}
 
@@ -578,22 +788,44 @@ export default function PlanningFormation() {
             </div>
 
             <div className="space-y-4">
-              {/* Module */}
+              {/* Sélection des modules */}
               <div>
-                <label className="block text-sm text-slate-400 mb-1">Module de formation *</label>
-                <select
-                  value={formData.moduleId}
-                  onChange={(e) => setFormData({ ...formData, moduleId: e.target.value })}
-                  className="w-full bg-slate-800 border border-slate-700 text-white rounded-lg px-3 py-2"
-                  required
-                >
-                  <option value="">Sélectionner un module</option>
-                  {modules.map(m => (
-                    <option key={m.id} value={m.id}>
-                      {m.name} ({m.duration} jours)
-                    </option>
-                  ))}
-                </select>
+                <label className="block text-sm text-slate-400 mb-2">Modules de formation *</label>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {modules.filter(m => m.isActive !== false).map(module => {
+                    const isSelected = formData.selectedModules.some(m => m.moduleId === module.id);
+                    return (
+                      <div key={module.id} className="flex items-center gap-3 p-2 bg-slate-800 rounded-lg">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => isSelected ? removeModuleFromForm(module.id) : addModuleToForm(module.id)}
+                          className="w-4 h-4 rounded bg-slate-700 border-slate-600"
+                        />
+                        <div className="flex-1">
+                          <div className="text-white">{module.name}</div>
+                          <div className="text-slate-500 text-xs">{module.duration} jours</div>
+                        </div>
+                        {isSelected && (
+                          <input
+                            type="number"
+                            min="1"
+                            max="30"
+                            value={formData.selectedModules.find(m => m.moduleId === module.id)?.duration || module.duration}
+                            onChange={(e) => updateModuleDuration(module.id, parseInt(e.target.value) || 1)}
+                            className="w-16 bg-slate-700 border border-slate-600 text-white text-sm rounded px-2 py-1"
+                            placeholder="Jours"
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                {formData.selectedModules.length > 0 && (
+                  <div className="mt-2 text-sm text-blue-400">
+                    {formData.selectedModules.length} module(s) sélectionné(s) • Total: {formData.selectedModules.reduce((sum, m) => sum + m.duration, 0)} jours
+                  </div>
+                )}
               </div>
 
               {/* Région */}
@@ -636,18 +868,7 @@ export default function PlanningFormation() {
               </div>
 
               {/* Durée et participants */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm text-slate-400 mb-1">Durée (jours) *</label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="30"
-                    value={formData.durationDays}
-                    onChange={(e) => setFormData({ ...formData, durationDays: parseInt(e.target.value) || 1 })}
-                    className="w-full bg-slate-800 border border-slate-700 text-white rounded-lg px-3 py-2"
-                  />
-                </div>
+              <div className="grid grid-cols-1 gap-4">
                 <div>
                   <label className="block text-sm text-slate-400 mb-1">Max participants</label>
                   <input
@@ -661,31 +882,17 @@ export default function PlanningFormation() {
                 </div>
               </div>
 
-              {/* Options jours travaillés */}
-              <div className="bg-slate-800/50 rounded-lg p-4">
-                <label className="block text-sm text-slate-400 mb-3">Jours travaillés</label>
-                <div className="flex gap-4">
-                  <label className="flex items-center gap-2 text-white">
-                    <input
-                      type="checkbox"
-                      checked={formData.workSaturday}
-                      onChange={(e) => setFormData({ ...formData, workSaturday: e.target.checked })}
-                      className="w-4 h-4 rounded bg-slate-700 border-slate-600"
-                    />
-                    Samedi travaillé
-                  </label>
-                  <label className="flex items-center gap-2 text-white">
-                    <input
-                      type="checkbox"
-                      checked={formData.workSunday}
-                      onChange={(e) => setFormData({ ...formData, workSunday: e.target.checked })}
-                      className="w-4 h-4 rounded bg-slate-700 border-slate-600"
-                    />
-                    Dimanche travaillé
-                  </label>
-                </div>
+              {/* Notes */}
+              <div>
+                <label className="block text-sm text-slate-400 mb-1">Notes</label>
+                <textarea
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  placeholder="Notes optionnelles..."
+                  className="w-full bg-slate-800 border border-slate-700 text-white rounded-lg px-3 py-2"
+                  rows={2}
+                />
               </div>
-            </div>
 
             {/* Boutons */}
             <div className="flex gap-3 mt-6">
@@ -697,11 +904,92 @@ export default function PlanningFormation() {
               </button>
               <button
                 onClick={handleCreateSession}
-                disabled={!formData.moduleId || !formData.salle || !formData.startDate}
+                disabled={formData.selectedModules.length === 0 || !formData.salle || !formData.startDate}
                 className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:opacity-50"
               >
                 <Save className="w-4 h-4 inline mr-2" />
                 Créer la session
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal création/modification module */}
+      {showModuleModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-900 rounded-xl p-6 w-full max-w-md">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-white">
+                {editingModule ? 'Modifier le module' : 'Nouveau module'}
+              </h2>
+              <button onClick={() => { setShowModuleModal(false); resetModuleForm(); }} className="text-slate-400">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm text-slate-400 mb-1">Nom du module *</label>
+                <input
+                  type="text"
+                  value={moduleFormData.name}
+                  onChange={(e) => setModuleFormData({ ...moduleFormData, name: e.target.value })}
+                  placeholder="Ex: Habilitation électrique"
+                  className="w-full bg-slate-800 border border-slate-700 text-white rounded-lg px-3 py-2"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm text-slate-400 mb-1">Description</label>
+                <textarea
+                  value={moduleFormData.description}
+                  onChange={(e) => setModuleFormData({ ...moduleFormData, description: e.target.value })}
+                  placeholder="Description du module..."
+                  className="w-full bg-slate-800 border border-slate-700 text-white rounded-lg px-3 py-2"
+                  rows={2}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm text-slate-400 mb-1">Durée par défaut (jours)</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="30"
+                  value={moduleFormData.duration}
+                  onChange={(e) => setModuleFormData({ ...moduleFormData, duration: parseInt(e.target.value) || 1 })}
+                  className="w-full bg-slate-800 border border-slate-700 text-white rounded-lg px-3 py-2"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm text-slate-400 mb-1">Ordre d'affichage</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={moduleFormData.order}
+                  onChange={(e) => setModuleFormData({ ...moduleFormData, order: parseInt(e.target.value) || 0 })}
+                  className="w-full bg-slate-800 border border-slate-700 text-white rounded-lg px-3 py-2"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => { setShowModuleModal(false); resetModuleForm(); }}
+                className="flex-1 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleSaveModule}
+                disabled={!moduleFormData.name}
+                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:opacity-50"
+              >
+                <Save className="w-4 h-4 inline mr-2" />
+                {editingModule ? 'Mettre à jour' : 'Créer'}
               </button>
             </div>
           </div>
