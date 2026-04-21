@@ -683,29 +683,33 @@ export const generateMissionReportWord = async (data: any): Promise<Blob | null>
       const lines = data.narrativeReport.split('\n');
       lines.forEach((line: string) => {
         const trimmed = line.trim();
+        
+        // Helper to parse inline **bold**
+        const parseInlineBold = (text: string, defaultSize: number = 20): TextRun[] => {
+          const parts = text.split('**');
+          return parts.map((part, index) => new TextRun({
+            text: part,
+            size: defaultSize,
+            bold: index % 2 === 1 // Odd indices are inside **...**
+          })).filter(tr => tr.text !== ''); // Remove empty runs
+        };
+
         if (trimmed.startsWith('#')) {
           const level = (trimmed.match(/#/g) || []).length;
+          const cleanText = trimmed.replace(/#/g, '').trim();
           narrativeChildren.push(
             new Paragraph({
-              children: [
-                new TextRun({
-                  text: trimmed.replace(/#/g, '').trim(),
-                  bold: true,
-                  size: level === 1 ? 28 : level === 2 ? 24 : 20,
-                  color: COLORS.PRIMARY,
-                }),
-              ],
+              children: parseInlineBold(cleanText, level === 1 ? 28 : level === 2 ? 24 : 20),
               spacing: { before: 300, after: 150 },
             })
           );
         } else if (trimmed.startsWith('*') || trimmed.startsWith('-')) {
+          const cleanText = trimmed.substring(1).trim();
           narrativeChildren.push(
             new Paragraph({
               children: [
-                new TextRun({
-                  text: '• ' + trimmed.substring(1).trim(),
-                  size: 20,
-                }),
+                new TextRun({ text: '• ', size: 20 }),
+                ...parseInlineBold(cleanText, 20)
               ],
               spacing: { before: 50, after: 50 },
               indent: { left: 400 },
@@ -714,12 +718,7 @@ export const generateMissionReportWord = async (data: any): Promise<Blob | null>
         } else if (trimmed) {
           narrativeChildren.push(
             new Paragraph({
-              children: [
-                new TextRun({
-                  text: trimmed,
-                  size: 20,
-                }),
-              ],
+              children: parseInlineBold(trimmed, 20),
               spacing: { before: 100, after: 100 },
             })
           );

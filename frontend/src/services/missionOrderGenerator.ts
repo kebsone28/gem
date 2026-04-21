@@ -476,10 +476,9 @@ export const generateMissionReportPDF = async (data: MissionOrderData) => {
         doc.text(text, 14, currentY);
         currentY += 8;
       } else if (trimmed.startsWith('*') || trimmed.startsWith('-')) {
-        // Bullet
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(10);
-        const text = '• ' + trimmed.substring(1).trim();
+        const text = '• ' + trimmed.substring(1).trim().replace(/\*\*/g, '');
         const splitText = doc.splitTextToSize(text, w - 28);
         doc.text(splitText, 18, currentY);
         currentY += splitText.length * 5 + 2;
@@ -487,7 +486,8 @@ export const generateMissionReportPDF = async (data: MissionOrderData) => {
         // Paragraph
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(10);
-        const splitText = doc.splitTextToSize(trimmed, w - 28);
+        const cleanText = trimmed.replace(/\*\*/g, '');
+        const splitText = doc.splitTextToSize(cleanText, w - 28);
         doc.text(splitText, 14, currentY);
         currentY += splitText.length * 5 + 4;
       } else {

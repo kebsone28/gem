@@ -22,6 +22,7 @@ import {
   Building2,
   Eye,
   Calendar,
+  GraduationCap,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSync } from '../hooks/useSync';
@@ -117,6 +118,14 @@ export default function Sidebar() {
         icon: Calendar,
         label: 'Planning',
         title: 'Planification intelligente des travaux par équipe',
+        permission: PERMISSIONS.VOIR_CARTE,
+        category: 'OPÉRATIONS',
+      },
+      {
+        to: '/planning-formation',
+        icon: GraduationCap,
+        label: 'Formations',
+        title: 'Planification des formations par région et session',
         permission: PERMISSIONS.VOIR_CARTE,
         category: 'OPÉRATIONS',
       },

@@ -80,6 +80,7 @@ import sizingRoutes from './modules/sizing/sizing.routes.js';
 import assistantRoutes from './modules/assistant/assistant.router.js';
 import approvalRoutes from './modules/assistant/approval.router.js';
 import alertsRoutes from './modules/alerts/alerts.routes.js';
+import formationRoutes from './modules/formation/formation.routes.js';
 
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
@@ -98,6 +99,7 @@ app.use('/api/missions', missionRoutes);
 app.use('/api/organization', organizationRoutes);
 app.use('/api/sizing', sizingRoutes);
 app.use('/api/ai', assistantRoutes);
+app.use('/api/formations', formationRoutes);
 app.use('/api/approvals', approvalRoutes);
 app.use('/api/alerts', alertsRoutes);
 
