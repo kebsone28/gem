@@ -134,8 +134,8 @@ const Terrain: React.FC = () => {
 
   // Terrain photo hook
   const { capturePhoto, selectFromGallery, isCapturing } = useTerrainPhoto({
-    onPhotoCapture: async (file) => {
-      if (!file) return;
+    onUpload: async (file: File): Promise<string> => {
+      if (!file) return "";
       logger.log('📸 Photo capturée, début upload...', file.name);
       
       const toastId = toast.loading('Upload de la photo...');
@@ -148,8 +148,10 @@ const Terrain: React.FC = () => {
         } else {
           toast.error('Échec de l\'upload', { id: toastId });
         }
+        return "ok";
       } catch (err) {
         toast.error('Erreur upload', { id: toastId });
+        return "";
       }
     },
   });
@@ -691,7 +693,7 @@ const Terrain: React.FC = () => {
                     const result = await createMission({
                       ...mission,
                       status: 'draft',
-                      organizationId: user?.organizationId
+                      organizationId: user?.organization || 'default',
                     });
                     if (result) {
                       toast.success('Mission sauvegardée comme brouillon');
@@ -707,7 +709,7 @@ const Terrain: React.FC = () => {
                     const result = await createMission({
                       ...mission,
                       status: 'soumise',
-                      organizationId: user?.organizationId
+                      organizationId: user?.organization || 'default',
                     });
                     if (result) {
                       toast.success('Mission soumise avec succès');

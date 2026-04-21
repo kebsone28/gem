@@ -381,6 +381,7 @@ export const generateMissionReportPDF = async (data: MissionOrderData) => {
   const doc = new jsPDF({ orientation: 'portrait', format: 'a4' });
   const w = doc.internal.pageSize.getWidth();
   const h = doc.internal.pageSize.getHeight();
+  let currentY = 15;
 
   // Header logic (similar to order)
   doc.addImage('/logo-proquelec.png', 'PNG', 14, 14, 45, 12);
@@ -389,19 +390,19 @@ export const generateMissionReportPDF = async (data: MissionOrderData) => {
   doc.text(`Dakar, le ${new Date().toLocaleDateString('fr-FR')}`, w - 14, 15, { align: 'right' });
 
   doc.setFontSize(18);
-  
+
   if (data.reportingMode === 'narrative' && data.narrativeReport) {
-    let currentY = 35;
-    const lines = data.narrativeReport.split('\n');
-    
+    currentY = 35;
+    const narrativeLines = data.narrativeReport.split('\n');
+
     // --- Extraction pour le Sommaire ---
-    const headings: { text: string, level: number }[] = [];
-    lines.forEach(line => {
+    const headings: { text: string; level: number }[] = [];
+    narrativeLines.forEach((line) => {
       const trimmed = line.trim();
       if (trimmed.startsWith('#')) {
-         const level = (trimmed.match(/#/g) || []).length;
-         const text = trimmed.replace(/#/g, '').replace(/\*\*/g, '').trim();
-         headings.push({ text, level });
+        const level = (trimmed.match(/#/g) || []).length;
+        const text = trimmed.replace(/#/g, '').replace(/\*\*/g, '').trim();
+        headings.push({ text, level });
       }
     });
 
@@ -413,14 +414,14 @@ export const generateMissionReportPDF = async (data: MissionOrderData) => {
       currentY += 8;
       doc.setTextColor(...DARK);
 
-      headings.forEach(heading => {
+      headings.forEach((heading) => {
         // Optionnel : ne lister que les H2 et H3 pour ne pas surcharger
         if (heading.level > 1 && heading.level <= 3) {
-           doc.setFont('helvetica', heading.level === 2 ? 'bold' : 'normal');
-           doc.setFontSize(10);
-           const indent = heading.level === 3 ? 20 : 14;
-           doc.text(heading.text, indent, currentY);
-           currentY += 6;
+          doc.setFont('helvetica', heading.level === 2 ? 'bold' : 'normal');
+          doc.setFontSize(10);
+          const indent = heading.level === 3 ? 20 : 14;
+          doc.text(heading.text, indent, currentY);
+          currentY += 6;
         }
       });
       currentY += 10;
@@ -429,14 +430,14 @@ export const generateMissionReportPDF = async (data: MissionOrderData) => {
     }
 
     doc.setTextColor(...DARK);
-    
-    const lines = data.narrativeReport.split('\n');
-    lines.forEach(line => {
+
+    const contentLines = data.narrativeReport.split('\n');
+    contentLines.forEach((line) => {
       if (currentY > h - 20) {
         doc.addPage();
         currentY = 20;
       }
-      
+
       const trimmed = line.trim();
       if (trimmed.startsWith('#')) {
         // Heading
@@ -465,7 +466,7 @@ export const generateMissionReportPDF = async (data: MissionOrderData) => {
         currentY += 4; // Empty line
       }
     });
-    
+
     currentY += 10;
 
     // --- Signatures et observations pour narratif (sans saut de page systématique) ---
@@ -557,7 +558,7 @@ export const generateMissionReportPDF = async (data: MissionOrderData) => {
       },
     });
 
-    let currentY = (doc as any).lastAutoTable.finalY + 15;
+    currentY = (doc as any).lastAutoTable.finalY + 15;
 
     // General Observation
     if (data.reportObservations) {
@@ -611,17 +612,17 @@ export const generateMissionReportPDF = async (data: MissionOrderData) => {
   if (daysWithPhotos.length > 0) {
     doc.addPage();
     currentY = 25;
-    
+
     // Titre annexe plus stylé
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(16);
     doc.setTextColor(...INDIGO);
     doc.text('ANNEXE : DOCUMENTATION PHOTOGRAPHIQUE', 14, currentY);
-    
+
     doc.setDrawColor(...INDIGO);
     doc.setLineWidth(1);
     doc.line(14, currentY + 3, 60, currentY + 3);
-    
+
     currentY += 15;
 
     daysWithPhotos.forEach((day) => {
@@ -630,7 +631,7 @@ export const generateMissionReportPDF = async (data: MissionOrderData) => {
         doc.addPage();
         currentY = 25;
       }
-      
+
       doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(...DARK);
@@ -640,7 +641,7 @@ export const generateMissionReportPDF = async (data: MissionOrderData) => {
       // Grille de photos (2 colonnes)
       const photoW = (w - 38) / 2;
       const photoH = (photoW * 3) / 4; // Ratio 4:3
-      
+
       for (let i = 0; i < day.photos.length; i += 2) {
         if (currentY > h - photoH - 20) {
           doc.addPage();
@@ -665,12 +666,23 @@ export const generateMissionReportPDF = async (data: MissionOrderData) => {
         if (i + 1 < day.photos.length) {
           const p2 = day.photos[i + 1];
           try {
-            doc.addImage(p2.url || (p2 as any).data, 'JPEG', 14 + photoW + 10, currentY, photoW, photoH);
+            doc.addImage(
+              p2.url || (p2 as any).data,
+              'JPEG',
+              14 + photoW + 10,
+              currentY,
+              photoW,
+              photoH
+            );
             if (p2.comment) {
               doc.setFontSize(8);
               doc.setFont('helvetica', 'italic');
               doc.setTextColor(...GRAY);
-              doc.text(doc.splitTextToSize(p2.comment, photoW), 14 + photoW + 10, currentY + photoH + 4);
+              doc.text(
+                doc.splitTextToSize(p2.comment, photoW),
+                14 + photoW + 10,
+                currentY + photoH + 4
+              );
             }
           } catch (e) {
             logger.error('Failed to add photo 2', e);
@@ -679,7 +691,7 @@ export const generateMissionReportPDF = async (data: MissionOrderData) => {
 
         currentY += photoH + 15;
       }
-      
+
       currentY += 5; // Espace entre les jours
     });
   }

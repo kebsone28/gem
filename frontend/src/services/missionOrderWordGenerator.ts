@@ -621,14 +621,19 @@ export const generateMissionReportWord = async (data: any): Promise<Blob | null>
       lines.forEach((line: string) => {
         const trimmed = line.trim();
         
-        // Helper to parse inline **bold**
         const parseInlineBold = (text: string, defaultSize: number = 20): TextRun[] => {
           const parts = text.split('**');
-          return parts.map((part, index) => new TextRun({
-            text: part,
-            size: defaultSize,
-            bold: index % 2 === 1
-          })).filter(tr => tr.text !== '');
+          const results: TextRun[] = [];
+          parts.forEach((part, index) => {
+            if (part !== '') {
+              results.push(new TextRun({
+                text: part,
+                size: defaultSize,
+                bold: index % 2 === 1
+              }));
+            }
+          });
+          return results;
         };
 
         if (trimmed.startsWith('#')) {

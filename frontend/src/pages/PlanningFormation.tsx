@@ -3,8 +3,8 @@
  * Modules, sessions, participants, planification par région
  */
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  Calendar, Users, MapPin, Clock, FileText, Download, 
+import {
+  Calendar, Users, MapPin, Clock, FileText, Download,
   Plus, Trash2, Edit2, Check, X, ChevronDown, Save
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -12,8 +12,8 @@ import toast from 'react-hot-toast';
 
 // Les 14 régions du Sénégal
 const SENEGAL_REGIONS = [
-  'Dakar', 'Diourbel', 'Fatick', 'Kaffrine', 'Kaolack', 
-  'Kedougou', 'Kolda', 'Louga', 'Matam', 'Saint-Louis', 
+  'Dakar', 'Diourbel', 'Fatick', 'Kaffrine', 'Kaolack',
+  'Kedougou', 'Kolda', 'Louga', 'Matam', 'Saint-Louis',
   'Sedhiou', 'Tambacounda', 'Thies', 'Ziguinchor'
 ];
 
@@ -85,13 +85,13 @@ const formationApi = {
     }).then(r => r.json()),
   deleteModule: (id: string) =>
     fetch(`${API_BASE}/modules/${id}`, { method: 'DELETE' }).then(r => r.json()),
-  
+
   // Sessions
   getSessions: (filters?: Record<string, string>) => {
     const params = new URLSearchParams(filters);
     return fetch(`${API_BASE}/sessions?${params}`).then(r => r.json());
   },
-  createSession: (data: { region: string; salle: string; maxParticipants: number; startDate: string; workSaturday: boolean; workSunday: boolean; notes?: string; modules: { moduleId: string; duration?: number; notes?: string }[] }) => 
+  createSession: (data: { region: string; salle: string; maxParticipants: number; startDate: string; workSaturday: boolean; workSunday: boolean; notes?: string; modules: { moduleId: string; duration?: number; notes?: string }[] }) =>
     fetch(`${API_BASE}/sessions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -105,7 +105,7 @@ const formationApi = {
     }).then(r => r.json()),
   deleteSession: (id: string) =>
     fetch(`${API_BASE}/sessions/${id}`, { method: 'DELETE' }).then(r => r.json()),
-  
+
   // Session modules
   addModuleToSession: (sessionId: string, moduleId: string, duration?: number, notes?: string) =>
     fetch(`${API_BASE}/sessions/${sessionId}/modules`, {
@@ -115,7 +115,7 @@ const formationApi = {
     }).then(r => r.json()),
   removeModuleFromSession: (sessionId: string, moduleId: string) =>
     fetch(`${API_BASE}/sessions/${sessionId}/modules/${moduleId}`, { method: 'DELETE' }).then(r => r.json()),
-  
+
   // Participants
   addParticipant: (sessionId: string, data: Partial<FormationParticipant>) =>
     fetch(`${API_BASE}/sessions/${sessionId}/participants`, {
@@ -125,7 +125,7 @@ const formationApi = {
     }).then(r => r.json()),
   removeParticipant: (id: string) =>
     fetch(`${API_BASE}/participants/${id}`, { method: 'DELETE' }).then(r => r.json()),
-  
+
   // Planning & Stats
   getPlanning: (startDate?: string, endDate?: string) => {
     const params = new URLSearchParams();
@@ -138,27 +138,27 @@ const formationApi = {
 
 export default function PlanningFormation() {
   useAuth();
-  
+
   // State
   const [modules, setModules] = useState<FormationModule[]>([]);
   const [sessions, setSessions] = useState<FormationSession[]>([]);
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'planning' | 'modules' | 'stats'>('planning');
-  
+
   // Filtres
   const [filterRegion, setFilterRegion] = useState('ALL');
   const [filterModule, setFilterModule] = useState('ALL');
   const [filterStatus, setFilterStatus] = useState('ALL');
-  
+
   // Modal création session
   const [showModal, setShowModal] = useState(false);
   const [editingSession, setEditingSession] = useState<FormationSession | null>(null);
-  
+
   // Modal création/modification module
   const [showModuleModal, setShowModuleModal] = useState(false);
   const [editingModule, setEditingModule] = useState<FormationModule | null>(null);
-  
+
   // Formulaire nouvelle session - multi-modules
   const [formData, setFormData] = useState({
     region: 'Dakar',
@@ -170,7 +170,7 @@ export default function PlanningFormation() {
     notes: '',
     selectedModules: [] as { moduleId: string; duration: number; notes: string }[],
   });
-  
+
   // Formulaire module
   const [moduleFormData, setModuleFormData] = useState({
     name: '',
@@ -242,7 +242,7 @@ export default function PlanningFormation() {
       toast.error('Sélectionnez au moins un module');
       return;
     }
-    
+
     try {
       const session = await formationApi.createSession({
         region: formData.region,
@@ -259,7 +259,7 @@ export default function PlanningFormation() {
           orderIndex: idx,
         })),
       });
-      
+
       setSessions([...sessions, session]);
       setShowModal(false);
       resetForm();
@@ -277,7 +277,7 @@ export default function PlanningFormation() {
       toast.error('Le nom du module est requis');
       return;
     }
-    
+
     try {
       if (editingModule) {
         await formationApi.updateModule(editingModule.id, moduleFormData);
@@ -298,7 +298,7 @@ export default function PlanningFormation() {
   // Supprimer un module
   const handleDeleteModule = async (id: string) => {
     if (!confirm('Êtes-vous sûr de vouloir supprimer ce module?')) return;
-    
+
     try {
       const result = await formationApi.deleteModule(id);
       if (result.deactivated) {
@@ -316,12 +316,12 @@ export default function PlanningFormation() {
   const addModuleToForm = (moduleId: string) => {
     const module = modules.find(m => m.id === moduleId);
     if (!module) return;
-    
+
     if (formData.selectedModules.find(m => m.moduleId === moduleId)) {
       toast.error('Module déjà ajouté');
       return;
     }
-    
+
     setFormData({
       ...formData,
       selectedModules: [...formData.selectedModules, { moduleId, duration: module.duration, notes: '' }],
@@ -340,7 +340,7 @@ export default function PlanningFormation() {
   const updateModuleDuration = (moduleId: string, duration: number) => {
     setFormData({
       ...formData,
-      selectedModules: formData.selectedModules.map(m => 
+      selectedModules: formData.selectedModules.map(m =>
         m.moduleId === moduleId ? { ...m, duration } : m
       ),
     });
@@ -349,7 +349,7 @@ export default function PlanningFormation() {
   // Supprimer une session
   const handleDeleteSession = async (id: string) => {
     if (!confirm('Êtes-vous sûr de vouloir supprimer cette session?')) return;
-    
+
     try {
       await formationApi.deleteSession(id);
       setSessions(sessions.filter(s => s.id !== id));
@@ -443,21 +443,21 @@ export default function PlanningFormation() {
           <th>Participants</th>
           <th>Status</th>
         </tr>`;
-      
+
       regionSessions.forEach(s => {
         const start = new Date(s.startDate).toLocaleDateString('fr-FR');
         const end = s.endDate ? new Date(s.endDate).toLocaleDateString('fr-FR') : '-';
         html += `<tr>
-          <td class="module">${s.module?.name || 'Module'}</td>
+          <td class="module">${s.sessionModules?.[0]?.module?.name || 'Module'}</td>
           <td class="salle">${s.salle}</td>
           <td>${start}</td>
           <td>${end}</td>
-          <td>${s.durationDays}j${s.workSaturday ? ' (sam)' : ''}${s.workSunday ? ' (dim)' : ''}</td>
+          <td>${s.totalDays || 0}j${s.workSaturday ? ' (sam)' : ''}${s.workSunday ? ' (dim)' : ''}</td>
           <td>${s.participants?.length || 0}/${s.maxParticipants}</td>
           <td><span class="status ${s.status}">${s.status}</span></td>
         </tr>`;
       });
-      
+
       html += '</table>';
     });
 
@@ -492,7 +492,7 @@ export default function PlanningFormation() {
             Gestion des formations d'électriciens par région
           </p>
         </div>
-        
+
         <div className="flex gap-2">
           <button
             onClick={handleExportWord}
@@ -515,33 +515,30 @@ export default function PlanningFormation() {
       <div className="flex gap-2 mb-6">
         <button
           onClick={() => setActiveTab('planning')}
-          className={`px-4 py-2 rounded-lg font-medium ${
-            activeTab === 'planning' 
-              ? 'bg-blue-600 text-white' 
+          className={`px-4 py-2 rounded-lg font-medium ${activeTab === 'planning'
+              ? 'bg-blue-600 text-white'
               : 'bg-slate-800 text-slate-400 hover:text-white'
-          }`}
+            }`}
         >
           <Calendar className="w-4 h-4 inline mr-2" />
           Planning
         </button>
         <button
           onClick={() => setActiveTab('modules')}
-          className={`px-4 py-2 rounded-lg font-medium ${
-            activeTab === 'modules' 
-              ? 'bg-blue-600 text-white' 
+          className={`px-4 py-2 rounded-lg font-medium ${activeTab === 'modules'
+              ? 'bg-blue-600 text-white'
               : 'bg-slate-800 text-slate-400 hover:text-white'
-          }`}
+            }`}
         >
           <BookOpen className="w-4 h-4 inline mr-2" />
           Modules
         </button>
         <button
           onClick={() => setActiveTab('stats')}
-          className={`px-4 py-2 rounded-lg font-medium ${
-            activeTab === 'stats' 
-              ? 'bg-blue-600 text-white' 
+          className={`px-4 py-2 rounded-lg font-medium ${activeTab === 'stats'
+              ? 'bg-blue-600 text-white'
               : 'bg-slate-800 text-slate-400 hover:text-white'
-          }`}
+            }`}
         >
           <BarChart3 className="w-4 h-4 inline mr-2" />
           Statistiques
@@ -563,7 +560,7 @@ export default function PlanningFormation() {
                 <option key={r} value={r}>{r}</option>
               ))}
             </select>
-            
+
             <select
               value={filterModule}
               onChange={(e) => setFilterModule(e.target.value)}
@@ -574,7 +571,7 @@ export default function PlanningFormation() {
                 <option key={m.id} value={m.id}>{m.name}</option>
               ))}
             </select>
-            
+
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
@@ -650,12 +647,11 @@ export default function PlanningFormation() {
                           </div>
                         </td>
                         <td className="px-4 py-3">
-                          <span className={`px-2 py-1 rounded text-xs font-medium ${
-                            session.status === 'PLANIFIEE' ? 'bg-blue-500/20 text-blue-400' :
-                            session.status === 'EN_COURS' ? 'bg-green-500/20 text-green-400' :
-                            session.status === 'TERMINEE' ? 'bg-slate-500/20 text-slate-400' :
-                            'bg-red-500/20 text-red-400'
-                          }`}>
+                          <span className={`px-2 py-1 rounded text-xs font-medium ${session.status === 'PLANIFIEE' ? 'bg-blue-500/20 text-blue-400' :
+                              session.status === 'EN_COURS' ? 'bg-green-500/20 text-green-400' :
+                                session.status === 'TERMINEE' ? 'bg-slate-500/20 text-slate-400' :
+                                  'bg-red-500/20 text-red-400'
+                            }`}>
                             {session.status}
                           </span>
                         </td>
@@ -691,7 +687,7 @@ export default function PlanningFormation() {
               Nouveau Module
             </button>
           </div>
-          
+
           {/* Liste des modules */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {modules.filter(m => m.isActive !== false).map(module => (
@@ -728,7 +724,7 @@ export default function PlanningFormation() {
               </div>
             ))}
           </div>
-          
+
           {/* Modules désactivés */}
           {modules.filter(m => m.isActive === false).length > 0 && (
             <div className="mt-6">
@@ -893,6 +889,7 @@ export default function PlanningFormation() {
                   rows={2}
                 />
               </div>
+            </div>
 
             {/* Boutons */}
             <div className="flex gap-3 mt-6">

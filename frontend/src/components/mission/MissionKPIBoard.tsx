@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
 import React from 'react';
 import { TrendingUp, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import type { MissionReportDay } from '../../pages/mission/core/missionTypes';
@@ -17,7 +17,7 @@ export const MissionKPIBoard: React.FC<MissionKPIBoardProps> = ({
   // Calculer les KPI
   const totalDays = reportDays.length;
   const completedDays = reportDays.filter((d) => d.isCompleted).length;
-  const daysWithPhotos = reportDays.filter((d) => d.photo).length;
+  const daysWithPhotos = reportDays.filter((d) => d.photos && d.photos.length > 0).length;
   const daysWithGPS = reportDays.filter((d) => d.location).length;
   const completionRate = totalDays > 0 ? (completedDays / totalDays) * 100 : 0;
 
