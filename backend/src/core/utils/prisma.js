@@ -10,7 +10,7 @@ if (process.env.NODE_ENV !== 'production') {
 export const basePrisma = new PrismaClient();
 
 // Liste des modèles qui ne sont PAS filtrés par organizationId (modèles système)
-const EXCLUDED_MODELS = ['Organization', 'SystemLog', 'AuditLog', 'Role', 'Permission', 'RolePermission', 'Region'];
+const EXCLUDED_MODELS = ['Organization', 'SystemLog', 'AuditLog', 'Role', 'Permission', 'RolePermission', 'Region', 'FormationModule', 'FormationSession', 'FormationSessionModule', 'FormationParticipant'];
 
 // Liste des modèles filtrés par projectId si présent dans le contexte
 const PROJECT_LEVEL_MODELS = ['Zone', 'Team', 'Mission', 'PerformanceLog', 'Alert'];
