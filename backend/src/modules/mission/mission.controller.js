@@ -1,11 +1,18 @@
+import crypto from 'crypto';
 import prisma from '../../core/utils/prisma.js';
 import { tracerAction } from '../../services/audit.service.js';
 import logger from '../../utils/logger.js';
 import { missionNotificationService } from '../../services/notification.service.js';
 import { sendMail } from '../../services/mail.service.js';
 import { missionMentorService } from '../assistant/missionMentorService.js';
-import crypto from 'crypto';
 import { normalizeRole } from '../../core/utils/roles.js';
+
+const isDev = process.env.NODE_ENV !== 'production';
+
+/**
+ * Normalise les valeurs optionnelles pour Prisma (chaîne vide -> null)
+ */
+const cleanNullable = (val) => (val === "" || val === undefined ? null : val);
 
 // ===============================================
 // PUBLIC VERIFICATION (No Auth Required)
@@ -58,8 +65,11 @@ export const verifyMissionPublic = async (req, res) => {
             verifiedAt: new Date()
         });
     } catch (error) {
-        logger.error('Public verification error:', error);
-        res.status(500).json({ error: 'Internal server error during verification' });
+        logger.error('[MISSION_VERIFY_ERROR]', error);
+        res.status(500).json({ 
+            error: 'Internal server error during verification',
+            ...(isDev && { details: error.message, stack: error.stack })
+        });
     }
 };
 
@@ -71,32 +81,41 @@ export const sendMissionDocumentEmail = async (req, res) => {
     try {
         const { missionId } = req.params;
         const { recipientEmail, subject, body } = req.body;
-        const file = req.file; // Provided by multer middleware
+        const { organizationId } = req.user;
+        const file = req.file;
 
         if (!file) {
             return res.status(400).json({ error: 'Fichier manquant' });
         }
 
-        const mission = await prisma.mission.findUnique({
-            where: { id: missionId },
+        // 🔒 SECURITY CHECK: Ensure user is from the same organization as the mission
+        const mission = await prisma.mission.findFirst({
+            where: { id: missionId, organizationId },
             select: { orderNumber: true, title: true }
         });
 
+        if (!mission) {
+            return res.status(404).json({ error: 'Mission introuvable ou accès refusé' });
+        }
+
         await sendMail({
             to: recipientEmail,
-            subject: subject || `Ordre de Mission - ${mission?.orderNumber || mission?.title}`,
+            subject: subject || `Ordre de Mission - ${mission.orderNumber || mission.title}`,
             title: 'Votre Ordre de Mission Officiel',
-            body: body || `Veuillez trouver ci-joint votre ordre de mission officiel n° ${mission?.orderNumber}. <br/><br/>Ce document est certifié numériquement.`,
+            body: body || `Veuillez trouver ci-joint votre ordre de mission officiel n° ${mission.orderNumber}. <br/><br/>Ce document est certifié numériquement.`,
             attachments: [{
-                filename: file.originalname || `Ordre_Mission_${mission?.orderNumber}.pdf`,
+                filename: file.originalname || `Ordre_Mission_${mission.orderNumber}.pdf`,
                 content: file.buffer
             }]
         });
 
         res.json({ success: true, message: 'Email envoyé avec succès' });
     } catch (error) {
-        logger.error('Send mission document error:', error);
-        res.status(500).json({ error: 'Erreur lors de l\'envoi de l\'email' });
+        logger.error('[MISSION_EMAIL_ERROR]', error);
+        res.status(500).json({ 
+            error: 'Erreur lors de l\'envoi de l\'email',
+            ...(isDev && { details: error.message, stack: error.stack })
+        });
     }
 };
 
@@ -291,8 +310,11 @@ export const getMissionStats = async (req, res) => {
 
         res.json(stats);
     } catch (error) {
-        logger.error('Get mission stats error:', error);
-        res.status(500).json({ error: 'Server error while fetching mission statistics' });
+        logger.error('[MISSION_STATS_ERROR]', error);
+        res.status(500).json({ 
+            error: 'Erreur serveur lors de la récupération des statistiques missions',
+            ...(isDev && { details: error.message, stack: error.stack })
+        });
     }
 };
 
@@ -341,40 +363,26 @@ export const createMission = async (req, res) => {
         const { organizationId, id: userId } = req.user;
 
         if (!organizationId) {
-            return res.status(400).json({ error: 'Organization ID is missing from user context' });
+            return res.status(400).json({ error: 'Organization ID manquante dans le contexte utilisateur' });
         }
 
         // VALIDATION: Dates
         const dateError = validateMissionDates(startDate, endDate);
-        if (dateError) {
-            return res.status(400).json({ error: dateError });
-        }
+        if (dateError) return res.status(400).json({ error: dateError });
 
         // VALIDATION: Budget
         const budgetError = validateMissionBudget(budget);
-        if (budgetError) {
-            return res.status(400).json({ error: budgetError });
-        }
+        if (budgetError) return res.status(400).json({ error: budgetError });
 
         // VALIDATION GÉOMÉTRIQUE & TENANTE DU PROJET
-        let safeProjectId = null;
-        if (projectId && typeof projectId === 'string' && projectId.length > 10) {
-            try {
-                // On cherche le projet dans la même org
-                const project = await prisma.project.findFirst({
-                    where: {
-                        id: projectId,
-                        organizationId
-                    }
-                });
-
-                if (project) {
-                    safeProjectId = project.id;
-                } else {
-                    console.warn(`⚠️ [MISSION] Project ID ${projectId} not found or belongs to another org. Setting to NULL.`);
-                }
-            } catch (pErr) {
-                console.error(`❌ [MISSION] Error validating Project ID:`, pErr);
+        let safeProjectId = cleanNullable(projectId);
+        if (safeProjectId && typeof safeProjectId === 'string') {
+            const project = await prisma.project.findFirst({
+                where: { id: safeProjectId, organizationId }
+            });
+            if (!project) {
+                console.warn(`⚠️ [MISSION] Project ID ${safeProjectId} not found or belongs to another org. Setting to NULL.`);
+                safeProjectId = null;
             }
         }
 
@@ -395,11 +403,11 @@ export const createMission = async (req, res) => {
 
         res.json(mission);
     } catch (error) {
-        logger.error('Create mission error:', error);
+        logger.error('[MISSION_CREATE_ERROR]', error);
         res.status(500).json({
-            error: 'Server error while creating mission',
-            message: error.message,
-            code: error.code
+            error: 'Erreur serveur lors de la création de la mission',
+            code: 'MISSION_CREATE_FAILED',
+            ...(isDev && { details: error.message, stack: error.stack })
         });
     }
 };
@@ -499,7 +507,9 @@ export const updateMission = async (req, res) => {
                 logger.info(`✨ [WORKFLOW] Auto-creating workflow for submitted mission: ${id}`);
                 await createDefaultWorkflow(id, organizationId);
             }
-            await tracerAction(organizationId, userId, 'MISSION_SUBMITTED', 'Mission', id, { title, status });
+            try {
+                await tracerAction(organizationId, userId, 'MISSION_SUBMITTED', 'Mission', id, { title, status });
+            } catch (e) { console.warn('[AUDIT] Mission submit log failed:', e.message); }
 
             // EMAIL NOTIFICATION: Alert full chain when a mission is submitted
             try {
@@ -517,13 +527,15 @@ export const updateMission = async (req, res) => {
             }
         } else if (status === 'approuvee' && missionBefore.status !== 'approuvee') {
             // THE CERTIFIABLE AUDIT LOG (PROQUELEC)
-            await tracerAction(organizationId, userId, 'MISSION_CERTIFIED_DG', 'Mission', id, {
-                title,
-                status,
-                orderNumber: finalOrderNumber,
-                certifierId: userId,
-                timestamp: new Date().toISOString()
-            });
+            try {
+                await tracerAction(organizationId, userId, 'MISSION_CERTIFIED_DG', 'Mission', id, {
+                    title,
+                    status,
+                    orderNumber: finalOrderNumber,
+                    certifierId: userId,
+                    timestamp: new Date().toISOString()
+                });
+            } catch (e) { console.warn('[AUDIT] Mission certify log failed:', e.message); }
 
             // Also update the workflow if it exists
             await prisma.missionApprovalWorkflow.updateMany({
@@ -548,8 +560,12 @@ export const updateMission = async (req, res) => {
 
         res.json(mission);
     } catch (error) {
-        logger.error('Update mission error:', error);
-        res.status(500).json({ error: 'Server error while updating mission' });
+        logger.error('[MISSION_UPDATE_ERROR]', error);
+        res.status(500).json({ 
+            error: 'Erreur serveur lors de la mise à jour de la mission',
+            code: 'MISSION_UPDATE_FAILED',
+            ...(isDev && { details: error.message, stack: error.stack })
+        });
     }
 };
 
@@ -559,16 +575,31 @@ export const deleteMission = async (req, res) => {
         const { id } = req.params;
         const { organizationId, id: userId } = req.user;
 
-        await prisma.mission.updateMany({
-            where: { id, organizationId },
+        // 🔒 Ownership check
+        const mission = await prisma.mission.findFirst({
+            where: { id, organizationId, deletedAt: null }
+        });
+
+        if (!mission) {
+            return res.status(404).json({ error: 'Mission introuvable ou accès refusé' });
+        }
+
+        await prisma.mission.update({
+            where: { id },
             data: { deletedAt: new Date() }
         });
 
-        await tracerAction(organizationId, userId, 'MISSION_DELETE', 'Mission', id);
-        res.json({ message: 'Mission deleted successfully' });
+        try {
+            await tracerAction(organizationId, userId, 'MISSION_DELETE', 'Mission', id);
+        } catch (e) { console.warn('[AUDIT] Delete mission log failed:', e.message); }
+
+        res.json({ message: 'Mission supprimée avec succès' });
     } catch (error) {
-        logger.error('Delete mission error:', error);
-        res.status(500).json({ error: 'Server error while deleting mission' });
+        logger.error('[MISSION_DELETE_ERROR]', error);
+        res.status(500).json({ 
+            error: 'Erreur serveur lors de la suppression de la mission',
+            ...(isDev && { details: error.message, stack: error.stack })
+        });
     }
 };
 
@@ -581,10 +612,10 @@ export const duplicateMission = async (req, res) => {
         const { organizationId, id: userId } = req.user;
 
         const original = await prisma.mission.findFirst({
-            where: { id, organizationId }
+            where: { id, organizationId, deletedAt: null }
         });
 
-        if (!original) return res.status(404).json({ error: 'Mission original not found' });
+        if (!original) return res.status(404).json({ error: 'Mission originale introuvable' });
 
         const copy = await prisma.mission.create({
             data: {
@@ -595,17 +626,23 @@ export const duplicateMission = async (req, res) => {
                 startDate: original.startDate,
                 endDate: original.endDate,
                 budget: original.budget,
-                data: original.data,
+                data: original.data || {},
                 status: 'draft',
                 createdBy: userId
             }
         });
 
-        await tracerAction(organizationId, userId, 'MISSION_DUPLICATE', 'Mission', id, { newId: copy.id });
+        try {
+            await tracerAction(organizationId, userId, 'MISSION_DUPLICATE', 'Mission', id, { newId: copy.id });
+        } catch (e) { console.warn('[AUDIT] Duplicate mission log failed:', e.message); }
+
         res.json(copy);
     } catch (error) {
-        logger.error('Duplicate mission error:', error);
-        res.status(500).json({ error: 'Server error while duplicating mission' });
+        logger.error('[MISSION_DUPLICATE_ERROR]', error);
+        res.status(500).json({ 
+            error: 'Erreur serveur lors de la duplication de la mission',
+            ...(isDev && { details: error.message, stack: error.stack })
+        });
     }
 };
 
@@ -761,8 +798,11 @@ export const getMissionApprovalHistory = async (req, res) => {
         });
 
     } catch (error) {
-        logger.error('Get mission approval history error:', error);
-        res.status(500).json({ error: 'Server error while fetching approval history' });
+        logger.error('[MISSION_HISTORY_ERROR]', error);
+        res.status(500).json({ 
+            error: 'Erreur serveur lors de la récupération de l\'historique',
+            ...(isDev && { details: error.message, stack: error.stack })
+        });
     }
 };
 
@@ -1013,11 +1053,13 @@ export const approveMissionStep = async (req, res) => {
             return { updatedWF, orderNumber, nextStep };
         });
 
-        await tracerAction(organizationId, userId, 'MISSION_APPROVED_STEP', 'Mission', missionId, {
-            role,
-            orderNumber: result.orderNumber,
-            comment
-        });
+        try {
+            await tracerAction(organizationId, userId, 'MISSION_APPROVED_STEP', 'Mission', missionId, {
+                role,
+                orderNumber: result.orderNumber,
+                comment
+            });
+        } catch (e) { console.warn('[AUDIT] Mission approve step log failed:', e.message); }
 
         // ==============================================
         // ASYNC EMAIL NOTIFICATIONS (Normal Workflow)
@@ -1049,8 +1091,11 @@ export const approveMissionStep = async (req, res) => {
         });
 
     } catch (error) {
-        logger.error('Approve mission step error:', error);
-        res.status(500).json({ error: 'Server error while approving mission' });
+        logger.error('[MISSION_APPROVE_ERROR]', error);
+        res.status(500).json({ 
+            error: 'Erreur serveur lors de l\'approbation de la mission',
+            ...(isDev && { details: error.message, stack: error.stack })
+        });
     }
 };
 
@@ -1135,10 +1180,12 @@ export const rejectMissionStep = async (req, res) => {
             return updatedWF;
         });
 
-        await tracerAction(organizationId, userId, 'MISSION_REJECTED', 'Mission', missionId, {
-            role,
-            reason
-        });
+        try {
+            await tracerAction(organizationId, userId, 'MISSION_REJECTED', 'Mission', missionId, {
+                role,
+                reason
+            });
+        } catch (e) { console.warn('[AUDIT] Mission reject log failed:', e.message); }
 
         // Email Notification: Rejection
         missionNotificationService.notifyRejection(mission, role, reason, mission.createdBy)
@@ -1160,8 +1207,11 @@ export const rejectMissionStep = async (req, res) => {
         });
 
     } catch (error) {
-        logger.error('Reject mission error:', error);
-        res.status(500).json({ error: 'Server error while rejecting mission' });
+        logger.error('[MISSION_REJECT_ERROR]', error);
+        res.status(500).json({ 
+            error: 'Erreur serveur lors du rejet de la mission',
+            ...(isDev && { details: error.message, stack: error.stack })
+        });
     }
 };
 
@@ -1210,10 +1260,12 @@ export const overrideOrderNumber = async (req, res) => {
             }
         });
 
-        await tracerAction(organizationId, userId, 'MISSION_ORDER_NUMBER_OVERRIDE', 'Mission', missionId, {
-            oldOrderNumber: mission.orderNumber,
-            newOrderNumber
-        });
+        try {
+            await tracerAction(organizationId, userId, 'MISSION_ORDER_NUMBER_OVERRIDE', 'Mission', missionId, {
+                oldOrderNumber: mission.orderNumber,
+                newOrderNumber
+            });
+        } catch (e) { console.warn('[AUDIT] Mission override log failed:', e.message); }
 
         res.json({
             success: true,
@@ -1223,8 +1275,11 @@ export const overrideOrderNumber = async (req, res) => {
         });
 
     } catch (error) {
-        logger.error('Override order number error:', error);
-        res.status(500).json({ error: 'Server error while overriding order number' });
+        logger.error('[MISSION_OVERRIDE_ERROR]', error);
+        res.status(500).json({ 
+            error: 'Erreur serveur lors du changement de numéro',
+            ...(isDev && { details: error.message, stack: error.stack })
+        });
     }
 };
 
@@ -1338,7 +1393,10 @@ export const getPendingApprovals = async (req, res) => {
             }
         });
     } catch (error) {
-        logger.error('Get pending approvals error:', error);
-        res.status(500).json({ error: 'Server error while fetching pending approvals' });
+        logger.error('[MISSION_PENDING_ERROR]', error);
+        res.status(500).json({ 
+            error: 'Erreur serveur lors de la récupération des approbations en attente',
+            ...(isDev && { details: error.message, stack: error.stack })
+        });
     }
 };

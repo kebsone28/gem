@@ -321,7 +321,7 @@ export default function Planning() {
                 onClick={() => setViewMode('timeline')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${viewMode === 'timeline' ? 'bg-blue-500 text-white' : 'text-slate-500 hover:text-white'}`}
               >
-                Timeline
+                Chronologie
               </button>
               <button
                 onClick={() => setViewMode('calendar')}
@@ -333,7 +333,7 @@ export default function Planning() {
                 onClick={() => setViewMode('kanban')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${viewMode === 'kanban' ? 'bg-blue-500 text-white' : 'text-slate-500 hover:text-white'}`}
               >
-                Kanban
+                Tableau de Flux
               </button>
             </div>
 

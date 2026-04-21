@@ -445,6 +445,59 @@ export const generateMissionReportPDF = async (data: MissionOrderData) => {
 
   let currentY = (doc as any).lastAutoTable.finalY + 15;
 
+  // Global Narrative Report
+  if (data.reportingMode === 'narrative' && data.narrativeReport) {
+    doc.addPage();
+    currentY = 25;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.setTextColor(...INDIGO);
+    doc.text('RAPPORT GLOBAL DE SYNTHÈSE', 14, currentY);
+    currentY += 10;
+    
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.setTextColor(...DARK);
+    
+    const lines = data.narrativeReport.split('\n');
+    lines.forEach(line => {
+      if (currentY > h - 20) {
+        doc.addPage();
+        currentY = 20;
+      }
+      
+      const trimmed = line.trim();
+      if (trimmed.startsWith('#')) {
+        // Heading
+        const level = (trimmed.match(/#/g) || []).length;
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(level === 1 ? 14 : level === 2 ? 12 : 10);
+        const text = trimmed.replace(/#/g, '').trim();
+        doc.text(text, 14, currentY);
+        currentY += 8;
+      } else if (trimmed.startsWith('*') || trimmed.startsWith('-')) {
+        // Bullet
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        const text = '• ' + trimmed.substring(1).trim();
+        const splitText = doc.splitTextToSize(text, w - 28);
+        doc.text(splitText, 18, currentY);
+        currentY += splitText.length * 5 + 2;
+      } else if (trimmed) {
+        // Paragraph
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        const splitText = doc.splitTextToSize(trimmed, w - 28);
+        doc.text(splitText, 14, currentY);
+        currentY += splitText.length * 5 + 4;
+      } else {
+        currentY += 4; // Empty line
+      }
+    });
+    
+    currentY += 10;
+  }
+
   // General Observation
   if (data.reportObservations) {
     if (currentY > h - 40) {
@@ -492,32 +545,80 @@ export const generateMissionReportPDF = async (data: MissionOrderData) => {
   }
 
   // Annex : Photos Gallery
-  const photos = data.reportDays?.filter((rd) => rd.photo) || [];
-  if (photos.length > 0) {
+  const daysWithPhotos = data.reportDays?.filter((rd) => rd.photos && rd.photos.length > 0) || [];
+  if (daysWithPhotos.length > 0) {
     doc.addPage();
-    currentY = 20;
+    currentY = 25;
+    
+    // Titre annexe plus stylé
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(14);
-    doc.setTextColor(...DARK);
-    doc.text('ANNEXE : GALERIE PHOTOS TERRAIN', 14, currentY);
+    doc.setFontSize(16);
+    doc.setTextColor(...INDIGO);
+    doc.text('ANNEXE : DOCUMENTATION PHOTOGRAPHIQUE', 14, currentY);
+    
+    doc.setDrawColor(...INDIGO);
+    doc.setLineWidth(1);
+    doc.line(14, currentY + 3, 60, currentY + 3);
+    
     currentY += 15;
 
-    photos.forEach((p) => {
-      if (currentY > h - 80) {
+    daysWithPhotos.forEach((day, dIdx) => {
+      // Titre du jour
+      if (currentY > h - 40) {
         doc.addPage();
-        currentY = 20;
+        currentY = 25;
       }
+      
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...DARK);
+      doc.text(`Jour ${day.day} : ${day.title}`, 14, currentY);
+      currentY += 8;
 
-      try {
-        doc.setFontSize(9);
-        doc.setTextColor(...DARK);
-        doc.text(`Jour ${p.day} : ${p.title}`, 14, currentY);
-        currentY += 5;
-        doc.addImage(p.photo!, 'JPEG', 14, currentY, 80, 60);
-        currentY += 70;
-      } catch (err) {
-        logger.error('Error adding photo to PDF', err);
+      // Grille de photos (2 colonnes)
+      const photoW = (w - 38) / 2;
+      const photoH = (photoW * 3) / 4; // Ratio 4:3
+      
+      for (let i = 0; i < day.photos.length; i += 2) {
+        if (currentY > h - photoH - 20) {
+          doc.addPage();
+          currentY = 25;
+        }
+
+        // Photo 1 (Gauche)
+        const p1 = day.photos[i];
+        try {
+          doc.addImage(p1.url || (p1 as any).data, 'JPEG', 14, currentY, photoW, photoH);
+          if (p1.comment) {
+            doc.setFontSize(8);
+            doc.setFont('helvetica', 'italic');
+            doc.setTextColor(...GRAY);
+            doc.text(doc.splitTextToSize(p1.comment, photoW), 14, currentY + photoH + 4);
+          }
+        } catch (e) {
+          logger.error('Failed to add photo 1', e);
+        }
+
+        // Photo 2 (Droite) - si elle existe
+        if (i + 1 < day.photos.length) {
+          const p2 = day.photos[i + 1];
+          try {
+            doc.addImage(p2.url || (p2 as any).data, 'JPEG', 14 + photoW + 10, currentY, photoW, photoH);
+            if (p2.comment) {
+              doc.setFontSize(8);
+              doc.setFont('helvetica', 'italic');
+              doc.setTextColor(...GRAY);
+              doc.text(doc.splitTextToSize(p2.comment, photoW), 14 + photoW + 10, currentY + photoH + 4);
+            }
+          } catch (e) {
+            logger.error('Failed to add photo 2', e);
+          }
+        }
+
+        currentY += photoH + 15;
       }
+      
+      currentY += 5; // Espace entre les jours
     });
   }
 

@@ -15,9 +15,64 @@ import {
   AlertCircle,
   ChevronRight,
   Save,
-  Send
+  Send,
+  Camera,
+  Trash2,
+  Image as ImageIcon,
+  Loader2
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { uploadFile } from '../../services/uploadService';
+
+const KAFFRINE_TEMPLATE = `# **RAPPORT DE MISSION TERRAIN**
+
+## **Projet de Raccordement Électrique LSE – Région de Kaffrine**
+### **Période : du 08 au 13 Avril**
+### **Mission : Dakar → Kaffrine → Dakar**
+
+---
+
+## **1. Objet de la mission**
+Dans le cadre du projet de raccordement électrique LSE, une mission de terrain a été effectuée dans la région de Kaffrine du 08 au 13 avril, avec pour objectif principal d’évaluer l’état d’avancement du réseau, d’échanger avec les autorités locales, d’identifier les contraintes terrain et de préparer le déploiement opérationnel des travaux.
+
+## **2. Localités visitées et situation du réseau**
+### **1. Nguane Villane**
+Chef de village : El Hadji Samba Thiombane - 78 614 86 17
+* Situation réseau : presque finalisé
+* Accord : favorable au stockage du matériel
+
+### **2. Lodoyéle** (Moussa Ba - 78 157 83 65)
+* Situation réseau : presque finalisé
+
+### **3. Cassa Wally Ndour** (Waly Ndour - 77 262 67 46)
+* Situation réseau : presque finalisé
+
+### **4. Cassa Dierry** (Sassy Sow - 78 116 80 64)
+* Situation réseau : presque finalisé
+
+### **... [Liste des 13 villages visités]**
+
+👉 **Constat global :** Dans l’ensemble des villages visités, le réseau est presque entièrement finalisé.
+
+## **3. Situation des ménages et observations terrain**
+* Beaucoup de ménages n’ont pas attendu le projet pour s’alimenter en électricité.
+* Risques techniques : câbles 2,5 mm², tubes orange non conventionnels.
+
+## **4. Acteurs locaux rencontrés**
+### **Réseau d’électriciens (Mr Bamba Ndao – 75 550 78 66)**
+* Groupes d'électriciens identifiés et entrepreneurs disponibles.
+
+## **5. Ressources locales**
+* Usine de briques de Kaffrine (Mr Oumar Cissé – 77 579 77 49). Briques en béton noir de haute qualité.
+
+## **6. Analyse des risques**
+* Difficulté sur le nombre exact de ménages bénéficiaires.
+* Problèmes potentiels de conformité technique.
+
+## **7. Stratégie de déploiement**
+* Organisation par village (grappe).
+* Workflow : Maçons -> Équipes réseau -> Contrôle final.
+`;
 
 interface MissionContext {
   // Équipe
@@ -89,10 +144,16 @@ export const TerrainMissionEditor: React.FC<TerrainMissionEditorProps> = ({
     householdIds: context.householdIds || [],
     householdCount: context.householdCount || 0,
     
-    // Notes terrain
+    // Notes terrain / Reporting
     notes: '',
+    photos: [] as { id: string; url: string; comment?: string; timestamp: string }[],
+    reportingMode: 'daily' as 'daily' | 'narrative',
+    narrativeReport: KAFFRINE_TEMPLATE,
     priority: 'normal',
   });
+
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const [step, setStep] = useState(1);
   const steps = [
@@ -126,7 +187,7 @@ export const TerrainMissionEditor: React.FC<TerrainMissionEditorProps> = ({
     setStep(Math.max(step - 1, 1));
   };
 
-  const handleSubmit = (asDraft: boolean = false) => {
+  const handleSubmit = async (asDraft: boolean = false) => {
     const mission = {
       ...formData,
       status: asDraft ? 'draft' : 'soumise',
@@ -137,9 +198,9 @@ export const TerrainMissionEditor: React.FC<TerrainMissionEditorProps> = ({
     };
     
     if (asDraft) {
-      onSave(mission);
+      await onSave(mission);
     } else {
-      onSubmit(mission);
+      await onSubmit(mission);
     }
   };
 
@@ -155,6 +216,49 @@ export const TerrainMissionEditor: React.FC<TerrainMissionEditorProps> = ({
         additionalMaterials: ''
       }));
     }
+  };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setIsUploading(true);
+      const result = await uploadFile(file);
+      if (result) {
+        setFormData(prev => ({
+          ...prev,
+          photos: [
+            ...prev.photos,
+            {
+              id: result.key,
+              url: result.url,
+              comment: '',
+              timestamp: new Date().toISOString()
+            }
+          ]
+        }));
+        toast.success('Photo ajoutée au rapport');
+      }
+    } catch (error) {
+      toast.error('Erreur lors de l\'upload');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const removePhoto = (id: string) => {
+    setFormData(prev => ({
+      ...prev,
+      photos: prev.photos.filter(p => p.id !== id)
+    }));
+  };
+
+  const updatePhotoComment = (id: string, comment: string) => {
+    setFormData(prev => ({
+      ...prev,
+      photos: prev.photos.map(p => p.id === id ? { ...p, comment } : p)
+    }));
   };
 
   return (
@@ -389,14 +493,104 @@ export const TerrainMissionEditor: React.FC<TerrainMissionEditorProps> = ({
               </div>
 
               <div>
-                <label className="block text-sm text-slate-400 mb-1">Notes terrain</label>
-                <textarea
-                  value={formData.notes}
-                  onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                  placeholder="Observations, recommandations..."
-                  rows={2}
-                  className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white"
-                />
+                <div className="flex gap-2 p-1 bg-slate-900/50 rounded-lg mb-4">
+                  <button
+                    onClick={() => setFormData(prev => ({ ...prev, reportingMode: 'daily' }))}
+                    className={`flex-1 py-1.5 px-3 rounded-md text-xs font-medium transition-all ${
+                      formData.reportingMode === 'daily'
+                        ? 'bg-blue-600 text-white shadow-lg'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    Suivi Journalier
+                  </button>
+                  <button
+                    onClick={() => setFormData(prev => ({ ...prev, reportingMode: 'narrative' }))}
+                    className={`flex-1 py-1.5 px-3 rounded-md text-xs font-medium transition-all ${
+                      formData.reportingMode === 'narrative'
+                        ? 'bg-blue-600 text-white shadow-lg'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    Rapport Global
+                  </button>
+                </div>
+
+                {formData.reportingMode === 'daily' ? (
+                  <>
+                    <label className="block text-sm text-slate-400 mb-1">Notes terrain (Jalons)</label>
+                    <textarea
+                      value={formData.notes}
+                      onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                      placeholder="Observations, recommandations par étape..."
+                      rows={3}
+                      className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white mb-4"
+                    />
+                  </>
+                ) : (
+                  <>
+                    <label className="block text-sm text-slate-400 mb-1">Synthèse narrative épurée</label>
+                    <textarea
+                      value={formData.narrativeReport}
+                      onChange={(e) => setFormData(prev => ({ ...prev, narrativeReport: e.target.value }))}
+                      placeholder="Rédigez votre rapport global ici..."
+                      rows={8}
+                      className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white font-mono text-xs mb-4"
+                    />
+                  </>
+                )}
+
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm text-slate-400">Photos Illustratives ({formData.photos.length})</label>
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading}
+                    className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded flex items-center gap-1"
+                  >
+                    {isUploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Camera className="w-3 h-3" />}
+                    Ajouter
+                  </button>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileUpload}
+                    className="hidden"
+                    accept="image/*"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  {formData.photos.map((photo) => (
+                    <div key={photo.id} className="relative group bg-slate-700 rounded-lg overflow-hidden border border-slate-600">
+                      <img 
+                        src={photo.url} 
+                        alt="Mission" 
+                        className="w-full h-24 object-cover"
+                      />
+                      <button
+                        onClick={() => removePhoto(photo.id)}
+                        className="absolute top-1 right-1 p-1 bg-red-600 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                      <div className="p-1">
+                        <input
+                          type="text"
+                          value={photo.comment || ''}
+                          onChange={(e) => updatePhotoComment(photo.id, e.target.value)}
+                          placeholder="Légende..."
+                          className="w-full bg-transparent text-[10px] text-slate-300 outline-none"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                  {formData.photos.length === 0 && !isUploading && (
+                    <div className="col-span-2 py-6 border-2 border-dashed border-slate-700 rounded-lg flex flex-col items-center justify-center text-slate-500">
+                      <ImageIcon className="w-8 h-8 mb-1 opacity-20" />
+                      <span className="text-xs">Aucune photo pour le moment</span>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </motion.div>

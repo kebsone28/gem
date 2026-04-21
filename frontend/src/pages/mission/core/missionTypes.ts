@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
 export interface MissionMember {
   name: string;
   role: string;
@@ -9,7 +9,8 @@ export interface MissionMember {
 
 export interface MissionPhoto {
   id: string;
-  data: string; // Base64
+  data?: string; // Base64 (optional if using url)
+  url?: string;  // Server URL
   comment: string;
   timestamp: string;
 }
@@ -47,6 +48,8 @@ export interface MissionOrderData {
   planning: string[]; // 6-day itinerary
   reportDays?: MissionReportDay[];
   reportObservations?: string;
+  reportingMode?: 'daily' | 'narrative';
+  narrativeReport?: string;
   isCertified?: boolean;
   isSubmitted?: boolean;
   signatureImage?: string; // Base64 string

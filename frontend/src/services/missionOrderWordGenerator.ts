@@ -674,6 +674,64 @@ export const generateMissionReportWord = async (data: any): Promise<Blob | null>
       ],
     });
 
+    // III. RAPPORT NARRATIF GLOBAL (si activé)
+    if (data.reportingMode === 'narrative' && data.narrativeReport) {
+      const narrativeChildren: any[] = [
+        createSectionHeader('RAPPORT GLOBAL DE SYNTHÈSE', COLORS.PRIMARY),
+      ];
+
+      const lines = data.narrativeReport.split('\n');
+      lines.forEach((line: string) => {
+        const trimmed = line.trim();
+        if (trimmed.startsWith('#')) {
+          const level = (trimmed.match(/#/g) || []).length;
+          narrativeChildren.push(
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: trimmed.replace(/#/g, '').trim(),
+                  bold: true,
+                  size: level === 1 ? 28 : level === 2 ? 24 : 20,
+                  color: COLORS.PRIMARY,
+                }),
+              ],
+              spacing: { before: 300, after: 150 },
+            })
+          );
+        } else if (trimmed.startsWith('*') || trimmed.startsWith('-')) {
+          narrativeChildren.push(
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: '• ' + trimmed.substring(1).trim(),
+                  size: 20,
+                }),
+              ],
+              spacing: { before: 50, after: 50 },
+              indent: { left: 400 },
+            })
+          );
+        } else if (trimmed) {
+          narrativeChildren.push(
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: trimmed,
+                  size: 20,
+                }),
+              ],
+              spacing: { before: 100, after: 100 },
+            })
+          );
+        }
+      });
+
+      sections.push({
+        properties: {},
+        children: narrativeChildren,
+      });
+    }
+
     // Section Rapports journaliers avec photos et détails terrain
     if (data.reportDays && data.reportDays.length > 0) {
       const reportDaysChildren: any[] = [
@@ -793,16 +851,47 @@ export const generateMissionReportWord = async (data: any): Promise<Blob | null>
             })
           );
 
-          // Pour chaque photo, ajouter le commentaire
-          day.photos.forEach((photo: any, pIdx: number) => {
+          // Pour chaque photo, ajouter l'image et le commentaire
+          for (const photo of day.photos) {
+            // 📸 Ajout de l'image si elle existe (Base64 ou URL via fetch)
+            try {
+              let imageData: ArrayBuffer | null = null;
+              
+              if (photo.data?.startsWith('data:')) {
+                const base64Data = photo.data.includes(',') ? photo.data.split(',')[1] : photo.data;
+                imageData = Uint8Array.from(atob(base64Data), (c) => c.charCodeAt(0)).buffer;
+              } else if (photo.url) {
+                imageData = await _fetchImageAsArrayBuffer(photo.url);
+              }
+
+              if (imageData) {
+                reportDaysChildren.push(
+                  new Paragraph({
+                    alignment: AlignmentType.CENTER,
+                    children: [
+                      new ImageRun({
+                        data: imageData,
+                        transformation: { width: 450, height: 300 }, // Taille optimisée pour Word
+                      } as any),
+                    ],
+                    spacing: { before: 100, after: 100 },
+                  })
+                );
+              }
+            } catch (err) {
+              logger.error('Erreur insertion image Word:', err);
+            }
+
             if (photo.comment) {
               reportDaysChildren.push(
                 new Paragraph({
+                  alignment: AlignmentType.CENTER,
                   children: [
                     new TextRun({
-                      text: `Photo ${pIdx + 1} : `,
+                      text: 'Commentaire : ',
                       bold: true,
                       size: 16,
+                      color: COLORS.SLATE,
                     }),
                     new TextRun({
                       text: photo.comment,
@@ -810,11 +899,11 @@ export const generateMissionReportWord = async (data: any): Promise<Blob | null>
                       italics: true,
                     }),
                   ],
-                  spacing: { after: 50 },
+                  spacing: { after: 200 },
                 })
               );
             }
-          });
+          }
         }
 
         // Séparateur entre les jours

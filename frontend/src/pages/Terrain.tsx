@@ -4,8 +4,11 @@ import logger from '../utils/logger';
 import toast from 'react-hot-toast';
 
 import { useTerrainPhoto } from '../hooks/useTerrainPhoto';
+import { useTerrainData } from '../hooks/useTerrainData';
 import { QuickActions, OfflineIndicator, FloatingPhotoButton } from '../components/terrain/QuickActions';
 import { TerrainMissionEditor } from '../components/terrain/TerrainMissionEditor';
+import { createMission, updateMission } from '../services/missionService';
+import { uploadFile as uploadToServer } from '../services/uploadService';
 import { useAuth } from '../contexts/AuthContext';
 const MapComponent = React.lazy(() => import('../components/terrain/MapComponent'));
 import type { Household } from '../utils/types';
@@ -130,10 +133,24 @@ const Terrain: React.FC = () => {
   const { isFavorite, toggleFavorite, favorites: localFavorites } = useFavorites(project?.id);
 
   // Terrain photo hook
-  const { capturePhoto, selectFromGallery, isCapturing, lastPhoto } = useTerrainPhoto({
-    onPhotoCapture: (photoData) => {
-      logger.log('📸 Photo capturée:', photoData);
-      // Could trigger upload or store locally
+  const { capturePhoto, selectFromGallery, isCapturing } = useTerrainPhoto({
+    onPhotoCapture: async (file) => {
+      if (!file) return;
+      logger.log('📸 Photo capturée, début upload...', file.name);
+      
+      const toastId = toast.loading('Upload de la photo...');
+      try {
+        const result = await uploadToServer(file);
+        if (result) {
+          toast.success('Photo enregistrée au serveur', { id: toastId });
+          // If editor is open, we could push it to a global state or store
+          // For now, let's just log it. The editor has its own upload button now.
+        } else {
+          toast.error('Échec de l\'upload', { id: toastId });
+        }
+      } catch (err) {
+        toast.error('Erreur upload', { id: toastId });
+      }
     },
   });
 
@@ -667,15 +684,38 @@ const Terrain: React.FC = () => {
                   regionName: selectedHousehold?.region,
                   householdCount: filteredHouseholds.length,
                 }}
-                onSave={(mission) => {
-                  logger.log('💾 Mission sauvegardée:', mission);
-                  toast.success('Mission sauvegardée comme brouillon');
-                  setShowMissionEditor(false);
+                isLoading={false}
+                onSave={async (mission) => {
+                  try {
+                    logger.log('💾 Sauvegarde brouillon mission sur serveur...', mission);
+                    const result = await createMission({
+                      ...mission,
+                      status: 'draft',
+                      organizationId: user?.organizationId
+                    });
+                    if (result) {
+                      toast.success('Mission sauvegardée comme brouillon');
+                      setShowMissionEditor(false);
+                    }
+                  } catch (err) {
+                    toast.error('Erreur lors de la sauvegarde');
+                  }
                 }}
-                onSubmit={(mission) => {
-                  logger.log('📤 Mission soumise:', mission);
-                  toast.success('Mission soumise avec succès');
-                  setShowMissionEditor(false);
+                onSubmit={async (mission) => {
+                  try {
+                    logger.log('📤 Soumission mission sur serveur...', mission);
+                    const result = await createMission({
+                      ...mission,
+                      status: 'soumise',
+                      organizationId: user?.organizationId
+                    });
+                    if (result) {
+                      toast.success('Mission soumise avec succès');
+                      setShowMissionEditor(false);
+                    }
+                  } catch (err) {
+                    toast.error('Erreur lors de la soumission');
+                  }
                 }}
               />
             </motion.div>
