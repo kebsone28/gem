@@ -12,7 +12,7 @@ async function deploy() {
     });
     console.log('Connected!');
 
-    const command = 'cd /var/www/proquelec/gem-saas && git fetch --all && git reset --hard origin/main && npm install --no-scripts --legacy-peer-deps && cd frontend && npm install --no-scripts --legacy-peer-deps && npx vite build && cd ../backend && npm install --no-scripts --legacy-peer-deps && npx pm2 restart all';
+    const command = 'cd /var/www/proquelec/gem-saas && git fetch --all && git reset --hard origin/main && npm install --no-scripts --legacy-peer-deps && cd frontend && npm install --no-scripts --legacy-peer-deps && NODE_OPTIONS="--max-old-space-size=4096" npx vite build && cd ../backend && npm install --no-scripts --legacy-peer-deps && npx pm2 restart all';
     
     console.log('Executing deployment commands...');
     const result = await ssh.execCommand(command, {
