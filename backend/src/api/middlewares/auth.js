@@ -63,15 +63,15 @@ export const authProtect = async (req, res, next) => {
             permissionsWasManuallySet: Array.isArray(decoded.permissions) && decoded.permissions.length > 0
         };
 
-        // 🚀 CRITICAL: Run request within async context for Prisma multi-tenant filtering
-        runWithContext({ 
+        // 🚀 CRITICAL: Run entire request chain within async context for Prisma multi-tenant filtering.
+        // contextStorage.run() keeps the AsyncLocalStorage store alive for all async operations
+        // triggered by next(), including controller awaits.
+        return runWithContext({ 
             userId: decoded.id, 
             organizationId: decoded.organizationId,
             projectId: req.headers['x-project-id'] || null, 
             role: decoded.role
-        }, () => {
-            next();
-        });
+        }, next);
 
     } catch (error) {
         logger.error('[AUTH-CRITICAL] Unexpected error in auth middleware:', error);

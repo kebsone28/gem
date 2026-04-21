@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
 import React from 'react';
 import { COMMON_CLASSES } from '../../styles/tokens';
 import { withAnalytics } from '../../utils/designSystemAnalytics';
@@ -33,7 +33,7 @@ function renderIcon(icon?: React.ReactNode | React.ComponentType<any>) {
   return null;
 }
 
-export const PageHeader: React.FC<PageHeaderProps> = withAnalytics(
+export const PageHeader: React.FC<PageHeaderProps> = React.memo(withAnalytics(
   ({ title, subtitle, icon, actions, className = '', variant = 'default' }) => {
     if (variant === 'gradient') {
       return (
@@ -91,7 +91,7 @@ export const PageHeader: React.FC<PageHeaderProps> = withAnalytics(
     );
   },
   'PageHeader'
-);
+));
 
 // ─────────────────────────────────────────────────────────────────────────
 // PAGE CONTAINER – Conteneur principal avec max-width optionnel
@@ -105,7 +105,7 @@ interface PageContainerProps {
   padding?: 'none' | 'sm' | 'md' | 'lg';
 }
 
-export const PageContainer: React.FC<PageContainerProps> = withAnalytics(
+export const PageContainer: React.FC<PageContainerProps> = React.memo(withAnalytics(
   ({ children, className = '', maxWidth = 'full', padding = 'none' }) => {
     const maxWidthClasses: Record<string, string> = {
       sm: 'max-w-2xl',
@@ -137,7 +137,7 @@ export const PageContainer: React.FC<PageContainerProps> = withAnalytics(
     );
   },
   'PageContainer'
-);
+));
 
 // ─────────────────────────────────────────────────────────────────────────
 // SECTION – Bloc de contenu avec titre optionnel

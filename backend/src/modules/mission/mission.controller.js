@@ -134,7 +134,7 @@ export const analyzeMissionIA = async (req, res) => {
  */
 export const getMissions = async (req, res) => {
     try {
-        const { projectId } = req.query;
+        const { projectId, search, status, limit = 50, offset = 0 } = req.query;
         const { organizationId, id: userId, role: rawUserRole } = req.user;
 
         const userRole = normalizeRole(rawUserRole);
@@ -144,6 +144,23 @@ export const getMissions = async (req, res) => {
             projectId: projectId || undefined,
             deletedAt: null
         };
+
+        // FILTRE: Recherche par titre ou description
+        if (search) {
+            whereClause = {
+                ...whereClause,
+                OR: [
+                    { title: { contains: search, mode: 'insensitive' } },
+                    { description: { contains: search, mode: 'insensitive' } },
+                    { orderNumber: { contains: search, mode: 'insensitive' } }
+                ]
+            };
+        }
+
+        // FILTRE: Statut
+        if (status) {
+            whereClause = { ...whereClause, status };
+        }
 
         if (userRole === 'CHEF_PROJET') {
             // Chef de Projet : voit UNIQUEMENT ses propres missions
@@ -171,15 +188,111 @@ export const getMissions = async (req, res) => {
             };
         }
 
-        const missions = await prisma.mission.findMany({
-            where: whereClause,
-            orderBy: { createdAt: 'desc' }
-        });
+        // PAGINATION + COMPTE TOTAL
+        const [missions, total] = await Promise.all([
+            prisma.mission.findMany({
+                where: whereClause,
+                orderBy: { createdAt: 'desc' },
+                take: Math.min(parseInt(limit) || 50, 100),
+                skip: parseInt(offset) || 0
+            }),
+            prisma.mission.count({ where: whereClause })
+        ]);
 
-        res.json({ missions });
+        res.json({ 
+            missions,
+            pagination: {
+                total,
+                limit: Math.min(parseInt(limit) || 50, 100),
+                offset: parseInt(offset) || 0,
+                hasMore: (parseInt(offset) || 0) + missions.length < total
+            }
+        });
     } catch (error) {
         logger.error('Get missions error:', error);
         res.status(500).json({ error: 'Server error while fetching missions' });
+    }
+};
+
+/**
+ * Get mission statistics (KPI)
+ * GET /api/missions/stats
+ */
+export const getMissionStats = async (req, res) => {
+    try {
+        const { organizationId } = req.user;
+        const { projectId } = req.query;
+
+        const whereClause = {
+            organizationId,
+            deletedAt: null,
+            ...(projectId && { projectId })
+        };
+
+        // Compter par statut
+        const statusCounts = await prisma.mission.groupBy({
+            by: ['status'],
+            where: whereClause,
+            _count: true
+        });
+
+        // Calculer le budget total
+        const budgetAggregation = await prisma.mission.aggregate({
+            where: { ...whereClause, budget: { not: null } },
+            _sum: { budget: true },
+            _avg: { budget: true }
+        });
+
+        // Missions par mois (derniers 12 mois)
+        const twelveMonthsAgo = new Date();
+        twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
+
+        const monthlyMissions = await prisma.mission.findMany({
+            where: {
+                ...whereClause,
+                createdAt: { gte: twelveMonthsAgo }
+            },
+            select: {
+                createdAt: true,
+                status: true
+            }
+        });
+
+        // Grouper par mois
+        const monthlyStats = {};
+        monthlyMissions.forEach(m => {
+            const monthKey = m.createdAt.toISOString().slice(0, 7); // YYYY-MM
+            if (!monthlyStats[monthKey]) {
+                monthlyStats[monthKey] = { total: 0, approved: 0, draft: 0 };
+            }
+            monthlyStats[monthKey].total++;
+            if (m.status === 'approuvee') monthlyStats[monthKey].approved++;
+            if (m.status === 'draft') monthlyStats[monthKey].draft++;
+        });
+
+        // Transformer en tableau trié
+        const monthlyTrend = Object.entries(monthlyStats)
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([month, data]) => ({ month, ...data }));
+
+        // Construire la réponse
+        const stats = {
+            total: statusCounts.reduce((sum, s) => sum + s._count, 0),
+            byStatus: statusCounts.reduce((acc, s) => {
+                acc[s.status] = s._count;
+                return acc;
+            }, {}),
+            budget: {
+                total: budgetAggregation._sum.budget || 0,
+                average: budgetAggregation._avg.budget || 0
+            },
+            monthlyTrend
+        };
+
+        res.json(stats);
+    } catch (error) {
+        logger.error('Get mission stats error:', error);
+        res.status(500).json({ error: 'Server error while fetching mission statistics' });
     }
 };
 
@@ -187,6 +300,36 @@ const safeDate = (d) => {
     if (!d) return null;
     const date = new Date(d);
     return isNaN(date.getTime()) ? null : date;
+};
+
+/**
+ * Validate mission dates
+ */
+const validateMissionDates = (startDate, endDate) => {
+    if (startDate && endDate) {
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        if (start > end) {
+            return 'La date de début doit être antérieure à la date de fin';
+        }
+    }
+    return null;
+};
+
+/**
+ * Validate mission budget
+ */
+const validateMissionBudget = (budget) => {
+    if (budget !== undefined && budget !== null) {
+        const numBudget = parseFloat(budget);
+        if (isNaN(numBudget)) {
+            return 'Le budget doit être un nombre valide';
+        }
+        if (numBudget < 0) {
+            return 'Le budget ne peut pas être négatif';
+        }
+    }
+    return null;
 };
 
 /**
@@ -199,6 +342,18 @@ export const createMission = async (req, res) => {
 
         if (!organizationId) {
             return res.status(400).json({ error: 'Organization ID is missing from user context' });
+        }
+
+        // VALIDATION: Dates
+        const dateError = validateMissionDates(startDate, endDate);
+        if (dateError) {
+            return res.status(400).json({ error: dateError });
+        }
+
+        // VALIDATION: Budget
+        const budgetError = validateMissionBudget(budget);
+        if (budgetError) {
+            return res.status(400).json({ error: budgetError });
         }
 
         // VALIDATION GÉOMÉTRIQUE & TENANTE DU PROJET
@@ -273,6 +428,18 @@ export const updateMission = async (req, res) => {
         // --- PROTECTION: Role DG check ---
         if (status === 'approuvee' && !['DG_PROQUELEC', 'DIRECTEUR', 'ADMIN', 'ADMIN_PROQUELEC'].includes(userRole)) {
             return res.status(403).json({ error: 'Seule la Direction Générale peut certifier une mission.' });
+        }
+
+        // VALIDATION: Dates
+        const dateError = validateMissionDates(startDate, endDate);
+        if (dateError) {
+            return res.status(400).json({ error: dateError });
+        }
+
+        // VALIDATION: Budget
+        const budgetError = validateMissionBudget(budget);
+        if (budgetError) {
+            return res.status(400).json({ error: budgetError });
         }
 
         const missionResult = await prisma.$transaction(async (tx) => {

@@ -22,6 +22,7 @@ model Organization {
   teams           Team[]
   users           User[]
   conflictLogs    ConflictLog[]
+  syncLogs        SyncLog[]
 }
 
 model User {
@@ -203,6 +204,8 @@ model SyncLog {
   action    String
   details   Json
   user      User     @relation(fields: [userId], references: [id])
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
 }
 
 model ConflictLog {

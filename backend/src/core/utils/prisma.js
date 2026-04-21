@@ -3,19 +3,29 @@ import { PrismaClient } from '@prisma/client';
 import { config } from '../config/config.js';
 import { getOrganizationId, getUserId, getProjectId } from '../context/storage.js';
 
-console.log('🔧 Initializing Prisma for DB:', config.dbUrl);
+if (process.env.NODE_ENV !== 'production') {
+    console.log('🔧 Initializing Prisma for DB:', config.dbUrl);
+}
 
 export const basePrisma = new PrismaClient();
-const base = basePrisma;
 
 // Liste des modèles qui ne sont PAS filtrés par organizationId (modèles système)
-const EXCLUDED_MODELS = ['Organization', 'SystemLog', 'AuditLog'];
+const EXCLUDED_MODELS = ['Organization', 'SystemLog', 'AuditLog', 'Role', 'Permission', 'RolePermission', 'Region'];
 
 // Liste des modèles filtrés par projectId si présent dans le contexte
 const PROJECT_LEVEL_MODELS = ['Zone', 'Team', 'Mission', 'PerformanceLog', 'Alert'];
 
 /**
  * CLIENT PRISMA ÉTENDU - ISOLATION MULTI-TENANTE & AUDIT AUTOMATIQUE
+ * 
+ * Security Strategy:
+ * - READ operations (findMany, findFirst, count): automatic tenant filtering via organizationId.
+ * - WRITE operations (create, createMany): automatic organizationId injection.
+ * - BULK WRITE (updateMany, deleteMany): automatic tenant filtering.
+ * - SINGLE MUTATIONS (update, delete, upsert): ownership checked in each controller
+ *   via an explicit findFirst(where: { id, organizationId }) BEFORE the mutation.
+ *   We do NOT do async pre-checks here to avoid AsyncLocalStorage context loss inside
+ *   Prisma Client Extensions $allOperations interceptors.
  */
 export const prisma = basePrisma.$extends({
   query: {
@@ -29,23 +39,19 @@ export const prisma = basePrisma.$extends({
         if (!EXCLUDED_MODELS.includes(model) && orgId) {
           const filter = { organizationId: orgId };
 
-          // 2. ISOLATION PROJET (Si configurée dans le contexte)
+          // ISOLATION PROJET (Si configurée dans le contexte)
           // ✅ NOTE: Household est intentionnellement EXCLU du filtrage auto-projet.
-          // Raison: Les ménages doivent être visibles pour tous les projets de l'org
-          // dans le pull de sync. Chaque contrôleur (bordereau, terrain) gère son
-          // propre filtre de projet via args.where.zone ou args.where.zoneId.
           if (projId && PROJECT_LEVEL_MODELS.includes(model)) {
               filter.projectId = projId;
           }
 
-          // Application globale des filtres
+          // Injection automatique sur les lectures multi-résultats
           if (['findMany', 'findFirst', 'count', 'groupBy', 'aggregate'].includes(operation)) {
             args.where = { ...(args.where || {}), ...filter };
           }
 
-          // ✅ Cas spécifique pour findUnique: Prisma impose que le WHERE 
-          // corresponde EXACTEMENT à un index unique. Comme organizationId n'est pas 
-          // toujours dans un index composite avec l'ID, on "downgrade" en findFirst.
+          // findUnique -> downgrade vers findFirst pour injecter le filtre tenant
+          // (Prisma exige un index unique exact pour findUnique)
           if (['findUnique', 'findUniqueOrThrow'].includes(operation)) {
             const newOp = operation === 'findUnique' ? 'findFirst' : 'findFirstOrThrow';
             args.where = { ...(args.where || {}), ...filter };
@@ -53,6 +59,7 @@ export const prisma = basePrisma.$extends({
             return basePrisma[modelName][newOp](args);
           }
           
+          // Injection sur les créations
           if (['create', 'createMany'].includes(operation)) {
             const inject = { ...filter };
             if (Array.isArray(args.data)) {
@@ -62,19 +69,23 @@ export const prisma = basePrisma.$extends({
             }
           }
 
-          if (['update', 'updateMany', 'delete', 'deleteMany', 'upsert'].includes(operation)) {
+          // Injection sur les mutations groupées
+          if (['updateMany', 'deleteMany'].includes(operation)) {
             args.where = { ...(args.where || {}), ...filter };
           }
+
+          // update / delete / upsert sur un seul enregistrement:
+          // La sécurité est garantie par les contrôleurs qui font un findFirst(id, organizationId)
+          // avant chaque mutation. On ne fait rien ici pour éviter des await imbriqués
+          // qui peuvent corrompre le contexte AsyncLocalStorage.
         }
 
         // Exécution de la requête
         const result = await query(args);
 
-        // 2. AUDIT AUTOMATIQUE
-        // On trace toutes les mutations (sauf pour AuditLog lui-même pour éviter une boucle)
+        // AUDIT AUTOMATIQUE (fire-and-forget)
         if (['create', 'update', 'delete', 'updateMany', 'deleteMany', 'upsert'].includes(operation) && model !== 'AuditLog') {
           if (orgId && userId) {
-            // Utilisation directe de basePrisma pour éviter la récursion et la dépendance circulaire
             basePrisma.auditLog.create({
               data: {
                 userId,

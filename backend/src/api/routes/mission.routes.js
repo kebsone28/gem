@@ -1,6 +1,7 @@
 import express from 'express';
 import {
     getMissions,
+    getMissionStats,
     getPendingApprovals,
     createMission,
     updateMission,
@@ -41,6 +42,7 @@ router.get('/approvals/pending', authorize('ADMIN_PROQUELEC', 'DIRECTEUR', 'CHEF
 
 // CRUD missions
 router.get('/', getMissions); // Filtrage géré dans le contrôleur selon le rôle
+router.get('/stats', getMissionStats); // Statistiques KPI
 
 router.post('/', authorize('ADMIN_PROQUELEC', 'DIRECTEUR', 'CHEF_PROJET', 'COMPTABLE'), async (req, res, next) => {
     try {

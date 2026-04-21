@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
 import apiClient from '../api/client';
 import type { User, UserRole } from '../utils/types';
 
@@ -28,6 +28,7 @@ export const userService = {
     id: string,
     user: Partial<ManagedUser> & { password?: string }
   ): Promise<ManagedUser> {
+    console.debug(`[USER_SERVICE] Updating user ${id}:`, user);
     const response = await apiClient.patch(`/users/${id}`, user);
     return response.data;
   },
