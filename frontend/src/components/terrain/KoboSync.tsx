@@ -50,7 +50,7 @@ export default function KoboSync({ onImport }: KoboSyncProps) {
 
     try {
       // Appel au backend — qui utilise KOBO_TOKEN et KOBO_FORM_ID du .env
-      const response = await apiClient.post('kobo/sync', { projectId: project.id });
+      const response = await apiClient.post('sync/kobo', { projectId: project.id });
       const result = response.data?.result;
       
       clearInterval(stepInterval);

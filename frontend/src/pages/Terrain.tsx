@@ -56,12 +56,12 @@ import { ContentArea } from '../components';
 
 const Terrain: React.FC = () => {
   // 1. Core Data & Contexts
-  const { households, updateHouseholdStatus, updateHouseholdLocation, uploadHouseholdPhoto, updateHousehold } =
+  const { households, updateHouseholdStatus, updateHouseholdLocation, uploadHouseholdPhoto, updateHousehold, reloadHouseholds } =
     useTerrainData();
 
   const { project, createProject, deleteProject } = useProject();
   const { forceSync } = useSync();
-  const { grappesConfig, warehouseStats, teams } = useLogistique();
+  const { grappesConfig, warehouseStats, teams } = useLogistique(households);
   const { user } = useAuth();
   const { peut, PERMISSIONS } = usePermissions();
 
@@ -189,7 +189,7 @@ const Terrain: React.FC = () => {
   useSyncListener((source) => {
     logger.log(`🔄 [TERRAIN] Sync triggered by: ${source}`);
     if (source === 'kobo' || source === 'import') {
-      // Data is already synced locally in IndexedDB by the caller. UI re-renders automatically via useLiveQuery.
+      void reloadHouseholds();
       return;
     }
 

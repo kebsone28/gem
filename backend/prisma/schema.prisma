@@ -23,6 +23,7 @@ model Organization {
   users           User[]
   conflictLogs    ConflictLog[]
   syncLogs        SyncLog[]
+  koboFormMappings KoboFormMapping[]
 }
 
 model User {
@@ -226,6 +227,24 @@ model ConflictLog {
   @@index([organizationId])
   @@index([entityType, entityId])
   @@index([timestamp])
+}
+
+// Mapping dynamique des champs Kobo vers GEM
+model KoboFormMapping {
+  id             String   @id @default(uuid())
+  organizationId String
+  koboAssetId    String   // ID du formulaire Kobo (asset uid)
+  mapping        Json     // Mapping dynamique des champs
+  version        String   // Version du formulaire Kobo
+  lastValidated  DateTime @default(now())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, koboAssetId])
+  @@index([organizationId])
+  @@index([koboAssetId])
 }
 
 model AuditLog {

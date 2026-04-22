@@ -4,23 +4,34 @@
  * Transformation de données Kobo/Locales vers le format Household unifié
  * CRITICAL: Mapper Kobo → Household + Local → Household
  * Clé de matching: NUMEROORDRE (jamais null, toujours unique)
+ * 
+ * Intégration Kobo Engine Master v2.0:
+ * - Mapping dynamique depuis la DB ou auto-détection
+ * - Alias multiples pour chaque concept métier
+ * - Migration automatique lors de changement de formulaire
  */
+
+import { koboEngine } from '../modules/kobo/koboEngineMaster.js';
 
 /**
- * Helper to extract a value from a row using a mapping config
+ * Helper to extract a value from a row using dynamic mapping (Kobo Engine Master)
  * @param {object} row - Raw submission row
- * @param {string} targetKey - The GEM target field (ex: 'name')
- * @param {object} mappingConfig - The mapping dictionary (targetKey -> koboField)
- * @param {string[]} fallbacks - Hardcoded fallback keys if config is missing
+ * @param {string} targetKey - The GEM target field (ex: 'name', 'phone', 'status')
+ * @param {object} mapping - The dynamic mapping from Kobo Engine Master
+ * @param {string[]} fallbacks - Hardcoded fallback keys if mapping is missing
  * @returns {any} The extracted value
  */
-function getValue(row, targetKey, mappingConfig, fallbacks = []) {
-    const koboField = mappingConfig?.[targetKey];
-    if (koboField && row[koboField] !== undefined) {
-        return row[koboField];
+function getValue(row, targetKey, mapping, fallbacks = []) {
+    // 1. Try dynamic mapping from Kobo Engine Master
+    if (mapping?.fields?.[targetKey]?.koboField) {
+        const koboField = mapping.fields[targetKey].koboField;
+        const value = koboEngine.getNestedValue(row, koboField);
+        if (value !== null && value !== undefined) {
+            return value;
+        }
     }
 
-    // Fallback to hardcoded defaults if no config matches
+    // 2. Fallback to hardcoded defaults if no dynamic mapping matches
     for (const key of fallbacks) {
         if (row[key] !== undefined) return row[key];
     }
@@ -29,11 +40,43 @@ function getValue(row, targetKey, mappingConfig, fallbacks = []) {
 }
 
 /**
+ * Get or generate the dynamic mapping for a Kobo form
+ * @param {string} organizationId 
+ * @param {string} koboAssetId 
+ * @param {string} koboServerUrl 
+ * @returns {Promise<object>} The mapping object
+ */
+export async function getDynamicMapping(organizationId, koboAssetId, koboServerUrl) {
+    try {
+        // Try to get existing mapping from DB
+        const mapping = await koboEngine.getMapping(organizationId, koboAssetId, koboServerUrl);
+        
+        // Check if form has changed and needs migration
+        const changes = await koboEngine.detectFormChanges(organizationId, koboAssetId, koboServerUrl);
+        if (changes.changed) {
+            console.log(`[KOBO-MAPPING] Form changed: ${changes.reason}`);
+            await koboEngine.migrateMapping(organizationId, koboAssetId, koboServerUrl);
+            // Reload the new mapping
+            return await koboEngine.getMapping(organizationId, koboAssetId, koboServerUrl);
+        }
+        
+        return mapping;
+    } catch (error) {
+        console.warn('[KOBO-MAPPING] Dynamic mapping unavailable, using fallbacks:', error.message);
+        return null; // Will use hardcoded fallbacks
+    }
+}
+
+/**
  * Extract NUMEROORDRE from any source
+ * Uses dynamic mapping from Kobo Engine Master v2.0
  */
 export function extractNumeroOrdre(row, config = {}) {
-    let val = getValue(row, 'numeroordre', config, [
-        'Numero_ordre', 'Numero ordre', 'numero_ordre', 'ID_MENAGE', 'id_menage', 'numero', '_id'
+    // Get dynamic mapping if available
+    const mapping = config._dynamicMapping || null;
+    
+    let val = getValue(row, 'numeroOrdre', mapping, [
+        'Numero_ordre', 'Numero ordre', 'numero_ordre', 'numeroOrdre', 'ID_MENAGE', 'id_menage', 'numero', '_id', 'numeroordre'
     ]);
 
     if (!val) return null;
@@ -48,13 +91,15 @@ export function extractNumeroOrdre(row, config = {}) {
 
 /**
  * Extract geographic coordinates
+ * Uses dynamic mapping from Kobo Engine Master v2.0
  */
 export function extractCoordinates(row, config = {}) {
+    const mapping = config._dynamicMapping || null;
     let latitude = null;
     let longitude = null;
 
     // 1. Try Configured GPS field (Standard Kobo Geopoint)
-    const geopointStr = getValue(row, 'gps_geopoint', config, [
+    const geopointStr = getValue(row, 'gps_geopoint', mapping, [
         'LOCALISATION_CLIENT', 'TYPE_DE_VISITE/LOCALISATION_CLIENT', 'Lieu_du_M_nage'
     ]);
 
@@ -103,14 +148,17 @@ export function extractCoordinates(row, config = {}) {
 
 /**
  * Extract household owner information
+ * Uses dynamic mapping from Kobo Engine Master v2.0
  */
 export function extractOwner(row, config = {}) {
-    const name = getValue(row, 'name', config, [
-        'nom_key', 'TYPE_DE_VISITE/nom_key', 'Prénom et Nom', 'nom_prenom', 'name'
+    const mapping = config._dynamicMapping || null;
+    
+    const name = getValue(row, 'name', mapping, [
+        'nom_key', 'TYPE_DE_VISITE/nom_key', 'Prénom et Nom', 'nom_prenom', 'name', 'nom', 'owner.nom', 'nom_du_menage'
     ]) || 'Ménage Inconnu';
 
-    const phone = getValue(row, 'phone', config, [
-        'telephone_key', 'TYPE_DE_VISITE/telephone_key', 'Telephone', 'telephone', 'phone'
+    const phone = getValue(row, 'phone', mapping, [
+        'telephone_key', 'TYPE_DE_VISITE/telephone_key', 'Telephone', 'telephone', 'phone', 'owner.phone', 'tel', 'contact_phone'
     ]) || '';
 
     return {
@@ -121,18 +169,21 @@ export function extractOwner(row, config = {}) {
 
 /**
  * Extract regional information
+ * Uses dynamic mapping from Kobo Engine Master v2.0
  */
 export function extractRegionalInfo(row, config = {}) {
-    const region = getValue(row, 'region', config, [
-        'region_key', 'TYPE_DE_VISITE/region_key', 'Region', 'REGION', 'C5'
+    const mapping = config._dynamicMapping || null;
+    
+    const region = getValue(row, 'region', mapping, [
+        'region_key', 'TYPE_DE_VISITE/region_key', 'Region', 'REGION', 'C5', 'nom_region'
     ]) || '';
 
-    const departement = getValue(row, 'departement', config, [
+    const departement = getValue(row, 'departement', mapping, [
         'departement', 'dept', 'DEPARTEMENT', 'departement_key', 'TYPE_DE_VISITE/departement_key'
     ]) || '';
 
-    const village = getValue(row, 'village', config, [
-        'village', 'VILLAGE', 'village_key', 'TYPE_DE_VISITE/village_key', 'localite', 'Localite', 'commune'
+    const village = getValue(row, 'village', mapping, [
+        'village', 'VILLAGE', 'village_key', 'TYPE_DE_VISITE/village_key', 'localite', 'Localite', 'commune', 'nom_village'
     ]) || '';
 
     return {
@@ -145,32 +196,37 @@ export function extractRegionalInfo(row, config = {}) {
 
 /**
  * Extract installation status
+ * Uses dynamic mapping from Kobo Engine Master v2.0
  */
 export function extractStatus(row, config = {}) {
+    const mapping = config._dynamicMapping || null;
+    
     // 1. Eligibility Check
-    const sit = getValue(row, 'situation_menage', config, [
-        'group_wu8kv54/Situation_du_M_nage', 'Situation_du_M_nage', 'Situation du Ménage'
+    const sit = getValue(row, 'status', mapping, [
+        'group_wu8kv54/Situation_du_M_nage', 'Situation_du_M_nage', 'Situation du Ménage', 'statut', 'etat'
     ]);
     if (sit) {
         const str = String(sit).toLowerCase();
         if (str.includes('non_eligible') || str.includes('non éligible')) return 'Non éligible';
+        if (str.includes('injoignable')) return 'En attente';
     }
 
     // 2. Desistement Check
-    const just = getValue(row, 'justificatif', config, ['group_wu8kv54/justificatif', 'justificatif']);
+    const just = getValue(row, 'justificatif', mapping, ['group_wu8kv54/justificatif', 'justificatif']);
     if (just && String(just).toLowerCase().includes('desistement')) return 'Désistement';
 
     // 3. Progression Checkpoints from Config (New: Allow projects to define their ok/fail fields)
-    const isControlOk = getValue(row, 'status_control_ok', config, ['validation_controleur_final']) === 'true' || row['✅ Je valide le contrôle et l\'installation est conforme'] === 'true';
-    const isInterieurOk = getValue(row, 'status_interieur_ok', config, ['validation_interieur_final']) === 'true' || row['✅ Je valide que l\'installation intérieure est terminée et conforme'] === 'true';
-    const isReseauOk = getValue(row, 'status_reseau_ok', config, ['validation_reseau_final']) === 'true' || row['✅ Je valide que le branchement est terminé et conforme'] === 'true';
-    const isMaconOk = getValue(row, 'status_macon_ok', config, ['validation_macon_final']) === 'true' || row['✅ Je valide que le mur est terminé et conforme'] === 'true';
-    const isLivreurOk = getValue(row, 'status_livraison_ok', config, ['Je_confirme_la_remis_u_materiel_au_m_nage', 'Je confirme la remise du materiel au ménage']) === 'true';
+    const isControlOk = getValue(row, 'status_control_ok', mapping, ['validation_controleur_final']) === 'true' || row['✅ Je valide le contrôle et l\'installation est conforme'] === 'true';
+    const isInterieurOk = getValue(row, 'status_interieur_ok', mapping, ['validation_interieur_final']) === 'true' || row['✅ Je valide que l\'installation intérieure est terminée et conforme'] === 'true';
+    const isReseauOk = getValue(row, 'status_reseau_ok', mapping, ['validation_reseau_final']) === 'true' || row['✅ Je valide que le branchement est terminé et conforme'] === 'true';
+    const isMaconOk = getValue(row, 'status_macon_ok', mapping, ['validation_macon_final']) === 'true' || row['✅ Je valide que le mur est terminé et conforme'] === 'true';
+    const isLivreurOk = getValue(row, 'status_livraison_ok', mapping, ['Je_confirme_la_remis_u_materiel_au_m_nage', 'Je confirme la remise du materiel au ménage']) === 'true';
 
     if (isControlOk) return 'Contrôle conforme';
     if (isInterieurOk) return 'Intérieur terminé';
     if (isReseauOk) return 'Réseau terminé';
     if (isMaconOk) return 'Murs terminés';
+    if (isLivreurOk) return 'Livraison effectuée';
     return 'Non encore installée';
 }
 
@@ -187,7 +243,7 @@ export function extractConstructionData(row) {
         livreur: {
             situation: row['group_wu8kv54/Situation_du_M_nage'] || row['Situation_du_M_nage'],
             justificatif: row['group_wu8kv54/justificatif'] || row['justificatif'],
-            menage_status: row['group_wu8kv54/New_Question'] || row['New_Question'], // Ménage avec/sans Mur
+            menage_status: row['group_wu8kv54/Presence_de_Mur'] || row['Presence_de_Mur'],
             kit_problems: row['group_wu8kv54/POURQUOI'] || row['POURQUOI'] || '',
             câble_2_5: row['group_sy9vj14/Longueur_Cable_2_5mm_Int_rieure'] || row['Longueur_Cable_2_5mm_Int_rieure'],
             câble_1_5: row['group_sy9vj14/Longueur_Cable_1_5mm_Int_rieure'] || row['Longueur_Cable_1_5mm_Int_rieure'],
@@ -195,7 +251,7 @@ export function extractConstructionData(row) {
             tranchee_1_5: row['group_sy9vj14/Longueur_Tranch_e_C_ble_arm_1_5mm'] || row['Longueur_Tranch_e_C_ble_arm_1_5mm'],
             materiel_remis: row['group_sy9vj14/Je_confirme_la_remis_u_materiel_au_m_nage'] === 'true' || row['Je_confirme_la_remis_u_materiel_au_m_nage'] === 'true',
             marquage_mur_coffret: row['group_sy9vj14/Je_confirme_le_marqu_osition_des_coffrets'] === 'true' || row['Je_confirme_le_marqu_osition_des_coffrets'] === 'true',
-            marquage_emplacement: row['group_sy9vj14/Je_confirme_le_marqu_s_coffret_lectrique'] === 'true' || row['Je_confirme_le_marqu_s_coffret_lectrique'] === 'true'
+            marquage_emplacement: row['group_sy9vj14/Je_confirme_le_marqu_coffrets_lectriques'] === 'true' || row['Je_confirme_le_marqu_coffrets_lectriques'] === 'true'
         },
         macon: {
             kit_disponible: row['etape_macon/kit_disponible_macon'] || row['kit_disponible_macon'],
@@ -264,6 +320,7 @@ export function extractConstructionData(row) {
             notes_generales: row['etape_controleur/notes_generales'] || row['notes_generales']
         },
         media: {
+            photo_livraison: row['TYPE_DE_VISITE/Photo'] || row['Photo'],
             photo_macon: row['etape_macon/photo_mur'] || row['photo_mur'],
             photo_reseau: row['etape_reseau/photo_branchement'] || row['photo_branchement'],
             photo_interieur: row['etape_interieur/photo_installation'] || row['photo_installation'],
@@ -340,23 +397,42 @@ export function extractAlerts(row) {
 /**
  * Master transformation function
  */
-export function transformRowToHousehold(row, organizationId, defaultZoneId, projectId, config = {}, existingHousehold = null) {
-    const numeroOrdre = extractNumeroOrdre(row, config);
+export async function transformRowToHousehold(row, organizationId, defaultZoneId, projectId, config = {}, existingHousehold = null) {
+    // 🎯 Kobo Engine Master v2.0: Get dynamic mapping
+    const koboAssetId = config.koboAssetId || null;
+    const koboServerUrl = config.koboServerUrl || 'https://kf.kobotoolbox.org';
+    
+    let dynamicMapping = null;
+    if (koboAssetId) {
+        try {
+            dynamicMapping = await getDynamicMapping(organizationId, koboAssetId, koboServerUrl);
+        } catch (e) {
+            console.warn('[KOBO-MAPPING] Could not load dynamic mapping:', e.message);
+        }
+    }
+
+    // Merge dynamic mapping into config for extraction functions
+    const effectiveConfig = {
+        ...config,
+        _dynamicMapping: dynamicMapping
+    };
+
+    const numeroOrdre = extractNumeroOrdre(row, effectiveConfig);
 
     if (!numeroOrdre) {
         return null;
     }
 
-    const { latitude, longitude } = extractCoordinates(row, config);
-    const { name, phone } = extractOwner(row, config);
-    const regional = extractRegionalInfo(row, config);
+    const { latitude, longitude } = extractCoordinates(row, effectiveConfig);
+    const { name, phone } = extractOwner(row, effectiveConfig);
+    const regional = extractRegionalInfo(row, effectiveConfig);
 
     // 🧠 INTELLIGENCE: Priority to existing DB info if Kobo is empty
     const finalRegion = regional.region || existingHousehold?.region || null;
     const finalDepartement = regional.departement || existingHousehold?.departement || null;
     const finalVillage = regional.village || existingHousehold?.village || null;
 
-    const status = extractStatus(row, config);
+    const status = extractStatus(row, effectiveConfig);
     const constructionData = extractConstructionData(row);
     const alerts = extractAlerts(row);
 
@@ -364,7 +440,7 @@ export function transformRowToHousehold(row, organizationId, defaultZoneId, proj
         numeroOrdre: numeroOrdre,
         name: name,
         phone: phone,
-        owner: { nom: name, telephone: phone },
+        owner: { name: name, nom: name, phone: phone, telephone: phone },
         region: finalRegion,
         departement: finalDepartement,
         village: finalVillage,
@@ -385,11 +461,19 @@ export function transformRowToHousehold(row, organizationId, defaultZoneId, proj
         version: 1,
         // Carry the mapping result for koboSync metadata
         _meta: {
-            maconOk: getValue(row, 'status_macon_ok', config) === 'true' || row['✅ Je valide que le mur est terminé et conforme'] === 'true',
-            reseauOk: getValue(row, 'status_reseau_ok', config) === 'true' || row['✅ Je valide que le branchement est terminé et conforme'] === 'true',
-            interieurOk: getValue(row, 'status_interieur_ok', config) === 'true' || row['✅ Je valide que l\'installation intérieure est terminée et conforme'] === 'true',
-            controleOk: getValue(row, 'status_control_ok', config) === 'true' || row['✅ Je valide le contrôle et l\'installation est conforme'] === 'true'
-        }
+            maconOk: getValue(row, 'status_macon_ok', dynamicMapping) === 'true' || row['✅ Je valide que le mur est terminé et conforme'] === 'true',
+            reseauOk: getValue(row, 'status_reseau_ok', dynamicMapping) === 'true' || row['✅ Je valide que le branchement est terminé et conforme'] === 'true',
+            interieurOk: getValue(row, 'status_interieur_ok', dynamicMapping) === 'true' || row['✅ Je valide que l\'installation intérieure est terminée et conforme'] === 'true',
+            controleOk: getValue(row, 'status_control_ok', dynamicMapping) === 'true' || row['✅ Je valide le contrôle et l\'installation est conforme'] === 'true'
+        },
+        // Store mapping info for debugging
+        _mappingInfo: dynamicMapping ? {
+            version: dynamicMapping.version,
+            confidence: Math.round(
+                Object.values(dynamicMapping.fields || {}).reduce((sum, f) => sum + (f.confidence || 0), 0) / 
+                Object.values(dynamicMapping.fields || {}).length
+            )
+        } : null
     };
 }
 

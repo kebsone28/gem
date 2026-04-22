@@ -4,6 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../store/db';
 import type { Team, Project, Household } from '../utils/types';
 import * as safeStorage from '../utils/safeStorage';
+import { useProject } from '../contexts/ProjectContext';
 
 export interface DevisItem {
   id: string;
@@ -100,6 +101,7 @@ const DEVIS_PLAFOND = 300823750;
 export function useFinances() {
   const activeProjectId = safeStorage.getItem('active_project_id');
   const projects = useLiveQuery(() => db.projects.toArray()) as Project[] | undefined;
+  const { updateProject } = useProject();
 
   // Find the actual active project object from the list
   const project = projects?.find((p) => p.id === activeProjectId) || projects?.[0];
@@ -232,7 +234,7 @@ export function useFinances() {
     if (!newConfig.financials.realCosts) newConfig.financials.realCosts = {};
     if (!newConfig.financials.realCosts[itemId]) newConfig.financials.realCosts[itemId] = {};
     newConfig.financials.realCosts[itemId][field] = value;
-    await db.projects.update(project.id, { config: newConfig });
+    await updateProject({ config: newConfig }, project.id);
   };
 
   const updatePlannedCost = async (itemId: string, field: 'qty' | 'unit', value: number) => {
@@ -242,7 +244,7 @@ export function useFinances() {
     if (!newConfig.financials.plannedCosts) newConfig.financials.plannedCosts = {};
     if (!newConfig.financials.plannedCosts[itemId]) newConfig.financials.plannedCosts[itemId] = {};
     newConfig.financials.plannedCosts[itemId][field] = value;
-    await db.projects.update(project.id, { config: newConfig });
+    await updateProject({ config: newConfig }, project.id);
   };
 
   const deleteDevisItem = async (itemId: string) => {
@@ -251,7 +253,7 @@ export function useFinances() {
     if (!newConfig.financials) newConfig.financials = {};
     const sourceItems = (newConfig.financials as any).devisItems ?? DEVIS_ITEMS;
     (newConfig.financials as any).devisItems = sourceItems.filter((i: any) => i.id !== itemId);
-    await db.projects.update(project.id, { config: newConfig });
+    await updateProject({ config: newConfig }, project.id);
   };
 
   const addDevisItem = async (item: {
@@ -266,7 +268,7 @@ export function useFinances() {
     const sourceItems = (newConfig.financials as any).devisItems ?? DEVIS_ITEMS;
     const newItem = { ...item, id: 'item_' + Date.now() };
     (newConfig.financials as any).devisItems = [...sourceItems, newItem];
-    await db.projects.update(project.id, { config: newConfig });
+    await updateProject({ config: newConfig }, project.id);
   };
 
   const resetToDefault = async () => {
@@ -280,7 +282,7 @@ export function useFinances() {
       (newConfig.financials as any).plannedCosts[d.id] = { qty: d.qty, unit: d.unit };
       (newConfig.financials as any).realCosts[d.id] = { qty: d.qty, unit: d.unit };
     });
-    await db.projects.update(project.id, { config: newConfig });
+    await updateProject({ config: newConfig }, project.id);
   };
 
   const parseSafeNum = (val: any, defaultVal: number) => {
@@ -351,23 +353,19 @@ export function useFinances() {
     });
 
     (newConfig.financials as any).devisItems = sourceItems;
-    await db.projects.update(project.id, { config: newConfig });
+    await updateProject({ config: newConfig }, project.id);
   };
 
   const toggleClientProvidesMaterials = async () => {
     if (!project?.id) return;
     const current = !!project.config?.clientProvidesMaterials;
-    await db.projects.update(project.id, {
-      config: { ...project.config, clientProvidesMaterials: !current },
-    });
+    await updateProject({ config: { ...project.config, clientProvidesMaterials: !current } }, project.id);
   };
 
   const toggleIncludeSupply = async () => {
     if (!project?.id) return;
     const current = !!project.config?.includeSupply;
-    await db.projects.update(project.id, {
-      config: { ...project.config, includeSupply: !current },
-    });
+    await updateProject({ config: { ...project.config, includeSupply: !current } }, project.id);
   };
 
   const updateInventoryItem = async (itemId: string, updates: any) => {

@@ -96,10 +96,10 @@ async function runGlobalSync() {
                     await prisma.syncLog.create({
                         data: {
                             userId: firstUser.id,
+                            organizationId: org.id,
                             deviceId: 'cron-daemon',
                             action: 'KOBO_SYNC_AUTO',
                             details: {
-                                organizationId: org.id,
                                 source: 'kobo-cron',
                                 applied: result.applied,
                                 skipped: result.skipped,
@@ -107,7 +107,8 @@ async function runGlobalSync() {
                                 total: result.total,
                                 projectId: project.id,
                                 syncedAt: new Date()
-                            }
+                            },
+                            timestamp: new Date()
                         }
                     }).catch(e => console.error('[KOBO-CRON] ❌ Log fail:', e.message));
                 }

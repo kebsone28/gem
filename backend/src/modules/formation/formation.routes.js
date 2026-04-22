@@ -29,6 +29,9 @@ router.put('/participants/:id/attendance', formationController.toggleAttendance)
 
 // Routes utilitaires
 router.get('/regions', formationController.getRegions);
+router.post('/planify', formationController.planify);
+router.post('/planify/export', formationController.exportPlanify);
+router.post('/planify/commit', formationController.commitPlanify);
 router.get('/planning', formationController.getPlanning);
 router.post('/bulk', formationController.bulkCreateSessions);
 router.get('/stats', formationController.getStats);

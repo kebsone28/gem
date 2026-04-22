@@ -89,49 +89,47 @@ export function useTerrainData() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // 🔄 Fetch directly from API on mount or project change
-  useEffect(() => {
+  const reloadHouseholds = useCallback(async () => {
     if (!currentProjectId) {
       setHouseholdsRaw([]);
       setIsLoading(false);
-      return;
+      return [];
     }
 
-    const fetchHouseholds = async () => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        logger.log(`📡 [Server-First] Fetching households for Project: ${currentProjectId}`);
-        // API ensures consistency (handles merges, deletions, etc. on server side)
-        const response = await apiClient.get('/households', {
-          params: { projectId: currentProjectId, limit: 10000 },
-        });
+    setIsLoading(true);
+    setError(null);
+    try {
+      logger.log(`📡 [Server-First] Fetching households for Project: ${currentProjectId}`);
+      const response = await apiClient.get('/households', {
+        params: { projectId: currentProjectId, limit: 10000 },
+      });
 
-        const data = response.data.households || [];
-        const normalized = data.map((h: Household) => normalizeHousehold(h));
+      const data = response.data.households || [];
+      const normalized = data.map((h: Household) => normalizeHousehold(h));
 
-        logger.log(
-          `✅ [Server-First] Retrieved ${normalized.length} unique households from backend`
+      logger.log(`✅ [Server-First] Retrieved ${normalized.length} unique households from backend`);
+      setHouseholdsRaw(normalized);
+
+      const localCount = await db.households.count();
+      if (localCount > 0) {
+        logger.warn(
+          `🧹 [Server-First] Purging ${localCount} stale households from local Dexie database...`
         );
-        setHouseholdsRaw(normalized);
-
-        // 🧹 ONE-TIME CLEANUP: Purge local Dexie households to avoid stale ghosts
-        const localCount = await db.households.count();
-        if (localCount > 0) {
-          logger.warn(
-            `🧹 [Server-First] Purging ${localCount} stale households from local Dexie database...`
-          );
-          await db.households.clear();
-        }
-      } catch (err: any) {
-        setError(err.message || 'Failed to load households');
-      } finally {
-        setIsLoading(false);
+        await db.households.clear();
       }
-    };
-
-    fetchHouseholds();
+      return normalized;
+    } catch (err: any) {
+      setError(err.message || 'Failed to load households');
+      return [];
+    } finally {
+      setIsLoading(false);
+    }
   }, [currentProjectId]);
+
+  // 🔄 Fetch directly from API on mount or project change
+  useEffect(() => {
+    void reloadHouseholds();
+  }, [reloadHouseholds]);
 
   const fetchKoboStats = async () => {
     try {
@@ -240,6 +238,7 @@ export function useTerrainData() {
     updateHouseholdLocation,
     updateHousehold,
     uploadHouseholdPhoto,
+    reloadHouseholds,
     // Methods removed as they are Dexie-specific and no longer needed for Server-First
     importHouseholds: async (data: Household[]) => {
       await db.households.bulkPut(data);

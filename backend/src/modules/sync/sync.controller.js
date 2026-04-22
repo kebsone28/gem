@@ -638,7 +638,6 @@ export const syncKobo = async (req, res) => {
                     organizationId,
                     userId: req.user.id,
                     action: 'KOBO_PULL_SYNC',
-                    applied: results.applied || 0, // Optionnel si ton schéma le permet
                     details: { 
                         total: results.total || 0,
                         skipped: results.skipped || 0,
@@ -763,6 +762,26 @@ export const bulkImportHouseholds = async (req, res) => {
         households.forEach(h => {
             const lat = (h.location?.coordinates?.[1] !== undefined) ? parseFloat(h.location.coordinates[1]) : (h.latitude ? parseFloat(h.latitude) : null);
             const lon = (h.location?.coordinates?.[0] !== undefined) ? parseFloat(h.location.coordinates[0]) : (h.longitude ? parseFloat(h.longitude) : null);
+            const ownerObject = (h.owner && typeof h.owner === 'object') ? h.owner : {};
+            const derivedName =
+                h.name ||
+                ownerObject.name ||
+                ownerObject.nom ||
+                h['Prénom et Nom'] ||
+                h['Nom'] ||
+                null;
+            const derivedPhone =
+                h.phone ||
+                ownerObject.phone ||
+                ownerObject.telephone ||
+                h.Telephone ||
+                h.telephone ||
+                null;
+            const importMetadata = {
+                commune: h.commune || ownerObject.commune || null,
+                photo: h.photo || ownerObject.photo || null,
+                importedFrom: 'bulk-import',
+            };
 
             let numeroordre = h.numeroordre || h.Numero_ordre || h.id;
             if (numeroordre && String(numeroordre).endsWith('.0')) {
@@ -776,13 +795,22 @@ export const bulkImportHouseholds = async (req, res) => {
                 zoneId: zoneId,
                 numeroordre: normalizedNum,
                 status: h.status || 'planned',
-                owner: h.owner || {},
+                owner: {
+                    ...ownerObject,
+                    name: derivedName,
+                    nom: derivedName,
+                    phone: derivedPhone,
+                    telephone: derivedPhone,
+                    commune: importMetadata.commune,
+                    photo: importMetadata.photo,
+                },
                 location: h.location || {},
-                name: h.name || null,
-                phone: h.phone || null,
+                koboData: importMetadata,
+                name: derivedName,
+                phone: derivedPhone,
                 region: h.region || null,
                 departement: h.departement || null,
-                village: h.village || null,
+                village: h.village || h.commune || null,
                 latitude: lat,
                 longitude: lon,
                 source: h.source || 'Excel-Import',

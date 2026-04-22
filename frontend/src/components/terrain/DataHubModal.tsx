@@ -42,6 +42,7 @@ export const DataHubModal: React.FC<DataHubModalProps> = ({ isOpen, onClose }) =
     deleteProject,
     updateProject,
     setActiveProjectId,
+    refreshProjects,
   } = useProject();
   const [activeTab, setActiveTab] = useState<'import' | 'kobo' | 'backups' | 'danger' | 'projects'>(
     'import'
@@ -239,10 +240,15 @@ export const DataHubModal: React.FC<DataHubModalProps> = ({ isOpen, onClose }) =
 
             return {
               id: String(hId).trim(),
+              numeroordre: String(hId).trim(),
               projectId: currentProjectId,
               zoneId: 'default_zone',
               organizationId: currentOrgId,
-              owner: String(owner).trim(),
+              name: String(owner).trim(),
+              owner: {
+                name: String(owner).trim(),
+                phone: String(phone).trim(),
+              },
               photo: String(photo).trim(),
               phone: String(phone).trim(),
               region: String(region).trim(),
@@ -253,6 +259,7 @@ export const DataHubModal: React.FC<DataHubModalProps> = ({ isOpen, onClose }) =
                 coordinates: [lon, lat] as [number, number],
               },
               status: String(status).trim(),
+              source: 'Excel-Import',
               version: 1,
               updatedAt: new Date().toISOString(),
             };
@@ -772,12 +779,7 @@ export const DataHubModal: React.FC<DataHubModalProps> = ({ isOpen, onClose }) =
 
                               setIsProcessing(true);
                               try {
-                                const res = await apiClient.get('/projects');
-                                const serverProjects = res.data?.projects || [];
-                                await db.projects.clear();
-                                for (const sp of serverProjects) {
-                                  await db.projects.put(sp);
-                                }
+                                await refreshProjects();
                                 toast.success('Liste des projets synchronisée');
                               } catch (err) {
                                 toast.error('Erreur de synchronisation');

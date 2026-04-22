@@ -107,16 +107,17 @@ export async function fetchKoboSubmissions(token, assetUid, since = null) {
 /**
  * Maps a Kobo submission object to a household update object.
  * Uses kobo.mapping.js for standard field extraction + Kobo-specific enrichment
+ * Now uses Kobo Engine Master v2.0 for dynamic field mapping
  *
  * @param {object} submission - Raw Kobo submission
  * @param {string} organizationId
  * @param {string} defaultZoneId
  * @param {string} projectId
- * @param {object} config - The mapping configuration
+ * @param {object} config - The mapping configuration (including koboAssetId for dynamic mapping)
  */
-function mapSubmissionToHousehold(submission, organizationId, defaultZoneId, projectId, config = {}, existingHousehold = null) {
-    // Use professional mapping function with dynamic config
-    const household = transformRowToHousehold(submission, organizationId, defaultZoneId, projectId, config, existingHousehold);
+async function mapSubmissionToHousehold(submission, organizationId, defaultZoneId, projectId, config = {}, existingHousehold = null) {
+    // Use professional mapping function with dynamic config (Kobo Engine Master v2.0)
+    const household = await transformRowToHousehold(submission, organizationId, defaultZoneId, projectId, config, existingHousehold);
 
     if (!household) {
         return null; // Skip if mapping failed (missing numeroOrdre)
@@ -242,6 +243,13 @@ export async function syncKoboToDatabase(organizationId, fallbackZoneId, since =
         console.log(`[KOBO-SYNC] Using organization-level mapping config fallback`);
     }
 
+    // 🎯 Kobo Engine Master v2.0: Add dynamic mapping parameters
+    const syncConfig = {
+        ...mappingConfig,
+        koboAssetId: koboAssetUid,
+        koboServerUrl: process.env.KOBO_API_URL || 'https://kf.kobotoolbox.org'
+    };
+
     const submissions = await fetchKoboSubmissions(koboToken, koboAssetUid, since);
 
     let applied = 0;
@@ -338,7 +346,8 @@ export async function syncKoboToDatabase(organizationId, fallbackZoneId, since =
             }
 
             // Map Kobo submission to unified Household format (Passing existingHousehold for intelligent merge)
-            const household = mapSubmissionToHousehold(submission, organizationId, zoneId, targetProjectId, mappingConfig, existingHousehold);
+            // 🎯 Now uses Kobo Engine Master v2.0 for dynamic mapping
+            const household = await mapSubmissionToHousehold(submission, organizationId, zoneId, targetProjectId, syncConfig, existingHousehold);
 
             // Skip if mapping failed (happens when numeroOrdre is missing)
             if (!household) {

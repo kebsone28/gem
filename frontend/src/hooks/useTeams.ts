@@ -89,19 +89,14 @@ export function useTeams(projectId?: string) {
     }
   }, []);
 
+  const refreshLocalState = useCallback(async () => {
+    await Promise.all([fetchTeams(), fetchTeamTree()]);
+  }, [fetchTeams, fetchTeamTree]);
+
   const createTeam = async (data: Partial<Team>) => {
     try {
-      // Optimistic UI could be implemented here
       const response = await apiClient.post('/teams', { ...data, projectId });
-      const newTeam = response.data;
-
-      setTeams((prev) => [...prev, newTeam]);
-      // Refresh tree or insert manually
-      await fetchTeamTree();
-      return newTeam;
-    } catch (err: any) {
-      logger.warn('API indisponible ou erreur (400), création locale de secours', err);
-      try {
+      if (response.data?._offline) {
         const newLocalId = crypto.randomUUID();
         const newLocalTeam = {
           ...data,
@@ -119,23 +114,36 @@ export function useTeams(projectId?: string) {
         setTeams((prev) => [...prev, newLocalTeam as any]);
         await fetchTeamTree();
         return newLocalTeam;
-      } catch (dbErr) {
-        logger.error('Erreur lors de la création locale (fallback):', dbErr);
-        throw err;
       }
+
+      const newTeam = response.data;
+
+      await refreshLocalState();
+      return newTeam;
+    } catch (err: any) {
+      logger.error('Create team error', err);
+      throw err;
     }
   };
 
   const updateTeam = async (id: string, data: Partial<Team>) => {
     try {
       const response = await apiClient.patch(`/teams/${id}`, data);
+      if (response.data?._offline) {
+        logger.warn('Update offline: patching Dexie locally', id);
+        await (
+          db as unknown as { teams: { update: (id: unknown, item: unknown) => Promise<void> } }
+        ).teams.update(id, { ...data, syncStatus: 'pending' });
+        setTeams((prev) => prev.map((t) => (t.id === id ? { ...t, ...data } as any : t)));
+        await fetchTeamTree();
+        return { id, ...data };
+      }
+
       const updated = response.data;
-      setTeams((prev) => prev.map((t) => (t.id === id ? updated : t)));
-      await fetchTeamTree();
+      await refreshLocalState();
       return updated;
     } catch (err: any) {
-      // Offline fallback: update locally if 404 (offline team) or network error
-      if (err.response?.status === 404 || !err.response) {
+      if (err.response?.status === 404) {
         logger.warn('Update offline: patching Dexie locally', id);
         try {
           await (
@@ -155,11 +163,18 @@ export function useTeams(projectId?: string) {
 
   const deleteTeam = async (id: string) => {
     try {
-      await apiClient.delete(`/teams/${id}`);
-      setTeams((prev) => prev.filter((t) => t.id !== id));
-      await fetchTeamTree();
+      const response = await apiClient.delete(`/teams/${id}`);
+      if (response.data?._offline) {
+        await (
+          db as unknown as { teams: { delete: (id: unknown) => Promise<void> } }
+        ).teams.delete(id);
+        setTeams((prev) => prev.filter((t) => t.id !== id));
+        await fetchTeamTree();
+        return;
+      }
+
+      await refreshLocalState();
     } catch (err: any) {
-      // Offline fallback: if 404, the team only exists locally → delete from Dexie
       if (err.response?.status === 404 || err.response?.status === 401) {
         logger.warn('Delete offline: removing from Dexie only', id);
         try {

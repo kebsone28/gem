@@ -11,6 +11,7 @@ import logger from '../../../utils/logger';
 import toast from 'react-hot-toast';
 import type { MissionState, AuditEntry } from '../core/missionTypes';
 import { generateIntegrityHash } from '../../../utils/crypto';
+import type { Mission } from '../../../services/missionService';
 
 /**
  * HOOK : Synchronisation Mission Industrielle (Version Robuste)
@@ -43,6 +44,20 @@ export const useMissionSync = (
     version,
     auditTrail
   } = state;
+
+  const normalizeServerMission = useCallback(
+    (mission: Mission, fallbackId: string, fallbackUpdatedAt: string) => {
+      const missionData = (mission.data || {}) as Record<string, any>;
+      return {
+        id: mission.id || fallbackId,
+        projectId: mission.projectId || activeProjectId,
+        ...missionData,
+        version: mission.version || missionData.version || 1,
+        updatedAt: mission.updatedAt || fallbackUpdatedAt,
+      };
+    },
+    [activeProjectId]
+  );
 
   /**
    * UTIL: Date sécurisée
@@ -160,25 +175,28 @@ export const useMissionSync = (
               if (result && !('error' in result)) {
                 serverSuccess = true;
                 actions.setSyncStatus('synced');
-                
-                 // 🔥 CRITIQUE: Injecter le numéro officiel s'il est présent
-                const officialOrderNumber = (result as any).orderNumber || (result as any).data?.orderNumber;
+                const normalizedServerMission = normalizeServerMission(result, finalId, now);
+                await db.missions.put(normalizedServerMission as any);
+
+                const officialOrderNumber =
+                  (result as any).orderNumber || (result as any).data?.orderNumber;
                 if (officialOrderNumber) {
                   (missionData as any).orderNumber = officialOrderNumber;
                   if ((missionData as any).data) {
                     (missionData as any).data.orderNumber = officialOrderNumber;
                   }
-                  
-                  // Mettre à jour l'écran immédiatement via loadMission
-                  actions.loadMission(
-                    finalId,
-                    { ...formData, orderNumber: officialOrderNumber as string },
-                    members,
-                    (result as any).version as number || localVersion,
-                    (result as any).updatedAt as string || now,
-                    auditTrail
-                  );
                 }
+                actions.loadMission(
+                  normalizedServerMission.id,
+                  {
+                    ...(normalizedServerMission as any),
+                    orderNumber: officialOrderNumber as string | undefined,
+                  },
+                  members,
+                  normalizedServerMission.version,
+                  normalizedServerMission.updatedAt,
+                  auditTrail
+                );
               } else if (result && typeof result === 'object' && 'error' in result && result.error === 409) {
                 /**
                  * 🔥 CONFLIT VERSION
@@ -188,7 +206,8 @@ export const useMissionSync = (
                 const serverMission = await missionService.getMission(finalId);
 
                 if (serverMission) {
-                  await db.missions.put(serverMission as any);
+                  const normalizedServerMission = normalizeServerMission(serverMission, finalId, now);
+                  await db.missions.put(normalizedServerMission as any);
                   actions.addAuditEntry(
                     'Conflit résolu (serveur prioritaire)',
                     'System'
@@ -204,6 +223,8 @@ export const useMissionSync = (
                 if (created) {
                   assignedId = (created as any).id;
                   serverSuccess = true;
+                  const normalizedServerMission = normalizeServerMission(created, assignedId, now);
+                  await db.missions.put(normalizedServerMission as any);
                 } else {
                   serverSuccess = false;
                 }
@@ -215,18 +236,21 @@ export const useMissionSync = (
               if (created) {
                 assignedId = (created as any).id;
                 serverSuccess = true;
-                
+                const normalizedServerMission = normalizeServerMission(created, assignedId, now);
+                await db.missions.put(normalizedServerMission as any);
+
                 const officialNum = (created as any).orderNumber || (created as any).data?.orderNumber;
-                if (officialNum) {
-                  actions.loadMission(
-                    (created as any).id,
-                    { ...formData, orderNumber: officialNum as string },
-                    members,
-                    (created as any).version as number || 1,
-                    (created as any).updatedAt as string || now,
-                    auditTrail
-                  );
-                }
+                actions.loadMission(
+                  normalizedServerMission.id,
+                  {
+                    ...(normalizedServerMission as any),
+                    orderNumber: officialNum as string | undefined,
+                  },
+                  members,
+                  normalizedServerMission.version,
+                  normalizedServerMission.updatedAt,
+                  auditTrail
+                );
               } else {
                 serverSuccess = false;
               }
@@ -246,15 +270,19 @@ export const useMissionSync = (
             }
 
             await db.missions.delete(finalId);
-            (missionData as any).id = assignedId;
-            await db.missions.put(missionData as any);
+            const persistedMission = await db.missions.get(assignedId);
+            if (!persistedMission) {
+              (missionData as any).id = assignedId;
+              await db.missions.put(missionData as any);
+            }
 
+            const missionForUi = persistedMission || { ...missionData, id: assignedId };
             actions.loadMission(
               assignedId,
-              formData,
+              missionForUi as any,
               members,
-              localVersion,
-              now,
+              (missionForUi as any).version || localVersion,
+              (missionForUi as any).updatedAt || now,
               auditTrail
             );
           }
@@ -320,6 +348,7 @@ export const useMissionSync = (
       actions,
       state.version,
       user?.id,
+      normalizeServerMission,
     ]
   );
 

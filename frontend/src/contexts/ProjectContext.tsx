@@ -12,6 +12,7 @@ interface ProjectContextType {
   projects: Project[];
   activeProjectId: string | null;
   setActiveProjectId: (id: string | null) => void;
+  refreshProjects: (preferredProjectId?: string | null) => Promise<Project[]>;
   createProject: (name: string) => Promise<Project>;
   updateProject: (updates: Partial<Project>, id?: string) => Promise<void>;
   deleteProject: (
@@ -27,6 +28,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [activeProjectId, setActiveProjectIdState] = useState<string | null>(
     safeStorage.getItem('active_project_id')
   );
+  const hasLoadedServerProjects = useRef(false);
 
   const projects = useLiveQuery(() => db.projects.toArray()) || [];
 
@@ -46,25 +48,48 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   }, [projects.length, activeProjectId]);
 
-  // 🔄 Auto-Sync: Si aucun projet en local, on interroge le serveur (seulement si connecté)
+  const syncProjectsFromServer = async (preferredProjectId?: string | null) => {
+    const response = await apiClient.get('/projects');
+    const serverProjects: Project[] = response.data.projects || response.data || [];
+
+    await db.projects.clear();
+    if (serverProjects.length > 0) {
+      await db.projects.bulkPut(serverProjects as any[]);
+    }
+
+    const nextActiveId =
+      preferredProjectId && serverProjects.some((project) => project.id === preferredProjectId)
+        ? preferredProjectId
+        : activeProjectId && serverProjects.some((project) => project.id === activeProjectId)
+          ? activeProjectId
+          : serverProjects[0]?.id || null;
+
+    setActiveProjectIdState(nextActiveId);
+    if (nextActiveId) {
+      safeStorage.setItem('active_project_id', nextActiveId);
+    } else {
+      safeStorage.removeItem('active_project_id');
+    }
+
+    logger.log(`♻️ [STORE] ${serverProjects.length} projets synchronisés depuis le serveur`);
+    return serverProjects;
+  };
+
+  // 🔄 Auto-Sync server-first: au démarrage connecté, le serveur réaligne toujours le cache local.
   useEffect(() => {
     const fetchInitialProjects = async () => {
       const token = safeStorage.getItem('access_token');
-      if (projects.length === 0 && token) {
-        try {
-          const response = await apiClient.get('/projects');
-          const serverProjects = response.data.projects || response.data || [];
-          if (serverProjects.length > 0) {
-            await db.projects.bulkPut(serverProjects);
-            logger.log(`♻️ [STORE] ${serverProjects.length} projets récupérés du serveur`);
-          }
-        } catch (err) {
-          logger.error('❌ Échec de synchronisation initiale des projets', err);
-        }
+      if (!token || hasLoadedServerProjects.current) return;
+
+      hasLoadedServerProjects.current = true;
+      try {
+        await syncProjectsFromServer();
+      } catch (err) {
+        logger.error('❌ Échec de synchronisation initiale des projets', err);
       }
     };
     fetchInitialProjects();
-  }, [projects.length]);
+  }, []);
 
   const setActiveProjectId = (id: string | null) => {
     setActiveProjectIdState(id);
@@ -80,28 +105,23 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const createProject = async (name: string) => {
     const response = await apiClient.post('/projects', { name, status: 'active', config: {} });
     const serverProject = response.data;
-    await db.projects.put(serverProject);
-    setActiveProjectId(serverProject.id);
+    await syncProjectsFromServer(serverProject.id);
     return serverProject;
   };
 
   const updateProject = async (updates: Partial<Project>, id?: string) => {
     const currentId = id || activeProjectId;
     if (currentId) {
-      //@ts-ignore
-      await db.projects.update(currentId, updates);
       await apiClient.patch(`/projects/${currentId}`, updates);
+      await syncProjectsFromServer(currentId);
     }
   };
 
   const deleteProject = async (projectId: string, password: string) => {
     try {
       await apiClient.delete(`/projects/${projectId}`, { data: { password } });
-      await db.projects.delete(projectId);
-      if (activeProjectId === projectId) {
-        const remaining = await db.projects.toArray();
-        setActiveProjectId(remaining[0]?.id || null);
-      }
+      const fallbackProjectId = activeProjectId === projectId ? null : activeProjectId;
+      await syncProjectsFromServer(fallbackProjectId);
       return { success: true };
     } catch (err: any) {
       return { success: false, error: err?.response?.data?.error || 'Erreur' };
@@ -115,6 +135,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
         projects,
         activeProjectId,
         setActiveProjectId,
+        refreshProjects: syncProjectsFromServer,
         createProject,
         updateProject,
         deleteProject,

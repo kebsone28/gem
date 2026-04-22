@@ -233,8 +233,7 @@ export function FinancesSection({ project, onUpdate }: Props) {
 
   const handleUndo = async () => {
     if (previousConfig && project?.id) {
-      const { db } = await import('../../store/db');
-      await db.projects.update(project.id, { config: previousConfig });
+      await onUpdate({ config: previousConfig });
       setPreviousConfig(null);
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
@@ -251,7 +250,7 @@ export function FinancesSection({ project, onUpdate }: Props) {
             Postes Budgetaires (Devis)
           </h2>
           <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">
-            {devisItems.length} postes — sauvegarde PostgreSQL via bouton
+            {devisItems.length} postes - sauvegarde serveur prioritaire
           </p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
@@ -299,7 +298,7 @@ export function FinancesSection({ project, onUpdate }: Props) {
             disabled={isSaving}
             className="flex items-center gap-2 px-5 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs rounded-xl transition-all active:scale-95 disabled:opacity-50"
           >
-            <Save size={15} /> {isSaving ? 'Sauvegarde...' : 'SAUVEGARDER SERVEUR'}
+            <Save size={15} /> {isSaving ? 'Verification...' : 'REVALIDER SERVEUR'}
           </button>
         </div>
       </div>

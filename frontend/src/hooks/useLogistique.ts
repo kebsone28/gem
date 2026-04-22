@@ -7,10 +7,12 @@ import type { Household, Project, SubGrappe, Team } from '../utils/types';
 import apiClient from '../api/client';
 import * as safeStorage from '../utils/safeStorage';
 import logger from '../utils/logger';
+import { useProject } from '../contexts/ProjectContext';
 
-export function useLogistique() {
+export function useLogistique(serverHouseholds?: Household[]) {
   const activeProjectId = safeStorage.getItem('active_project_id');
-  const households = useLiveQuery(async () => {
+  const { updateProject } = useProject();
+  const cachedHouseholds = useLiveQuery(async () => {
     if (!activeProjectId) return [];
     return await db.households.where('projectId').equals(activeProjectId).toArray();
   }, [activeProjectId]) as Household[] | undefined;
@@ -46,6 +48,7 @@ export function useLogistique() {
 
   const legacyTeams = project?.config?.teams || [];
   const teams = dbTeams.length > 0 ? dbTeams : legacyTeams;
+  const households = serverHouseholds ?? cachedHouseholds;
   const preparatorTeams = useMemo(() => teams.filter((t) => t.role === 'PREPARATION'), [teams]);
 
   const grappesConfig = project?.config?.grappesConfig || GRAPPES_CONFIG;
@@ -205,10 +208,7 @@ export function useLogistique() {
       history: newHistory.slice(0, 200) as any,
     };
 
-    await db.projects.update(project.id, { config: newConfig });
-    try {
-      await apiClient.patch(`/projects/${project.id}`, { config: newConfig });
-    } catch (e) {}
+    await updateProject({ config: newConfig }, project.id);
   };
 
   // --- Legacy global stock (for StockTab backward compat) ---
@@ -348,13 +348,7 @@ export function useLogistique() {
     if (!newConfig.assignments) newConfig.assignments = {};
     if (!newConfig.assignments[sgId]) newConfig.assignments[sgId] = {};
     newConfig.assignments[sgId][trade] = teamIds;
-    await db.projects.update(project.id, { config: newConfig });
-
-    try {
-      await apiClient.patch(`/projects/${project.id}`, { config: newConfig });
-    } catch (err) {
-      console.warn('Backend sync failed, changes queued for offline sync.', err);
-    }
+    await updateProject({ config: newConfig }, project.id);
   };
 
   const updateKitsLoaded = async (count: number) => {
@@ -362,25 +356,14 @@ export function useLogistique() {
     const newConfig = { ...project.config };
     if (!newConfig.logistics_workshop) newConfig.logistics_workshop = {};
     newConfig.logistics_workshop.kitsLoaded = count;
-    await db.projects.update(project.id, { config: newConfig });
-
-    try {
-      await apiClient.patch(`/projects/${project.id}`, { config: newConfig });
-    } catch (err) {
-      console.warn('Backend sync failed, changes queued for offline sync.', err);
-    }
+    await updateProject({ config: newConfig }, project.id);
   };
 
   // --- Warehouse Mutation Functions ---
   const _saveWarehouseConfig = async (updatedWarehouses: any[]) => {
     if (!project) return;
     const newConfig = { ...project.config, warehouses: updatedWarehouses };
-    await db.projects.update(project.id, { config: newConfig });
-    try {
-      await apiClient.patch(`/projects/${project.id}`, { config: newConfig });
-    } catch (err) {
-      console.warn('Backend sync failed, changes queued for offline sync.', err);
-    }
+    await updateProject({ config: newConfig }, project.id);
   };
 
   const addWarehouse = async (name: string, region: string) => {

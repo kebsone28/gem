@@ -4,11 +4,14 @@
  * Handles HTTP endpoints for KoboToolbox synchronisation.
  *
  * Routes:
- *   POST /api/kobo/sync   — Trigger a Kobo sync
- *   GET  /api//status — Return latest Kobo sync metadata
+ *   GET  /api/kobo/status — Return latest Kobo sync metadata
+ *   POST /api/kobo/auto-detect — Auto-detect and generate field mapping
+ *   GET /api/kobo/mapping — Get current field mapping
+ *   POST /api/kobo/migrate — Migrate mapping when form changes
  */
 
 import { syncKoboToDatabase, fetchKoboSubmissions } from '../../services/kobo.service.js';
+import { koboEngine } from './koboEngineMaster.js';
 import prisma from '../../core/utils/prisma.js';
 
 /**
@@ -30,115 +33,6 @@ export const testKoboConnection = async (req, res) => {
 
 // In-memory cache of last sync time per organization (reset on server restart)
 const lastKoboSyncMap = {};
-
-/**
- * POST /api/kobo/sync
- * Triggers a Kobo sync for the authenticated user's organization.
- */
-export const triggerKoboSync = async (req, res) => {
-    const { organizationId } = req.user;
-
-    try {
-        // 1. Prefer provided zoneId or projectId
-        let defaultZoneId = req.body.zoneId || null;
-        const targetProjectId = req.body.projectId;
-
-        if (!defaultZoneId) {
-            // Find a suitable project: provided one, or the first existing one
-            let project = null;
-            if (targetProjectId) {
-                project = await prisma.project.findUnique({ where: { id: targetProjectId } });
-            if (!project) {
-                const msg = `Project ${targetProjectId} not found for organization ${organizationId}. Please refresh your project selection and retry.`;
-                console.error(`[KOBO] ${msg}`);
-                return res.status(400).json({ success: false, error: msg });
-            }
-        }
-
-
-            if (!project) {
-                console.log(`[KOBO] 💡 Auto-creating default project for org ${organizationId}`);
-                project = await prisma.project.create({
-                    data: {
-                        name: 'Projet Kobo Global',
-                        organizationId,
-                        status: 'active',
-                        budget: '0',
-                        duration: 0,
-                        totalHouses: 0,
-                        config: {}
-                    }
-                });
-            }
-
-            // Find a zone for THIS project
-            const existingZone = await prisma.zone.findFirst({ 
-                where: { projectId: project.id, organizationId } 
-            });
-
-            if (existingZone) {
-                defaultZoneId = existingZone.id;
-            } else {
-                console.log(`[KOBO] 💡 Auto-creating default zone for project ${project.id}`);
-                const newZone = await prisma.zone.create({
-                    data: {
-                        name: 'Zone Kobo A',
-                        projectId: project.id,
-                        organizationId
-                    }
-                });
-                defaultZoneId = newZone.id;
-            }
-        }
-
-        if (!defaultZoneId) {
-            return res.status(500).json({ error: 'Failed to find or create a default sync zone.' });
-        }
-
-        const since = lastKoboSyncMap[organizationId] || req.body.since || null;
-
-        console.log(`[KOBO] 🔄 Starting sync for org ${organizationId}, project ${targetProjectId || 'default'}, since: ${since || 'beginning'}`);
-        
-        const result = await syncKoboToDatabase(organizationId, defaultZoneId, since, targetProjectId);
-
-        // Update last sync timestamp
-        lastKoboSyncMap[organizationId] = new Date().toISOString();
-
-        // Log to sync_logs table (non-blocking)
-        try {
-            await prisma.syncLog.create({
-                data: {
-                    userId: req.user.id,
-                    deviceId: 'server',
-                    action: 'KOBO_SYNC_MANUAL',
-                    details: {
-                        organizationId,
-                        source: 'kobo',
-                        applied: result.applied,
-                        skipped: result.skipped,
-                        errors: result.errors,
-                        total: result.total,
-                        projectId: targetProjectId,
-                        syncedAt: new Date()
-                    }
-                }
-            });
-        } catch (e) { 
-            console.error('[KOBO-LOG] Failed to create sync log:', e.message);
-        }
-
-        return res.json({
-            success: true,
-            message: 'Synchronisation Kobo terminée',
-            lastSyncAt: lastKoboSyncMap[organizationId],
-            result
-        });
-
-    } catch (error) {
-        console.error('[KOBO] Error during sync:', error.message);
-        return res.status(500).json({ success: false, error: error.message });
-    }
-};
 
 /**
  * GET /api/kobo/status
@@ -201,5 +95,117 @@ export const handleKoboWebhook = async (req, res) => {
     } catch (e) {
         console.error('[WEBHOOK-ERROR] Error handling webhook:', e.message);
         return res.status(500).json({ error: 'Processing error' });
+    }
+};
+
+/**
+ * POST /api/kobo/auto-detect
+ * Auto-détecte les champs du formulaire Kobo et génère le mapping
+ */
+export const autoDetectMapping = async (req, res) => {
+    const { organizationId } = req.user;
+    const { koboAssetId, koboServerUrl } = req.body;
+
+    if (!koboAssetId) {
+        return res.status(400).json({ error: 'koboAssetId requis' });
+    }
+
+    const serverUrl = koboServerUrl || process.env.KOBO_API_URL || 'https://kf.kobotoolbox.org';
+
+    try {
+        const mapping = await koboEngine.generateMapping(koboAssetId, serverUrl);
+        await koboEngine.saveMapping(organizationId, koboAssetId, mapping);
+
+        // Calculer le score de confiance global
+        const confidences = Object.values(mapping.fields).map(f => f.confidence);
+        const avgConfidence = confidences.reduce((a, b) => a + b, 0) / confidences.length;
+
+        res.json({
+            success: true,
+            mapping,
+            confidence: Math.round(avgConfidence),
+            message: `Mapping généré avec ${Math.round(avgConfidence)}% de confiance`
+        });
+    } catch (error) {
+        console.error('[KOBO_AUTO_DETECT] Error:', error.message);
+        res.status(500).json({ error: 'Échec de la détection automatique', details: error.message });
+    }
+};
+
+/**
+ * GET /api/kobo/mapping
+ * Retourne le mapping actuel pour un formulaire Kobo
+ */
+export const getMapping = async (req, res) => {
+    const { organizationId } = req.user;
+    const { koboAssetId } = req.query;
+
+    if (!koboAssetId) {
+        return res.status(400).json({ error: 'koboAssetId requis' });
+    }
+
+    try {
+        const mapping = await koboEngine.getMapping(organizationId, koboAssetId, 
+            process.env.KOBO_API_URL || 'https://kf.kobotoolbox.org');
+        
+        res.json({ success: true, mapping });
+    } catch (error) {
+        console.error('[KOBO_GET_MAPPING] Error:', error.message);
+        res.status(500).json({ error: 'Erreur lors de la récupération du mapping' });
+    }
+};
+
+/**
+ * POST /api/kobo/migrate
+ * Détecte les changements dans le formulaire et migre le mapping
+ */
+export const migrateMapping = async (req, res) => {
+    const { organizationId } = req.user;
+    const { koboAssetId, koboServerUrl } = req.body;
+
+    if (!koboAssetId) {
+        return res.status(400).json({ error: 'koboAssetId requis' });
+    }
+
+    const serverUrl = koboServerUrl || process.env.KOBO_API_URL || 'https://kf.kobotoolbox.org';
+
+    try {
+        const result = await koboEngine.migrateMapping(organizationId, koboAssetId, serverUrl);
+        
+        res.json({
+            success: true,
+            ...result,
+            message: result.migrated 
+                ? `Migration effectuée: ${result.changes.reason}`
+                : 'Aucun changement détecté'
+        });
+    } catch (error) {
+        console.error('[KOBO_MIGRATE] Error:', error.message);
+        res.status(500).json({ error: 'Échec de la migration', details: error.message });
+    }
+};
+
+/**
+ * POST /api/kobo/transform
+ * Transforme des données Kobo en format GEM usando le mapping
+ */
+export const transformData = async (req, res) => {
+    const { organizationId } = req.user;
+    const { koboAssetId, koboData, koboServerUrl } = req.body;
+
+    if (!koboAssetId || !koboData) {
+        return res.status(400).json({ error: 'koboAssetId et koboData requis' });
+    }
+
+    const serverUrl = koboServerUrl || process.env.KOBO_API_URL || 'https://kf.kobotoolbox.org';
+
+    try {
+        const mapping = await koboEngine.getMapping(organizationId, koboAssetId, serverUrl);
+        const transformed = koboEngine.transformData(koboData, mapping);
+        
+        res.json({ success: true, transformed, mapping });
+    } catch (error) {
+        console.error('[KOBO_TRANSFORM] Error:', error.message);
+        res.status(500).json({ error: 'Échec de la transformation', details: error.message });
     }
 };

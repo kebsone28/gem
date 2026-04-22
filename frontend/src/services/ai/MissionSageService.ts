@@ -1,9 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unused-vars */
 /**
- * SERVICE : MissionSageService (V.8.0 DUAL-ENGINE SUPREME)
+ * SERVICE : MissionSageService (V.8.C
+ * SERVICE : MissionSageService (V.8.D)
  * GEM-MINT - Cerveau Global PROQUELEC
  */
 
+import type { User, AuditLog, Household, Team } from '../../utils/types';
 import type { User, AuditLog, Household } from '../../utils/types';
 import type { MissionStats } from '../missionStatsService';
 import { db } from '../../store/db';
@@ -17,6 +19,18 @@ import { buildPublicAIKnowledgePrompt } from './AIKnowledgeBase';
 // ─────────────────────────────────────────────
 
 export interface AIState {
+  stats: MissionStats | null;
+  auditLogs: AuditLog[];
+  households: Household[];
+  teams: Team[]; // Ajouté pour l'analyse des équipes
+  regionalSummaries: RegionalSummary[]; // Ajouté pour l'analyse régionale
+}
+
+export interface RegionalSummary {
+  region: string;
+  totalHouseholds: number;
+  delayedHouseholds: number;
+  teamsAssigned: { [tradeKey: string]: number };
   stats: MissionStats | null;
   auditLogs: AuditLog[];
   households: Household[];
@@ -1891,6 +1905,42 @@ async function runRulesEngine(
         smartReplies: getSmartSuggestions(query),
         _engine: 'RULES',
       };
+    }
+  }
+
+  // Nouvelle logique pour suggérer des transferts d'équipes entre régions
+  if (state.regionalSummaries && state.teams) {
+    const regionsBehind: RegionalSummary[] = [];
+    const regionsAhead: RegionalSummary[] = [];
+
+    state.regionalSummaries.forEach(r => {
+      // Simplification: une région est "en retard" si plus de 10% des ménages sont en retard
+      // et "en avance" si aucun ménage n'est en retard et qu'il y a des équipes disponibles
+      if (r.totalHouseholds > 0 && (r.delayedHouseholds / r.totalHouseholds) > 0.1) {
+        regionsBehind.push(r);
+      } else if (r.delayedHouseholds === 0 && r.teamsAssigned && Object.values(r.teamsAssigned).some(count => count > 0)) {
+        regionsAhead.push(r);
+      }
+    });
+
+    if (regionsBehind.length > 0 && regionsAhead.length > 0) {
+      const behind = regionsBehind[0]; // Prendre la première région en retard
+      const ahead = regionsAhead[0]; // Prendre la première région en avance
+
+      // Trouver une équipe à transférer (simplifié: prendre la première équipe disponible dans la région en avance)
+      const teamToTransfer = state.teams.find(t => t.regionId === ahead.region && t.status === 'active');
+
+      if (teamToTransfer) {
+        return {
+          message: pfx(
+            `💡 **SUGGESTION IA** : La région **${behind.region}** a **${behind.delayedHouseholds}** ménages en retard. La région **${ahead.region}** semble avoir de la capacité. Envisagez de transférer l'équipe **${teamToTransfer.name}** (${teamToTransfer.tradeKey}) de **${ahead.region}** vers **${behind.region}** pour accélérer l'avancement.`
+          ),
+          type: 'warning',
+          actionLabel: `Transférer ${teamToTransfer.name}`,
+          actionPath: `/settings?tab=teams&teamId=${teamToTransfer.id}`, // Lien vers la gestion d'équipe
+          _engine: 'RULES',
+        };
+      }
     }
   }
 
