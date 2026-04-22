@@ -16,7 +16,7 @@ import { PageContainer, PageHeader, ContentArea } from '@components';
 import { useAuthStore } from '../store/authStore';
 import { auditService } from '../services/auditService';
 import alertsAPI from '../services/alertsAPI';
-import { missionSageService, AIResponse } from '../services/ai/MissionSageService';
+import { missionSageService, AIResponse, RegionalSummary } from '../services/ai/MissionSageService';
 import { useProject } from '../contexts/ProjectContext';
 import apiClient from '../api/client';
 import type { Household, Team } from '../utils/types';
@@ -233,17 +233,17 @@ export default function Planning() {
       }
     };
     getAiAdvice();
-  }, [isLoading, activeProjectId, stats.total, historyLogs, availableRegions]);
+  }, [isLoading, activeProjectId, stats.total, historyLogs, availableRegions, households, teams, project?.config?.productionRates]);
 
-  // Récupérer les régions uniques disponibles
+  // 🗺️ Récupérer les régions uniques disponibles
   const availableRegions = useMemo(() => {
     return Array.from(new Set(households.map(h => h.region).filter(Boolean))).sort();
   }, [households]);
 
   // 1. Calculer les besoins théoriques en équipes
   const theoreticalNeeds = useMemo(() => {
-    const total = selectedRegion === 'ALL' 
-      ? households.length 
+    const total = selectedRegion === 'ALL'
+      ? households.length
       : households.filter(h => h.region === selectedRegion).length;
 
     if (total === 0 || targetMonths <= 0) return null;
@@ -322,10 +322,14 @@ export default function Planning() {
       if (delayedTasks.length === 0 || !activeProjectId) return;
 
       try {
-        // On ne crée des alertes que pour les retards importants (> 3 jours) 
+        // On ne crée des alertes que pour les retards importants (> 3 jours)
         // et si aucune alerte de ce type (PVRET) n'existe déjà pour ce ménage.
-        const criticalDelays = delayedTasks.filter(t => 
-          t.delayDays > 3 && 
+        // Utilisation de `t.existingAlerts` qui est maintenant dans PlanningTask
+        // pour éviter de spammer les alertes.
+        // Le `household.alerts` est récupéré lors du fetch initial et passé dans `PlanningTask`.
+
+        const criticalDelays = delayedTasks.filter(t =>
+          t.delayDays > 3 &&
           !t.existingAlerts?.some(a => a.type === 'PVRET')
         );
 
@@ -346,11 +350,11 @@ export default function Planning() {
     syncAlerts();
   }, [tasks, activeProjectId]);
 
-  // Grouper par équipe
+  // 👥 Grouper par équipe
   const teamPlannings = useMemo((): TeamPlanning[] => {
     const teamMap = new Map<string, TeamPlanning>();
 
-    // Ajouter équipe "Non assigné"
+    // Ajouter l'équipe "Non assigné"
     teamMap.set('UNASSIGNED', {
       team: { id: 'UNASSIGNED', name: 'Non assignés', projectId: '', organizationId: '', level: 0, role: 'INSTALLATION', capacity: 0, status: 'active' } as unknown as Team,
       tasks: [],
@@ -392,11 +396,11 @@ export default function Planning() {
     return Array.from(teamMap.values()).filter(tp => tp.tasks.length > 0 || tp.team.id === 'UNASSIGNED');
   }, [tasks, teams]);
 
-  // Statistiques globales (IGPP ready)
+  // 📊 Statistiques globales (IGPP ready)
   const stats = useMemo(() => {
     const relevantTasks = tasks.filter(t => selectedRegion === 'ALL' || t.region === selectedRegion);
     const total = relevantTasks.length;
-    const byPhase = relevantTasks.reduce((acc, t) => {
+    const byPhase = relevantTasks.reduce((acc, t) => { // Correction: utiliser relevantTasks
       acc[t.phase] = (acc[t.phase] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
@@ -410,14 +414,14 @@ export default function Planning() {
   const filteredHistoryLogs = useMemo(() => {
     if (!userFilter) return historyLogs;
     const filter = userFilter.toLowerCase();
-    return historyLogs.filter(log => 
+    return historyLogs.filter(log =>
       (log.userName?.toLowerCase() || '').includes(filter) ||
       (log.details?.toLowerCase() || '').includes(filter) ||
       (log.action?.toLowerCase() || '').includes(filter)
     );
   }, [historyLogs, userFilter]);
 
-  // Filtrer les tâches
+  // 🔍 Filtrer les tâches
   const filteredTasks = useMemo(() => {
     return tasks.filter(task => {
       if (selectedRegion !== 'ALL' && task.region !== selectedRegion) return false;
@@ -427,11 +431,11 @@ export default function Planning() {
     });
   }, [tasks, phaseFilter, selectedTeam, selectedRegion]);
 
-  // 👷 Gestion des affectations manuelles
+  // ✍️ Gestion des affectations manuelles
   const handleManualAssign = useCallback(async (householdId: string, teamId: string) => {
     try {
-      const value = teamId === 'AUTO' ? null : teamId;
-      await apiClient.patch(`/households/${householdId}`, { assignedTeamId: value });
+      const value = teamId === 'AUTO' ? null : teamId; // null pour revenir à la logique de grappe
+      await apiClient.patch(`/households/${householdId}`, { assignedTeamId: value }); // Enregistrement sur le serveur
 
       if (user) {
         const h = households.find(h => h.id === householdId);
@@ -448,8 +452,8 @@ export default function Planning() {
         );
       }
 
-      toast.success('Affectation mise à jour');
-      handleRefresh(); 
+      toast.success('Affectation mise à jour'); // Feedback utilisateur
+      handleRefresh();
     } catch (err) {
       toast.error("Erreur lors de l'affectation manuelle");
     }
@@ -479,7 +483,7 @@ export default function Planning() {
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
-      toast.success('Planning actualisé');
+      toast.success('Planning actualisé'); // Feedback utilisateur
     }
   }, [activeProjectId]);
 
@@ -515,7 +519,7 @@ export default function Planning() {
             </div>
 
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative z-10">
-              <div className="space-y-1">
+              <div className="space-y-1 flex-1">
                 <h3 className="text-lg font-black text-white uppercase italic tracking-tighter">Objectif de Réalisation</h3>
                 <p className="text-xs text-indigo-300/70 font-bold uppercase tracking-widest">Calcul dynamique des ressources nécessaires</p>
               </div>
@@ -523,7 +527,7 @@ export default function Planning() {
               <div className="flex items-center gap-4 bg-slate-950/50 p-2 rounded-2xl border border-white/5">
                 <span className="text-[10px] font-black text-slate-500 uppercase ml-4">Région :</span>
                 <select
-                  value={selectedRegion || 'ALL'}
+                  value={selectedRegion} // selectedRegion est déjà 'ALL' par défaut
                   onChange={(e) => setSelectedRegion(e.target.value)}
                   className="bg-indigo-500/20 border border-indigo-500/30 rounded-xl px-3 py-2 text-white font-bold text-[10px] outline-none focus:ring-2 focus:ring-indigo-500"
                   title="Sélectionner la région pour le calcul"
@@ -540,7 +544,7 @@ export default function Planning() {
                     type="number"
                     min="1"
                     value={targetMonths}
-                    onChange={(e) => setTargetMonths(Math.max(1, Number(e.target.value)))}
+                    onChange={(e) => setTargetMonths(Math.max(1, Number(e.target.value)))} // Minimum 1 mois
                     className="w-16 bg-indigo-500/20 border border-indigo-500/30 rounded-xl px-3 py-2 text-white font-black text-center outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                   <span className="text-xs font-bold text-indigo-400 mr-4">MOIS</span>
@@ -554,7 +558,7 @@ export default function Planning() {
                   { label: 'Équipes Maçons', value: theoreticalNeeds.macons, icon: Hammer, color: 'text-amber-500' },
                   { label: 'Équipes Réseau', value: theoreticalNeeds.reseau, icon: Zap, color: 'text-blue-500' },
                   { label: 'Électriciens', value: theoreticalNeeds.interieur, icon: Wrench, color: 'text-purple-500' },
-                  { label: 'Contrôleurs', value: theoreticalNeeds.controle, icon: ShieldCheck, color: 'text-emerald-500' }
+                  { label: 'Contrôleurs', value: theoreticalNeeds.controle, icon: ShieldCheck, color: 'text-emerald-500' } // Icône ShieldCheck
                 ].map((need, idx) => (
                   <div key={idx} className="bg-slate-950/40 p-4 rounded-2xl border border-white/5 flex items-center gap-4">
                     <div className={`p-2 rounded-lg bg-white/5 ${need.color}`}><need.icon size={16} /></div>
@@ -804,7 +808,7 @@ export default function Planning() {
                     </thead>
                     <tbody className="divide-y divide-white/5">
                       {filteredTasks.slice(0, 50).map(task => {
-                        const PhaseIcon = PHASE_ICONS[task.phase] || Clock;
+                        const PhaseIcon = PHASE_ICONS[task.phase] || Clock; // Utilisé pour l'affichage si besoin
                         const isCriticallyDelayed = task.isDelayed && task.delayDays > 5;
                         return (
                           <tr key={task.id} className={`hover:bg-white/5 transition-colors ${isCriticallyDelayed ? 'bg-rose-900/20 border-l-4 border-rose-500' : ''}`}>
@@ -840,11 +844,11 @@ export default function Planning() {
                             </td>
                             <td className="px-4 py-3">
                               <div className="flex items-center gap-2">
-                                {/** @ts-ignore - assignedTeamId est dynamique */}
+                                {/* @ts-ignore - assignedTeamId est dynamique */}
                                 <select
                                   value={(households.find(h => h.id === task.householdId) as any)?.assignedTeamId || 'AUTO'}
                                   onChange={(e) => handleManualAssign(task.householdId, e.target.value)}
-                                  className={`bg-slate-800 border border-white/5 rounded-lg px-2 py-1 text-[10px] font-bold outline-none transition-colors ${ (households.find(h => h.id === task.householdId) as any)?.assignedTeamId ? 'text-indigo-400 border-indigo-500/30' : 'text-slate-400'
+                                  className={`bg-slate-800 border border-white/5 rounded-lg px-2 py-1 text-[10px] font-bold outline-none transition-colors ${(households.find(h => h.id === task.householdId) as any)?.assignedTeamId ? 'text-indigo-400 border-indigo-500/30' : 'text-slate-400'
                                     }`}
                                 >
                                   <option value="AUTO">🤖 Auto (Grappe)</option>
@@ -1137,7 +1141,7 @@ export default function Planning() {
                   className="p-2 bg-emerald-600/10 text-emerald-400 border border-emerald-500/20 rounded-xl hover:bg-emerald-600/20 transition-all"
                   title="Exporter en Excel"
                 >
-                  <Download size={16} />
+                  <Download size={16} /> {/* Correction: Utilisation de l'icône Download */}
                 </button>
                 <button onClick={() => setShowAudit(false)} className="p-2 hover:bg-white/5 rounded-xl text-slate-400 transition-colors">
                   <X size={24} />
