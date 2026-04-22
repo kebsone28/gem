@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unused-vars */
 /**
  * SERVICE : MissionSageService (V.8.D)
+ * SERVICE : MissionSageService (V.8.E)
  * GEM-MINT - Cerveau Global PROQUELEC
  */
 
@@ -28,6 +29,10 @@ export interface RegionalSummary {
   stats: MissionStats | null;
   auditLogs: AuditLog[];
   households: Household[];
+  region: string;
+  totalHouseholds: number;
+  delayedHouseholds: number;
+  teamsAssigned: { [tradeKey: string]: number };
 }
 
 export interface AIResponse {
