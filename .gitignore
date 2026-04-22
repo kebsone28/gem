@@ -66,3 +66,7 @@ archive/
 
 # Cursor context
 context_application.md
+
+# Planify test artifacts
+plan.json
+plan_test.*
