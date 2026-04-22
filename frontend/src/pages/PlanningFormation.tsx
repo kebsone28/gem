@@ -5,7 +5,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   Calendar, Users, MapPin, Clock, FileText, Download,
-  Plus, Trash2, Edit2, Check, X, ChevronDown, Save, GraduationCap, BookOpen
+  Plus, Trash2, Edit2, Check, X, ChevronDown, Save
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
