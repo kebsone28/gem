@@ -44,7 +44,7 @@ export const useMissionState = () => {
   const [state, dispatch] = useReducer(missionReducer, initialState);
 
   // Sélecteurs mémorisés
-  const totalFrais = useMemo(() => selectTotalFrais(state), [state.members]);
+  const totalFrais = useMemo(() => selectTotalFrais(state), [state]);
 
   // Indicateur global dirty (pour auto-save)
   const isDirty = useMemo(

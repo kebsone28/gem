@@ -50,7 +50,7 @@ export class ProquelecDatabase extends Dexie {
   households!: Table<Household>;
   grappes!: Table<{ id: string; name: string; projectId: string }>; // Add grappes table for bordereau caching
   teams!: Table<Team>;
-  missions!: Table<{ id: string; projectId: string; status: string; [key: string]: any }>;
+  missions!: Table<{ id: string; projectId: string; status: string; [key: string]: unknown }>;
   notifications!: Table<MissionNotification>;
   sync_logs!: Table<SyncLog>;
   app_security!: Table<AppSecurity>;

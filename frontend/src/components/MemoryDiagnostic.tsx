@@ -1,5 +1,5 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
-import { useEffect, useRef, useState, useCallback } from 'react';
+﻿ 
+import { useEffect, useRef, useState } from 'react';
 import { getMemoryInfo } from '../utils/debugHelper';
 
 /**
@@ -21,21 +21,21 @@ function MemoryDiagnosticInner() {
   const lastTickRef = useRef(0);
   const THROTTLE_MS = 5000; // poll every 5s via rAF, not setInterval
 
-  const tick = useCallback(() => {
-    const now = performance.now();
-    if (now - lastTickRef.current >= THROTTLE_MS) {
-      lastTickRef.current = now;
-      setMemInfo(getMemoryInfo());
-    }
-    rafRef.current = requestAnimationFrame(tick);
-  }, []);
-
   useEffect(() => {
+    const tick = () => {
+      const now = performance.now();
+      if (now - lastTickRef.current >= THROTTLE_MS) {
+        lastTickRef.current = now;
+        setMemInfo(getMemoryInfo());
+      }
+      rafRef.current = requestAnimationFrame(tick);
+    };
+
     rafRef.current = requestAnimationFrame(tick);
     return () => {
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
     };
-  }, [tick]);
+  }, []);
 
   if (!memInfo) return null;
 

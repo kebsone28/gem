@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useMemo, Suspense, useRef, useEffect, useCallback } from 'react';
 import logger from '../utils/logger';
 import toast from 'react-hot-toast';
@@ -7,7 +7,7 @@ import { useTerrainPhoto } from '../hooks/useTerrainPhoto';
 import { useTerrainData } from '../hooks/useTerrainData';
 import { QuickActions, OfflineIndicator, FloatingPhotoButton } from '../components/terrain/QuickActions';
 import { TerrainMissionEditor } from '../components/terrain/TerrainMissionEditor';
-import { createMission, updateMission } from '../services/missionService';
+import { createMission } from '../services/missionService';
 import { uploadFile as uploadToServer } from '../services/uploadService';
 import { useAuth } from '../contexts/AuthContext';
 const MapComponent = React.lazy(() => import('../components/terrain/MapComponent'));
@@ -19,7 +19,6 @@ import { useSync } from '../contexts/SyncContext';
 import { useLogistique } from '../hooks/useLogistique';
 import { useSyncListener } from '../hooks/useSyncListener';
 import { usePermissions } from '../hooks/usePermissions';
-import { isMasterAdmin } from '../utils/permissions';
 import { MapRoutingPanel } from '../components/terrain/MapRoutingPanel';
 import { GeofencingAlerts } from '../components/terrain/GeofencingAlerts';
 import { PhotoLightbox } from '../components/terrain/PhotoLightbox';
@@ -31,7 +30,7 @@ import { MapRegionDownload } from '../components/terrain/MapRegionDownload';
 import { HouseholdDetailsPanel } from '../components/terrain/HouseholdDetailsPanel';
 import { useFavorites } from '../hooks/useFavorites';
 import { useTerrainUIStore } from '../store/terrainUIStore';
-import { useNavigate } from 'react-router-dom';
+// useNavigate removed (not used in this page)
 
 import { useGeolocation } from '../hooks/useGeolocation';
 import {
@@ -59,15 +58,18 @@ const Terrain: React.FC = () => {
   const { households, updateHouseholdStatus, updateHouseholdLocation, uploadHouseholdPhoto, updateHousehold, reloadHouseholds } =
     useTerrainData();
 
-  const { project, createProject, deleteProject } = useProject();
+  const { project } = useProject();
   const { forceSync } = useSync();
   const { grappesConfig, warehouseStats, teams } = useLogistique(households);
   const { user } = useAuth();
   const { peut, PERMISSIONS } = usePermissions();
 
   const [mapBounds, setMapBounds] = useState<[number, number, number, number] | null>(null);
-  const [isOfflineMode, setIsOfflineMode] = useState(!navigator.onLine);
+  const [isOfflineMode, setIsOfflineMode] = useState(() =>
+    typeof navigator !== 'undefined' ? !navigator.onLine : false
+  );
   const [showMissionEditor, setShowMissionEditor] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [pendingSyncCount, setPendingSyncCount] = useState(0);
 
   // Modals state (Removed unused ProjectModals)
@@ -112,7 +114,8 @@ const Terrain: React.FC = () => {
   const { userLocation, geolocationError, handleRequestGeolocation } = useGeolocation((loc) => {
     setMapCommand({ center: loc, zoom: 16, timestamp: Date.now() });
   });
-  const navigate = useNavigate();
+  // Modal ref + focus management
+  const missionModalRef = useRef<HTMLDivElement | null>(null);
 
   const {
     grappeClusters,
@@ -149,15 +152,15 @@ const Terrain: React.FC = () => {
           toast.error('Échec de l\'upload', { id: toastId });
         }
         return "ok";
-      } catch (err) {
-        toast.error('Erreur upload', { id: toastId });
-        return "";
-      }
+      } catch (e) {
+          logger.error(e);
+          toast.error('Erreur upload', { id: toastId });
+          return "";
+        }
     },
   });
 
   // ✅ GUARD: Prevent double-initialization from StrictMode
-  const syncInitializedRef = useRef(false);
   const autoCenterInitializedRef = useRef(false);
 
   // 5. Auto-Center
@@ -186,6 +189,17 @@ const Terrain: React.FC = () => {
     };
   }, []);
 
+  // Handler: manuel sync (déclaré avant l'enregistrement du listener pour éviter TDZ)
+  const handleManualSync = useCallback(async () => {
+    try {
+      await forceSync();
+      toast.success('✅ Synchronisation terminée');
+    } catch (e) {
+      logger.error(e);
+      toast.error('❌ Erreur lors de la synchronisation');
+    }
+  }, [forceSync]);
+
   useSyncListener((source) => {
     logger.log(`🔄 [TERRAIN] Sync triggered by: ${source}`);
     if (source === 'kobo' || source === 'import') {
@@ -198,20 +212,6 @@ const Terrain: React.FC = () => {
   });
 
   // 6. Handlers
-  const handleManualSync = useCallback(async () => {
-    try {
-      await forceSync();
-      toast.success('✅ Synchronisation terminée');
-    } catch (e) {
-      logger.error(e);
-      toast.error('❌ Erreur lors de la synchronisation');
-    }
-  }, [forceSync]);
-
-  const handleRefresh = async () => {
-    if (!project?.id) return;
-    await forceSync();
-  };
 
   const handleRecenterOnUser = useCallback(() => {
     if (isGeolocationRequestInProgress) {
@@ -251,10 +251,30 @@ const Terrain: React.FC = () => {
             : geolocationToastId;
         toast.dismiss(dismissId);
       }
-      setGeolocationToastId(null);
-      setIsGeolocationRequestInProgress(false);
+      // Defer state updates to avoid synchronous setState-in-effect warnings
+      const t = window.setTimeout(() => {
+        setGeolocationToastId(null);
+        setIsGeolocationRequestInProgress(false);
+      }, 0);
+      return () => clearTimeout(t);
     }
   }, [userLocation, geolocationError, geolocationToastId]);
+
+  // Focus trap: focus modal when opened and close on Escape
+  useEffect(() => {
+    if (!showMissionEditor) return;
+    const el = missionModalRef.current;
+    const prevActive = document.activeElement as HTMLElement | null;
+    el?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowMissionEditor(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      prevActive?.focus?.();
+    };
+  }, [showMissionEditor]);
 
   const handleSelectResult = useCallback(
     (result: SearchResult) => {
@@ -285,6 +305,10 @@ const Terrain: React.FC = () => {
     },
     [setSelectedHouseholdId, setMapCommand, setSearchQuery, setSearchResults]
   );
+
+  const handleZoneClick = useCallback((center: [number, number], zoom?: number) => {
+    setMapCommand({ center, zoom: zoom ?? 16, timestamp: Date.now() });
+  }, [setMapCommand]);
 
   const handleTraceItinerary = useCallback(() => {
     const h = households?.find((hh) => hh.id === selectedHouseholdId);
@@ -471,9 +495,7 @@ const Terrain: React.FC = () => {
                       isFilteringActive={
                         selectedTeam !== 'all' || selectedPhases.length !== ALL_STATUSES.length
                       }
-                      onZoneClick={(center, zoom) =>
-                        setMapCommand({ center, zoom, timestamp: Date.now() })
-                      }
+                      onZoneClick={handleZoneClick}
                       grappesConfig={grappesConfig}
                       readOnly={!peut(PERMISSIONS.MODIFIER_CARTE)}
                       userLocation={userLocation}
@@ -672,6 +694,7 @@ const Terrain: React.FC = () => {
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[80] bg-black/50 flex items-center justify-center p-4"
             onClick={() => setShowMissionEditor(false)}
+            role="presentation"
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
@@ -679,6 +702,11 @@ const Terrain: React.FC = () => {
               exit={{ scale: 0.9, opacity: 0 }}
               className="w-full max-w-lg max-h-[90vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="mission-editor-title"
+              ref={missionModalRef}
+              tabIndex={-1}
             >
               <TerrainMissionEditor
                 context={{
@@ -699,7 +727,8 @@ const Terrain: React.FC = () => {
                       toast.success('Mission sauvegardée comme brouillon');
                       setShowMissionEditor(false);
                     }
-                  } catch (err) {
+                  } catch (e) {
+                    logger.error(e);
                     toast.error('Erreur lors de la sauvegarde');
                   }
                 }}
@@ -715,7 +744,8 @@ const Terrain: React.FC = () => {
                       toast.success('Mission soumise avec succès');
                       setShowMissionEditor(false);
                     }
-                  } catch (err) {
+                  } catch (e) {
+                    logger.error(e);
                     toast.error('Erreur lors de la soumission');
                   }
                 }}

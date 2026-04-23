@@ -4,7 +4,7 @@
  * - Compression automatique
  * - Mode hors-ligne
  */
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import toast from 'react-hot-toast';
 
 interface UseTerrainPhotoOptions {
@@ -21,8 +21,8 @@ interface UseTerrainPhotoReturn {
   error: string | null;
 }
 
-export const useTerrainPhoto = (options: UseTerrainPhotoOptions = {}) => {
-  const { maxWidth = 1920, maxHeight = 1920, quality = 0.8, onUpload } = options;
+export const useTerrainPhoto = (options: UseTerrainPhotoOptions = {}): UseTerrainPhotoReturn => {
+  const { maxWidth = 1920, maxHeight = 1920, quality = 0.8 } = options;
 
   const [isCapturing, setIsCapturing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -136,8 +136,9 @@ export const useTerrainPhoto = (options: UseTerrainPhotoOptions = {}) => {
 
       toast.success('📸 Photo capturée!');
       return compressed;
-    } catch (err: any) {
-      const errorMsg = err.message || 'Erreur lors de la capture';
+    } catch (err: unknown) {
+      const errorMsg =
+        err instanceof Error ? err.message : String(err || 'Erreur lors de la capture');
       setError(errorMsg);
       toast.error(`❌ ${errorMsg}`);
       return null;
@@ -181,8 +182,10 @@ export const useTerrainPhoto = (options: UseTerrainPhotoOptions = {}) => {
 
         input.click();
       });
-    } catch (err: any) {
-      setError(err.message || 'Erreur lors de la sélection');
+    } catch (err: unknown) {
+      const errorMsg =
+        err instanceof Error ? err.message : String(err || 'Erreur lors de la sélection');
+      setError(errorMsg);
       return null;
     }
   }, [compressImage]);
@@ -200,10 +203,10 @@ export const useTerrainPhoto = (options: UseTerrainPhotoOptions = {}) => {
  */
 export const useTerrainOffline = () => {
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
-  const [pendingActions, setPendingActions] = useState<any[]>([]);
+  const [pendingActions, setPendingActions] = useState<Record<string, unknown>[]>([]);
 
   // Écouter les événements online/offline
-  useState(() => {
+  useEffect(() => {
     const handleOnline = () => setIsOffline(false);
     const handleOffline = () => setIsOffline(true);
 
@@ -214,12 +217,12 @@ export const useTerrainOffline = () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  });
+  }, []);
 
   /**
    * Ajouter une action en attente (pour sync hors-ligne)
    */
-  const addPendingAction = useCallback((action: any) => {
+  const addPendingAction = useCallback((action: Record<string, unknown>) => {
     setPendingActions((prev) => [...prev, { ...action, timestamp: Date.now() }]);
   }, []);
 

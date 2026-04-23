@@ -17,6 +17,7 @@ router.get('/sessions', formationController.getSessions);
 router.post('/sessions', formationController.createSession);
 router.put('/sessions/:id', formationController.updateSession);
 router.delete('/sessions/:id', formationController.deleteSession);
+router.post('/sessions/:id/recalculate-cascade', formationController.cascadeRescheduleSession);
 
 // Routes modules d'une session
 router.post('/sessions/:id/modules', formationController.addModuleToSession);
@@ -35,5 +36,7 @@ router.post('/planify/commit', formationController.commitPlanify);
 router.get('/planning', formationController.getPlanning);
 router.post('/bulk', formationController.bulkCreateSessions);
 router.get('/stats', formationController.getStats);
+router.get('/history', formationController.getHistory);
+router.post('/history', formationController.createHistoryEntry);
 
 export default router;

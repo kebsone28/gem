@@ -77,7 +77,7 @@ export const MissionListSidebar: React.FC<MissionListSidebarProps> = ({
         const timeB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
         return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA);
       });
-  }, [visibleMissions, search, filter]);
+  }, [visibleMissions, search, filter, currentMissionId, isCertifiedByWorkflow]);
 
   const counts = useMemo(
     () => ({
@@ -127,8 +127,8 @@ export const MissionListSidebar: React.FC<MissionListSidebarProps> = ({
     ];
 
   return (
-    <div className="w-full no-print space-y-3">
-      <h3 className="!text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 px-1 flex items-center gap-2">
+    <div className="w-full no-print space-y-3 sm:space-y-4">
+      <h3 className="!text-[10px] sm:!text-[9px] font-black uppercase tracking-[0.16em] sm:tracking-[0.2em] text-slate-400 dark:text-slate-500 px-1 flex items-center gap-2">
         <FileText size={10} />
         Mes Missions
         <span className="ml-auto bg-indigo-500/20 text-indigo-400 text-[8px] font-black px-1.5 py-0.5 rounded-full">
@@ -147,17 +147,17 @@ export const MissionListSidebar: React.FC<MissionListSidebarProps> = ({
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Rechercher..."
-          className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 rounded-xl pl-7 pr-3 py-2 text-[10px] font-bold outline-none focus:ring-2 ring-indigo-500/20 placeholder-slate-400 transition-all"
+          className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 rounded-xl pl-8 pr-3 py-2.5 text-[11px] sm:text-[10px] font-bold outline-none focus:ring-2 ring-indigo-500/20 placeholder-slate-400 transition-all"
         />
       </div>
 
       {/* Filtres status */}
-      <div className="flex gap-1">
+      <div className="grid grid-cols-4 gap-1.5">
         {filterButtons.map(({ key, label, color, activeColor }) => (
           <button
             key={key}
             onClick={() => setFilter(key)}
-            className={`flex-1 py-1 rounded-lg text-[7px] font-black uppercase tracking-tighter transition-all flex flex-col items-center gap-0.5 min-w-0 ${
+            className={`min-w-0 rounded-xl py-1.5 text-[8px] sm:text-[7px] font-black uppercase tracking-tight transition-all flex flex-col items-center gap-0.5 ${
               filter === key
                 ? activeColor
                 : `bg-slate-100 dark:bg-white/5 ${color} hover:bg-slate-200 dark:hover:bg-white/10`
@@ -172,9 +172,9 @@ export const MissionListSidebar: React.FC<MissionListSidebarProps> = ({
       </div>
 
       {/* Liste */}
-      <div className="space-y-1.5 max-h-[1100px] overflow-y-auto custom-scrollbar pr-1">
+      <div className="space-y-2 max-h-[70vh] lg:max-h-[1100px] overflow-y-auto custom-scrollbar pr-1">
         {filteredMissions.length === 0 && (
-          <div className="text-center py-8 text-slate-500 dark:text-slate-600">
+          <div className="text-center py-8 text-slate-500 dark:text-slate-600 border border-dashed border-slate-200 dark:border-white/5 rounded-2xl">
             <FileText size={24} className="mx-auto mb-2 opacity-30" />
             <p className="text-[9px] font-black uppercase tracking-widest">Aucune mission</p>
           </div>
@@ -192,7 +192,7 @@ export const MissionListSidebar: React.FC<MissionListSidebarProps> = ({
               tabIndex={0}
               onClick={() => onLoadMission(m)}
               onKeyDown={(e) => e.key === 'Enter' && onLoadMission(m)}
-              className={`w-full cursor-pointer text-left p-3 rounded-xl text-[9px] font-bold uppercase tracking-widest border transition-all duration-200 group flex flex-col gap-1.5 overflow-hidden relative ${
+              className={`w-full cursor-pointer text-left p-3 sm:p-3.5 rounded-2xl text-[10px] sm:text-[9px] font-bold uppercase tracking-[0.12em] sm:tracking-widest border transition-all duration-200 group flex flex-col gap-2 overflow-hidden relative ${
                 isActive
                   ? 'bg-indigo-600 text-white border-indigo-500 shadow-xl shadow-indigo-500/20 translate-x-1'
                   : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-white/5 text-slate-500 dark:text-slate-400 hover:border-indigo-400/50 hover:shadow-md'
@@ -205,7 +205,7 @@ export const MissionListSidebar: React.FC<MissionListSidebarProps> = ({
                     : m.purpose || 'Brouillon'}
                 </span>
                 <span
-                  className={`flex-shrink-0 flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[7px] font-black ${
+                  className={`flex-shrink-0 flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[8px] sm:text-[7px] font-black ${
                     isActive ? 'bg-white/20 text-white' : cfg.badge
                   }`}
                 >
@@ -222,7 +222,7 @@ export const MissionListSidebar: React.FC<MissionListSidebarProps> = ({
                   <Clock size={9} className="text-amber-500 flex-shrink-0" />
                 )}
                 <span
-                  className={`text-[9px] truncate normal-case font-medium ${isActive ? 'text-white/70' : 'text-slate-500 dark:text-slate-500'}`}
+                  className={`text-[10px] sm:text-[9px] truncate normal-case font-medium ${isActive ? 'text-white/70' : 'text-slate-500 dark:text-slate-500'}`}
                 >
                   {m.region || (m.orderNumber && !m.orderNumber.startsWith('TEMP-') ? m.purpose : 'Destination à préciser')}
                 </span>
@@ -249,7 +249,7 @@ export const MissionListSidebar: React.FC<MissionListSidebarProps> = ({
                     onDeleteMission(m.id, m.orderNumber || 'Brouillon');
                   }
                 }}
-                className="absolute bottom-2 right-2 p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 rounded-lg opacity-0 group-hover:opacity-100 transition-all z-10"
+                className="absolute bottom-2 right-2 p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 rounded-lg opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all z-10"
                 title="Supprimer définitivement"
               >
                 <Trash2 size={11} />

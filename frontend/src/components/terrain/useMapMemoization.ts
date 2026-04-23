@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
+﻿/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * useMapMemoization.ts
  *
@@ -7,7 +7,7 @@
  * - Prevents recalculations for large datasets
  */
 
-import { useMemo, useRef } from 'react';
+import { useMemo } from 'react';
 import { hashGeoJSON } from './mapUtils';
 
 /**
@@ -19,22 +19,11 @@ import { hashGeoJSON } from './mapUtils';
  * - useMemoDeep: only recalculates when data hash changes
  */
 export const useMemoDeep = <T>(factory: () => T, deps: any[]): T => {
-  const memoRef = useRef<{ value: T; hash: string }>({
-    value: factory(),
-    hash: hashGeoJSON(factory()),
-  });
+  const depsHash = hashDependencies(deps);
 
-  return useMemo(() => {
-    const newValue = factory();
-    const newHash = hashGeoJSON(newValue);
-
-    // Only update if hash changed (deep comparison)
-    if (newHash !== memoRef.current.hash) {
-      memoRef.current = { value: newValue, hash: newHash };
-    }
-
-    return memoRef.current.value;
-  }, [JSON.stringify(deps)]); // deps comparison fallback
+  // preserve-manual-memoization: intentional deep-hash dependency
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization, react-hooks/exhaustive-deps
+  return useMemo(() => factory(), [depsHash]);
 };
 
 /**

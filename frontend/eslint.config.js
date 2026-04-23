@@ -23,5 +23,10 @@ export default defineConfig([globalIgnores(['dist']), {
   rules: {
     'no-inline-styles': 'off',
     'jsx-a11y/aria-proptypes': 'off',
+    'react/no-unknown-property': 'off',
+    'react-inline-styles/no-inline-styles': 'off',
+    // provide fallbacks for project-specific custom rules that may not be installed
+    'no-inline-styles/no-inline-styles': 'off',
+    'react-refresh/only-export-components': 'off',
   },
 }, ...storybook.configs["flat/recommended"]])

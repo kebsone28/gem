@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
+﻿ 
 import React from 'react';
 import { COMMON_CLASSES } from '../../styles/tokens';
 import { PageHeader, PageContainer, StatsGrid, Section, LoadingState } from '../layout';
@@ -70,18 +70,18 @@ export const StatsPage: React.FC<StatsPageProps> = ({
 
       {/* KPI Grid */}
       {stats.length > 0 && (
-        <StatsGrid className="mb-8">
+        <StatsGrid className="mb-6 sm:mb-8">
           {stats.map((stat, idx) => {
             const color = stat.color ?? 'blue';
             return (
               <div
                 key={idx}
-                className={`${COMMON_CLASSES.card} ${COMMON_CLASSES.cardHover} ${COMMON_CLASSES.cardPadding} kpi-card`}
+                className={`${COMMON_CLASSES.card} ${COMMON_CLASSES.cardHover} p-3 sm:${COMMON_CLASSES.cardPadding} kpi-card`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
-                    <p className={`${COMMON_CLASSES.overline} mb-2 truncate`}>{stat.label}</p>
-                    <p className={`text-2xl font-bold tracking-tighter ${statColorMap[color]}`}>
+                    <p className={`${COMMON_CLASSES.overline} mb-1 truncate sm:mb-2`}>{stat.label}</p>
+                    <p className={`text-xl font-bold tracking-tighter sm:text-2xl ${statColorMap[color]}`}>
                       {stat.value}
                     </p>
                     {stat.trend && (
@@ -101,7 +101,7 @@ export const StatsPage: React.FC<StatsPageProps> = ({
                     )}
                   </div>
                   {stat.icon && (
-                    <div className={`p-3 rounded-xl shrink-0 ${statIconBgMap[color]}`}>
+                    <div className={`rounded-xl p-2.5 shrink-0 sm:p-3 ${statIconBgMap[color]}`}>
                       {stat.icon}
                     </div>
                   )}
@@ -165,8 +165,8 @@ export const FilterPage: React.FC<FilterPageProps> = ({
       <PageHeader title={title} subtitle={subtitle} icon={icon} actions={actions} />
 
       {/* Barre de filtres */}
-      <div className={`${COMMON_CLASSES.card} ${COMMON_CLASSES.cardSm} mb-6`}>
-        <div className="flex flex-col lg:flex-row gap-4">
+      <div className={`${COMMON_CLASSES.card} ${COMMON_CLASSES.cardSm} mb-5 sm:mb-6`}>
+        <div className="flex flex-col gap-3 sm:gap-4 lg:flex-row">
           {/* Recherche */}
           {search && (
             <div className="flex-1">
@@ -196,14 +196,14 @@ export const FilterPage: React.FC<FilterPageProps> = ({
           )}
 
           {/* Selects de filtre */}
-          <div className="flex flex-wrap gap-3 items-end">
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
             {filters.map((filter) => (
               <div key={filter.key} className="flex flex-col gap-1">
                 <label className={COMMON_CLASSES.label}>{filter.label}</label>
                 <select
                   value={filter.value ?? ''}
                   onChange={(e) => filter.onChange(e.target.value)}
-                  className={`${COMMON_CLASSES.input} min-w-[140px] w-auto`}
+                  className={`${COMMON_CLASSES.input} w-full sm:min-w-[140px] sm:w-auto`}
                   title={filter.label}
                   aria-label={filter.label}
                 >
@@ -274,18 +274,18 @@ export const FormPage: React.FC<FormPageProps> = ({
       <form onSubmit={handleSubmit} className="space-y-6" noValidate>
         <div className={`${COMMON_CLASSES.card} ${COMMON_CLASSES.cardPadding}`}>{children}</div>
 
-        <div className="flex justify-end items-center gap-3">
+        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-end">
           {onCancel && (
             <button
               type="button"
               onClick={onCancel}
-              className={COMMON_CLASSES.btnSecondary}
+              className={`${COMMON_CLASSES.btnSecondary} w-full sm:w-auto`}
               disabled={loading}
             >
               {cancelLabel}
             </button>
           )}
-          <button type="submit" className={COMMON_CLASSES.btnPrimary} disabled={loading}>
+          <button type="submit" className={`${COMMON_CLASSES.btnPrimary} w-full sm:w-auto`} disabled={loading}>
             {loading ? (
               <span className="flex items-center gap-2">
                 <span className={COMMON_CLASSES.spinnerSm} />

@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React from 'react';
 import { COMMON_CLASSES } from '../../styles/tokens';
 import { withAnalytics } from '../../utils/designSystemAnalytics';
@@ -61,12 +61,12 @@ export const PageHeader: React.FC<PageHeaderProps> = React.memo(withAnalytics(
     // Variant default
     return (
       <div className={`${COMMON_CLASSES.pageHeader} ${className}`}>
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-center gap-3 min-w-0 flex-1">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-start gap-2.5 min-w-0 flex-1 sm:items-center sm:gap-3">
             {icon && (
               <div
                 className="
-                p-2.5 rounded-xl shrink-0
+                p-2 rounded-xl shrink-0 sm:p-2.5
                 bg-[rgba(30,144,255,0.10)] dark:bg-[rgba(30,144,255,0.15)]
                 text-[var(--color-primary)] dark:text-[#60AFFF]
               "
@@ -75,14 +75,18 @@ export const PageHeader: React.FC<PageHeaderProps> = React.memo(withAnalytics(
               </div>
             )}
             <div className="min-w-0">
-              <h1 className={`${COMMON_CLASSES.heading1} mb-0 break-words`}>{title}</h1>
+              <h1 className="mb-0 break-words text-[clamp(2rem,7vw,3.25rem)] font-bold leading-[0.95] tracking-tight text-[var(--color-text-primary)]">
+                {title}
+              </h1>
               {subtitle && (
-                <p className={`${COMMON_CLASSES.body} text-sm mt-0.5 break-words`}>{subtitle}</p>
+                <p className={`${COMMON_CLASSES.body} mt-1 max-w-[60ch] text-sm break-words sm:mt-0.5`}>
+                  {subtitle}
+                </p>
               )}
             </div>
           </div>
           {actions && (
-            <div className="flex w-full md:w-auto flex-wrap justify-start md:justify-end gap-2">
+            <div className="flex w-full flex-col justify-start gap-2 sm:flex-row md:w-auto md:justify-end">
               {actions}
             </div>
           )}
@@ -170,12 +174,12 @@ export const Section: React.FC<SectionProps> = ({
   return (
     <section className={`${COMMON_CLASSES.section} ${paddingClasses[padding]} ${className}`}>
       {(title || subtitle || actions) && (
-        <div className="flex items-start justify-between gap-4 mb-5">
+        <div className="mb-4 flex flex-col gap-3 sm:mb-5 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
           <div>
             {title && <h2 className={COMMON_CLASSES.heading2}>{title}</h2>}
             {subtitle && <p className={`${COMMON_CLASSES.body} mt-1`}>{subtitle}</p>}
           </div>
-          {actions && <div className="flex items-center gap-2 shrink-0">{actions}</div>}
+          {actions && <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:shrink-0">{actions}</div>}
         </div>
       )}
       {children}
@@ -203,8 +207,8 @@ export const ContentArea: React.FC<ContentAreaProps> = ({
 }) => {
   const paddingClasses: Record<string, string> = {
     none: '',
-    sm: 'p-4',
-    md: 'p-6',
+    sm: 'p-3 sm:p-4',
+    md: 'p-4 sm:p-6',
     lg: 'p-8',
   };
 
@@ -269,12 +273,12 @@ interface StatsGridProps {
 
 export const StatsGrid: React.FC<StatsGridProps> = ({ children, className = '', columns = 4 }) => {
   const gridClasses: Record<number, string> = {
-    2: 'grid-cols-1 sm:grid-cols-2',
-    3: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3',
-    4: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4',
+    2: 'grid-cols-2 sm:grid-cols-2',
+    3: 'grid-cols-2 sm:grid-cols-2 lg:grid-cols-3',
+    4: 'grid-cols-2 sm:grid-cols-2 lg:grid-cols-4',
   };
 
-  return <div className={`grid ${gridClasses[columns]} gap-4 ${className}`}>{children}</div>;
+  return <div className={`grid ${gridClasses[columns]} gap-3 sm:gap-4 ${className}`}>{children}</div>;
 };
 
 // ─────────────────────────────────────────────────────────────────────────

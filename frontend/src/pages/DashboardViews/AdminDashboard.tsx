@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
+﻿/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useCallback, useState } from 'react';
 import toast from 'react-hot-toast';
 import { ShieldCheck, BarChart3, Users } from 'lucide-react';
@@ -98,7 +98,7 @@ export default function AdminDashboard() {
       />
 
       <ContentArea padding="none" className="bg-transparent border-none shadow-none relative z-10">
-        <div className="px-6 lg:px-12 pb-24 space-y-12">
+        <div className="px-3 sm:px-6 lg:px-12 pb-16 sm:pb-24 space-y-6 sm:space-y-8 lg:space-y-12">
           {/* Header & Main Actions */}
           <DashboardHeader
             projectName={project?.name || ''}
@@ -111,7 +111,7 @@ export default function AdminDashboard() {
           <GlobalProgressCard metrics={metrics} />
 
           {/* Team Production Performance */}
-          <div className="pt-6">
+          <div className="pt-2 sm:pt-6">
             <TeamPerformance
               teamStats={metrics.breakdown.byTeam}
               productionRates={project?.config?.productionRates}
@@ -132,7 +132,7 @@ export default function AdminDashboard() {
           <ComplianceSection metrics={metrics} />
 
           {/* Infrastructure Control & Live Activity */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-10">
             <ControlPanel
               metrics={metrics}
               feedActivities={feedActivities}
@@ -141,7 +141,7 @@ export default function AdminDashboard() {
           </div>
 
           {/* Secondary Nav / Data Access */}
-          <footer className="flex flex-col sm:flex-row gap-8 pt-16 border-t border-white/5 relative z-10">
+          <footer className="flex flex-col sm:flex-row gap-4 sm:gap-8 pt-8 sm:pt-16 border-t border-white/5 relative z-10">
             <FooterButton
               onClick={() => navigate('/rapports')}
               label="CENTRE DE DONNÉES"
@@ -181,14 +181,14 @@ interface FooterButtonProps {
 const FooterButton = ({ onClick, label, title, Icon }: FooterButtonProps) => (
   <button
     onClick={onClick}
-    className="flex-1 flex items-center gap-6 px-10 py-8 bg-slate-900/40 rounded-[2.5rem] border border-white/5 hover:border-blue-500/40 transition-all group backdrop-blur-xl"
+    className="flex-1 flex items-center gap-4 sm:gap-6 px-5 sm:px-10 py-5 sm:py-8 bg-slate-900/40 rounded-[1.6rem] sm:rounded-[2.5rem] border border-white/5 hover:border-blue-500/40 transition-all group backdrop-blur-xl"
   >
-    <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center border border-white/5 group-hover:bg-blue-600 group-hover:text-white transition-all shadow-lg">
+    <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl bg-white/5 flex items-center justify-center border border-white/5 group-hover:bg-blue-600 group-hover:text-white transition-all shadow-lg shrink-0">
       <Icon size={24} className="text-blue-400 group-hover:text-white transition-colors" />
     </div>
     <div className="text-left">
-      <p className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-500 italic group-hover:text-blue-400">{label}</p>
-      <p className="text-sm font-black text-white italic uppercase tracking-tighter mt-1">{title}</p>
+      <p className="text-[8px] sm:text-[11px] font-black uppercase tracking-[0.12em] sm:tracking-[0.3em] text-slate-500 italic group-hover:text-blue-400">{label}</p>
+      <p className="text-xs sm:text-sm font-black text-white italic uppercase tracking-tighter mt-1">{title}</p>
     </div>
   </button>
 );

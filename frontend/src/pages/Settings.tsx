@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
+﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -32,6 +32,10 @@ import { KoboSettingsSection } from '../components/KoboSettingsSection';
 import { DataSection } from '../components/DataSection';
 import apiClient from '../api/client';
 import toast from 'react-hot-toast';
+
+// Helper stable id generator (defined outside components to avoid impure calls during render)
+const makeId = (prefix = 'id') =>
+  `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
 
 // ─── TYPE DEFINITIONS ───────────────────────────────────────────────────
 type ProjectConfig = Record<string, unknown> & {
@@ -883,7 +887,8 @@ function CostsSection({ project, onUpdate }: { project: any; onUpdate: any }) {
 
   useEffect(() => {
     if (regions.length > 0 && !selectedRegionId) {
-      setSelectedRegionId(regions[0].id);
+      const t = window.setTimeout(() => setSelectedRegionId(regions[0].id), 0);
+      return () => clearTimeout(t);
     }
   }, [regions, selectedRegionId]);
 
@@ -1128,7 +1133,8 @@ function RegionsSection({
 
   useEffect(() => {
     if (autoRegions.length > 0 && !selectedRegion) {
-      setSelectedRegion(autoRegions[0]);
+      const t = window.setTimeout(() => setSelectedRegion(autoRegions[0]), 0);
+      return () => clearTimeout(t);
     }
   }, [autoRegions, selectedRegion]);
 
@@ -1146,7 +1152,7 @@ function RegionsSection({
 
   const handleAddAllocation = (regionName: string) => {
     const currentConfig = regionConfigs[regionName] || { teamAllocations: [] };
-    const newAllocation = { id: `alloc_${Date.now()}`, subTeamId: '', priority: 1 };
+    const newAllocation = { id: makeId('alloc'), subTeamId: '', priority: 1 };
     handleUpdateRegionConfig(regionName, {
       ...currentConfig,
       teamAllocations: [...(currentConfig.teamAllocations || []), newAllocation],
@@ -1400,7 +1406,7 @@ function LogisticsSection({ project, onUpdate }: { project: any; onUpdate: any }
     const teamAlloc = allocations[subTeamId] || [];
     if (teamAlloc.find((a: any) => a.itemId === itemId)) return;
     const newAlloc: SubTeamEquipment = {
-      id: `alloc_${Date.now()}`,
+      id: makeId('alloc'),
       itemId,
       quantity: 1,
       acquisitionType: 'achat',

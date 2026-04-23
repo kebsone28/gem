@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps */
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -577,7 +577,7 @@ export default function MissionOrder() {
 
       <ContentArea>
         {/* BARRE D'ACTIONS - HAUTE PRIORITÉ Z-INDEX */}
-        <div className="relative z-50 mb-8 no-print">
+        <div className="relative z-50 mb-4 sm:mb-8 no-print">
           <WidgetErrorBoundary title="Barre d'Actions">
             <MissionOrderActionBar
             formData={state.formData}
@@ -622,7 +622,7 @@ export default function MissionOrder() {
         </div>
 
         {/* GRILLE PRINCIPALE */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 relative z-10">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 lg:gap-8 relative z-10">
           {/* SIDEBAR : COL-3 */}
           <div className="lg:col-span-3 no-print">
             <MissionListSidebar
@@ -636,18 +636,18 @@ export default function MissionOrder() {
 
           {/* CONTENU : COL-9 */}
           <div className="lg:col-span-9">
-            <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 sm:gap-6 lg:gap-8 items-start">
               {/* FORMULAIRE : COL-8 (interne) */}
-              <div className="xl:col-span-8 space-y-8">
+              <div className="xl:col-span-8 space-y-4 sm:space-y-6 lg:space-y-8">
                 {(state.isSubmitted || state.isCertified) && (
                   <MissionApprovalStatusBanner workflow={workflow} />
                 )}
 
                 {/* ONGLETS PRÉPARATION / RAPPORT / APPROBATION */}
-                <div className="flex gap-2 mb-6 border-b-2 border-slate-300 dark:border-slate-700 pb-2">
+                <div className="flex gap-2 mb-4 sm:mb-6 border-b-2 border-slate-300 dark:border-slate-700 pb-2 overflow-x-auto no-scrollbar">
                   <button
                     onClick={() => setActiveTab('prep')}
-                    className={`min-w-[180px] px-6 py-3 text-base font-extrabold uppercase tracking-wider rounded-t-lg focus:outline-none transition-all duration-200
+                    className={`shrink-0 min-w-[150px] sm:min-w-[180px] px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base font-extrabold uppercase tracking-[0.12em] sm:tracking-wider rounded-t-lg focus:outline-none transition-all duration-200
                       ${activeTab === 'prep'
                         ? 'text-indigo-600 dark:text-indigo-300 border-b-4 border-indigo-500 bg-white dark:bg-slate-900 shadow-lg'
                         : 'text-slate-500 dark:text-slate-400 hover:text-indigo-500 dark:hover:text-indigo-400 bg-transparent'}
@@ -657,7 +657,7 @@ export default function MissionOrder() {
                   </button>
                   <button
                     onClick={() => setActiveTab('report')}
-                    className={`min-w-[220px] px-6 py-3 text-base font-extrabold uppercase tracking-wider rounded-t-lg focus:outline-none transition-all duration-200
+                    className={`shrink-0 min-w-[180px] sm:min-w-[220px] px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base font-extrabold uppercase tracking-[0.12em] sm:tracking-wider rounded-t-lg focus:outline-none transition-all duration-200
                       ${activeTab === 'report'
                         ? 'text-emerald-600 dark:text-emerald-300 border-b-4 border-emerald-500 bg-white dark:bg-slate-900 shadow-lg'
                         : 'text-slate-500 dark:text-slate-400 hover:text-emerald-500 dark:hover:text-emerald-400 bg-transparent'}
@@ -667,7 +667,7 @@ export default function MissionOrder() {
                   </button>
                   <button
                     onClick={() => setActiveTab('approval')}
-                    className={`min-w-[180px] px-6 py-3 text-base font-extrabold uppercase tracking-wider rounded-t-lg focus:outline-none transition-all duration-200
+                    className={`shrink-0 min-w-[150px] sm:min-w-[180px] px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base font-extrabold uppercase tracking-[0.12em] sm:tracking-wider rounded-t-lg focus:outline-none transition-all duration-200
                       ${activeTab === 'approval'
                         ? 'text-amber-600 dark:text-amber-300 border-b-4 border-amber-500 bg-white dark:bg-slate-900 shadow-lg'
                         : 'text-slate-500 dark:text-slate-400 hover:text-amber-500 dark:hover:text-amber-400 bg-transparent'}
@@ -1049,7 +1049,7 @@ export default function MissionOrder() {
               </div>
 
               {/* WIDGETS : COL-4 (interne) */}
-              <div className="xl:col-span-4 space-y-8">
+              <div className="xl:col-span-4 space-y-4 sm:space-y-6 lg:space-y-8">
                 <MissionBudgetPanel
                   totalFrais={totalFrais}
                   projectBudget={projectBudget}

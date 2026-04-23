@@ -23,28 +23,28 @@ export const MissionTeamEditor: React.FC<MissionTeamEditorProps> = ({
   const isLocked = isReadOnly || members.some(() => false); // Placeholder but logically true if isReadOnly
   return (
     <section
-      className={`glass-card !p-5 !rounded-[2rem] space-y-4 ${isLocked ? 'opacity-90' : ''}`}
+      className={`glass-card !p-4 sm:!p-5 !rounded-[1.6rem] sm:!rounded-[2rem] space-y-4 ${isLocked ? 'opacity-90' : ''}`}
     >
-      <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-white/5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pb-3 border-b border-slate-200 dark:border-white/5">
         <h2 className="font-black text-slate-800 dark:text-white uppercase tracking-wider !text-[10px] flex items-center gap-2">
           <div className="p-1.5 bg-indigo-500/10 rounded-lg">
             <Users size={14} className="text-indigo-500" />
           </div>{' '}
           Ressources Humaines Assignées
         </h2>
-        <div className="flex gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full sm:w-auto">
           {!isLocked && (
             <>
               <button
                 onClick={onSyncDuration}
-                className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-slate-200 dark:hover:bg-slate-700 transition-all border border-slate-200/50 dark:border-white/5"
+                className="flex min-h-10 items-center justify-center gap-2 px-3 py-2 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-xl text-[9px] font-black uppercase tracking-[0.14em] sm:tracking-widest hover:bg-slate-200 dark:hover:bg-slate-700 transition-all border border-slate-200/50 dark:border-white/5"
                 title="Synchroniser la durée avec le planning"
               >
                 <Sparkles size={10} className="text-indigo-400" /> Auto-Durée
               </button>
               <button
                 onClick={onAddMember}
-                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-indigo-500 transition-all shadow-md shadow-indigo-500/20"
+                className="flex min-h-10 items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-[9px] font-black uppercase tracking-[0.14em] sm:tracking-widest hover:bg-indigo-500 transition-all shadow-md shadow-indigo-500/20"
               >
                 <Plus size={10} /> Ajouter
               </button>
@@ -57,9 +57,9 @@ export const MissionTeamEditor: React.FC<MissionTeamEditorProps> = ({
         {members.map((m, i) => (
           <div
             key={i}
-            className="grid grid-cols-12 gap-3 items-center p-3.5 bg-white dark:bg-slate-900/40 rounded-xl border border-slate-200 dark:border-white/5 transition-all group hover:shadow-xl hover:shadow-indigo-500/5 hover:-translate-y-0.5"
+            className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center p-3 sm:p-3.5 bg-white dark:bg-slate-900/40 rounded-2xl border border-slate-200 dark:border-white/5 transition-all group hover:shadow-xl hover:shadow-indigo-500/5 hover:-translate-y-0.5"
           >
-            <div className="col-span-12 md:col-span-3 flex items-center gap-3">
+            <div className="sm:col-span-12 md:col-span-3 flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-500/10 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-black text-xs border border-indigo-200/50 dark:border-indigo-500/20">
                 {m.name ? m.name.charAt(0) : '?'}
               </div>
@@ -72,7 +72,7 @@ export const MissionTeamEditor: React.FC<MissionTeamEditorProps> = ({
                 placeholder="Nom de l'opératif"
               />
             </div>
-            <div className="col-span-12 md:col-span-2">
+            <div className="sm:col-span-12 md:col-span-2">
               <input
                 type="text"
                 value={m.role}
@@ -82,7 +82,8 @@ export const MissionTeamEditor: React.FC<MissionTeamEditorProps> = ({
                 placeholder="Spécialité/Rôle"
               />
             </div>
-            <div className="col-span-6 md:col-span-3">
+            <div className="grid grid-cols-2 gap-3 sm:contents">
+            <div className="sm:col-span-6 md:col-span-3">
               <div className="flex items-center gap-2 bg-white/60 dark:bg-slate-800 p-2 rounded-xl ring-1 ring-slate-200/50 dark:ring-white/10 shadow-inner">
                 <span className="text-[7px] font-black text-slate-400 uppercase tracking-widest leading-none bg-slate-100 dark:bg-white/5 py-1 px-1.5 rounded-md">
                   TAUX
@@ -100,7 +101,7 @@ export const MissionTeamEditor: React.FC<MissionTeamEditorProps> = ({
                 />
               </div>
             </div>
-            <div className="col-span-6 md:col-span-3">
+            <div className="sm:col-span-6 md:col-span-3">
               <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 p-2 rounded-xl ring-1 ring-slate-200 dark:ring-white/10 shadow-inner">
                 <span className="text-[7px] font-black text-slate-500 uppercase tracking-widest leading-none bg-white/20 dark:bg-white/5 py-1 px-1.5 rounded-md">
                   JOURS
@@ -116,8 +117,9 @@ export const MissionTeamEditor: React.FC<MissionTeamEditorProps> = ({
                 />
               </div>
             </div>
+            </div>
             {!isReadOnly && (
-              <div className="col-span-2 md:col-span-1 flex justify-end pr-2">
+              <div className="sm:col-span-12 md:col-span-1 flex justify-end pr-0 md:pr-2">
                 <button
                   onClick={() => onRemoveMember(i)}
                   className="text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 p-2 rounded-lg transition-colors"

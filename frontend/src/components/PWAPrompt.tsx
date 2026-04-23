@@ -1,16 +1,11 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
+﻿/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import { Download, RefreshCw, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import logger from '../utils/logger';
 
 export default function PWAPrompt() {
-  // avoid caching source files during development — ServiceWorker only for production builds
-  if (import.meta.env.DEV) {
-    logger.log('💎 [PWA] Skipping SW registration in dev mode');
-    return null;
-  }
-
+  // Always call the hook (keeps hooks call order stable). We'll early-return in dev after calling it.
   const sw: any = useRegisterSW({
     onRegistered(r: ServiceWorkerRegistration | undefined) {
       logger.log('💎 [PWA] SW Registered: ', r);
@@ -19,6 +14,12 @@ export default function PWAPrompt() {
       logger.error('❌ [PWA] SW registration error', error);
     },
   });
+
+  // avoid caching source files during development — ServiceWorker only for production builds
+  if (import.meta.env.DEV) {
+    logger.log('💎 [PWA] Skipping SW UI in dev mode');
+    return null;
+  }
 
   // Garde-fou ultime
   if (!sw) return null;

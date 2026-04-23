@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
+﻿ 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { Clock, RefreshCw } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -10,10 +10,11 @@ export default function SessionWarningToast() {
   const { user, logout } = useAuth();
   const [showWarning, setShowWarning] = useState(false);
   const [countdown, setCountdown] = useState(120); // seconds
-  const lastActivityRef = useRef(Date.now());
+  const lastActivityRef = useRef<number | null>(null);
   const warningTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const logoutTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const scheduleHandleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const clearAllTimers = () => {
     if (warningTimerRef.current) clearTimeout(warningTimerRef.current);
@@ -46,6 +47,7 @@ export default function SessionWarningToast() {
 
   const resetActivity = useCallback(() => {
     lastActivityRef.current = Date.now();
+    // Event handler: safe to call scheduleTimers synchronously
     scheduleTimers();
   }, [scheduleTimers]);
 
@@ -59,7 +61,11 @@ export default function SessionWarningToast() {
       return;
     }
 
-    scheduleTimers();
+    // Initialize last activity timestamp once on mount (avoid impure calls during render)
+    if (!lastActivityRef.current) lastActivityRef.current = Date.now();
+
+    // Defer scheduling to avoid synchronous setState inside the effect
+    scheduleHandleRef.current = setTimeout(() => scheduleTimers(), 0);
 
     const events = ['mousemove', 'keydown', 'click', 'touchstart', 'scroll'];
     events.forEach((ev) => window.addEventListener(ev, resetActivity, { passive: true }));
@@ -67,6 +73,7 @@ export default function SessionWarningToast() {
     return () => {
       events.forEach((ev) => window.removeEventListener(ev, resetActivity));
       clearAllTimers();
+      if (scheduleHandleRef.current) clearTimeout(scheduleHandleRef.current);
     };
   }, [user, scheduleTimers, resetActivity]);
 

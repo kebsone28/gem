@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
+﻿ 
 /**
  * AdminDashboardEnhanced - Console d'Administration avec paramètres ajustables
  * Exemple d'implémentation avec ConsoleSettings et useConsoleLayout
@@ -32,6 +32,19 @@ export const AdminDashboardEnhanced: React.FC = () => {
     { icon: Users, label: 'Équipes Actives', value: '8', change: '+2' },
     { icon: AlertCircle, label: 'Alertes Critiques', value: '3', change: '↓ 1' },
   ];
+
+  // Pré-calculs immuables pour éviter appels impurs au rendu
+  const teamNames = React.useMemo(() => ['Alpha Squad', 'Beta Team', 'Gamma Unit'], []);
+  // Deterministic metric based on name to avoid Math.random in render
+  const teamMetrics = React.useMemo(() => {
+    const hash = (s: string) => {
+      let h = 0;
+      for (let i = 0; i < s.length; i++) h = (h << 5) - h + s.charCodeAt(i);
+      return Math.abs(h);
+    };
+    return teamNames.map((n) => 70 + (hash(n) % 31));
+  }, [teamNames]);
+  const nowTime = React.useMemo(() => new Date().toLocaleTimeString(), []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
@@ -130,18 +143,18 @@ export const AdminDashboardEnhanced: React.FC = () => {
             </h3>
             <div className={layout.getWidgetClasses()}>
               <div className="space-y-3">
-                {['Alpha Squad', 'Beta Team', 'Gamma Unit'].map((team, i) => (
+                {teamNames.map((team, i) => (
                   <div key={i} className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg">
                     <span className="text-slate-300 font-medium">{team}</span>
                     <div className="flex items-center gap-2">
                       <div className="w-24 h-2 rounded-full bg-slate-700">
                         <div
                           className="h-full rounded-full bg-gradient-to-r from-blue-500 to-blue-400"
-                          style={{ width: `${70 + Math.random() * 30}%` }}
+                          style={{ width: `${teamMetrics[i]}%` }}
                         />
                       </div>
                       <span className="text-sm font-bold text-blue-400 w-10">
-                        {Math.round(70 + Math.random() * 30)}%
+                        {Math.round(teamMetrics[i])}%
                       </span>
                     </div>
                   </div>
@@ -179,7 +192,7 @@ export const AdminDashboardEnhanced: React.FC = () => {
                     }`}
                   >
                     <span className="mt-0.5">▸</span>
-                    <span>[{new Date().toLocaleTimeString()}] {log.msg}</span>
+                    <span>[{nowTime}] {log.msg}</span>
                   </div>
                 ))}
               </div>

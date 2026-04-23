@@ -39,7 +39,7 @@ const formatCurrency = (n: number): string => {
   return n.toLocaleString('fr-FR') + ' FCFA';
 };
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+ 
 const _fetchImageAsArrayBuffer = async (url: string): Promise<ArrayBuffer | null> => {
   try {
     const response = await fetch(url);
@@ -556,7 +556,7 @@ export const generateMissionOrderWord = async (data: MissionOrderData) => {
   return await Packer.toBlob(doc);
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 export const generateMissionReportWord = async (data: any): Promise<Blob | null> => {
   try {
     const sections: any[] = [];

@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
+﻿/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from 'react';
 import {
   FileSpreadsheet,
@@ -36,16 +36,20 @@ function DevisRow({
 
   // Resync local state when Dexie/server data changes (e.g. after save/sync)
   useEffect(() => {
-    setPQty(item.qty ?? 0);
+    const t = window.setTimeout(() => setPQty(item.qty ?? 0), 0);
+    return () => clearTimeout(t);
   }, [item.qty]);
   useEffect(() => {
-    setPUnit(item.unit ?? 0);
+    const t = window.setTimeout(() => setPUnit(item.unit ?? 0), 0);
+    return () => clearTimeout(t);
   }, [item.unit]);
   useEffect(() => {
-    setRQty(item.rq ?? item.qty ?? 0);
+    const t = window.setTimeout(() => setRQty(item.rq ?? item.qty ?? 0), 0);
+    return () => clearTimeout(t);
   }, [item.rq, item.qty]);
   useEffect(() => {
-    setRUnit(item.ru ?? item.unit ?? 0);
+    const t = window.setTimeout(() => setRUnit(item.ru ?? item.unit ?? 0), 0);
+    return () => clearTimeout(t);
   }, [item.ru, item.unit]);
 
   const totalPrevu = pQty * pUnit;

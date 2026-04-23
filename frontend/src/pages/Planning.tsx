@@ -1,12 +1,11 @@
-/* eslint-disable react/no-unknown-property */
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Calendar, Users, Home, CheckCircle2, Clock, AlertTriangle,
+  Calendar, Users, Home, CheckCircle2, AlertTriangle,
   ChevronLeft, ChevronRight, MapPin, Wrench, Hammer, Zap,
-  Filter, RefreshCw, Package, History, X, ShieldCheck, Download
+  Filter, RefreshCw, History, X, ShieldCheck, Download
 } from 'lucide-react';
-import { format, addDays, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, isToday, differenceInDays, addMonths } from 'date-fns';
+import { format, addDays, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, isToday, differenceInDays } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
 import * as XLSX from 'xlsx';
@@ -16,7 +15,8 @@ import { PageContainer, PageHeader, ContentArea } from '@components';
 import { useAuthStore } from '../store/authStore';
 import { auditService } from '../services/auditService';
 import alertsAPI from '../services/alertsAPI';
-import { missionSageService, AIResponse, RegionalSummary } from '../services/ai/MissionSageService';
+import { missionSageService } from '../services/ai/MissionSageService';
+import type { AIResponse, AIState, RegionalSummary } from '../services/ai/MissionSageService';
 import { useProject } from '../contexts/ProjectContext';
 import apiClient from '../api/client';
 import type { Household, Team } from '../utils/types';
@@ -32,7 +32,7 @@ interface PlanningTask {
   phase: 'PREPARATION' | 'MACONNERIE' | 'RESEAU' | 'INTERIEUR' | 'CONTROLE' | 'TERMINE';
   phaseProgress: number; // 0-100
   teamId?: string;
-  existingAlerts?: any[];
+  existingAlerts?: PlanningAlert[];
   teamName?: string;
   startDate?: Date;
   endDate?: Date;
@@ -50,6 +50,32 @@ interface TeamPlanning {
 
 type ViewMode = 'calendar' | 'timeline' | 'kanban';
 type PhaseFilter = 'ALL' | 'PREPARATION' | 'MACONNERIE' | 'RESEAU' | 'INTERIEUR' | 'CONTROLE' | 'TERMINE';
+
+interface PlanningAlert {
+  type: string;
+}
+
+interface PlanningAuditLog {
+  action: string;
+  details: string;
+  userName: string;
+  timestamp: string;
+  severity?: string;
+}
+
+type HouseholdWithPlanningMeta = Household & {
+  assignedTeamId?: string | null;
+  alerts?: PlanningAlert[];
+  createdAt?: string;
+};
+
+interface HouseholdsResponse {
+  households?: HouseholdWithPlanningMeta[];
+}
+
+interface TeamsResponse {
+  teams?: Team[];
+}
 
 // Calculer la phase d'un ménage basé sur koboSync
 function getHouseholdPhase(household: Household): { phase: string; progress: number } {
@@ -80,15 +106,6 @@ function getEstimatedDuration(phase: string): number {
 }
 
 // Icônes par phase
-const PHASE_ICONS: Record<string, React.ElementType> = {
-  PREPARATION: Package,
-  MACONNERIE: Hammer,
-  RESEAU: Zap,
-  INTERIEUR: Wrench,
-  CONTROLE: CheckCircle2,
-  TERMINE: CheckCircle2,
-};
-
 const PHASE_COLORS: Record<string, string> = {
   PREPARATION: 'bg-slate-500',
   MACONNERIE: 'bg-amber-500',
@@ -103,6 +120,7 @@ export default function Planning() {
   const [viewMode, setViewMode] = useState<ViewMode>('timeline');
   const [phaseFilter, setPhaseFilter] = useState<PhaseFilter>('ALL');
   const [selectedRegion, setSelectedRegion] = useState<string>('ALL');
+  const [selectedTrade, setSelectedTrade] = useState<string>('ALL');
   const [selectedTeam, setSelectedTeam] = useState<string>('ALL');
   const [targetMonths, setTargetMonths] = useState<number>(6);
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -110,7 +128,7 @@ export default function Planning() {
   const [isLoading, setIsLoading] = useState(true);
   const [showAudit, setShowAudit] = useState(false);
   const [userFilter, setUserFilter] = useState('');
-  const [historyLogs, setHistoryLogs] = useState<any[]>([]);
+  const [historyLogs, setHistoryLogs] = useState<PlanningAuditLog[]>([]);
   const [aiRecommendation, setAiRecommendation] = useState<AIResponse | null>(null);
   const [households, setHouseholds] = useState<Household[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
@@ -133,8 +151,8 @@ export default function Planning() {
           apiClient.get('/teams', { params: { projectId: activeProjectId } })
         ]);
 
-        setHouseholds(householdsRes.data.households || []);
-        setTeams(teamsRes.data.teams?.filter((t: Team) => t.status === 'active') || []);
+        setHouseholds(((householdsRes.data as HouseholdsResponse).households || []));
+        setTeams(((teamsRes.data as TeamsResponse).teams || []).filter((t: Team) => t.status === 'active'));
       } catch (err) {
         console.error('Erreur fetch planning:', err);
         // Fallback: utiliser données locales
@@ -202,38 +220,7 @@ export default function Planning() {
     toast.success("Historique exporté en Excel !");
   }, [historyLogs]);
 
-  // Analyse IA Proactive
-  useEffect(() => {
-    const getAiAdvice = async () => {
-      if (households.length > 0 && !isLoading && teams.length > 0) {
-        // Préparer un résumé régional pour l'IA
-        const regionalSummaries = availableRegions.map(region => {
-          const householdsInRegion = households.filter(h => region === 'ALL' || h.region === region);
-          const tasksInRegion = tasks.filter(t => region === 'ALL' || t.region === region);
-          const delayedHouseholds = tasksInRegion.filter(t => t.isDelayed).length;
-          const teamsAssigned: { [tradeKey: string]: number } = {};
-          teams.forEach(team => {
-            if (team.regionId === region) { // Assumer que team.regionId existe
-              teamsAssigned[team.tradeKey || 'unknown'] = (teamsAssigned[team.tradeKey || 'unknown'] || 0) + 1;
-            }
-          });
-          return {
-            region,
-            totalHouseholds: householdsInRegion.length,
-            delayedHouseholds,
-            teamsAssigned,
-          };
-        });
-        const advice = await missionSageService.processQuery(
-          "Analyse le planning actuel et suggère des réaffectations pour les tâches en retard.",
-          { role: 'CHEF_PROJET', displayName: 'Coordinateur' },
-          { stats: stats as any, auditLogs: historyLogs, households, teams, regionalSummaries }
-        );
-        setAiRecommendation(advice);
-      }
-    };
-    getAiAdvice();
-  }, [isLoading, activeProjectId, stats.total, historyLogs, availableRegions, households, teams, project?.config?.productionRates]);
+  // Analyse IA Proactive (déplacée après le calcul des `stats` pour éviter erreur de référence)
 
   // 🗺️ Récupérer les régions uniques disponibles
   const availableRegions = useMemo(() => {
@@ -263,7 +250,7 @@ export default function Planning() {
       controle: Math.ceil(total / (workingDays * productionRates.controle)),
       workingDays,
     };
-  }, [households.length, targetMonths, project?.config?.productionRates, selectedRegion]);
+  }, [households, targetMonths, project?.config?.productionRates, selectedRegion]);
 
   // Transformer les données en tâches de planning
   const tasks = useMemo((): PlanningTask[] => {
@@ -284,7 +271,7 @@ export default function Planning() {
       // Affectation dynamique par village (grappe)
       // PRIORITÉ 1: Affectation manuelle forcée (si présente en base)
       // PRIORITÉ 2: Calcul automatique par index de village
-      const manualTeamId = (household as any).assignedTeamId;
+      const manualTeamId = (household as HouseholdWithPlanningMeta).assignedTeamId;
       const villageIndex = villages.indexOf(household.village || 'Sans Village');
       const tradeTeams = teams.filter(t => t.tradeKey === 'interieur_type1');
 
@@ -410,6 +397,39 @@ export default function Planning() {
     return { total, byPhase, delayed, completed };
   }, [tasks, selectedRegion]);
 
+  // Analyse IA Proactive
+  useEffect(() => {
+    const getAiAdvice = async () => {
+      if (households.length > 0 && !isLoading && teams.length > 0) {
+        // Préparer un résumé régional pour l'IA
+        const regionalSummaries: RegionalSummary[] = availableRegions.map(region => {
+          const householdsInRegion = households.filter(h => region === 'ALL' || h.region === region);
+          const tasksInRegion = tasks.filter(t => region === 'ALL' || t.region === region);
+          const delayedHouseholds = tasksInRegion.filter(t => t.isDelayed).length;
+          const teamsAssigned: { [tradeKey: string]: number } = {};
+          teams.forEach(team => {
+            if (team.regionId === region) { // Assumer que team.regionId existe
+              teamsAssigned[team.tradeKey || 'unknown'] = (teamsAssigned[team.tradeKey || 'unknown'] || 0) + 1;
+            }
+          });
+          return {
+            region,
+            totalHouseholds: householdsInRegion.length,
+            delayedHouseholds,
+            teamsAssigned,
+          };
+        });
+        const advice = await missionSageService.processQuery(
+          "Analyse le planning actuel et suggère des réaffectations pour les tâches en retard.",
+          { role: 'CHEF_PROJET', displayName: 'Coordinateur' },
+          { stats: stats as unknown as AIState['stats'], auditLogs: historyLogs, households, teams, regionalSummaries }
+        );
+        setAiRecommendation(advice);
+      }
+    };
+    getAiAdvice();
+  }, [isLoading, stats, historyLogs, availableRegions, households, teams, tasks]);
+
   // Filtrer l'historique pour l'affichage dans le panneau latéral
   const filteredHistoryLogs = useMemo(() => {
     if (!userFilter) return historyLogs;
@@ -432,33 +452,6 @@ export default function Planning() {
   }, [tasks, phaseFilter, selectedTeam, selectedRegion]);
 
   // ✍️ Gestion des affectations manuelles
-  const handleManualAssign = useCallback(async (householdId: string, teamId: string) => {
-    try {
-      const value = teamId === 'AUTO' ? null : teamId; // null pour revenir à la logique de grappe
-      await apiClient.patch(`/households/${householdId}`, { assignedTeamId: value }); // Enregistrement sur le serveur
-
-      if (user) {
-        const h = households.find(h => h.id === householdId);
-        const t = teams.find(t => t.id === teamId);
-        const teamLabel = teamId === 'AUTO' ? 'Automatique (Village)' : (t?.name || teamId);
-        const lotLabel = h?.numeroordre || h?.id?.substring(0, 8) || '?';
-
-        await auditService.logAction(
-          user,
-          'Réaffectation Planning',
-          'PLANNING',
-          `Affectation forcée : Ménage "${h?.name || householdId}" (Lot: ${h?.numeroordre || '?'}) → Équipe: ${teamLabel}`,
-          'info'
-        );
-      }
-
-      toast.success('Affectation mise à jour'); // Feedback utilisateur
-      handleRefresh();
-    } catch (err) {
-      toast.error("Erreur lors de l'affectation manuelle");
-    }
-  }, [user, households, teams, handleRefresh]);
-
   const handleRefresh = useCallback(async () => {
     if (!activeProjectId) return;
 
@@ -469,8 +462,8 @@ export default function Planning() {
         apiClient.get('/households', { params: { projectId: activeProjectId, limit: 10000 } }),
         apiClient.get('/teams', { params: { projectId: activeProjectId } })
       ]);
-      setHouseholds((householdsRes.data as any).households || []);
-      setTeams((teamsRes.data as any).teams?.filter((t: Team) => t.status === 'active') || []);
+      setHouseholds(((householdsRes.data as HouseholdsResponse).households || []));
+      setTeams(((teamsRes.data as TeamsResponse).teams || []).filter((t: Team) => t.status === 'active'));
     } catch (err) {
       console.error('Erreur refresh:', err);
       // Fallback : utiliser les données locales en cas d'échec critique du serveur (500)
@@ -487,6 +480,40 @@ export default function Planning() {
     }
   }, [activeProjectId]);
 
+  const handleManualAssign = useCallback(async (householdId: string, teamId: string) => {
+    try {
+      const value = teamId === 'AUTO' ? null : teamId; // null pour revenir à la logique de grappe
+      await apiClient.patch(`/households/${householdId}`, { assignedTeamId: value }); // Enregistrement sur le serveur
+
+      if (user) {
+        const h = households.find(h => h.id === householdId);
+        const t = teams.find(t => t.id === teamId);
+        const teamLabel = teamId === 'AUTO' ? 'Automatique (Village)' : (t?.name || teamId);
+        await auditService.logAction(
+          user,
+          'Réaffectation Planning',
+          'PLANNING',
+          `Affectation forcée : Ménage "${h?.name || householdId}" (Lot: ${h?.numeroordre || '?'}) → Équipe: ${teamLabel}`,
+          'info'
+        );
+      }
+
+      toast.success('Affectation mise à jour'); // Feedback utilisateur
+      handleRefresh();
+    } catch {
+      toast.error("Erreur lors de l'affectation manuelle");
+    }
+  }, [user, households, teams, handleRefresh]);
+
+  const assignedTeamByHousehold = useMemo(() => {
+    return new Map(
+      households.map((household) => [
+        household.id,
+        (household as HouseholdWithPlanningMeta).assignedTeamId || null,
+      ])
+    );
+  }, [households]);
+
   return (
     <PageContainer>
       <PageHeader
@@ -496,7 +523,7 @@ export default function Planning() {
         actions={
           <button
             onClick={() => setShowAudit(true)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-black uppercase tracking-widest transition-all border border-white/5 active:scale-95 shadow-lg"
+            className="flex items-center justify-center gap-2 w-full sm:w-auto px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-[11px] sm:text-xs font-black uppercase tracking-[0.14em] sm:tracking-widest transition-all border border-white/5 active:scale-95 shadow-lg"
           >
             <History size={16} /> Historique
           </button>
@@ -513,23 +540,23 @@ export default function Planning() {
       {!isLoading && (
         <ContentArea>
           {/* ── MOTEUR D'ORCHESTRATION DYNAMIQUE ── */}
-          <div className="mb-8 p-6 bg-indigo-600/20 border border-indigo-500/30 rounded-[2rem] relative overflow-hidden">
+          <div className="mb-4 sm:mb-8 p-4 sm:p-6 bg-indigo-600/20 border border-indigo-500/30 rounded-[1.5rem] sm:rounded-[2rem] relative overflow-hidden">
             <div className="absolute top-0 right-0 p-8 opacity-5">
               <Zap size={120} className="text-indigo-400" />
             </div>
 
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative z-10">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 sm:gap-6 relative z-10">
               <div className="space-y-1 flex-1">
-                <h3 className="text-lg font-black text-white uppercase italic tracking-tighter">Objectif de Réalisation</h3>
-                <p className="text-xs text-indigo-300/70 font-bold uppercase tracking-widest">Calcul dynamique des ressources nécessaires</p>
+                <h3 className="text-base sm:text-lg font-black text-white uppercase italic tracking-tighter">Objectif de Réalisation</h3>
+                <p className="text-[10px] sm:text-xs text-indigo-300/70 font-bold uppercase tracking-[0.14em] sm:tracking-widest">Calcul dynamique des ressources nécessaires</p>
               </div>
 
-              <div className="flex items-center gap-4 bg-slate-950/50 p-2 rounded-2xl border border-white/5">
-                <span className="text-[10px] font-black text-slate-500 uppercase ml-4">Région :</span>
+              <div className="grid grid-cols-1 sm:grid-cols-[auto,1fr,auto,auto] items-center gap-3 sm:gap-4 w-full md:w-auto bg-slate-950/50 p-3 sm:p-2 rounded-2xl border border-white/5">
+                <span className="text-[10px] font-black text-slate-500 uppercase sm:ml-4">Région :</span>
                 <select
                   value={selectedRegion} // selectedRegion est déjà 'ALL' par défaut
                   onChange={(e) => setSelectedRegion(e.target.value)}
-                  className="bg-indigo-500/20 border border-indigo-500/30 rounded-xl px-3 py-2 text-white font-bold text-[10px] outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="bg-indigo-500/20 border border-indigo-500/30 rounded-xl px-3 py-2 text-white font-bold text-[11px] sm:text-[10px] outline-none focus:ring-2 focus:ring-indigo-500 min-w-0"
                   title="Sélectionner la région pour le calcul"
                 >
                   <option value="ALL">Toutes les régions</option>
@@ -538,33 +565,34 @@ export default function Planning() {
                   ))}
                 </select>
 
-                <span className="text-[10px] font-black text-slate-500 uppercase ml-4">Durée Cible :</span>
+                <span className="text-[10px] font-black text-slate-500 uppercase sm:ml-4">Durée Cible :</span>
                 <div className="flex items-center gap-2">
                   <input
                     type="number"
                     min="1"
                     value={targetMonths}
                     onChange={(e) => setTargetMonths(Math.max(1, Number(e.target.value)))} // Minimum 1 mois
+                    title="Durée cible en mois"
                     className="w-16 bg-indigo-500/20 border border-indigo-500/30 rounded-xl px-3 py-2 text-white font-black text-center outline-none focus:ring-2 focus:ring-indigo-500"
                   />
-                  <span className="text-xs font-bold text-indigo-400 mr-4">MOIS</span>
+                  <span className="text-[11px] sm:text-xs font-bold text-indigo-400 sm:mr-4">MOIS</span>
                 </div>
               </div>
             </div>
 
             {theoreticalNeeds && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mt-5 sm:mt-8">
                 {[
                   { label: 'Équipes Maçons', value: theoreticalNeeds.macons, icon: Hammer, color: 'text-amber-500' },
                   { label: 'Équipes Réseau', value: theoreticalNeeds.reseau, icon: Zap, color: 'text-blue-500' },
                   { label: 'Électriciens', value: theoreticalNeeds.interieur, icon: Wrench, color: 'text-purple-500' },
                   { label: 'Contrôleurs', value: theoreticalNeeds.controle, icon: ShieldCheck, color: 'text-emerald-500' } // Icône ShieldCheck
                 ].map((need, idx) => (
-                  <div key={idx} className="bg-slate-950/40 p-4 rounded-2xl border border-white/5 flex items-center gap-4">
+                  <div key={idx} className="bg-slate-950/40 p-3 sm:p-4 rounded-2xl border border-white/5 flex items-center gap-3 sm:gap-4">
                     <div className={`p-2 rounded-lg bg-white/5 ${need.color}`}><need.icon size={16} /></div>
                     <div>
-                      <p className="text-[10px] font-black text-slate-500 uppercase tracking-tighter">{need.label}</p>
-                      <p className="text-xl font-black text-white leading-none">{need.value}</p>
+                      <p className="text-[9px] sm:text-[10px] font-black text-slate-500 uppercase tracking-tight">{need.label}</p>
+                      <p className="text-lg sm:text-xl font-black text-white leading-none">{need.value}</p>
                     </div>
                   </div>
                 ))}
@@ -573,15 +601,15 @@ export default function Planning() {
           </div>
 
           {/* ── BARRE D'OUTILS ── */}
-          <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
-            <div className="flex items-center gap-3">
+          <div className="flex flex-col lg:flex-row gap-3 sm:gap-4 items-stretch lg:items-center justify-between">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
               {/* Filtre Phase */}
-              <div className="flex items-center gap-2 bg-slate-900/50 rounded-xl p-1">
+              <div className="flex items-center gap-2 bg-slate-900/50 rounded-xl p-2 sm:p-1">
                 <Filter size={14} className="text-slate-500 ml-2" />
                 <select
                   value={phaseFilter}
                   onChange={(e) => setPhaseFilter(e.target.value as PhaseFilter)}
-                  className="bg-transparent text-xs font-bold text-slate-400 outline-none py-1"
+                  className="bg-transparent text-[11px] sm:text-xs font-bold text-slate-400 outline-none py-1 min-w-0"
                   title="Filtrer par phase"
                 >
                   <option value="ALL">Toutes phases</option>
@@ -598,7 +626,7 @@ export default function Planning() {
               <select
                 value={selectedTeam}
                 onChange={(e) => setSelectedTeam(e.target.value)}
-                className="bg-slate-900/50 border border-white/10 rounded-xl px-3 py-2 text-xs font-bold text-slate-400 outline-none"
+                className="bg-slate-900/50 border border-white/10 rounded-xl px-3 py-2 text-[11px] sm:text-xs font-bold text-slate-400 outline-none w-full sm:w-auto"
                 title="Filtrer par équipe"
               >
                 <option value="ALL">Toutes équipes</option>
@@ -608,24 +636,24 @@ export default function Planning() {
               </select>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full lg:w-auto">
               {/* Mode de vue */}
-              <div className="flex bg-slate-900/50 rounded-xl p-1">
+              <div className="grid grid-cols-3 bg-slate-900/50 rounded-xl p-1 w-full sm:w-auto">
                 <button
                   onClick={() => setViewMode('timeline')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${viewMode === 'timeline' ? 'bg-blue-500 text-white' : 'text-slate-500 hover:text-white'}`}
+                  className={`px-2 sm:px-3 py-2 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all ${viewMode === 'timeline' ? 'bg-blue-500 text-white' : 'text-slate-500 hover:text-white'}`}
                 >
                   Chronologie
                 </button>
                 <button
                   onClick={() => setViewMode('calendar')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${viewMode === 'calendar' ? 'bg-blue-500 text-white' : 'text-slate-500 hover:text-white'}`}
+                  className={`px-2 sm:px-3 py-2 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all ${viewMode === 'calendar' ? 'bg-blue-500 text-white' : 'text-slate-500 hover:text-white'}`}
                 >
                   Calendrier
                 </button>
                 <button
                   onClick={() => setViewMode('kanban')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${viewMode === 'kanban' ? 'bg-blue-500 text-white' : 'text-slate-500 hover:text-white'}`}
+                  className={`px-2 sm:px-3 py-2 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all ${viewMode === 'kanban' ? 'bg-blue-500 text-white' : 'text-slate-500 hover:text-white'}`}
                 >
                   Tableau de Flux
                 </button>
@@ -633,7 +661,7 @@ export default function Planning() {
 
               <button
                 onClick={handleRefresh}
-                className="p-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-slate-400 transition-all"
+                className="p-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl text-slate-400 transition-all self-end sm:self-auto"
                 title="Actualiser"
               >
                 <RefreshCw size={16} className={isRefreshing ? 'animate-spin' : ''} />
@@ -646,14 +674,14 @@ export default function Planning() {
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="bg-blue-500/20 border border-blue-500/30 rounded-2xl p-4 flex items-start gap-4"
+              className="bg-blue-500/20 border border-blue-500/30 rounded-2xl p-4 flex items-start gap-3 sm:gap-4"
             >
               <div className="p-2 bg-blue-500 rounded-xl text-white">
                 <Zap size={20} />
               </div>
               <div className="flex-1">
-                <div className="flex items-center justify-between mb-1">
-                  <h4 className="text-xs font-black text-blue-400 uppercase tracking-widest">Conseil Intelligent</h4>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 mb-1">
+                  <h4 className="text-[11px] sm:text-xs font-black text-blue-400 uppercase tracking-[0.14em] sm:tracking-widest">Conseil Intelligent</h4>
                   <span className="text-[10px] text-blue-500/60 font-mono">MissionSage v8.0</span>
                 </div>
                 <p className="text-sm text-slate-300 leading-relaxed italic">
@@ -669,13 +697,13 @@ export default function Planning() {
           )}
 
           {/* ── STATISTIQUES ── */}
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4">
             <div className="bg-slate-900/50 border border-white/5 rounded-2xl p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Home size={14} className="text-blue-400" />
                 <span className="text-[10px] font-bold text-slate-500 uppercase">Total</span>
               </div>
-              <span className="text-2xl font-black text-white">{stats.total}</span>
+              <span className="text-xl sm:text-2xl font-black text-white">{stats.total}</span>
             </div>
 
             <div className="bg-slate-900/50 border border-white/5 rounded-2xl p-4">
@@ -683,7 +711,7 @@ export default function Planning() {
                 <CheckCircle2 size={14} className="text-emerald-400" />
                 <span className="text-[10px] font-bold text-slate-500 uppercase">Terminés</span>
               </div>
-              <span className="text-2xl font-black text-emerald-400">{stats.completed}</span>
+              <span className="text-xl sm:text-2xl font-black text-emerald-400">{stats.completed}</span>
             </div>
 
             <div className="bg-slate-900/50 border border-white/5 rounded-2xl p-4">
@@ -691,11 +719,10 @@ export default function Planning() {
                 <AlertTriangle size={14} className="text-rose-400" />
                 <span className="text-[10px] font-bold text-slate-500 uppercase">En retard</span>
               </div>
-              <span className="text-2xl font-black text-rose-400">{stats.delayed}</span>
+              <span className="text-xl sm:text-2xl font-black text-rose-400">{stats.delayed}</span>
             </div>
 
             {Object.entries(stats.byPhase).map(([phase, count]) => {
-              const Icon = PHASE_ICONS[phase] || Clock;
               const color = PHASE_COLORS[phase] || 'bg-slate-500';
               return (
                 <div key={phase} className="bg-slate-900/50 border border-white/5 rounded-2xl p-4">
@@ -703,18 +730,18 @@ export default function Planning() {
                     <div className={`w-2 h-2 rounded-full ${color}`} />
                     <span className="text-[10px] font-bold text-slate-500 uppercase">{phase}</span>
                   </div>
-                  <span className="text-2xl font-black text-white">{count}</span>
+                  <span className="text-xl sm:text-2xl font-black text-white">{count}</span>
                 </div>
               );
             })}
           </div>
 
           {/* ── GRAPHIQUE COMPARATIF BESOINS THÉORIQUES VS RÉELLEMENT AFFECTÉS PAR RÉGION ── */}
-          <div className="bg-slate-900/50 border border-white/5 rounded-2xl p-6 mt-8">
-            <h3 className="text-sm font-black text-white uppercase tracking-wider mb-6">
+          <div className="bg-slate-900/50 border border-white/5 rounded-2xl p-4 sm:p-6 mt-4 sm:mt-8">
+            <h3 className="text-sm font-black text-white uppercase tracking-wider mb-4 sm:mb-6">
               Comparatif Capacités Régionales (Théorique vs Réel)
             </h3>
-            <div className="space-y-8">
+            <div className="space-y-4 sm:space-y-8">
               {availableRegions.map(region => {
                 const householdsInRegion = households.filter(h => h.region === region);
                 const totalHouseholdsInRegion = householdsInRegion.length;
@@ -749,17 +776,15 @@ export default function Planning() {
                 return (
                   <div key={region} className="bg-slate-950/40 p-4 rounded-2xl border border-white/5">
                     <h4 className="text-sm font-black text-white mb-4">{region} ({totalHouseholdsInRegion} ménages)</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                       {Object.entries(regionalTheoreticalNeeds || {}).map(([trade, theoreticalCount]) => {
                         const actualCount = regionalActualTeams[trade] || 0;
                         const diff = actualCount - (theoreticalCount as number);
                         const isOver = diff > 0;
-                        const isUnder = diff < 0;
-
                         return (
-                          <div key={trade} className="flex items-center justify-between gap-4">
+                          <div key={trade} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
                             <span className="text-xs font-bold text-slate-400 uppercase">{trade.replace('_type1', '')}</span>
-                            <div className="flex items-center gap-2">
+                            <div className="flex flex-wrap items-center gap-2">
                               <span className="text-sm font-black text-white">{theoreticalCount}</span>
                               <span className="text-xs text-slate-500">théorique</span>
                               <span className="text-sm font-black text-white">/</span>
@@ -794,7 +819,7 @@ export default function Planning() {
                   <h3 className="text-sm font-black text-white uppercase tracking-wider">Timeline des travaux</h3>
                 </div>
                 <div className="overflow-x-auto">
-                  <table className="w-full">
+                  <table className="w-full min-w-[860px]">
                     <thead className="bg-slate-950/50">
                       <tr>
                         <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-500 uppercase">Lot</th>
@@ -808,8 +833,8 @@ export default function Planning() {
                     </thead>
                     <tbody className="divide-y divide-white/5">
                       {filteredTasks.slice(0, 50).map(task => {
-                        const PhaseIcon = PHASE_ICONS[task.phase] || Clock; // Utilisé pour l'affichage si besoin
                         const isCriticallyDelayed = task.isDelayed && task.delayDays > 5;
+                        const assignedTeamId = assignedTeamByHousehold.get(task.householdId) || 'AUTO';
                         return (
                           <tr key={task.id} className={`hover:bg-white/5 transition-colors ${isCriticallyDelayed ? 'bg-rose-900/20 border-l-4 border-rose-500' : ''}`}>
                             <td className="px-4 py-3">
@@ -844,19 +869,19 @@ export default function Planning() {
                             </td>
                             <td className="px-4 py-3">
                               <div className="flex items-center gap-2">
-                                {/* @ts-ignore - assignedTeamId est dynamique */}
                                 <select
-                                  value={(households.find(h => h.id === task.householdId) as any)?.assignedTeamId || 'AUTO'}
+                                  value={assignedTeamId}
                                   onChange={(e) => handleManualAssign(task.householdId, e.target.value)}
-                                  className={`bg-slate-800 border border-white/5 rounded-lg px-2 py-1 text-[10px] font-bold outline-none transition-colors ${(households.find(h => h.id === task.householdId) as any)?.assignedTeamId ? 'text-indigo-400 border-indigo-500/30' : 'text-slate-400'
+                                  className={`bg-slate-800 border border-white/5 rounded-lg px-2 py-1 text-[10px] font-bold outline-none transition-colors ${assignedTeamId !== 'AUTO' ? 'text-indigo-400 border-indigo-500/30' : 'text-slate-400'
                                     }`}
+                                  title="Affecter manuellement une équipe"
                                 >
                                   <option value="AUTO">🤖 Auto (Grappe)</option>
                                   {teams.map(t => (
                                     <option key={t.id} value={t.id}>👷 {t.name}</option>
                                   ))}
                                 </select>
-                                {(households.find(h => h.id === task.householdId) as any)?.assignedTeamId && <span className="text-[8px] font-black text-indigo-500 uppercase tracking-tighter">FORCÉ</span>}
+                                {assignedTeamId !== 'AUTO' && <span className="text-[8px] font-black text-indigo-500 uppercase tracking-tighter">FORCÉ</span>}
                               </div>
                             </td>
                             <td className="px-4 py-3">
@@ -890,13 +915,12 @@ export default function Planning() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4"
+                className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4"
               >
                 {['PREPARATION', 'MACONNERIE', 'RESEAU', 'INTERIEUR', 'CONTROLE', 'TERMINE'].map(phase => {
                   const phaseTasks = filteredTasks.filter(t => t.phase === phase);
-                  const Icon = PHASE_ICONS[phase] || Clock;
                   return (
-                    <div key={phase} className="bg-slate-900/50 border border-white/5 rounded-2xl p-4">
+                    <div key={phase} className="bg-slate-900/50 border border-white/5 rounded-2xl p-3 sm:p-4">
                       <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-2">
                           <div className={`w-2 h-2 rounded-full ${PHASE_COLORS[phase]}`} />
@@ -926,9 +950,9 @@ export default function Planning() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="bg-slate-900/50 border border-white/5 rounded-2xl p-6"
+                className="bg-slate-900/50 border border-white/5 rounded-2xl p-4 sm:p-6"
               >
-                <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center justify-between gap-3 mb-4 sm:mb-6">
                   <button
                     onClick={() => setCurrentDate(addDays(currentDate, -7))}
                     className="p-2 hover:bg-slate-800 rounded-lg transition-colors"
@@ -936,7 +960,7 @@ export default function Planning() {
                   >
                     <ChevronLeft size={20} className="text-slate-400" />
                   </button>
-                  <h3 className="text-lg font-black text-white">
+                  <h3 className="text-base sm:text-lg font-black text-white text-center flex-1">
                     {format(currentDate, 'MMMM yyyy', { locale: fr })}
                   </h3>
                   <button
@@ -948,7 +972,7 @@ export default function Planning() {
                   </button>
                 </div>
 
-                <div className="grid grid-cols-7 gap-2">
+                <div className="grid grid-cols-7 gap-1 sm:gap-2">
                   {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map(day => (
                     <div key={day} className="text-center text-[10px] font-bold text-slate-500 uppercase py-2">
                       {day}
@@ -967,7 +991,7 @@ export default function Planning() {
                     return (
                       <div
                         key={day.toISOString()}
-                        className={`min-h-24 p-2 rounded-lg border transition-all ${isCurrentDay
+                        className={`min-h-20 sm:min-h-24 p-1.5 sm:p-2 rounded-lg border transition-all ${isCurrentDay
                           ? 'bg-blue-500/20 border-blue-500/40 shadow-lg shadow-blue-500/10'
                           : 'bg-slate-800/30 border-white/5'
                           }`}
@@ -997,16 +1021,42 @@ export default function Planning() {
           </AnimatePresence>
 
           {/* ── GRAPHIQUE DE CHARGE PAR ÉQUIPE ── */}
-          <div className="bg-slate-900/50 border border-white/5 rounded-2xl p-6 mt-8">
-            <h3 className="text-sm font-black text-white uppercase tracking-wider mb-6">Charge des Équipes</h3>
-            <div className="space-y-6">
-              {teamPlannings.filter(tp => tp.team.id !== 'UNASSIGNED' || tp.tasks.length > 0).map(tp => (
+          <div className="bg-slate-900/50 border border-white/5 rounded-2xl p-4 sm:p-6 mt-4 sm:mt-8">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+              <h3 className="text-sm font-black text-white uppercase tracking-wider">Charge des Équipes</h3>
+              
+              <div className="flex items-center gap-2 bg-slate-800/50 rounded-xl px-3 py-1.5 border border-white/5">
+                <Filter size={12} className="text-slate-500" />
+                <select
+                  value={selectedTrade}
+                  onChange={(e) => setSelectedTrade(e.target.value)}
+                  className="bg-transparent text-[10px] font-black uppercase text-slate-400 outline-none cursor-pointer"
+                  title="Filtrer par type de métier"
+                >
+                  <option value="ALL">Tous les métiers</option>
+                  <option value="macons">👷 Maçonnerie</option>
+                  <option value="reseau">⚡ Réseau</option>
+                  <option value="interieur_type1">🏠 Intérieur</option>
+                  <option value="controle">🛡️ Contrôle</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="space-y-4 sm:space-y-6">
+              {teamPlannings.filter(tp => {
+                if (tp.team.id === 'UNASSIGNED') return tp.tasks.length > 0 && selectedTrade === 'ALL';
+                if (selectedTrade !== 'ALL' && tp.team.tradeKey !== selectedTrade) return false;
+                return true;
+              }).map(tp => (
                 <div key={tp.team.id} className="flex flex-col gap-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <Users size={16} className="text-blue-400" />
-                      <span className="text-sm font-bold text-white">{tp.team.name}</span>
-                    </div>
+                        <Users size={16} className="text-blue-400" />
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-sm font-bold text-white">{tp.team.name}</span>
+                          <span className="text-xs text-slate-400">Capacité: {tp.team.capacity ?? '—'}</span>
+                        </div>
+                      </div>
                     <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${tp.status === 'overloaded' ? 'bg-rose-500/30 text-rose-400 border border-rose-500/20' :
                       tp.status === 'busy' ? 'bg-amber-500/30 text-amber-400 border border-amber-500/20' :
                         'bg-emerald-500/30 text-emerald-400 border border-emerald-500/20'
@@ -1026,7 +1076,7 @@ export default function Planning() {
                     </div>
                     <span className="text-xs font-bold text-white">{tp.utilization.toFixed(0)}%</span>
                   </div>
-                  <div className="flex items-center gap-4 text-[10px] text-slate-500">
+                  <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-[10px] text-slate-500">
                     <div className="flex items-center gap-1">
                       <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
                       <span>{tp.tasks.filter(t => t.phase === 'MACONNERIE').length} maçon.</span>
@@ -1046,13 +1096,20 @@ export default function Planning() {
           </div>
 
           {/* ── ÉQUIPES ET CHARGE ── */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {teamPlannings.filter(tp => tp.team.id !== 'UNASSIGNED' || tp.tasks.length > 0).map(tp => (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+            {teamPlannings.filter(tp => {
+              if (tp.team.id === 'UNASSIGNED') return tp.tasks.length > 0 && selectedTrade === 'ALL';
+              if (selectedTrade !== 'ALL' && tp.team.tradeKey !== selectedTrade) return false;
+              return true;
+            }).map(tp => (
               <div key={tp.team.id} className="bg-slate-900/50 border border-white/5 rounded-2xl p-4">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
                     <Users size={16} className="text-blue-400" />
-                    <span className="text-sm font-bold text-white">{tp.team.name}</span>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-sm font-bold text-white">{tp.team.name}</span>
+                      <span className="text-xs text-slate-400">Capacité: {tp.team.capacity ?? '—'}</span>
+                    </div>
                   </div>
                   <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${tp.status === 'overloaded' ? 'bg-rose-500/20 text-rose-400' :
                     tp.status === 'busy' ? 'bg-amber-500/20 text-amber-400' :
@@ -1079,7 +1136,7 @@ export default function Planning() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-4 text-[10px]">
+                  <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-[10px]">
                     <div className="flex items-center gap-1">
                       <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
                       <span className="text-slate-500">{tp.tasks.filter(t => t.phase === 'MACONNERIE').length} maçon.</span>
@@ -1116,14 +1173,14 @@ export default function Planning() {
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="relative w-full max-w-md bg-slate-900 h-full shadow-2xl border-l border-white/10 p-8 overflow-y-auto"
+              className="relative w-full max-w-md bg-slate-900 h-full shadow-2xl border-l border-white/10 p-4 sm:p-8 overflow-y-auto"
             >
-              <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center justify-between gap-3 mb-5 sm:mb-8">
                 <div>
-                  <h3 className="text-xl font-black text-white uppercase italic tracking-tighter">Journal d'Audit</h3>
-                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Activités récentes du planning</p>
+                  <h3 className="text-lg sm:text-xl font-black text-white uppercase italic tracking-tighter">Journal d'Audit</h3>
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.14em] sm:tracking-widest">Activités récentes du planning</p>
                 </div>
-                <button onClick={() => setShowAudit(false)} className="p-2 hover:bg-white/5 rounded-xl text-slate-400 transition-colors">
+                <button onClick={() => setShowAudit(false)} className="p-2 hover:bg-white/5 rounded-xl text-slate-400 transition-colors" title="Fermer" aria-label="Fermer le journal d'audit">
                   <X size={24} />
                 </button>
               </div>
@@ -1143,7 +1200,7 @@ export default function Planning() {
                 >
                   <Download size={16} /> {/* Correction: Utilisation de l'icône Download */}
                 </button>
-                <button onClick={() => setShowAudit(false)} className="p-2 hover:bg-white/5 rounded-xl text-slate-400 transition-colors">
+                <button onClick={() => setShowAudit(false)} className="p-2 hover:bg-white/5 rounded-xl text-slate-400 transition-colors" title="Fermer" aria-label="Fermer le journal d'audit">
                   <X size={24} />
                 </button>
               </div>
@@ -1155,7 +1212,7 @@ export default function Planning() {
                     <p className="text-xs font-bold uppercase tracking-widest">Aucun mouvement récent</p>
                   </div>
                 ) : (
-                  filteredHistoryLogs.map((log: any, idx: number) => (
+                  filteredHistoryLogs.map((log, idx: number) => (
                     <div key={idx} className="p-4 rounded-2xl bg-white/5 border border-white/5 hover:border-indigo-500/30 transition-colors group">
                       <div className="flex justify-between items-start mb-2">
                         <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">{log.action}</span>

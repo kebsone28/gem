@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
+/* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/exhaustive-deps */
 import { useState, useMemo } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
@@ -32,6 +32,76 @@ import { normalizeRole, ROLES, isMasterAdmin, getMissionLabel } from '../utils/p
 import { useProject } from '../contexts/ProjectContext';
 import { NotificationCenter } from './layout';
 
+function RoleLabel({ user, nRole, forceSync, isSyncing }: { user: any; nRole?: string; forceSync: () => void; isSyncing: boolean }) {
+  const labels: Record<string, string> = {
+    [ROLES.ADMIN]: 'Admin',
+    [ROLES.DG]: 'DG',
+    [ROLES.CLIENT_LSE]: 'LSE',
+    [ROLES.CHEF_EQUIPE]: 'Chef',
+    [ROLES.CHEF_PROJET]: 'CP',
+    [ROLES.COMPTABLE]: 'Comptable',
+  };
+  const labelText = nRole ? labels[nRole] : user.role;
+
+  return (
+    <div className="space-y-4">
+      <div className="p-4 rounded-3xl flex flex-col gap-3 border border-white/10 bg-white/5 shadow-xl">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-xs font-black text-white shadow-electric-sm bg-electric-gradient">
+            {user.name?.charAt(0).toUpperCase()}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-[13px] font-black truncate tracking-tight text-white">{user.name}</div>
+            <div className="flex items-center gap-2 mt-0.5">
+              <div className="relative flex">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px] shadow-emerald-500/50" />
+                <span className="absolute w-2 h-2 rounded-full bg-emerald-500 animate-ping opacity-75" />
+              </div>
+              <span className="text-xs font-black uppercase tracking-[0.15em] opacity-80 text-blue-200">
+                {labelText}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="p-5 rounded-3xl border border-white/5 bg-white/5 flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-black text-blue-300/50 uppercase tracking-widest">Connectivité</span>
+          <div
+            className={`px-2 py-0.5 rounded-full text-xs font-black tracking-widest flex items-center gap-1.5 ${navigator.onLine ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-500 border border-rose-500/20'}`}
+          >
+            {navigator.onLine ? (
+              <>
+                <Activity size={8} className="animate-pulse" />
+                EN LIGNE
+              </>
+            ) : (
+              'HORS LIGNE'
+            )}
+          </div>
+        </div>
+
+        <button
+          onClick={() => forceSync()}
+          disabled={isSyncing || !navigator.onLine}
+          className={`w-full group relative overflow-hidden p-3 rounded-2xl transition-all ${isSyncing ? 'bg-primary shadow-lg shadow-primary/30' : 'bg-white/5 hover:bg-white/10 border border-white/5'}`}
+        >
+          <div className="flex items-center gap-3">
+            <div className={`p-2 rounded-xl transition-all bg-primary/10 text-primary-light`}>
+              <RefreshCw size={14} strokeWidth={3} />
+            </div>
+            <div className="text-left">
+              <p className={`text-xs font-black leading-tight text-blue-100`}>{'À Jour'}</p>
+              <span className={`text-xs text-blue-300/60 font-bold`}>Faisceau Cloud GEM</span>
+            </div>
+          </div>
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /**
  * Sidebar – Navigation principale Wanekoo (Deep Navy).
  * Design unifié sans switch de thème.
@@ -48,6 +118,7 @@ export default function Sidebar() {
   // 1️⃣ Normalisation et bypass sécurisé via helpers
   const nRole = useMemo(() => normalizeRole(user?.role), [user?.role]);
   const isMaster = useMemo(() => isMasterAdmin(user), [user]);
+  const missionLabel = getMissionLabel(user);
 
   const handleLogout = () => {
     logout();
@@ -63,6 +134,8 @@ export default function Sidebar() {
     visible?: boolean;
     category: 'PILOTAGE' | 'OPÉRATIONS' | 'SYSTÈME';
   }
+
+  const hasKoboTerminal = (user?.organizationConfig as any)?.features?.koboTerminal === true;
 
   const navItems: NavItem[] = useMemo(
     () => [
@@ -148,7 +221,7 @@ export default function Sidebar() {
       {
         to: '/admin/mission',
         icon: ClipboardList,
-        label: getMissionLabel(user),
+        label: missionLabel,
         title: 'Planifiez vos prochaines missions et objectifs',
         permission: PERMISSIONS.CREER_MISSION,
         category: 'OPÉRATIONS',
@@ -175,7 +248,7 @@ export default function Sidebar() {
         label: 'Terminal Kobo',
         title: 'Interface de commande directe pour la sync KoboToolbox',
         permission: PERMISSIONS.ACCES_TERMINAL_KOBO,
-        visible: (user?.organizationConfig as any)?.features?.koboTerminal === true,
+        visible: hasKoboTerminal,
         category: 'SYSTÈME',
       },
       {
@@ -210,7 +283,7 @@ export default function Sidebar() {
         category: 'SYSTÈME' 
       },
     ],
-    [nRole, isMaster, PERMISSIONS, (user?.organizationConfig as any)?.features?.koboTerminal]
+    [nRole, isMaster, PERMISSIONS, hasKoboTerminal, missionLabel]
   );
 
   // 🚀 [REACTIVITY] Re-calculate items when user or permissions change
@@ -244,89 +317,7 @@ export default function Sidebar() {
     );
   }
 
-  const RoleLabel = () => {
-    const labels: Record<string, string> = {
-      [ROLES.ADMIN]: 'Admin',
-      [ROLES.DG]: 'DG',
-      [ROLES.CLIENT_LSE]: 'LSE',
-      [ROLES.CHEF_EQUIPE]: 'Chef',
-      [ROLES.CHEF_PROJET]: 'CP',
-      [ROLES.COMPTABLE]: 'Comptable',
-    };
-    const labelText = nRole ? labels[nRole] : user.role;
-
-    return (
-      <div className="space-y-4">
-        <div className="p-4 rounded-3xl flex flex-col gap-3 border border-white/10 bg-white/5 shadow-xl">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-xs font-black text-white shadow-electric-sm bg-electric-gradient">
-              {user.name?.charAt(0).toUpperCase()}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-[13px] font-black truncate tracking-tight text-white">
-                {user.name}
-              </div>
-              <div className="flex items-center gap-2 mt-0.5">
-                <div className="relative flex">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px] shadow-emerald-500/50" />
-                  <span className="absolute w-2 h-2 rounded-full bg-emerald-500 animate-ping opacity-75" />
-                </div>
-                <span className="text-xs font-black uppercase tracking-[0.15em] opacity-80 text-blue-200">
-                  {labelText}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="p-5 rounded-3xl border border-white/5 bg-white/5 flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-black text-blue-300/50 uppercase tracking-widest">
-              Connectivité
-            </span>
-            <div
-              className={`px-2 py-0.5 rounded-full text-xs font-black tracking-widest flex items-center gap-1.5 ${navigator.onLine ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-500 border border-rose-500/20'}`}
-            >
-              {navigator.onLine ? (
-                <>
-                  <Activity size={8} className="animate-pulse" />
-                  EN LIGNE
-                </>
-              ) : (
-                'HORS LIGNE'
-              )}
-            </div>
-          </div>
-
-          <button
-            onClick={() => forceSync()}
-            disabled={isSyncing || !navigator.onLine}
-            className={`w-full group relative overflow-hidden p-3 rounded-2xl transition-all ${isSyncing ? 'bg-primary shadow-lg shadow-primary/30' : 'bg-white/5 hover:bg-white/10 border border-white/5'}`}
-          >
-            <div className="flex items-center gap-3">
-              <div
-                className={`p-2 rounded-xl transition-all ${isSyncing ? 'bg-white/20 text-white animate-spin' : 'bg-primary/10 text-primary-light'}`}
-              >
-                <RefreshCw size={14} strokeWidth={3} />
-              </div>
-              <div className="text-left">
-                <p
-                  className={`text-xs font-black leading-tight ${isSyncing ? 'text-white' : 'text-blue-100'}`}
-                >
-                  {isSyncing ? 'Synchronisation...' : 'À Jour'}
-                </p>
-                <span
-                  className={`text-xs ${isSyncing ? 'text-blue-100' : 'text-blue-300/60'} font-bold`}
-                >
-                  Faisceau Cloud GEM
-                </span>
-              </div>
-            </div>
-          </button>
-        </div>
-      </div>
-    );
-  };
+  
 
   return (
     <>
@@ -467,7 +458,7 @@ export default function Sidebar() {
 
         {/* Footer Context */}
         <div className="p-6 mt-auto">
-          <RoleLabel />
+          <RoleLabel user={user} nRole={nRole} forceSync={forceSync} isSyncing={isSyncing} />
           <button
             onClick={handleLogout}
             className="w-full flex items-center justify-between mt-6 px-6 py-4 rounded-2xl bg-white/5 hover:bg-rose-500/10 text-slate-500 hover:text-rose-500 border border-white/5 transition-all group"

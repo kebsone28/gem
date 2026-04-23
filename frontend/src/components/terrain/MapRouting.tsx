@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
+﻿/* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/exhaustive-deps */
 import React, { useEffect, useState } from 'react';
 import { useMap, Polyline } from 'react-leaflet';
 import logger from '../../utils/logger';
@@ -46,41 +46,7 @@ export const MapRouting: React.FC<MapRoutingProps> = ({
       });
     }
   }, [enabled, startPoint, endPoint]);
-
-  // Handle map clicks
-  useEffect(() => {
-    if (!enabled) return;
-
-    const handleClick = (e: L.LeafletMouseEvent) => {
-      const clicked: [number, number] = [e.latlng.lat, e.latlng.lng];
-      setPoints((prev) => {
-        // If we're tracking a specific destination (endPoint), any click sets the start point
-        if (endPoint) {
-          return [clicked, endPoint];
-        }
-
-        // Generic routing: 1st click = start, 2nd = end, 3rd = reset to start
-        if (prev.length >= 2) {
-          return [clicked];
-        }
-        return [...prev, clicked];
-      });
-      setRoute(null);
-    };
-
-    map.on('click', handleClick);
-    return () => {
-      map.off('click', handleClick);
-    };
-  }, [enabled, map, endPoint]);
-
-  useEffect(() => {
-    if (points.length === 2) {
-      fetchRoute();
-    }
-  }, [points, mode]);
-
-  const fetchRoute = async () => {
+  const fetchRoute = React.useCallback(async () => {
     const osrmMode = mode === 'driving' ? 'driving' : 'foot';
     const coords = points.map((p) => `${p[1]},${p[0]}`).join(';');
     try {
@@ -99,7 +65,39 @@ export const MapRouting: React.FC<MapRoutingProps> = ({
     } catch (e) {
       logger.error('Routing error:', e);
     }
-  };
+  }, [points, mode, map]);
+
+  useEffect(() => {
+    if (points.length === 2) {
+      fetchRoute();
+    }
+  }, [points, mode, fetchRoute]);
+
+  useEffect(() => {
+    if (points.length === 2) {
+      fetchRoute();
+    }
+  }, [points, mode]);
+  const fetchRoute = React.useCallback(async () => {
+    const osrmMode = mode === 'driving' ? 'driving' : 'foot';
+    const coords = points.map((p) => `${p[1]},${p[0]}`).join(';');
+    try {
+      const resp = await fetch(
+        `https://router.project-osrm.org/route/v1/${osrmMode}/${coords}?overview=full&geometries=geojson&steps=true`
+      );
+      const data = await resp.json();
+      if (data.routes && data.routes.length > 0) {
+        setRoute(data.routes[0]);
+        // Fit bounds if needed
+        const polyline = L.polyline(
+          data.routes[0].geometry.coordinates.map((c: any) => [c[1], c[0]])
+        );
+        map.fitBounds(polyline.getBounds(), { padding: [50, 50] });
+      }
+    } catch (e) {
+      logger.error('Routing error:', e);
+    }
+  }, [points, mode, map]);
 
   if (!enabled) return null;
 

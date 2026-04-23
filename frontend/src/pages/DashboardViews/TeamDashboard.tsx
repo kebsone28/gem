@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
+﻿/* eslint-disable @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const */
 import { useMemo } from 'react';
 import { fmtNum } from '../../utils/format';
 import { useAuth } from '../../contexts/AuthContext';
@@ -146,18 +146,18 @@ export default function TeamDashboard() {
       />
 
       <ContentArea padding="none" className="bg-transparent border-none shadow-none relative z-10">
-        <div className="px-6 lg:px-12 pb-24 space-y-12">
+        <div className="px-3 sm:px-6 lg:px-12 pb-16 sm:pb-24 space-y-6 sm:space-y-8 lg:space-y-12">
           {/* Header & Main Call to Action */}
-          <header className="flex flex-col md:flex-row md:items-end justify-between gap-8 pb-4">
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
+          <header className="flex flex-col md:flex-row md:items-end justify-between gap-5 sm:gap-8 pb-2 sm:pb-4">
+            <div className="space-y-3 sm:space-y-4 min-w-0">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                 <StatusBadge status="info" label="ACCÈS BRIGADE OPS" />
                 <span className="h-4 w-[1px] bg-white/10" />
-                <span className="text-[10px] font-black text-blue-400/40 uppercase tracking-[0.3em] font-mono italic">
+                <span className="text-[8px] sm:text-[10px] font-black text-blue-400/40 uppercase tracking-[0.14em] sm:tracking-[0.3em] font-mono italic">
                   {myTrade ? `${myTrade.label.toUpperCase()} SPECIALIST` : 'TEAM LEADER'}
                 </span>
               </div>
-              <h2 className="text-5xl md:text-6xl font-black italic uppercase tracking-tighter leading-[0.8]">
+              <h2 className="text-3xl sm:text-4xl md:text-6xl font-black italic uppercase tracking-tighter leading-[0.82]">
                 PERFORMANCE{' '}
                 <span className="text-blue-500 drop-shadow-[0_0_15px_rgba(59,130,246,0.3)]">
                   TERRAIN
@@ -166,7 +166,7 @@ export default function TeamDashboard() {
             </div>
             <button
               onClick={() => navigate('/terrain')}
-              className="h-14 px-8 bg-blue-600 hover:bg-blue-500 rounded-2xl text-[10px] font-black uppercase tracking-widest text-white transition-all shadow-xl shadow-blue-600/30 active:scale-95 flex items-center gap-3 italic"
+              className="h-12 sm:h-14 w-full md:w-auto px-5 sm:px-8 bg-blue-600 hover:bg-blue-500 rounded-xl sm:rounded-2xl text-[9px] sm:text-[10px] font-black uppercase tracking-[0.16em] sm:tracking-widest text-white transition-all shadow-xl shadow-blue-600/30 active:scale-95 flex items-center justify-center gap-3 italic"
             >
               <MapPin size={18} />
               OUVRIR LA CARTE INTERACTIVE
@@ -178,16 +178,16 @@ export default function TeamDashboard() {
             <motion.div
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="p-8 rounded-[2.5rem] bg-amber-500/10 border border-amber-500/20 backdrop-blur-xl shadow-2xl flex items-start gap-6"
+              className="p-4 sm:p-8 rounded-[1.6rem] sm:rounded-[2.5rem] bg-amber-500/10 border border-amber-500/20 backdrop-blur-xl shadow-2xl flex items-start gap-3 sm:gap-6"
             >
-              <div className="w-14 h-14 bg-amber-500/20 rounded-2xl flex items-center justify-center border border-amber-500/20 shadow-inner shrink-0">
+              <div className="w-11 h-11 sm:w-14 sm:h-14 bg-amber-500/20 rounded-xl sm:rounded-2xl flex items-center justify-center border border-amber-500/20 shadow-inner shrink-0">
                 <AlertTriangle size={28} className="text-amber-500" />
               </div>
               <div>
-                <h4 className="text-xs font-black uppercase tracking-widest text-amber-400 italic">
+                <h4 className="text-[10px] sm:text-xs font-black uppercase tracking-[0.16em] sm:tracking-widest text-amber-400 italic">
                   DÉPENDANCE OPÉRATIONNELLE DÉTECTÉE
                 </h4>
-                <p className="text-[11px] font-bold text-slate-400 mt-2 uppercase tracking-tight leading-relaxed">
+                <p className="text-[10px] sm:text-[11px] font-bold text-slate-400 mt-2 uppercase tracking-tight leading-relaxed">
                   L'équipe <span className="text-white italic">{predecessorTrade.label}</span> a
                   complété{' '}
                   <span className="text-white font-black italic">{predecessorTrade.progress}%</span>{' '}
@@ -201,7 +201,7 @@ export default function TeamDashboard() {
 
           {/* Team KPIs */}
           {myTrade && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-8">
               <KPICard
                 title="MON AVANCEMENT"
                 value={`${myTrade.progress}%`}
@@ -229,15 +229,15 @@ export default function TeamDashboard() {
             </div>
           )}
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-10">
             {/* Pipeline of all teams */}
-            <div className="lg:col-span-8 p-6 md:p-10 rounded-3xl md:rounded-[3rem] bg-slate-900/40 border border-white/5 backdrop-blur-3xl shadow-2xl">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12 pb-8 border-b border-white/5">
+            <div className="lg:col-span-8 p-4 sm:p-6 md:p-10 rounded-[1.8rem] sm:rounded-3xl md:rounded-[3rem] bg-slate-900/40 border border-white/5 backdrop-blur-3xl shadow-2xl">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6 mb-5 sm:mb-12 pb-5 sm:pb-8 border-b border-white/5">
                 <div className="space-y-1">
-                  <h3 className="text-[11px] font-black text-blue-400/40 uppercase tracking-[0.4em] italic flex items-center gap-3">
+                  <h3 className="text-[9px] sm:text-[11px] font-black text-blue-400/40 uppercase tracking-[0.18em] sm:tracking-[0.4em] italic flex items-center gap-2 sm:gap-3">
                     <Activity size={18} className="text-blue-500" /> GLOBAL OPS PIPELINE
                   </h3>
-                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                  <p className="text-[8px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-[0.14em] sm:tracking-widest">
                     {total > 0
                       ? `REAL-TIME SYNC WITH ${fmtNum(total)} HOUSEHOLDS`
                       : 'AWAITING FIELD AGENT SYNC'}
@@ -245,7 +245,7 @@ export default function TeamDashboard() {
                 </div>
               </div>
 
-              <div className="space-y-6">
+              <div className="space-y-3 sm:space-y-6">
                 {pipeline.map((trade, i) => {
                   const isMe = trade.teamId === user?.teamId;
                   return (
@@ -254,7 +254,7 @@ export default function TeamDashboard() {
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: i * 0.1 }}
-                      className={`p-8 rounded-[2.5rem] border transition-all ${
+                      className={`p-4 sm:p-8 rounded-[1.5rem] sm:rounded-[2.5rem] border transition-all ${
                         isMe
                           ? `bg-blue-600/10 border-blue-500/30 shadow-xl shadow-blue-600/5`
                           : 'border-white/5 bg-white/[0.02] opacity-40 grayscale group hover:grayscale-0 hover:opacity-80 transition-all'
@@ -301,13 +301,13 @@ export default function TeamDashboard() {
             </div>
 
             {/* Right column: Regional breakdown */}
-            <div className="lg:col-span-4 p-6 md:p-10 rounded-3xl md:rounded-[3rem] bg-slate-900/40 border border-white/5 backdrop-blur-3xl shadow-2xl flex flex-col">
-              <h3 className="text-[11px] font-black mb-12 flex items-center gap-3 text-blue-400/40 uppercase tracking-[0.4em] italic">
+            <div className="lg:col-span-4 p-4 sm:p-6 md:p-10 rounded-[1.8rem] sm:rounded-3xl md:rounded-[3rem] bg-slate-900/40 border border-white/5 backdrop-blur-3xl shadow-2xl flex flex-col">
+              <h3 className="text-[9px] sm:text-[11px] font-black mb-5 sm:mb-12 flex items-center gap-2 sm:gap-3 text-blue-400/40 uppercase tracking-[0.18em] sm:tracking-[0.4em] italic">
                 <MapPin size={18} className="text-blue-500" /> MISSION CORES
               </h3>
 
               {regionBreakdown.length > 0 ? (
-                <div className="space-y-10 flex-1 overflow-y-auto pr-2 custom-scrollbar">
+                <div className="space-y-4 sm:space-y-10 flex-1 overflow-y-auto pr-2 custom-scrollbar">
                   {regionBreakdown.map(({ region, done, all, pct: p }, i) => (
                     <div key={region}>
                       <ProgressBar
@@ -320,9 +320,9 @@ export default function TeamDashboard() {
                   ))}
                 </div>
               ) : (
-                <div className="flex-1 flex flex-col items-center justify-center text-center py-20 space-y-6 opacity-20 border border-dashed border-white/10 rounded-[2rem]">
+                <div className="flex-1 flex flex-col items-center justify-center text-center py-12 sm:py-20 space-y-4 sm:space-y-6 opacity-20 border border-dashed border-white/10 rounded-[1.5rem] sm:rounded-[2rem]">
                   <MapPin size={48} className="text-blue-500" />
-                  <p className="text-[10px] font-black uppercase tracking-[0.4em] italic">
+                  <p className="text-[8px] sm:text-[10px] font-black uppercase tracking-[0.16em] sm:tracking-[0.4em] italic">
                     AWAITING REGIONAL SYNC ARCHIVE...
                   </p>
                 </div>
@@ -330,7 +330,7 @@ export default function TeamDashboard() {
 
               <button
                 onClick={() => navigate('/terrain')}
-                className="mt-10 w-full flex items-center justify-center gap-4 h-20 border-2 border-dashed border-white/10 hover:border-blue-500/40 hover:bg-white/[0.03] text-slate-500 hover:text-white rounded-[2rem] font-black text-[10px] uppercase tracking-[0.3em] transition-all group italic"
+                className="mt-5 sm:mt-10 w-full flex items-center justify-center gap-3 sm:gap-4 h-14 sm:h-20 border-2 border-dashed border-white/10 hover:border-blue-500/40 hover:bg-white/[0.03] text-slate-500 hover:text-white rounded-[1.3rem] sm:rounded-[2rem] font-black text-[8px] sm:text-[10px] uppercase tracking-[0.14em] sm:tracking-[0.3em] transition-all group italic"
               >
                 <ExternalLink size={18} className="group-hover:text-blue-500 transition-colors" />{' '}
                 EXPLORE GIS CORE

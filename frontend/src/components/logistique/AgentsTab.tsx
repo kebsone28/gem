@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
+﻿ 
 import { TrendingUp, Activity, AlertTriangle, Zap, Timer } from 'lucide-react';
 import { useLogistique } from '../../hooks/useLogistique';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -161,9 +161,9 @@ export default function AgentsTab({ searchQuery = '' }: AgentsTabProps) {
                       >
                         <span
                           className={`inline-flex items-center justify-center w-8 h-8 rounded-lg font-black ${isDarkMode ? 'bg-slate-800 text-primary' : 'bg-slate-100 text-primary'}`}
-                        >
-                          {a.visits}
-                        </span>
+                            >
+                            {a.visits}
+                          </span>
                       </td>
                       <td className={`px-6 py-4`}>
                         <div className="flex flex-col items-center gap-2">
@@ -178,7 +178,6 @@ export default function AgentsTab({ searchQuery = '' }: AgentsTabProps) {
                             <div
                               className="h-full bg-gradient-to-r from-primary to-blue-400"
                               style={{ width: `${Math.min((a.avgTime / 60) * 100, 100)}%` }}
-                              /* eslint-disable-line no-inline-styles */
                             />
                           </div>
                         </div>

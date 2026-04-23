@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
+﻿ 
 import React from 'react';
 import { LayoutGrid, Box, Activity } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -17,27 +17,27 @@ export const OperationalSection: React.FC<OperationalSectionProps> = ({ metrics,
   const total = metrics.totalHouseholds || 1;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-      <div className="lg:col-span-8 space-y-10">
-        <div className="p-6 md:p-10 rounded-3xl md:rounded-[3rem] bg-slate-900/40 border border-white/5 backdrop-blur-3xl shadow-2xl">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12 pb-8 border-b border-white/5">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 lg:gap-10">
+      <div className="lg:col-span-8 space-y-6 sm:space-y-8 lg:space-y-10">
+        <div className="p-4 sm:p-6 md:p-10 rounded-[1.8rem] sm:rounded-3xl md:rounded-[3rem] bg-slate-900/40 border border-white/5 backdrop-blur-3xl shadow-2xl">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6 mb-6 sm:mb-12 pb-5 sm:pb-8 border-b border-white/5">
             <div className="space-y-1">
-              <h3 className="text-[11px] font-black text-blue-400/40 uppercase tracking-[0.4em] flex items-center gap-3 italic text-white">
+              <h3 className="text-[9px] sm:text-[11px] font-black text-blue-400/40 uppercase tracking-[0.18em] sm:tracking-[0.4em] flex items-center gap-2 sm:gap-3 italic text-white">
                 <LayoutGrid size={18} className="text-blue-500" /> FLUX OPÉRATIONNEL DES TRAVAUX
               </h3>
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest italic">
+              <p className="text-[8px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-[0.12em] sm:tracking-widest italic">
                 {zonesCount > 0 ? `SYNCHRONISÉ AVEC ${zonesCount} ZONES OPÉRATIONNELLES` : 'EN ATTENTE DE CARTOGRAPHIE'}
               </p>
             </div>
             <button
               onClick={() => navigate('/bordereau')}
-              className="h-10 px-6 bg-blue-600/10 hover:bg-blue-600 border border-blue-500/20 text-blue-400 hover:text-white rounded-full text-[9px] font-black uppercase tracking-widest transition-all italic active:scale-95"
+              className="h-11 sm:h-10 w-full sm:w-auto px-5 sm:px-6 bg-blue-600/10 hover:bg-blue-600 border border-blue-500/20 text-blue-400 hover:text-white rounded-xl sm:rounded-full text-[8px] sm:text-[9px] font-black uppercase tracking-[0.16em] sm:tracking-widest transition-all italic active:scale-95"
             >
               ANALYSE DÉTAILLÉE →
             </button>
           </div>
 
-          <div className="space-y-8">
+          <div className="space-y-4 sm:space-y-8">
             <ProgressBar
               label="Maçonnerie Structurelle"
               count={`${metrics.pipeline?.murs || 0} SITES`}
@@ -62,35 +62,35 @@ export const OperationalSection: React.FC<OperationalSectionProps> = ({ metrics,
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div className="p-6 md:p-10 rounded-3xl md:rounded-[3rem] bg-slate-900/40 border border-white/5 backdrop-blur-3xl shadow-xl">
-            <h3 className="text-[11px] font-black text-blue-400/40 uppercase tracking-[0.4em] mb-8 italic flex items-center gap-3 text-white">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-8">
+          <div className="p-4 sm:p-6 md:p-10 rounded-[1.8rem] sm:rounded-3xl md:rounded-[3rem] bg-slate-900/40 border border-white/5 backdrop-blur-3xl shadow-xl">
+            <h3 className="text-[9px] sm:text-[11px] font-black text-blue-400/40 uppercase tracking-[0.18em] sm:tracking-[0.4em] mb-5 sm:mb-8 italic flex items-center gap-2 sm:gap-3 text-white">
               <Box size={18} className="text-blue-500" /> SUIVI LOGISTIQUE
             </h3>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center bg-white/[0.03] p-6 rounded-2xl border border-white/5 group hover:bg-white/[0.05] transition-all">
-                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic group-hover:text-blue-400 transition-colors">KITS DÉPLOYÉS</span>
-                <span className="text-2xl font-black text-white italic">{fmtNum(metrics.logistics.kitPrepared)}</span>
+            <div className="space-y-3 sm:space-y-4">
+              <div className="flex justify-between items-center gap-4 bg-white/[0.03] p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-white/5 group hover:bg-white/[0.05] transition-all">
+                <span className="text-[8px] sm:text-[10px] font-black text-slate-500 uppercase tracking-[0.12em] sm:tracking-widest italic group-hover:text-blue-400 transition-colors">KITS DÉPLOYÉS</span>
+                <span className="text-xl sm:text-2xl font-black text-white italic">{fmtNum(metrics.logistics.kitPrepared)}</span>
               </div>
-              <div className="flex justify-between items-center bg-white/[0.03] p-6 rounded-2xl border border-white/5 group hover:bg-white/[0.05] transition-all">
-                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic group-hover:text-blue-400 transition-colors">CÂBLE MOYEN / MÉNAGE</span>
-                <span className="text-2xl font-black text-white italic">{metrics.performance.avgcâblePerHouse}m</span>
+              <div className="flex justify-between items-center gap-4 bg-white/[0.03] p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-white/5 group hover:bg-white/[0.05] transition-all">
+                <span className="text-[8px] sm:text-[10px] font-black text-slate-500 uppercase tracking-[0.12em] sm:tracking-widest italic group-hover:text-blue-400 transition-colors">CÂBLE MOYEN / MÉNAGE</span>
+                <span className="text-xl sm:text-2xl font-black text-white italic">{metrics.performance.avgcâblePerHouse}m</span>
               </div>
-              <div className="flex justify-between items-center bg-rose-500/5 p-6 rounded-2xl border border-rose-500/10">
-                <span className="text-[10px] font-black text-rose-500/60 uppercase tracking-widest italic">ÉCART LOGISTIQUE</span>
-                <span className="text-2xl font-black text-rose-500 italic">-{metrics.logistics.gap}</span>
+              <div className="flex justify-between items-center gap-4 bg-rose-500/5 p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-rose-500/10">
+                <span className="text-[8px] sm:text-[10px] font-black text-rose-500/60 uppercase tracking-[0.12em] sm:tracking-widest italic">ÉCART LOGISTIQUE</span>
+                <span className="text-xl sm:text-2xl font-black text-rose-500 italic">-{metrics.logistics.gap}</span>
               </div>
             </div>
           </div>
 
-          <div className="p-6 md:p-10 rounded-3xl md:rounded-[3rem] bg-slate-900/40 border border-white/5 backdrop-blur-3xl shadow-xl flex flex-col">
-            <h3 className="text-[11px] font-black text-blue-400/40 uppercase tracking-[0.4em] mb-4 italic flex items-center gap-3 text-white">
+          <div className="p-4 sm:p-6 md:p-10 rounded-[1.8rem] sm:rounded-3xl md:rounded-[3rem] bg-slate-900/40 border border-white/5 backdrop-blur-3xl shadow-xl flex flex-col">
+            <h3 className="text-[9px] sm:text-[11px] font-black text-blue-400/40 uppercase tracking-[0.18em] sm:tracking-[0.4em] mb-3 sm:mb-4 italic flex items-center gap-2 sm:gap-3 text-white">
               <Activity size={18} className="text-blue-500" /> GÉNÉRATION JOURNALIÈRE
             </h3>
-            <div className="flex-1 flex flex-col items-center justify-center py-6">
-              <div className="text-7xl font-black text-white italic tracking-tighter drop-shadow-xl">{metrics.performance.avgPerDay}</div>
-              <p className="text-[10px] font-black text-blue-500/40 uppercase tracking-[0.3em] mt-2 italic">RENDEMENT MOYEN / JOUR</p>
-              <div className="w-full h-24 flex items-end justify-between px-4 gap-2 mt-10">
+            <div className="flex-1 flex flex-col items-center justify-center py-3 sm:py-6">
+              <div className="text-5xl sm:text-7xl font-black text-white italic tracking-tighter drop-shadow-xl">{metrics.performance.avgPerDay}</div>
+              <p className="text-[8px] sm:text-[10px] font-black text-blue-500/40 uppercase tracking-[0.16em] sm:tracking-[0.3em] mt-2 italic">RENDEMENT MOYEN / JOUR</p>
+              <div className="w-full h-16 sm:h-24 flex items-end justify-between px-1 sm:px-4 gap-1.5 sm:gap-2 mt-6 sm:mt-10">
                 {[40, 60, 45, 75, 80, 95, 85].map((h, i) => (
                   <motion.div
                     key={i}

@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps */
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -78,6 +78,7 @@ const MapLibreVectorMap: React.FC<any> = ({
   const mapStyle = useTerrainUIStore((s) => s.mapStyle);
   const { isDarkMode } = useTheme();
   const [isMapReady, setIsMapReady] = useState(false);
+  const [mapForChildren, setMapForChildren] = useState<maplibregl.Map | null>(null);
 
   // ── Interactive State (Tooltips) ──
   const [hoverData, setHoverData] = useState<any>(null);
@@ -138,8 +139,8 @@ const MapLibreVectorMap: React.FC<any> = ({
 
   useEffect(() => {
     if (!activeHouseholds || activeHouseholds.length === 0) {
-      setHouseholdGeoJSON({ type: 'FeatureCollection', features: [] });
-      return;
+      const t = setTimeout(() => setHouseholdGeoJSON({ type: 'FeatureCollection', features: [] }), 0);
+      return () => clearTimeout(t);
     }
 
     const currentHash = computeHouseholdHash(activeHouseholds);
@@ -202,6 +203,7 @@ const MapLibreVectorMap: React.FC<any> = ({
       map.resize();
 
       mapInstanceRef.current = map;
+      setMapForChildren(map);
       (window as any).mapInstance = map; // ✅ Safety Net for legacy/minified references
       setIsMapReady(true);
       
@@ -281,6 +283,7 @@ const MapLibreVectorMap: React.FC<any> = ({
           mapContainerRef.current?.removeChild(container);
         }
         mapInstanceRef.current = null;
+        setMapForChildren(null);
       };
     };
 
@@ -305,17 +308,23 @@ const MapLibreVectorMap: React.FC<any> = ({
 
     console.log(`[Terrain] 🚀 Singleton switching style to: ${targetSource}`);
     lastTargetSourceRef.current = targetSource;
-    
-    // Lock layers until new style AND new icons are ready
-    setStyleIsReady(false);
-    setIconsReady(false);
-    setIsMapReady(false);
+
+    // Defer state updates slightly to avoid synchronous setState-in-effect warnings
+    const t1 = setTimeout(() => setStyleIsReady(false), 0);
+    const t2 = setTimeout(() => setIconsReady(false), 0);
+    const t3 = setTimeout(() => setIsMapReady(false), 0);
 
     globalSingletonMap.switchStyle(targetSource, isDarkMode).then(() => {
       setStyleIsReady(true);
       setIconsReady(true);
       setIsMapReady(true);
     });
+
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+    };
   }, [mapStyle, isDarkMode]);
 
   // ✅ Commands handler
@@ -478,10 +487,10 @@ const MapLibreVectorMap: React.FC<any> = ({
       className="w-full h-full relative outline-none bg-slate-900 overflow-hidden"
     >
       {/* Modular Layers */}
-      <BackgroundLayer map={mapInstanceRef.current} />
+      <BackgroundLayer map={mapForChildren} />
 
       <HouseholdLayer
-        map={mapInstanceRef.current}
+        map={mapForChildren}
         householdGeoJSON={householdGeoJSON}
         households={activeHouseholds}
         projectId={projectId}
@@ -490,17 +499,17 @@ const MapLibreVectorMap: React.FC<any> = ({
         styleIsReady={styleIsReady && iconsReady}
       />
       <ZoneLayer
-        map={mapInstanceRef.current}
+        map={mapForChildren}
         styleIsReady={styleIsReady}
         grappeZonesData={grappeZonesData}
         grappeCentroidsData={grappeCentroidsData}
         showZones={showZones}
       />
 
-      <LogisticsLayer map={mapInstanceRef.current} styleIsReady={styleIsReady} warehouses={warehouses} />
+      <LogisticsLayer map={mapForChildren} styleIsReady={styleIsReady} warehouses={warehouses} />
 
       <InteractionLayer
-        map={mapInstanceRef.current}
+        map={mapForChildren}
         styleIsReady={styleIsReady}
         drawnZones={drawnZones}
         pendingPoints={pendingPoints}

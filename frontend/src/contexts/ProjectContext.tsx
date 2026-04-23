@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
+﻿/* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/exhaustive-deps */
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../store/db';
@@ -41,11 +41,15 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, [activeProjectId]);
 
   useEffect(() => {
+    let t: number | null = null;
     if (!activeProjectId && projects.length > 0) {
-      const firstId = projects[0].id;
-      setActiveProjectIdState(firstId);
-      safeStorage.setItem('active_project_id', firstId);
+      t = window.setTimeout(() => {
+        const firstId = projects[0].id;
+        setActiveProjectIdState(firstId);
+        safeStorage.setItem('active_project_id', firstId);
+      }, 0);
     }
+    return () => { if (t) clearTimeout(t); };
   }, [projects.length, activeProjectId]);
 
   const syncProjectsFromServer = async (preferredProjectId?: string | null) => {

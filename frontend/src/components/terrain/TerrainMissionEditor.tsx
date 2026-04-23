@@ -12,7 +12,6 @@ import {
   Package, 
   FileText,
   CheckCircle,
-  AlertCircle,
   ChevronRight,
   Save,
   Send,
@@ -54,10 +53,19 @@ interface MissionContext {
 
 interface TerrainMissionEditorProps {
   context: MissionContext;
-  onSave: (mission: any) => void;
-  onSubmit: (mission: any) => void;
+  onSave: (mission: MissionLike) => void;
+  onSubmit: (mission: MissionLike) => void;
   isLoading?: boolean;
 }
+
+type MissionLike = {
+  title?: string;
+  status?: string;
+  teamName?: string;
+  regionName?: string;
+  startDate?: string;
+  budget?: number;
+};
 
 export const TerrainMissionEditor: React.FC<TerrainMissionEditorProps> = ({
   context,
@@ -191,7 +199,10 @@ export const TerrainMissionEditor: React.FC<TerrainMissionEditorProps> = ({
         }));
         toast.success('Photo ajoutée au rapport');
       }
-    } catch (error) {
+    } catch (e) {
+      // Log the error for debugging and show friendly message
+       
+      console.error(e);
       toast.error('Erreur lors de l\'upload');
     } finally {
       setIsUploading(false);
@@ -282,6 +293,7 @@ export const TerrainMissionEditor: React.FC<TerrainMissionEditorProps> = ({
                   value={formData.priority}
                   onChange={(e) => setFormData(prev => ({ ...prev, priority: e.target.value }))}
                   className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white"
+                  title="Priorité de la mission"
                 >
                   <option value="low">Basse</option>
                   <option value="normal">Normale</option>
@@ -304,6 +316,7 @@ export const TerrainMissionEditor: React.FC<TerrainMissionEditorProps> = ({
                   value={formData.teamId}
                   onChange={(e) => setFormData(prev => ({ ...prev, teamId: e.target.value }))}
                   className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white"
+                  title="Sélectionnez une équipe"
                 >
                   <option value="">Sélectionner une équipe</option>
                   {context.teamName && <option value={context.teamId}>{context.teamName}</option>}
@@ -353,6 +366,7 @@ export const TerrainMissionEditor: React.FC<TerrainMissionEditorProps> = ({
                     value={formData.startDate}
                     onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
                     className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white"
+                    title="Date de début de la mission"
                   />
                 </div>
                 <div>
@@ -362,6 +376,7 @@ export const TerrainMissionEditor: React.FC<TerrainMissionEditorProps> = ({
                     value={formData.endDate}
                     onChange={(e) => setFormData(prev => ({ ...prev, endDate: e.target.value }))}
                     className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white"
+                    title="Date de fin de la mission"
                   />
                 </div>
               </div>
@@ -436,6 +451,8 @@ export const TerrainMissionEditor: React.FC<TerrainMissionEditorProps> = ({
                   />
                   <button
                     onClick={addMaterial}
+                    title="Ajouter le matériau"
+                    aria-label="Ajouter matériau"
                     className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg"
                   >
                     +
@@ -520,6 +537,8 @@ export const TerrainMissionEditor: React.FC<TerrainMissionEditorProps> = ({
                       />
                       <button
                         onClick={() => removePhoto(photo.id)}
+                        title="Supprimer la photo"
+                        aria-label={`Supprimer la photo ${photo.id}`}
                         className="absolute top-1 right-1 p-1 bg-red-600 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity"
                       >
                         <Trash2 className="w-3 h-3" />
@@ -595,7 +614,7 @@ export const TerrainMissionEditor: React.FC<TerrainMissionEditorProps> = ({
 /**
  * Résumé de mission pour affichage rapide
  */
-export const MissionSummary: React.FC<{ mission: any }> = ({ mission }) => {
+export const MissionSummary: React.FC<{ mission: MissionLike }> = ({ mission }) => {
   return (
     <div className="bg-slate-800 rounded-lg p-3 space-y-2">
       <div className="flex items-center justify-between">

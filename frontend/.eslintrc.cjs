@@ -4,14 +4,18 @@ module.exports = {
   extends: [
     'eslint:recommended',
     'plugin:@typescript-eslint/recommended',
+    'plugin:react/recommended',
     'plugin:react-hooks/recommended',
   ],
   ignorePatterns: ['dist', '.eslintrc.cjs', 'eslint-local-rules.cjs', '*config.js', '*.cjs'],
   parser: '@typescript-eslint/parser',
-  plugins: ['react-refresh', 'local-rules'],
+  plugins: ['react', 'react-refresh', 'local-rules'],
+  settings: {
+    react: { version: 'detect' },
+  },
   rules: {
     'react-refresh/only-export-components': [
-      'warn',
+      'off',
       { allowConstantExport: true },
     ],
     // ── Local Design System Rules (warn only) ──

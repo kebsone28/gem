@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
+﻿ 
 /**
  * MapDrawZones.tsx
  *
@@ -6,7 +6,7 @@
  * Permet de délimiter des secteurs d'intervention et d'assigner une équipe.
  * Stockage en safeStorage (zones persistantes).
  */
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { PenLine, Trash2, CheckCircle2, XCircle, Users, MapPinned } from 'lucide-react';
 
@@ -29,42 +29,11 @@ const ZONE_COLORS = [
   { hex: '#ec4899', tw: 'bg-[#ec4899]' },
 ];
 const TEAMS = ['Maçons', 'Réseau', 'Électriciens', 'Livreurs', 'Non assigné'];
-const STORAGE_KEY = 'gem_drawn_zones';
+// STORAGE handled in terrainUIStore
 
-import * as safeStorage from '../../utils/safeStorage';
-
-export function useDrawnZones() {
-  const [zones, setZones] = useState<DrawnZone[]>(() => {
-    try {
-      return JSON.parse(safeStorage.getItem(STORAGE_KEY) || '[]');
-    } catch {
-      return [];
-    }
-  });
-
-  const saveZones = useCallback((z: DrawnZone[]) => {
-    setZones(z);
-    safeStorage.setItem(STORAGE_KEY, JSON.stringify(z));
-  }, []);
-
-  const addZone = useCallback((zone: DrawnZone) => {
-    setZones((prev) => {
-      const next = [...prev, zone];
-      safeStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-      return next;
-    });
-  }, []);
-
-  const deleteZone = useCallback((id: string) => {
-    setZones((prev) => {
-      const next = prev.filter((z) => z.id !== id);
-      safeStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-      return next;
-    });
-  }, []);
-
-  return { zones, saveZones, addZone, deleteZone };
-}
+// Note: zone persistence moved to `terrainUIStore`. The legacy `useDrawnZones` hook
+// was removed to keep this file focused on the UI panel and avoid fast-refresh
+// issues caused by exporting runtime hooks/constants from the same module.
 
 import { useTerrainUIStore } from '../../store/terrainUIStore';
 
@@ -94,8 +63,12 @@ export function MapDrawZonesPanel({
   const [colorObj, setColorObj] = useState(ZONE_COLORS[zones.length % ZONE_COLORS.length]);
 
   useEffect(() => {
-    setName('Zone ' + (zones.length + 1));
-    setColorObj(ZONE_COLORS[zones.length % ZONE_COLORS.length]);
+    const t1 = window.setTimeout(() => setName('Zone ' + (zones.length + 1)), 0);
+    const t2 = window.setTimeout(() => setColorObj(ZONE_COLORS[zones.length % ZONE_COLORS.length]), 0);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
   }, [zones.length]);
 
   const bg = isDarkMode ? 'bg-slate-900/95 border-slate-700' : 'bg-white/95 border-slate-200';

@@ -617,6 +617,7 @@ model FormationSession {
   
   participants      FormationParticipant[]
   sessionModules    FormationSessionModule[]
+  historyEntries    FormationPlanningHistory[]
   
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
@@ -661,4 +662,20 @@ model FormationParticipant {
   createdAt   DateTime @default(now())
   
   @@index([sessionId])
+}
+
+model FormationPlanningHistory {
+  id          String            @id @default(uuid())
+  sessionId   String?
+  action      String
+  title       String
+  details     String?
+  metadata    Json?
+  createdAt   DateTime          @default(now())
+
+  session     FormationSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+
+  @@index([sessionId])
+  @@index([action])
+  @@index([createdAt])
 }

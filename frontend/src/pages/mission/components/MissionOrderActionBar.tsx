@@ -24,19 +24,19 @@ const Dropdown = ({ icon, label, isOpen, onToggle, children }: any) => {
     <div className="relative">
       <button
         onClick={onToggle}
-        className={`flex items-center gap-1 px-2 py-1.5 rounded-lg transition-colors text-xs ${
+        className={`flex items-center justify-center gap-1 px-2.5 py-2 rounded-xl transition-colors text-[10px] font-black uppercase tracking-[0.12em] sm:text-xs sm:tracking-normal ${
           isOpen ? 'bg-white/10 text-white' : 'text-slate-300 hover:bg-white/5'
         }`}
       >
         {icon}
-        {label && <span>{label}</span>}
+        {label && <span className="hidden sm:inline">{label}</span>}
         <ChevronDown size={12} className={`transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
       {isOpen && (
         <div
           onClick={(e) => e.stopPropagation()}
-          className="absolute top-full right-0 mt-2 w-64 bg-slate-900 border border-white/10 rounded-xl shadow-2xl p-2 z-50 animate-in fade-in slide-in-from-top-2 origin-top-right"
+          className="absolute top-full right-0 mt-2 w-[min(16rem,calc(100vw-2rem))] bg-slate-900 border border-white/10 rounded-xl shadow-2xl p-2 z-50 animate-in fade-in slide-in-from-top-2 origin-top-right"
         >
           {children}
         </div>
@@ -96,23 +96,23 @@ export const MissionOrderActionBar = (props: any) => {
   const isAdmin = ['ADMIN', 'ADMIN_PROQUELEC', 'DG_PROQUELEC'].includes(role || '');
 
   return (
-    <ActionBar className="no-print !bg-slate-950/90 backdrop-blur-xl border-t border-white/5 px-4 py-2 shadow-2xl">
+    <ActionBar className="no-print !bg-slate-950/90 backdrop-blur-xl border-t border-white/5 px-3 py-3 sm:px-4 sm:py-2 shadow-2xl">
 
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="flex w-full flex-col gap-3 sm:gap-4">
 
         {/* 📝 TITRE & INFOS */}
-        <div className="flex flex-col min-w-0 flex-1">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-col min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
             {!isCertified && !isSubmitted ? (
                <input
                  type="text"
                  value={formData.purpose || ''}
                  onChange={(e) => onUpdateField('purpose', e.target.value.toUpperCase())}
                  placeholder="OBJET DE LA MISSION..."
-                 className="bg-transparent border-none outline-none text-[9px] font-extrabold text-white/70 placeholder:text-slate-600 w-full max-w-[280px] focus:ring-0 p-0 tracking-tight"
+                 className="bg-transparent border-none outline-none text-[10px] sm:text-[9px] font-extrabold text-white/70 placeholder:text-slate-600 w-full sm:max-w-[280px] focus:ring-0 p-0 tracking-tight"
                />
             ) : (
-              <h4 className="text-[9px] font-extrabold text-white/70 truncate uppercase tracking-tight max-w-[280px]">
+              <h4 className="text-[10px] sm:text-[9px] font-extrabold text-white/70 truncate uppercase tracking-tight sm:max-w-[280px]">
                 {formData.purpose || 'Mission Sans Titre'}
               </h4>
             )}
@@ -129,67 +129,68 @@ export const MissionOrderActionBar = (props: any) => {
               {isCertified ? 'SIGNÉE' : isSubmitted ? 'ATTENTE' : 'BROUILLON'}
             </div>
           </div>
-          <span className="text-[9px] text-slate-500 font-medium truncate">
+          <span className="text-[10px] sm:text-[9px] text-slate-500 font-medium truncate">
             {formData.orderNumber && !formData.orderNumber.startsWith('TEMP-') ? `${formData.orderNumber} • ` : ''}
             {formData.date || 'Date non définie'} • {formData.region || 'Localisation à préciser'}
           </span>
         </div>
 
-        {/* ⚡ ACTIONS PRINCIPALES */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          {/* ⚡ ACTIONS PRINCIPALES */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
 
-          <button
-            onClick={onSave}
-            disabled={isSyncing || isSyncingServer || isSubmitted || isCertified}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black tracking-widest transition-all shadow-lg active:scale-95 ${
-              isSubmitted || isCertified
-                ? 'bg-slate-800 text-slate-600'
+            <button
+              onClick={onSave}
+              disabled={isSyncing || isSyncingServer || isSubmitted || isCertified}
+              className={`flex min-h-11 items-center justify-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black tracking-[0.14em] sm:tracking-widest transition-all shadow-lg active:scale-95 ${
+                isSubmitted || isCertified
+                  ? 'bg-slate-800 text-slate-600'
+                  : isDirty
+                  ? 'bg-orange-500 text-white shadow-orange-500/20'
+                  : 'bg-blue-600 text-white shadow-blue-500/20'
+              }`}
+            >
+              <Save size={14} className={isSyncing ? 'animate-spin' : ''} />
+              {isSubmitted || isCertified
+                ? 'VERROUILLÉ'
+                : isSyncing
+                ? 'SYNC...'
                 : isDirty
-                ? 'bg-orange-500 text-white shadow-orange-500/20'
-                : 'bg-blue-600 text-white shadow-blue-500/20'
-            }`}
-          >
-            <Save size={14} className={isSyncing ? 'animate-spin' : ''} />
-            {isSubmitted || isCertified
-              ? 'VERROUILLÉ'
-              : isSyncing
-              ? 'SYNC...'
-              : isDirty
-              ? 'SAUVEGARDER*'
-              : 'SAUVEGARDÉ'}
-          </button>
-
-          {!isSubmitted && !isAdmin && (
-            <button
-              onClick={() => window.confirm('Soumettre la mission ?') && onSubmit()}
-              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-[10px] font-black tracking-widest shadow-lg shadow-indigo-600/20 active:scale-95 transition-all"
-            >
-              <ListChecks size={14}/> SOUMETTRE
+                ? 'SAUVEGARDER*'
+                : 'SAUVEGARDÉ'}
             </button>
-          )}
 
-          {isAdmin && !isCertified && (
-            <button
-              onClick={onValidate}
-              className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl text-[10px] font-black tracking-widest shadow-lg shadow-emerald-600/20 active:scale-95 transition-all"
-            >
-              <Fingerprint size={14}/> VALIDER
+            {!isSubmitted && !isAdmin && (
+              <button
+                onClick={() => window.confirm('Soumettre la mission ?') && onSubmit()}
+                className="flex min-h-11 items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-[10px] font-black tracking-[0.14em] sm:tracking-widest shadow-lg shadow-indigo-600/20 active:scale-95 transition-all"
+              >
+                <ListChecks size={14}/> SOUMETTRE
+              </button>
+            )}
+
+            {isAdmin && !isCertified && (
+              <button
+                onClick={onValidate}
+                className="flex min-h-11 items-center justify-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl text-[10px] font-black tracking-[0.14em] sm:tracking-widest shadow-lg shadow-emerald-600/20 active:scale-95 transition-all"
+              >
+                <Fingerprint size={14}/> VALIDER
+              </button>
+            )}
+
+          </div>
+
+          {/* 🧰 ACTIONS SECONDAIRES */}
+          <div className="flex flex-wrap items-center gap-1 sm:gap-1.5" ref={containerRef}>
+
+            {/* Création */}
+            <button onClick={onNewMission} className="p-2.5 text-slate-400 hover:text-white hover:bg-white/5 rounded-xl transition-all" title="Nouveau">
+              <Plus size={16}/>
             </button>
-          )}
 
-        </div>
-
-        {/* 🧰 ACTIONS SECONDAIRES */}
-        <div className="flex items-center gap-1" ref={containerRef}>
-
-          {/* Création */}
-          <button onClick={onNewMission} className="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-all" title="Nouveau">
-            <Plus size={16}/>
-          </button>
-
-          <button onClick={onDuplicate} disabled={!currentMissionId} className="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-lg disabled:opacity-20 transition-all" title="Dupliquer">
-            <Copy size={16}/>
-          </button>
+            <button onClick={onDuplicate} disabled={!currentMissionId} className="p-2.5 text-slate-400 hover:text-white hover:bg-white/5 rounded-xl disabled:opacity-20 transition-all" title="Dupliquer">
+              <Copy size={16}/>
+            </button>
 
           {/* Templates */}
           <Dropdown
@@ -290,28 +291,28 @@ export const MissionOrderActionBar = (props: any) => {
             </button>
           </Dropdown>
 
-          <div className="w-px h-4 bg-white/10 mx-1" />
+            <div className="hidden sm:block w-px h-4 bg-white/10 mx-1" />
 
           {/* Sync */}
-          <button onClick={onSyncFromServer} className="p-2 text-slate-400 hover:text-white transition-all" title="Synchroniser">
-            <RefreshCw size={16} className={isSyncingServer ? 'animate-spin text-blue-400' : ''}/>
-          </button>
+            <button onClick={onSyncFromServer} className="p-2.5 text-slate-400 hover:text-white hover:bg-white/5 rounded-xl transition-all" title="Synchroniser">
+              <RefreshCw size={16} className={isSyncingServer ? 'animate-spin text-blue-400' : ''}/>
+            </button>
 
           {/* Notifications */}
-          <button onClick={onNotificationsToggle} className="relative p-2 text-slate-400 hover:text-white transition-all" title="Notifications">
-            <Bell size={16}/>
-            {unreadCount > 0 && (
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 border border-slate-900 rounded-full"/>
-            )}
-          </button>
+            <button onClick={onNotificationsToggle} className="relative p-2.5 text-slate-400 hover:text-white hover:bg-white/5 rounded-xl transition-all" title="Notifications">
+              <Bell size={16}/>
+              {unreadCount > 0 && (
+                <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 border border-slate-900 rounded-full"/>
+              )}
+            </button>
 
           {/* Audit */}
-          <button onClick={onAuditToggle} className={`p-2 transition-all ${showAudit ? 'text-indigo-400 bg-indigo-500/10 rounded-lg' : 'text-slate-400 hover:text-white'}`} title="Piste d'audit">
-            <Fingerprint size={16}/>
-          </button>
+            <button onClick={onAuditToggle} className={`p-2.5 transition-all rounded-xl ${showAudit ? 'text-indigo-400 bg-indigo-500/10' : 'text-slate-400 hover:text-white hover:bg-white/5'}`} title="Piste d'audit">
+              <Fingerprint size={16}/>
+            </button>
 
+          </div>
         </div>
-
       </div>
     </ActionBar>
   );

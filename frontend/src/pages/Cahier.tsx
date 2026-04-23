@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
+﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Download,
@@ -110,7 +110,6 @@ const CahierSection: React.FC<{
     <div className="flex items-center space-x-2 mb-6">
       <div
         className="w-1.5 h-6 rounded-full shadow-lg bg-[var(--section-color)]"
-        // eslint-disable-next-line react/no-unknown-property
         style={{ '--section-color': color } as React.CSSProperties}
       />
       <h4 className="font-black text-white uppercase tracking-[0.2em] text-xs md:text-sm">

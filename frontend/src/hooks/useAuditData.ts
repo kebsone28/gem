@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
+﻿/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useMemo, useState } from 'react';
 import type { Household } from '../utils/types';
 
@@ -30,7 +30,7 @@ export const useAuditData = (households: Household[] | undefined) => {
   const [auditResult, setAuditResult] = useState<any>(null);
 
   const auditWorker = useMemo(
-    //@ts-ignore - Vite specific URL syntax
+    // @ts-expect-error - Vite specific URL syntax
     () => new Worker(new URL('../workers/dataAuditWorker.ts', import.meta.url), { type: 'module' }),
     []
   );
@@ -38,11 +38,13 @@ export const useAuditData = (households: Household[] | undefined) => {
   useEffect(() => {
     if (!households || households.length === 0) return;
 
-    auditWorker.onmessage = (e) => {
-      if (e.data.type === 'AUDIT_RESULT') {
-        setAuditResult(e.data.result);
+    const handler = (e: MessageEvent) => {
+      if ((e.data as any)?.type === 'AUDIT_RESULT') {
+        setAuditResult((e.data as any).result);
       }
     };
+
+    auditWorker.addEventListener('message', handler);
 
     const workerData = households
       .filter(
@@ -65,6 +67,10 @@ export const useAuditData = (households: Household[] | undefined) => {
       }));
 
     auditWorker.postMessage({ households: workerData });
+
+    return () => {
+      auditWorker.removeEventListener('message', handler);
+    };
   }, [households, auditWorker]);
 
   useEffect(() => {

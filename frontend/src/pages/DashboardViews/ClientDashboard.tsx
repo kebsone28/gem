@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
+﻿ 
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../store/db';
 import { useNavigate } from 'react-router-dom';
@@ -79,18 +79,18 @@ export default function ClientDashboard() {
       />
 
       <ContentArea padding="none" className="bg-transparent border-none shadow-none relative z-10">
-        <div className="px-6 lg:px-12 pb-24 space-y-12">
+        <div className="px-3 sm:px-6 lg:px-12 pb-16 sm:pb-24 space-y-6 sm:space-y-8 lg:space-y-12">
           {/* Header & Actions */}
-          <header className="flex flex-col md:flex-row md:items-end justify-between gap-8 pb-4">
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
+          <header className="flex flex-col md:flex-row md:items-end justify-between gap-5 sm:gap-8 pb-2 sm:pb-4">
+            <div className="space-y-3 sm:space-y-4 min-w-0">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                 <StatusBadge status="success" label="ACCÈS CLIENT SÉCURISÉ" />
                 <span className="h-4 w-[1px] bg-white/10" />
-                <span className="text-[10px] font-black text-blue-400/40 uppercase tracking-[0.3em] font-mono italic">
+                <span className="text-[8px] sm:text-[10px] font-black text-blue-400/40 uppercase tracking-[0.14em] sm:tracking-[0.3em] font-mono italic">
                   PROJECT STATUS REAL-TIME
                 </span>
               </div>
-              <h2 className="text-5xl md:text-6xl font-black italic uppercase tracking-tighter leading-[0.8]">
+              <h2 className="text-3xl sm:text-4xl md:text-6xl font-black italic uppercase tracking-tighter leading-[0.82]">
                 SUIVI{' '}
                 <span className="text-blue-500 drop-shadow-[0_0_15px_rgba(59,130,246,0.3)]">
                   DYNAMIQUE
@@ -99,7 +99,7 @@ export default function ClientDashboard() {
             </div>
             <button
               onClick={() => navigate('/rapports')}
-              className="h-14 px-8 bg-blue-600 hover:bg-blue-500 rounded-2xl text-[10px] font-black uppercase tracking-widest text-white transition-all shadow-xl shadow-blue-600/30 active:scale-95 flex items-center gap-3 italic"
+              className="h-12 sm:h-14 w-full md:w-auto px-5 sm:px-8 bg-blue-600 hover:bg-blue-500 rounded-xl sm:rounded-2xl text-[9px] sm:text-[10px] font-black uppercase tracking-[0.16em] sm:tracking-widest text-white transition-all shadow-xl shadow-blue-600/30 active:scale-95 flex items-center justify-center gap-3 italic"
             >
               <FileText size={18} />
               GÉNÉRER UN RAPPORT EXÉCUTIF
@@ -110,28 +110,28 @@ export default function ClientDashboard() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="p-6 md:p-14 rounded-3xl md:rounded-[3.5rem] bg-slate-900/40 border border-white/10 shadow-3xl relative overflow-hidden backdrop-blur-3xl group"
+            className="p-4 sm:p-6 md:p-14 rounded-[1.8rem] sm:rounded-3xl md:rounded-[3.5rem] bg-slate-900/40 border border-white/10 shadow-3xl relative overflow-hidden backdrop-blur-3xl group"
           >
             <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-blue-600/[0.03] to-transparent pointer-events-none" />
 
-            <div className="flex flex-col md:flex-row items-center gap-16 relative z-10">
-              <div className="flex-1 w-full space-y-8">
+            <div className="flex flex-col md:flex-row items-center gap-8 sm:gap-16 relative z-10">
+              <div className="flex-1 w-full space-y-5 sm:space-y-8">
                 <div className="space-y-2">
-                  <h3 className="text-[10px] md:text-[11px] font-black text-blue-400/40 uppercase tracking-[0.3em] md:tracking-[0.4em] italic flex items-center gap-3">
+                  <h3 className="text-[8px] sm:text-[10px] md:text-[11px] font-black text-blue-400/40 uppercase tracking-[0.14em] sm:tracking-[0.3em] md:tracking-[0.4em] italic flex items-center gap-2 sm:gap-3">
                     <TrendingUp size={18} className="text-emerald-400" /> GLOBAL PROJECT ADVANCEMENT
                   </h3>
                   <div className="flex flex-wrap items-baseline gap-3 md:gap-4">
-                    <span className="text-7xl md:text-9xl font-black text-white tracking-tighter italic leading-none drop-shadow-xl">
+                    <span className="text-5xl sm:text-6xl md:text-9xl font-black text-white tracking-tighter italic leading-none drop-shadow-xl">
                       {pct}%
                     </span>
-                    <span className="text-[9px] md:text-[10px] font-black text-emerald-400 uppercase tracking-[0.15em] md:tracking-widest bg-emerald-500/10 px-3 md:px-4 py-1.5 rounded-xl border border-emerald-500/20 italic mt-2 md:mt-0 max-w-full overflow-hidden text-ellipsis whitespace-nowrap">
+                    <span className="text-[8px] sm:text-[9px] md:text-[10px] font-black text-emerald-400 uppercase tracking-[0.12em] sm:tracking-[0.15em] md:tracking-widest bg-emerald-500/10 px-3 md:px-4 py-1.5 rounded-xl border border-emerald-500/20 italic mt-2 md:mt-0 max-w-full overflow-hidden text-ellipsis whitespace-nowrap">
                       SYSTÈME OPÉRATIONNEL
                     </span>
                   </div>
                 </div>
 
                 <div className="space-y-4">
-                  <div className="h-4 w-full bg-white/5 rounded-full overflow-hidden p-[2px] border border-white/5">
+                  <div className="h-3 sm:h-4 w-full bg-white/5 rounded-full overflow-hidden p-[2px] border border-white/5">
                     <motion.div
                       className={`h-full rounded-full shadow-[0_0_20px] ${pct >= 70 ? 'bg-gradient-to-r from-emerald-600 to-emerald-400 shadow-emerald-500/50' : 'bg-gradient-to-r from-blue-600 to-blue-400 shadow-blue-500/50'}`}
                       initial={{ width: 0 }}
@@ -139,7 +139,7 @@ export default function ClientDashboard() {
                       transition={{ duration: 1.5, ease: 'easeOut' }}
                     />
                   </div>
-                  <div className="flex justify-between text-[8px] md:text-[9px] font-black text-slate-600 uppercase tracking-widest italic font-mono flex-wrap gap-2">
+                  <div className="flex justify-between text-[7px] sm:text-[8px] md:text-[9px] font-black text-slate-600 uppercase tracking-[0.12em] sm:tracking-widest italic font-mono flex-wrap gap-2">
                     <span className="shrink-0">DEPL. START</span>
                     <span className="text-white/60 text-center flex-1">
                       {fmtNum(done)} / {fmtNum(total)} UNITS COMPLETED
@@ -152,7 +152,7 @@ export default function ClientDashboard() {
           </motion.div>
 
           {/* KPI Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-8">
             <KPICard
               title="TOTAL MÉNAGES"
               value={total > 0 ? fmtNum(total) : '—'}
@@ -179,20 +179,20 @@ export default function ClientDashboard() {
             />
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-10">
             {/* Regional breakdown */}
-            <div className="lg:col-span-8 p-6 md:p-10 rounded-3xl md:rounded-[3rem] bg-slate-900/40 border border-white/5 backdrop-blur-3xl shadow-2xl">
-              <div className="flex items-center justify-between mb-12 pb-8 border-b border-white/5">
-                <h3 className="text-[11px] font-black tracking-[0.4em] text-blue-400/40 uppercase italic flex items-center gap-3">
+            <div className="lg:col-span-8 p-4 sm:p-6 md:p-10 rounded-[1.8rem] sm:rounded-3xl md:rounded-[3rem] bg-slate-900/40 border border-white/5 backdrop-blur-3xl shadow-2xl">
+              <div className="flex items-center justify-between gap-4 mb-5 sm:mb-12 pb-5 sm:pb-8 border-b border-white/5">
+                <h3 className="text-[9px] sm:text-[11px] font-black tracking-[0.18em] sm:tracking-[0.4em] text-blue-400/40 uppercase italic flex items-center gap-2 sm:gap-3">
                   <MapPin size={18} className="text-blue-500" /> TOP-PRIORITY REGIONS
                 </h3>
-                <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest italic">
+                <p className="text-[8px] sm:text-[10px] font-bold text-slate-600 uppercase tracking-[0.12em] sm:tracking-widest italic">
                   {topRegions.length} ACTIVE CLUSTERS
                 </p>
               </div>
 
               {topRegions.length > 0 ? (
-                <div className="space-y-10">
+                <div className="space-y-4 sm:space-y-10">
                   {topRegions.map((r) => (
                     <div key={r.name}>
                       <ProgressBar
@@ -205,7 +205,7 @@ export default function ClientDashboard() {
                   ))}
                 </div>
               ) : (
-                <div className="flex flex-col items-center py-20 text-center space-y-6 opacity-20 border border-dashed border-white/10 rounded-[2rem]">
+                <div className="flex flex-col items-center py-12 sm:py-20 text-center space-y-4 sm:space-y-6 opacity-20 border border-dashed border-white/10 rounded-[1.5rem] sm:rounded-[2rem]">
                   <MapPin size={48} className="text-blue-500" />
                   <p className="text-[10px] font-black uppercase tracking-[0.4em] italic">
                     SYNCHRONIZING REGIONAL DATA ARCHIVE...
@@ -215,8 +215,8 @@ export default function ClientDashboard() {
             </div>
 
             {/* Recent validations */}
-            <div className="lg:col-span-4 p-6 md:p-10 rounded-3xl md:rounded-[3rem] bg-slate-900/40 border border-white/5 backdrop-blur-3xl shadow-2xl flex flex-col">
-              <h3 className="text-[11px] font-black mb-10 flex items-center gap-3 text-blue-400/40 uppercase tracking-[0.4em] italic">
+            <div className="lg:col-span-4 p-4 sm:p-6 md:p-10 rounded-[1.8rem] sm:rounded-3xl md:rounded-[3rem] bg-slate-900/40 border border-white/5 backdrop-blur-3xl shadow-2xl flex flex-col">
+              <h3 className="text-[9px] sm:text-[11px] font-black mb-5 sm:mb-10 flex items-center gap-2 sm:gap-3 text-blue-400/40 uppercase tracking-[0.18em] sm:tracking-[0.4em] italic">
                 <TrendingUp size={18} className="text-emerald-400" /> RECENT VALIDATIONS
               </h3>
 
@@ -230,16 +230,16 @@ export default function ClientDashboard() {
                         initial={{ opacity: 0, x: 10 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: i * 0.1 }}
-                        className="flex items-center gap-5 p-5 rounded-2xl bg-white/[0.03] border border-white/5 group hover:bg-white/[0.06] transition-all"
+                        className="flex items-center gap-3 sm:gap-5 p-4 sm:p-5 rounded-xl sm:rounded-2xl bg-white/[0.03] border border-white/5 group hover:bg-white/[0.06] transition-all"
                       >
-                        <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0 border border-emerald-500/10">
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0 border border-emerald-500/10">
                           <CheckCircle2 size={18} className="text-emerald-400" />
                         </div>
                         <div className="min-w-0">
-                          <p className="text-[13px] font-black text-white italic truncate uppercase tracking-tight">
+                          <p className="text-xs sm:text-[13px] font-black text-white italic truncate uppercase tracking-tight">
                             {h.id?.toString().substring(0, 10)}
                           </p>
-                          <p className="text-[9px] font-black text-blue-400/40 uppercase tracking-widest truncate mt-1 italic leading-none">
+                          <p className="text-[8px] sm:text-[9px] font-black text-blue-400/40 uppercase tracking-[0.14em] sm:tracking-widest truncate mt-1 italic leading-none">
                             {zone?.name ?? 'OPS ZONE UNKNOWN'}
                           </p>
                         </div>
@@ -248,7 +248,7 @@ export default function ClientDashboard() {
                   })}
                 </div>
               ) : (
-                <div className="flex-1 flex flex-col items-center justify-center text-center py-20 space-y-6 opacity-20 border border-dashed border-white/10 rounded-[2rem]">
+                <div className="flex-1 flex flex-col items-center justify-center text-center py-12 sm:py-20 space-y-4 sm:space-y-6 opacity-20 border border-dashed border-white/10 rounded-[1.5rem] sm:rounded-[2rem]">
                   <CheckCircle2 size={48} className="text-blue-500" />
                   <p className="text-[10px] font-black uppercase tracking-[0.2em] italic">
                     AWAITING FIELD AGENT VALIDATION

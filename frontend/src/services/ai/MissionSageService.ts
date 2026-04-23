@@ -1,10 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unused-vars */
 /**
- * SERVICE : MissionSageService (V.8.E
  * SERVICE : MissionSageService (V.8.F)
  */
 
-import type { User, AuditLog, Household } from '../../utils/types';
 import type { User, AuditLog, Household, Team } from '../../utils/types';
 import type { MissionStats } from '../missionStatsService';
 import { db } from '../../store/db';
@@ -26,7 +24,6 @@ export interface AIState {
 }
 
 export interface RegionalSummary {
-  region: string;ey: string]: number };
   region: string;
   totalHouseholds: number;
   delayedHouseholds: number;

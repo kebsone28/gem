@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
+﻿/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useMemo, useState } from 'react';
 import type { Household } from '../utils/types';
 
@@ -9,7 +9,7 @@ export const useGrappeClustering = (households: Household[] | undefined) => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   const clusterWorker = useMemo(
-    //@ts-ignore - Vite specific URL syntax
+    // @ts-expect-error - Vite specific URL syntax
     () => new Worker(new URL('../workers/clusterWorker.ts', import.meta.url), { type: 'module' }),
     []
   );
@@ -20,7 +20,7 @@ export const useGrappeClustering = (households: Household[] | undefined) => {
     const timer = setTimeout(() => {
       setIsLoading(true);
 
-      clusterWorker.onmessage = (e) => {
+      const handler = (e: MessageEvent) => {
         const data = e.data;
         if (data && data.success) {
           setGrappeClusters(data.panelData);
@@ -29,6 +29,8 @@ export const useGrappeClustering = (households: Household[] | undefined) => {
           setIsLoading(false);
         }
       };
+
+      clusterWorker.addEventListener('message', handler);
 
       const workerData = households
         .filter((h: any) => {
@@ -52,7 +54,10 @@ export const useGrappeClustering = (households: Household[] | undefined) => {
       clusterWorker.postMessage({ households: workerData, maxPerCluster: 80 });
     }, 300);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      clusterWorker.removeEventListener('message', handler);
+    };
   }, [households, clusterWorker]);
 
   useEffect(() => {

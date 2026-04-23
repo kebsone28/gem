@@ -197,6 +197,11 @@ export const createSession = async (req, res) => {
       include: { sessionModules: { include: { module: true }, orderBy: { orderIndex: 'asc' } } }
     });
 
+    await createPlanningHistory('session_created', 'Session créée', `Création de session ${region} - ${salle}`, {
+      sessionId: session.id,
+      metadata: { region, salle, startDate, maxParticipants: maxParticipants || 20 }
+    });
+
     res.status(201).json(session);
   } catch (error) {
     logger.error('[FORMATION_CREATE_SESSION_ERROR]', error);
@@ -243,6 +248,16 @@ export const updateSession = async (req, res) => {
       include: { sessionModules: { include: { module: true }, orderBy: { orderIndex: 'asc' } }, participants: true }
     });
 
+    await createPlanningHistory('session_updated', 'Session mise à jour', `Mise à jour de la session ${session.region} - ${session.salle}`, {
+      sessionId: session.id,
+      metadata: {
+        region: session.region,
+        salle: session.salle,
+        startDate: session.startDate,
+        status: session.status
+      }
+    });
+
     res.json(session);
   } catch (error) {
     logger.error('[FORMATION_UPDATE_SESSION_ERROR]', error);
@@ -256,7 +271,11 @@ export const updateSession = async (req, res) => {
 export const deleteSession = async (req, res) => {
   try {
     const { id } = req.params;
+    const existing = await prisma.formationSession.findUnique({ where: { id } });
     await prisma.formationSession.delete({ where: { id } });
+    await createPlanningHistory('session_deleted', 'Session supprimée', `Suppression de la session ${existing?.region || id}`, {
+      metadata: { sessionId: id, region: existing?.region || null, salle: existing?.salle || null }
+    });
     res.json({ success: true, message: 'Session supprimée' });
   } catch (error) {
     logger.error('[FORMATION_DELETE_SESSION_ERROR]', error);
@@ -417,6 +436,124 @@ export const getStats = async (req, res) => {
 };
 
 /**
+ * GET /api/formations/history
+ */
+export const getHistory = async (req, res) => {
+  try {
+    const limit = Math.min(Number(req.query.limit || 50), 100);
+    const history = await prisma.formationPlanningHistory.findMany({
+      take: limit,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        session: {
+          select: { id: true, region: true, salle: true, startDate: true, endDate: true, status: true }
+        }
+      }
+    });
+    res.json(history);
+  } catch (error) {
+    logger.error('[FORMATION_GET_HISTORY_ERROR]', error);
+    res.status(500).json({ error: "Erreur lors de la récupération de l'historique" });
+  }
+};
+
+/**
+ * POST /api/formations/history
+ */
+export const createHistoryEntry = async (req, res) => {
+  try {
+    const { action, title, details, sessionId, metadata } = req.body;
+    if (!action || !title) {
+      return res.status(400).json({ error: 'action et title sont requis' });
+    }
+    const entry = await createPlanningHistory(action, title, details || null, {
+      sessionId: sessionId || null,
+      metadata: metadata || null
+    });
+    res.status(201).json(entry);
+  } catch (error) {
+    logger.error('[FORMATION_CREATE_HISTORY_ERROR]', error);
+    res.status(500).json({ error: "Erreur lors de la création de l'historique" });
+  }
+};
+
+/**
+ * POST /api/formations/sessions/:id/recalculate-cascade
+ */
+export const cascadeRescheduleSession = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { startDate, workSaturday, workSunday, region } = req.body;
+
+    const target = await prisma.formationSession.findUnique({
+      where: { id },
+      include: { sessionModules: { include: { module: true }, orderBy: { orderIndex: 'asc' } } }
+    });
+    if (!target) return res.status(404).json({ error: 'Session introuvable' });
+    if (!startDate) return res.status(400).json({ error: 'startDate requis' });
+
+    const targetRegion = region || target.region;
+    const allRegionalSessions = await prisma.formationSession.findMany({
+      where: { region: targetRegion },
+      include: { sessionModules: { include: { module: true }, orderBy: { orderIndex: 'asc' } } },
+      orderBy: { startDate: 'asc' }
+    });
+
+    const targetIndex = allRegionalSessions.findIndex((session) => session.id === id);
+    if (targetIndex === -1) return res.status(404).json({ error: 'Session cible absente de la région' });
+
+    const updatedSessions = [];
+    let nextStartDate = new Date(startDate);
+
+    for (let index = targetIndex; index < allRegionalSessions.length; index += 1) {
+      const session = allRegionalSessions[index];
+      const totalDays = session.sessionModules.reduce((sum, sm) => sum + (sm.duration || sm.module?.duration || 1), 0);
+      const nextEndDate = calculateEndDate(
+        new Date(nextStartDate),
+        totalDays,
+        index === targetIndex ? (workSaturday ?? session.workSaturday) : session.workSaturday,
+        index === targetIndex ? (workSunday ?? session.workSunday) : session.workSunday
+      );
+
+      const updated = await prisma.formationSession.update({
+        where: { id: session.id },
+        data: {
+          ...(index === targetIndex && region ? { region } : {}),
+          startDate: new Date(nextStartDate),
+          endDate: nextEndDate,
+          ...(index === targetIndex && typeof workSaturday === 'boolean' ? { workSaturday } : {}),
+          ...(index === targetIndex && typeof workSunday === 'boolean' ? { workSunday } : {})
+        },
+        include: { sessionModules: { include: { module: true }, orderBy: { orderIndex: 'asc' } }, participants: true }
+      });
+
+      updatedSessions.push(updated);
+      nextStartDate = new Date(nextEndDate);
+      nextStartDate.setDate(nextStartDate.getDate() + 1);
+    }
+
+    await createPlanningHistory(
+      'session_cascade_replanned',
+      'Recalcul en cascade',
+      `Décalage de ${updatedSessions.length} session(s) dans la région ${targetRegion}`,
+      {
+        sessionId: target.id,
+        metadata: {
+          region: targetRegion,
+          updatedSessionIds: updatedSessions.map((session) => session.id),
+          startDate
+        }
+      }
+    );
+
+    res.json({ success: true, count: updatedSessions.length, sessions: updatedSessions });
+  } catch (error) {
+    logger.error('[FORMATION_CASCADE_RESCHEDULE_ERROR]', error);
+    res.status(500).json({ error: 'Erreur lors du recalcul en cascade' });
+  }
+};
+
+/**
  * POST /api/formations/bulk
  */
 export const bulkCreateSessions = async (req, res) => {
@@ -453,6 +590,18 @@ async function recalculateSessionEndDate(sessionId) {
   const totalDays = session.sessionModules.reduce((sum, sm) => sum + (sm.duration || sm.module?.duration || 1), 0);
   const endDate = calculateEndDate(new Date(session.startDate), totalDays, session.workSaturday, session.workSunday);
   await prisma.formationSession.update({ where: { id: sessionId }, data: { endDate } });
+}
+
+async function createPlanningHistory(action, title, details, { sessionId = null, metadata = null } = {}) {
+  return prisma.formationPlanningHistory.create({
+    data: {
+      action,
+      title,
+      details,
+      metadata,
+      ...(sessionId ? { sessionId } : {})
+    }
+  });
 }
 
 /**
@@ -657,5 +806,6 @@ export default {
   getSessions, createSession, updateSession, deleteSession,
   addModuleToSession, removeModuleFromSession,
   addParticipant, removeParticipant, toggleAttendance,
-  getRegions, planify, exportPlanify, commitPlanify, getPlanning, getStats, bulkCreateSessions
+  getRegions, planify, exportPlanify, commitPlanify, getPlanning, getStats, bulkCreateSessions,
+  getHistory, createHistoryEntry, cascadeRescheduleSession
 };

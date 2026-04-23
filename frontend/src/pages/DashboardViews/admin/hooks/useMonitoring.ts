@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
+﻿/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect, useCallback } from 'react';
 import apiClient from '../../../../api/client';
 import logger from '../../../../utils/logger';
@@ -21,7 +21,8 @@ export function useMonitoring(canViewReports: boolean) {
   }, [canViewReports]);
 
   useEffect(() => {
-    fetchMonitoring();
+    const t = window.setTimeout(() => fetchMonitoring(), 0);
+    return () => clearTimeout(t);
   }, [fetchMonitoring]);
 
   return { activities, refresh: fetchMonitoring };

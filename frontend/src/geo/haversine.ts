@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
+﻿ 
 // Formule de Haversine pour calculer la distance réelle sur Terre (en kilomètres)
 export function haversine(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371; // Rayon de la Terre en km

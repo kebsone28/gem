@@ -1,5 +1,3 @@
-/* eslint-disable react/no-unknown-property */
-/* eslint-disable react-inline-styles/no-inline-styles */
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Building2,
@@ -63,17 +61,7 @@ const TABS: { id: TabId; label: string; icon: React.ElementType; color: string }
   { id: 'features', label: 'Modules', icon: Zap, color: 'violet' },
 ];
 
-const COLOR_MAP: Record<string, string> = {
-  blue: 'bg-blue-500/10 text-blue-400 border-blue-500/30 data-[active=true]:bg-blue-600 data-[active=true]:text-white',
-  emerald:
-    'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 data-[active=true]:bg-emerald-600 data-[active=true]:text-white',
-  amber:
-    'bg-amber-500/10 text-amber-400 border-amber-500/30 data-[active=true]:bg-amber-600 data-[active=true]:text-white',
-  indigo:
-    'bg-indigo-500/10 text-indigo-400 border-indigo-500/30 data-[active=true]:bg-indigo-600 data-[active=true]:text-white',
-  violet:
-    'bg-violet-500/10 text-violet-400 border-violet-500/30 data-[active=true]:bg-violet-600 data-[active=true]:text-white',
-};
+// COLOR_MAP removed (unused)
 
 function Toggle({
   checked,
@@ -274,7 +262,7 @@ export default function OrganizationSettings() {
   return (
     <PageContainer className="min-h-screen bg-slate-950 py-8">
       <PageHeader
-        title="Mon Organisation"
+        title={orgName}
         subtitle="Personnalisez l'identité et les processus de votre espace de travail"
         icon={<Building2 size={24} className="text-blue-500" />}
         actions={
@@ -587,7 +575,7 @@ export default function OrganizationSettings() {
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <AnimatePresence>
-                          {config.notifications?.auditEmails?.map((email, i) => (
+                          {config.notifications?.auditEmails?.map((email) => (
                             <motion.div
                               key={email}
                               initial={{ opacity: 0, scale: 0.9 }}

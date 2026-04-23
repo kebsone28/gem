@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization, prefer-const, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unsafe-function-type, @typescript-eslint/no-empty-object-type */
+﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import toast from 'react-hot-toast';
@@ -217,7 +217,7 @@ export const AdminControlCenterModal: React.FC<AdminControlCenterModalProps> = (
             </div>
           )}
 
-          <div className="flex gap-1 bg-black/20 p-1.5 rounded-2xl border border-white/5 overflow-x-auto no-scrollbar mx-4 mb-4">
+          <div className="flex gap-1 bg-black/20 p-1.5 rounded-2xl border border-white/5 overflow-x-auto no-scrollbar mx-4 mb-4" role="tablist" aria-label="Navigation des onglets du centre de contrôle">
             {[
               { id: 'identity', label: 'Identité', icon: User },
               { id: 'social', label: 'Proprio', icon: Users },
