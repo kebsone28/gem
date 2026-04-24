@@ -15,7 +15,7 @@ import { LazyRouteErrorBoundary } from './components/LazyRouteErrorBoundary';
 import { Toaster } from 'react-hot-toast';
 import { PERMISSIONS, hasPermission } from './utils/permissions';
 
-function lazyWithRetry<T extends React.ComponentType<any>>(
+function lazyWithRetry<T extends React.ComponentType<Record<string, never>>>(
   importer: () => Promise<{ default: T }>,
   cacheKey: string
 ) {
