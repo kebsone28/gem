@@ -8,6 +8,25 @@ const prisma = new PrismaClient();
  * Gère l'envoi automatique de mails aux acteurs du workflow
  */
 export const missionNotificationService = {
+    _buildUserRoleFilter(roleNames) {
+        const normalizedRoles = (Array.isArray(roleNames) ? roleNames : [roleNames]).flatMap((roleName) => {
+            if (roleName === 'DIRECTEUR') {
+                return ['DIRECTEUR', 'DG_PROQUELEC', 'DG', 'DIRECTION', 'DIRECTEUR_GENERAL', 'DIR_GEN'];
+            }
+            if (roleName === 'ADMIN' || roleName === 'ADMIN_PROQUELEC') {
+                return ['ADMIN', 'ADMIN_PROQUELEC'];
+            }
+            return [roleName];
+        });
+
+        return {
+            OR: [
+                { roleLegacy: { in: normalizedRoles } },
+                { role: { is: { name: { in: normalizedRoles } } } },
+            ],
+        };
+    },
+
     /**
      * Récupère les emails d'audit depuis la configuration de l'organisation
      */
@@ -35,8 +54,8 @@ export const missionNotificationService = {
             const users = await prisma.user.findMany({
                 where: {
                     organizationId: organizationId,
-                    role: { in: (Array.isArray(nextRole) ? nextRole : [nextRole]).map(r => r === 'DIRECTEUR' ? ['DIRECTEUR', 'DG_PROQUELEC', 'DG', 'DIRECTION'] : r).flat() },
-                    active: true
+                    active: true,
+                    ...this._buildUserRoleFilter(nextRole),
                 },
                 select: { email: true, notificationEmail: true, name: true }
             });
@@ -47,6 +66,10 @@ export const missionNotificationService = {
             const recipientList = users.map(u => u.notificationEmail || u.email).join(',');
             const fullRecipients = auditEmails ? `${recipientList},${auditEmails}` : recipientList;
 
+            if (!fullRecipients.trim()) {
+                return;
+            }
+
             const body = `Une nouvelle mission (<b>${mission.title || 'Sans titre'}</b>) est en attente de votre validation.<br>
                          Numéro temporaire: ${mission.id.substring(0, 8).toUpperCase()}<br>
                          Type d'action requise: <b>Approbation ${nextRole}</b>`;
@@ -56,8 +79,8 @@ export const missionNotificationService = {
                 subject: `Action Requise: Validation de Mission (${nextRole})`,
                 title: 'Nouvelle mission reçue',
                 body,
-                actionLink: `${process.env.FRONTEND_URL}/admin/mission?id=${mission.id}`,
-                actionLabel: 'Accéder à la mission'
+                actionLink: `${process.env.FRONTEND_URL}/admin/approval`,
+                actionLabel: 'Ouvrir la page d’approbation'
             });
         } catch (error) {
             console.error('❌ Erreur notification workflow:', error);
@@ -80,8 +103,8 @@ export const missionNotificationService = {
             const stakeholders = await prisma.user.findMany({
                 where: {
                     organizationId: initiator.organizationId,
-                    role: { in: ['DG_PROQUELEC', 'DIRECTEUR', 'ADMIN_PROQUELEC', 'ADMIN', 'COMPTABLE', 'FINANCE'] },
-                    active: true
+                    active: true,
+                    ...this._buildUserRoleFilter(['DG_PROQUELEC', 'DIRECTEUR', 'ADMIN_PROQUELEC', 'ADMIN', 'COMPTABLE', 'FINANCE']),
                 },
                 select: { email: true, notificationEmail: true }
             });
@@ -95,6 +118,10 @@ export const missionNotificationService = {
                 ...stakeholderEmails, 
                 ...(auditEmails ? auditEmails.split(',') : [])
             ])].filter(Boolean).join(',');
+
+            if (!recipients.trim()) {
+                return;
+            }
 
             const body = `
                 <div style="font-family: sans-serif; line-height: 1.6; color: #333;">
@@ -143,6 +170,10 @@ export const missionNotificationService = {
             const auditEmails = await this._getAuditEmails(user.organizationId);
             const fullRecipients = auditEmails ? `${user.email},${auditEmails}` : user.email;
 
+            if (!fullRecipients?.trim()) {
+                return;
+            }
+
             const body = `Votre mission <b>${mission.title}</b> a été rejetée par l'étape <b>${role}</b>.<br><br>
                          <b>Commentaire:</b> <i>"${comment || 'Pas de commentaire spécifié'}"</i><br><br>
                          Veuillez corriger la mission et la soumettre à nouveau.`;
@@ -166,6 +197,9 @@ export const missionNotificationService = {
      */
     async notifySubmission(mission, dgEmail) {
         try {
+            if (!dgEmail || !String(dgEmail).trim()) {
+                return;
+            }
             const missionData = typeof mission.data === 'object' ? mission.data : {};
             const membersCount = missionData?.members?.length || 0;
             const budget = mission.budget ? `${mission.budget.toLocaleString('fr-FR')} FCFA` : 'Non spécifié';
@@ -187,7 +221,7 @@ export const missionNotificationService = {
                 subject: `📋 Mission à Certifier : ${mission.title || 'Nouvelle mission'}`,
                 title: '⏳ Validation Direction Générale Requise',
                 body,
-                actionLink: `${process.env.FRONTEND_URL}/admin/approbation`,
+                actionLink: `${process.env.FRONTEND_URL}/admin/approval`,
                 actionLabel: 'Ouvrir le Cockpit DG'
             });
         } catch (error) {
@@ -200,6 +234,9 @@ export const missionNotificationService = {
      */
     async notifyDGCertified(mission, orderNumber, initiatorEmail) {
         try {
+            if (!initiatorEmail || !String(initiatorEmail).trim()) {
+                return;
+            }
             const body = `
                 <p>Excellente nouvelle ! Votre mission a été <b>officiellement certifiée</b> par la Direction Générale.</p>
                 <div style="text-align:center; margin:24px 0;">

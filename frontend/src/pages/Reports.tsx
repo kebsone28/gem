@@ -34,7 +34,9 @@ import {
   CardGrid,
   ContentArea,
   COMMON_CLASSES,
+  ModulePageShell,
 } from '../components';
+import { MODULE_ACCENTS } from '../components/dashboards/DashboardComponents';
 
 import { useLabels } from '../contexts/LabelsContext';
 
@@ -67,6 +69,7 @@ export default function Reports() {
   const [exportFormat, setExportFormat] = useState('PDF');
   const [includeFinancial, setIncludeFinancial] = useState(false);
   const [includeSummary, setIncludeSummary] = useState(true);
+  const reportsAccent = MODULE_ACCENTS.reports;
 
   const markState = (id: string, state: 'loading' | 'done' | 'error') =>
     setStates((s) => ({ ...s, [id]: state }));
@@ -237,11 +240,12 @@ export default function Reports() {
         title="Rapports & Analyses"
         subtitle="Intelligence Opérationnelle & Exports"
         icon={FileText}
+        accent="reports"
         actions={
           <div className="flex items-center gap-3 flex-1 md:max-w-md">
             <div className="relative flex-1 group">
               <Search
-                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-blue-300/50 group-focus-within:text-blue-500 transition-colors"
+                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-cyan-300/40 group-focus-within:text-cyan-300 transition-colors"
                 size={16}
               />
               <input
@@ -249,10 +253,10 @@ export default function Reports() {
                 placeholder="Rechercher un rapport..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className={`${COMMON_CLASSES.input} pl-10 bg-slate-900/50 border-white/5 focus:border-blue-500`}
+                className={`${COMMON_CLASSES.input} pl-10 bg-slate-900/50 border-white/5 focus:border-cyan-400`}
               />
             </div>
-            <button aria-label="Filtrer" className={`${COMMON_CLASSES.btnSecondary} p-2.5`}>
+            <button aria-label="Filtrer" className={`${COMMON_CLASSES.btnSecondary} p-2.5 hover:border-cyan-400 hover:text-cyan-300`}>
               <Filter size={18} />
             </button>
           </div>
@@ -262,14 +266,14 @@ export default function Reports() {
       <Section title="Indicateurs de Performance">
         <CardGrid columns={4}>
           {stats.map((stat, i) => (
-            <div key={i} className={`${COMMON_CLASSES.card} ${COMMON_CLASSES.cardHover} p-6 group`}>
+            <div key={i} className={`${COMMON_CLASSES.card} ${COMMON_CLASSES.cardHover} ${reportsAccent.surface} p-6 group`}>
               <div className="flex items-center justify-between mb-4">
                 <div
                   className={`w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center ${stat.color} group-hover:scale-110 transition-transform`}
                 >
                   <stat.icon size={20} />
                 </div>
-                <span className="text-xs font-black text-blue-300/40 uppercase tracking-widest">
+                <span className="text-xs font-black text-cyan-200/45 uppercase tracking-widest">
                   {stat.label}
                 </span>
               </div>
@@ -292,7 +296,7 @@ export default function Reports() {
                 return (
                   <div
                     key={report.id}
-                    className={`${COMMON_CLASSES.card} ${COMMON_CLASSES.cardHover} p-8 group relative`}
+                    className={`${COMMON_CLASSES.card} ${COMMON_CLASSES.cardHover} ${reportsAccent.surface} p-8 group relative`}
                   >
                     <div className="flex items-start justify-between mb-6">
                       <div
@@ -338,9 +342,9 @@ export default function Reports() {
                                                 ${
                                                   state === 'done'
                                                     ? 'bg-emerald-500 text-white shadow-emerald-500/20'
-                                                    : state === 'error'
+                                                  : state === 'error'
                                                       ? 'bg-rose-500/10 text-rose-500 border border-rose-500/20 shadow-none'
-                                                      : COMMON_CLASSES.btnPrimary
+                                                      : `${COMMON_CLASSES.btnPrimary} !from-cyan-600 !via-cyan-500 !to-blue-500`
                                                 }`}
                     >
                       {state === 'loading' ? (
@@ -368,7 +372,8 @@ export default function Reports() {
 
         <div className="xl:col-span-1">
           <Section title="Export Avancé" subtitle="Paramétrez votre extraction de données terrain.">
-            <ContentArea className="bg-[#0D1E35] border-white/5">
+            <ModulePageShell accent="reports" className="p-0">
+            <ContentArea className={`bg-[#0D1E35] border-white/5 ${reportsAccent.surface}`}>
               <div className="space-y-6">
                 <div className="space-y-3">
                   <label className={COMMON_CLASSES.label} htmlFor="export-format">
@@ -483,6 +488,7 @@ export default function Reports() {
                 )}
               </button>
             </ContentArea>
+            </ModulePageShell>
           </Section>
         </div>
       </div>

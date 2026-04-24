@@ -141,7 +141,7 @@ export const MapRoutingPanel: React.FC<MapRoutingPanelProps> = ({
 
   return (
     <div
-      className={`absolute top-0 right-0 z-[200] max-w-[calc(100vw-2rem)] md:w-80 rounded-2xl border shadow-2xl backdrop-blur-xl overflow-hidden transition-all ${base}`}
+      className={`w-full md:w-80 rounded-2xl border shadow-2xl backdrop-blur-xl overflow-hidden transition-all ${base}`}
     >
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-inherit">
@@ -245,7 +245,7 @@ export const MapRoutingPanel: React.FC<MapRoutingPanelProps> = ({
               onChange={(e) => setSearchQ(e.target.value)}
               className={`w-full text-xs px-3 py-2 rounded-xl border outline-none mb-2 ${isDarkMode ? 'bg-slate-800 border-slate-700 text-white placeholder:text-slate-500' : 'bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400'}`}
             />
-            <div className="max-h-36 overflow-auto flex flex-col gap-0.5">
+            <div className="max-h-44 md:max-h-36 overflow-auto flex flex-col gap-0.5">
               {filtered.length === 0 && (
                 <p className={`text-xs text-center py-4 ${sub}`}>Aucun ménage non débuté</p>
               )}

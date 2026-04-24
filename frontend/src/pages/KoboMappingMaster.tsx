@@ -32,6 +32,7 @@ import { useAuth } from '@contexts/AuthContext';
 import { organizationService } from '@services/organizationService';
 import projectService from '@services/projectService';
 import { auditService } from '@services/auditService';
+import logger from '../utils/logger';
 
 /**
  * 🎯 KOBO MASTER ENGINE v2.0 (Multi-Project & Dynamic Field Mapping)
@@ -136,7 +137,7 @@ export default function KoboMappingMaster() {
       const data = await projectService.getProjects();
       setProjects((data as any).projects || data || []);
     } catch (err) {
-      console.error('Failed to load projects');
+      logger.error('[KoboMappingMaster] Failed to load projects', err);
     }
   };
 
@@ -153,7 +154,7 @@ export default function KoboMappingMaster() {
       setConfig({ ...data.config, kobo_field_mapping: mapping });
       setLastSync(new Date().toLocaleString());
     } catch (err) {
-      console.error('Failed to load mapping config');
+      logger.error('[KoboMappingMaster] Failed to load mapping config', err);
     }
   };
 
@@ -185,7 +186,7 @@ export default function KoboMappingMaster() {
       setIsLocked(true);
       setLastSync(new Date().toLocaleString());
     } catch (err) {
-      console.error('Failed to save mapping');
+      logger.error('[KoboMappingMaster] Failed to save mapping', err);
     } finally {
       setIsSaving(false);
     }

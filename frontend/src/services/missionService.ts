@@ -49,12 +49,12 @@ export const getMission = async (id: string): Promise<Mission | null> => {
  */
 export const createMission = async (missionData: Partial<Mission>): Promise<Mission | null> => {
   try {
-    console.log('🚀 [API] PAYLOAD SENT (CREATE):', missionData);
+    logger.debug('🚀 [API] PAYLOAD SENT (CREATE):', missionData);
     const response = await api.post('/missions', missionData);
     return response.data;
   } catch (err: any) {
     logger.error('❌ [API] Failed to create mission:', err);
-    console.error('❌ FULL BACKEND ERROR:', err.response?.data);
+    logger.error('❌ FULL BACKEND ERROR:', err.response?.data);
     return null;
   }
 };
@@ -67,12 +67,12 @@ export const updateMission = async (
   missionData: Partial<Mission>
 ): Promise<Mission | { error: number } | null> => {
   try {
-    console.log(`🚀 [API] PAYLOAD SENT (UPDATE ${id}):`, missionData);
+    logger.debug(`🚀 [API] PAYLOAD SENT (UPDATE ${id}):`, missionData);
     const response = await api.patch(`/missions/${id}`, missionData);
     return response.data;
   } catch (err: any) {
     logger.error(`❌ [API] Failed to update mission ${id}:`, err);
-    console.error('❌ FULL BACKEND ERROR:', err.response?.data);
+    logger.error('❌ FULL BACKEND ERROR:', err.response?.data);
     if (err.response?.status === 404) {
       return { error: 404 };
     }

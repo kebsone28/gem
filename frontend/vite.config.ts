@@ -6,6 +6,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 // https://vite.dev/config/
 import path from 'node:path';
+import type { IncomingMessage } from 'node:http';
 import { fileURLToPath } from 'node:url';
 
 const dirname =
@@ -52,6 +53,13 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
         maximumFileSizeToCacheInBytes: 20 * 1024 * 1024,
+        navigateFallbackDenylist: [
+          /^\/api\//,
+          /^\/@vite\//,
+          /^\/@react-refresh$/,
+          /^\/src\//,
+          /^\/node_modules\//,
+        ],
         // Exclure les images très volumineuses du precache
         globIgnores: ['assets/images/**/*.png', 'assets/images/**/*.jpg', 'assets/images/**/*.webp'],
         runtimeCaching: [
@@ -60,8 +68,26 @@ export default defineConfig({
             handler: 'NetworkFirst',
             options: {
               cacheName: 'kobo-api-cache',
+              matchOptions: {
+                ignoreVary: true,
+              },
               expiration: {
                 maxEntries: 50,
+                maxAgeSeconds: 60 * 60 * 24, // 24 hours
+              },
+            },
+          },
+          {
+            // Cache pour nos propres tuiles vectorielles (MVT Households)
+            urlPattern: /\/api\/geo\/mvt\/.*/i,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'households-mvt-cache',
+              matchOptions: {
+                ignoreVary: true,
+              },
+              expiration: {
+                maxEntries: 200,
                 maxAgeSeconds: 60 * 60 * 24, // 24 hours
               },
             },
@@ -71,6 +97,9 @@ export default defineConfig({
             handler: 'NetworkFirst',
             options: {
               cacheName: 'api-cache',
+              matchOptions: {
+                ignoreVary: true,
+              },
               expiration: {
                 maxEntries: 100,
                 maxAgeSeconds: 60 * 60 * 24, // 24 hours
@@ -92,29 +121,17 @@ export default defineConfig({
               },
             },
           },
-          {
-            // Cache pour nos propres tuiles vectorielles (MVT Households)
-            urlPattern: /\/api\/geo\/mvt\/.*/i,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'households-mvt-cache',
-              expiration: {
-                maxEntries: 200,
-                maxAgeSeconds: 60 * 60 * 24, // 24 hours
-              },
-            },
-          },
         ],
       },
       devOptions: {
-        enabled: true,
+        enabled: false,
         type: 'module',
       },
     }),
   ],
   server: {
     port: 3000,
-    strictPort: false,
+    strictPort: true,
     allowedHosts: true,
     proxy: {
       // Proxy all /api calls to the backend → eliminates CORS
@@ -123,8 +140,8 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
         cookieDomainRewrite: '',
-        configure: (proxy, _options) => {
-          proxy.on('proxyRes', (proxyRes: any, _req: any, _res: any) => {
+        configure: (proxy) => {
+          proxy.on('proxyRes', (proxyRes: IncomingMessage) => {
             // Ensure cookies are properly set for cross-origin development scenario
             const setCookieHeaders = proxyRes.headers['set-cookie'];
             if (setCookieHeaders) {

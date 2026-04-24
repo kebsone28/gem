@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle,
   Calendar,
@@ -17,14 +17,26 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { PageContainer, PageHeader } from '../components';
+import {
+  DASHBOARD_INPUT,
+  DASHBOARD_MINI_STAT_CARD,
+  DASHBOARD_SECTION_SURFACE,
+  DASHBOARD_TABLE_HEAD_ROW,
+  DASHBOARD_TABLE_ROW,
+  DASHBOARD_TABLE_SHELL,
+  DASHBOARD_TEXTAREA,
+} from '../components/dashboards/DashboardComponents';
 import { useAuth } from '../contexts/AuthContext';
+import logger from '../utils/logger';
 import {
   evaluateFormationExpert,
   type FormationExpertActionId,
+  type FormationExpertQuestion,
   type FormationExpertReplyOption,
 } from '../services/formationExpertEngine';
 
 const API_BASE = '/api/formations';
+const AI_STRUCTURED_QUESTION_IDS = ['regional_volumes', 'modules', 'start_date', 'delivery_mode'] as const;
 
 const SENEGAL_REGIONS = [
   'Dakar',
@@ -125,6 +137,15 @@ interface PlannerConfig {
   equipmentPerParticipant: number;
 }
 
+interface PlannerPreviewRequest {
+  plannerDeliveryMode: PlannerDeliveryMode | null;
+  plannerConfig: PlannerConfig;
+  regions: RegionInput[];
+  trainers: TrainerResource[];
+  rooms: RoomResource[];
+  modules: Array<{ moduleId: string; name: string; duration: number }>;
+}
+
 interface PreviewSession {
   id: string;
   region: string;
@@ -147,6 +168,20 @@ interface PreviewPlan {
   sessions: PreviewSession[];
   alerts: string[];
   impossibleRegions: string[];
+  generationSignature?: string;
+}
+
+interface PlannerStatePayload {
+  plannerMode?: PlannerExperienceMode;
+  plannerDeliveryMode?: PlannerDeliveryMode | null;
+  aiStepCursor?: number;
+  plannerConfig?: PlannerConfig;
+  regionInputs?: RegionInput[];
+  trainers?: TrainerResource[];
+  rooms?: RoomResource[];
+  selectedModuleIds?: string[];
+  moduleDurations?: Record<string, number>;
+  previewPlan?: PreviewPlan | null;
 }
 
 interface PlanningHistoryEntry {
@@ -211,7 +246,7 @@ interface ExpertConversationMessage {
 const handleResponse = async (response: Response) => {
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || `Erreur serveur (${response.status})`);
+    throw new Error(errorData.message || errorData.error || `Erreur serveur (${response.status})`);
   }
   return response.json();
 };
@@ -219,7 +254,7 @@ const handleResponse = async (response: Response) => {
 const downloadResponseBlob = async (response: Response, fallbackFileName: string) => {
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || `Erreur serveur (${response.status})`);
+    throw new Error(errorData.message || errorData.error || `Erreur serveur (${response.status})`);
   }
 
   const blob = await response.blob();
@@ -310,6 +345,22 @@ const formationApi = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     }).then(handleResponse),
+  clearHistory: () => fetch(`${API_BASE}/history`, { method: 'DELETE' }).then(handleResponse),
+  planifyPreview: (data: PlannerPreviewRequest): Promise<PreviewPlan> =>
+    fetch(`${API_BASE}/planify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }).then(handleResponse),
+  commitPlan: (data: {
+    plan: PreviewPlan;
+    options: { workSaturday: boolean; workSunday: boolean };
+  }) =>
+    fetch(`${API_BASE}/planify/commit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }).then(handleResponse),
   exportPlan: async (data: {
     plan: {
       sessions: Array<{
@@ -321,7 +372,9 @@ const formationApi = {
         workSaturday: boolean;
         workSunday: boolean;
         salle?: string;
-        modules: Array<{ moduleId: string; duration: number }>;
+        trainerName?: string;
+        durationDays?: number;
+        modules: Array<{ moduleId: string; duration: number; moduleName?: string }>;
       }>;
     };
     format: 'pdf' | 'docx';
@@ -337,6 +390,24 @@ const formationApi = {
     );
   },
   getStats: (): Promise<StatsResponse> => fetch(`${API_BASE}/stats`).then(handleResponse),
+  getPlannerState: (): Promise<PlannerStatePayload | null> =>
+    fetch(`${API_BASE}/planner-state`).then(handleResponse),
+  savePlannerState: (data: PlannerStatePayload) =>
+    fetch(`${API_BASE}/planner-state`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }).then(handleResponse),
+};
+
+const loadHistorySafely = async () => {
+  try {
+    const historyData = await formationApi.getHistory();
+    return Array.isArray(historyData) ? historyData.map(mapHistoryEntryFromApi) : [];
+  } catch (error) {
+    logger.warn('[PlanningFormation] Historique indisponible', error);
+    return [];
+  }
 };
 
 function formatDate(date: Date) {
@@ -433,6 +504,66 @@ const defaultRegionInputs: RegionInput[] = SENEGAL_REGIONS.map((region) => ({
   preferredRoomId: '',
 }));
 
+function mergeRegionInputsWithDefaults(savedRegions?: RegionInput[]) {
+  const savedMap = new Map((savedRegions || []).map((region) => [region.region, region]));
+  return defaultRegionInputs.map((region) => ({
+    ...region,
+    ...(savedMap.get(region.region) || {}),
+  }));
+}
+
+function clampAiStepCursor(value: unknown) {
+  if (typeof value !== 'number' || Number.isNaN(value)) return 0;
+  return Math.max(0, Math.min(Math.round(value), AI_STRUCTURED_QUESTION_IDS.length));
+}
+
+function buildPlannerGenerationSignature(input: {
+  plannerDeliveryMode: PlannerDeliveryMode | null;
+  plannerConfig: PlannerConfig;
+  selectedRegions: RegionInput[];
+  selectedModules: Array<{ moduleId: string; name: string; duration: number }>;
+  trainers: TrainerResource[];
+  rooms: RoomResource[];
+}) {
+  return JSON.stringify({
+    plannerDeliveryMode: input.plannerDeliveryMode,
+    plannerConfig: {
+      startDate: input.plannerConfig.startDate,
+      maxParticipantsPerSession: input.plannerConfig.maxParticipantsPerSession,
+      includeSaturday: input.plannerConfig.includeSaturday,
+      daysBetweenSessions: input.plannerConfig.daysBetweenSessions,
+      blockedDatesText: input.plannerConfig.blockedDatesText,
+      holidaysText: input.plannerConfig.holidaysText,
+      equipmentPool: input.plannerConfig.equipmentPool,
+      equipmentPerParticipant: input.plannerConfig.equipmentPerParticipant,
+    },
+    selectedRegions: input.selectedRegions.map((region) => ({
+      region: region.region,
+      participants: region.participants,
+      priority: region.priority,
+      preferredRoomId: region.preferredRoomId,
+    })),
+    selectedModules: input.selectedModules.map((module) => ({
+      moduleId: module.moduleId,
+      name: module.name,
+      duration: module.duration,
+    })),
+    trainers: input.trainers
+      .filter((trainer) => trainer.active)
+      .map((trainer) => ({
+        id: trainer.id,
+        unavailableDates: [...trainer.unavailableDates].sort(),
+      })),
+    rooms: input.rooms
+      .filter((room) => room.active)
+      .map((room) => ({
+        id: room.id,
+        capacity: room.capacity,
+        unavailableDates: [...room.unavailableDates].sort(),
+      })),
+  });
+}
+
 export default function PlanningFormation() {
   useAuth();
 
@@ -483,6 +614,11 @@ export default function PlanningFormation() {
   const [timelineWindowDays, setTimelineWindowDays] = useState(21);
   const [, setExpertConversation] = useState<ExpertConversationMessage[]>([]);
   const [lastHandledReplyId, setLastHandledReplyId] = useState<string | null>(null);
+  const [aiStepCursor, setAiStepCursor] = useState(0);
+  const aiStepCursorInitializedRef = useRef(false);
+  const plannerStateHydratedRef = useRef(false);
+  const plannerStateLoadedRef = useRef(false);
+  const previewSignatureInitializedRef = useRef(false);
   const [moduleForm, setModuleForm] = useState({
     name: '',
     description: '',
@@ -494,23 +630,62 @@ export default function PlanningFormation() {
     const loadData = async () => {
       try {
         setLoading(true);
-        const [moduleData, sessionData, statsData, historyData] = await Promise.all([
+        const [moduleData, sessionData, statsData, historyEntriesData, plannerStateData] = await Promise.all([
           formationApi.getModules(),
           formationApi.getSessions(),
           formationApi.getStats(),
-          formationApi.getHistory(),
+          loadHistorySafely(),
+          formationApi.getPlannerState().catch((error) => {
+            logger.warn('[PlanningFormation] Brouillon indisponible', error);
+            return null;
+          }),
         ]);
         setModules(Array.isArray(moduleData) ? moduleData : []);
         setSessions(Array.isArray(sessionData) ? sessionData : []);
         setStats(statsData ?? null);
-        setHistoryEntries(Array.isArray(historyData) ? historyData.map(mapHistoryEntryFromApi) : []);
+        setHistoryEntries(historyEntriesData);
+        if (plannerStateData) {
+          plannerStateHydratedRef.current = true;
+          aiStepCursorInitializedRef.current = true;
+          setPlannerMode(plannerStateData.plannerMode === 'manual' ? 'manual' : 'ai');
+          setPlannerDeliveryMode(
+            plannerStateData.plannerDeliveryMode === 'single' || plannerStateData.plannerDeliveryMode === 'multiple'
+              ? plannerStateData.plannerDeliveryMode
+              : null
+          );
+          setAiStepCursor(clampAiStepCursor(plannerStateData.aiStepCursor));
+          setPlannerConfig((current) => ({
+            ...current,
+            ...(plannerStateData.plannerConfig || {}),
+          }));
+          setRegionInputs(mergeRegionInputsWithDefaults(plannerStateData.regionInputs));
+          if (Array.isArray(plannerStateData.trainers)) {
+            setTrainers(plannerStateData.trainers);
+          }
+          if (Array.isArray(plannerStateData.rooms)) {
+            setRooms(plannerStateData.rooms);
+          }
+          if (Array.isArray(plannerStateData.selectedModuleIds)) {
+            setSelectedModuleIds(plannerStateData.selectedModuleIds);
+          }
+          if (plannerStateData.moduleDurations && typeof plannerStateData.moduleDurations === 'object') {
+            setModuleDurations(
+              Object.fromEntries(
+                Object.entries(plannerStateData.moduleDurations).map(([key, value]) => [key, Number(value) || 1])
+              )
+            );
+          }
+          setPreviewPlan(plannerStateData.previewPlan ?? null);
+        }
       } catch (error) {
-        console.error(error);
+        logger.error('[PlanningFormation] Chargement initial incomplet', error);
         toast.error('Chargement incomplet des données de formation');
         setModules([]);
         setSessions([]);
         setStats(null);
+        setHistoryEntries([]);
       } finally {
+        plannerStateLoadedRef.current = true;
         setLoading(false);
       }
     };
@@ -567,6 +742,19 @@ export default function PlanningFormation() {
   const selectedRegions = useMemo(
     () => regionInputs.filter((region) => region.selected && region.participants > 0),
     [regionInputs]
+  );
+
+  const currentPlanningSignature = useMemo(
+    () =>
+      buildPlannerGenerationSignature({
+        plannerDeliveryMode,
+        plannerConfig,
+        selectedRegions,
+        selectedModules,
+        trainers,
+        rooms,
+      }),
+    [plannerConfig, plannerDeliveryMode, rooms, selectedModules, selectedRegions, trainers]
   );
 
   const plannerSummary = useMemo(() => {
@@ -673,6 +861,177 @@ export default function PlanningFormation() {
     roomCapacityMax,
   ]);
 
+  const structuredAiStepCompletion = useMemo(
+    () => [
+      selectedRegions.length > 0 && participantsPlanned > 0,
+      selectedModules.length > 0 && totalModuleDays > 0,
+      Boolean(plannerConfig.startDate),
+      plannerDeliveryMode !== null,
+    ],
+    [
+      plannerConfig.startDate,
+      plannerDeliveryMode,
+      participantsPlanned,
+      selectedModules.length,
+      selectedRegions.length,
+      totalModuleDays,
+    ]
+  );
+
+  const firstIncompleteStructuredStepIndex = useMemo(
+    () => structuredAiStepCompletion.findIndex((isComplete) => !isComplete),
+    [structuredAiStepCompletion]
+  );
+
+  const suggestedAiStepCursor =
+    firstIncompleteStructuredStepIndex === -1
+      ? AI_STRUCTURED_QUESTION_IDS.length
+      : firstIncompleteStructuredStepIndex;
+
+  useEffect(() => {
+    if (!aiStepCursorInitializedRef.current) {
+      setAiStepCursor(suggestedAiStepCursor);
+      aiStepCursorInitializedRef.current = true;
+      return;
+    }
+
+    if (firstIncompleteStructuredStepIndex !== -1 && aiStepCursor > firstIncompleteStructuredStepIndex) {
+      setAiStepCursor(firstIncompleteStructuredStepIndex);
+    }
+  }, [aiStepCursor, firstIncompleteStructuredStepIndex, suggestedAiStepCursor]);
+
+  const activeStructuredAiQuestionId =
+    aiStepCursor < AI_STRUCTURED_QUESTION_IDS.length ? AI_STRUCTURED_QUESTION_IDS[aiStepCursor] : null;
+
+  const activeAiQuestion = useMemo<FormationExpertQuestion | null>(() => {
+    switch (activeStructuredAiQuestionId) {
+      case 'regional_volumes':
+        return {
+          id: 'regional_volumes',
+          prompt: 'Combien de stagiaires faut-il former dans chaque région concernée ?',
+          why: 'Le planning commence par le périmètre réel: régions actives et volumes à former.',
+          blocking: true,
+          answer:
+            selectedRegions.length === 0
+              ? 'Sélectionnez les régions utiles et saisissez le nombre de stagiaires pour chacune. La progression ne passera à la suite qu’après validation explicite.'
+              : `Les régions sélectionnées peuvent encore être ajustées. Cadrage actuel: ${selectedRegions
+                  .map((region) => `${region.region} (${region.participants})`)
+                  .join(', ')}.`,
+          targetSection: 'Régions et effectifs',
+          replyOptions: [],
+        };
+      case 'modules':
+        return {
+          id: 'modules',
+          prompt: 'Quels modules doivent composer la formation ?',
+          why: 'Le moteur a besoin du contenu pédagogique pour calculer la durée réelle de chaque session.',
+          blocking: true,
+          answer:
+            selectedModules.length === 0
+              ? 'Sélectionnez les modules à enseigner. L’étape suivante ne s’ouvrira qu’après validation.'
+              : `Modules actuellement retenus: ${selectedModules.map((module) => module.name).join(', ')}.`,
+          targetSection: 'Modules',
+          replyOptions: [],
+        };
+      case 'start_date':
+        return {
+          id: 'start_date',
+          prompt: 'Quelle est la date de démarrage du planning de formation ?',
+          why: 'La date de démarrage sert de point de départ à tout le calendrier.',
+          blocking: true,
+          answer: plannerConfig.startDate
+            ? `Date actuellement saisie: ${plannerConfig.startDate}. Vous pouvez encore la modifier avant validation.`
+            : 'Choisissez la date à partir de laquelle le moteur doit commencer à positionner les sessions.',
+          targetSection: 'Date de démarrage',
+          replyOptions: [],
+        };
+      case 'delivery_mode':
+        return {
+          id: 'delivery_mode',
+          prompt: 'La formation sera-t-elle animée par un seul formateur ou par plusieurs en parallèle ?',
+          why: 'Ce choix détermine si le moteur planifie des sessions séquentielles ou plusieurs sessions en parallèle.',
+          blocking: true,
+          answer:
+            plannerDeliveryMode === null
+              ? 'Choisissez le mode pédagogique. Vous pourrez revenir en arrière avant la génération.'
+              : plannerDeliveryMode === 'multiple'
+                ? 'Mode actuellement sélectionné: plusieurs formateurs en parallèle.'
+                : 'Mode actuellement sélectionné: un seul formateur.',
+          targetSection: 'Ressources pédagogiques',
+          replyOptions: [],
+        };
+      default:
+        return expertEvaluation.nextQuestion;
+    }
+  }, [
+    activeStructuredAiQuestionId,
+    expertEvaluation.nextQuestion,
+    plannerConfig.startDate,
+    plannerDeliveryMode,
+    selectedModules,
+    selectedRegions,
+  ]);
+
+  const displayedGuidedFlow = useMemo(() => {
+    if (aiStepCursor >= AI_STRUCTURED_QUESTION_IDS.length) {
+      return expertEvaluation.guidedFlow;
+    }
+
+    return expertEvaluation.guidedFlow.map((step, index) => {
+      if (index >= AI_STRUCTURED_QUESTION_IDS.length) {
+        return { ...step, status: 'pending' as const };
+      }
+
+      if (index < aiStepCursor) {
+        return {
+          ...step,
+          status: structuredAiStepCompletion[index] ? ('done' as const) : ('active' as const),
+        };
+      }
+
+      if (index === aiStepCursor) {
+        return { ...step, status: 'active' as const };
+      }
+
+      return { ...step, status: 'pending' as const };
+    });
+  }, [aiStepCursor, expertEvaluation.guidedFlow, structuredAiStepCompletion]);
+
+  const isStructuredAiQuestion = AI_STRUCTURED_QUESTION_IDS.includes(
+    (activeAiQuestion?.id || '') as (typeof AI_STRUCTURED_QUESTION_IDS)[number]
+  );
+  const currentStepIndex = Math.max(
+    0,
+    displayedGuidedFlow.findIndex((step) => step.status === 'active')
+  );
+  const totalStepCount = expertEvaluation.guidedFlow.length;
+  const plannerStatePayload = useMemo<PlannerStatePayload>(
+    () => ({
+      plannerMode,
+      plannerDeliveryMode,
+      aiStepCursor,
+      plannerConfig,
+      regionInputs,
+      trainers,
+      rooms,
+      selectedModuleIds,
+      moduleDurations,
+      previewPlan,
+    }),
+    [
+      aiStepCursor,
+      moduleDurations,
+      plannerConfig,
+      plannerDeliveryMode,
+      plannerMode,
+      previewPlan,
+      regionInputs,
+      rooms,
+      selectedModuleIds,
+      trainers,
+    ]
+  );
+
   const addHistoryEntry = (
     type: PlanningHistoryEntry['type'],
     title: string,
@@ -703,7 +1062,7 @@ export default function PlanningFormation() {
         setHistoryEntries((current) => [mapHistoryEntryFromApi(entry), ...current].slice(0, 20));
       }
     } catch (error) {
-      console.error('Erreur persistence historique formation', error);
+      logger.warn('[PlanningFormation] Persistance historique indisponible', error);
     }
   };
 
@@ -765,6 +1124,7 @@ export default function PlanningFormation() {
       sessions: updatedSessions,
       alerts: updatedAlerts,
       impossibleRegions: previewPlan.impossibleRegions.filter((region) => region !== source.region),
+      generationSignature: previewPlan.generationSignature,
     });
     addHistoryEntry(
       'preview_updated',
@@ -892,7 +1252,7 @@ export default function PlanningFormation() {
         setExpertConversation((current) => [
           {
             id: `${Date.now()}-assistant-start-date`,
-            role: 'system',
+            role: 'system' as const,
             title: 'Correction appliquée',
             body: "La date de démarrage a été définie à aujourd'hui.",
           },
@@ -911,7 +1271,7 @@ export default function PlanningFormation() {
         setExpertConversation((current) => [
           {
             id: `${Date.now()}-assistant-regions`,
-            role: 'system',
+            role: 'system' as const,
             title: 'Correction appliquée',
             body: 'Trois régions prioritaires ont été préremplies pour démarrer rapidement.',
           },
@@ -934,7 +1294,7 @@ export default function PlanningFormation() {
         setExpertConversation((current) => [
           {
             id: `${Date.now()}-assistant-participants`,
-            role: 'system',
+            role: 'system' as const,
             title: 'Correction appliquée',
             body: "Des effectifs d'exemple ont été injectés dans les régions prioritaires.",
           },
@@ -947,7 +1307,7 @@ export default function PlanningFormation() {
         setExpertConversation((current) => [
           {
             id: `${Date.now()}-assistant-modules`,
-            role: 'system',
+            role: 'system' as const,
             title: 'Correction appliquée',
             body: 'Les modules de base ont été sélectionnés pour constituer une session standard.',
           },
@@ -967,7 +1327,7 @@ export default function PlanningFormation() {
         setExpertConversation((current) => [
           {
             id: `${Date.now()}-assistant-trainers`,
-            role: 'system',
+            role: 'system' as const,
             title: 'Correction appliquée',
             body: 'Deux formateurs de base ont été ajoutés pour sécuriser la génération.',
           },
@@ -987,7 +1347,7 @@ export default function PlanningFormation() {
         setExpertConversation((current) => [
           {
             id: `${Date.now()}-assistant-rooms`,
-            role: 'system',
+            role: 'system' as const,
             title: 'Correction appliquée',
             body: 'Deux salles de base ont été ajoutées avec des capacités cohérentes.',
           },
@@ -1003,7 +1363,7 @@ export default function PlanningFormation() {
         setExpertConversation((current) => [
           {
             id: `${Date.now()}-assistant-equipment`,
-            role: 'system',
+            role: 'system' as const,
             title: 'Correction appliquée',
             body: "Le stock d'équipements a été initialisé à une valeur de base.",
           },
@@ -1016,7 +1376,7 @@ export default function PlanningFormation() {
         setExpertConversation((current) => [
           {
             id: `${Date.now()}-assistant-generate`,
-            role: 'system',
+            role: 'system' as const,
             title: 'Action lancée',
             body: 'Le moteur a lancé une génération automatique du planning.',
           },
@@ -1058,7 +1418,7 @@ export default function PlanningFormation() {
       pushExpertMessage(
         'system',
         'Passage en mode manuel',
-        `Bascule vers le mode manuel pour corriger la zone "${expertEvaluation.nextQuestion?.targetSection}". L’assistant reprendra ensuite automatiquement avec la prochaine question utile.`
+        `Bascule vers le mode manuel pour corriger la zone "${activeAiQuestion?.targetSection}". L’assistant reprendra ensuite automatiquement avec la prochaine question utile.`
       );
       return;
     }
@@ -1078,7 +1438,7 @@ export default function PlanningFormation() {
       pushExpertMessage(
         'system',
         'Pourquoi corriger ?',
-        `${expertEvaluation.nextQuestion?.why}\n\nAlertes détectées:\n${
+        `${activeAiQuestion?.why}\n\nAlertes détectées:\n${
           expertEvaluation.alerts.length > 0
             ? expertEvaluation.alerts.join('\n')
             : 'Aucune alerte détaillée n’est disponible.'
@@ -1090,12 +1450,12 @@ export default function PlanningFormation() {
     pushExpertMessage(
       'system',
       'Décision enregistrée',
-      `Votre choix a bien été pris en compte. Cette étape reste en attente dans "${expertEvaluation.nextQuestion?.targetSection}". Tant que ce point n’est pas traité, le planning ne pourra pas avancer complètement vers sa finalisation.`
+      `Votre choix a bien été pris en compte. Cette étape reste en attente dans "${activeAiQuestion?.targetSection}". Tant que ce point n’est pas traité, le planning ne pourra pas avancer complètement vers sa finalisation.`
     );
   };
 
   const handleStructuredAiQuestionSubmit = () => {
-    switch (expertEvaluation.nextQuestion?.id) {
+    switch (activeAiQuestion?.id) {
       case 'regional_volumes': {
         const validRegions = regionInputs.filter((region) => region.selected && region.participants > 0);
         if (validRegions.length === 0) {
@@ -1113,6 +1473,7 @@ export default function PlanningFormation() {
           'Étape validée',
           'Les régions et les effectifs sont enregistrés. Le moteur peut maintenant calculer les volumes de sessions attendus.'
         );
+        setAiStepCursor(1);
         return;
       }
       case 'modules': {
@@ -1131,6 +1492,7 @@ export default function PlanningFormation() {
           'Étape validée',
           `Le contenu pédagogique est défini pour ${totalModuleDays} jour(s) de formation.`
         );
+        setAiStepCursor(2);
         return;
       }
       case 'start_date': {
@@ -1149,6 +1511,7 @@ export default function PlanningFormation() {
           'Étape validée',
           'La date de démarrage est enregistrée. Le moteur peut maintenant positionner les sessions dans le calendrier.'
         );
+        setAiStepCursor(3);
         return;
       }
       case 'delivery_mode': {
@@ -1165,6 +1528,7 @@ export default function PlanningFormation() {
             : 'La formation sera animée par un seul formateur.'
         );
         applyPlannerDeliveryMode(plannerDeliveryMode);
+        setAiStepCursor(AI_STRUCTURED_QUESTION_IDS.length);
         return;
       }
       default:
@@ -1172,36 +1536,74 @@ export default function PlanningFormation() {
     }
   };
 
+  const handleAiStepBack = () => {
+    setAiStepCursor((current) => Math.max(0, Math.min(current, AI_STRUCTURED_QUESTION_IDS.length) - 1));
+  };
+
+  const handleAiStepJump = (stepIndex: number) => {
+    setAiStepCursor(Math.max(0, Math.min(stepIndex, AI_STRUCTURED_QUESTION_IDS.length)));
+  };
+
   useEffect(() => {
-    if (!expertEvaluation.nextQuestion) return;
+    if (!activeAiQuestion) return;
 
     setExpertConversation((current) => {
       const first = current[0];
-      const nextId = `assistant-${expertEvaluation.nextQuestion?.id}-${expertEvaluation.status}`;
+      const nextId = `assistant-${activeAiQuestion.id}-${currentStepIndex}`;
       if (first?.id === nextId) return current;
 
       const nextMessage: ExpertConversationMessage = {
         id: nextId,
-        role: 'assistant',
-        title: `Question à traiter: ${expertEvaluation.nextQuestion.prompt}`,
-        body: `${expertEvaluation.nextQuestion.answer}\n\nZone concernée: ${expertEvaluation.nextQuestion.targetSection}`,
+        role: 'assistant' as const,
+        title: `Question à traiter: ${activeAiQuestion.prompt}`,
+        body: `${activeAiQuestion.answer}\n\nZone concernée: ${activeAiQuestion.targetSection}`,
       };
 
       return [nextMessage, ...current].slice(0, 8);
     });
-  }, [expertEvaluation.nextQuestion, expertEvaluation.status]);
+  }, [activeAiQuestion, currentStepIndex]);
 
   useEffect(() => {
-    if (!expertEvaluation.nextQuestion) {
+    if (!activeAiQuestion) {
       setLastHandledReplyId(null);
       return;
     }
 
-    const availableReplyIds = expertEvaluation.nextQuestion.replyOptions.map((option) => option.id);
+    const availableReplyIds = activeAiQuestion.replyOptions.map((option) => option.id);
     if (lastHandledReplyId && !availableReplyIds.includes(lastHandledReplyId)) {
       setLastHandledReplyId(null);
     }
-  }, [expertEvaluation.nextQuestion, lastHandledReplyId]);
+  }, [activeAiQuestion, lastHandledReplyId]);
+
+  useEffect(() => {
+    if (!plannerStateLoadedRef.current) return;
+
+    const timeoutId = window.setTimeout(async () => {
+      try {
+        await formationApi.savePlannerState(plannerStatePayload);
+      } catch (error) {
+        logger.warn('[PlanningFormation] Sauvegarde du brouillon indisponible', error);
+      }
+    }, plannerStateHydratedRef.current ? 700 : 0);
+
+    plannerStateHydratedRef.current = true;
+    return () => window.clearTimeout(timeoutId);
+  }, [plannerStatePayload]);
+
+  useEffect(() => {
+    if (!plannerStateLoadedRef.current) return;
+
+    if (!previewSignatureInitializedRef.current) {
+      previewSignatureInitializedRef.current = true;
+    }
+
+    if (!previewPlan) return;
+
+    if (previewPlan.generationSignature !== currentPlanningSignature) {
+      setPreviewPlan(null);
+      toast('Le planning généré a été réinitialisé car les paramètres ont changé. Regénérez-le avant export.');
+    }
+  }, [currentPlanningSignature, previewPlan]);
 
   const openModuleModal = (module?: FormationModule) => {
     if (module) {
@@ -1246,7 +1648,7 @@ export default function PlanningFormation() {
       setModules(Array.isArray(refreshed) ? refreshed : []);
       setModuleModalOpen(false);
     } catch (error) {
-      console.error(error);
+      logger.error('[PlanningFormation] Saving module failed', error);
       toast.error("Impossible d'enregistrer le module");
     } finally {
       setSubmitting(false);
@@ -1264,7 +1666,7 @@ export default function PlanningFormation() {
       setSelectedModuleIds((current) => current.filter((moduleId) => moduleId !== id));
       toast.success('Module supprimé');
     } catch (error) {
-      console.error(error);
+      logger.error('[PlanningFormation] Deleting module failed', error);
       toast.error('Suppression impossible');
     } finally {
       setSubmitting(false);
@@ -1283,14 +1685,14 @@ export default function PlanningFormation() {
       void persistHistoryEntry('session_deleted', 'Session supprimée', `Suppression de la session ${id}.`, id);
       toast.success('Session supprimée');
     } catch (error) {
-      console.error(error);
+      logger.error('[PlanningFormation] Deleting session failed', error);
       toast.error('Suppression impossible');
     } finally {
       setSubmitting(false);
     }
   };
 
-  const generatePlan = () => {
+  const generatePlan = async () => {
     if (selectedRegions.length === 0) {
       toast.error('Sélectionnez au moins une région avec des stagiaires');
       return;
@@ -1312,149 +1714,48 @@ export default function PlanningFormation() {
       return;
     }
 
-    const trainerOccupation = new Map<string, Set<string>>();
-    const roomOccupation = new Map<string, Set<string>>();
+    setSubmitting(true);
+    try {
+      const preview = await formationApi.planifyPreview({
+        plannerDeliveryMode,
+        plannerConfig,
+        regions: selectedRegions,
+        trainers,
+        rooms,
+        modules: selectedModules,
+      });
 
-    activeTrainers.forEach((trainer) => {
-      trainerOccupation.set(
-        trainer.id,
-        new Set(trainer.unavailableDates.filter((date) => /^\d{4}-\d{2}-\d{2}$/.test(date)))
+      const nextPreview: PreviewPlan = {
+        sessions: Array.isArray(preview.sessions) ? preview.sessions : [],
+        alerts: Array.isArray(preview.alerts) ? preview.alerts : [],
+        impossibleRegions: Array.isArray(preview.impossibleRegions) ? preview.impossibleRegions : [],
+        generationSignature: currentPlanningSignature,
+      };
+
+      setPreviewPlan(nextPreview);
+      addHistoryEntry(
+        'preview_generated',
+        'Planning généré',
+        `${nextPreview.sessions.length} session(s) générée(s), ${nextPreview.alerts.length} alerte(s).`
       );
-    });
-
-    activeRooms.forEach((room) => {
-      roomOccupation.set(
-        room.id,
-        new Set(room.unavailableDates.filter((date) => /^\d{4}-\d{2}-\d{2}$/.test(date)))
+      void persistHistoryEntry(
+        'preview_generated',
+        'Planning généré',
+        `${nextPreview.sessions.length} session(s) générée(s), ${nextPreview.alerts.length} alerte(s).`,
+        undefined,
+        { sessions: nextPreview.sessions.length, alerts: nextPreview.alerts.length }
       );
-    });
 
-    const alerts: string[] = [];
-    const impossibleRegions: string[] = [];
-    const generatedSessions: PreviewSession[] = [];
-    const sessionDuration = Math.max(1, totalModuleDays);
-    const orderedRegions = [...selectedRegions].sort(
-      (a, b) => b.priority - a.priority || b.participants - a.participants
-    );
-    const baseDate = parseDate(plannerConfig.startDate);
-
-    if (!baseDate) {
-      toast.error('Date de démarrage invalide');
-      return;
-    }
-
-    for (const region of orderedRegions) {
-      const sessionCount = Math.ceil(region.participants / Math.max(1, plannerConfig.maxParticipantsPerSession));
-      let regionScheduled = 0;
-
-      for (let index = 0; index < sessionCount; index += 1) {
-        const participants = Math.min(
-          plannerConfig.maxParticipantsPerSession,
-          region.participants - index * plannerConfig.maxParticipantsPerSession
-        );
-        const equipmentNeeded = participants * Math.max(1, plannerConfig.equipmentPerParticipant);
-
-        if (equipmentNeeded > plannerConfig.equipmentPool) {
-          alerts.push(
-            `${region.region} session ${index + 1}: ${equipmentNeeded} équipements requis pour un stock de ${plannerConfig.equipmentPool}.`
-          );
-          impossibleRegions.push(region.region);
-          continue;
-        }
-
-        let cursor = addDays(baseDate, regionScheduled * plannerConfig.daysBetweenSessions);
-        let booked = false;
-        let tries = 0;
-
-        while (!booked && tries < 365) {
-          tries += 1;
-          const startDate = formatDate(cursor);
-          const endDate = computeSessionEndDate(
-            startDate,
-            sessionDuration,
-            plannerConfig.includeSaturday,
-            blockedDates
-          );
-          const coveredDates = buildDateRange(startDate, endDate).filter((dateValue) =>
-            isWorkingDay(parseDate(dateValue) || new Date(), plannerConfig.includeSaturday, blockedDates)
-          );
-
-          const preferredRoom =
-            activeRooms.find((room) => room.id === region.preferredRoomId && room.capacity >= participants) || null;
-
-          const candidateRooms = preferredRoom
-            ? [preferredRoom, ...activeRooms.filter((room) => room.id !== preferredRoom.id && room.capacity >= participants)]
-            : activeRooms.filter((room) => room.capacity >= participants);
-
-          const room = candidateRooms.find((candidateRoom) =>
-            coveredDates.every((dateValue) => !roomOccupation.get(candidateRoom.id)?.has(dateValue))
-          );
-
-          const trainer = activeTrainers.find((candidateTrainer) =>
-            coveredDates.every((dateValue) => !trainerOccupation.get(candidateTrainer.id)?.has(dateValue))
-          );
-
-          if (room && trainer) {
-            coveredDates.forEach((dateValue) => {
-              trainerOccupation.get(trainer.id)?.add(dateValue);
-              roomOccupation.get(room.id)?.add(dateValue);
-            });
-
-            generatedSessions.push({
-              id: `preview-${region.region}-${index + 1}`,
-              region: region.region,
-              priority: region.priority,
-              indexInRegion: index + 1,
-              participants,
-              trainerId: trainer.id,
-              trainerName: trainer.name,
-              roomId: room.id,
-              roomName: room.name,
-              startDate,
-              endDate,
-              durationDays: diffDaysInclusive(startDate, endDate),
-              fillRate: Math.round((participants / plannerConfig.maxParticipantsPerSession) * 100),
-              equipmentNeeded,
-              modules: selectedModules,
-            });
-
-            regionScheduled += 1;
-            booked = true;
-          } else {
-            cursor = addDays(cursor, 1);
-          }
-        }
-
-        if (!booked) {
-          alerts.push(`${region.region} session ${index + 1}: aucune combinaison salle/formateur disponible.`);
-          impossibleRegions.push(region.region);
-        }
+      if (nextPreview.alerts.length > 0) {
+        toast.error(`${nextPreview.alerts.length} contrainte(s) détectée(s)`);
+      } else {
+        toast.success('Planning généré');
       }
-    }
-
-    const normalizedImpossibleRegions = Array.from(new Set(impossibleRegions));
-    setPreviewPlan({
-      sessions: generatedSessions.sort((a, b) => a.startDate.localeCompare(b.startDate)),
-      alerts,
-      impossibleRegions: normalizedImpossibleRegions,
-    });
-    addHistoryEntry(
-      'preview_generated',
-      'Planning généré',
-      `${generatedSessions.length} session(s) générée(s), ${alerts.length} alerte(s).`
-    );
-    void persistHistoryEntry(
-      'preview_generated',
-      'Planning généré',
-      `${generatedSessions.length} session(s) générée(s), ${alerts.length} alerte(s).`,
-      undefined,
-      { sessions: generatedSessions.length, alerts: alerts.length }
-    );
-
-    if (alerts.length > 0) {
-      toast.error(`${alerts.length} contrainte(s) détectée(s)`);
-    } else {
-      toast.success('Planning généré');
+    } catch (error) {
+      logger.error('[PlanningFormation] Preview generation failed', error);
+      toast.error(error instanceof Error ? error.message : 'Génération impossible');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -1466,41 +1767,22 @@ export default function PlanningFormation() {
 
     setSubmitting(true);
     try {
-      for (const session of previewPlan.sessions) {
-        await formationApi.createSession({
-          region: session.region,
-          salle: session.roomName,
-          maxParticipants: session.participants,
-          startDate: session.startDate,
+      await formationApi.commitPlan({
+        plan: previewPlan,
+        options: {
           workSaturday: plannerConfig.includeSaturday,
           workSunday: false,
-          notes: `Planning généré automatiquement • Formateur: ${session.trainerName} • Priorité région: ${session.priority}`,
-          modules: session.modules.map((module, index) => ({
-            moduleId: module.moduleId,
-            duration: module.duration,
-            orderIndex: index,
-          })),
-        });
-      }
+        },
+      });
 
-      const [sessionData, statsData] = await Promise.all([
+      const [sessionData, statsData, historyEntriesData] = await Promise.all([
         formationApi.getSessions(),
         formationApi.getStats(),
+        loadHistorySafely(),
       ]);
       setSessions(Array.isArray(sessionData) ? sessionData : []);
       setStats(statsData ?? null);
-      addHistoryEntry(
-        'preview_persisted',
-        'Planning enregistré',
-        `${previewPlan.sessions.length} session(s) enregistrée(s) en base.`
-      );
-      void persistHistoryEntry(
-        'preview_persisted',
-        'Planning enregistré',
-        `${previewPlan.sessions.length} session(s) enregistrée(s) en base.`,
-        undefined,
-        { sessions: previewPlan.sessions.length }
-      );
+      setHistoryEntries(historyEntriesData);
       pushExpertMessage(
         'system',
         'Planning finalisé',
@@ -1508,7 +1790,7 @@ export default function PlanningFormation() {
       );
       toast.success('Planning enregistré dans les sessions');
     } catch (error) {
-      console.error(error);
+      logger.error('[PlanningFormation] Persisting preview plan failed', error);
       toast.error("L'enregistrement du planning a échoué");
     } finally {
       setSubmitting(false);
@@ -1538,15 +1820,6 @@ export default function PlanningFormation() {
               onClick: () => setPlannerMode('manual'),
             }
           : null;
-
-  const isStructuredAiQuestion = ['regional_volumes', 'modules', 'start_date', 'delivery_mode'].includes(
-    expertEvaluation.nextQuestion?.id || ''
-  );
-  const currentStepIndex = Math.max(
-    0,
-    expertEvaluation.guidedFlow.findIndex((step) => step.status === 'active')
-  );
-  const totalStepCount = expertEvaluation.guidedFlow.length;
 
   const exportPreviewCsv = () => {
     if (!previewPlan || previewPlan.sessions.length === 0) {
@@ -1620,6 +1893,7 @@ export default function PlanningFormation() {
                 <th>Région</th>
                 <th>Session</th>
                 <th>Participants</th>
+                <th>Durée</th>
                 <th>Début</th>
                 <th>Fin</th>
                 <th>Formateur</th>
@@ -1635,6 +1909,7 @@ export default function PlanningFormation() {
                       <td>${session.region}</td>
                       <td>${session.indexInRegion}</td>
                       <td>${session.participants}</td>
+                      <td>${session.durationDays} j</td>
                       <td>${session.startDate}</td>
                       <td>${session.endDate}</td>
                       <td>${session.trainerName}</td>
@@ -1680,17 +1955,33 @@ export default function PlanningFormation() {
             workSaturday: plannerConfig.includeSaturday,
             workSunday: false,
             salle: session.roomName,
+            trainerName: session.trainerName,
+            durationDays: session.durationDays,
             modules: session.modules.map((module) => ({
               moduleId: module.moduleId,
               duration: module.duration,
+              moduleName: module.name,
             })),
           })),
         },
       });
       toast.success(`Export ${format.toUpperCase()} généré`);
     } catch (error) {
-      console.error(error);
+      logger.error('[PlanningFormation] Export failed', error);
       toast.error(`Export ${format.toUpperCase()} impossible`);
+    }
+  };
+
+  const handleClearHistory = async () => {
+    if (!window.confirm("Supprimer tout l'historique de planification ?")) return;
+
+    try {
+      await formationApi.clearHistory();
+      setHistoryEntries([]);
+      toast.success('Historique supprimé');
+    } catch (error) {
+      logger.error('[PlanningFormation] Clearing history failed', error);
+      toast.error("Suppression de l'historique impossible");
     }
   };
 
@@ -1804,14 +2095,14 @@ export default function PlanningFormation() {
         await formationApi.updateSession(editingBackendSession.id, sessionPayload);
       }
 
-      const [sessionData, statsData, historyData] = await Promise.all([
+      const [sessionData, statsData, historyEntriesData] = await Promise.all([
         formationApi.getSessions(),
         formationApi.getStats(),
-        formationApi.getHistory(),
+        loadHistorySafely(),
       ]);
       setSessions(Array.isArray(sessionData) ? sessionData : []);
       setStats(statsData ?? null);
-      setHistoryEntries(Array.isArray(historyData) ? historyData.map(mapHistoryEntryFromApi) : []);
+      setHistoryEntries(historyEntriesData);
       addHistoryEntry(
         'session_updated',
         'Session enregistrée mise à jour',
@@ -1829,7 +2120,7 @@ export default function PlanningFormation() {
       setEditingBackendSession(null);
       toast.success('Session enregistrée mise à jour');
     } catch (error) {
-      console.error(error);
+      logger.error('[PlanningFormation] Reprogramming backend session failed', error);
       toast.error("Impossible de reprogrammer la session");
     } finally {
       setSubmitting(false);
@@ -1899,6 +2190,7 @@ export default function PlanningFormation() {
             : 'Planification multi-régions plus logique, plus pilotable et plus robuste'
         }
         icon={GraduationCap}
+        accent="formation"
         className="mb-4 sm:mb-6"
         actions={activeTab === 'planner' && plannerMode === 'ai' ? undefined : globalActions}
       />
@@ -1948,12 +2240,12 @@ export default function PlanningFormation() {
         {plannerStats.map((stat) => (
           <div
             key={stat.label}
-            className={`rounded-[28px] border p-3 shadow-sm sm:rounded-3xl sm:p-5 ${
+            className={`${DASHBOARD_MINI_STAT_CARD} rounded-[28px] p-3 shadow-sm sm:rounded-3xl sm:p-5 ${
               activeTab === 'planner' && plannerMode === 'ai'
                 ? 'border-blue-200 bg-blue-50/40 dark:border-blue-900/40 dark:bg-blue-950/10'
                 : activeTab === 'planner' && plannerMode === 'manual'
                   ? 'border-amber-200 bg-amber-50/40 dark:border-amber-900/40 dark:bg-amber-950/10'
-                  : 'border-[var(--color-border-primary)] bg-[var(--color-bg-primary)]'
+                  : ''
             }`}
           >
             <div
@@ -1977,7 +2269,7 @@ export default function PlanningFormation() {
         ))}
       </div>
 
-      <div className="mb-4 flex gap-2 overflow-x-auto pb-1 sm:mb-5 sm:flex-wrap sm:gap-3 sm:overflow-visible">
+      <div className={`mb-4 flex gap-2 overflow-x-auto rounded-3xl border border-white/8 bg-[linear-gradient(180deg,rgba(15,23,42,0.74),rgba(10,16,28,0.86))] p-2 pb-2 shadow-[0_18px_50px_rgba(2,6,23,0.28)] sm:mb-5 sm:flex-wrap sm:gap-3 sm:overflow-visible`}>
         {[
           { id: 'planner', label: 'Planificateur intelligent' },
           { id: 'sessions', label: 'Sessions enregistrées' },
@@ -1989,11 +2281,11 @@ export default function PlanningFormation() {
             className={`min-w-max whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold transition ${
               activeTab === tab.id && tab.id === 'planner' && plannerMode === 'ai'
                 ? 'bg-blue-600 text-white'
-                : activeTab === tab.id && tab.id === 'planner' && plannerMode === 'manual'
+              : activeTab === tab.id && tab.id === 'planner' && plannerMode === 'manual'
                   ? 'bg-amber-600 text-white'
                   : activeTab === tab.id
                     ? 'bg-[var(--color-primary)] text-white'
-                    : 'border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)]'
+                    : 'border border-white/8 bg-white/[0.04] text-[var(--color-text-secondary)]'
             }`}
           >
             <span className="sm:hidden">
@@ -2007,7 +2299,7 @@ export default function PlanningFormation() {
       {activeTab === 'planner' && (
         <div className="space-y-4 sm:space-y-6">
           <div
-            className={`rounded-[28px] border p-3 shadow-sm sm:rounded-3xl ${
+            className={`${DASHBOARD_SECTION_SURFACE} rounded-[28px] p-3 shadow-sm sm:rounded-3xl ${
               plannerMode === 'ai'
                 ? 'border-blue-200 bg-blue-50/70 dark:border-blue-900/60 dark:bg-blue-950/20'
                 : 'border-amber-200 bg-amber-50/70 dark:border-amber-900/60 dark:bg-amber-950/20'
@@ -2095,7 +2387,7 @@ export default function PlanningFormation() {
                         Question en cours
                       </div>
                       <div className="mt-1 hidden text-sm text-[var(--color-text-secondary)] sm:block">
-                        Répondez uniquement à cette étape. L’assistant enchaînera automatiquement sur la suivante.
+                        Répondez uniquement à cette étape. L’étape suivante ne s’ouvrira qu’après validation explicite.
                       </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
@@ -2108,18 +2400,18 @@ export default function PlanningFormation() {
                     </div>
                   </div>
 
-                  {expertEvaluation.nextQuestion ? (
+                  {activeAiQuestion ? (
                     <div className="space-y-3 rounded-[28px] border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] p-3 sm:space-y-4 sm:rounded-3xl sm:p-5">
                       <div>
                         <div className="text-[1.05rem] font-semibold leading-tight text-[var(--color-text-primary)] sm:text-lg">
-                          {expertEvaluation.nextQuestion.prompt}
+                          {activeAiQuestion.prompt}
                         </div>
                         <div className="mt-1.5 text-sm text-[var(--color-text-secondary)] sm:mt-2">
-                          {expertEvaluation.nextQuestion.answer}
+                          {activeAiQuestion.answer}
                         </div>
                       </div>
 
-                      {expertEvaluation.nextQuestion.id === 'regional_volumes' && (
+                      {activeAiQuestion.id === 'regional_volumes' && (
                         <div className="space-y-4">
                           <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--color-text-muted)] sm:text-xs">
                             Sélectionnez les régions et saisissez le volume
@@ -2166,6 +2458,14 @@ export default function PlanningFormation() {
                               Étape {Math.min(currentStepIndex + 1, totalStepCount)}/{totalStepCount}
                             </div>
                             <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+                            {aiStepCursor > 0 && (
+                              <button
+                                onClick={handleAiStepBack}
+                                className="rounded-2xl border border-[var(--color-border-primary)] px-4 py-3 text-sm font-semibold text-[var(--color-text-primary)]"
+                              >
+                                Retour à l'étape précédente
+                              </button>
+                            )}
                             <button
                               onClick={handleStructuredAiQuestionSubmit}
                               className="rounded-2xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white"
@@ -2183,7 +2483,7 @@ export default function PlanningFormation() {
                         </div>
                       )}
 
-                      {expertEvaluation.nextQuestion.id === 'modules' && (
+                      {activeAiQuestion.id === 'modules' && (
                         <div className="space-y-4">
                           <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--color-text-muted)] sm:text-xs">
                             Choisissez les modules de la formation
@@ -2228,17 +2528,25 @@ export default function PlanningFormation() {
                             <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-text-muted)]">
                               Étape {Math.min(currentStepIndex + 1, totalStepCount)}/{totalStepCount}
                             </div>
-                            <button
-                              onClick={handleStructuredAiQuestionSubmit}
-                              className="w-full rounded-2xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white sm:w-auto"
-                            >
-                              Valider et continuer
-                            </button>
+                            <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+                              <button
+                                onClick={handleAiStepBack}
+                                className="w-full rounded-2xl border border-[var(--color-border-primary)] px-4 py-3 text-sm font-semibold text-[var(--color-text-primary)] sm:w-auto"
+                              >
+                                Retour à l'étape précédente
+                              </button>
+                              <button
+                                onClick={handleStructuredAiQuestionSubmit}
+                                className="w-full rounded-2xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white sm:w-auto"
+                              >
+                                Valider et continuer
+                              </button>
+                            </div>
                           </div>
                         </div>
                       )}
 
-                      {expertEvaluation.nextQuestion.id === 'start_date' && (
+                      {activeAiQuestion.id === 'start_date' && (
                         <div className="space-y-4">
                           <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--color-text-muted)] sm:text-xs">
                             Choisissez la date de démarrage
@@ -2255,17 +2563,25 @@ export default function PlanningFormation() {
                             <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-text-muted)]">
                               Étape {Math.min(currentStepIndex + 1, totalStepCount)}/{totalStepCount}
                             </div>
-                            <button
-                              onClick={handleStructuredAiQuestionSubmit}
-                              className="w-full rounded-2xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white sm:w-auto"
-                            >
-                              Valider et continuer
-                            </button>
+                            <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+                              <button
+                                onClick={handleAiStepBack}
+                                className="w-full rounded-2xl border border-[var(--color-border-primary)] px-4 py-3 text-sm font-semibold text-[var(--color-text-primary)] sm:w-auto"
+                              >
+                                Retour à l'étape précédente
+                              </button>
+                              <button
+                                onClick={handleStructuredAiQuestionSubmit}
+                                className="w-full rounded-2xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white sm:w-auto"
+                              >
+                                Valider et continuer
+                              </button>
+                            </div>
                           </div>
                         </div>
                       )}
 
-                      {expertEvaluation.nextQuestion.id === 'delivery_mode' && (
+                      {activeAiQuestion.id === 'delivery_mode' && (
                         <div className="space-y-4">
                           <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--color-text-muted)] sm:text-xs">
                             Choisissez le mode d’organisation
@@ -2306,12 +2622,20 @@ export default function PlanningFormation() {
                             <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-text-muted)]">
                               Étape {Math.min(currentStepIndex + 1, totalStepCount)}/{totalStepCount}
                             </div>
-                            <button
-                              onClick={handleStructuredAiQuestionSubmit}
-                              className="w-full rounded-2xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white sm:w-auto"
-                            >
-                              Valider et continuer
-                            </button>
+                            <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+                              <button
+                                onClick={handleAiStepBack}
+                                className="w-full rounded-2xl border border-[var(--color-border-primary)] px-4 py-3 text-sm font-semibold text-[var(--color-text-primary)] sm:w-auto"
+                              >
+                                Retour à l'étape précédente
+                              </button>
+                              <button
+                                onClick={handleStructuredAiQuestionSubmit}
+                                className="w-full rounded-2xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white sm:w-auto"
+                              >
+                                Valider et continuer
+                              </button>
+                            </div>
                           </div>
                         </div>
                       )}
@@ -2322,7 +2646,7 @@ export default function PlanningFormation() {
                             Choisissez une réponse
                           </div>
                           <div className="flex flex-wrap gap-3">
-                            {expertEvaluation.nextQuestion.replyOptions.map((option) => (
+                            {activeAiQuestion.replyOptions.map((option) => (
                               <button
                                 key={option.id}
                                 onClick={() => handleExpertReply(option)}
@@ -2343,12 +2667,22 @@ export default function PlanningFormation() {
                             <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-text-muted)]">
                               Étape {Math.min(currentStepIndex + 1, totalStepCount)}/{totalStepCount}
                             </div>
-                            <button
-                              onClick={() => setPlannerMode('manual')}
-                              className="w-full rounded-2xl border border-[var(--color-border-primary)] px-4 py-3 text-sm font-semibold text-[var(--color-text-primary)] sm:w-auto"
-                            >
-                              Passer en mode manuel
-                            </button>
+                            <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+                              {aiStepCursor > 0 && (
+                                <button
+                                  onClick={handleAiStepBack}
+                                  className="w-full rounded-2xl border border-[var(--color-border-primary)] px-4 py-3 text-sm font-semibold text-[var(--color-text-primary)] sm:w-auto"
+                                >
+                                  Retour à l'étape précédente
+                                </button>
+                              )}
+                              <button
+                                onClick={() => setPlannerMode('manual')}
+                                className="w-full rounded-2xl border border-[var(--color-border-primary)] px-4 py-3 text-sm font-semibold text-[var(--color-text-primary)] sm:w-auto"
+                              >
+                                Passer en mode manuel
+                              </button>
+                            </div>
                           </div>
                         </div>
                       )}
@@ -2400,16 +2734,18 @@ export default function PlanningFormation() {
 
                   {aiMobilePhasesOpen && (
                     <div className="mt-3 space-y-3">
-                      {expertEvaluation.guidedFlow.map((step, index) => (
-                        <div
+                      {displayedGuidedFlow.map((step, index) => (
+                        <button
                           key={step.id}
+                          type="button"
+                          onClick={() => handleAiStepJump(index)}
                           className={`rounded-2xl border p-4 ${
                             step.status === 'done'
                               ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-900/60 dark:bg-emerald-950/20'
                               : step.status === 'active'
                                 ? 'border-blue-200 bg-blue-50 dark:border-blue-900/60 dark:bg-blue-950/20'
                                 : 'border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)]'
-                          }`}
+                          } text-left transition hover:border-blue-300`}
                         >
                           <div className="flex items-start gap-3">
                             <div
@@ -2432,7 +2768,7 @@ export default function PlanningFormation() {
                               </div>
                             </div>
                           </div>
-                        </div>
+                        </button>
                       ))}
                     </div>
                   )}
@@ -2445,16 +2781,18 @@ export default function PlanningFormation() {
                   className="hidden sm:block"
                 >
                   <div className="space-y-3">
-                    {expertEvaluation.guidedFlow.map((step, index) => (
-                      <div
+                    {displayedGuidedFlow.map((step, index) => (
+                      <button
                         key={step.id}
+                        type="button"
+                        onClick={() => handleAiStepJump(index)}
                         className={`rounded-2xl border p-4 ${
                           step.status === 'done'
                             ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-900/60 dark:bg-emerald-950/20'
                             : step.status === 'active'
                               ? 'border-blue-200 bg-blue-50 dark:border-blue-900/60 dark:bg-blue-950/20'
                               : 'border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)]'
-                        }`}
+                        } w-full text-left transition hover:border-blue-300`}
                       >
                         <div className="flex items-start gap-3">
                           <div
@@ -2482,10 +2820,76 @@ export default function PlanningFormation() {
                             </div>
                           </div>
                         </div>
-                      </div>
+                      </button>
                     ))}
                   </div>
                 </SectionCard>
+
+                {previewPlan && previewPlan.sessions.length > 0 && (
+                  <SectionCard
+                    title="Planning créé"
+                    subtitle="Aperçu rapide du planning généré avec actions d'export."
+                    icon={<Calendar className="h-5 w-5" />}
+                  >
+                    <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900/60 dark:bg-emerald-950/20">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-700 dark:text-emerald-300">
+                            Planning généré
+                          </div>
+                          <div className="mt-1 text-sm text-emerald-800 dark:text-emerald-200">
+                            {previewPlan.sessions.length} session(s) générée(s) pour {generatedIndicators.participantsCount} stagiaire(s).
+                          </div>
+                        </div>
+                        <div className="rounded-full bg-white/80 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-700 dark:bg-slate-950/40 dark:text-emerald-300">
+                          {previewPlan.alerts.length > 0 ? `${previewPlan.alerts.length} alerte(s)` : 'Prêt'}
+                        </div>
+                      </div>
+
+                      <div className="mt-3 space-y-2">
+                        {previewPlan.sessions.slice(0, 4).map((session) => (
+                          <div
+                            key={session.id}
+                            className="rounded-2xl border border-emerald-200/70 bg-white/80 px-3 py-2 text-sm dark:border-emerald-900/40 dark:bg-slate-950/30"
+                          >
+                            <div className="font-semibold text-[var(--color-text-primary)]">
+                              {session.region} • Session {session.indexInRegion}
+                            </div>
+                            <div className="text-xs text-[var(--color-text-secondary)]">
+                              {session.startDate} au {session.endDate} • {session.participants} stagiaire(s) • {session.roomName}
+                            </div>
+                          </div>
+                        ))}
+                        {previewPlan.sessions.length > 4 && (
+                          <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-text-muted)]">
+                            + {previewPlan.sessions.length - 4} autre(s) session(s)
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="mt-4 flex flex-col gap-3">
+                        <button
+                          onClick={() => setPlannerMode('manual')}
+                          className="w-full rounded-2xl border border-emerald-300 bg-white px-4 py-3 text-sm font-semibold text-emerald-800 transition hover:border-emerald-400 dark:border-emerald-900/60 dark:bg-slate-950/30 dark:text-emerald-300"
+                        >
+                          Afficher le planning détaillé
+                        </button>
+                        <button
+                          onClick={() => exportPreviewViaBackend('docx')}
+                          className="w-full rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700"
+                        >
+                          Télécharger Word (.docx)
+                        </button>
+                        <button
+                          onClick={() => exportPreviewViaBackend('pdf')}
+                          className="w-full rounded-2xl border border-[var(--color-border-primary)] px-4 py-3 text-sm font-semibold text-[var(--color-text-primary)]"
+                        >
+                          Télécharger PDF
+                        </button>
+                      </div>
+                    </div>
+                  </SectionCard>
+                )}
 
                 <SectionCard
                   title="Mode"
@@ -2528,8 +2932,8 @@ export default function PlanningFormation() {
                   </div>
                 </div>
                 <div className="grid gap-4 md:grid-cols-3">
-                  <QuickAnswerCard question="Question active" answer={expertEvaluation.nextQuestion?.prompt || 'Aucune question bloquante.'} />
-                  <QuickAnswerCard question="Zone à corriger" answer={expertEvaluation.nextQuestion?.targetSection || 'Aucune correction prioritaire.'} />
+                  <QuickAnswerCard question="Question active" answer={activeAiQuestion?.prompt || 'Aucune question bloquante.'} />
+                  <QuickAnswerCard question="Zone à corriger" answer={activeAiQuestion?.targetSection || 'Aucune correction prioritaire.'} />
                   <QuickAnswerCard question="Statut" answer={expertEvaluation.summary} />
                 </div>
               </SectionCard>
@@ -3313,14 +3717,14 @@ export default function PlanningFormation() {
                         className="inline-flex items-center gap-2 rounded-2xl border border-[var(--color-border-primary)] px-4 py-2 text-sm font-semibold text-[var(--color-text-primary)] transition hover:border-[var(--color-primary)]"
                       >
                         <Download className="h-4 w-4" />
-                        Export PDF backend
+                        Télécharger PDF
                       </button>
                       <button
                         onClick={() => exportPreviewViaBackend('docx')}
                         className="inline-flex items-center gap-2 rounded-2xl border border-[var(--color-border-primary)] px-4 py-2 text-sm font-semibold text-[var(--color-text-primary)] transition hover:border-[var(--color-primary)]"
                       >
                         <Download className="h-4 w-4" />
-                        Export DOCX backend
+                        Télécharger Word (.docx)
                       </button>
                     </div>
                   </div>
@@ -3357,7 +3761,9 @@ export default function PlanningFormation() {
                             <div className="mt-1 text-[var(--color-text-primary)]">
                               {session.startDate} au {session.endDate}
                             </div>
-                            <div className="text-xs text-[var(--color-text-secondary)]">{session.durationDays} jour(s)</div>
+                            <div className="text-xs font-semibold text-[var(--color-text-secondary)]">
+                              Durée session: {session.durationDays} jour(s)
+                            </div>
                           </div>
                           <div>
                             <div className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
@@ -3405,12 +3811,13 @@ export default function PlanningFormation() {
                     ))}
                   </div>
 
-                  <div className="hidden overflow-x-auto md:block">
+                  <div className={`hidden overflow-x-auto md:block ${DASHBOARD_TABLE_SHELL}`}>
                     <table className="min-w-full text-sm">
                       <thead>
-                        <tr className="border-b border-[var(--color-border-primary)] text-left text-xs uppercase tracking-[0.16em] text-[var(--color-text-muted)]">
+                        <tr className={DASHBOARD_TABLE_HEAD_ROW}>
                           <th className="pb-3">Région</th>
                           <th className="pb-3">Session</th>
+                          <th className="pb-3">Durée</th>
                           <th className="pb-3">Période</th>
                           <th className="pb-3">Ressources</th>
                           <th className="pb-3">Charge</th>
@@ -3420,16 +3827,17 @@ export default function PlanningFormation() {
                       </thead>
                       <tbody>
                         {previewPlan.sessions.map((session) => (
-                          <tr key={session.id} className="border-b border-[var(--color-border-primary)]/70 align-top">
+                          <tr key={session.id} className={`${DASHBOARD_TABLE_ROW} align-top`}>
                             <td className="py-3">
                               <div className="font-semibold text-[var(--color-text-primary)]">{session.region}</div>
                               <div className="text-xs text-[var(--color-text-secondary)]">Priorité {session.priority}</div>
                             </td>
                             <td className="py-3 text-[var(--color-text-primary)]">#{session.indexInRegion}</td>
+                            <td className="py-3 text-[var(--color-text-primary)]">{session.durationDays} j</td>
                             <td className="py-3">
                               <div className="font-medium text-[var(--color-text-primary)]">{session.startDate}</div>
                               <div className="text-xs text-[var(--color-text-secondary)]">
-                                au {session.endDate} • {session.durationDays} j
+                                au {session.endDate}
                               </div>
                             </td>
                             <td className="py-3">
@@ -3590,10 +3998,10 @@ export default function PlanningFormation() {
             ))}
           </div>
 
-          <div className="hidden overflow-x-auto md:block">
+          <div className={`hidden overflow-x-auto md:block ${DASHBOARD_TABLE_SHELL}`}>
             <table className="min-w-full text-sm">
               <thead>
-                <tr className="border-b border-[var(--color-border-primary)] text-left text-xs uppercase tracking-[0.16em] text-[var(--color-text-muted)]">
+                <tr className={DASHBOARD_TABLE_HEAD_ROW}>
                   <th className="pb-3">Région</th>
                   <th className="pb-3">Salle</th>
                   <th className="pb-3">Période</th>
@@ -3611,7 +4019,7 @@ export default function PlanningFormation() {
                   </tr>
                 )}
                 {filteredBackendSessions.map((session) => (
-                  <tr key={session.id} className="border-b border-[var(--color-border-primary)]/70 align-top">
+                  <tr key={session.id} className={`${DASHBOARD_TABLE_ROW} align-top`}>
                     <td className="py-3 font-semibold text-[var(--color-text-primary)]">{session.region}</td>
                     <td className="py-3 text-[var(--color-text-secondary)]">{session.salle}</td>
                     <td className="py-3">
@@ -3740,8 +4148,19 @@ export default function PlanningFormation() {
 
       <SectionCard
         title="Historique des modifications"
-        subtitle="Journal local des reprogrammations et validations réalisées sur cette page."
+        subtitle="Journal des reprogrammations et validations réalisées sur cette page."
         icon={<Clock className="h-5 w-5" />}
+        action={
+          historyEntries.length > 0 ? (
+            <button
+              onClick={handleClearHistory}
+              className="inline-flex items-center gap-2 rounded-2xl border border-rose-200 px-4 py-2 text-sm font-semibold text-rose-600 transition hover:bg-rose-50 dark:border-rose-900/60 dark:text-rose-300 dark:hover:bg-rose-950/30"
+            >
+              <Trash2 className="h-4 w-4" />
+              Vider l'historique
+            </button>
+          ) : undefined
+        }
       >
         <div className="space-y-3">
           {historyEntries.length === 0 && (
@@ -4259,11 +4678,9 @@ function QuickAnswerCard({ question, answer }: { question: string; answer: strin
   );
 }
 
-const inputClassName =
-  'h-[46px] w-full rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] px-4 text-sm text-[var(--color-text-primary)] outline-none transition focus:border-[var(--color-primary)]';
+const inputClassName = `${DASHBOARD_INPUT} text-[var(--color-text-primary)]`;
 
-const textareaClassName =
-  'w-full rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] px-4 py-3 text-sm text-[var(--color-text-primary)] outline-none transition focus:border-[var(--color-primary)]';
+const textareaClassName = `${DASHBOARD_TEXTAREA} text-[var(--color-text-primary)]`;
 
 function mapHistoryEntryFromApi(entry: ApiHistoryEntry): PlanningHistoryEntry {
   const typeMap: Record<string, PlanningHistoryEntry['type']> = {

@@ -31,7 +31,7 @@ export function useDashboardData(projectId: string, canViewReports: boolean) {
       }
     } catch (err: any) {
       if (err.response?.status !== 401) {
-        logger.error('Failed to fetch remote metrics', err);
+        logger.warn('Remote dashboard metrics unavailable', err);
         setError('Erreur lors de la récupération des données cloud');
       }
     } finally {

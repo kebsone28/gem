@@ -15,6 +15,7 @@ import {
 import { useFinances } from '../../hooks/useFinances';
 import { useTheme } from '../../contexts/ThemeContext';
 import { fmtFCFA } from '../../utils/format';
+import logger from '../../utils/logger';
 
 const REGIONS = ['Tous', 'Global', 'Kaffrine', 'Tambacounda'];
 const STATUS = ['Tous', 'Conforme', 'Dépassement'];
@@ -95,7 +96,7 @@ export default function DevisVsReel() {
 
       writeFile(wb, `bilan_complet_${project?.name || 'projet'}.xlsx`);
     } catch (err) {
-      console.error('Erreur export Excel:', err);
+      logger.error('[DevisVsReel] Erreur export Excel', err);
       alert("Erreur lors de l'export Excel.");
     }
   };

@@ -10,9 +10,11 @@
 
 import maplibregl from 'maplibre-gl';
 import { STATUS_CONFIG, ICON_SIZES } from './mapConfig';
+import logger from '../../utils/logger';
 
 // ── SINGLETON ICON REGISTRY ──
 const iconRegistry = new Map<string, boolean>();
+const styleImageFallbackRegistry = new WeakSet<maplibregl.Map>();
 
 /**
  * Draws a Squircle (Lamé Curve approximation) using Cubic Bezier curves
@@ -171,6 +173,95 @@ async function generateIconBitmap(status: string, size: number): Promise<ImageBi
   return createImageBitmap(canvas);
 }
 
+async function generatePhotoIndicatorBitmap(): Promise<ImageBitmap> {
+  const canvas = document.createElement('canvas');
+  canvas.width = 32;
+  canvas.height = 32;
+  const ctx = canvas.getContext('2d')!;
+
+  ctx.beginPath();
+  ctx.arc(16, 16, 14, 0, Math.PI * 2);
+  ctx.fillStyle = '#3b82f6';
+  ctx.fill();
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 16px "Inter", "Segoe UI", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('📷', 16, 16);
+
+  return createImageBitmap(canvas);
+}
+
+const resolveStatusFromImageId = (imageId: string): { status: string; variant: 'small' | 'large' | 'pulsing' | null } | null => {
+  const pulsingMatch = imageId.match(/^pulsing-(.+)$/);
+  if (pulsingMatch) {
+    return {
+      status: pulsingMatch[1],
+      variant: 'pulsing',
+    };
+  }
+
+  const staticMatch = imageId.match(/^icon-(.+)-(small|large)$/);
+  if (staticMatch) {
+    return {
+      status: staticMatch[1],
+      variant: staticMatch[2] as 'small' | 'large',
+    };
+  }
+
+  return null;
+};
+
+export async function ensureMapImage(map: maplibregl.Map, imageId: string): Promise<boolean> {
+  if (!map || !map.isStyleLoaded() || map.hasImage(imageId)) return false;
+
+  if (imageId === 'photo-indicator') {
+    const bitmap = await generatePhotoIndicatorBitmap();
+    if (!map.hasImage(imageId)) {
+      map.addImage(imageId, bitmap, { pixelRatio: 2 });
+    }
+    return true;
+  }
+
+  const resolved = resolveStatusFromImageId(imageId);
+  if (!resolved) return false;
+
+  const status = STATUS_CONFIG[resolved.status] ? resolved.status : 'default';
+
+  if (resolved.variant === 'pulsing') {
+    if (!map.hasImage(imageId)) {
+      map.addImage(imageId, new PulsingIcon(map, status));
+    }
+    return true;
+  }
+
+  const size = resolved.variant === 'large' ? ICON_SIZES.large : ICON_SIZES.small;
+  const bitmap = await generateIconBitmap(status, size);
+  if (!map.hasImage(imageId)) {
+    map.addImage(imageId, bitmap, { pixelRatio: 2 });
+  }
+  return true;
+}
+
+function attachStyleImageFallback(map: maplibregl.Map) {
+  if (styleImageFallbackRegistry.has(map)) return;
+
+  const handleStyleImageMissing = async (event: { id: string }) => {
+    try {
+      await ensureMapImage(map, event.id);
+    } catch (error) {
+      logger.warn(`[MapUtils] Impossible de régénérer l'image ${event.id}`, error);
+    }
+  };
+
+  map.on('styleimagemissing', handleStyleImageMissing as any);
+  styleImageFallbackRegistry.add(map);
+}
+
 /**
  * Professional Pulsing Dot implementation using MapLibre StyleImageInterface
  * Upgraded with "Respiration" (Dual-Halo) and "Shimmer" (Diamond VIP)
@@ -268,6 +359,7 @@ class PulsingIcon implements maplibregl.StyleImageInterface {
  */
 export async function registerIcons(map: maplibregl.Map) {
   if (!map || !map.isStyleLoaded()) return;
+  attachStyleImageFallback(map);
 
   const statuses = Object.keys(STATUS_CONFIG);
 
@@ -277,48 +369,22 @@ export async function registerIcons(map: maplibregl.Map) {
     const pulsingId = `pulsing-${status}`;
 
     if (!map.hasImage(smallId)) {
-      const smallBitmap = await generateIconBitmap(status, ICON_SIZES.small);
-      map.addImage(smallId, smallBitmap, { pixelRatio: 2 });
+      await ensureMapImage(map, smallId);
     }
 
     if (!map.hasImage(largeId)) {
-      const largeBitmap = await generateIconBitmap(status, ICON_SIZES.large);
-      map.addImage(largeId, largeBitmap, { pixelRatio: 2 });
+      await ensureMapImage(map, largeId);
     }
 
     // Register breathing pulsing variant
     if (!map.hasImage(pulsingId)) {
-      map.addImage(pulsingId, new PulsingIcon(map, status));
+      await ensureMapImage(map, pulsingId);
     }
   }
 
-  // Register the dedicated photo indicator icon
-  if (!map.hasImage('photo-indicator')) {
-    const canvas = document.createElement('canvas');
-    canvas.width = 32;
-    canvas.height = 32;
-    const ctx = canvas.getContext('2d')!;
-    
-    // Draw a small white circle with a blue camera icon
-    ctx.beginPath();
-    ctx.arc(16, 16, 14, 0, Math.PI * 2);
-    ctx.fillStyle = '#3b82f6';
-    ctx.fill();
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 16px "Inter", "Segoe UI", sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('📷', 16, 16);
-    
-    const bitmap = await createImageBitmap(canvas);
-    map.addImage('photo-indicator', bitmap, { pixelRatio: 2 });
-  }
+  await ensureMapImage(map, 'photo-indicator');
 
-  console.log('💎 [MapUtils] Néon-Glass icons registered (Squircles & VIP Diamond)');
+  logger.debug('💎 [MapUtils] Néon-Glass icons registered (Squircles & VIP Diamond)');
 }
 
 /**

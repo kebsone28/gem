@@ -5,6 +5,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import alertsAPI from '../services/alertsAPI';
+import logger from '../utils/logger';
 
 interface Alert {
   id: string;
@@ -45,7 +46,7 @@ export function useAlerts(projectId: string) {
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Unknown error';
         setError(message);
-        console.error('[useAlerts] Error fetching alerts:', err);
+        logger.error('[useAlerts] Error fetching alerts', err);
       } finally {
         setLoading(false);
       }
@@ -70,7 +71,7 @@ export function useAlerts(projectId: string) {
         );
         return true;
       } catch (err) {
-        console.error('[useAlerts] Error acknowledging alert:', err);
+        logger.error('[useAlerts] Error acknowledging alert', err);
         return false;
       }
     },
@@ -86,7 +87,7 @@ export function useAlerts(projectId: string) {
         );
         return true;
       } catch (err) {
-        console.error('[useAlerts] Error resolving alert:', err);
+        logger.error('[useAlerts] Error resolving alert', err);
         return false;
       }
     },
@@ -100,7 +101,7 @@ export function useAlerts(projectId: string) {
         setAlerts([newAlert, ...alerts]);
         return newAlert;
       } catch (err) {
-        console.error('[useAlerts] Error creating alert:', err);
+        logger.error('[useAlerts] Error creating alert', err);
         throw err;
       }
     },

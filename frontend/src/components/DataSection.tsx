@@ -19,6 +19,10 @@ export function DataSection({
   const [isProcessing, setIsProcessing] = useState(false);
 
   const handleReorganizeGrappes = async () => {
+    if (!project?.id) {
+      toast.error('Aucun projet actif valide sélectionné.');
+      return;
+    }
     if (!households || households.length === 0) {
       toast.error("Aucune donnée de ménages. Synchronisez d'abord vos données terrain.");
       return;

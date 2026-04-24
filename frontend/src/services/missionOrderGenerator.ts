@@ -15,6 +15,14 @@ const formatCurrency = (n: number): string => {
   return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' FCFA';
 };
 
+const hasOfficialOrderNumber = (value?: string | null) => !!value && !value.startsWith('TEMP-');
+
+const getMissionReference = (data: MissionOrderData) =>
+  hasOfficialOrderNumber(data.orderNumber) ? data.orderNumber : data.id || 'BROUILLON';
+
+const getMissionTitleReference = (data: MissionOrderData) =>
+  hasOfficialOrderNumber(data.orderNumber) ? `N°${data.orderNumber}` : 'BROUILLON';
+
 /**
  * Nettoie les textes corrompus par des résidus d'encodage.
  * Gère deux cas :
@@ -75,7 +83,7 @@ export const generateMissionOrderPDF = async (data: MissionOrderData) => {
   doc.setTextColor(...DARK);
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
-  doc.text(`ORDRE DE MISSION N\u00b0${data.orderNumber} - ${orgName.toUpperCase()}`, w / 2, 40, {
+  doc.text(`ORDRE DE MISSION ${getMissionTitleReference(data)} - ${orgName.toUpperCase()}`, w / 2, 40, {
     align: 'center',
   });
   // Ligne décorative sous le titre
@@ -157,7 +165,7 @@ export const generateMissionOrderPDF = async (data: MissionOrderData) => {
   doc.setFont('helvetica', 'italic');
   doc.setTextColor(...GRAY);
   const note =
-    'Le présent ordre de mission devra être présenté pour certification et restitué au Responsable Administratif & Financier par les intéressés dès leur retour.';
+    'Le présent ordre de mission devra être présenté pour validation finale et restitué au Responsable Administratif & Financier par les intéressés dès leur retour.';
   doc.text(doc.splitTextToSize(note, w - 28), 14, currentY);
   doc.setTextColor(...DARK);
   currentY += 16;
@@ -165,7 +173,7 @@ export const generateMissionOrderPDF = async (data: MissionOrderData) => {
   // ── QR CODE DE VÉRIFICATION GÉNÉRÉ ──
   try {
     const integrityToken = data.integrityHash ? `&h=${data.integrityHash.substring(0, 8)}` : '';
-    const verifyUrl = `${window.location.origin}/verify/mission/${data.orderNumber || data.date}${integrityToken}`;
+    const verifyUrl = `${window.location.origin}/verify/mission/${getMissionReference(data)}${integrityToken}`;
     const qrDataUrl = await QRCode.toDataURL(verifyUrl, {
       margin: 1,
       width: 100,
@@ -182,14 +190,14 @@ export const generateMissionOrderPDF = async (data: MissionOrderData) => {
     }
     doc.setTextColor(...DARK);
   } catch (qrErr) {
-    console.error('QR Generation failed', qrErr);
+    logger.warn('[missionOrderGenerator] QR Generation failed', qrErr);
   }
 
   // ── BLOC SIGNATURE DG ──
   const dgCenterX = w - 55;
   doc.setFontSize(11);
   doc.setFont('helvetica', 'bold');
-  doc.text('Le Directeur Général', dgCenterX, currentY, { align: 'center' });
+  doc.text('Validation finale', dgCenterX, currentY, { align: 'center' });
   currentY += 5;
 
   if (data.signatureImage) {
@@ -200,7 +208,7 @@ export const generateMissionOrderPDF = async (data: MissionOrderData) => {
       doc.addImage(sig, 'PNG', dgCenterX - 30, currentY, 60, 25);
       currentY += 28;
     } catch (e) {
-      console.error('Signature failed in PDF', e);
+      logger.warn('[missionOrderGenerator] Signature failed in PDF', e);
       currentY += 20;
     }
   } else if (data.isCertified) {
@@ -211,7 +219,7 @@ export const generateMissionOrderPDF = async (data: MissionOrderData) => {
     doc.setTextColor(220, 38, 38);
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
-    doc.text('PROQUELEC - DIRECTION GÉNÉRALE', dgCenterX, currentY + 8, { align: 'center' });
+    doc.text('PROQUELEC - VALIDATION OFFICIELLE', dgCenterX, currentY + 8, { align: 'center' });
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
     doc.text('VU ET APPROUVÉ', dgCenterX, currentY + 15, { align: 'center' });
@@ -235,7 +243,7 @@ export const generateMissionOrderPDF = async (data: MissionOrderData) => {
     currentY += 25;
   }
 
-  // Tampon CERTIFIÉ CONFORME
+  // Tampon VALIDÉ OFFICIEL
   if (data.isCertified) {
     doc.setDrawColor(...SUCCESS);
     doc.setFillColor(240, 255, 244);
@@ -244,7 +252,7 @@ export const generateMissionOrderPDF = async (data: MissionOrderData) => {
     doc.setTextColor(...SUCCESS);
     doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
-    doc.text('\u2713  CERTIFIÉ CONFORME', dgCenterX, currentY + 9.5, { align: 'center' });
+    doc.text('\u2713  VALIDÉ OFFICIEL', dgCenterX, currentY + 9.5, { align: 'center' });
     doc.setTextColor(...DARK);
     doc.setDrawColor(...DARK);
     doc.setLineWidth(0.3);
@@ -295,7 +303,7 @@ export const generateMissionOrderPDF = async (data: MissionOrderData) => {
     (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 200 + 30;
   doc.setFontSize(11);
   doc.setFont('helvetica', 'bold');
-  doc.text('Le Directeur Général', dgCenterX, currentY, { align: 'center' });
+  doc.text('Validation finale', dgCenterX, currentY, { align: 'center' });
 
   if (data.signatureImage) {
     try {
@@ -304,7 +312,7 @@ export const generateMissionOrderPDF = async (data: MissionOrderData) => {
         : `data:image/png;base64,${data.signatureImage}`;
       doc.addImage(sig, 'PNG', dgCenterX - 30, currentY + 5, 60, 25);
     } catch (e) {
-      console.error('Signature failed in PDF p2', e);
+      logger.warn('[missionOrderGenerator] Signature failed in PDF p2', e);
     }
   } else if (data.isCertified) {
     // 🔴 CACHET ÉLECTRONIQUE OFFICIEL
@@ -314,7 +322,7 @@ export const generateMissionOrderPDF = async (data: MissionOrderData) => {
     doc.setTextColor(220, 38, 38);
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
-    doc.text('PROQUELEC - DIRECTION GÉNÉRALE', dgCenterX, currentY + 11, { align: 'center' });
+    doc.text('PROQUELEC - VALIDATION OFFICIELLE', dgCenterX, currentY + 11, { align: 'center' });
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
     doc.text('VU ET APPROUVÉ', dgCenterX, currentY + 18, { align: 'center' });
@@ -372,7 +380,7 @@ export const generateMissionOrderPDF = async (data: MissionOrderData) => {
     doc.text(`${footerText} - Page ${p}/${pageCount}`, w / 2, h - 10, { align: 'center' });
   }
 
-  const fileName = (data.orderNumber || 'PROVISOIRE').replace(/\//g, '-');
+  const fileName = getMissionReference(data).replace(/\//g, '-');
   doc.save(`Ordre_Mission_${fileName}.pdf`);
   return doc.output('blob');
 };
@@ -508,7 +516,7 @@ export const generateMissionReportPDF = async (data: MissionOrderData) => {
     doc.text('RAPPORT DE MISSION', w / 2, 40, { align: 'center' });
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Réf: OM N°${data.orderNumber} - ${cleanMangledText(data.purpose)}`, w / 2, 46, {
+    doc.text(`Réf: ${getMissionReference(data)} - ${cleanMangledText(data.purpose)}`, w / 2, 46, {
       align: 'center',
     });
 
@@ -696,5 +704,5 @@ export const generateMissionReportPDF = async (data: MissionOrderData) => {
     });
   }
 
-  doc.save(`Rapport_Mission_${data.orderNumber.replace('/', '-')}.pdf`);
+  doc.save(`Rapport_Mission_${getMissionReference(data).replace(/\//g, '-')}.pdf`);
 };

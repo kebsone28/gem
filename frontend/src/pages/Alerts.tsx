@@ -15,6 +15,7 @@ import AlertDashboard from '../components/alerts/AlertDashboard';
 import { useProject } from '../contexts/ProjectContext';
 import alertsAPI from '../services/alertsAPI';
 import toast from 'react-hot-toast';
+import logger from '../utils/logger';
 
 interface AlertConfig {
   stockCritical: number;
@@ -73,7 +74,7 @@ export default function AlertsPage() {
         });
       }
     } catch (err) {
-      console.error('Error fetching alert config:', err);
+      logger.error('[Alerts] Error fetching alert config', err);
       toast.error('Erreur lors du chargement de la configuration');
     } finally {
       setLoading(false);
@@ -87,7 +88,7 @@ export default function AlertsPage() {
       toast.success('Configuration mise à jour avec succès');
       // On garde le panneau ouvert ou on le ferme selon préférence, ici on le laisse
     } catch (err) {
-      console.error('Error saving alert config:', err);
+      logger.error('[Alerts] Error saving alert config', err);
       toast.error('Erreur lors de la sauvegarde');
     } finally {
       setSaving(false);

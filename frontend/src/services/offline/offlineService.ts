@@ -41,7 +41,7 @@ function syncStoreFromNavigator() {
  */
 export function initOfflineListener(): CleanupFn {
   if (_initialized) {
-    logger.warn('OFFLINE', 'initOfflineListener called more than once — skipping');
+    logger.debug('OFFLINE', 'initOfflineListener called more than once — skipping');
     return _cleanup ?? (() => {});
   }
   _initialized = true;

@@ -1,5 +1,6 @@
 ﻿ 
 import QRCode from 'qrcode';
+import logger from '../../logger';
 
 /**
  * Encode une URL en QR Code et retourne un ArrayBuffer PNG
@@ -33,7 +34,7 @@ export const generateQRCodeBuffer = async (text: string): Promise<ArrayBuffer | 
       }, 'image/png');
     });
   } catch (err) {
-    console.warn('QR Code non disponible, document généré sans QR Code.', err);
+    logger.warn('QR Code non disponible, document généré sans QR Code.', err);
     return null;
   }
 };

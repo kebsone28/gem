@@ -34,6 +34,25 @@ const DEFAULT_MODULES = [
   { name: 'Disposition de branchement Senelec', description: 'Raccordement au réseau Senelec', duration: 2, order: 5 },
   { name: 'Application GEM-KOBO', description: "Utilisation de l'application GEM-KOBO terrain", duration: 2, order: 6 }
 ];
+const FORMATION_PLANNER_STATE_ID = 'default';
+
+function isHistoryFeatureUnavailable(error) {
+  return (
+    !prisma.formationPlanningHistory ||
+    error?.name === 'TypeError' ||
+    error?.code === 'P2021' ||
+    error?.code === 'P2022'
+  );
+}
+
+function isPlannerStateFeatureUnavailable(error) {
+  return (
+    !prisma.formationPlannerState ||
+    error?.name === 'TypeError' ||
+    error?.code === 'P2021' ||
+    error?.code === 'P2022'
+  );
+}
 
 /**
  * GET /api/formations/modules - Liste des modules
@@ -436,10 +455,75 @@ export const getStats = async (req, res) => {
 };
 
 /**
+ * GET /api/formations/planner-state
+ */
+export const getPlannerState = async (req, res) => {
+  try {
+    if (!prisma.formationPlannerState) {
+      return res.json(null);
+    }
+
+    const state = await prisma.formationPlannerState.findUnique({
+      where: { id: FORMATION_PLANNER_STATE_ID }
+    });
+
+    return res.json(state?.payload ?? null);
+  } catch (error) {
+    if (isPlannerStateFeatureUnavailable(error)) {
+      logger.warn('[FORMATION_GET_PLANNER_STATE_UNAVAILABLE]', {
+        reason: error?.message || 'planner_state_delegate_missing'
+      });
+      return res.json(null);
+    }
+
+    logger.error('[FORMATION_GET_PLANNER_STATE_ERROR]', error);
+    return res.status(500).json({ error: 'Erreur lors de la récupération du brouillon de planification' });
+  }
+};
+
+/**
+ * PUT /api/formations/planner-state
+ */
+export const savePlannerState = async (req, res) => {
+  try {
+    if (!prisma.formationPlannerState) {
+      return res.json({ success: false, unsupported: true });
+    }
+
+    const payload = req.body;
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+      return res.status(400).json({ error: 'Payload de planification invalide' });
+    }
+
+    const state = await prisma.formationPlannerState.upsert({
+      where: { id: FORMATION_PLANNER_STATE_ID },
+      create: { id: FORMATION_PLANNER_STATE_ID, payload },
+      update: { payload }
+    });
+
+    return res.json({ success: true, updatedAt: state.updatedAt });
+  } catch (error) {
+    if (isPlannerStateFeatureUnavailable(error)) {
+      logger.warn('[FORMATION_SAVE_PLANNER_STATE_UNAVAILABLE]', {
+        reason: error?.message || 'planner_state_delegate_missing'
+      });
+      return res.json({ success: false, unsupported: true });
+    }
+
+    logger.error('[FORMATION_SAVE_PLANNER_STATE_ERROR]', error);
+    return res.status(500).json({ error: 'Erreur lors de la sauvegarde du brouillon de planification' });
+  }
+};
+
+/**
  * GET /api/formations/history
  */
 export const getHistory = async (req, res) => {
   try {
+    if (!prisma.formationPlanningHistory) {
+      return res.json([]);
+    }
+
     const limit = Math.min(Number(req.query.limit || 50), 100);
     const history = await prisma.formationPlanningHistory.findMany({
       take: limit,
@@ -452,8 +536,39 @@ export const getHistory = async (req, res) => {
     });
     res.json(history);
   } catch (error) {
+    if (isHistoryFeatureUnavailable(error)) {
+      logger.warn('[FORMATION_GET_HISTORY_UNAVAILABLE]', {
+        reason: error?.message || 'history_delegate_missing'
+      });
+      return res.json([]);
+    }
+
     logger.error('[FORMATION_GET_HISTORY_ERROR]', error);
     res.status(500).json({ error: "Erreur lors de la récupération de l'historique" });
+  }
+};
+
+/**
+ * DELETE /api/formations/history
+ */
+export const clearHistory = async (req, res) => {
+  try {
+    if (!prisma.formationPlanningHistory) {
+      return res.json({ success: true, count: 0 });
+    }
+
+    const deleted = await prisma.formationPlanningHistory.deleteMany({});
+    return res.json({ success: true, count: deleted.count });
+  } catch (error) {
+    if (isHistoryFeatureUnavailable(error)) {
+      logger.warn('[FORMATION_CLEAR_HISTORY_UNAVAILABLE]', {
+        reason: error?.message || 'history_delegate_missing'
+      });
+      return res.json({ success: true, count: 0 });
+    }
+
+    logger.error('[FORMATION_CLEAR_HISTORY_ERROR]', error);
+    return res.status(500).json({ error: "Erreur lors de la suppression de l'historique" });
   }
 };
 
@@ -571,8 +686,7 @@ export const bulkCreateSessions = async (req, res) => {
 function calculateEndDate(startDate, durationDays, workSaturday, workSunday) {
   const date = new Date(startDate);
   let daysAdded = 0;
-  while (daysAdded < durationDays) {
-    date.setDate(date.getDate() + 1);
+  while (daysAdded < Math.max(1, durationDays)) {
     const dayOfWeek = date.getDay();
     const isSunday = dayOfWeek === 0;
     if (!isSunday || (isSunday && workSunday)) {
@@ -580,8 +694,329 @@ function calculateEndDate(startDate, durationDays, workSaturday, workSunday) {
         daysAdded++;
       }
     }
+    if (daysAdded < Math.max(1, durationDays)) {
+      date.setDate(date.getDate() + 1);
+    }
   }
   return date;
+}
+
+function formatIsoDate(date) {
+  return new Date(date).toISOString().split('T')[0];
+}
+
+function parsePlannerDate(value) {
+  if (!value) return null;
+  const date = new Date(`${value}T00:00:00`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function addDays(date, days) {
+  const copy = new Date(date);
+  copy.setDate(copy.getDate() + days);
+  return copy;
+}
+
+function parseDateList(text) {
+  if (!text || typeof text !== 'string') return [];
+  return text
+    .split(/[,\n;]/)
+    .map(value => value.trim())
+    .filter(Boolean)
+    .filter(value => /^\d{4}-\d{2}-\d{2}$/.test(value));
+}
+
+function isWorkingDay(date, includeSaturday, blockedDates, includeSunday = false) {
+  const day = date.getDay();
+  const iso = formatIsoDate(date);
+  if (blockedDates.has(iso)) return false;
+  if (day === 0 && !includeSunday) return false;
+  if (day === 6 && !includeSaturday) return false;
+  return true;
+}
+
+function computeSessionEndDate(startDate, workUnits, includeSaturday, blockedDates, includeSunday = false) {
+  const start = parsePlannerDate(startDate);
+  if (!start) return startDate;
+
+  let consumed = 0;
+  let cursor = new Date(start);
+  while (consumed < Math.max(1, workUnits)) {
+    if (isWorkingDay(cursor, includeSaturday, blockedDates, includeSunday)) {
+      consumed += 1;
+    }
+    if (consumed < Math.max(1, workUnits)) {
+      cursor = addDays(cursor, 1);
+    }
+  }
+
+  return formatIsoDate(cursor);
+}
+
+function buildDateRange(startDate, endDate) {
+  const start = parsePlannerDate(startDate);
+  const end = parsePlannerDate(endDate);
+  const result = [];
+  if (!start || !end) return result;
+
+  let cursor = new Date(start);
+  while (cursor <= end) {
+    result.push(formatIsoDate(cursor));
+    cursor = addDays(cursor, 1);
+  }
+  return result;
+}
+
+function diffDaysInclusive(startDate, endDate) {
+  const start = parsePlannerDate(startDate);
+  const end = parsePlannerDate(endDate);
+  if (!start || !end) return 0;
+  return Math.max(1, Math.round((end.getTime() - start.getTime()) / 86400000) + 1);
+}
+
+async function resolvePlannerModules(modules) {
+  if (!Array.isArray(modules) || modules.length === 0) {
+    throw new Error('Au moins un module actif est requis pour générer le planning');
+  }
+
+  const ids = modules.map(module => module?.moduleId).filter(Boolean);
+  if (ids.length === 0) {
+    throw new Error('Identifiants de modules invalides');
+  }
+
+  const dbModules = await prisma.formationModule.findMany({ where: { id: { in: ids } } });
+  const moduleDefs = ids.map(id => {
+    const dbModule = dbModules.find(module => module.id === id);
+    const supplied = modules.find(module => module.moduleId === id);
+    if (!dbModule && !supplied) {
+      throw new Error(`Module introuvable: ${id}`);
+    }
+
+    return {
+      moduleId: id,
+      moduleName: supplied?.moduleName || supplied?.name || dbModule?.name || 'Module',
+      duration: Math.max(1, Number(supplied?.duration || dbModule?.duration || 1)),
+    };
+  });
+
+  if (moduleDefs.length === 0) {
+    throw new Error('Aucun module exploitable pour générer le planning');
+  }
+
+  return moduleDefs;
+}
+
+function normalizePlannerResources(items, type) {
+  if (!Array.isArray(items)) return [];
+
+  if (type === 'trainers') {
+    return items.map(item => ({
+      id: String(item.id || ''),
+      name: String(item.name || 'Formateur'),
+      active: item.active !== false,
+      unavailableDates: Array.isArray(item.unavailableDates)
+        ? item.unavailableDates.filter(value => /^\d{4}-\d{2}-\d{2}$/.test(String(value)))
+        : [],
+    }));
+  }
+
+  return items.map(item => ({
+    id: String(item.id || ''),
+    name: String(item.name || 'Salle'),
+    capacity: Math.max(1, Number(item.capacity || 1)),
+    active: item.active !== false,
+    unavailableDates: Array.isArray(item.unavailableDates)
+      ? item.unavailableDates.filter(value => /^\d{4}-\d{2}-\d{2}$/.test(String(value)))
+      : [],
+  }));
+}
+
+function normalizePlannerRegions(regions) {
+  if (!Array.isArray(regions)) return [];
+
+  return regions
+    .filter(region => region?.region && Number(region?.participants || region?.count || 0) > 0)
+    .map(region => ({
+      region: String(region.region),
+      participants: Math.max(0, Number(region.participants || region.count || 0)),
+      priority: Number(region.priority || 1),
+      preferredRoomId: String(region.preferredRoomId || ''),
+    }))
+    .filter(region => SENEGAL_REGIONS.includes(region.region));
+}
+
+function validatePlanSessionShape(session) {
+  if (!session?.region || !SENEGAL_REGIONS.includes(session.region)) {
+    return 'Région de session invalide';
+  }
+  if (!session?.startDate || !session?.endDate) {
+    return 'Dates de session manquantes';
+  }
+  if (!parsePlannerDate(session.startDate) || !parsePlannerDate(session.endDate)) {
+    return 'Dates de session invalides';
+  }
+  if (!Array.isArray(session.modules) || session.modules.length === 0) {
+    return 'Modules de session manquants';
+  }
+  if (Number(session.participants || session.maxParticipants || 0) <= 0) {
+    return 'Nombre de participants invalide';
+  }
+  if (!session?.roomName && !session?.salle) {
+    return 'Salle de session manquante';
+  }
+  return null;
+}
+
+async function generatePlannerPreview(body) {
+  const plannerConfig = body?.plannerConfig || {};
+  const selectedRegions = normalizePlannerRegions(body?.regions);
+  if (selectedRegions.length === 0) {
+    throw new Error('Sélectionnez au moins une région avec des stagiaires');
+  }
+
+  if (!plannerConfig.startDate) {
+    throw new Error('La date de démarrage est requise');
+  }
+
+  const baseDate = parsePlannerDate(plannerConfig.startDate);
+  if (!baseDate) {
+    throw new Error('Date de démarrage invalide');
+  }
+
+  const selectedModules = await resolvePlannerModules(body?.modules);
+  const totalModuleDays = selectedModules.reduce((sum, module) => sum + module.duration, 0);
+  const blockedDates = new Set([
+    ...parseDateList(plannerConfig.blockedDatesText),
+    ...parseDateList(plannerConfig.holidaysText),
+  ]);
+  const includeSaturday = plannerConfig.includeSaturday === true;
+  const deliveryMode = body?.plannerDeliveryMode === 'single' ? 'single' : 'multiple';
+  const maxParticipantsPerSession = Math.max(1, Number(plannerConfig.maxParticipantsPerSession || 20));
+  const equipmentPerParticipant = Math.max(1, Number(plannerConfig.equipmentPerParticipant || 1));
+  const equipmentPool = Math.max(0, Number(plannerConfig.equipmentPool || 0));
+  const daysBetweenSessions = Math.max(1, Number(plannerConfig.daysBetweenSessions || 1));
+
+  const normalizedTrainers = normalizePlannerResources(body?.trainers, 'trainers').filter(item => item.active);
+  const normalizedRooms = normalizePlannerResources(body?.rooms, 'rooms').filter(item => item.active);
+
+  const activeTrainers =
+    deliveryMode === 'single' ? normalizedTrainers.slice(0, 1) : normalizedTrainers;
+  const activeRooms =
+    deliveryMode === 'single' ? normalizedRooms : normalizedRooms;
+
+  if (activeTrainers.length === 0 || activeRooms.length === 0) {
+    throw new Error('Ajoutez au moins un formateur actif et une salle active');
+  }
+
+  const trainerOccupation = new Map();
+  const roomOccupation = new Map();
+  activeTrainers.forEach(trainer => {
+    trainerOccupation.set(trainer.id, new Set(trainer.unavailableDates));
+  });
+  activeRooms.forEach(room => {
+    roomOccupation.set(room.id, new Set(room.unavailableDates));
+  });
+
+  const alerts = [];
+  const impossibleRegions = [];
+  const generatedSessions = [];
+  const orderedRegions = [...selectedRegions].sort(
+    (a, b) => b.priority - a.priority || b.participants - a.participants
+  );
+
+  for (const region of orderedRegions) {
+    const sessionCount = Math.ceil(region.participants / maxParticipantsPerSession);
+    let regionScheduled = 0;
+
+    for (let index = 0; index < sessionCount; index += 1) {
+      const participants = Math.min(
+        maxParticipantsPerSession,
+        region.participants - index * maxParticipantsPerSession
+      );
+      const equipmentNeeded = participants * equipmentPerParticipant;
+
+      if (equipmentNeeded > equipmentPool) {
+        alerts.push(
+          `${region.region} session ${index + 1}: ${equipmentNeeded} équipements requis pour un stock de ${equipmentPool}.`
+        );
+        impossibleRegions.push(region.region);
+        continue;
+      }
+
+      let cursor = addDays(baseDate, regionScheduled * daysBetweenSessions);
+      let booked = false;
+      let tries = 0;
+
+      while (!booked && tries < 365) {
+        tries += 1;
+        const startDate = formatIsoDate(cursor);
+        const endDate = computeSessionEndDate(startDate, totalModuleDays, includeSaturday, blockedDates);
+        const coveredDates = buildDateRange(startDate, endDate).filter(dateValue =>
+          isWorkingDay(parsePlannerDate(dateValue) || new Date(), includeSaturday, blockedDates)
+        );
+
+        const preferredRoom =
+          activeRooms.find(room => room.id === region.preferredRoomId && room.capacity >= participants) || null;
+
+        const candidateRooms = preferredRoom
+          ? [preferredRoom, ...activeRooms.filter(room => room.id !== preferredRoom.id && room.capacity >= participants)]
+          : activeRooms.filter(room => room.capacity >= participants);
+
+        const room = candidateRooms.find(candidateRoom =>
+          coveredDates.every(dateValue => !roomOccupation.get(candidateRoom.id)?.has(dateValue))
+        );
+
+        const trainer = activeTrainers.find(candidateTrainer =>
+          coveredDates.every(dateValue => !trainerOccupation.get(candidateTrainer.id)?.has(dateValue))
+        );
+
+        if (room && trainer) {
+          coveredDates.forEach(dateValue => {
+            trainerOccupation.get(trainer.id)?.add(dateValue);
+            roomOccupation.get(room.id)?.add(dateValue);
+          });
+
+          generatedSessions.push({
+            id: `preview-${region.region}-${index + 1}`,
+            region: region.region,
+            priority: region.priority,
+            indexInRegion: index + 1,
+            participants,
+            trainerId: trainer.id,
+            trainerName: trainer.name,
+            roomId: room.id,
+            roomName: room.name,
+            startDate,
+            endDate,
+            durationDays: diffDaysInclusive(startDate, endDate),
+            fillRate: Math.round((participants / maxParticipantsPerSession) * 100),
+            equipmentNeeded,
+            modules: selectedModules.map(module => ({
+              moduleId: module.moduleId,
+              name: module.moduleName,
+              duration: module.duration,
+            })),
+          });
+
+          regionScheduled += 1;
+          booked = true;
+        } else {
+          cursor = addDays(cursor, 1);
+        }
+      }
+
+      if (!booked) {
+        alerts.push(`${region.region} session ${index + 1}: aucune combinaison salle/formateur disponible.`);
+        impossibleRegions.push(region.region);
+      }
+    }
+  }
+
+  return {
+    sessions: generatedSessions.sort((a, b) => a.startDate.localeCompare(b.startDate)),
+    alerts,
+    impossibleRegions: Array.from(new Set(impossibleRegions)),
+  };
 }
 
 async function recalculateSessionEndDate(sessionId) {
@@ -593,15 +1028,32 @@ async function recalculateSessionEndDate(sessionId) {
 }
 
 async function createPlanningHistory(action, title, details, { sessionId = null, metadata = null } = {}) {
-  return prisma.formationPlanningHistory.create({
-    data: {
-      action,
-      title,
-      details,
-      metadata,
-      ...(sessionId ? { sessionId } : {})
+  if (!prisma.formationPlanningHistory) {
+    return null;
+  }
+
+  try {
+    return await prisma.formationPlanningHistory.create({
+      data: {
+        action,
+        title,
+        details,
+        metadata,
+        ...(sessionId ? { sessionId } : {})
+      }
+    });
+  } catch (error) {
+    if (isHistoryFeatureUnavailable(error)) {
+      logger.warn('[FORMATION_CREATE_HISTORY_UNAVAILABLE]', {
+        action,
+        title,
+        reason: error?.message || 'history_delegate_missing'
+      });
+      return null;
     }
-  });
+
+    throw error;
+  }
 }
 
 /**
@@ -610,11 +1062,11 @@ async function createPlanningHistory(action, title, details, { sessionId = null,
  */
 export const planify = async (req, res) => {
   try {
-    const plan = await generatePlan(req.body);
+    const plan = await generatePlannerPreview(req.body);
     res.json(plan);
   } catch (error) {
     logger.error('[FORMATION_PLANIFY_ERROR]', error);
-    res.status(500).json({ error: 'Erreur lors de la génération du planning' });
+    res.status(400).json({ error: error?.message || 'Erreur lors de la génération du planning' });
   }
 };
 
@@ -632,14 +1084,22 @@ async function generatePlan(body) {
       moduleDefs = ids.map(id => {
         const m = dbModules.find(x => x.id === id);
         const supplied = modules.find(x => x.moduleId === id);
-        return { moduleId: id, duration: supplied?.duration || m?.duration || 1 };
+        return {
+          moduleId: id,
+          moduleName: supplied?.moduleName || supplied?.name || m?.name || 'Module',
+          duration: supplied?.duration || m?.duration || 1
+        };
       });
     } else {
-      moduleDefs = modules.map(m => ({ moduleId: m.moduleId, duration: m.duration || 1 }));
+      moduleDefs = modules.map(m => ({
+        moduleId: m.moduleId,
+        moduleName: m.moduleName || m.name || 'Module',
+        duration: m.duration || 1
+      }));
     }
   } else {
     const dbModules = await prisma.formationModule.findMany({ where: { isActive: true }, orderBy: { order: 'asc' } });
-    moduleDefs = dbModules.map(m => ({ moduleId: m.id, duration: m.duration || 1 }));
+    moduleDefs = dbModules.map(m => ({ moduleId: m.id, moduleName: m.name, duration: m.duration || 1 }));
   }
 
   const totalModuleDays = moduleDefs.reduce((s, m) => s + (m.duration || 1), 0);
@@ -700,22 +1160,13 @@ export const exportPlanify = async (req, res) => {
     const fmt = (format || 'pdf').toLowerCase();
 
     if (fmt === 'pdf') {
-      // pdfmake ESM import differs; try to import the printer class directly
-      let PdfPrinter;
-      try {
-        PdfPrinter = (await import('pdfmake/src/printer.js')).default;
-      } catch (e) {
-        const mod = await import('pdfmake');
-        PdfPrinter = mod.default || mod;
-      }
-      const fonts = { Roboto: { normal: 'Helvetica' } };
-      const printer = new PdfPrinter(fonts);
-      const body = [ [{ text: 'Plan de formation', style: 'header', colSpan: 4 }, {}, {}, {}] ];
-      for (const s of usedPlan.sessions) {
-        body.push([s.region, `Groupe ${s.groupIndex}`, `${s.maxParticipants} pers.`, `${new Date(s.startDate).toLocaleDateString()} → ${new Date(s.endDate).toLocaleDateString()}` ]);
-      }
-      const docDefinition = { content: [ { text: 'Plan de formation', style: 'header' }, { table: { headerRows: 1, widths: ['*','auto','auto','auto'], body } } ], styles: { header: { fontSize: 16, bold: true } } };
-      const pdfDoc = printer.createPdfKitDocument(docDefinition);
+      const { default: PDFDocument } = await import('pdfkit');
+      const totalParticipants = usedPlan.sessions.reduce((sum, session) => sum + Number(session.maxParticipants || 0), 0);
+      const pdfDoc = new PDFDocument({
+        size: 'A4',
+        margin: 40,
+        info: { Title: 'Plan de formation' }
+      });
       const chunks = [];
       pdfDoc.on('data', chunk => chunks.push(chunk));
       pdfDoc.on('end', () => {
@@ -724,22 +1175,286 @@ export const exportPlanify = async (req, res) => {
         res.setHeader('Content-Disposition', 'attachment; filename="plan_formation.pdf"');
         res.send(result);
       });
+
+      pdfDoc.fontSize(22).fillColor('#16324f').text('Planning de formation', { align: 'center' });
+      pdfDoc.moveDown(0.4);
+      pdfDoc.fontSize(10).fillColor('#4b5d73').text('Synthèse détaillée des sessions, durées et modules.', { align: 'center' });
+      pdfDoc.moveDown(1.2);
+
+      pdfDoc.fontSize(11).fillColor('#16324f');
+      pdfDoc.text(`Démarrage: ${usedPlan.sessions[0] ? formatPlanDate(usedPlan.sessions[0].startDate) : '-'}`);
+      pdfDoc.text(`Sessions: ${usedPlan.sessions.length}`);
+      pdfDoc.text(`Participants: ${totalParticipants}`);
+      pdfDoc.text(`Fin estimée: ${usedPlan.overallEndDate ? formatPlanDate(usedPlan.overallEndDate) : '-'}`);
+      pdfDoc.moveDown(1);
+
+      for (const [index, session] of usedPlan.sessions.entries()) {
+        const sessionDuration = getSessionTotalDays(session);
+
+        if (index > 0 && pdfDoc.y > 680) {
+          pdfDoc.addPage();
+        }
+
+        pdfDoc
+          .roundedRect(40, pdfDoc.y, 515, 22, 6)
+          .fill('#eef5ff')
+          .fillColor('#16324f')
+          .fontSize(13)
+          .text(`${session.region} • Session ${session.groupIndex}`, 52, pdfDoc.y - 16);
+
+        pdfDoc.moveDown(1.4);
+        pdfDoc.fontSize(10).fillColor('#1f2d3d');
+        pdfDoc.text(`Participants: ${session.maxParticipants}`);
+        pdfDoc.text(`Durée session: ${sessionDuration} jour(s)`);
+        pdfDoc.text(`Période: ${formatPlanDate(session.startDate)} au ${formatPlanDate(session.endDate)}`);
+        pdfDoc.text(`Salle: ${session.salle || 'Salle à définir'}`);
+        pdfDoc.text(`Formateur: ${session.trainerName || 'À affecter'}`);
+        pdfDoc.moveDown(0.5);
+        pdfDoc.fontSize(11).fillColor('#16324f').text('Modules prévus');
+        pdfDoc.moveDown(0.2);
+
+        for (const module of session.modules || []) {
+          pdfDoc
+            .fontSize(10)
+            .fillColor('#1f2d3d')
+            .text(`• ${module.moduleName || module.name || 'Module'}: ${module.duration || 1} jour(s)`, {
+              indent: 10
+            });
+        }
+
+        pdfDoc.moveDown(1);
+      }
+
       pdfDoc.end();
       return;
     }
 
     if (fmt === 'docx') {
       try {
-        const { Document, Packer, Paragraph, Table, TableRow, TableCell, TextRun } = await import('docx');
-        const rows = [];
-        // header
-        rows.push(new TableRow({ children: [new TableCell({ children: [new Paragraph('Région')] }), new TableCell({ children: [new Paragraph('Groupe')] }), new TableCell({ children: [new Paragraph('Places')] }), new TableCell({ children: [new Paragraph('Période')] })] }));
-        for (const s of usedPlan.sessions) {
-          rows.push(new TableRow({ children: [new TableCell({ children: [new Paragraph(String(s.region))] }), new TableCell({ children: [new Paragraph(`Groupe ${s.groupIndex}`)] }), new TableCell({ children: [new Paragraph(String(s.maxParticipants))] }), new TableCell({ children: [new Paragraph(`${new Date(s.startDate).toLocaleDateString()} → ${new Date(s.endDate).toLocaleDateString()}`)] })] }));
-        }
+        const {
+          AlignmentType,
+          BorderStyle,
+          Document,
+          HeadingLevel,
+          Packer,
+          Paragraph,
+          Table,
+          TableCell,
+          TableLayoutType,
+          TableRow,
+          TextRun,
+          WidthType
+        } = await import('docx');
 
-        const table = new Table({ rows });
-        const doc = new Document({ sections: [{ properties: {}, children: [new Paragraph({ text: 'Plan de formation', heading: 'Heading1' }), table] }] });
+        const totalParticipants = usedPlan.sessions.reduce((sum, session) => sum + Number(session.maxParticipants || 0), 0);
+        const tableBorders = {
+          top: { style: BorderStyle.SINGLE, size: 1, color: 'D9E2F1' },
+          bottom: { style: BorderStyle.SINGLE, size: 1, color: 'D9E2F1' },
+          left: { style: BorderStyle.SINGLE, size: 1, color: 'D9E2F1' },
+          right: { style: BorderStyle.SINGLE, size: 1, color: 'D9E2F1' },
+          insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: 'E8EEF7' },
+          insideVertical: { style: BorderStyle.SINGLE, size: 1, color: 'E8EEF7' },
+        };
+        const headerFill = 'E7EDF5';
+        const labelCell = (text) =>
+          new TableCell({
+            children: [new Paragraph({ children: [new TextRun({ text, bold: true })] })],
+          });
+        const valueCell = (text) =>
+          new TableCell({
+            children: [new Paragraph(String(text ?? '-'))],
+          });
+        const headerCell = (text, width) =>
+          new TableCell({
+            width,
+            shading: { fill: headerFill },
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [new TextRun({ text, bold: true })],
+              }),
+            ],
+          });
+        const bodyCell = (text, width, align = AlignmentType.LEFT) =>
+          new TableCell({
+            width,
+            children: [
+              new Paragraph({
+                alignment: align,
+                children: [new TextRun(String(text ?? '-'))],
+              }),
+            ],
+          });
+
+        const summaryRows = [
+          new TableRow({
+            children: [
+              labelCell('Démarrage'),
+              valueCell(usedPlan.sessions[0] ? formatPlanDate(usedPlan.sessions[0].startDate) : '-'),
+              labelCell('Sessions'),
+              valueCell(usedPlan.sessions.length),
+            ],
+          }),
+          new TableRow({
+            children: [
+              labelCell('Participants'),
+              valueCell(totalParticipants),
+              labelCell('Fin estimée'),
+              valueCell(usedPlan.overallEndDate ? formatPlanDate(usedPlan.overallEndDate) : '-'),
+            ],
+          }),
+        ];
+
+        const sessionsSummaryRows = [
+          new TableRow({
+            children: [
+              headerCell('Région', { size: 1400, type: WidthType.DXA }),
+              headerCell('Session', { size: 1100, type: WidthType.DXA }),
+              headerCell('Participants', { size: 1200, type: WidthType.DXA }),
+              headerCell('Jours totaux', { size: 1200, type: WidthType.DXA }),
+              headerCell('Début', { size: 1200, type: WidthType.DXA }),
+              headerCell('Fin', { size: 1200, type: WidthType.DXA }),
+              headerCell('Salle', { size: 1500, type: WidthType.DXA }),
+              headerCell('Formateur', { size: 1600, type: WidthType.DXA }),
+            ],
+          }),
+          ...usedPlan.sessions.map((session) =>
+            new TableRow({
+              children: [
+                bodyCell(session.region, { size: 1400, type: WidthType.DXA }),
+                bodyCell(`Session ${session.groupIndex}`, { size: 1100, type: WidthType.DXA }, AlignmentType.CENTER),
+                bodyCell(session.maxParticipants || 0, { size: 1200, type: WidthType.DXA }, AlignmentType.CENTER),
+                bodyCell(`${getSessionTotalDays(session)} j`, { size: 1200, type: WidthType.DXA }, AlignmentType.CENTER),
+                bodyCell(formatPlanDate(session.startDate), { size: 1200, type: WidthType.DXA }, AlignmentType.CENTER),
+                bodyCell(formatPlanDate(session.endDate), { size: 1200, type: WidthType.DXA }, AlignmentType.CENTER),
+                bodyCell(session.salle || 'Salle à définir', { size: 1500, type: WidthType.DXA }),
+                bodyCell(session.trainerName || 'À affecter', { size: 1600, type: WidthType.DXA }),
+              ],
+            })
+          ),
+        ];
+
+        const sessionBlocks = usedPlan.sessions.flatMap((session, index) => {
+          const sessionDuration = getSessionTotalDays(session);
+          const modulesTableRows = [
+            new TableRow({
+              children: [
+                headerCell('Module', { size: 6600, type: WidthType.DXA }),
+                headerCell('Durée', { size: 2600, type: WidthType.DXA }),
+              ],
+            }),
+            ...(session.modules || []).map((module) =>
+              new TableRow({
+                children: [
+                  bodyCell(module.moduleName || module.name || 'Module', { size: 6600, type: WidthType.DXA }),
+                  bodyCell(`${module.duration || 1} jour(s)`, { size: 2600, type: WidthType.DXA }, AlignmentType.CENTER),
+                ],
+              })
+            ),
+          ];
+
+          return [
+            new Paragraph({
+              heading: HeadingLevel.HEADING_2,
+              spacing: { before: index === 0 ? 180 : 240, after: 80 },
+              children: [
+                new TextRun({
+                  text: `${session.region} • Session ${session.groupIndex}`,
+                  bold: true,
+                }),
+              ],
+            }),
+            new Table({
+              width: { size: 100, type: WidthType.PERCENTAGE },
+              layout: TableLayoutType.FIXED,
+              borders: tableBorders,
+              rows: [
+                new TableRow({
+                  children: [
+                    labelCell('Participants'),
+                    valueCell(session.maxParticipants || 0),
+                    labelCell('Jours totaux'),
+                    valueCell(`${sessionDuration} jour(s)`),
+                  ],
+                }),
+                new TableRow({
+                  children: [
+                    labelCell('Début'),
+                    valueCell(formatPlanDate(session.startDate)),
+                    labelCell('Fin'),
+                    valueCell(formatPlanDate(session.endDate)),
+                  ],
+                }),
+                new TableRow({
+                  children: [
+                    labelCell('Salle'),
+                    valueCell(session.salle || 'Salle à définir'),
+                    labelCell('Formateur'),
+                    valueCell(session.trainerName || 'À affecter'),
+                  ],
+                }),
+              ],
+            }),
+            new Paragraph({
+              spacing: { before: 90, after: 60 },
+              children: [new TextRun({ text: 'Tableau des modules', bold: true, color: '1F3A5F' })],
+            }),
+            new Table({
+              width: { size: 100, type: WidthType.PERCENTAGE },
+              layout: TableLayoutType.FIXED,
+              borders: tableBorders,
+              rows: modulesTableRows,
+            }),
+          ];
+        });
+
+        const doc = new Document({
+          sections: [
+            {
+              properties: {},
+              children: [
+                new Paragraph({
+                  heading: HeadingLevel.TITLE,
+                  alignment: AlignmentType.CENTER,
+                  children: [new TextRun({ text: 'Planning de formation', bold: true, size: 34 })],
+                }),
+                new Paragraph({
+                  alignment: AlignmentType.CENTER,
+                  spacing: { after: 180 },
+                  children: [
+                    new TextRun({
+                      text: 'Synthèse tabulaire des sessions et des modules.',
+                      color: '44546A',
+                    }),
+                  ],
+                }),
+                new Table({
+                  width: { size: 100, type: WidthType.PERCENTAGE },
+                  layout: TableLayoutType.FIXED,
+                  borders: tableBorders,
+                  rows: summaryRows,
+                }),
+                new Paragraph({
+                  spacing: { before: 160, after: 80 },
+                  children: [new TextRun({ text: 'Tableau général des sessions', bold: true, color: '1F3A5F' })],
+                }),
+                new Table({
+                  width: { size: 100, type: WidthType.PERCENTAGE },
+                  layout: TableLayoutType.FIXED,
+                  borders: tableBorders,
+                  rows: sessionsSummaryRows,
+                }),
+                new Paragraph({
+                  pageBreakBefore: true,
+                  heading: HeadingLevel.HEADING_1,
+                  spacing: { after: 100 },
+                  children: [new TextRun({ text: 'Détail des modules par session', bold: true })],
+                }),
+                ...sessionBlocks,
+              ],
+            },
+          ],
+        });
         const buffer = await Packer.toBuffer(doc);
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
         res.setHeader('Content-Disposition', 'attachment; filename="plan_formation.docx"');
@@ -751,11 +1466,126 @@ export const exportPlanify = async (req, res) => {
     }
 
     // fallback Word-compatible (HTML) export as .doc
-    let html = `<html><head><meta charset="utf-8"><title>Plan de formation</title></head><body><h1>Plan de formation</h1><table border="1" cellpadding="6" cellspacing="0"><tr><th>Région</th><th>Groupe</th><th>Places</th><th>Période</th></tr>`;
+    const totalParticipants = usedPlan.sessions.reduce((sum, session) => sum + Number(session.maxParticipants || 0), 0);
+    let html = `
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <title>Plan de formation</title>
+          <style>
+            body { font-family: Calibri, Arial, sans-serif; color: #16324f; margin: 28px; }
+            h1 { font-size: 28px; margin: 0 0 6px; }
+            h2 { font-size: 18px; margin: 24px 0 10px; color: #1f3a5f; }
+            p { margin: 0 0 10px; }
+            .summary { border: 1px solid #d9e2f1; border-radius: 12px; padding: 16px; background: #f8fbff; margin-bottom: 20px; }
+            .summary-grid { width: 100%; border-collapse: collapse; }
+            .summary-grid td { border: 1px solid #d9e2f1; padding: 10px 12px; }
+            .summary-grid tr:first-child td,
+            .session-table tr:first-child td { background: #e7edf5; }
+            .label { font-weight: 700; width: 22%; }
+            .session { border: 1px solid #d9e2f1; border-radius: 12px; padding: 16px; margin-bottom: 18px; }
+            .session-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+            .session-table td { border: 1px solid #e8eef7; padding: 10px 12px; vertical-align: top; }
+            .page-break { page-break-before: always; }
+          </style>
+        </head>
+        <body>
+          <h1>Planning de formation</h1>
+          <p>Document de synthèse avec le détail des sessions et des modules.</p>
+          <div class="summary">
+            <table class="summary-grid">
+              <tr>
+                <td class="label">Démarrage</td>
+                <td>${usedPlan.sessions[0] ? formatPlanDate(usedPlan.sessions[0].startDate) : '-'}</td>
+                <td class="label">Sessions</td>
+                <td>${usedPlan.sessions.length}</td>
+              </tr>
+              <tr>
+                <td class="label">Participants</td>
+                <td>${totalParticipants}</td>
+                <td class="label">Fin estimée</td>
+                <td>${usedPlan.overallEndDate ? formatPlanDate(usedPlan.overallEndDate) : '-'}</td>
+              </tr>
+            </table>
+          </div>
+          <h2>Tableau général des sessions</h2>
+          <table class="session-table">
+            <tr>
+              <td class="label">Région</td>
+              <td class="label">Session</td>
+              <td class="label">Participants</td>
+              <td class="label">Jours totaux</td>
+              <td class="label">Début</td>
+              <td class="label">Fin</td>
+              <td class="label">Salle</td>
+              <td class="label">Formateur</td>
+            </tr>
+            ${usedPlan.sessions
+              .map(
+                (s) => `
+                  <tr>
+                    <td>${escapeHtml(s.region)}</td>
+                    <td>Session ${escapeHtml(s.groupIndex)}</td>
+                    <td>${escapeHtml(s.maxParticipants)}</td>
+                    <td>${getSessionTotalDays(s)} jour(s)</td>
+                    <td>${formatPlanDate(s.startDate)}</td>
+                    <td>${formatPlanDate(s.endDate)}</td>
+                    <td>${escapeHtml(s.salle || 'Salle à définir')}</td>
+                    <td>${escapeHtml(s.trainerName || 'À affecter')}</td>
+                  </tr>
+                `
+              )
+              .join('')}
+          </table>
+          <div class="page-break"></div>
+          <h2>Détail des modules par session</h2>
+    `;
     for (const s of usedPlan.sessions) {
-      html += `<tr><td>${escapeHtml(s.region)}</td><td>Groupe ${s.groupIndex}</td><td>${s.maxParticipants}</td><td>${new Date(s.startDate).toLocaleDateString()} → ${new Date(s.endDate).toLocaleDateString()}</td></tr>`;
+      const sessionDuration = getSessionTotalDays(s);
+      html += `
+        <div class="session">
+          <h2>${escapeHtml(s.region)} • Session ${escapeHtml(s.groupIndex)}</h2>
+          <table class="session-table">
+            <tr>
+              <td class="label">Participants</td>
+              <td>${escapeHtml(s.maxParticipants)}</td>
+              <td class="label">Jours totaux</td>
+              <td>${sessionDuration} jour(s)</td>
+            </tr>
+            <tr>
+              <td class="label">Début</td>
+              <td>${formatPlanDate(s.startDate)}</td>
+              <td class="label">Fin</td>
+              <td>${formatPlanDate(s.endDate)}</td>
+            </tr>
+            <tr>
+              <td class="label">Salle</td>
+              <td>${escapeHtml(s.salle || 'Salle à définir')}</td>
+              <td class="label">Formateur</td>
+              <td>${escapeHtml(s.trainerName || 'À affecter')}</td>
+            </tr>
+          </table>
+          <h2>Tableau des modules</h2>
+          <table class="session-table">
+            <tr>
+              <td class="label">Module</td>
+              <td class="label">Durée</td>
+            </tr>
+            ${(s.modules || [])
+              .map(
+                (module) => `
+                  <tr>
+                    <td>${escapeHtml(module.moduleName || module.name || 'Module')}</td>
+                    <td>${escapeHtml(module.duration || 1)} jour(s)</td>
+                  </tr>
+                `
+              )
+              .join('')}
+          </table>
+        </div>
+      `;
     }
-    html += `</table></body></html>`;
+    html += `</body></html>`;
     res.setHeader('Content-Type', 'application/msword');
     res.setHeader('Content-Disposition', 'attachment; filename="plan_formation.doc"');
     res.send(html);
@@ -770,6 +1600,22 @@ function escapeHtml(str) {
   return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+function formatPlanDate(value) {
+  if (!value) return '-';
+  return new Date(value).toLocaleDateString('fr-FR');
+}
+
+function getSessionTotalDays(session) {
+  return (session.modules || []).reduce((sum, module) => sum + Number(module.duration || 1), 0);
+}
+
+function resolvePdfPrinter(mod) {
+  if (typeof mod === 'function') return mod;
+  if (typeof mod?.default === 'function') return mod.default;
+  if (typeof mod?.default?.default === 'function') return mod.default.default;
+  return null;
+}
+
 /**
  * POST /api/formations/planify/commit
  * Persists un plan (sessions + modules) en base
@@ -777,24 +1623,86 @@ function escapeHtml(str) {
  */
 export const commitPlanify = async (req, res) => {
   try {
-    const { plan } = req.body;
-    if (!plan || !Array.isArray(plan.sessions)) return res.status(400).json({ error: 'Plan sessions requis' });
-    const created = [];
-    for (const s of plan.sessions) {
-      const session = await prisma.formationSession.create({ data: {
-        region: s.region,
-        salle: s.salle ?? 'Salle à définir',
-        maxParticipants: s.maxParticipants || 20,
-        startDate: new Date(s.startDate),
-        endDate: new Date(s.endDate),
-        workSaturday: !!s.workSaturday,
-        workSunday: !!s.workSunday,
-        status: 'PLANIFIEE',
-        sessionModules: { create: (s.modules || []).map((m, idx) => ({ moduleId: m.moduleId, duration: m.duration || null, orderIndex: idx })) }
-      }, include: { sessionModules: { include: { module: true } } } });
-      created.push(session);
+    const { plan, options } = req.body || {};
+    if (!plan || !Array.isArray(plan.sessions) || plan.sessions.length === 0) {
+      return res.status(400).json({ error: 'Plan sessions requis' });
     }
-    res.status(201).json({ success: true, count: created.length, sessions: created.map(s => ({ id: s.id, region: s.region })) });
+
+    const validationError = plan.sessions.map(validatePlanSessionShape).find(Boolean);
+    if (validationError) {
+      return res.status(400).json({ error: validationError });
+    }
+
+    const workSaturday = options?.workSaturday === true;
+    const workSunday = options?.workSunday === true;
+    const created = await prisma.$transaction(async tx => {
+      const createdSessions = [];
+
+      for (const session of plan.sessions) {
+        const normalizedModules = (session.modules || []).map((module, index) => ({
+          moduleId: module.moduleId,
+          duration: Math.max(1, Number(module.duration || 1)),
+          orderIndex: index,
+        }));
+        const endDate = calculateEndDate(
+          new Date(session.startDate),
+          getSessionTotalDays({ modules: normalizedModules }),
+          workSaturday,
+          workSunday
+        );
+
+        const createdSession = await tx.formationSession.create({
+          data: {
+            region: session.region,
+            salle: session.roomName || session.salle || 'Salle à définir',
+            maxParticipants: Number(session.participants || session.maxParticipants || 20),
+            startDate: new Date(session.startDate),
+            endDate,
+            workSaturday,
+            workSunday,
+            status: 'PLANIFIEE',
+            notes: [
+              session.trainerName ? `Formateur: ${session.trainerName}` : null,
+              session.priority ? `Priorité région: ${session.priority}` : null,
+            ]
+              .filter(Boolean)
+              .join(' • ') || null,
+            sessionModules: {
+              create: normalizedModules.map(module => ({
+                moduleId: module.moduleId,
+                duration: module.duration,
+                orderIndex: module.orderIndex,
+              })),
+            },
+          },
+          include: {
+            sessionModules: { include: { module: true }, orderBy: { orderIndex: 'asc' } },
+          },
+        });
+
+        createdSessions.push(createdSession);
+      }
+
+      return createdSessions;
+    });
+
+    await createPlanningHistory(
+      'preview_persisted',
+      'Planning enregistré',
+      `${created.length} session(s) enregistrée(s) en base.`,
+      {
+        metadata: {
+          count: created.length,
+          regions: Array.from(new Set(created.map(session => session.region))),
+        },
+      }
+    );
+
+    res.status(201).json({
+      success: true,
+      count: created.length,
+      sessions: created.map(session => ({ id: session.id, region: session.region })),
+    });
   } catch (error) {
     logger.error('[FORMATION_COMMIT_ERROR]', error);
     res.status(500).json({ error: 'Erreur lors de la sauvegarde du plan' });
@@ -806,6 +1714,6 @@ export default {
   getSessions, createSession, updateSession, deleteSession,
   addModuleToSession, removeModuleFromSession,
   addParticipant, removeParticipant, toggleAttendance,
-  getRegions, planify, exportPlanify, commitPlanify, getPlanning, getStats, bulkCreateSessions,
-  getHistory, createHistoryEntry, cascadeRescheduleSession
+  getRegions, planify, exportPlanify, commitPlanify, getPlanning, getStats, getPlannerState, savePlannerState, bulkCreateSessions,
+  getHistory, createHistoryEntry, clearHistory, cascadeRescheduleSession
 };

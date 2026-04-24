@@ -18,6 +18,12 @@ apiClient.interceptors.request.use(
   (config) => {
     const token = safeStorage.getItem('access_token');
     const activeProjectId = safeStorage.getItem('active_project_id');
+    const url = config.url || '';
+    const isAuthRoute =
+      url.includes('auth/login') ||
+      url.includes('auth/register') ||
+      url.includes('auth/refresh') ||
+      url.includes('auth/verify');
 
     if (token) {
       if (token === 'undefined' || token === 'null') {
@@ -27,8 +33,8 @@ apiClient.interceptors.request.use(
         config.headers.Authorization = `Bearer ${token}`;
         // logger.debug('API-CLIENT', `Request to ${config.url} with token: ${token.substring(0, 10)}...`);
       }
-    } else {
-      logger.warn('API-CLIENT', `Request to ${config.url} sent WITHOUT token`);
+    } else if (!isAuthRoute) {
+      logger.debug('API-CLIENT', `Request to ${config.url} sent WITHOUT token`);
     }
 
     if (activeProjectId) {
@@ -58,7 +64,7 @@ apiClient.interceptors.response.use(
 
     if (error.response?.status === 401 && !originalRequest._retry && !isAuthRoute) {
       originalRequest._retry = true;
-      logger.warn(`🔐 [AUTH] 401 detected on ${url}. Attempting token refresh...`);
+      logger.debug(`🔐 [AUTH] 401 detected on ${url}. Attempting token refresh...`);
 
       try {
         const hasToken = !!safeStorage.getItem('access_token');

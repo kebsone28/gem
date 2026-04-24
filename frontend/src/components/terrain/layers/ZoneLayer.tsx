@@ -10,6 +10,7 @@
 
 import React, { useEffect, useCallback } from 'react';
 import maplibregl from 'maplibre-gl';
+import logger from '../../../utils/logger';
 
 interface ZoneLayerProps {
   map: maplibregl.Map | null;
@@ -146,9 +147,9 @@ const ZoneLayer: React.FC<ZoneLayerProps> = ({
         });
       }
 
-      console.log(`✅ [ZoneLayer] ${grappeZonesData?.features?.length ?? 0} village regions rendered`);
+      logger.debug(`✅ [ZoneLayer] ${grappeZonesData?.features?.length ?? 0} village regions rendered`);
     } catch (err) {
-      console.warn('⚠️ [ZoneLayer] Layer setup error:', err);
+      logger.warn('⚠️ [ZoneLayer] Layer setup error:', err);
     }
   }, [grappeZonesData, grappeCentroidsData, showZones]);
 

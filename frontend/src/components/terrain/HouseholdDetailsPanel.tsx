@@ -21,6 +21,8 @@ import {
   Clock,
   ArrowRight,
   Settings2,
+  Lock,
+  LockOpen,
 } from 'lucide-react';
 import { AdminControlCenterModal } from './AdminControlCenterModal';
 import { motion } from 'framer-motion';
@@ -28,6 +30,8 @@ import toast from 'react-hot-toast';
 import { getHouseholdDerivedStatus, getStatusTailwindClasses } from '../../utils/statusUtils';
 import type { Household } from '../../utils/types';
 import { useTerrainUIStore } from '../../store/terrainUIStore';
+import { useSyncStore } from '../../store/syncStore';
+import { useOfflineStore } from '../../store/offlineStore';
 import { TeamAllocationsBadge, HouseholdStatusTimeline } from './shared';
 
 interface HouseholdDetailsPanelProps {
@@ -44,6 +48,7 @@ interface HouseholdDetailsPanelProps {
   grappeInfo?: { id: string; name: string; count: number } | null;
   userRole?: string;
   isAdmin?: boolean;
+  pendingSyncCount?: number;
 }
 
 export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
@@ -58,10 +63,13 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
   onCancelItinerary,
   grappeInfo,
   isAdmin = false,
+  pendingSyncCount = 0,
 }) => {
   const closePanel = useTerrainUIStore((s) => s.closePanel);
   const setSelectedHouseholdId = useTerrainUIStore((s) => s.setSelectedHouseholdId);
   const routingEnabled = useTerrainUIStore((s) => s.activePanel === 'routing');
+  const lastSyncError = useSyncStore((s) => s.lastSyncError);
+  const isOnline = useOfflineStore((s) => s.isOnline);
 
   // Optimisation rendering via memoization (bloque les references inutiles du state parent)
   const memoizedTeams = useMemo(() => {
@@ -73,6 +81,40 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
   const [selectedNewStatus, setSelectedNewStatus] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const alerts = Array.isArray(household.alerts) ? household.alerts : [];
+  const manualOverrideFields = useMemo(
+    () => Array.from(new Set(household.manualOverrides || [])),
+    [household.manualOverrides]
+  );
+
+  const formatOverrideLabel = (path: string) => {
+    const directLabels: Record<string, string> = {
+      name: 'Nom complet',
+      phone: 'Téléphone',
+      latitude: 'Latitude',
+      longitude: 'Longitude',
+      numeroordre: "Numéro d'ordre",
+      zoneId: 'Zone géographique',
+      source: 'Source de données',
+      'constructionData.preparateur': 'Préparation',
+      'constructionData.livreur': 'Livraison',
+      'constructionData.macon': 'Maçonnerie',
+      'constructionData.reseau': 'Réseau',
+      'constructionData.interieur': 'Installation intérieure',
+      'constructionData.audit': 'Audit final',
+    };
+
+    if (directLabels[path]) return directLabels[path];
+
+    return path
+      .split('.')
+      .filter(Boolean)
+      .map((segment) =>
+        segment
+          .replace(/_/g, ' ')
+          .replace(/\b\w/g, (letter) => letter.toUpperCase())
+      )
+      .join(' / ');
+  };
 
   // Kobo sometimes saves photos in different fields depending on the sync phase
   const extractPhotoUrl = () => {
@@ -137,6 +179,30 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
                        household.koboData?.justificatif;
 
   const hasConflict = alerts.some((a: any) => a.type === 'DOUBLON_DETECTE');
+  const syncState = household.syncStatus || 'synced';
+  const syncBadge = useMemo(() => {
+    if (syncState === 'pending') {
+      return {
+        label: 'En attente',
+        helper: 'Modification locale en file de synchronisation',
+        classes: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+      };
+    }
+
+    if (syncState === 'error') {
+      return {
+        label: 'Erreur',
+        helper: "La dernière synchronisation a échoué, une reprise est nécessaire",
+        classes: 'bg-rose-500/10 text-rose-400 border-rose-500/20',
+      };
+    }
+
+    return {
+      label: 'Synchronisé',
+      helper: 'État local aligné avec le serveur',
+      classes: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+    };
+  }, [syncState]);
 
   const handleConfirmStatusChange = async () => {
     if (!selectedNewStatus) return;
@@ -160,13 +226,13 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
       animate={{ x: 0 }}
       exit={{ x: '100%' }}
       transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-      className="fixed bottom-0 md:top-0 md:right-0 h-[85vh] sm:h-[92vh] md:h-screen w-full md:w-[460px] z-[2000] shadow-[-20px_0_100px_rgba(0,0,0,0.6)] border-t md:border-l rounded-t-[2.5rem] sm:rounded-t-[3rem] md:rounded-none overflow-y-auto custom-scrollbar bg-slate-950/80 backdrop-blur-3xl border-white/10 text-white flex flex-col"
+      className="fixed bottom-0 md:top-0 md:right-0 h-[88vh] sm:h-[92vh] md:h-screen w-full md:w-[460px] z-[2000] shadow-[-20px_0_100px_rgba(0,0,0,0.6)] border-t md:border-l rounded-t-[2rem] sm:rounded-t-[3rem] md:rounded-none overflow-y-auto custom-scrollbar bg-slate-950/80 backdrop-blur-3xl border-white/10 text-white flex flex-col pb-[env(safe-area-inset-bottom)]"
     >
       {/* Drag Handle for Mobile */}
       <div className="md:hidden w-12 h-1.5 bg-white/10 rounded-full mx-auto my-4 shrink-0" />
 
       {/* Header Sticky */}
-      <div className="sticky top-0 z-10 px-4 py-4 sm:px-6 sm:py-6 md:px-10 md:py-8 bg-slate-950/60 backdrop-blur-md border-b border-white/5 flex justify-between items-center shrink-0">
+      <div className="sticky top-0 z-10 px-4 py-4 sm:px-6 sm:py-6 md:px-10 md:py-8 bg-slate-950/60 backdrop-blur-md border-b border-white/5 flex justify-between items-start sm:items-center gap-3 shrink-0">
           <div className="flex flex-col min-w-0">
             <div className="flex items-center gap-3">
               <h2 className="text-sm sm:text-base md:text-xl font-black italic uppercase tracking-tighter leading-none text-white drop-shadow-sm truncate">
@@ -186,15 +252,17 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
                   </span>
                 </div>
               )}
-            {(household.syncStatus === 'pending' || household.syncStatus === 'error') && !isTerminalStatus && (
-              <div className="flex items-center gap-1 px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 shrink-0">
-                {household.syncStatus === 'pending' ? (
+            {!isTerminalStatus && (
+              <div className={`flex items-center gap-1 px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-full border shrink-0 ${syncBadge.classes}`}>
+                {syncState === 'pending' ? (
                   <RefreshCcw size={8} className="animate-spin text-amber-500" />
-                ) : (
+                ) : syncState === 'error' ? (
                   <CloudOff size={8} />
+                ) : (
+                  <CheckCircle2 size={8} />
                 )}
                 <span className="text-[7px] sm:text-[9px] font-black uppercase tracking-[0.1em]">
-                  {household.syncStatus === 'pending' ? 'Sync' : 'Offline'}
+                  {syncBadge.label}
                 </span>
               </div>
             )}
@@ -226,7 +294,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
       </div>
 
       {/* Scrollable Content Container */}
-      <div className="flex-1 px-6 md:px-10 py-6 space-y-8 pb-40">
+      <div className="flex-1 px-4 sm:px-6 md:px-10 py-5 sm:py-6 space-y-8 pb-44 sm:pb-40">
         <div className="space-y-10 animate-in fade-in slide-in-from-bottom-2 duration-500">
           {/* ALERTES BLOQUANTES & SYSTÈME */}
           {alerts.length > 0 && (
@@ -348,7 +416,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
               <div className="w-1.5 h-1.5 rounded-full bg-blue-500/50 shadow-[0_0_10px_rgba(59,130,246,0.5)]" />
               GALERIE TERRAIN
             </h4>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {photoSrc ? (
                 <button
                   onClick={() => onPhotoOpen([{ url: photoSrc as string, label: 'Preuve' }], 0)}
@@ -437,8 +505,8 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
           {/* Practical Information List */}
           <div className="space-y-4">
             {/* Contact */}
-            <div className="p-5 rounded-[1.8rem] bg-white/5 border border-white/5 flex items-center justify-between group hover:bg-white/[0.08] transition-all">
-              <div className="flex items-center gap-4">
+            <div className="p-5 rounded-[1.8rem] bg-white/5 border border-white/5 flex flex-col gap-4 group hover:bg-white/[0.08] transition-all sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-4 min-w-0">
                 <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/10 shadow-inner">
                   <Phone size={20} />
                 </div>
@@ -451,11 +519,11 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
                   </p>
                 </div>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <a
                   href={`tel:${household.phone || household.ownerPhone}`}
                   title="Appeler localement"
-                  className="px-4 py-2.5 bg-emerald-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest shadow-lg shadow-emerald-600/30 hover:brightness-110 transition-all italic active:scale-95"
+                  className="px-4 py-2.5 bg-emerald-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest shadow-lg shadow-emerald-600/30 hover:brightness-110 transition-all italic active:scale-95 text-center"
                 >
                   Appel
                 </a>
@@ -465,7 +533,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
                     target="_blank"
                     rel="noopener noreferrer"
                     title="Ouvrir WhatsApp"
-                    className="px-4 py-2.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-lg hover:bg-emerald-500/30 transition-all active:scale-95 flex items-center gap-2"
+                    className="px-4 py-2.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-lg hover:bg-emerald-500/30 transition-all active:scale-95 flex items-center justify-center gap-2"
                   >
                     <MessageCircle size={14} /> WhatsApp
                   </a>
@@ -670,12 +738,87 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
           )}
 
           {/* Kobo Metadata */}
-          <div className="p-8 rounded-[2rem] border-dashed border-2 border-slate-800 bg-slate-900/30 space-y-6">
+          <div className="p-5 sm:p-8 rounded-[2rem] border-dashed border-2 border-slate-800 bg-slate-900/30 space-y-6">
             <h4 className="text-[9px] font-black uppercase tracking-[0.3em] flex items-center gap-2 text-slate-500">
               <Database size={14} /> DONNÉES TECHNIQUES & SYNC
             </h4>
 
-            <div className="grid grid-cols-2 gap-6 text-[10px] font-mono text-slate-400">
+            <div className={`rounded-2xl border p-4 ${syncBadge.classes}`}>
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[8px] font-black uppercase tracking-[0.2em] opacity-70">
+                    Sync local
+                  </p>
+                  <p className="mt-1 text-sm font-black uppercase tracking-wide">{syncBadge.label}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[8px] font-black uppercase tracking-[0.2em] opacity-70">
+                    File globale
+                  </p>
+                  <p className="mt-1 text-sm font-black">{pendingSyncCount}</p>
+                </div>
+              </div>
+              <p className="mt-3 text-[10px] font-semibold leading-relaxed opacity-90">
+                {syncBadge.helper}
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2 text-[9px] font-black uppercase tracking-widest">
+                <span className={`rounded-full px-2.5 py-1 ${isOnline ? 'bg-emerald-950/40 text-emerald-300' : 'bg-slate-950/40 text-slate-300'}`}>
+                  {isOnline ? 'Connecté' : 'Hors-ligne'}
+                </span>
+                {lastSyncError ? (
+                  <span className="rounded-full bg-rose-950/40 px-2.5 py-1 text-rose-300">
+                    Dernière sync en erreur
+                  </span>
+                ) : null}
+              </div>
+              <div className="mt-4 rounded-2xl border border-black/10 bg-black/15 p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    {manualOverrideFields.length > 0 ? (
+                      <Lock size={14} className="text-amber-300" />
+                    ) : (
+                      <LockOpen size={14} className="text-slate-300" />
+                    )}
+                    <p className="text-[8px] font-black uppercase tracking-[0.2em] opacity-80">
+                      Champs forcés admin
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-black/20 px-2.5 py-1 text-[9px] font-black uppercase tracking-widest">
+                    {manualOverrideFields.length}
+                  </span>
+                </div>
+                {manualOverrideFields.length > 0 ? (
+                  <>
+                    <p className="mt-2 text-[10px] font-semibold leading-relaxed opacity-90">
+                      Ces champs gardent la valeur locale et ne sont pas écrasés par Kobo.
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {manualOverrideFields.slice(0, 6).map((field) => (
+                        <span
+                          key={field}
+                          className="inline-flex items-center gap-2 rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.14em] text-amber-100"
+                          title={field}
+                        >
+                          <Lock size={10} />
+                          {formatOverrideLabel(field)}
+                        </span>
+                      ))}
+                      {manualOverrideFields.length > 6 ? (
+                        <span className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.14em] text-slate-200">
+                          +{manualOverrideFields.length - 6} autres
+                        </span>
+                      ) : null}
+                    </div>
+                  </>
+                ) : (
+                  <p className="mt-2 text-[10px] font-semibold leading-relaxed opacity-90">
+                    Aucun cadenas actif. Ce ménage suit entièrement la dernière synchronisation Kobo.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-[10px] font-mono text-slate-400">
               <div>
                 <p className="text-slate-600 mb-1 tracking-widest font-sans font-bold">
                   SOURCE
@@ -699,7 +842,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
                 </p>
               </div>
 
-              <div className="col-span-2 pt-2 border-t border-slate-800/50">
+              <div className="sm:col-span-2 pt-2 border-t border-slate-800/50">
                 <p className="text-slate-600 mb-1 tracking-widest font-sans font-bold">
                   DERNIÈRE SYNCHRONISATION (UTC)
                 </p>
@@ -717,7 +860,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
       </div>
 
       {/* Navigation Actions Bottom Sticky */}
-      <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 md:px-10 bg-slate-950/95 backdrop-blur-2xl border-t border-white/10 flex flex-col gap-3 sm:gap-4 shadow-[0_-30px_50px_rgba(0,0,0,0.8)]">
+      <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 md:px-10 bg-slate-950/95 backdrop-blur-2xl border-t border-white/10 flex flex-col gap-3 sm:gap-4 shadow-[0_-30px_50px_rgba(0,0,0,0.8)] pb-[calc(1rem+env(safe-area-inset-bottom))]">
         {!routingEnabled ? (
           <button
             onClick={onTraceItinerary}
@@ -752,11 +895,11 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
 
       {/* Status Modal - Premium Version (Portaled to break out of transformed side panel) */}
       {showStatusModal && createPortal(
-        <div className="fixed inset-0 z-[5000] flex items-center justify-center bg-slate-950/60 backdrop-blur-3xl p-6 overflow-hidden">
+        <div className="fixed inset-0 z-[5000] flex items-end sm:items-center justify-center bg-slate-950/60 backdrop-blur-3xl p-3 sm:p-6 overflow-hidden">
           <motion.div
             initial={{ scale: 0.95, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
-            className="rounded-[3rem] p-10 max-w-sm w-full shadow-3xl bg-slate-900 border border-white/10 ring-1 ring-white/5"
+            className="rounded-[2rem] sm:rounded-[3rem] p-5 sm:p-10 max-w-sm w-full max-h-[85vh] overflow-y-auto shadow-3xl bg-slate-900 border border-white/10 ring-1 ring-white/5"
           >
             <h3 className="text-2xl font-black uppercase tracking-tighter mb-2 italic text-white leading-none">
               Status Audit
@@ -780,7 +923,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
               ))}
             </div>
 
-            <div className="flex gap-4">
+            <div className="flex flex-col sm:flex-row gap-4">
               <button
                 onClick={() => {
                   setShowStatusModal(false);

@@ -29,6 +29,11 @@ import apiClient from '../api/client';
 import { toast } from 'react-hot-toast';
 import { PageContainer, PageHeader, ContentArea } from '../components';
 import { motion, AnimatePresence } from 'framer-motion';
+import {
+  TERRAIN_FEATURE_DEFS,
+  type TerrainFeatureConfig,
+  type TerrainFeatureKey,
+} from '../constants/terrainFeatures';
 
 interface WorkflowStep {
   role: string;
@@ -49,6 +54,7 @@ interface OrgConfig {
     zone?: { singular: string; plural: string };
   };
   features?: { koboTerminal?: boolean };
+  terrainFeatures?: TerrainFeatureConfig;
 }
 
 type TabId = 'branding' | 'notifications' | 'workflow' | 'labels' | 'features';
@@ -178,6 +184,15 @@ export default function OrganizationSettings() {
       features: { ...(prev.features || {}), [feature]: !prev.features?.[feature] },
     }));
 
+  const toggleTerrainFeature = (feature: TerrainFeatureKey) =>
+    setConfig((prev) => ({
+      ...prev,
+      terrainFeatures: {
+        ...(prev.terrainFeatures || {}),
+        [feature]: !prev.terrainFeatures?.[feature],
+      },
+    }));
+
   const addAuditEmail = () => {
     if (!newEmail || !newEmail.includes('@')) {
       toast.error('Email invalide');
@@ -260,7 +275,7 @@ export default function OrganizationSettings() {
   const primaryColor = config.branding?.primaryColor || '#1e90ff';
 
   return (
-    <PageContainer className="min-h-screen bg-slate-950 py-8">
+    <PageContainer className="min-h-screen bg-slate-950 py-4 sm:py-8">
       <PageHeader
         title={orgName}
         subtitle="Personnalisez l'identité et les processus de votre espace de travail"
@@ -269,7 +284,7 @@ export default function OrganizationSettings() {
           <button
             onClick={handleSave}
             disabled={isSaving}
-            className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-black text-xs rounded-xl transition-all shadow-lg shadow-blue-500/20 disabled:opacity-50 active:scale-95"
+            className="flex items-center gap-2 px-5 sm:px-6 py-3 min-h-[48px] bg-blue-600 hover:bg-blue-500 text-white font-black text-[10px] sm:text-xs rounded-xl transition-all shadow-lg shadow-blue-500/20 disabled:opacity-50 active:scale-95 uppercase tracking-[0.08em]"
           >
             {isSaving ? (
               <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
@@ -281,12 +296,12 @@ export default function OrganizationSettings() {
         }
       />
 
-      <ContentArea className="mt-8 !p-0 !bg-transparent border-none space-y-8">
+      <ContentArea className="mt-6 sm:mt-8 !p-0 !bg-transparent border-none space-y-6 sm:space-y-8">
         {/* ══ ORG PROFILE CARD ══ */}
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="relative overflow-hidden rounded-[2rem] border border-white/5 bg-gradient-to-br from-slate-900 to-slate-950"
+          className="relative overflow-hidden rounded-[1.6rem] sm:rounded-[2rem] border border-white/5 bg-gradient-to-br from-slate-900 to-slate-950"
         >
           {/* Background gradient blob */}
           <div
@@ -294,10 +309,10 @@ export default function OrganizationSettings() {
             data-primary-color={primaryColor}
           />
 
-          <div className="relative p-8 flex flex-col lg:flex-row gap-8 items-start lg:items-center">
+            <div className="relative p-4 sm:p-8 flex flex-col lg:flex-row gap-6 sm:gap-8 items-start lg:items-center">
             {/* Logo / Avatar */}
             <div className="relative group flex-shrink-0">
-              <div className="w-24 h-24 rounded-[1.5rem] border-2 border-white/10 bg-slate-800 flex items-center justify-center overflow-hidden shadow-2xl">
+              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-[1.25rem] sm:rounded-[1.5rem] border-2 border-white/10 bg-slate-800 flex items-center justify-center overflow-hidden shadow-2xl">
                 {config.branding?.logo ? (
                   <img
                     src={config.branding.logo}
@@ -312,7 +327,7 @@ export default function OrganizationSettings() {
                 onClick={() => fileInputRef.current?.click()}
                 title="Changer le logo"
                 aria-label="Changer le logo"
-                className="absolute inset-0 rounded-[1.5rem] bg-black/60 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center"
+                className="absolute inset-0 rounded-[1.25rem] sm:rounded-[1.5rem] bg-black/60 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center"
               >
                 <Camera size={20} className="text-white" />
               </button>
@@ -336,7 +351,7 @@ export default function OrganizationSettings() {
                 value={config.branding?.organizationName || ''}
                 onChange={(e) => updateBranding('organizationName', e.target.value)}
                 placeholder="Nom de l'organisation"
-                className="text-2xl font-black text-white bg-transparent border-b border-transparent hover:border-white/20 focus:border-blue-500 outline-none transition-all w-full max-w-md pb-1"
+                className="text-xl sm:text-2xl font-black text-white bg-transparent border-b border-transparent hover:border-white/20 focus:border-blue-500 outline-none transition-all w-full max-w-md pb-1"
               />
               <div className="flex flex-wrap items-center gap-3">
                 <span className="flex items-center gap-1.5 text-xs font-bold text-slate-400">
@@ -345,14 +360,14 @@ export default function OrganizationSettings() {
                 <span className="flex items-center gap-1.5 text-xs font-bold text-slate-400">
                   <Briefcase size={12} /> <span>Plan Enterprise</span>
                 </span>
-                <span className="flex items-center gap-1.5 px-2.5 py-1 bg-blue-500/10 rounded-full text-xs font-black text-blue-400 border border-blue-500/20">
+                <span className="flex items-center gap-1.5 px-2.5 py-1 bg-blue-500/10 rounded-full text-[10px] sm:text-xs font-black text-blue-400 border border-blue-500/20 uppercase tracking-[0.06em]">
                   <Award size={10} /> GEM Premium
                 </span>
               </div>
             </div>
 
             {/* Quick Stats Row */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 lg:flex-shrink-0">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 lg:flex-shrink-0 w-full lg:w-auto">
               {[
                 {
                   label: 'Ménages',
@@ -366,11 +381,11 @@ export default function OrganizationSettings() {
               ].map((s) => (
                 <div
                   key={s.label}
-                  className="flex flex-col items-center p-4 bg-white/5 rounded-2xl border border-white/5 min-w-[80px] hover:bg-white/8 transition-all"
-                >
+                    className="flex flex-col items-center p-3 sm:p-4 bg-white/5 rounded-2xl border border-white/5 min-w-[80px] hover:bg-white/8 transition-all"
+                  >
                   <s.icon size={16} className={`text-${s.color}-400 mb-1`} />
-                  <div className="text-xl font-black text-white">{s.value}</div>
-                  <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                  <div className="text-lg sm:text-xl font-black text-white">{s.value}</div>
+                  <div className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.08em] sm:tracking-widest text-center">
                     {s.label}
                   </div>
                 </div>
@@ -386,17 +401,18 @@ export default function OrganizationSettings() {
         </motion.div>
 
         {/* ══ MAIN PANEL ══ */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          {/* Sidebar Tabs */}
-          <div className="lg:col-span-1 space-y-2">
-            {TABS.map((tab) => {
-              const active = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`w-full flex items-center gap-3 px-5 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all border ${
-                    active
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 sm:gap-8">
+            {/* Sidebar Tabs */}
+            <div className="lg:col-span-1 space-y-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-2 lg:sticky lg:top-[6.5rem]">
+              {TABS.map((tab) => {
+                const active = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`w-full flex items-center gap-3 px-4 sm:px-5 py-3 sm:py-4 min-h-[48px] rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-[0.08em] sm:tracking-widest transition-all border ${
+                      active
                       ? `bg-white/10 text-white border-white/10 shadow-xl`
                       : 'bg-white/3 text-slate-400 border-transparent hover:bg-white/7 hover:text-white'
                   }`}
@@ -408,19 +424,20 @@ export default function OrganizationSettings() {
                   </div>
                   <span className="flex-1 text-left">{tab.label}</span>
                   {active && <ArrowRight size={12} className="opacity-50" />}
-                </button>
-              );
-            })}
+                  </button>
+                );
+              })}
+              </div>
 
-            {/* Quick save shortcut */}
-            <div className="pt-4">
-              <button
-                onClick={handleSave}
-                disabled={isSaving}
-                className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-blue-600/20 hover:bg-blue-600 border border-blue-600/30 text-blue-400 hover:text-white font-black text-xs uppercase tracking-widest rounded-2xl transition-all disabled:opacity-50"
-              >
-                <Save size={14} />
-                Enregistrer
+              {/* Quick save shortcut */}
+              <div className="pt-4">
+                <button
+                  onClick={handleSave}
+                  disabled={isSaving}
+                  className="w-full flex items-center justify-center gap-2 px-5 py-3 min-h-[48px] bg-blue-600/20 hover:bg-blue-600 border border-blue-600/30 text-blue-400 hover:text-white font-black text-[10px] sm:text-xs uppercase tracking-[0.08em] sm:tracking-widest rounded-2xl transition-all disabled:opacity-50"
+                >
+                  <Save size={14} />
+                  Enregistrer
               </button>
             </div>
           </div>
@@ -434,7 +451,7 @@ export default function OrganizationSettings() {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -12 }}
                 transition={{ duration: 0.18 }}
-                className="bg-slate-900/60 backdrop-blur border border-white/5 rounded-[2rem] p-8 min-h-[500px]"
+                className="bg-slate-900/60 backdrop-blur border border-white/5 rounded-[1.6rem] sm:rounded-[2rem] p-4 sm:p-8 min-h-[500px]"
               >
                 {/* ── BRANDING ── */}
                 {activeTab === 'branding' && (
@@ -445,13 +462,13 @@ export default function OrganizationSettings() {
                       color="blue"
                     />
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
                       {/* Logo */}
                       <div className="space-y-3">
                         <FieldLabel>Logo (max 2 Mo)</FieldLabel>
                         <div
                           onClick={() => fileInputRef.current?.click()}
-                          className="h-36 border-2 border-dashed border-white/10 rounded-2xl flex flex-col items-center justify-center gap-3 cursor-pointer hover:border-blue-500/50 hover:bg-blue-500/5 transition-all group relative overflow-hidden"
+                          className="h-32 sm:h-36 border-2 border-dashed border-white/10 rounded-2xl flex flex-col items-center justify-center gap-3 cursor-pointer hover:border-blue-500/50 hover:bg-blue-500/5 transition-all group relative overflow-hidden"
                         >
                           {config.branding?.logo ? (
                             <img
@@ -490,7 +507,7 @@ export default function OrganizationSettings() {
                             title="Couleur primaire"
                             value={config.branding?.primaryColor || '#1e90ff'}
                             onChange={(e) => updateBranding('primaryColor', e.target.value)}
-                            className="w-14 h-14 cursor-pointer rounded-2xl border-none bg-transparent overflow-hidden flex-shrink-0"
+                          className="w-12 h-12 sm:w-14 sm:h-14 cursor-pointer rounded-2xl border-none bg-transparent overflow-hidden flex-shrink-0"
                           />
                           <input
                             type="text"
@@ -498,7 +515,7 @@ export default function OrganizationSettings() {
                             placeholder="#1e90ff"
                             value={config.branding?.primaryColor || '#1e90ff'}
                             onChange={(e) => updateBranding('primaryColor', e.target.value)}
-                            className="flex-1 bg-slate-800 border border-white/5 rounded-2xl px-5 py-4 text-white font-mono text-sm uppercase focus:ring-2 focus:ring-blue-500/30 outline-none"
+                          className="flex-1 bg-slate-800 border border-white/5 rounded-2xl px-4 sm:px-5 py-3 sm:py-4 text-white font-mono text-sm uppercase focus:ring-2 focus:ring-blue-500/30 outline-none"
                           />
                         </div>
 
@@ -548,7 +565,7 @@ export default function OrganizationSettings() {
                     />
 
                     <div className="space-y-4">
-                      <div className="flex items-center justify-between">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <FieldLabel>Emails en Copie (Audit)</FieldLabel>
                         <span className="text-xs text-slate-500">
                           {config.notifications?.auditEmails?.length || 0} adresse(s)
@@ -556,18 +573,18 @@ export default function OrganizationSettings() {
                       </div>
 
                       {/* Add email inline */}
-                      <div className="flex gap-3">
+                      <div className="flex flex-col sm:flex-row gap-3">
                         <input
                           type="email"
                           value={newEmail}
                           onChange={(e) => setNewEmail(e.target.value)}
                           onKeyDown={(e) => e.key === 'Enter' && addAuditEmail()}
                           placeholder="email@organisation.com"
-                          className="flex-1 bg-slate-800 border border-white/5 rounded-xl px-4 py-3 text-white text-sm focus:ring-2 focus:ring-emerald-500/30 outline-none"
+                          className="flex-1 min-h-[48px] bg-slate-800 border border-white/5 rounded-xl px-4 py-3 text-white text-sm focus:ring-2 focus:ring-emerald-500/30 outline-none"
                         />
                         <button
                           onClick={addAuditEmail}
-                          className="px-4 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2"
+                          className="px-4 py-3 min-h-[48px] bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-[0.08em] sm:tracking-widest transition-all flex items-center justify-center gap-2"
                         >
                           <Plus size={14} /> Ajouter
                         </button>
@@ -611,7 +628,7 @@ export default function OrganizationSettings() {
                     </div>
 
                     <div className="pt-6 border-t border-white/5">
-                      <div className="flex items-center justify-between p-5 bg-white/3 rounded-2xl border border-white/5">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-white/3 rounded-2xl border border-white/5">
                         <div>
                           <h4 className="text-sm font-black text-white">
                             Alertes Workflow Temps Réel
@@ -641,7 +658,7 @@ export default function OrganizationSettings() {
                 {/* ── WORKFLOW ── */}
                 {activeTab === 'workflow' && (
                   <div className="space-y-8">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <SectionHeader
                         icon={<GitBranch className="text-amber-400" />}
                         title="Processus de Validation"
@@ -649,7 +666,7 @@ export default function OrganizationSettings() {
                       />
                       <button
                         onClick={addWorkflowStep}
-                        className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-white text-xs font-black uppercase tracking-widest rounded-xl flex items-center gap-2 transition-all"
+                        className="px-4 py-3 min-h-[48px] bg-amber-500 hover:bg-amber-400 text-white text-[10px] sm:text-xs font-black uppercase tracking-[0.08em] sm:tracking-widest rounded-xl flex items-center justify-center gap-2 transition-all"
                       >
                         <Plus size={14} /> Étape
                       </button>
@@ -752,7 +769,7 @@ export default function OrganizationSettings() {
                       },
                     ].map((item) => (
                       <div key={item.key} className="space-y-4">
-                        <h4 className="text-xs font-black text-slate-500 uppercase tracking-widest border-b border-white/5 pb-3">
+                        <h4 className="text-[11px] sm:text-xs font-black text-slate-500 uppercase tracking-[0.08em] sm:tracking-widest border-b border-white/5 pb-3">
                           {item.label}
                         </h4>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -814,6 +831,44 @@ export default function OrganizationSettings() {
                         </div>
                       ))}
 
+                      <div className="mt-8 space-y-4">
+                        <h4 className="text-[11px] sm:text-xs font-black text-violet-400 uppercase tracking-[0.08em] sm:tracking-widest">
+                          Console Terrain
+                        </h4>
+                        <InfoBox color="violet" icon={<Lock size={16} />}>
+                          Ces interrupteurs pilotent surtout la visibilité des fonctions terrain pour
+                          les utilisateurs non administrateurs. Les admins conservent leurs outils
+                          avancés pour support et contrôle.
+                        </InfoBox>
+                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                          {TERRAIN_FEATURE_DEFS.map((feature) => (
+                            <div
+                              key={feature.key}
+                              className="flex items-start gap-5 p-5 bg-slate-800/50 rounded-2xl border border-white/5 hover:border-violet-500/20 transition-all"
+                            >
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2">
+                                  <h4 className="font-black text-sm text-white">{feature.title}</h4>
+                                  {feature.adminOnly ? (
+                                    <span className="px-2 py-0.5 rounded-full bg-amber-500/10 text-[9px] font-black uppercase tracking-[0.08em] text-amber-300 border border-amber-500/20">
+                                      Admin
+                                    </span>
+                                  ) : null}
+                                </div>
+                                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                                  {feature.desc}
+                                </p>
+                              </div>
+                              <Toggle
+                                checked={!!config.terrainFeatures?.[feature.key]}
+                                onChange={() => toggleTerrainFeature(feature.key)}
+                                color="violet"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
                       {/* Placeholder for future modules */}
                       <div className="flex items-center gap-4 p-6 bg-white/3 rounded-2xl border border-dashed border-white/5">
                         <div className="p-3 bg-white/5 rounded-xl">
@@ -829,7 +884,7 @@ export default function OrganizationSettings() {
 
                       {/* Status Board */}
                       <div className="mt-6 p-6 bg-violet-500/5 border border-violet-500/10 rounded-2xl">
-                        <h4 className="text-xs font-black text-violet-400 uppercase tracking-widest mb-4">
+                        <h4 className="text-[11px] sm:text-xs font-black text-violet-400 uppercase tracking-[0.08em] sm:tracking-widest mb-4">
                           État des Modules
                         </h4>
                         <div className="space-y-2">

@@ -140,7 +140,7 @@ export const MapRegionDownload: React.FC<MapRegionDownloadProps> = ({ onClose })
   };
 
   return (
-    <div className="absolute top-20 left-4 right-4 md:right-4 md:left-auto max-w-[calc(100vw-2rem)] md:w-80 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-white/10 overflow-hidden z-[1000] animate-in slide-in-from-right-4 duration-300">
+    <div className="absolute top-[144px] left-3 right-3 md:top-20 md:left-auto md:right-4 max-w-[calc(100vw-1.5rem)] md:w-80 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-white/10 overflow-hidden z-[1000] animate-in slide-in-from-right-4 duration-300 max-h-[calc(100vh-220px)] md:max-h-[unset] flex flex-col">
       <div className="p-4 border-b border-slate-100 dark:border-white/5 flex items-center justify-between bg-slate-50 dark:bg-white/5">
         <div className="flex items-center gap-2">
           <Download size={18} className="text-blue-600" />
@@ -157,7 +157,7 @@ export const MapRegionDownload: React.FC<MapRegionDownloadProps> = ({ onClose })
         </button>
       </div>
 
-      <div className="p-2 max-h-[400px] overflow-y-auto">
+      <div className="p-2 max-h-[400px] md:max-h-[400px] overflow-y-auto flex-1">
         <div className="p-3 bg-blue-50 dark:bg-blue-500/10 rounded-xl mb-2 flex gap-3">
           <Info size={16} className="text-blue-600 shrink-0 mt-0.5" />
           <p className="text-xs text-blue-800 dark:text-blue-300 leading-relaxed font-medium">
@@ -173,7 +173,7 @@ export const MapRegionDownload: React.FC<MapRegionDownloadProps> = ({ onClose })
           return (
             <div
               key={region.id}
-              className="p-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-xl transition-all flex items-center justify-between group"
+              className="p-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-xl transition-all flex items-center justify-between gap-3 group"
             >
               <div>
                 <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">
@@ -184,7 +184,7 @@ export const MapRegionDownload: React.FC<MapRegionDownloadProps> = ({ onClose })
                 </span>
               </div>
 
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 shrink-0">
                 {isDownloaded ? (
                   <>
                     <div className="flex items-center gap-1 bg-emerald-50 dark:bg-emerald-500/10 px-2 py-1 rounded-lg">

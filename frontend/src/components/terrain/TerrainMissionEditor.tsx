@@ -2,7 +2,7 @@
  * Composant de rédaction de mission terrain
  * Contextes: équipe, household, région, date, budget, matériaux
  */
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Users, 
@@ -23,6 +23,16 @@ import {
 import toast from 'react-hot-toast';
 import { uploadFile } from '../../services/uploadService';
 import { KAFFRINE_TEMPLATE } from '../../pages/mission/core/missionTypes';
+import logger from '../../utils/logger';
+import { useProject } from '../../contexts/ProjectContext';
+import { useTeams } from '../../hooks/useTeams';
+import {
+  getRegionPreferredTeamOrder,
+  isTeamAvailableForAllocation,
+  sortTeamsByCanonicalPriority,
+  teamMatchesPlanningRegion,
+  type PlanningAllocationSource,
+} from '../../services/planningAllocation';
 
 interface MissionContext {
   // Équipe
@@ -61,7 +71,9 @@ interface TerrainMissionEditorProps {
 type MissionLike = {
   title?: string;
   status?: string;
+  teamId?: string;
   teamName?: string;
+  teamMembers?: { id: string; name: string; role: string }[];
   regionName?: string;
   startDate?: string;
   budget?: number;
@@ -73,6 +85,8 @@ export const TerrainMissionEditor: React.FC<TerrainMissionEditorProps> = ({
   onSubmit,
   isLoading = false
 }) => {
+  const { project } = useProject();
+  const { teams, fetchTeams, isLoading: isTeamsLoading } = useTeams(project?.id);
   const [formData, setFormData] = useState({
     // Informations de base
     title: '',
@@ -123,11 +137,108 @@ export const TerrainMissionEditor: React.FC<TerrainMissionEditorProps> = ({
     { id: 5, title: 'Matériaux', icon: <Package className="w-4 h-4" /> },
   ];
 
+  useEffect(() => {
+    void fetchTeams();
+  }, [fetchTeams]);
+
+  const missionRegionName = formData.regionName || context.regionName || '';
+  const preferredTeamOrder = useMemo(
+    () => getRegionPreferredTeamOrder(project?.config, missionRegionName),
+    [project?.config, missionRegionName]
+  );
+
+  const activeTeams = useMemo(
+    () => teams.filter(isTeamAvailableForAllocation),
+    [teams]
+  );
+
+  const canonicalTeamOptions = useMemo(() => {
+    const regionMatchedTeams = activeTeams.filter((team) =>
+      teamMatchesPlanningRegion(team, missionRegionName)
+    );
+    return sortTeamsByCanonicalPriority(
+      regionMatchedTeams.length > 0 ? regionMatchedTeams : activeTeams,
+      new Map<string, number>(),
+      preferredTeamOrder
+    );
+  }, [activeTeams, missionRegionName, preferredTeamOrder]);
+
+  const selectedTeamRecord = useMemo(
+    () =>
+      canonicalTeamOptions.find((team) => team.id === formData.teamId) ||
+      activeTeams.find((team) => team.id === formData.teamId),
+    [activeTeams, canonicalTeamOptions, formData.teamId]
+  );
+
+  const recommendedTeam = useMemo(
+    () =>
+      (context.teamId && activeTeams.find((team) => team.id === context.teamId)) ||
+      canonicalTeamOptions[0],
+    [activeTeams, canonicalTeamOptions, context.teamId]
+  );
+
+  const recommendedSource: PlanningAllocationSource | null = useMemo(() => {
+    if (!recommendedTeam) return null;
+    if (context.teamId && recommendedTeam.id === context.teamId) return 'manual';
+    return preferredTeamOrder.has(recommendedTeam.id) ? 'configured' : 'balanced';
+  }, [context.teamId, preferredTeamOrder, recommendedTeam]);
+
+  const resolvedTeamMembers = useMemo(() => {
+    if (formData.teamMembers.length > 0) return formData.teamMembers;
+    if (selectedTeamRecord?.leader) {
+      return [
+        {
+          id: selectedTeamRecord.leader.id,
+          name: selectedTeamRecord.leader.name,
+          role: "Chef d'équipe",
+        },
+      ];
+    }
+    return [];
+  }, [formData.teamMembers, selectedTeamRecord]);
+
+  useEffect(() => {
+    if (!recommendedTeam) return;
+
+    setFormData((prev) => {
+      const hasValidSelection = !!prev.teamId && activeTeams.some((team) => team.id === prev.teamId);
+      if (hasValidSelection) return prev;
+
+      return {
+        ...prev,
+        teamId: recommendedTeam.id,
+        teamMembers:
+          prev.teamMembers.length > 0
+            ? prev.teamMembers
+            : recommendedTeam.leader
+              ? [
+                  {
+                    id: recommendedTeam.leader.id,
+                    name: recommendedTeam.leader.name,
+                    role: "Chef d'équipe",
+                  },
+                ]
+              : prev.teamMembers,
+      };
+    });
+  }, [activeTeams, recommendedTeam]);
+
+  const handleTeamChange = (teamId: string) => {
+    const nextTeam = activeTeams.find((team) => team.id === teamId);
+    setFormData((prev) => ({
+      ...prev,
+      teamId,
+      teamMembers: nextTeam?.leader
+        ? [{ id: nextTeam.leader.id, name: nextTeam.leader.name, role: "Chef d'équipe" }]
+        : [],
+    }));
+  };
+
   // Validation par étape
   const validation = useMemo(() => {
     return {
       1: !!formData.title && !!formData.description,
-      2: !!formData.teamId && formData.teamMembers.length > 0,
+      2: !!formData.teamId,
       3: !!formData.regionId && !!formData.startDate && !!formData.endDate,
       4: formData.budget > 0,
       5: formData.materials.length > 0 || formData.additionalMaterials,
@@ -150,6 +261,10 @@ export const TerrainMissionEditor: React.FC<TerrainMissionEditorProps> = ({
     const mission = {
       ...formData,
       status: asDraft ? 'draft' : 'soumise',
+      teamId: selectedTeamRecord?.id || formData.teamId,
+      teamName: selectedTeamRecord?.name || context.teamName,
+      teamMembers: resolvedTeamMembers,
+      regionName: missionRegionName,
       context: {
         ...context,
         createdAt: new Date().toISOString(),
@@ -200,9 +315,7 @@ export const TerrainMissionEditor: React.FC<TerrainMissionEditorProps> = ({
         toast.success('Photo ajoutée au rapport');
       }
     } catch (e) {
-      // Log the error for debugging and show friendly message
-       
-      console.error(e);
+      logger.error('[TerrainMissionEditor] Upload failed', e);
       toast.error('Erreur lors de l\'upload');
     } finally {
       setIsUploading(false);
@@ -314,28 +427,62 @@ export const TerrainMissionEditor: React.FC<TerrainMissionEditorProps> = ({
                 <label className="block text-sm text-slate-400 mb-1">Équipe *</label>
                 <select
                   value={formData.teamId}
-                  onChange={(e) => setFormData(prev => ({ ...prev, teamId: e.target.value }))}
+                  onChange={(e) => handleTeamChange(e.target.value)}
                   className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white"
                   title="Sélectionnez une équipe"
                 >
                   <option value="">Sélectionner une équipe</option>
-                  {context.teamName && <option value={context.teamId}>{context.teamName}</option>}
+                  {canonicalTeamOptions.map((team) => (
+                    <option key={team.id} value={team.id}>
+                      {team.name}
+                      {team.region?.name ? ` • ${team.region.name}` : ''}
+                    </option>
+                  ))}
                 </select>
+                {recommendedTeam ? (
+                  <p className="mt-2 text-xs text-slate-400">
+                    Suggestion canonique :
+                    <span className="ml-1 font-semibold text-slate-200">{recommendedTeam.name}</span>
+                    <span className="ml-2 rounded-full border border-slate-700 bg-slate-900 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                      {recommendedSource === 'manual'
+                        ? 'Contexte terrain'
+                        : recommendedSource === 'configured'
+                          ? 'Config region'
+                          : 'Equilibre'}
+                    </span>
+                  </p>
+                ) : null}
               </div>
 
               <div className="bg-slate-700/50 rounded-lg p-3">
-                <h4 className="text-sm text-slate-400 mb-2">Membres de l'équipe</h4>
-                {formData.teamMembers.length > 0 ? (
+                <h4 className="text-sm text-slate-400 mb-2">
+                  {resolvedTeamMembers.length > 0 ? "Responsables d'équipe" : "Équipe terrain"}
+                </h4>
+                {isTeamsLoading ? (
+                  <p className="text-slate-500 text-sm">Chargement des équipes...</p>
+                ) : resolvedTeamMembers.length > 0 ? (
                   <div className="space-y-2">
-                    {formData.teamMembers.map((member, i) => (
+                    {resolvedTeamMembers.map((member, i) => (
                       <div key={i} className="flex items-center justify-between text-sm">
                         <span className="text-white">{member.name}</span>
                         <span className="text-slate-400">{member.role}</span>
                       </div>
                     ))}
                   </div>
+                ) : selectedTeamRecord ? (
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-center justify-between">
+                      <span className="text-white">{selectedTeamRecord.name}</span>
+                      <span className="text-slate-400">
+                        {selectedTeamRecord.tradeKey || selectedTeamRecord.role}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500">
+                      Aucun membre nominatif disponible, mais l'équipe peut être soumise telle quelle.
+                    </p>
+                  </div>
                 ) : (
-                  <p className="text-slate-500 text-sm">Aucun membre ajouté</p>
+                  <p className="text-slate-500 text-sm">Aucune équipe disponible pour cette région</p>
                 )}
               </div>
             </div>

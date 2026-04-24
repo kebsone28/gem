@@ -37,7 +37,13 @@ self.onmessage = (e: MessageEvent) => {
           payload: { clusters, zoom, requestId } 
         });
       } catch (err) {
-        console.error('[Worker] Cluster calculation error:', err);
+        self.postMessage({
+          type: 'WORKER_ERROR',
+          payload: {
+            requestId,
+            message: err instanceof Error ? err.message : 'Cluster calculation error',
+          },
+        });
       }
       break;
     }

@@ -19,6 +19,7 @@ import { useSync } from '../contexts/SyncContext';
 import { useLogistique } from '../hooks/useLogistique';
 import { useSyncListener } from '../hooks/useSyncListener';
 import { usePermissions } from '../hooks/usePermissions';
+import { useTerrainFeatures } from '../hooks/useTerrainFeatures';
 import { MapRoutingPanel } from '../components/terrain/MapRoutingPanel';
 import { GeofencingAlerts } from '../components/terrain/GeofencingAlerts';
 import { PhotoLightbox } from '../components/terrain/PhotoLightbox';
@@ -28,8 +29,15 @@ import { GrappeSelectorPanel } from '../components/terrain/GrappeSelectorPanel';
 import { MapGrappeAllocationPanel } from '../components/terrain/MapGrappeAllocationPanel';
 import { MapRegionDownload } from '../components/terrain/MapRegionDownload';
 import { HouseholdDetailsPanel } from '../components/terrain/HouseholdDetailsPanel';
+import { TerrainSyncIssuesPanel } from '../components/terrain/TerrainSyncIssuesPanel';
 import { useFavorites } from '../hooks/useFavorites';
 import { useTerrainUIStore } from '../store/terrainUIStore';
+import { useSyncStore } from '../store/syncStore';
+import {
+  CONFORMING_HOUSEHOLD_LOCK_FIELDS,
+  mergeManualOverrides,
+  removeManualOverrides,
+} from '../constants/householdLocks';
 // useNavigate removed (not used in this page)
 
 import { useGeolocation } from '../hooks/useGeolocation';
@@ -39,6 +47,7 @@ import {
   type SearchResult,
   ALL_STATUSES,
 } from '../hooks/useMapFilters';
+import { getHouseholdDerivedStatus } from '../utils/statusUtils';
 import { HouseholdListView } from '../components/terrain/HouseholdListView';
 
 import { useGrappeClustering } from '../hooks/useGrappeClustering';
@@ -52,10 +61,12 @@ import { ErrorBoundary } from '../components/ErrorBoundary';
 import '../components/terrain/MapWidgets.css';
 
 import { ContentArea } from '../components';
+import { MODULE_ACCENTS } from '../components/dashboards/DashboardComponents';
 
 const Terrain: React.FC = () => {
+  const terrainAccent = MODULE_ACCENTS.terrain;
   // 1. Core Data & Contexts
-  const { households, updateHouseholdStatus, updateHouseholdLocation, uploadHouseholdPhoto, updateHousehold, reloadHouseholds } =
+  const { households, updateHouseholdStatus, updateHouseholdLocation, uploadHouseholdPhoto, updateHousehold, reloadHouseholds, repairSyncQueue } =
     useTerrainData();
 
   const { project } = useProject();
@@ -63,14 +74,18 @@ const Terrain: React.FC = () => {
   const { grappesConfig, warehouseStats, teams } = useLogistique(households);
   const { user } = useAuth();
   const { peut, PERMISSIONS } = usePermissions();
+  const terrainFeatures = useTerrainFeatures();
 
   const [mapBounds, setMapBounds] = useState<[number, number, number, number] | null>(null);
   const [isOfflineMode, setIsOfflineMode] = useState(() =>
     typeof navigator !== 'undefined' ? !navigator.onLine : false
   );
   const [showMissionEditor, setShowMissionEditor] = useState(false);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [pendingSyncCount, setPendingSyncCount] = useState(0);
+  const [showSyncIssues, setShowSyncIssues] = useState(false);
+  const pendingSyncCount = useSyncStore((s) => s.pendingCount);
+  const isSyncing = useSyncStore((s) => s.isSyncing);
+  const lastSyncError = useSyncStore((s) => s.lastSyncError);
+  const conflicts = useSyncStore((s) => s.conflicts);
 
   // Modals state (Removed unused ProjectModals)
   const [isGeolocationRequestInProgress, setIsGeolocationRequestInProgress] = useState(false);
@@ -100,6 +115,7 @@ const Terrain: React.FC = () => {
   // 4. Custom Hooks (Logic Orchestration)
   const {
     selectedPhases,
+    setSelectedPhases,
     selectedTeam,
     setSelectedTeam,
     searchQuery,
@@ -135,11 +151,59 @@ const Terrain: React.FC = () => {
 
   const { isFavorite, toggleFavorite, favorites: localFavorites } = useFavorites(project?.id);
 
+  const householdSyncStats = useMemo(() => {
+    const stats = { pending: 0, synced: 0, error: 0 };
+    for (const household of households || []) {
+      if (household.syncStatus === 'pending') stats.pending += 1;
+      else if (household.syncStatus === 'error') stats.error += 1;
+      else if (household.syncStatus === 'synced') stats.synced += 1;
+    }
+    return stats;
+  }, [households]);
+
+  const pendingHouseholds = useMemo(
+    () => (households || []).filter((household) => household.syncStatus === 'pending'),
+    [households]
+  );
+
+  const errorHouseholds = useMemo(
+    () => (households || []).filter((household) => household.syncStatus === 'error'),
+    [households]
+  );
+
+  const conformingHouseholds = useMemo(
+    () =>
+      (households || []).filter(
+        (household) => getHouseholdDerivedStatus(household) === 'Contrôle conforme'
+      ),
+    [households]
+  );
+
+  const lockableConformingHouseholds = useMemo(
+    () =>
+      conformingHouseholds.filter((household) =>
+        CONFORMING_HOUSEHOLD_LOCK_FIELDS.some(
+          (field) => !(household.manualOverrides || []).includes(field)
+        )
+      ),
+    [conformingHouseholds]
+  );
+
+  const unlockableConformingHouseholds = useMemo(
+    () =>
+      conformingHouseholds.filter((household) =>
+        CONFORMING_HOUSEHOLD_LOCK_FIELDS.some((field) =>
+          (household.manualOverrides || []).includes(field)
+        )
+      ),
+    [conformingHouseholds]
+  );
+
   // Terrain photo hook
   const { capturePhoto, selectFromGallery, isCapturing } = useTerrainPhoto({
     onUpload: async (file: File): Promise<string> => {
       if (!file) return "";
-      logger.log('📸 Photo capturée, début upload...', file.name);
+      logger.debug('📸 Photo capturée, début upload...', file.name);
       
       const toastId = toast.loading('Upload de la photo...');
       try {
@@ -174,7 +238,7 @@ const Terrain: React.FC = () => {
         autoCenterInitializedRef.current = true;
         const lng = Number(firstWithCoords.location?.coordinates?.[0] || firstWithCoords.longitude);
         const lat = Number(firstWithCoords.location?.coordinates?.[1] || firstWithCoords.latitude);
-        logger.log('📍 [Terrain] Auto-centering on first household:', firstWithCoords.id);
+        logger.debug('📍 [Terrain] Auto-centering on first household:', firstWithCoords.id);
         setMapCommand({ center: [lng, lat], zoom: 14, timestamp: Date.now() });
       }
     }
@@ -189,19 +253,35 @@ const Terrain: React.FC = () => {
     };
   }, []);
 
+  useEffect(() => {
+    const blockedPanel =
+      (activePanel === 'routing' && !terrainFeatures.routing) ||
+      (activePanel === 'draw' && !terrainFeatures.drawZones) ||
+      (activePanel === 'layers' && !terrainFeatures.geoJsonLayers) ||
+      (activePanel === 'grappe' && !terrainFeatures.grappeTools) ||
+      (activePanel === 'grappe_allocation' && !terrainFeatures.grappeTools) ||
+      (activePanel === 'region' && !terrainFeatures.regionDownload) ||
+      (activePanel === 'datahub' && !terrainFeatures.dataHub);
+
+    if (blockedPanel) {
+      closePanel();
+    }
+  }, [activePanel, closePanel, terrainFeatures]);
+
   // Handler: manuel sync (déclaré avant l'enregistrement du listener pour éviter TDZ)
   const handleManualSync = useCallback(async () => {
     try {
+      await repairSyncQueue();
       await forceSync();
       toast.success('✅ Synchronisation terminée');
     } catch (e) {
       logger.error(e);
       toast.error('❌ Erreur lors de la synchronisation');
     }
-  }, [forceSync]);
+  }, [forceSync, repairSyncQueue]);
 
   useSyncListener((source) => {
-    logger.log(`🔄 [TERRAIN] Sync triggered by: ${source}`);
+    logger.debug(`🔄 [TERRAIN] Sync triggered by: ${source}`);
     if (source === 'kobo' || source === 'import') {
       void reloadHouseholds();
       return;
@@ -350,6 +430,141 @@ const Terrain: React.FC = () => {
     toast.success('Itinéraire annulé');
   }, [cancelRouting]);
 
+  const handleOpenSyncHousehold = useCallback(
+    (householdId: string) => {
+      const target = (households || []).find((household) => household.id === householdId);
+      if (!target) return;
+
+      setShowSyncIssues(false);
+      setSelectedHouseholdId(target.id);
+
+      if (hasValidCoordinates(target)) {
+        setMapCommand({
+          center: [target.location.coordinates[0], target.location.coordinates[1]],
+          zoom: 18,
+          timestamp: Date.now(),
+        });
+      }
+    },
+    [households, setMapCommand, setSelectedHouseholdId]
+  );
+
+  const handleRepairSyncIssues = useCallback(async () => {
+    const repaired = await repairSyncQueue();
+    toast.success(
+      repaired > 0
+        ? `${repaired} élément(s) de sync réparé(s)`
+        : 'Aucun doublon ou échec à réparer'
+    );
+  }, [repairSyncQueue]);
+
+  const handleLockConformingHouseholds = useCallback(async () => {
+    if (lockableConformingHouseholds.length === 0) {
+      toast.success('Tous les ménages conformes sont déjà verrouillés');
+      return;
+    }
+
+    const toastId = toast.loading(
+      `Verrouillage de ${lockableConformingHouseholds.length} ménage(s) conforme(s)...`
+    );
+    let updatedCount = 0;
+    let failedCount = 0;
+
+    try {
+      const chunkSize = 20;
+      for (let i = 0; i < lockableConformingHouseholds.length; i += chunkSize) {
+        const chunk = lockableConformingHouseholds.slice(i, i + chunkSize);
+        const results = await Promise.allSettled(
+          chunk.map((household) =>
+            updateHousehold(household.id, {
+              manualOverrides: mergeManualOverrides(
+                household.manualOverrides,
+                CONFORMING_HOUSEHOLD_LOCK_FIELDS
+              ),
+            })
+          )
+        );
+
+        results.forEach((result) => {
+          if (result.status === 'fulfilled') updatedCount += 1;
+          else failedCount += 1;
+        });
+      }
+
+      if (updatedCount > 0 && failedCount === 0) {
+        toast.success(`${updatedCount} ménage(s) conforme(s) verrouillé(s)`, { id: toastId });
+        return;
+      }
+
+      if (updatedCount > 0) {
+        toast.success(
+          `${updatedCount} ménage(s) verrouillé(s), ${failedCount} en échec`,
+          { id: toastId }
+        );
+        return;
+      }
+
+      toast.error('Aucun ménage conforme n’a pu être verrouillé', { id: toastId });
+    } catch (error) {
+      logger.error('[Terrain] Bulk conforming household lock failed', error);
+      toast.error('Erreur pendant le verrouillage des ménages conformes', { id: toastId });
+    }
+  }, [lockableConformingHouseholds, updateHousehold]);
+
+  const handleUnlockConformingHouseholds = useCallback(async () => {
+    if (unlockableConformingHouseholds.length === 0) {
+      toast.success('Aucun ménage conforme à déverrouiller');
+      return;
+    }
+
+    const toastId = toast.loading(
+      `Déverrouillage de ${unlockableConformingHouseholds.length} ménage(s) conforme(s)...`
+    );
+    let updatedCount = 0;
+    let failedCount = 0;
+
+    try {
+      const chunkSize = 20;
+      for (let i = 0; i < unlockableConformingHouseholds.length; i += chunkSize) {
+        const chunk = unlockableConformingHouseholds.slice(i, i + chunkSize);
+        const results = await Promise.allSettled(
+          chunk.map((household) =>
+            updateHousehold(household.id, {
+              manualOverrides: removeManualOverrides(
+                household.manualOverrides,
+                CONFORMING_HOUSEHOLD_LOCK_FIELDS
+              ),
+              unlockFields: CONFORMING_HOUSEHOLD_LOCK_FIELDS as unknown as string[],
+            } as Partial<Household>)
+          )
+        );
+
+        results.forEach((result) => {
+          if (result.status === 'fulfilled') updatedCount += 1;
+          else failedCount += 1;
+        });
+      }
+
+      if (updatedCount > 0 && failedCount === 0) {
+        toast.success(`${updatedCount} ménage(s) conforme(s) déverrouillé(s)`, { id: toastId });
+        return;
+      }
+
+      if (updatedCount > 0) {
+        toast.success(
+          `${updatedCount} ménage(s) déverrouillé(s), ${failedCount} en échec`,
+          { id: toastId }
+        );
+        return;
+      }
+
+      toast.error('Aucun ménage conforme n’a pu être déverrouillé', { id: toastId });
+    } catch (error) {
+      logger.error('[Terrain] Bulk conforming household unlock failed', error);
+      toast.error('Erreur pendant le déverrouillage des ménages conformes', { id: toastId });
+    }
+  }, [unlockableConformingHouseholds, updateHousehold]);
+
   // Keyboard shortcuts removed
   
   // 7. Memoized Computed Values
@@ -368,6 +583,26 @@ const Terrain: React.FC = () => {
     }, new Set<string>());
     return Array.from(new Set([...fromDB, ...fromHouseholds])).sort();
   }, [teams, households]);
+
+  const terrainStatusOptions = useMemo(
+    () => [
+      'Non encore installée',
+      'Livraison effectuée',
+      'Murs terminés',
+      'Réseau terminé',
+      'Intérieur terminé',
+      'Contrôle conforme',
+      'Non conforme',
+      'Non éligible',
+    ],
+    []
+  );
+
+  const selectedStatusFilter = useMemo(() => {
+    if (selectedPhases.length === ALL_STATUSES.length) return 'all';
+    if (selectedPhases.length === 1) return selectedPhases[0];
+    return 'custom';
+  }, [selectedPhases]);
 
   const selectedHouseholdGrappeInfo = useMemo(() => {
     if (!selectedHousehold) return undefined;
@@ -442,9 +677,11 @@ const Terrain: React.FC = () => {
   const peutVoirDataHub = peut(PERMISSIONS.GERER_UTILISATEURS) || user?.role === 'ADMIN_PROQUELEC';
 
   return (
-    <div className="relative w-full h-full flex flex-col overflow-hidden bg-slate-950">
+    <div
+      className={`relative isolate flex h-full min-h-0 w-full flex-col overflow-hidden bg-[radial-gradient(circle_at_top,#0b1f1a_0%,#07131a_38%,#030712_100%)] ${terrainAccent.surface}`}
+    >
       {/* 🗺️ MAP / LIST LAYER */}
-      <div className="absolute inset-0 z-0 pt-[110px] md:pt-0">
+      <div className="absolute inset-0 z-0 pt-[164px] pb-[148px] md:pt-0 md:pb-0">
         <ContentArea
           padding="none"
           className="h-full w-full border-none rounded-none bg-transparent"
@@ -495,6 +732,7 @@ const Terrain: React.FC = () => {
                       isFilteringActive={
                         selectedTeam !== 'all' || selectedPhases.length !== ALL_STATUSES.length
                       }
+                      showLegend={terrainFeatures.statusLegend}
                       onZoneClick={handleZoneClick}
                       grappesConfig={grappesConfig}
                       readOnly={!peut(PERMISSIONS.MODIFIER_CARTE)}
@@ -519,7 +757,7 @@ const Terrain: React.FC = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 20 }}
-                className="h-full w-full overflow-hidden bg-[#0D1E35] z-[60] relative pt-24"
+                className="h-full w-full overflow-hidden bg-[#0D1E35] z-[60] relative pt-[148px] pb-[132px] md:pt-24 md:pb-0"
               >
                 <HouseholdListView
                   households={filteredHouseholds}
@@ -555,6 +793,15 @@ const Terrain: React.FC = () => {
         selectedTeam={selectedTeam}
         onTeamChange={setSelectedTeam}
         allAvailableTeams={allAvailableTeams}
+        selectedStatusFilter={selectedStatusFilter}
+        onStatusFilterChange={(status) => {
+          if (status === 'all') {
+            setSelectedPhases(ALL_STATUSES);
+            return;
+          }
+          setSelectedPhases([status]);
+        }}
+        statusOptions={terrainStatusOptions}
         project={project}
         onSync={handleManualSync}
         onOpenDataHub={() => setPanel('datahub')}
@@ -562,7 +809,44 @@ const Terrain: React.FC = () => {
         onViewModeChange={setViewMode}
         onRecenter={handleRecenterOnUser}
         peutVoirDataHub={peutVoirDataHub}
-        isSyncing={false}
+        isSyncing={isSyncing}
+        showSearch={terrainFeatures.search}
+        showSync={terrainFeatures.sync}
+        showDataHub={terrainFeatures.dataHub}
+        showTeamFilter={terrainFeatures.teamFilter}
+        showStatusFilter={terrainFeatures.statusFilter}
+        showListToggle={terrainFeatures.listView}
+        showRecenter={terrainFeatures.recenter}
+        showAdvancedTools={
+          terrainFeatures.mapStyle ||
+          terrainFeatures.statusLegend ||
+          terrainFeatures.zoneOverlay ||
+          terrainFeatures.routing ||
+          terrainFeatures.grappeTools ||
+          terrainFeatures.analytics ||
+          terrainFeatures.heatmap ||
+          terrainFeatures.measure ||
+          terrainFeatures.lasso ||
+          terrainFeatures.drawZones ||
+          terrainFeatures.dataHub
+          || terrainFeatures.geoJsonLayers
+          || terrainFeatures.regionDownload
+        }
+        mapToolbarFeatures={{
+          mapStyle: terrainFeatures.mapStyle,
+          statusLegend: terrainFeatures.statusLegend,
+          zoneOverlay: terrainFeatures.zoneOverlay,
+          routing: terrainFeatures.routing,
+          grappeTools: terrainFeatures.grappeTools,
+          analytics: terrainFeatures.analytics,
+          heatmap: terrainFeatures.heatmap,
+          measure: terrainFeatures.measure,
+          lasso: terrainFeatures.lasso,
+          drawZones: terrainFeatures.drawZones,
+          geoJsonLayers: terrainFeatures.geoJsonLayers,
+          regionDownload: terrainFeatures.regionDownload,
+          dataHub: terrainFeatures.dataHub,
+        }}
       />
 
       {/* 📊 BOTTOM OVERLAY */}
@@ -571,14 +855,18 @@ const Terrain: React.FC = () => {
         totalCount={(households?.filter(hasValidCoordinates) || []).length}
         isOfflineMode={isOfflineMode}
         auditResult={auditResult}
+        pendingSyncCount={pendingSyncCount}
+        pendingHouseholdsCount={householdSyncStats.pending}
+        errorHouseholdsCount={householdSyncStats.error}
+        hasSyncError={!!lastSyncError}
         onFlyTo={(lng, lat) =>
           setMapCommand({ center: [lng, lat], zoom: 16, timestamp: Date.now() })
         }
       />
 
       {/* 🛠️ PANELS & MODALS */}
-      {activePanel === 'routing' && (
-        <div className="z-[70] absolute top-16 right-4">
+      {terrainFeatures.routing && activePanel === 'routing' && (
+        <div className="z-[70] absolute top-[144px] left-3 right-3 md:top-16 md:left-auto md:right-4">
           <MapRoutingPanel
             onClose={closePanel}
             households={households || []}
@@ -590,9 +878,11 @@ const Terrain: React.FC = () => {
         </div>
       )}
 
-      <GeofencingAlerts households={filteredHouseholds} grappesConfig={grappesConfig} isDarkMode />
+      {terrainFeatures.geofencingAlerts && (
+        <GeofencingAlerts households={filteredHouseholds} grappesConfig={grappesConfig} isDarkMode />
+      )}
 
-      {activePanel === 'draw' && (
+      {terrainFeatures.drawZones && activePanel === 'draw' && (
         <div className="z-[70]">
           <MapDrawZonesPanel
             onStartDraw={() => setIsDrawing(true)}
@@ -617,12 +907,12 @@ const Terrain: React.FC = () => {
         </div>
       )}
 
-      {activePanel === 'layers' && (
+      {terrainFeatures.geoJsonLayers && activePanel === 'layers' && (
         <div className="z-[60]">
           <GeoJsonOverlayPanel />
         </div>
       )}
-      {activePanel === 'grappe' && (
+      {terrainFeatures.grappeTools && activePanel === 'grappe' && (
         <div className="z-[60]">
           <GrappeSelectorPanel
             onClose={closePanel}
@@ -634,7 +924,7 @@ const Terrain: React.FC = () => {
           />
         </div>
       )}
-      {activePanel === 'grappe_allocation' && (
+      {terrainFeatures.grappeTools && activePanel === 'grappe_allocation' && (
         <div className="z-[60]">
           <MapGrappeAllocationPanel
             onClose={closePanel}
@@ -643,12 +933,14 @@ const Terrain: React.FC = () => {
           />
         </div>
       )}
-      {activePanel === 'region' && (
+      {terrainFeatures.regionDownload && activePanel === 'region' && (
         <div className="z-[60]">
           <MapRegionDownload onClose={closePanel} />
         </div>
       )}
-      <DataHubModal isOpen={activePanel === 'datahub'} onClose={closePanel} />
+      {terrainFeatures.dataHub && (
+        <DataHubModal isOpen={activePanel === 'datahub'} onClose={closePanel} />
+      )}
 
       {selectedHousehold && (
         <HouseholdDetailsPanel
@@ -663,27 +955,54 @@ const Terrain: React.FC = () => {
           onCancelItinerary={handleCancelItinerary}
           routeStats={routeStats || null}
           grappeInfo={selectedHouseholdGrappeInfo}
-          isAdmin={peut(PERMISSIONS.MODIFIER_CARTE)}
+          isAdmin={terrainFeatures.householdAdminEdit}
+          pendingSyncCount={pendingSyncCount}
         />
       )}
 
       <AnimatePresence>{lightboxPhotos.length > 0 && <PhotoLightbox />}</AnimatePresence>
 
       {/* 🆕 Terrain Mode Enhancements */}
-      <OfflineIndicator isOffline={isOfflineMode} pendingCount={pendingSyncCount} />
+      <OfflineIndicator
+        isOffline={isOfflineMode}
+        pendingCount={pendingSyncCount}
+        onClick={terrainFeatures.syncIssues ? () => setShowSyncIssues(true) : undefined}
+      />
       
       <QuickActions
-        onPhoto={() => capturePhoto()}
-        onStatus={() => setShowMissionEditor(true)}
-        onNote={() => setShowMissionEditor(true)}
-        onNavigate={handleRecenterOnUser}
+        onPhoto={terrainFeatures.photoCapture ? () => capturePhoto() : undefined}
+        onNavigate={terrainFeatures.recenter ? handleRecenterOnUser : undefined}
       />
 
-      <FloatingPhotoButton
-        onCapture={capturePhoto}
-        onSelect={selectFromGallery}
-        disabled={isCapturing}
-      />
+      {terrainFeatures.photoCapture && (
+        <FloatingPhotoButton
+          onCapture={capturePhoto}
+          onSelect={selectFromGallery}
+          disabled={isCapturing}
+        />
+      )}
+
+      {terrainFeatures.syncIssues && (
+        <TerrainSyncIssuesPanel
+          isOpen={showSyncIssues}
+          onClose={() => setShowSyncIssues(false)}
+          pendingSyncCount={pendingSyncCount}
+          conformingHouseholdsCount={conformingHouseholds.length}
+          lockableConformingHouseholdsCount={lockableConformingHouseholds.length}
+          unlockableConformingHouseholdsCount={unlockableConformingHouseholds.length}
+          pendingHouseholds={pendingHouseholds}
+          errorHouseholds={errorHouseholds}
+          conflicts={conflicts}
+          lastSyncError={lastSyncError}
+          isSyncing={isSyncing}
+          onRepair={handleRepairSyncIssues}
+          onSync={handleManualSync}
+          onLockConforming={handleLockConformingHouseholds}
+          onUnlockConforming={handleUnlockConformingHouseholds}
+          onSelectHousehold={handleOpenSyncHousehold}
+          showBulkConformingActions={terrainFeatures.bulkConformingLocks}
+        />
+      )}
 
       {/* Mission Editor Modal */}
       <AnimatePresence>
@@ -692,7 +1011,7 @@ const Terrain: React.FC = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[80] bg-black/50 flex items-center justify-center p-4"
+            className="fixed inset-0 z-[80] bg-black/50 flex items-end justify-center p-3 sm:p-4 md:items-center"
             onClick={() => setShowMissionEditor(false)}
             role="presentation"
           >
@@ -700,7 +1019,7 @@ const Terrain: React.FC = () => {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="w-full max-w-lg max-h-[90vh] overflow-y-auto"
+              className="w-full max-w-lg max-h-[92vh] overflow-y-auto rounded-t-[2rem] md:rounded-none"
               onClick={(e) => e.stopPropagation()}
               role="dialog"
               aria-modal="true"
@@ -717,7 +1036,7 @@ const Terrain: React.FC = () => {
                 isLoading={false}
                 onSave={async (mission) => {
                   try {
-                    logger.log('💾 Sauvegarde brouillon mission sur serveur...', mission);
+                    logger.debug('💾 Sauvegarde brouillon mission sur serveur...', mission);
                     const result = await createMission({
                       ...mission,
                       status: 'draft',
@@ -734,7 +1053,7 @@ const Terrain: React.FC = () => {
                 }}
                 onSubmit={async (mission) => {
                   try {
-                    logger.log('📤 Soumission mission sur serveur...', mission);
+                    logger.debug('📤 Soumission mission sur serveur...', mission);
                     const result = await createMission({
                       ...mission,
                       status: 'soumise',

@@ -1,6 +1,7 @@
  
 import apiClient from '../api/client';
 import type { User, UserRole } from '../utils/types';
+import logger from '../utils/logger';
 
 export interface ManagedUser extends User {
   id: string;
@@ -28,7 +29,7 @@ export const userService = {
     id: string,
     user: Partial<ManagedUser> & { password?: string }
   ): Promise<ManagedUser> {
-    console.debug(`[USER_SERVICE] Updating user ${id}:`, user);
+    logger.debug(`[USER_SERVICE] Updating user ${id}:`, user);
     const response = await apiClient.patch(`/users/${id}`, user);
     return response.data;
   },

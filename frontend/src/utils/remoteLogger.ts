@@ -2,6 +2,8 @@
 /**
  * SERVICE : Remote Logger (Surveillance Proactive)
  */
+import logger from './logger';
+
 class RemoteLogger {
   private static instance: RemoteLogger;
   private readonly endpoint = '/api/logs/report';
@@ -20,7 +22,7 @@ class RemoteLogger {
    * Envoie un log d'erreur au serveur
    */
   public async error(message: string, error: any, context?: any) {
-    console.error(`🔴 [REMOTE LOG] ${message}`, error, context);
+    logger.error(`🔴 [REMOTE LOG] ${message}`, error, context);
 
     if (!this.isEnabled) return;
 
@@ -47,7 +49,7 @@ class RemoteLogger {
 
   public warn(message: string, context?: any) {
     if (import.meta.env.DEV) {
-      console.warn(`🟠 [REMOTE LOG] ${message}`, context);
+      logger.warn(`🟠 [REMOTE LOG] ${message}`, context);
     }
   }
 }

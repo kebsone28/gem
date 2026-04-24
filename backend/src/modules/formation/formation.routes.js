@@ -36,7 +36,10 @@ router.post('/planify/commit', formationController.commitPlanify);
 router.get('/planning', formationController.getPlanning);
 router.post('/bulk', formationController.bulkCreateSessions);
 router.get('/stats', formationController.getStats);
+router.get('/planner-state', formationController.getPlannerState);
+router.put('/planner-state', formationController.savePlannerState);
 router.get('/history', formationController.getHistory);
 router.post('/history', formationController.createHistoryEntry);
+router.delete('/history', formationController.clearHistory);
 
 export default router;

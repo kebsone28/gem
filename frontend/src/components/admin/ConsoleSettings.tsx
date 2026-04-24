@@ -78,10 +78,14 @@ export const ConsoleSettings: React.FC<ConsoleSettingsProps> = ({ onSettingsChan
       {/* Bouton Settings */}
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 p-4 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg hover:shadow-xl hover:scale-110 transition-all z-40"
+        className="fixed right-4 bottom-[calc(5.25rem+env(safe-area-inset-bottom,0px))] sm:right-6 sm:bottom-6 px-3 py-3 sm:px-4 sm:py-4 rounded-2xl sm:rounded-full bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg hover:shadow-xl sm:hover:scale-110 transition-all z-40 border border-white/10"
         title="Paramètres de la console"
+        aria-label="Paramètres de la console"
       >
-        <Settings size={20} />
+        <span className="flex items-center gap-2">
+          <Settings size={18} />
+          <span className="text-[11px] font-bold uppercase tracking-[0.04em] sm:hidden">UI</span>
+        </span>
       </button>
 
       {/* Modal Settings */}
@@ -99,7 +103,7 @@ export const ConsoleSettings: React.FC<ConsoleSettingsProps> = ({ onSettingsChan
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: 400, opacity: 0 }}
               onClick={e => e.stopPropagation()}
-              className="w-full sm:w-96 bg-slate-900 border border-slate-700 rounded-t-2xl sm:rounded-xl shadow-2xl max-h-[90vh] overflow-y-auto"
+              className="w-full sm:w-96 bg-slate-900 border border-slate-700 rounded-t-2xl sm:rounded-xl shadow-2xl max-h-[85vh] sm:max-h-[90vh] overflow-y-auto"
             >
               {/* Header */}
               <div className="sticky top-0 flex items-center justify-between p-6 border-b border-slate-700 bg-slate-900/95">

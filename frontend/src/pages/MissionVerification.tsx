@@ -113,7 +113,7 @@ export default function MissionVerification() {
               </div>
 
               <h2 className={`text-xl sm:text-2xl font-black tracking-tight mb-1 uppercase ${data.isCertified ? 'text-emerald-400' : 'text-blue-400'}`}>
-                {data.isCertified ? 'Mission Certifiée' : 'Mission en Attente'}
+                {data.isCertified ? 'Mission Officielle' : 'Mission en Validation'}
               </h2>
               <div className="flex flex-wrap items-center justify-center gap-2 text-slate-500 font-black text-[9px] sm:text-[10px] tracking-[0.14em] sm:tracking-widest mb-4">
                 <span>RÉF : {data.orderNumber}</span>
@@ -192,7 +192,7 @@ export default function MissionVerification() {
             {/* FOOTER CERTAINTY */}
             <div className="text-center space-y-4 pt-2 sm:pt-4">
               <p className="text-[8px] font-black text-slate-600 uppercase tracking-[0.14em] sm:tracking-[0.3em]">
-                Certificat Digitale Authentique &bull; {new Date(data.verifiedAt).toLocaleString()}
+                Vérification numérique authentique &bull; {new Date(data.verifiedAt).toLocaleString()}
               </p>
               <div className="flex justify-center gap-4">
                 <div className="h-px w-12 bg-white/5 self-center" />

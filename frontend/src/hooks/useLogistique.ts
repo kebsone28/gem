@@ -1,13 +1,85 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../store/db';
 import { KIT_COMPOSITION, GRAPPES_CONFIG } from '../utils/config';
-import type { Household, Project, SubGrappe, Team } from '../utils/types';
+import type { Household, Project, SubGrappe, Team, Warehouse } from '../utils/types';
 import apiClient from '../api/client';
 import * as safeStorage from '../utils/safeStorage';
 import logger from '../utils/logger';
 import { useProject } from '../contexts/ProjectContext';
+
+interface TeamApiResponse {
+  teams?: Array<Team & { region?: { name?: string } }>;
+}
+
+interface GrappeLite {
+  id?: string;
+  region?: string;
+  nb_menages?: number;
+  householdsCount?: number;
+  centroide_lat?: number;
+  centroide_lon?: number;
+  nom?: string;
+  name?: string;
+}
+
+interface GrappesConfigShape {
+  grappes?: GrappeLite[];
+  sous_grappes?: SubGrappe[];
+}
+
+interface WarehouseLoading {
+  date: string;
+  kitsLoaded: number;
+  variantId?: string;
+  isEntry?: boolean;
+  isTransfer?: boolean;
+}
+
+interface WarehouseTeam {
+  teamId: string;
+  teamName: string;
+  loadings: WarehouseLoading[];
+}
+
+type WarehouseConfig = Warehouse & {
+  preparatorTeams: WarehouseTeam[];
+};
+
+interface WarehouseStockItem {
+  id: string;
+  label: string;
+  category: string;
+  unit: string;
+  qty: number;
+  initial: number;
+  consumed: number;
+  remaining: number;
+}
+
+interface KitCompositionItem {
+  id: string;
+  qty: number;
+  label: string;
+  category: string;
+  unit: string;
+}
+
+interface MovementHistoryEntry {
+  id: string;
+  timestamp: string;
+  type: 'ENTRY' | 'EXIT' | 'TRANSFER';
+  warehouseId?: string;
+  fromId?: string;
+  toId?: string;
+  fromWh?: string;
+  toWh?: string;
+  source?: string;
+  teamName?: string;
+  quantity?: number;
+  variantId?: string;
+  label?: string;
+}
 
 export function useLogistique(serverHouseholds?: Household[]) {
   const activeProjectId = safeStorage.getItem('active_project_id');
@@ -28,12 +100,14 @@ export function useLogistique(serverHouseholds?: Household[]) {
   const refreshTeams = useCallback(async () => {
     if (!project?.id) return;
     try {
-      const response = await apiClient.get(`/teams?projectId=${project.id}`);
+      const response = await apiClient.get<TeamApiResponse>(`/teams?projectId=${project.id}`);
       const mappedTeams = (response.data.teams || [])
-        .filter((t: any) => !t.status || t.status === 'active')
-        .map((t: any) => ({
-          ...t,
-          regionId: t.region?.name ? t.region.name.toLowerCase().replace(/\s+/g, '_') : t.regionId,
+        .filter((team) => !team.status || team.status === 'active')
+        .map((team) => ({
+          ...team,
+          regionId: team.region?.name
+            ? team.region.name.toLowerCase().replace(/\s+/g, '_')
+            : team.regionId,
         }));
       setDbTeams(mappedTeams);
     } catch (err) {
@@ -51,34 +125,28 @@ export function useLogistique(serverHouseholds?: Household[]) {
   const households = serverHouseholds ?? cachedHouseholds;
   const preparatorTeams = useMemo(() => teams.filter((t) => t.role === 'PREPARATION'), [teams]);
 
-  const grappesConfig = project?.config?.grappesConfig || GRAPPES_CONFIG;
+  const grappesConfig = (project?.config?.grappesConfig || GRAPPES_CONFIG) as GrappesConfigShape;
 
   // --- Warehouse Multi-Region Logic ---
-  const warehouses: any[] = useMemo(() => {
+  const warehouses = useMemo<WarehouseConfig[]>(() => {
     const configured = project?.config?.warehouses;
 
     // If warehouses are explicitly defined in config (even if empty), use them
     if (configured !== undefined) {
-      return configured.filter((w: any) => !w.deletedAt);
+      return configured.filter((warehouse) => !warehouse.deletedAt) as WarehouseConfig[];
     }
 
     // Auto-generate one warehouse per region ONLY if no configuration exists at all
-    const allGrappes = (grappesConfig as any)?.grappes || [];
-    const regions = Array.from(
-      new Set(allGrappes.map((g: any) => g.region).filter(Boolean))
-    ) as string[];
+    const allGrappes = grappesConfig.grappes || [];
+    const regions = Array.from(new Set(allGrappes.map((grappe) => grappe.region).filter(Boolean))) as string[];
     return regions.map((region) => {
-      const regionGrappes = allGrappes.filter((g: any) => g.region === region);
+      const regionGrappes = allGrappes.filter((grappe) => grappe.region === region);
       const avgLat =
-        regionGrappes.reduce(
-          (s: number, g: any) => s + ((g.centroide_lat as number) || 0),
-          0
-        ) / (regionGrappes.length || 1);
+        regionGrappes.reduce((sum, grappe) => sum + (grappe.centroide_lat || 0), 0) /
+        (regionGrappes.length || 1);
       const avgLng =
-        regionGrappes.reduce(
-          (s: number, g: any) => s + ((g.centroide_lon as number) || 0),
-          0
-        ) / (regionGrappes.length || 1);
+        regionGrappes.reduce((sum, grappe) => sum + (grappe.centroide_lon || 0), 0) /
+        (regionGrappes.length || 1);
       return {
         id: `wh_${region.toLowerCase().replace(/\s+/g, '_')}`,
         name: `Magasin ${region}`,
@@ -97,14 +165,11 @@ export function useLogistique(serverHouseholds?: Household[]) {
   const warehouseStats = useMemo(() => {
     const today = new Date().toISOString().split('T')[0];
     const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];
-    const kitComposition = project?.config?.kitComposition || KIT_COMPOSITION;
+    const kitComposition = (project?.config?.kitComposition || KIT_COMPOSITION) as KitCompositionItem[];
 
     return warehouses.map((wh) => {
-      const kitsLoadedToday = ((wh as any).preparatorTeams || []).reduce(
-        (sum: number, team: any) => {
-          const todayLoading = ((team.loadings as any[]) || []).find(
-            (l: any) => l.date === today
-          );
+      const kitsLoadedToday = (wh.preparatorTeams || []).reduce((sum, team) => {
+          const todayLoading = (team.loadings || []).find((loading) => loading.date === today);
           return sum + (todayLoading?.kitsLoaded || 0);
         },
         0
@@ -112,15 +177,15 @@ export function useLogistique(serverHouseholds?: Household[]) {
 
       const regionHouseholds =
         households?.filter((h) => {
-          const grappe = (grappesConfig as any)?.grappes?.find(
-            (g: any) => g.id === h.grappeId || g.region === wh.region
+          const grappe = grappesConfig.grappes?.find(
+            (currentGrappe) => currentGrappe.id === h.grappeId || currentGrappe.region === wh.region
           );
           const isConsumed = ['Conforme', 'Contrôle conforme', 'Terminé'].includes(h.status);
           return isConsumed && grappe;
         }) || [];
       const kitsConsumed = regionHouseholds.length;
 
-      const stockRealtime = kitComposition.map((item: any) => ({
+      const stockRealtime: WarehouseStockItem[] = kitComposition.map((item) => ({
         ...item,
         initial: (item.qty || 0) * kitsLoadedToday,
         consumed: (item.qty || 0) * kitsConsumed,
@@ -129,26 +194,20 @@ export function useLogistique(serverHouseholds?: Household[]) {
 
       const recentConforming =
         households?.filter((h) => {
-          const grappe = (grappesConfig as any)?.grappes?.find(
-            (g: any) => g.region === wh.region
-          );
+          const grappe = grappesConfig.grappes?.find((currentGrappe) => currentGrappe.region === wh.region);
           const isConsumed = ['Conforme', 'Contrôle conforme', 'Terminé'].includes(h.status);
           return isConsumed && grappe && (h.updatedAt || h.delivery?.date || '') >= sevenDaysAgo;
         }) || [];
       const teamVelocity = recentConforming.length / 7;
 
       const alerts = stockRealtime.filter(
-        (item: any) =>
-          teamVelocity > 0 && (item.remaining as number) < (item.qty as number) * teamVelocity * 3
+        (item) => teamVelocity > 0 && item.remaining < item.qty * teamVelocity * 3
       );
 
-      const kitsLoadedAllTime = ((wh as any).preparatorTeams || []).reduce(
-        (sum: number, team: any) =>
+      const kitsLoadedAllTime = (wh.preparatorTeams || []).reduce(
+        (sum, team) =>
           sum +
-          ((team.loadings as any[]) || []).reduce(
-            (s: number, l: any) => s + ((l.kitsLoaded as number) || 0),
-            0
-          ),
+          (team.loadings || []).reduce((loadingSum, loading) => loadingSum + (loading.kitsLoaded || 0), 0),
         0
       );
 
@@ -170,9 +229,9 @@ export function useLogistique(serverHouseholds?: Household[]) {
   // --- National Vision (Global Stats) ---
   const globalStats = useMemo(() => {
     const stats = {
-      totalLoaded: warehouseStats.reduce((s, w: any) => s + w.kitsLoadedAllTime, 0),
-      totalConsumed: warehouseStats.reduce((s, w: any) => s + w.kitsConsumed, 0),
-      todayLoaded: warehouseStats.reduce((s, w: any) => s + w.kitsLoadedToday, 0),
+      totalLoaded: warehouseStats.reduce((sum, warehouse) => sum + warehouse.kitsLoadedAllTime, 0),
+      totalConsumed: warehouseStats.reduce((sum, warehouse) => sum + warehouse.kitsConsumed, 0),
+      todayLoaded: warehouseStats.reduce((sum, warehouse) => sum + warehouse.kitsLoadedToday, 0),
       inTransit: 0, // Placeholder for future logic
       reserved: 0, // Placeholder for future logic
     };
@@ -182,7 +241,10 @@ export function useLogistique(serverHouseholds?: Household[]) {
     };
   }, [warehouseStats]);
 
-  const movementHistory = useMemo(() => project?.config?.logistique?.history || [], [project]);
+  const movementHistory = useMemo(
+    () => (project?.config?.logistique?.history || []) as MovementHistoryEntry[],
+    [project]
+  );
 
   const logMovement = async (
     type: 'ENTRY' | 'EXIT' | 'TRANSFER',
@@ -205,7 +267,7 @@ export function useLogistique(serverHouseholds?: Household[]) {
     // Keep only last 200 moves to avoid bloat
     newConfig.logistique = {
       ...logistique,
-      history: newHistory.slice(0, 200) as any,
+      history: newHistory.slice(0, 200) as MovementHistoryEntry[],
     };
 
     await updateProject({ config: newConfig }, project.id);
@@ -215,8 +277,8 @@ export function useLogistique(serverHouseholds?: Household[]) {
   const kitsLoaded = project?.config?.logistics_workshop?.kitsLoaded || 0;
   const stockOverrides = project?.config?.stock_overrides || {};
 
-  const kitComposition = project?.config?.kitComposition || KIT_COMPOSITION;
-  const stockData = kitComposition.map((item: any) => {
+  const kitComposition = (project?.config?.kitComposition || KIT_COMPOSITION) as KitCompositionItem[];
+  const stockData = kitComposition.map((item) => {
     const calculated = (item.qty || 0) * kitsLoaded;
     const hasOverride = stockOverrides[item.id] !== undefined;
     const current = hasOverride ? stockOverrides[item.id] : calculated;
@@ -226,8 +288,7 @@ export function useLogistique(serverHouseholds?: Household[]) {
   // Global consumed count (all conforming households)
   const globalConsumed = useMemo(
     () =>
-      households?.filter((h) => ['Conforme', 'Contrôle conforme', 'Terminé'].includes(h.status))
-        .length || 0,
+      households?.filter((h) => ['Conforme', 'Contrôle conforme', 'Terminé'].includes(h.status)).length || 0,
     [households]
   );
   const globalVelocity = useMemo(() => {
@@ -320,15 +381,15 @@ export function useLogistique(serverHouseholds?: Household[]) {
       new Set(
         teams
           .map(
-            (t) => (t as any).type || (t as any).tradeKey
+            (t) => (t as Team & { type?: string }).type || t.tradeKey
           )
           .filter(Boolean)
       )
     );
     if (trades.length === 0) return 0;
     let count = 0;
-    trades.forEach((t: any) => {
-      if ((assignments as any)[t]?.length > 0) count++;
+    trades.forEach((trade) => {
+      if (assignments[trade]?.length > 0) count++;
     });
     return Math.round((count / trades.length) * 100);
   };
@@ -360,7 +421,7 @@ export function useLogistique(serverHouseholds?: Household[]) {
   };
 
   // --- Warehouse Mutation Functions ---
-  const _saveWarehouseConfig = async (updatedWarehouses: any[]) => {
+  const _saveWarehouseConfig = async (updatedWarehouses: WarehouseConfig[]) => {
     if (!project) return;
     const newConfig = { ...project.config, warehouses: updatedWarehouses };
     await updateProject({ config: newConfig }, project.id);
@@ -377,7 +438,7 @@ export function useLogistique(serverHouseholds?: Household[]) {
       preparatorTeams: [],
       stockOverrides: {},
     };
-    await _saveWarehouseConfig([...warehouses, newWh] as any[]);
+    await _saveWarehouseConfig([...warehouses, newWh]);
   };
 
   const addPreparatorLoading = async (
@@ -387,7 +448,7 @@ export function useLogistique(serverHouseholds?: Household[]) {
     kitsLoaded: number,
     variantId: string = 'standard'
   ) => {
-    const whStatus = (warehouseStats as any[]).find((w) => w.id === warehouseId);
+    const whStatus = warehouseStats.find((warehouse) => warehouse.id === warehouseId);
     if (whStatus && whStatus.kitsLoadedToday + kitsLoaded > whStatus.kitsLoadedToday + 500) {
       // arbitrary logical cap or real stock check
     }
@@ -396,15 +457,12 @@ export function useLogistique(serverHouseholds?: Household[]) {
     const updated = warehouses.map((wh) => {
       if (wh.id !== warehouseId) return wh;
 
-      const teams = [...((wh as any).preparatorTeams || [])];
-      const teamIdx = teams.findIndex((t: any) => t.teamId === teamId);
+      const teams = [...(wh.preparatorTeams || [])];
+      const teamIdx = teams.findIndex((team) => team.teamId === teamId);
       const loading = { date: today, kitsLoaded, variantId };
 
       if (teamIdx >= 0) {
-        const loadings = [
-          ...(teams[teamIdx].loadings || []).filter((l: any) => l.date !== today),
-          loading,
-        ];
+        const loadings = [...(teams[teamIdx].loadings || []).filter((current) => current.date !== today), loading];
         teams[teamIdx] = { ...teams[teamIdx], loadings };
       } else {
         teams.push({ teamId, teamName, loadings: [loading] });
@@ -412,7 +470,7 @@ export function useLogistique(serverHouseholds?: Household[]) {
       return { ...wh, preparatorTeams: teams };
     });
 
-    await _saveWarehouseConfig(updated as any);
+    await _saveWarehouseConfig(updated);
     await logMovement('EXIT', {
       warehouseId,
       teamName,
@@ -426,7 +484,7 @@ export function useLogistique(serverHouseholds?: Household[]) {
     const today = new Date().toISOString().split('T')[0];
     const updated = warehouses.map((wh) => {
       if (wh.id !== warehouseId) return wh;
-      const teams = [...((wh as any).preparatorTeams || [])];
+      const teams = [...(wh.preparatorTeams || [])];
       const sysIdx = teams.findIndex((t: Record<string, unknown>) => t.teamId === 'supply_system');
       const loading = { date: today, kitsLoaded: kitsCount, isEntry: true };
 
@@ -440,7 +498,7 @@ export function useLogistique(serverHouseholds?: Household[]) {
       }
       return { ...wh, preparatorTeams: teams };
     });
-    await _saveWarehouseConfig(updated as any);
+    await _saveWarehouseConfig(updated);
     await logMovement('ENTRY', {
       warehouseId,
       source,
@@ -458,7 +516,7 @@ export function useLogistique(serverHouseholds?: Household[]) {
     const updated = warehouses.map((wh) =>
       wh.id === warehouseId ? { ...wh, latitude, longitude, address } : wh
     );
-    await _saveWarehouseConfig(updated as any);
+    await _saveWarehouseConfig(updated);
   };
 
   const deleteWarehouse = async (warehouseId: string) => {
@@ -469,15 +527,15 @@ export function useLogistique(serverHouseholds?: Household[]) {
     const updated = baseList.map((wh) =>
       wh.id === warehouseId ? { ...wh, deletedAt: new Date().toISOString() } : wh
     );
-    await _saveWarehouseConfig(updated as any);
+    await _saveWarehouseConfig(updated as WarehouseConfig[]);
   };
 
   const transferStock = async (fromId: string, toId: string, kitsCount: number) => {
     if (!kitsCount || kitsCount <= 0) return;
     const configured = project?.config?.warehouses || [];
 
-    const fromWh = (warehouseStats as any[]).find((w) => w.id === fromId);
-    const toWh = (warehouseStats as any[]).find((w) => w.id === toId);
+    const fromWh = warehouseStats.find((warehouse) => warehouse.id === fromId);
+    const toWh = warehouseStats.find((warehouse) => warehouse.id === toId);
 
     const updated = configured.map((wh) => {
       if (wh.id === fromId) {
@@ -487,7 +545,7 @@ export function useLogistique(serverHouseholds?: Household[]) {
           isTransfer: true,
         };
         const teams = [...(wh.preparatorTeams || [])];
-        const teamIdx = teams.findIndex((t: any) => t.teamId === 'transfer_system');
+        const teamIdx = teams.findIndex((team) => team.teamId === 'transfer_system');
         if (teamIdx >= 0) {
           teams[teamIdx] = {
             ...teams[teamIdx],
@@ -509,7 +567,7 @@ export function useLogistique(serverHouseholds?: Household[]) {
           isTransfer: true,
         };
         const teams = [...(wh.preparatorTeams || [])];
-        const teamIdx = teams.findIndex((t: any) => t.teamId === 'transfer_system');
+        const teamIdx = teams.findIndex((team) => team.teamId === 'transfer_system');
         if (teamIdx >= 0) {
           teams[teamIdx] = {
             ...teams[teamIdx],
@@ -526,14 +584,14 @@ export function useLogistique(serverHouseholds?: Household[]) {
       }
       return wh;
     });
-    await _saveWarehouseConfig(updated as any);
+    await _saveWarehouseConfig(updated as WarehouseConfig[]);
     await logMovement('TRANSFER', {
       fromId,
       toId,
-      fromWh: (fromWh as any)?.name,
-      toWh: (toWh as any)?.name,
+      fromWh: fromWh?.name,
+      toWh: toWh?.name,
       quantity: kitsCount,
-      label: `Transfert: ${(fromWh as any)?.name} -> ${(toWh as any)?.name}`,
+      label: `Transfert: ${fromWh?.name} -> ${toWh?.name}`,
     });
   };
 

@@ -3,8 +3,15 @@ import React, { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { X, Users, Truck, Zap, Hammer, ChevronRight, Save, Wand2 } from 'lucide-react';
 import { useLogistique } from '../../hooks/useLogistique';
+import { useProject } from '../../contexts/ProjectContext';
 import toast from 'react-hot-toast';
 import apiClient from '../../api/client';
+import {
+  recommendTeamsForGrappe,
+  type PlanningAllocationSource,
+  normalizePlanningText,
+} from '../../services/planningAllocation';
+import type { Team } from '../../utils/types';
 
 interface MapGrappeAllocationPanelProps {
   onClose: () => void;
@@ -18,6 +25,7 @@ export const MapGrappeAllocationPanel: React.FC<MapGrappeAllocationPanelProps> =
   households,
 }) => {
   const { teams, grappesConfig, refreshTeams } = useLogistique();
+  const { project } = useProject();
 
   // Attempt to locate the exact Grappe from Backend config first, then Auto-generator
   const targetGrappe = useMemo(() => {
@@ -45,9 +53,13 @@ export const MapGrappeAllocationPanel: React.FC<MapGrappeAllocationPanelProps> =
   // Local State for selected teams in this panel before saving
   // Example: { "livreur": "uuid..", "macon": "uuid.." }
   const [selectedTeams, setSelectedTeams] = useState<Record<string, string>>({});
+  const [recommendedSources, setRecommendedSources] = useState<
+    Record<string, PlanningAllocationSource>
+  >({});
 
   const handleAssign = (tradeKey: string, teamId: string) => {
     setSelectedTeams((prev) => ({ ...prev, [tradeKey]: teamId }));
+    setRecommendedSources((prev) => ({ ...prev, [tradeKey]: teamId ? 'manual' : 'unassigned' }));
   };
 
   const handleSaveAllocation = async () => {
@@ -84,45 +96,56 @@ export const MapGrappeAllocationPanel: React.FC<MapGrappeAllocationPanelProps> =
   };
 
   const handleAutoAllocate = () => {
-    // AI heuristic mocking for now: grab the first available of each trade in the same region
     if (!targetGrappe) return;
-    const region = targetGrappe.region?.toLowerCase();
 
-    let found = false;
-    const autoMap: Record<string, string> = {};
+    const isTradeMatch = (value: string | undefined, ...needles: string[]) => {
+      const normalizedValue = normalizePlanningText(value);
+      return needles.some((needle) => normalizedValue.includes(normalizePlanningText(needle)));
+    };
 
-    const findTeam = (role: string) =>
-      availableTeams.find(
-        (t) =>
-          String(t.role || '').toLowerCase() === role &&
-          (String(t.region || '').toLowerCase() === region || !t.region)
-      );
+    const recommendations = recommendTeamsForGrappe({
+      teams: availableTeams as Team[],
+      regionName: targetGrappe.region,
+      projectConfig: project?.config,
+      requirements: [
+        {
+          key: 'Livreur',
+          matchTeam: (team) =>
+            team.role === 'LOGISTICS' ||
+            isTradeMatch(team.tradeKey, 'logistique', 'logistics') ||
+            isTradeMatch(team.name, 'livr'),
+        },
+        {
+          key: 'Maçon',
+          matchTeam: (team) =>
+            isTradeMatch(team.tradeKey, 'macons', 'maconnerie') ||
+            isTradeMatch(team.name, 'macon', 'maçon'),
+        },
+        {
+          key: 'Électricien',
+          matchTeam: (team) =>
+            isTradeMatch(team.tradeKey, 'reseau', 'interieur_type1') ||
+            isTradeMatch(team.name, 'elec', 'reseau', 'réseau'),
+        },
+      ],
+    });
 
-    const l =
-      findTeam('logistics') || availableTeams.find((t) => t.name.toLowerCase().includes('livr')); // Livreur
-    const m =
-      findTeam('installation') || availableTeams.find((t) => t.name.toLowerCase().includes('maç')); // Maçon
-    const e =
-      findTeam('technical') || availableTeams.find((t) => t.name.toLowerCase().includes('elec')); // Electricien
+    const nextSelection = Object.fromEntries(
+      Object.entries(recommendations)
+        .filter(([, decision]) => decision.team)
+        .map(([tradeKey, decision]) => [tradeKey, decision.team!.id])
+    );
+    const nextSources = Object.fromEntries(
+      Object.entries(recommendations).map(([tradeKey, decision]) => [tradeKey, decision.source])
+    );
 
-    if (l) {
-      autoMap['Livreur'] = l.id;
-      found = true;
-    }
-    if (m) {
-      autoMap['Maçon'] = m.id;
-      found = true;
-    }
-    if (e) {
-      autoMap['Électricien'] = e.id;
-      found = true;
-    }
+    setRecommendedSources(nextSources);
 
-    if (found) {
-      setSelectedTeams(autoMap);
-      toast.success('Recommandation AI appliquée.');
+    if (Object.keys(nextSelection).length > 0) {
+      setSelectedTeams(nextSelection);
+      toast.success('Allocation canonique appliquée.');
     } else {
-      toast.error("Aucune équipe rattachée à cette région n'a pu être trouvée par l'algorithme.");
+      toast.error("Aucune équipe éligible n'a pu être recommandée pour cette région.");
     }
   };
 
@@ -130,14 +153,41 @@ export const MapGrappeAllocationPanel: React.FC<MapGrappeAllocationPanelProps> =
 
   const renderTeamSelect = (label: string, icon: any, tradeKey: string) => {
     const Icon = icon;
+    const source = recommendedSources[tradeKey];
+    const sourceLabel =
+      source === 'manual'
+        ? 'Forcé'
+        : source === 'configured'
+          ? 'Config region'
+          : source === 'balanced'
+            ? 'Equilibre'
+            : source === 'unassigned'
+              ? 'Sans equipe'
+              : null;
+
     return (
       <div className="flex flex-col gap-2 p-3 bg-slate-900 rounded-xl border border-slate-800 focus-within:border-indigo-500 transition-colors">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-slate-400">
+              <Icon size={16} />
+            </div>
+            <span className="text-sm font-black text-slate-200 uppercase tracking-widest">
+              {label}
+            </span>
+          </div>
+          {sourceLabel ? (
+            <span className="rounded-full border border-slate-700 bg-slate-950 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">
+              {sourceLabel}
+            </span>
+          ) : null}
+        </div>
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-slate-400">
             <Icon size={16} />
           </div>
-          <span className="text-sm font-black text-slate-200 uppercase tracking-widest">
-            {label}
+          <span className="text-xs font-semibold text-slate-500">
+            Affectation terrain modifiable manuellement
           </span>
         </div>
         <select
@@ -162,9 +212,9 @@ export const MapGrappeAllocationPanel: React.FC<MapGrappeAllocationPanelProps> =
       initial={{ opacity: 0, x: 300 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: 300 }}
-      className="absolute right-4 top-24 bottom-24 w-96 bg-slate-950/95 backdrop-blur-3xl border border-slate-800/60 rounded-3xl overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5)] flex flex-col z-[80] pointer-events-auto"
+      className="absolute left-3 right-3 top-[144px] bottom-4 md:left-auto md:right-4 md:top-24 md:bottom-24 md:w-96 bg-slate-950/95 backdrop-blur-3xl border border-slate-800/60 rounded-3xl overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5)] flex flex-col z-[80] pointer-events-auto"
     >
-      <div className="p-6 border-b border-slate-800/60 bg-gradient-to-b from-indigo-500/10 to-transparent flex justify-between items-start">
+      <div className="p-4 sm:p-6 border-b border-slate-800/60 bg-gradient-to-b from-indigo-500/10 to-transparent flex justify-between items-start gap-3">
         <div>
           <div className="inline-flex px-3 py-1 bg-indigo-500/20 text-indigo-400 rounded-full text-[10px] font-black uppercase tracking-widest mb-3 border border-indigo-500/20">
             Affectation Multi-Métiers
@@ -187,7 +237,7 @@ export const MapGrappeAllocationPanel: React.FC<MapGrappeAllocationPanelProps> =
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-5 custom-scrollbar">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 flex flex-col gap-5 custom-scrollbar">
         <div className="p-4 rounded-xl bg-blue-500/5 items-start flex gap-3 text-sm text-blue-300 border border-blue-500/10">
           <Users size={18} className="shrink-0 mt-0.5" />
           <p>
@@ -201,12 +251,12 @@ export const MapGrappeAllocationPanel: React.FC<MapGrappeAllocationPanelProps> =
         {renderTeamSelect('Réseau & Électrification', Zap, 'Électricien')}
       </div>
 
-      <div className="p-5 border-t border-slate-800/60 bg-black/20 flex flex-col gap-3">
+      <div className="p-4 sm:p-5 border-t border-slate-800/60 bg-black/20 flex flex-col gap-3">
         <button
           onClick={handleAutoAllocate}
           className="w-full py-3.5 bg-slate-800/80 hover:bg-slate-800 text-indigo-400 rounded-2xl font-black transition-all flex items-center justify-center gap-2 border border-slate-700/50"
         >
-          <Wand2 size={16} /> Allocation IA (Recommandation)
+          <Wand2 size={16} /> Allocation canonique
         </button>
         <button
           onClick={handleSaveAllocation}

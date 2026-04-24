@@ -1,5 +1,6 @@
 ﻿ 
 import { AIEngineConfig } from '../config/AIEngineConfig';
+import logger from '../utils/logger';
 
 export interface User {
   role: string;
@@ -41,7 +42,7 @@ export class MissionSageService {
       // Fallback vers une réponse par défaut si aucun provider configuré
       return `Je suis MissionSage, votre assistant IA pour GEM-MINT. Votre question était: "${query}". Pour le moment, je suis configuré pour utiliser l'IA publique avec le contexte métier PROQUELEC.`;
     } catch (error) {
-      console.error('Erreur dans MissionSageService:', error);
+      logger.error('[MissionSageService] Erreur dans MissionSageService', error);
       return `Désolé, une erreur s'est produite lors du traitement de votre demande. Veuillez réessayer plus tard.`;
     }
   }

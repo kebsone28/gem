@@ -59,6 +59,7 @@ export const useMapFilters = (
   mapBounds: [number, number, number, number] | null
 ) => {
   const selectedPhases = useTerrainUIStore((s) => s.selectedPhases);
+  const setSelectedPhases = useTerrainUIStore((s) => s.setSelectedPhases);
   const selectedTeam = useTerrainUIStore((s) => s.selectedTeam);
   const togglePhase = useTerrainUIStore((s) => s.togglePhase);
   const setSelectedTeam = useTerrainUIStore((s) => s.setSelectedTeam);
@@ -219,6 +220,7 @@ export const useMapFilters = (
 
   return {
     selectedPhases,
+    setSelectedPhases,
     handleTogglePhase,
     selectedTeam,
     setSelectedTeam,

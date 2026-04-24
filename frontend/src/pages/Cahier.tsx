@@ -30,6 +30,8 @@ import { exportCahiersToWord } from '@utils/word_engine';
 import * as safeStorage from '@utils/safeStorage';
 import type { CahierTask, TaskLibrary, CahierVersion } from '@utils/types';
 import './Cahier.css';
+import logger from '../utils/logger';
+import { isTeamAvailableForAllocation } from '../services/planningAllocation';
 
 // Import centralized design system
 import { PageContainer, PageHeader, ContentArea, ActionBar } from '@components';
@@ -386,14 +388,12 @@ export default function Cahier() {
     user?.email === 'admingem' ||
     user?.role === 'CLIENT_LSE';
 
-  const { project } = useProject();
+  const { project, updateProject } = useProject();
   const { teams: allTeams } = useTeams(project?.id);
 
   const [selectedRole, setSelectedRole] = useState('Électricien');
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const { updateProject } = useProject();
-
   // Get automated rate for the current role from project settings
   const automatedRate = useMemo(() => {
     if (!project?.config?.costs?.staffRates) return null;
@@ -447,7 +447,7 @@ export default function Cahier() {
         return dbLibrary;
       }
     } catch (e) {
-      console.error('Initial load failed:', e);
+      logger.warn('[Cahier] Initial load failed, fallback to defaults', e);
     }
     return DEFAULT_TASK_LIBRARY;
   });
@@ -483,7 +483,9 @@ export default function Cahier() {
     }
 
     // 2. Fallback aux capacités individuelles des équipes
-    const tradeTeams = allTeams?.filter((t) => t.tradeKey === tradeKey) || [];
+    const tradeTeams =
+      allTeams?.filter((team) => team.tradeKey === tradeKey && isTeamAvailableForAllocation(team)) ||
+      [];
     if (tradeTeams.length > 0) {
       const capacities = Array.from(
         new Set(tradeTeams.map((t) => (t as any).capacity).filter((c) => !!c))
@@ -610,7 +612,7 @@ export default function Cahier() {
       });
       alert('Norme projet enregistrée avec succès (Historique mis à jour).');
     } catch (error) {
-      console.error('Save failed:', error);
+      logger.error('[Cahier] Save project standard failed', error);
     } finally {
       setIsSaving(false);
     }

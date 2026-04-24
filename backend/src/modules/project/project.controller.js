@@ -409,6 +409,19 @@ export const triggerRecalculateGrappes = async (req, res) => {
         const { id: projectId } = req.params;
         const { organizationId } = req.user;
 
+        const project = await prisma.project.findFirst({
+            where: {
+                id: projectId,
+                organizationId,
+                deletedAt: null
+            },
+            select: { id: true }
+        });
+
+        if (!project) {
+            return res.status(404).json({ error: 'Project not found' });
+        }
+
         const result = await recalculateProjectGrappes(projectId, organizationId, true);
         
         res.json({
@@ -417,7 +430,8 @@ export const triggerRecalculateGrappes = async (req, res) => {
         });
     } catch (error) {
         console.error('Manual recalculate error:', error);
-        res.status(500).json({ error: 'Failed to recalculate grappes' });
+        const status = error.message?.includes('not found') ? 404 : 500;
+        res.status(status).json({ error: status === 404 ? 'Project not found' : 'Failed to recalculate grappes' });
     }
 };
 

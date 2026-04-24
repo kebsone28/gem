@@ -2,6 +2,7 @@
 import React from 'react';
 import maplibregl from 'maplibre-gl';
 import { useTerrainUIStore } from '../../../store/terrainUIStore';
+import logger from '../../../utils/logger';
 import {
   useStyleLifecycle,
   useHouseholdSources,
@@ -55,18 +56,18 @@ const HouseholdLayer: React.FC<HouseholdLayerProps> = ({
   // PHASE 1: STYLE LIFECYCLE
   // ══════════════════════════════════════════════════════════════
   useStyleLifecycle(map, () => {
-    console.log('✅ [HouseholdLayer] Style ready for source setup');
+    logger.debug('✅ [HouseholdLayer] Style ready for source setup');
   });
 
   // ══════════════════════════════════════════════════════════════
   // PHASE 2: CREATE SOURCES (one-time)
   // ══════════════════════════════════════════════════════════════
-  const setupCompleteRef = useHouseholdSources(map, styleIsReady, projectId);
+  const sourcesReady = useHouseholdSources(map, styleIsReady, projectId);
 
   // ══════════════════════════════════════════════════════════════
   // PHASE 3: CREATE LAYERS (after sources ready)
   // ══════════════════════════════════════════════════════════════
-  useHouseholdLayers(map, styleIsReady, setupCompleteRef, showZones);
+  useHouseholdLayers(map, styleIsReady, sourcesReady, showZones);
 
   // ══════════════════════════════════════════════════════════════
   // PHASE 4: DATA SYNC (lightweight, hash-based)

@@ -39,6 +39,14 @@ const formatCurrency = (n: number): string => {
   return n.toLocaleString('fr-FR') + ' FCFA';
 };
 
+const hasOfficialOrderNumber = (value?: string | null) => !!value && !value.startsWith('TEMP-');
+
+const getMissionReference = (data: MissionOrderData) =>
+  hasOfficialOrderNumber(data.orderNumber) ? data.orderNumber : data.id || 'BROUILLON';
+
+const getMissionTitleReference = (data: MissionOrderData) =>
+  hasOfficialOrderNumber(data.orderNumber) ? data.orderNumber : 'BROUILLON';
+
  
 const _fetchImageAsArrayBuffer = async (url: string): Promise<ArrayBuffer | null> => {
   try {
@@ -153,7 +161,7 @@ const createFrontPage = (orderNumber: string, purpose: string) => {
 };
 
 export const generateMissionOrderWord = async (data: MissionOrderData) => {
-  const validationUrl = `${window.location.origin}/verify/mission/${data.orderNumber || data.id}`;
+  const validationUrl = `${window.location.origin}/verify/mission/${getMissionReference(data)}`;
 
   let qrData: ArrayBuffer | null = null;
   try {
@@ -168,7 +176,7 @@ export const generateMissionOrderWord = async (data: MissionOrderData) => {
 
   // 1. Front Page
   sections.push({
-    children: createFrontPage(data.orderNumber, data.purpose),
+    children: createFrontPage(getMissionTitleReference(data), data.purpose),
   });
 
   // 2. Main Mission Order Page
@@ -202,8 +210,8 @@ export const generateMissionOrderWord = async (data: MissionOrderData) => {
             new TableCell({
               children: [
                 new Paragraph({
-                  children: [
-                    new TextRun({ text: data.orderNumber, bold: true, color: COLORS.PRIMARY }),
+                    children: [
+                    new TextRun({ text: getMissionReference(data), bold: true, color: COLORS.PRIMARY }),
                   ],
                 }),
               ],
@@ -322,7 +330,7 @@ export const generateMissionOrderWord = async (data: MissionOrderData) => {
               children: [
                 new Paragraph({
                   alignment: AlignmentType.CENTER,
-                  children: [new TextRun({ text: 'LE DIRECTEUR GÉNÉRAL', bold: true })],
+                  children: [new TextRun({ text: 'VALIDATION FINALE', bold: true })],
                 }),
                 new Paragraph({ text: '', spacing: { before: 800 } }),
                 ...(data.signatureImage
@@ -357,7 +365,7 @@ export const generateMissionOrderWord = async (data: MissionOrderData) => {
                           alignment: AlignmentType.CENTER,
                           children: [
                             new TextRun({
-                              text: 'PROQUELEC - DIRECTION GÉNÉRALE',
+                              text: 'PROQUELEC - VALIDATION OFFICIELLE',
                               size: 16,
                               color: COLORS.DANGER,
                             }),
@@ -423,7 +431,7 @@ export const generateMissionOrderWord = async (data: MissionOrderData) => {
             alignment: AlignmentType.CENTER,
             children: [
               new TextRun({
-                text: 'Ordre de Mission Certifié PROQUELEC - Page ',
+                text: 'Ordre de Mission PROQUELEC - Page ',
                 size: 16,
                 color: COLORS.SLATE,
               }),
@@ -549,7 +557,7 @@ export const generateMissionOrderWord = async (data: MissionOrderData) => {
 
   const doc = new Document({
     creator: 'GEM-SAAS PROQUELEC',
-    title: `Ordre de Mission ${data.orderNumber}`,
+    title: `Ordre de Mission ${getMissionReference(data)}`,
     sections: sections,
   });
 
@@ -761,7 +769,7 @@ export const generateMissionReportWord = async (data: any): Promise<Blob | null>
             alignment: AlignmentType.CENTER,
             children: [
               new TextRun({
-                text: data.orderNumber || 'N/A',
+                text: getMissionReference(data),
                 bold: true,
                 size: 24,
                 color: COLORS.PRIMARY,
@@ -1103,7 +1111,7 @@ export const generateMissionReportWord = async (data: any): Promise<Blob | null>
 
     const doc = new Document({
       creator: 'GEM-SAAS PROQUELEC',
-      title: `Rapport Post-Mission ${data.orderNumber}`,
+      title: `Rapport Post-Mission ${getMissionReference(data)}`,
       sections: sections,
     });
 

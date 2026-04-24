@@ -1,6 +1,7 @@
 ﻿/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useEffect, useMemo } from 'react';
 import maplibregl from 'maplibre-gl';
+import logger from '../../../utils/logger';
 
 interface LogisticsLayerProps {
   map: maplibregl.Map | null;
@@ -38,7 +39,7 @@ const LogisticsLayer: React.FC<LogisticsLayerProps> = ({ map, styleIsReady, ware
         map.addSource('warehouses-source', { type: 'geojson', data: warehousesGeoJSON as any });
       }
     } catch (err) {
-      console.warn('⚠️ Failed to add warehouse source - style may not be ready:', err);
+      logger.debug('⚠️ Failed to add warehouse source - style may not be ready:', err);
     }
   }, [map, styleIsReady, warehousesGeoJSON]);
 
@@ -122,7 +123,7 @@ const LogisticsLayer: React.FC<LogisticsLayerProps> = ({ map, styleIsReady, ware
           });
         }
       } catch (err) {
-        console.warn('⚠️ Failed to add warehouse layers - style may not be ready:', err);
+        logger.debug('⚠️ Failed to add warehouse layers - style may not be ready:', err);
       }
     };
 

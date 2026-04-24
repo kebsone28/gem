@@ -5,6 +5,7 @@
  */
 
 import apiClient from '../api/client';
+import logger from '../utils/logger';
 
 export const alertsAPI = {
   /**
@@ -15,7 +16,7 @@ export const alertsAPI = {
       const response = await apiClient.get(`/alerts/${projectId}`, { params });
       return response.data.data;
     } catch (err) {
-      console.error('[ALERTS API] Error fetching alerts:', err);
+      logger.error('[ALERTS API] Error fetching alerts', err);
       throw err;
     }
   },
@@ -28,7 +29,7 @@ export const alertsAPI = {
       const response = await apiClient.post('/alerts', payload);
       return response.data.data;
     } catch (err) {
-      console.error('[ALERTS API] Error creating alert:', err);
+      logger.error('[ALERTS API] Error creating alert', err);
       throw err;
     }
   },
@@ -41,7 +42,7 @@ export const alertsAPI = {
       const response = await apiClient.patch(`/alerts/${alertId}/acknowledge`);
       return response.data.data;
     } catch (err) {
-      console.error('[ALERTS API] Error acknowledging alert:', err);
+      logger.error('[ALERTS API] Error acknowledging alert', err);
       throw err;
     }
   },
@@ -54,7 +55,7 @@ export const alertsAPI = {
       const response = await apiClient.patch(`/alerts/${alertId}/resolve`, { comment });
       return response.data.data;
     } catch (err) {
-      console.error('[ALERTS API] Error resolving alert:', err);
+      logger.error('[ALERTS API] Error resolving alert', err);
       throw err;
     }
   },
@@ -67,7 +68,7 @@ export const alertsAPI = {
       const response = await apiClient.get(`/alerts/${projectId}/stats`);
       return response.data.data;
     } catch (err) {
-      console.error('[ALERTS API] Error fetching stats:', err);
+      logger.error('[ALERTS API] Error fetching stats', err);
       throw err;
     }
   },
@@ -80,7 +81,7 @@ export const alertsAPI = {
       const response = await apiClient.get('/alerts/config/organization');
       return response.data.data;
     } catch (err) {
-      console.error('[ALERTS API] Error fetching config:', err);
+      logger.error('[ALERTS API] Error fetching config', err);
       throw err;
     }
   },
@@ -93,7 +94,7 @@ export const alertsAPI = {
       const response = await apiClient.patch('/alerts/config/organization', updates);
       return response.data.data;
     } catch (err) {
-      console.error('[ALERTS API] Error updating config:', err);
+      logger.error('[ALERTS API] Error updating config', err);
       throw err;
     }
   },

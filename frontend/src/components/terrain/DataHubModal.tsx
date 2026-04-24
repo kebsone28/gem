@@ -369,7 +369,7 @@ export const DataHubModal: React.FC<DataHubModalProps> = ({ isOpen, onClose }) =
         timestamp: new Date(),
       });
     } catch (e: any) {
-      console.error('Erreur finalisation import:', e);
+      logger.error('[DataHubModal] Erreur finalisation import', e);
       toast.error(e?.response?.data?.error || "Erreur lors de la finalisation de l'import.", {
         id: 'bulk-import',
       });
@@ -401,7 +401,7 @@ export const DataHubModal: React.FC<DataHubModalProps> = ({ isOpen, onClose }) =
       const statusRes = await apiClient.get('kobo/status');
       setKoboResult(statusRes.data?.lastResult || { applied: 0, skipped: 0, errors: 0 });
     } catch (e: any) {
-      console.error('[KOBO] Erreur de synchronisation:', e);
+      logger.error('[DataHubModal] [KOBO] Erreur de synchronisation', e);
       setKoboStep(0);
       toast.error(e?.response?.data?.message || 'Erreur de synchronisation Kobo.');
     } finally {

@@ -18,7 +18,16 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { PageContainer, PageHeader, ContentArea } from '../../components';
-import { StatusBadge, KPICard, ProgressBar } from '../../components/dashboards/DashboardComponents';
+import {
+  DASHBOARD_ACTION_TILE_PRIMARY,
+  DASHBOARD_ACTION_TILE_SECONDARY,
+  DASHBOARD_MINI_STAT_CARD,
+  DASHBOARD_PRIMARY_BUTTON,
+  DASHBOARD_STICKY_PANEL,
+  StatusBadge,
+  KPICard,
+  ProgressBar,
+} from '../../components/dashboards/DashboardComponents';
 
 const TRADES = [
   {
@@ -67,6 +76,9 @@ export default function TeamDashboard() {
   const households = useLiveQuery(() => db.households.toArray()) || [];
   const zones = useLiveQuery(() => db.zones.toArray()) || [];
   const navigate = useNavigate();
+  const scrollToSection = (sectionId: string) => {
+    document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 
   const total = households.length;
 
@@ -142,35 +154,124 @@ export default function TeamDashboard() {
             className="text-blue-400 drop-shadow-[0_0_8px_rgba(96,165,250,0.5)]"
           />
         }
-        className="relative z-10 pt-12 pb-10"
+        className="relative z-10 pt-6 pb-4"
       />
 
       <ContentArea padding="none" className="bg-transparent border-none shadow-none relative z-10">
         <div className="px-3 sm:px-6 lg:px-12 pb-16 sm:pb-24 space-y-6 sm:space-y-8 lg:space-y-12">
-          {/* Header & Main Call to Action */}
-          <header className="flex flex-col md:flex-row md:items-end justify-between gap-5 sm:gap-8 pb-2 sm:pb-4">
-            <div className="space-y-3 sm:space-y-4 min-w-0">
-              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                <StatusBadge status="info" label="ACCÈS BRIGADE OPS" />
-                <span className="h-4 w-[1px] bg-white/10" />
-                <span className="text-[8px] sm:text-[10px] font-black text-blue-400/40 uppercase tracking-[0.14em] sm:tracking-[0.3em] font-mono italic">
-                  {myTrade ? `${myTrade.label.toUpperCase()} SPECIALIST` : 'TEAM LEADER'}
-                </span>
+          <header className={DASHBOARD_STICKY_PANEL}>
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div className="min-w-0">
+                  <div className="mb-2 flex flex-wrap items-center gap-2">
+                    <StatusBadge status={isBlocked ? 'warning' : 'info'} label={isBlocked ? 'Brigade en attente' : 'Brigade active'} />
+                    <span className="min-w-0 truncate text-[10px] font-black uppercase tracking-[0.08em] text-blue-300/55">
+                      {myTrade ? `${myTrade.label.toUpperCase()} specialist` : 'team leader'}
+                    </span>
+                  </div>
+                  <h2 className="text-lg font-black tracking-tight text-white sm:text-xl">
+                    Vue equipe terrain
+                  </h2>
+                  <p className="text-[13px] text-slate-400">
+                    Priorites, pipeline et execution de la brigade en cours.
+                  </p>
+                </div>
+                <button
+                  onClick={() => navigate('/terrain')}
+                  className={`${DASHBOARD_PRIMARY_BUTTON} w-full lg:w-auto lg:min-w-[220px]`}
+                >
+                  <MapPin size={18} />
+                  Ouvrir la carte
+                </button>
               </div>
-              <h2 className="text-3xl sm:text-4xl md:text-6xl font-black italic uppercase tracking-tighter leading-[0.82]">
-                PERFORMANCE{' '}
-                <span className="text-blue-500 drop-shadow-[0_0_15px_rgba(59,130,246,0.3)]">
-                  TERRAIN
-                </span>
-              </h2>
+
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => navigate('/planning')}
+                  className={DASHBOARD_ACTION_TILE_SECONDARY}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 text-blue-300">
+                      <Clock size={18} />
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-black uppercase tracking-[0.06em]">Planning</p>
+                      <p className="mt-1 text-[12px] text-slate-400">Voir les prochaines missions</p>
+                    </div>
+                  </div>
+                </button>
+                <button
+                  onClick={() => navigate('/logistique')}
+                  className={DASHBOARD_ACTION_TILE_SECONDARY}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 text-blue-300">
+                      <Users size={18} />
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-black uppercase tracking-[0.06em]">Logistique</p>
+                      <p className="mt-1 text-[12px] text-slate-400">Kits et ressources terrain</p>
+                    </div>
+                  </div>
+                </button>
+                <button
+                  onClick={() => scrollToSection('team-pipeline')}
+                  className={DASHBOARD_ACTION_TILE_SECONDARY}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 text-blue-300">
+                      <Activity size={18} />
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-black uppercase tracking-[0.06em]">Pipeline</p>
+                      <p className="mt-1 text-[12px] text-slate-400">Suivi de toutes les equipes</p>
+                    </div>
+                  </div>
+                </button>
+                <button
+                  onClick={() => scrollToSection('team-regions')}
+                  className={DASHBOARD_ACTION_TILE_PRIMARY}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15">
+                      <TrendingUp size={18} />
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-black uppercase tracking-[0.06em]">Suivi zone</p>
+                      <p className="mt-1 text-[12px] text-blue-100/90">Priorites regionales</p>
+                    </div>
+                  </div>
+                </button>
+              </div>
+
+              <div className="overflow-x-auto pb-1">
+                <div className="flex min-w-max gap-3">
+                  {[
+                    { label: 'Ma progression', value: myTrade ? `${myTrade.progress}%` : '—', icon: TrendingUp },
+                    { label: 'Zones actives', value: myTrade?.activeZones ?? 0, icon: MapPin },
+                    { label: 'Terminees', value: fmtNum(completedCount), icon: CheckCircle2 },
+                    { label: 'Restantes', value: fmtNum(Math.max(0, pendingCount)), icon: Clock },
+                  ].map(({ label, value, icon: Icon }) => (
+                    <div
+                      key={label}
+                      className={DASHBOARD_MINI_STAT_CARD}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/5 text-blue-300">
+                          <Icon size={16} />
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-black uppercase tracking-[0.06em] text-slate-400">
+                            {label}
+                          </p>
+                          <p className="mt-1 text-xl font-black tracking-tight text-white">{value}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
-            <button
-              onClick={() => navigate('/terrain')}
-              className="h-12 sm:h-14 w-full md:w-auto px-5 sm:px-8 bg-blue-600 hover:bg-blue-500 rounded-xl sm:rounded-2xl text-[9px] sm:text-[10px] font-black uppercase tracking-[0.16em] sm:tracking-widest text-white transition-all shadow-xl shadow-blue-600/30 active:scale-95 flex items-center justify-center gap-3 italic"
-            >
-              <MapPin size={18} />
-              OUVRIR LA CARTE INTERACTIVE
-            </button>
           </header>
 
           {/* Dependency Alert */}
@@ -184,14 +285,12 @@ export default function TeamDashboard() {
                 <AlertTriangle size={28} className="text-amber-500" />
               </div>
               <div>
-                <h4 className="text-[10px] sm:text-xs font-black uppercase tracking-[0.16em] sm:tracking-widest text-amber-400 italic">
-                  DÉPENDANCE OPÉRATIONNELLE DÉTECTÉE
+                <h4 className="text-[11px] sm:text-xs font-black uppercase tracking-[0.08em] sm:tracking-widest text-amber-400">
+                  Dependance operationnelle detectee
                 </h4>
-                <p className="text-[10px] sm:text-[11px] font-bold text-slate-400 mt-2 uppercase tracking-tight leading-relaxed">
-                  L'équipe <span className="text-white italic">{predecessorTrade.label}</span> a
-                  complété{' '}
-                  <span className="text-white font-black italic">{predecessorTrade.progress}%</span>{' '}
-                  des tâches. Le protocole GEM requiert{' '}
+                <p className="text-[11px] sm:text-[11px] font-bold text-slate-300 mt-2 tracking-tight leading-relaxed">
+                  L'equipe <span className="text-white">{predecessorTrade.label}</span> a
+                  complete <span className="text-white font-black">{predecessorTrade.progress}%</span> des taches. Le protocole GEM requiert{' '}
                   <span className="text-amber-400 font-black">80%</span> pour débloquer vos
                   prochaines unités.
                 </p>
@@ -201,7 +300,7 @@ export default function TeamDashboard() {
 
           {/* Team KPIs */}
           {myTrade && (
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-8">
               <KPICard
                 title="MON AVANCEMENT"
                 value={`${myTrade.progress}%`}
@@ -231,16 +330,16 @@ export default function TeamDashboard() {
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-10">
             {/* Pipeline of all teams */}
-            <div className="lg:col-span-8 p-4 sm:p-6 md:p-10 rounded-[1.8rem] sm:rounded-3xl md:rounded-[3rem] bg-slate-900/40 border border-white/5 backdrop-blur-3xl shadow-2xl">
+            <div id="team-pipeline" className="lg:col-span-8 p-4 sm:p-6 md:p-10 rounded-[1.8rem] sm:rounded-3xl md:rounded-[3rem] bg-slate-900/40 border border-white/5 backdrop-blur-3xl shadow-2xl">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6 mb-5 sm:mb-12 pb-5 sm:pb-8 border-b border-white/5">
                 <div className="space-y-1">
-                  <h3 className="text-[9px] sm:text-[11px] font-black text-blue-400/40 uppercase tracking-[0.18em] sm:tracking-[0.4em] italic flex items-center gap-2 sm:gap-3">
-                    <Activity size={18} className="text-blue-500" /> GLOBAL OPS PIPELINE
+                  <h3 className="text-[11px] sm:text-[11px] font-black text-blue-300/65 uppercase tracking-[0.08em] sm:tracking-[0.26em] flex items-center gap-2 sm:gap-3">
+                    <Activity size={18} className="text-blue-500" /> Pipeline operations
                   </h3>
-                  <p className="text-[8px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-[0.14em] sm:tracking-widest">
+                  <p className="text-[10px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-[0.06em] sm:tracking-widest">
                     {total > 0
-                      ? `REAL-TIME SYNC WITH ${fmtNum(total)} HOUSEHOLDS`
-                      : 'AWAITING FIELD AGENT SYNC'}
+                      ? `Sync terrain sur ${fmtNum(total)} menages`
+                      : 'En attente de synchro terrain'}
                   </p>
                 </div>
               </div>
@@ -260,31 +359,31 @@ export default function TeamDashboard() {
                           : 'border-white/5 bg-white/[0.02] opacity-40 grayscale group hover:grayscale-0 hover:opacity-80 transition-all'
                       }`}
                     >
-                      <div className="flex items-center justify-between mb-6">
-                        <div className="flex items-center gap-5">
-                          <div className="w-14 h-14 bg-white/5 rounded-2xl flex items-center justify-center border border-white/5 text-2xl shadow-inner italic">
+                      <div className="flex items-start justify-between gap-4 mb-6">
+                        <div className="flex items-start gap-4 sm:gap-5 min-w-0">
+                          <div className="w-12 h-12 sm:w-14 sm:h-14 bg-white/5 rounded-2xl flex items-center justify-center border border-white/5 text-xl sm:text-2xl shadow-inner italic shrink-0">
                             {trade.icon}
                           </div>
-                          <div>
-                            <div className="flex items-center gap-3">
-                              <span className="font-black text-xl italic text-white uppercase tracking-tighter">
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                              <span className="font-black text-lg sm:text-xl text-white uppercase tracking-tight">
                                 {trade.label}
                               </span>
                               {isMe && (
-                                <span className="px-3 py-1 rounded-lg bg-blue-600 text-white text-[9px] font-black uppercase tracking-widest italic shadow-lg">
-                                  VOTRE UNITÉ
+                                <span className="px-3 py-1 rounded-lg bg-blue-600 text-white text-[10px] sm:text-[9px] font-black uppercase tracking-[0.08em] sm:tracking-widest shadow-lg">
+                                  Votre unite
                                 </span>
                               )}
                             </div>
-                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mt-1.5 italic">
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.06em] sm:tracking-widest mt-1.5">
                               {total > 0
-                                ? `${fmtNum(trade.done ?? 0)} / ${fmtNum(total)} UNITS COMPLETED`
+                                ? `${fmtNum(trade.done ?? 0)} / ${fmtNum(total)} menages traites`
                                 : trade.description}
                             </p>
                           </div>
                         </div>
                         <span
-                          className={`font-black text-3xl italic tracking-tighter ${TEXT_MAP[trade.color] || 'text-white'} drop-shadow-md`}
+                          className={`font-black text-2xl sm:text-3xl tracking-tighter ${TEXT_MAP[trade.color] || 'text-white'} drop-shadow-md shrink-0`}
                         >
                           {trade.progress}%
                         </span>
@@ -301,9 +400,9 @@ export default function TeamDashboard() {
             </div>
 
             {/* Right column: Regional breakdown */}
-            <div className="lg:col-span-4 p-4 sm:p-6 md:p-10 rounded-[1.8rem] sm:rounded-3xl md:rounded-[3rem] bg-slate-900/40 border border-white/5 backdrop-blur-3xl shadow-2xl flex flex-col">
-              <h3 className="text-[9px] sm:text-[11px] font-black mb-5 sm:mb-12 flex items-center gap-2 sm:gap-3 text-blue-400/40 uppercase tracking-[0.18em] sm:tracking-[0.4em] italic">
-                <MapPin size={18} className="text-blue-500" /> MISSION CORES
+            <div id="team-regions" className="lg:col-span-4 p-4 sm:p-6 md:p-10 rounded-[1.8rem] sm:rounded-3xl md:rounded-[3rem] bg-slate-900/40 border border-white/5 backdrop-blur-3xl shadow-2xl flex flex-col">
+              <h3 className="text-[11px] sm:text-[11px] font-black mb-5 sm:mb-12 flex items-center gap-2 sm:gap-3 text-blue-300/65 uppercase tracking-[0.08em] sm:tracking-[0.26em]">
+                <MapPin size={18} className="text-blue-500" /> Zones prioritaires
               </h3>
 
               {regionBreakdown.length > 0 ? (
@@ -322,18 +421,18 @@ export default function TeamDashboard() {
               ) : (
                 <div className="flex-1 flex flex-col items-center justify-center text-center py-12 sm:py-20 space-y-4 sm:space-y-6 opacity-20 border border-dashed border-white/10 rounded-[1.5rem] sm:rounded-[2rem]">
                   <MapPin size={48} className="text-blue-500" />
-                  <p className="text-[8px] sm:text-[10px] font-black uppercase tracking-[0.16em] sm:tracking-[0.4em] italic">
-                    AWAITING REGIONAL SYNC ARCHIVE...
+                  <p className="text-[10px] sm:text-[10px] font-black uppercase tracking-[0.08em] sm:tracking-[0.26em]">
+                    En attente de synchro regionale...
                   </p>
                 </div>
               )}
 
               <button
                 onClick={() => navigate('/terrain')}
-                className="mt-5 sm:mt-10 w-full flex items-center justify-center gap-3 sm:gap-4 h-14 sm:h-20 border-2 border-dashed border-white/10 hover:border-blue-500/40 hover:bg-white/[0.03] text-slate-500 hover:text-white rounded-[1.3rem] sm:rounded-[2rem] font-black text-[8px] sm:text-[10px] uppercase tracking-[0.14em] sm:tracking-[0.3em] transition-all group italic"
+                className="mt-5 sm:mt-10 w-full flex items-center justify-center gap-3 sm:gap-4 h-14 sm:h-20 border-2 border-dashed border-white/10 hover:border-blue-500/40 hover:bg-white/[0.03] text-slate-400 hover:text-white rounded-[1.3rem] sm:rounded-[2rem] font-black text-[10px] sm:text-[10px] uppercase tracking-[0.08em] sm:tracking-[0.22em] transition-all group"
               >
                 <ExternalLink size={18} className="group-hover:text-blue-500 transition-colors" />{' '}
-                EXPLORE GIS CORE
+                Ouvrir la carte detaillee
               </button>
             </div>
           </div>

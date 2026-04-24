@@ -1,6 +1,7 @@
 ﻿ 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl';
+import logger from '../../../utils/logger';
 
 /**
  * Hook: Household Sources Creation
@@ -11,32 +12,51 @@ import maplibregl from 'maplibre-gl';
  * @param map - MapLibre GL map instance
  * @param styleIsReady - Whether Zustand styleIsReady flag is true
  * @param projectId - Project ID for MVT tile URL (optional)
- * @returns setupCompleteRef - Ref indicating sources are ready
+ * @returns sourcesReady - Whether household sources are ready for layer setup
  */
 export const useHouseholdSources = (
   map: maplibregl.Map | null,
   styleIsReady: boolean,
   projectId?: string
-): React.MutableRefObject<boolean> => {
+): boolean => {
   const setupCompleteRef = useRef<boolean>(false);
+  const [sourcesReady, setSourcesReady] = useState(false);
+  const publishTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const publishSourcesReady = (ready: boolean) => {
+    if (publishTimeoutRef.current) {
+      clearTimeout(publishTimeoutRef.current);
+    }
+
+    publishTimeoutRef.current = setTimeout(() => {
+      setSourcesReady(ready);
+      publishTimeoutRef.current = null;
+    }, 0);
+  };
 
   useEffect(() => {
-    if (!map) return;
+    if (!map || !styleIsReady || !map.isStyleLoaded()) {
+      setupCompleteRef.current = false;
+      publishSourcesReady(false);
+      return;
+    }
 
     // Only create sources once per style - verify sources don't already exist
     if (setupCompleteRef.current && map.getSource('households')) {
-      console.log('✅ [useHouseholdSources] Sources already created, skipping');
+      logger.debug('✅ [useHouseholdSources] Sources already created, skipping');
+      publishSourcesReady(true);
       return;
     }
 
     const createSourcesNow = () => {
       // Double-check sources don't exist before creating
       if (setupCompleteRef.current && map.getSource('households')) {
-        console.log('✅ [useHouseholdSources] Sources already exist, skipping');
+        logger.debug('✅ [useHouseholdSources] Sources already exist, skipping');
+        publishSourcesReady(true);
         return;
       }
 
-      console.log('🔵 [useHouseholdSources] Creating all sources...');
+      logger.debug('🔵 [useHouseholdSources] Creating all sources...');
 
       try {
         // ── MVT Source
@@ -56,7 +76,7 @@ export const useHouseholdSources = (
             minzoom: 0,
             maxzoom: 14,
           });
-          console.log('✅ Created source: households-mvt');
+          logger.debug('✅ Created source: households-mvt');
         }
 
         // ── GeoJSON Local Source
@@ -65,7 +85,7 @@ export const useHouseholdSources = (
             type: 'geojson',
             data: { type: 'FeatureCollection', features: [] },
           });
-          console.log('✅ Created source: households');
+          logger.debug('✅ Created source: households');
         }
 
         // ── Cluster Source
@@ -74,7 +94,7 @@ export const useHouseholdSources = (
             type: 'geojson',
             data: { type: 'FeatureCollection', features: [] },
           });
-          console.log('✅ Created source: supercluster-generated');
+          logger.debug('✅ Created source: supercluster-generated');
         }
 
         // ── Cluster Hull Source
@@ -83,7 +103,7 @@ export const useHouseholdSources = (
             type: 'geojson',
             data: { type: 'FeatureCollection', features: [] },
           });
-          console.log('✅ Created source: cluster-hulls');
+          logger.debug('✅ Created source: cluster-hulls');
         }
 
         // ── Selected Household Source
@@ -92,31 +112,30 @@ export const useHouseholdSources = (
             type: 'geojson',
             data: { type: 'FeatureCollection', features: [] },
           });
-          console.log('✅ Created source: selected-household');
+          logger.debug('✅ Created source: selected-household');
         }
 
-        console.log('✅ [useHouseholdSources] All sources created successfully');
+        logger.debug('✅ [useHouseholdSources] All sources created successfully');
         setupCompleteRef.current = true;
+        publishSourcesReady(true);
       } catch (err) {
-        console.error('🔴 [useHouseholdSources] Failed to create sources:', err);
+        setupCompleteRef.current = false;
+        publishSourcesReady(false);
+        logger.error('🔴 [useHouseholdSources] Failed to create sources:', err);
       }
     };
 
-    // If style is already loaded, create immediately
-    if (map.isStyleLoaded()) {
-      console.log('✅ [useHouseholdSources] Style already loaded, creating sources now');
-      createSourcesNow();
-    } else {
-      console.log('⏳ [useHouseholdSources] Waiting for style.load event...');
+    logger.debug('✅ [useHouseholdSources] Style already loaded, creating sources now');
+    createSourcesNow();
+  }, [map, styleIsReady, projectId]);
 
-      // Otherwise, listen for style.load to create when ready
-      map.on('style.load', createSourcesNow);
+  useEffect(() => {
+    return () => {
+      if (publishTimeoutRef.current) {
+        clearTimeout(publishTimeoutRef.current);
+      }
+    };
+  }, []);
 
-      return () => {
-        map.off('style.load', createSourcesNow);
-      };
-    }
-  }, [map, projectId]);
-
-  return setupCompleteRef;
+  return sourcesReady;
 };

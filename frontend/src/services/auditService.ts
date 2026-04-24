@@ -2,6 +2,7 @@
 import { db } from '../store/db';
 import type { User, AuditLog } from '../utils/types';
 import { v4 as uuidv4 } from 'uuid';
+import logger from '../utils/logger';
 
 /**
  * 🛡️ Audit Service: Handles system-wide security logging
@@ -30,9 +31,9 @@ export const auditService = {
 
     try {
       await db.audit_logs.add(log);
-      console.log(`🛡️ [AUDIT] ${action} recorded for ${user.name}`);
+      logger.debug(`🛡️ [AUDIT] ${action} recorded for ${user.name}`);
     } catch (error) {
-      console.error('❌ [AUDIT_ERROR] Failed to record log:', error);
+      logger.error('❌ [AUDIT_ERROR] Failed to record log:', error);
     }
   },
 
@@ -43,7 +44,7 @@ export const auditService = {
     try {
       return await db.audit_logs.orderBy('timestamp').reverse().limit(limit).toArray();
     } catch (error) {
-      console.error('❌ [AUDIT_ERROR] Failed to fetch logs:', error);
+      logger.error('❌ [AUDIT_ERROR] Failed to fetch logs:', error);
       return [];
     }
   },

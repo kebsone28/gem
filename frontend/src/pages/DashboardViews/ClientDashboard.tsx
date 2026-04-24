@@ -15,10 +15,22 @@ import {
 import { motion } from 'framer-motion';
 import { fmtNum } from '../../utils/format';
 import { PageContainer, PageHeader, ContentArea } from '../../components';
-import { StatusBadge, KPICard, ProgressBar } from '../../components/dashboards/DashboardComponents';
+import {
+  DASHBOARD_ACTION_TILE_PRIMARY,
+  DASHBOARD_ACTION_TILE_SECONDARY,
+  DASHBOARD_MINI_STAT_CARD,
+  DASHBOARD_PRIMARY_BUTTON,
+  DASHBOARD_STICKY_PANEL,
+  StatusBadge,
+  KPICard,
+  ProgressBar,
+} from '../../components/dashboards/DashboardComponents';
 
 export default function ClientDashboard() {
   const navigate = useNavigate();
+  const scrollToSection = (sectionId: string) => {
+    document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 
   // ─── Live Dexie data ──────────────────────────────────────────
   const households = useLiveQuery(() => db.households.toArray()) || [];
@@ -75,57 +87,147 @@ export default function ClientDashboard() {
             className="text-blue-400 drop-shadow-[0_0_8px_rgba(96,165,250,0.5)]"
           />
         }
-        className="relative z-10 pt-12 pb-10"
+        className="relative z-10 pt-6 pb-4"
       />
 
       <ContentArea padding="none" className="bg-transparent border-none shadow-none relative z-10">
         <div className="px-3 sm:px-6 lg:px-12 pb-16 sm:pb-24 space-y-6 sm:space-y-8 lg:space-y-12">
-          {/* Header & Actions */}
-          <header className="flex flex-col md:flex-row md:items-end justify-between gap-5 sm:gap-8 pb-2 sm:pb-4">
-            <div className="space-y-3 sm:space-y-4 min-w-0">
-              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                <StatusBadge status="success" label="ACCÈS CLIENT SÉCURISÉ" />
-                <span className="h-4 w-[1px] bg-white/10" />
-                <span className="text-[8px] sm:text-[10px] font-black text-blue-400/40 uppercase tracking-[0.14em] sm:tracking-[0.3em] font-mono italic">
-                  PROJECT STATUS REAL-TIME
-                </span>
+          <header className={DASHBOARD_STICKY_PANEL}>
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div className="min-w-0">
+                  <div className="mb-2 flex flex-wrap items-center gap-2">
+                    <StatusBadge status="success" label="Client connecte" />
+                    <span className="min-w-0 truncate text-[10px] font-black uppercase tracking-[0.08em] text-blue-300/55">
+                      Avancement projet en temps reel
+                    </span>
+                  </div>
+                  <h2 className="text-lg font-black tracking-tight text-white sm:text-xl">
+                    Vue client
+                  </h2>
+                  <p className="text-[13px] text-slate-400">
+                    Lecture rapide de la progression, des regions et des validations.
+                  </p>
+                </div>
+                <button
+                  onClick={() => navigate('/rapports')}
+                  className={`${DASHBOARD_PRIMARY_BUTTON} w-full lg:w-auto lg:min-w-[220px]`}
+                >
+                  <FileText size={18} />
+                  Ouvrir les rapports
+                </button>
               </div>
-              <h2 className="text-3xl sm:text-4xl md:text-6xl font-black italic uppercase tracking-tighter leading-[0.82]">
-                SUIVI{' '}
-                <span className="text-blue-500 drop-shadow-[0_0_15px_rgba(59,130,246,0.3)]">
-                  DYNAMIQUE
-                </span>
-              </h2>
+
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => navigate('/terrain')}
+                  className={DASHBOARD_ACTION_TILE_SECONDARY}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 text-blue-300">
+                      <MapPin size={18} />
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-black uppercase tracking-[0.06em]">Carte terrain</p>
+                      <p className="mt-1 text-[12px] text-slate-400">Voir les zones actives</p>
+                    </div>
+                  </div>
+                </button>
+                <button
+                  onClick={() => scrollToSection('client-regions')}
+                  className={DASHBOARD_ACTION_TILE_SECONDARY}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 text-blue-300">
+                      <TrendingUp size={18} />
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-black uppercase tracking-[0.06em]">Regions</p>
+                      <p className="mt-1 text-[12px] text-slate-400">Suivre les performances</p>
+                    </div>
+                  </div>
+                </button>
+                <button
+                  onClick={() => scrollToSection('client-validations')}
+                  className={DASHBOARD_ACTION_TILE_SECONDARY}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 text-blue-300">
+                      <CheckCircle2 size={18} />
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-black uppercase tracking-[0.06em]">Validations</p>
+                      <p className="mt-1 text-[12px] text-slate-400">Derniers menages traites</p>
+                    </div>
+                  </div>
+                </button>
+                <button
+                  onClick={() => scrollToSection('client-overview')}
+                  className={DASHBOARD_ACTION_TILE_PRIMARY}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15">
+                      <Activity size={18} />
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-black uppercase tracking-[0.06em]">Progression</p>
+                      <p className="mt-1 text-[12px] text-blue-100/90">Point de situation</p>
+                    </div>
+                  </div>
+                </button>
+              </div>
+
+              <div className="overflow-x-auto pb-1">
+                <div className="flex min-w-max gap-3">
+                  {[
+                    { label: 'Progression', value: `${pct}%`, icon: TrendingUp },
+                    { label: 'Raccordes', value: fmtNum(done), icon: CheckCircle2 },
+                    { label: 'En cours', value: fmtNum(inProgress), icon: Activity },
+                    { label: 'Regions actives', value: topRegions.length, icon: MapPin },
+                  ].map(({ label, value, icon: Icon }) => (
+                    <div
+                      key={label}
+                      className={DASHBOARD_MINI_STAT_CARD}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/5 text-blue-300">
+                          <Icon size={16} />
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-black uppercase tracking-[0.06em] text-slate-400">
+                            {label}
+                          </p>
+                          <p className="mt-1 text-xl font-black tracking-tight text-white">{value}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
-            <button
-              onClick={() => navigate('/rapports')}
-              className="h-12 sm:h-14 w-full md:w-auto px-5 sm:px-8 bg-blue-600 hover:bg-blue-500 rounded-xl sm:rounded-2xl text-[9px] sm:text-[10px] font-black uppercase tracking-[0.16em] sm:tracking-widest text-white transition-all shadow-xl shadow-blue-600/30 active:scale-95 flex items-center justify-center gap-3 italic"
-            >
-              <FileText size={18} />
-              GÉNÉRER UN RAPPORT EXÉCUTIF
-            </button>
           </header>
 
           {/* Main Progress Logic */}
           <motion.div
+            id="client-overview"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="p-4 sm:p-6 md:p-14 rounded-[1.8rem] sm:rounded-3xl md:rounded-[3.5rem] bg-slate-900/40 border border-white/10 shadow-3xl relative overflow-hidden backdrop-blur-3xl group"
+            className="p-4 sm:p-6 md:p-14 rounded-[1.6rem] sm:rounded-3xl md:rounded-[3.5rem] bg-slate-900/40 border border-white/10 shadow-3xl relative overflow-hidden backdrop-blur-3xl group"
           >
             <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-blue-600/[0.03] to-transparent pointer-events-none" />
 
             <div className="flex flex-col md:flex-row items-center gap-8 sm:gap-16 relative z-10">
               <div className="flex-1 w-full space-y-5 sm:space-y-8">
                 <div className="space-y-2">
-                  <h3 className="text-[8px] sm:text-[10px] md:text-[11px] font-black text-blue-400/40 uppercase tracking-[0.14em] sm:tracking-[0.3em] md:tracking-[0.4em] italic flex items-center gap-2 sm:gap-3">
-                    <TrendingUp size={18} className="text-emerald-400" /> GLOBAL PROJECT ADVANCEMENT
+                  <h3 className="text-[11px] sm:text-[11px] font-black text-blue-300/65 uppercase tracking-[0.08em] sm:tracking-[0.26em] flex items-center gap-2 sm:gap-3">
+                    <TrendingUp size={18} className="text-emerald-400" /> Avancement global
                   </h3>
-                  <div className="flex flex-wrap items-baseline gap-3 md:gap-4">
-                    <span className="text-5xl sm:text-6xl md:text-9xl font-black text-white tracking-tighter italic leading-none drop-shadow-xl">
+                  <div className="flex flex-wrap items-end gap-3 md:gap-4">
+                    <span className="text-[4rem] sm:text-6xl md:text-9xl font-black text-white tracking-tighter italic leading-none drop-shadow-xl">
                       {pct}%
                     </span>
-                    <span className="text-[8px] sm:text-[9px] md:text-[10px] font-black text-emerald-400 uppercase tracking-[0.12em] sm:tracking-[0.15em] md:tracking-widest bg-emerald-500/10 px-3 md:px-4 py-1.5 rounded-xl border border-emerald-500/20 italic mt-2 md:mt-0 max-w-full overflow-hidden text-ellipsis whitespace-nowrap">
-                      SYSTÈME OPÉRATIONNEL
+                    <span className="text-[10px] sm:text-[10px] font-black text-emerald-400 uppercase tracking-[0.06em] sm:tracking-[0.15em] md:tracking-widest bg-emerald-500/10 px-3 md:px-4 py-1.5 rounded-xl border border-emerald-500/20 mt-1 md:mt-0 max-w-full overflow-hidden text-ellipsis whitespace-nowrap">
+                      Suivi client actif
                     </span>
                   </div>
                 </div>
@@ -139,12 +241,12 @@ export default function ClientDashboard() {
                       transition={{ duration: 1.5, ease: 'easeOut' }}
                     />
                   </div>
-                  <div className="flex justify-between text-[7px] sm:text-[8px] md:text-[9px] font-black text-slate-600 uppercase tracking-[0.12em] sm:tracking-widest italic font-mono flex-wrap gap-2">
-                    <span className="shrink-0">DEPL. START</span>
+                  <div className="flex justify-between text-[9px] sm:text-[8px] md:text-[9px] font-black text-slate-500 uppercase tracking-[0.06em] sm:tracking-widest font-mono flex-wrap gap-2">
+                    <span className="shrink-0">debut</span>
                     <span className="text-white/60 text-center flex-1">
-                      {fmtNum(done)} / {fmtNum(total)} UNITS COMPLETED
+                      {fmtNum(done)} / {fmtNum(total)} menages termines
                     </span>
-                    <span className="shrink-0 text-right">OPTIMAL TARGET</span>
+                    <span className="shrink-0 text-right">objectif</span>
                   </div>
                 </div>
               </div>
@@ -152,7 +254,7 @@ export default function ClientDashboard() {
           </motion.div>
 
           {/* KPI Grid */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-8">
             <KPICard
               title="TOTAL MÉNAGES"
               value={total > 0 ? fmtNum(total) : '—'}
@@ -181,13 +283,13 @@ export default function ClientDashboard() {
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-10">
             {/* Regional breakdown */}
-            <div className="lg:col-span-8 p-4 sm:p-6 md:p-10 rounded-[1.8rem] sm:rounded-3xl md:rounded-[3rem] bg-slate-900/40 border border-white/5 backdrop-blur-3xl shadow-2xl">
+            <div id="client-regions" className="lg:col-span-8 p-4 sm:p-6 md:p-10 rounded-[1.8rem] sm:rounded-3xl md:rounded-[3rem] bg-slate-900/40 border border-white/5 backdrop-blur-3xl shadow-2xl">
               <div className="flex items-center justify-between gap-4 mb-5 sm:mb-12 pb-5 sm:pb-8 border-b border-white/5">
-                <h3 className="text-[9px] sm:text-[11px] font-black tracking-[0.18em] sm:tracking-[0.4em] text-blue-400/40 uppercase italic flex items-center gap-2 sm:gap-3">
-                  <MapPin size={18} className="text-blue-500" /> TOP-PRIORITY REGIONS
+                <h3 className="text-[11px] sm:text-[11px] font-black tracking-[0.08em] sm:tracking-[0.26em] text-blue-300/65 uppercase flex items-center gap-2 sm:gap-3">
+                  <MapPin size={18} className="text-blue-500" /> Regions prioritaires
                 </h3>
-                <p className="text-[8px] sm:text-[10px] font-bold text-slate-600 uppercase tracking-[0.12em] sm:tracking-widest italic">
-                  {topRegions.length} ACTIVE CLUSTERS
+                <p className="text-[10px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-[0.06em] sm:tracking-widest">
+                  {topRegions.length} clusters actifs
                 </p>
               </div>
 
@@ -207,17 +309,17 @@ export default function ClientDashboard() {
               ) : (
                 <div className="flex flex-col items-center py-12 sm:py-20 text-center space-y-4 sm:space-y-6 opacity-20 border border-dashed border-white/10 rounded-[1.5rem] sm:rounded-[2rem]">
                   <MapPin size={48} className="text-blue-500" />
-                  <p className="text-[10px] font-black uppercase tracking-[0.4em] italic">
-                    SYNCHRONIZING REGIONAL DATA ARCHIVE...
+                  <p className="text-[10px] font-black uppercase tracking-[0.12em] sm:tracking-[0.4em]">
+                    Synchronisation des donnees regionales...
                   </p>
                 </div>
               )}
             </div>
 
             {/* Recent validations */}
-            <div className="lg:col-span-4 p-4 sm:p-6 md:p-10 rounded-[1.8rem] sm:rounded-3xl md:rounded-[3rem] bg-slate-900/40 border border-white/5 backdrop-blur-3xl shadow-2xl flex flex-col">
-              <h3 className="text-[9px] sm:text-[11px] font-black mb-5 sm:mb-10 flex items-center gap-2 sm:gap-3 text-blue-400/40 uppercase tracking-[0.18em] sm:tracking-[0.4em] italic">
-                <TrendingUp size={18} className="text-emerald-400" /> RECENT VALIDATIONS
+            <div id="client-validations" className="lg:col-span-4 p-4 sm:p-6 md:p-10 rounded-[1.8rem] sm:rounded-3xl md:rounded-[3rem] bg-slate-900/40 border border-white/5 backdrop-blur-3xl shadow-2xl flex flex-col">
+              <h3 className="text-[11px] sm:text-[11px] font-black mb-5 sm:mb-10 flex items-center gap-2 sm:gap-3 text-blue-300/65 uppercase tracking-[0.08em] sm:tracking-[0.26em]">
+                <TrendingUp size={18} className="text-emerald-400" /> Validations recentes
               </h3>
 
               {recentValidated.length > 0 ? (
@@ -236,10 +338,10 @@ export default function ClientDashboard() {
                           <CheckCircle2 size={18} className="text-emerald-400" />
                         </div>
                         <div className="min-w-0">
-                          <p className="text-xs sm:text-[13px] font-black text-white italic truncate uppercase tracking-tight">
+                          <p className="text-xs sm:text-[13px] font-black text-white truncate uppercase tracking-tight">
                             {h.id?.toString().substring(0, 10)}
                           </p>
-                          <p className="text-[8px] sm:text-[9px] font-black text-blue-400/40 uppercase tracking-[0.14em] sm:tracking-widest truncate mt-1 italic leading-none">
+                          <p className="text-[10px] sm:text-[9px] font-black text-blue-300/60 uppercase tracking-[0.06em] sm:tracking-widest truncate mt-1 leading-none">
                             {zone?.name ?? 'OPS ZONE UNKNOWN'}
                           </p>
                         </div>
@@ -250,14 +352,14 @@ export default function ClientDashboard() {
               ) : (
                 <div className="flex-1 flex flex-col items-center justify-center text-center py-12 sm:py-20 space-y-4 sm:space-y-6 opacity-20 border border-dashed border-white/10 rounded-[1.5rem] sm:rounded-[2rem]">
                   <CheckCircle2 size={48} className="text-blue-500" />
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] italic">
-                    AWAITING FIELD AGENT VALIDATION
+                  <p className="text-[10px] font-black uppercase tracking-[0.08em] sm:tracking-[0.2em]">
+                    En attente de validations terrain
                   </p>
                   <button
                     onClick={() => navigate('/rapports')}
-                    className="text-blue-400 font-black text-[10px] flex items-center gap-3 hover:text-white transition-all uppercase tracking-widest italic group"
+                    className="text-blue-400 font-black text-[10px] flex items-center gap-3 hover:text-white transition-all uppercase tracking-[0.08em] sm:tracking-widest group"
                   >
-                    ACCESS FULL ARCHIVE{' '}
+                    Ouvrir l'archive{' '}
                     <ArrowRight
                       size={14}
                       className="group-hover:translate-x-2 transition-transform"

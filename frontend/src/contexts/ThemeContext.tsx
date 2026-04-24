@@ -1,5 +1,6 @@
 ﻿ 
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import logger from '../utils/logger';
 
 type Theme = 'dark';
 
@@ -30,12 +31,12 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const setTheme = () => {
     // No-op to prevent changes to 'light'
-    console.warn('Theme is unified to Wanekoo (Dark). setTheme is disabled.');
+    logger.debug('Theme is unified to Wanekoo (Dark). setTheme is disabled.');
   };
 
   const toggleTheme = () => {
     // No-op
-    console.warn('Theme toggle is disabled (Unified Wanekoo Design).');
+    logger.debug('Theme toggle is disabled (Unified Wanekoo Design).');
   };
 
   const isDarkMode = true;

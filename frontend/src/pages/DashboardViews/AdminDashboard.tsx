@@ -57,7 +57,12 @@ export default function AdminDashboard() {
   const projectId = project?.id || '';
 
   // ── BUSINESS HOOKS ──
-  const { metrics, refresh: refreshKPI, localZonesCount } = useDashboardData(projectId, canViewReports);
+  const {
+    metrics,
+    isLoading: isMetricsLoading,
+    refresh: refreshKPI,
+    localZonesCount,
+  } = useDashboardData(projectId, canViewReports);
   const { stats: missionStats, missions, refresh: refreshMissions } = useMissionStats(user as any, projectId);
   const { activities, refresh: refreshMonitoring } = useMonitoring(canViewReports);
   const { feedActivities, refresh: refreshAudit } = useAuditLogs(activities);
@@ -72,6 +77,18 @@ export default function AdminDashboard() {
 
   const { isSyncing, handleSync } = useSyncHandler(refreshKPI);
   useAutoRefresh(refreshAll, 60000); // Efficient auto-refresh every 1 min
+
+  const lastSyncLabel = isSyncing
+    ? 'maintenant'
+    : feedActivities[0]?.time || activities[0]?.time || 'recemment';
+  const missionsDone = missionStats?.totalCertified ?? metrics.totalArchived;
+  const missionsInProgress = Math.max(
+    0,
+    (missionStats?.totalMissions ?? 0) - (missionStats?.totalCertified ?? 0)
+  );
+  const errorCount = metrics.problemHouseholds + metrics.actionRequired + metrics.incidentsHSE;
+  const exportAvailable = Boolean(missionStats && missionStats.totalMissions >= 0);
+  const koboConnected = canViewReports && Boolean(projectId);
 
   const handleExportCompta = async () => {
     const tid = toast.loading("Préparation de l'export comptable...");
@@ -98,17 +115,26 @@ export default function AdminDashboard() {
       />
 
       <ContentArea padding="none" className="bg-transparent border-none shadow-none relative z-10">
-        <div className="px-3 sm:px-6 lg:px-12 pb-16 sm:pb-24 space-y-6 sm:space-y-8 lg:space-y-12">
+        <div className="px-3 sm:px-6 lg:px-12 pb-36 sm:pb-24 space-y-6 sm:space-y-8 lg:space-y-12">
           {/* Header & Main Actions */}
           <DashboardHeader
             projectName={project?.name || ''}
             isSyncing={isSyncing}
+            isLoading={isMetricsLoading}
             onSync={handleSync}
             onExportCompta={handleExportCompta}
+            projectProgress={metrics.progressPercent}
+            missionsDone={missionsDone}
+            missionsInProgress={missionsInProgress}
+            errorCount={errorCount}
+            syncHealth={metrics.syncHealth}
+            lastSyncLabel={lastSyncLabel}
+            koboConnected={koboConnected}
+            exportAvailable={exportAvailable}
           />
 
           {/* Level 1: Core Progress */}
-          <GlobalProgressCard metrics={metrics} />
+          <GlobalProgressCard metrics={metrics} isLoading={isMetricsLoading} />
 
           {/* Team Production Performance */}
           <div className="pt-2 sm:pt-6">
@@ -126,6 +152,7 @@ export default function AdminDashboard() {
             metrics={metrics}
             missionStats={missionStats}
             householdLabel={getLabel('household.plural')}
+            isLoading={isMetricsLoading}
           />
 
           {/* Compliance & Regulation */}
@@ -137,6 +164,7 @@ export default function AdminDashboard() {
               metrics={metrics}
               feedActivities={feedActivities}
               missions={missions}
+              isLoading={isMetricsLoading}
             />
           </div>
 

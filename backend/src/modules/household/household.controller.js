@@ -2,6 +2,54 @@ import prisma from '../../core/utils/prisma.js';
 import { tracerAction } from '../../services/audit.service.js';
 import { logPerformance } from '../../services/performance.service.js';
 
+function sanitizeBigIntForJson(value) {
+    if (typeof value === 'bigint') {
+        return value.toString();
+    }
+
+    if (Array.isArray(value)) {
+        return value.map((item) => sanitizeBigIntForJson(item));
+    }
+
+    if (value && typeof value === 'object') {
+        return Object.fromEntries(
+            Object.entries(value).map(([key, entryValue]) => [key, sanitizeBigIntForJson(entryValue)])
+        );
+    }
+
+    return value;
+}
+
+function isPlainObject(value) {
+    return value && typeof value === 'object' && !Array.isArray(value);
+}
+
+function setNestedValue(target, path, value) {
+    const keys = path.split('.');
+    let current = target;
+
+    for (let i = 0; i < keys.length - 1; i++) {
+        const key = keys[i];
+        if (!isPlainObject(current[key])) {
+            current[key] = {};
+        }
+        current = current[key];
+    }
+
+    current[keys[keys.length - 1]] = value;
+}
+
+function mergeJsonField(existingValue, nextValue) {
+    if (!isPlainObject(existingValue) || !isPlainObject(nextValue)) {
+        return nextValue;
+    }
+
+    return {
+        ...existingValue,
+        ...nextValue
+    };
+}
+
 // @desc    Get all households for an organization
 // @route   GET /api/households
 export const getHouseholds = async (req, res) => {
@@ -37,7 +85,7 @@ export const getHouseholds = async (req, res) => {
             take: limitNum
         });
 
-        res.json({ households });
+        res.json({ households: sanitizeBigIntForJson(households) });
     } catch (error) {
         console.error('Get households error:', error);
         res.status(500).json({ error: 'Server error while fetching households' });
@@ -78,7 +126,7 @@ export const getHouseholdById = async (req, res) => {
             return res.status(404).json({ error: 'Household not found' });
         }
 
-        res.json(household);
+        res.json(sanitizeBigIntForJson(household));
     } catch (error) {
         console.error('Get household error:', error);
         res.status(500).json({ error: 'Server error while fetching household' });
@@ -152,7 +200,7 @@ export const createHousehold = async (req, res) => {
             req
         });
 
-        res.status(201).json(household);
+        res.status(201).json(sanitizeBigIntForJson(household));
     } catch (error) {
         console.error('Create household error:', error);
         res.status(500).json({ error: 'Server error while creating household' });
@@ -164,7 +212,7 @@ export const updateHousehold = async (req, res) => {
     try {
         const { id } = req.params;
         const { organizationId } = req.user;
-        const updates = req.body;
+        const updates = req.body || {};
 
         const household = await prisma.household.findFirst({
             where: { id, organizationId, deletedAt: null },
@@ -175,10 +223,56 @@ export const updateHousehold = async (req, res) => {
             return res.status(404).json({ error: 'Household not found' });
         }
 
+        const unlockFields = Array.isArray(updates.unlockFields) ? updates.unlockFields : [];
+        const requestedManualOverrides = Array.isArray(updates.manualOverrides) ? updates.manualOverrides : null;
+
+        const normalizedUpdates = {};
+        for (const [key, value] of Object.entries(updates)) {
+            if (key === 'unlockFields' || key === 'manualOverrides') continue;
+
+            if (key.includes('.')) {
+                setNestedValue(normalizedUpdates, key, value);
+            } else {
+                normalizedUpdates[key] = value;
+            }
+        }
+
+        let manualOverrides = Array.isArray(household.manualOverrides) ? [...household.manualOverrides] : [];
+        if (requestedManualOverrides) {
+            manualOverrides = [...new Set(requestedManualOverrides.filter(Boolean))];
+        }
+        if (unlockFields.length > 0) {
+            manualOverrides = manualOverrides.filter((field) => !unlockFields.includes(field));
+        }
+
         const data = {
-            ...updates,
-            version: (household.version || 0) + 1
+            ...normalizedUpdates,
+            version: (household.version || 0) + 1,
+            manualOverrides
         };
+
+        if (normalizedUpdates.owner !== undefined) {
+            data.owner = mergeJsonField(household.owner || {}, normalizedUpdates.owner || {});
+        }
+
+        if (normalizedUpdates.koboData !== undefined) {
+            data.koboData = mergeJsonField(household.koboData || {}, normalizedUpdates.koboData || {});
+        }
+
+        if (normalizedUpdates.koboSync !== undefined) {
+            data.koboSync = mergeJsonField(household.koboSync || {}, normalizedUpdates.koboSync || {});
+        }
+
+        if (normalizedUpdates.constructionData !== undefined) {
+            data.constructionData = mergeJsonField(
+                household.constructionData || {},
+                normalizedUpdates.constructionData || {}
+            );
+        }
+
+        if (normalizedUpdates.location !== undefined) {
+            data.location = mergeJsonField(household.location || {}, normalizedUpdates.location || {});
+        }
 
         const updated = await prisma.household.update({
             where: { id },
@@ -195,7 +289,7 @@ export const updateHousehold = async (req, res) => {
             req
         });
 
-        res.json(updated);
+        res.json(sanitizeBigIntForJson(updated));
     } catch (error) {
         console.error('Update household error:', error);
         res.status(500).json({ error: 'Server error while updating household' });
@@ -214,7 +308,7 @@ export const getHouseholdByNumero = async (req, res) => {
         });
 
         if (!household) return res.status(404).json({ error: 'Household not found' });
-        res.json({ household });
+        res.json({ household: sanitizeBigIntForJson(household) });
     } catch (error) {
         console.error('Get household by numero error:', error);
         res.status(500).json({ error: 'Server error while fetching household' });

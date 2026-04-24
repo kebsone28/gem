@@ -27,9 +27,15 @@ import type { TeamConfig, RoleKey, ModeOptimisation, Scenario } from '../hooks/u
 import * as safeStorage from '../utils/safeStorage';
 import { db } from '../store/db';
 import apiClient from '../api/client';
+import logger from '../utils/logger';
 
 // Import centralized design system
 import { PageContainer, PageHeader, ContentArea, ActionBar } from '../components';
+import {
+  DASHBOARD_ACCENT_SURFACE,
+  DASHBOARD_PRIMARY_BUTTON,
+  DASHBOARD_SECTION_SURFACE,
+} from '../components/dashboards/DashboardComponents';
 
 const ROLE_LABELS = {
   macon: 'Maçons',
@@ -208,7 +214,7 @@ export default function Simulation() {
       pdf.save(fileName);
       toast.success('Planning exporté en PDF avec succès !', { icon: '📄' });
     } catch (error) {
-      console.error("Erreur lors de l'export PDF:", error);
+      logger.error("[Simulation] Erreur lors de l'export PDF", error);
       toast.error("Erreur lors de l'export du planning", { icon: '❌' });
     }
   }, []);
@@ -362,7 +368,7 @@ export default function Simulation() {
         }
       }
     } catch (err) {
-      console.error('Erreur génération équipe:', err);
+      logger.error('[Simulation] Erreur génération équipe', err);
       toast.error('Erreur lors de la création auto des équipes');
     }
 
@@ -505,22 +511,23 @@ export default function Simulation() {
   );
 
   return (
-    <PageContainer>
+    <PageContainer className="min-h-screen">
       <PageHeader
         title="Moteur d'Optimisation"
         subtitle="Réduisez les coûts de revient et maximisez la marge nette à l'aide de l'IA."
         icon={<Activity size={24} className="text-purple-600" />}
+        accent="simulation"
         actions={
           <ActionBar>
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-purple-100 dark:bg-purple-900/50 border border-purple-600 dark:border-purple-600">
+            <div className="inline-flex items-center gap-1.5 rounded-full border border-purple-500/25 bg-purple-500/10 px-3 py-1 text-purple-200">
               <div className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse" />
-              <span className="text-xs font-black text-purple-900 dark:text-purple-100 uppercase tracking-widest leading-none">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.14em] leading-none">
                 IA Active
               </span>
             </div>
             <button
               onClick={handleOptimize}
-              className="w-full sm:w-auto flex justify-center items-center gap-3 px-6 py-3 bg-gradient-to-r from-emerald-500 to-emerald-700 hover:from-emerald-400 hover:to-emerald-600 text-slate-900 dark:text-white font-black rounded-2xl transition-all shadow-xl shadow-emerald-600/20 active:scale-95 group"
+              className={`${DASHBOARD_PRIMARY_BUTTON} w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 shadow-emerald-600/25 text-white`}
             >
               <Zap className="group-hover:animate-pulse" size={20} />
               LANCER L'IA D'OPTIMISATION
@@ -528,7 +535,7 @@ export default function Simulation() {
             {isOptimized && optimizedConfigs && (
               <button
                 onClick={() => setShowApplyModal(true)}
-                className="w-full sm:w-auto flex justify-center items-center gap-3 px-6 py-3 bg-gradient-to-r from-indigo-500 to-indigo-700 hover:from-indigo-400 hover:to-indigo-600 text-white font-black rounded-2xl transition-all shadow-xl shadow-indigo-600/20 active:scale-95 group"
+                className={`${DASHBOARD_PRIMARY_BUTTON} w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 shadow-indigo-600/25`}
               >
                 <Check size={20} />
                 APPLIQUER CETTE CONFIG
@@ -538,12 +545,12 @@ export default function Simulation() {
         }
       />
 
-      <ContentArea className="p-0">
-        <div className="max-w-7xl mx-auto p-8">
+      <ContentArea padding="none" className="bg-transparent border-none shadow-none">
+        <div className="mx-auto max-w-7xl p-4 sm:p-6 lg:p-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             {/* Controls Sidebar */}
             <aside className="lg:col-span-4 space-y-6">
-              <div className="bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-xl">
+              <div className={`${DASHBOARD_SECTION_SURFACE} ${DASHBOARD_ACCENT_SURFACE.violet} border-slate-200/10 p-6`}>
                 <h3 className="text-sm font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.2em] flex items-center justify-between">
                   Paramètres Actuels
                   {isOptimized && (

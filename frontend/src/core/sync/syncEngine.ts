@@ -10,6 +10,8 @@
  *  - Persistance queue en localStorage (restart-safe)
  */
 
+import { logger } from '../../services/logger';
+
 const QUEUE_BACKUP_KEY = 'sync_engine_queue_backup';
 const DEDUP_WINDOW_MS = 2000; // 2 secondes
 const RETRY_DELAY_MS = 3000; // délai avant retry
@@ -60,7 +62,7 @@ class SyncEngine {
     const ranRecently = Date.now() - lastRan < DEDUP_WINDOW_MS;
 
     if (recentInQueue || ranRecently) {
-      console.log(`[SYNC-ENGINE] Duplicate ignored: ${job.source}`);
+      logger.debug('SYNC', `Duplicate ignored: ${job.source}`);
       return;
     }
 
@@ -68,8 +70,9 @@ class SyncEngine {
     this._sortQueue();
     this._persistQueue();
 
-    console.log(
-      `[SYNC-ENGINE] Enqueued: ${job.source} (priority=${job.priority ?? 'normal'}, queueLen=${this.queue.length})`
+    logger.debug(
+      'SYNC',
+      `Enqueued: ${job.source} (priority=${job.priority ?? 'normal'}, queueLen=${this.queue.length})`
     );
 
     this._process();
@@ -106,15 +109,15 @@ class SyncEngine {
       const job = this.queue.shift()!;
       this._persistQueue();
 
-      console.log(`[SYNC-ENGINE] Executing: ${job.source}`);
+      logger.debug('SYNC', `Executing: ${job.source}`);
       this.lastSourceRunAt.set(job.source, Date.now());
 
       try {
         await job.execute();
         this.lastRunAt = Date.now();
-        console.log(`[SYNC-ENGINE] ✅ Done: ${job.source}`);
+        logger.debug('SYNC', `Done: ${job.source}`);
       } catch (err) {
-        console.error(`[SYNC-ENGINE] ❌ Failed: ${job.source}`, err);
+        logger.error('SYNC', `Failed: ${job.source}`, err);
 
         // Retry léger (1 seule fois, après délai)
         const retryKey = `${job.source}__retry`;
@@ -122,13 +125,13 @@ class SyncEngine {
 
         if (!alreadyRetried) {
           this.lastSourceRunAt.set(retryKey, Date.now());
-          console.log(`[SYNC-ENGINE] 🔁 Scheduling retry for: ${job.source}`);
+          logger.debug('SYNC', `Scheduling retry for: ${job.source}`);
           setTimeout(() => {
             this.lastSourceRunAt.delete(retryKey); // libère le verrou retry
             this.enqueue({ ...job, timestamp: Date.now(), priority: 'low' });
           }, RETRY_DELAY_MS);
         } else {
-          console.warn(`[SYNC-ENGINE] Retry already attempted for ${job.source} — giving up`);
+          logger.warn('SYNC', `Retry already attempted for ${job.source} — giving up`);
           this.lastSourceRunAt.delete(retryKey);
         }
       }
@@ -158,9 +161,7 @@ class SyncEngine {
       // On ne peut pas restaurer `execute` — on vide juste le backup
       // Le démarrage naturel des services re-émettra les jobs si nécessaire
       if (saved.length > 0) {
-        console.log(
-          `[SYNC-ENGINE] Cleared ${saved.length} stale job(s) from previous session backup`
-        );
+        logger.debug('SYNC', `Cleared ${saved.length} stale job(s) from previous session backup`);
         localStorage.removeItem(QUEUE_BACKUP_KEY);
       }
     } catch {

@@ -6,9 +6,15 @@
  * Permet de délimiter des secteurs d'intervention et d'assigner une équipe.
  * Stockage en safeStorage (zones persistantes).
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { PenLine, Trash2, CheckCircle2, XCircle, Users, MapPinned } from 'lucide-react';
+import { useProject } from '../../contexts/ProjectContext';
+import { useTeams } from '../../hooks/useTeams';
+import {
+  isTeamAvailableForAllocation,
+  sortTeamsByCanonicalPriority,
+} from '../../services/planningAllocation';
 
 export interface DrawnZone {
   id: string;
@@ -28,7 +34,6 @@ const ZONE_COLORS = [
   { hex: '#8b5cf6', tw: 'bg-[#8b5cf6]' },
   { hex: '#ec4899', tw: 'bg-[#ec4899]' },
 ];
-const TEAMS = ['Maçons', 'Réseau', 'Électriciens', 'Livreurs', 'Non assigné'];
 // STORAGE handled in terrainUIStore
 
 // Note: zone persistence moved to `terrainUIStore`. The legacy `useDrawnZones` hook
@@ -52,24 +57,50 @@ export function MapDrawZonesPanel({
   onCancelDraw: () => void;
   isDarkMode?: boolean;
 }) {
+  const { project } = useProject();
+  const { teams, fetchTeams } = useTeams(project?.id);
+
   // Zustand selectors
   const isDrawing = useTerrainUIStore((s) => s.isDrawing);
   const pendingPoints = useTerrainUIStore((s) => s.pendingPoints);
   const zones = useTerrainUIStore((s) => s.drawnZones);
   const deleteZone = useTerrainUIStore((s) => s.deleteZone);
 
+  useEffect(() => {
+    void fetchTeams();
+  }, [fetchTeams]);
+
+  const teamOptions = useMemo(() => {
+    const availableTeams = teams.filter(isTeamAvailableForAllocation);
+    const sortedTeams = sortTeamsByCanonicalPriority(
+      availableTeams,
+      new Map<string, number>(),
+      new Map<string, number>()
+    );
+
+    return [
+      ...sortedTeams.map((team) => ({
+        value: team.name,
+        label: `${team.name}${team.tradeKey ? ` • ${team.tradeKey}` : ''}`,
+      })),
+      { value: 'Non assigné', label: 'Non assigné' },
+    ];
+  }, [teams]);
+
   const [name, setName] = useState('Zone ' + (zones.length + 1));
-  const [team, setTeam] = useState(TEAMS[0]);
+  const [team, setTeam] = useState('Non assigné');
   const [colorObj, setColorObj] = useState(ZONE_COLORS[zones.length % ZONE_COLORS.length]);
 
   useEffect(() => {
     const t1 = window.setTimeout(() => setName('Zone ' + (zones.length + 1)), 0);
     const t2 = window.setTimeout(() => setColorObj(ZONE_COLORS[zones.length % ZONE_COLORS.length]), 0);
+    const t3 = window.setTimeout(() => setTeam((current) => current || teamOptions[0]?.value || 'Non assigné'), 0);
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
+      clearTimeout(t3);
     };
-  }, [zones.length]);
+  }, [zones.length, teamOptions]);
 
   const bg = isDarkMode ? 'bg-slate-900/95 border-slate-700' : 'bg-white/95 border-slate-200';
   const text = isDarkMode ? 'text-white' : 'text-slate-900';
@@ -80,7 +111,7 @@ export function MapDrawZonesPanel({
     <motion.div
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
-      className={`absolute top-20 right-4 z-30 w-72 rounded-2xl border shadow-2xl backdrop-blur-sm overflow-hidden ${bg}`}
+      className={`absolute top-[144px] left-3 right-3 md:top-20 md:left-auto md:right-4 z-30 md:w-72 rounded-2xl border shadow-2xl backdrop-blur-sm overflow-hidden ${bg}`}
     >
       {/* Header */}
       <div className="p-4 border-b border-slate-700/30 flex items-center gap-3">
@@ -122,10 +153,15 @@ export function MapDrawZonesPanel({
                 onChange={(e) => setTeam(e.target.value)}
                 title="Équipe assignée"
               >
-                {TEAMS.map((t) => (
-                  <option key={t}>{t}</option>
+                {teamOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
                 ))}
               </select>
+              <p className={`text-[11px] ${sub}`}>
+                Affectation basée sur les équipes projet actives, avec fallback manuel possible.
+              </p>
               <div className="flex gap-2">
                 {ZONE_COLORS.map((c) => (
                   <button

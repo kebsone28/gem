@@ -37,8 +37,8 @@ router.use(authProtect);
 //   COMPTABLE       = Comptable (voit soumises)
 // =============================================
 
-// Cockpit d'approbation - tous ceux qui participent au workflow
-router.get('/approvals/pending', authorize('ADMIN_PROQUELEC', 'DIRECTEUR', 'CHEF_PROJET', 'COMPTABLE'), getPendingApprovals);
+// Cockpit d'approbation - validation finale par Direction ou Administration
+router.get('/approvals/pending', authorize('ADMIN_PROQUELEC', 'DIRECTEUR'), getPendingApprovals);
 
 // CRUD missions
 router.get('/', getMissions); // Filtrage géré dans le contrôleur selon le rôle
@@ -57,10 +57,10 @@ router.put('/:id',   authorize('ADMIN_PROQUELEC', 'DIRECTEUR', 'CHEF_PROJET', 'C
 router.delete('/:id', authorize('ADMIN_PROQUELEC'), deleteMission);
 router.post('/:id/duplicate', authorize('ADMIN_PROQUELEC', 'DIRECTEUR', 'CHEF_PROJET'), duplicateMission);
 
-// Workflow d'approbation
+// Workflow d'approbation - validation finale par Direction ou Administration
 router.get('/:missionId/approval-history', getMissionApprovalHistory);
-router.post('/:missionId/approve', authorize('ADMIN_PROQUELEC', 'DIRECTEUR', 'CHEF_PROJET', 'COMPTABLE'), approveMissionStep);
-router.post('/:missionId/reject',  authorize('ADMIN_PROQUELEC', 'DIRECTEUR', 'CHEF_PROJET', 'COMPTABLE'), rejectMissionStep);
+router.post('/:missionId/approve', authorize('ADMIN_PROQUELEC', 'DIRECTEUR'), approveMissionStep);
+router.post('/:missionId/reject',  authorize('ADMIN_PROQUELEC', 'DIRECTEUR'), rejectMissionStep);
 router.post('/:missionId/override-order-number', authorize('ADMIN_PROQUELEC'), overrideOrderNumber);
 router.post('/:missionId/send-document-email', upload.single('document'), sendMissionDocumentEmail);
 router.post('/:missionId/analyze-ia', authorize('ADMIN_PROQUELEC', 'DIRECTEUR'), analyzeMissionIA);

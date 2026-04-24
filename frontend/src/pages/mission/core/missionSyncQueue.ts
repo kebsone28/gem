@@ -2,6 +2,7 @@
 import { db } from '../../../store/db';
 import api from '../../../api/client';
 import type { MissionAction } from './missionTypes';
+import logger from '../../../utils/logger';
 
 /**
  * SERVICE : Sync Queue (Gestion Hors-ligne)
@@ -96,7 +97,7 @@ export class MissionSyncQueue {
         });
       }
     }
-    console.log(`🔄 [SYNC] Remapping OK : ${tempId} -> ${realId}`);
+    logger.debug(`🔄 [SYNC] Remapping OK : ${tempId} -> ${realId}`);
   }
 }
 

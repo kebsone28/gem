@@ -34,9 +34,9 @@ export const TeamPerformance: React.FC<TeamPerformanceProps> = ({
   }
 
   return (
-    <div className="bg-white dark:bg-slate-900 p-8 rounded-[20px] border border-gray-100 shadow-sm dark:shadow-none space-y-8">
+    <div className="bg-white dark:bg-slate-900 p-4 sm:p-8 rounded-[20px] border border-gray-100 shadow-sm dark:shadow-none space-y-6 sm:space-y-8">
       <div className="flex items-center justify-between border-b border-gray-50 pb-4">
-        <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+        <h3 className="text-[11px] sm:text-xs font-bold text-gray-500 uppercase tracking-[0.08em] sm:tracking-widest flex items-center gap-2">
           <TrendingUp size={14} className="text-blue-600" /> Rendement & Productivité par Équipe
         </h3>
       </div>
@@ -49,19 +49,19 @@ export const TeamPerformance: React.FC<TeamPerformanceProps> = ({
 
           return (
             <div key={idx} className="group relative">
-              <div className="flex justify-between items-end mb-2">
-                <div className="space-y-0.5">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-black text-gray-900 uppercase tracking-tight italic">
+              <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-end mb-2">
+                <div className="space-y-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-black text-gray-900 uppercase tracking-tight italic break-words">
                       {team.worker}
                     </span>
                     {team.trade && (
-                      <span className="text-xs font-black bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full uppercase">
+                      <span className="text-[11px] sm:text-xs font-black bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full uppercase">
                         {team.trade}
                       </span>
                     )}
                   </div>
-                  <div className="flex items-center gap-3 text-xs text-gray-400 font-bold uppercase tracking-wider">
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-[11px] sm:text-xs text-gray-500 font-bold uppercase tracking-[0.06em] sm:tracking-wider">
                     <span className="flex items-center gap-1">
                       <Users size={10} className="text-gray-400" /> {team.leader}
                     </span>
@@ -75,13 +75,13 @@ export const TeamPerformance: React.FC<TeamPerformanceProps> = ({
                     )}
                   </div>
                 </div>
-                <div className="text-right">
+                <div className="text-left sm:text-right">
                   <span
                     className={`text-lg font-black tracking-tighter ${efficiency >= 100 ? 'text-emerald-500' : efficiency >= 70 ? 'text-blue-500' : 'text-rose-500'}`}
                   >
                     {efficiency}%
                   </span>
-                  <p className="text-xs font-bold text-gray-400 uppercase">Efficacité</p>
+                  <p className="text-[11px] sm:text-xs font-bold text-gray-500 uppercase">Efficacité</p>
                 </div>
               </div>
 
@@ -103,19 +103,19 @@ export const TeamPerformance: React.FC<TeamPerformanceProps> = ({
         })}
       </div>
 
-      <div className="pt-4 grid grid-cols-2 gap-4">
+      <div className="pt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="bg-gray-50/50 p-4 rounded-xl border border-gray-100 text-center">
           <p className="text-2xl font-black text-gray-900">
             {fmtNum(teamStats.reduce((acc, t) => acc + t.done, 0))}
           </p>
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Total Réalisé</p>
+          <p className="text-[11px] sm:text-xs font-bold text-gray-500 uppercase tracking-[0.08em] sm:tracking-widest">Total Réalisé</p>
         </div>
         <div className="bg-gray-50/50 p-4 rounded-xl border border-gray-100 text-center">
           <p className="text-2xl font-black text-gray-900">
             {Math.round((teamStats.reduce((acc, t) => acc + t.yield, 0) / teamStats.length) * 10) /
               10}
           </p>
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+          <p className="text-[11px] sm:text-xs font-bold text-gray-500 uppercase tracking-[0.08em] sm:tracking-widest">
             Moyenne Rendement
           </p>
         </div>

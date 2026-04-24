@@ -150,7 +150,7 @@ export function GeoJsonOverlayPanel({ isDarkMode = true }: { isDarkMode?: boolea
     <motion.div
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
-      className={`absolute top-20 right-4 z-30 w-72 rounded-2xl border shadow-2xl backdrop-blur-sm overflow-hidden ${bg}`}
+      className={`absolute top-[144px] left-3 right-3 md:top-20 md:left-auto md:right-4 z-30 md:w-72 rounded-2xl border shadow-2xl backdrop-blur-sm overflow-hidden max-h-[calc(100vh-220px)] md:max-h-[unset] flex flex-col ${bg}`}
     >
       {/* Header */}
       <div className="p-4 border-b border-slate-700/30 flex items-center gap-3">
@@ -166,7 +166,7 @@ export function GeoJsonOverlayPanel({ isDarkMode = true }: { isDarkMode?: boolea
         </div>
       </div>
 
-      <div className="p-4 space-y-3">
+      <div className="p-4 space-y-3 overflow-y-auto flex-1">
         {/* Import fichier */}
         <input
           ref={fileRef}

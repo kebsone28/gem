@@ -19,9 +19,9 @@ export const useHouseholdVisibility = (
     if (!map) return;
 
     const updateVisibility = () => {
-      const zoom = map.getZoom();
+      if (!map.isStyleLoaded()) return;
 
-      const isVillageView = zoom >= 8 && zoom < 15;
+      const zoom = map.getZoom();
 
       // Supercluster circles + counts (Visibles uniquement si zoom < 15 ET zones désactivées)
       const clusterVisible = zoom < 15 && !showZones;
@@ -74,10 +74,14 @@ export const useHouseholdVisibility = (
 
     map.on('zoomend', updateVisibility);
     map.on('zoom', updateVisibility); // smooth transition during pinch/scroll
+    map.on('styledata', updateVisibility);
+    map.on('idle', updateVisibility);
 
     return () => {
       map.off('zoomend', updateVisibility);
       map.off('zoom', updateVisibility);
+      map.off('styledata', updateVisibility);
+      map.off('idle', updateVisibility);
     };
   }, [map, showZones]);
 };
@@ -99,9 +103,19 @@ export const useHeatmapVisibility = (
   useEffect(() => {
     if (!map) return;
 
-    if (map.getLayer('heatmap')) {
-      map.setLayoutProperty('heatmap', 'visibility', showHeatmap ? 'visible' : 'none');
-    }
+    const syncHeatmapVisibility = () => {
+      if (!map.isStyleLoaded()) return;
+      if (map.getLayer('heatmap')) {
+        map.setLayoutProperty('heatmap', 'visibility', showHeatmap ? 'visible' : 'none');
+      }
+    };
+
+    syncHeatmapVisibility();
+    map.on('styledata', syncHeatmapVisibility);
+
+    return () => {
+      map.off('styledata', syncHeatmapVisibility);
+    };
   }, [map, showHeatmap]);
 };
 
@@ -140,14 +154,27 @@ export const useHouseholdFilters = (
       return filters.length > 1 ? filters : null;
     };
 
-    const filter = buildFilter();
+    const applyFilter = () => {
+      if (!map.isStyleLoaded()) return;
 
-    // Apply to affected layers
-    ['heatmap', 'households-local-layer', 'households-glow-layer'].forEach((layerId) => {
-      if (map.getLayer(layerId)) {
-        map.setFilter(layerId, filter as any);
-      }
-    });
+      const filter = buildFilter();
+
+      ['heatmap', 'households-local-layer', 'households-glow-layer', 'households-photo-badge'].forEach(
+        (layerId) => {
+          if (map.getLayer(layerId)) {
+            map.setFilter(layerId, filter as any);
+          }
+        }
+      );
+    };
+
+    applyFilter();
+    map.on('styledata', applyFilter);
+    map.on('idle', applyFilter);
+
+    return () => {
+      map.off('styledata', applyFilter);
+      map.off('idle', applyFilter);
+    };
   }, [map, selectedPhases, selectedTeam]);
 };
-

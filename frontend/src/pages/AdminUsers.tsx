@@ -36,6 +36,7 @@ import {
 import { userService } from '../services/userService';
 import { organizationService } from '../services/organizationService';
 import { auditService } from '../services/auditService';
+import logger from '../utils/logger';
 import {
   Settings as SettingsIcon,
   Layout,
@@ -220,7 +221,7 @@ export default function AdminUsers() {
       const data = await organizationService.getConfig();
       if (data?.config) setOrgConfig(data.config);
     } catch (err) {
-      console.error('Failed to load org config');
+      logger.warn('[AdminUsers] Failed to load org config', err);
     }
   };
 

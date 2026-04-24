@@ -100,24 +100,24 @@ export default function Settings() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-950 py-8 transition-all duration-500">
+    <div className="min-h-screen bg-slate-950 py-4 sm:py-8 transition-all duration-500">
       <div>{/* PageHeader removed - not used */}</div>
-      <div className="space-y-10 p-8 bg-slate-950 border-white/5">
-        <div className="max-w-7xl mx-auto space-y-10">
+      <div className="space-y-6 sm:space-y-10 p-4 sm:p-8 bg-slate-950 border-white/5">
+        <div className="max-w-7xl mx-auto space-y-6 sm:space-y-10">
           {/* ── HEADER ── */}
-          <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <header className="sticky top-2 z-20 -mx-1 rounded-[1.6rem] border border-white/10 bg-slate-950/92 px-4 py-4 shadow-[0_18px_45px_rgba(2,6,23,0.45)] backdrop-blur-xl sm:mx-0 sm:px-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4 sm:gap-6">
             <div className="flex items-center gap-5">
               <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center shadow-xl shadow-blue-500/20 shrink-0">
                 <SettingsIcon size={24} className="text-white" />
               </div>
               <div>
                 <div className="flex items-center gap-3 mb-1">
-                  <h1 className="text-2xl font-black tracking-tight uppercase italic leading-none text-white">
-                    Configuration <span className="text-blue-500">— {project?.name}</span>
+                  <h1 className="text-lg sm:text-2xl font-black tracking-tight leading-none text-white">
+                    Configuration <span className="text-blue-500">| {project?.name}</span>
                   </h1>
-                  <StatusBadge status="info" label="Projet Actif" />
+                  <StatusBadge status="info" label="Projet actif" />
                 </div>
-                <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] leading-none">
+                <p className="text-[11px] sm:text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-[0.08em] sm:tracking-[0.2em] leading-none">
                   Gestion des paramètres et déploiement du projet
                 </p>
               </div>
@@ -212,13 +212,13 @@ export default function Settings() {
                     alert('Erreur export configuration.');
                   }
                 }}
-                className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl transition-all shadow-lg active:scale-95"
+                className="w-full sm:w-auto min-h-[48px] flex items-center justify-center gap-2 px-5 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[10px] sm:text-xs rounded-xl transition-all shadow-lg active:scale-95 uppercase tracking-[0.08em]"
               >
                 <Download size={15} />
                 EXPORTER CONFIG
               </button>
 
-              <label className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-3 bg-slate-700 hover:bg-slate-600 text-white font-black text-xs rounded-xl transition-all cursor-pointer active:scale-95">
+              <label className="w-full sm:w-auto min-h-[48px] flex items-center justify-center gap-2 px-5 py-3 bg-slate-700 hover:bg-slate-600 text-white font-black text-[10px] sm:text-xs rounded-xl transition-all cursor-pointer active:scale-95 uppercase tracking-[0.08em]">
                 <Upload size={15} />
                 IMPORTER CONFIG
                 <input
@@ -274,7 +274,7 @@ export default function Settings() {
           {/* ── TABS NAVIGATION ── */}
 
           <div
-            className="flex gap-2 p-1.5 bg-white/5 rounded-2xl border border-white/5 overflow-x-auto no-scrollbar shadow-sm"
+            className="sticky top-[7.25rem] sm:top-[6.5rem] z-10 flex gap-2 p-1.5 bg-slate-950/92 rounded-2xl border border-white/5 overflow-x-auto no-scrollbar shadow-sm backdrop-blur-xl"
             role="tablist"
           >
             {tabs.map((tab) => (
@@ -285,7 +285,7 @@ export default function Settings() {
                 aria-controls={`panel-${tab.id}`}
                 id={`tab-${tab.id}`}
                 onClick={() => setActiveTab(tab.id as TabType)}
-                className={`flex items-center gap-2.5 px-6 py-3 rounded-xl transition-all duration-300 whitespace-nowrap group ${
+                className={`flex items-center gap-2.5 px-4 sm:px-6 py-3 rounded-xl transition-all duration-300 whitespace-nowrap group ${
                   activeTab === tab.id
                     ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/10'
                     : 'text-slate-500 hover:text-white hover:bg-white/5'
@@ -295,7 +295,7 @@ export default function Settings() {
                   size={16}
                   className={`${activeTab === tab.id ? 'text-white' : 'text-gray-400 group-hover:text-blue-500'} transition-colors`}
                 />
-                <span className="font-black text-xs uppercase tracking-widest">{tab.label}</span>
+                <span className="font-black text-[10px] sm:text-xs uppercase tracking-[0.08em] sm:tracking-widest">{tab.label}</span>
               </button>
             ))}
           </div>
@@ -312,7 +312,7 @@ export default function Settings() {
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 1.02 }}
                 transition={{ duration: 0.3, ease: 'circOut' }}
-                className="bg-white/5 rounded-[2.5rem] border border-white/5 p-8 md:p-12 relative overflow-hidden"
+                className="bg-white/5 rounded-[1.6rem] sm:rounded-[2.5rem] border border-white/5 p-4 sm:p-8 md:p-12 relative overflow-hidden"
               >
                 {/* Decorative background element */}
                 <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/5 blur-[100px] pointer-events-none rounded-full" />
@@ -346,19 +346,19 @@ export default function Settings() {
                     />
                   )}
                   {activeTab === 'system' && (
-                    <div className="space-y-8">
+                    <div className="space-y-6 sm:space-y-8">
                       <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-3">
+                        <h2 className="text-lg sm:text-xl font-black text-white uppercase tracking-tight flex items-center gap-3">
                           <Terminal className="text-blue-500" /> Maintenance Système
                         </h2>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="bg-slate-900/50 p-8 rounded-3xl border border-white/5 space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                        <div className="bg-slate-900/50 p-4 sm:p-8 rounded-[1.6rem] sm:rounded-3xl border border-white/5 space-y-4">
                           <div className="w-12 h-12 bg-blue-500/10 rounded-2xl flex items-center justify-center text-blue-500">
                             <RefreshCw size={24} />
                           </div>
-                          <h3 className="text-white font-black uppercase text-sm tracking-widest">
+                          <h3 className="text-white font-black uppercase text-[11px] sm:text-sm tracking-[0.08em] sm:tracking-widest">
                             Mise à jour du serveur
                           </h3>
                           <p className="text-xs text-slate-400 font-bold leading-relaxed">
@@ -394,17 +394,17 @@ export default function Settings() {
                                 }
                               }
                             }}
-                            className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white font-black uppercase text-xs tracking-[0.2em] rounded-2xl transition-all shadow-lg shadow-blue-500/10 active:scale-95"
+                            className="w-full min-h-[48px] py-4 bg-blue-600 hover:bg-blue-500 text-white font-black uppercase text-[10px] sm:text-xs tracking-[0.08em] sm:tracking-[0.2em] rounded-2xl transition-all shadow-lg shadow-blue-500/10 active:scale-95"
                           >
                             Déployer maintenant
                           </button>
                         </div>
 
-                        <div className="bg-slate-900/50 p-8 rounded-3xl border border-white/5 space-y-4">
+                        <div className="bg-slate-900/50 p-4 sm:p-8 rounded-[1.6rem] sm:rounded-3xl border border-white/5 space-y-4">
                           <div className="w-12 h-12 bg-amber-500/10 rounded-2xl flex items-center justify-center text-amber-500">
                             <Database size={24} />
                           </div>
-                          <h3 className="text-white font-black uppercase text-sm tracking-widest">
+                          <h3 className="text-white font-black uppercase text-[11px] sm:text-sm tracking-[0.08em] sm:tracking-widest">
                             Nettoyage Base de Données
                           </h3>
                           <p className="text-xs text-slate-400 font-bold leading-relaxed">
@@ -433,7 +433,7 @@ export default function Settings() {
                                 }
                               }
                             }}
-                            className="w-full py-4 bg-amber-600 hover:bg-amber-500 text-white font-black uppercase text-xs tracking-[0.2em] rounded-2xl transition-all shadow-lg shadow-amber-500/10 active:scale-95"
+                            className="w-full min-h-[48px] py-4 bg-amber-600 hover:bg-amber-500 text-white font-black uppercase text-[10px] sm:text-xs tracking-[0.08em] sm:tracking-[0.2em] rounded-2xl transition-all shadow-lg shadow-amber-500/10 active:scale-95"
                           >
                             OPTIMISER LA BASE
                           </button>
@@ -635,18 +635,18 @@ function TeamsSection({ project }: { project: any }) {
     return <div className="p-8 text-slate-400">Chargement des équipes...</div>;
 
   return (
-    <div className="space-y-12">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+    <div className="space-y-8 sm:space-y-12">
+      <div className="flex flex-col gap-4 sm:gap-6">
         <div>
-          <h2 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-3 uppercase tracking-tight mb-1">
+          <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white flex items-center gap-3 uppercase tracking-tight mb-1">
             <Users className="text-blue-500" />
             Gestion des Équipes
           </h2>
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+          <p className="text-[11px] sm:text-xs font-bold text-gray-400 uppercase tracking-[0.08em] sm:tracking-widest">
             Configuration des effectifs et sous-équipes terrain
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-100 dark:bg-blue-900/50 rounded-xl border border-blue-600 dark:border-blue-600">
             <Users size={12} className="text-blue-700 dark:text-blue-400" />
             <span className="text-xs font-black text-blue-900 dark:text-blue-100 uppercase tracking-tight">
@@ -660,20 +660,20 @@ function TeamsSection({ project }: { project: any }) {
             </span>
           </div>
         </div>
-        <div className="flex flex-wrap gap-3 items-center">
+        <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-stretch sm:items-center">
           <div className="relative">
             <input
               type="text"
               placeholder="Rechercher..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 pr-4 py-2.5 bg-white/5 border border-white/5 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500/20 w-full max-w-xs transition-all text-white"
+              className="pl-9 pr-4 py-3 min-h-[48px] bg-white/5 border border-white/5 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500/20 w-full sm:min-w-[240px] transition-all text-white"
             />
             <Users size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           </div>
           <button
             onClick={handleAddTeam}
-            className="px-6 py-3 bg-blue-600 dark:bg-blue-600 text-white text-xs font-black uppercase tracking-widest rounded-xl transition-all shadow-lg shadow-blue-500/10 hover:brightness-110 active:scale-95 ml-2"
+            className="px-6 py-3 min-h-[48px] bg-blue-600 dark:bg-blue-600 text-white text-[10px] sm:text-xs font-black uppercase tracking-[0.08em] sm:tracking-widest rounded-xl transition-all shadow-lg shadow-blue-500/10 hover:brightness-110 active:scale-95"
           >
             + Nouveau Groupement
           </button>
@@ -681,7 +681,7 @@ function TeamsSection({ project }: { project: any }) {
             <button
               id="btn-reset-all-teams"
               onClick={handleResetAllTeams}
-              className={`px-5 py-3 text-xs font-black uppercase tracking-widest rounded-xl transition-all active:scale-95 border ${
+              className={`px-5 py-3 min-h-[48px] text-[10px] sm:text-xs font-black uppercase tracking-[0.08em] sm:tracking-widest rounded-xl transition-all active:scale-95 border ${
                 confirmResetAll
                   ? 'bg-red-600 border-red-500 text-white animate-pulse shadow-lg shadow-red-600/30'
                   : 'bg-red-900/20 border-red-700/40 text-red-400 hover:bg-red-700/30'
@@ -694,17 +694,17 @@ function TeamsSection({ project }: { project: any }) {
       </div>
 
       {/* ── CADENCES DE PRODUCTION ── */}
-      <div className="bg-white/5 p-8 rounded-[2rem] border border-white/5 mb-8">
+      <div className="bg-white/5 p-4 sm:p-8 rounded-[1.6rem] sm:rounded-[2rem] border border-white/5 mb-8">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-3">
             <Zap size={18} className="text-amber-500" />
-            <h3 className="text-sm font-black text-white uppercase tracking-widest">
+            <h3 className="text-[11px] sm:text-sm font-black text-white uppercase tracking-[0.08em] sm:tracking-widest">
               Cadence Standard (Foyers / Jour)
             </h3>
           </div>
           <button
             onClick={handleAddProductionRate}
-            className="px-4 py-2 bg-amber-100 hover:bg-amber-200 dark:bg-amber-900/50 dark:hover:bg-amber-900/70 text-amber-900 dark:text-amber-100 text-xs font-black uppercase tracking-widest rounded-xl transition-all border border-amber-600 dark:border-amber-600"
+            className="px-4 py-3 min-h-[48px] bg-amber-100 hover:bg-amber-200 dark:bg-amber-900/50 dark:hover:bg-amber-900/70 text-amber-900 dark:text-amber-100 text-[10px] sm:text-xs font-black uppercase tracking-[0.08em] sm:tracking-widest rounded-xl transition-all border border-amber-600 dark:border-amber-600"
           >
             + Ajouter un métier
           </button>
@@ -757,13 +757,13 @@ function TeamsSection({ project }: { project: any }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6">
         {filteredTeams.map((team: any) => {
           const isCollapsed = collapsedTeams[team.id];
           return (
             <div
               key={team.id}
-              className="bg-white/5 p-5 rounded-[1.5rem] border border-white/10 group hover:border-blue-500/50 transition-all relative overflow-hidden self-start"
+              className="bg-white/5 p-4 sm:p-5 rounded-[1.5rem] border border-white/10 group hover:border-blue-500/50 transition-all relative overflow-hidden self-start"
             >
               <div className="absolute top-0 left-0 w-1 y-full bg-blue-500" />
               <div className="absolute top-4 right-4 flex items-center gap-2">
@@ -789,7 +789,7 @@ function TeamsSection({ project }: { project: any }) {
                     className="w-full bg-slate-950 border border-white/10 rounded-xl px-3 py-1.5 text-white font-bold text-sm outline-none"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-1">
                       Métier
@@ -835,7 +835,7 @@ function TeamsSection({ project }: { project: any }) {
                     </label>
                     <button
                       onClick={() => handleAddSubTeam(team.id, team.role)}
-                      className="text-[10px] bg-blue-600 text-white px-2 py-1 rounded-lg font-black uppercase tracking-widest"
+                      className="text-[10px] bg-blue-600 text-white px-3 py-2 rounded-lg font-black uppercase tracking-[0.08em] sm:tracking-widest"
                     >
                       + Ajouter
                     </button>
@@ -844,7 +844,7 @@ function TeamsSection({ project }: { project: any }) {
                     {(team.children || []).map((sub: any) => (
                       <div
                         key={sub.id}
-                        className="flex items-center gap-2 bg-slate-950/50 p-2 rounded-xl border border-white/5"
+                        className="flex items-center gap-2 bg-slate-950/50 p-3 rounded-xl border border-white/5"
                       >
                         <input
                           value={sub.name}
@@ -950,14 +950,14 @@ function CostsSection({ project, onUpdate }: { project: any; onUpdate: any }) {
   };
 
   return (
-    <div className="space-y-12">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+    <div className="space-y-8 sm:space-y-12">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6">
         <div>
-          <h2 className="text-xl font-black text-white flex items-center gap-3 uppercase tracking-tight mb-1">
+          <h2 className="text-lg sm:text-xl font-black text-white flex items-center gap-3 uppercase tracking-tight mb-1">
             <DollarSign className="text-emerald-500" />
             Grille Tarifaire
           </h2>
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+          <p className="text-[11px] sm:text-xs font-bold text-gray-400 uppercase tracking-[0.08em] sm:tracking-widest">
             Barèmes de rémunération par région
           </p>
         </div>
@@ -965,7 +965,7 @@ function CostsSection({ project, onUpdate }: { project: any; onUpdate: any }) {
           value={selectedRegionId}
           title="Choisir la région pour les tarifs"
           onChange={(e) => setSelectedRegionId(e.target.value)}
-          className="bg-slate-950 border border-white/10 rounded-xl px-4 py-2 text-xs font-black text-white outline-none"
+          className="w-full md:w-auto min-h-[48px] bg-slate-950 border border-white/10 rounded-xl px-4 py-3 text-xs font-black text-white outline-none"
         >
           <option value="">Région...</option>
           {regions.map((reg) => (
@@ -976,15 +976,15 @@ function CostsSection({ project, onUpdate }: { project: any; onUpdate: any }) {
         </select>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
         {teams
           .filter((t: any) => !t.parentTeamId)
           .map((team: any) => {
             const regionRates = staffRates[selectedRegionId] || {};
             const rate = regionRates[team.id] || { amount: 0, mode: 'daily' };
             return (
-              <div key={team.id} className="bg-white/5 p-6 rounded-[2rem] border border-white/5">
-                <h3 className="text-white font-black uppercase text-sm mb-4">{team.name}</h3>
+              <div key={team.id} className="bg-white/5 p-4 sm:p-6 rounded-[1.6rem] sm:rounded-[2rem] border border-white/5">
+                <h3 className="text-white font-black uppercase text-[11px] sm:text-sm mb-4">{team.name}</h3>
                 <div className="space-y-4">
                   <div>
                     <label className="text-[10px] font-black text-gray-500 uppercase block mb-1">
@@ -1023,19 +1023,19 @@ function CostsSection({ project, onUpdate }: { project: any; onUpdate: any }) {
           })}
       </div>
 
-      <div className="space-y-8 pt-8 border-t border-white/5">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-black text-white uppercase tracking-tight flex items-center gap-3">
+      <div className="space-y-6 sm:space-y-8 pt-8 border-t border-white/5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <h3 className="text-base sm:text-lg font-black text-white uppercase tracking-tight flex items-center gap-3">
             <Wrench className="text-blue-500" /> Catalogue Matériel
           </h3>
           <button
             onClick={handleAddCatalogItem}
-            className="px-4 py-2 bg-blue-600 text-white text-xs font-black rounded-xl"
+            className="px-4 py-3 min-h-[48px] bg-blue-600 text-white text-[10px] sm:text-xs font-black rounded-xl uppercase tracking-[0.08em]"
           >
             + Ajouter
           </button>
         </div>
-        <div className="bg-white/5 rounded-2xl border border-white/5 overflow-x-auto">
+        <div className="hidden md:block bg-white/5 rounded-2xl border border-white/5 overflow-x-auto">
           <table className="w-full text-left text-xs uppercase font-black">
             <thead className="bg-white/5 text-slate-500 border-b border-white/5">
               <tr>
@@ -1101,6 +1101,60 @@ function CostsSection({ project, onUpdate }: { project: any; onUpdate: any }) {
               ))}
             </tbody>
           </table>
+        </div>
+        <div className="md:hidden space-y-3">
+          {materialCatalog.map((item) => (
+            <div key={item.id} className="bg-white/5 rounded-2xl border border-white/5 p-4 space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <input
+                  value={item.name}
+                  title="Nom du matériel"
+                  placeholder="Article"
+                  onChange={(e) => handleUpdateCatalogItem(item.id, 'name', e.target.value)}
+                  className="bg-transparent text-white outline-none w-full font-bold text-sm"
+                />
+                <button
+                  onClick={() => handleDeleteCatalogItem(item.id)}
+                  title="Supprimer du catalogue"
+                  className="p-2"
+                >
+                  <Trash2 size={14} className="text-rose-500" />
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.08em] block mb-1">
+                    Prix achat
+                  </label>
+                  <input
+                    type="number"
+                    value={item.purchasePrice}
+                    title="Prix d'achat"
+                    placeholder="0"
+                    onChange={(e) =>
+                      handleUpdateCatalogItem(item.id, 'purchasePrice', parseInt(e.target.value) || 0)
+                    }
+                    className="w-full bg-slate-950 border border-white/10 rounded-xl px-3 py-3 text-white outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.08em] block mb-1">
+                    Prix loc
+                  </label>
+                  <input
+                    type="number"
+                    value={item.rentalPrice}
+                    title="Prix de location"
+                    placeholder="0"
+                    onChange={(e) =>
+                      handleUpdateCatalogItem(item.id, 'rentalPrice', parseInt(e.target.value) || 0)
+                    }
+                    className="w-full bg-slate-950 border border-white/10 rounded-xl px-3 py-3 text-white outline-none"
+                  />
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>
@@ -1184,15 +1238,15 @@ function RegionsSection({
     : { teamAllocations: [] };
 
   return (
-    <div className="space-y-12">
+    <div className="space-y-8 sm:space-y-12">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-black text-white flex items-center gap-3 uppercase tracking-tight">
+        <h2 className="text-lg sm:text-xl font-black text-white flex items-center gap-3 uppercase tracking-tight">
           <MapPin className="text-rose-500" />
           Régions & Déploiement
           <StatusBadge status="success" label="AUTO-DETECT" />
         </h2>
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-8">
         {/* List of auto-detected regions */}
         <div className="space-y-3">
           <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest pl-2 mb-4">
@@ -1202,7 +1256,7 @@ function RegionsSection({
             <button
               key={region}
               onClick={() => setSelectedRegion(region)}
-              className={`w-full text-left p-5 rounded-2xl border transition-all flex items-center justify-between group ${selectedRegion === region ? 'bg-rose-600 border-rose-600 text-white shadow-xl shadow-rose-600/20' : 'bg-white/5 border-white/10 text-slate-400 hover:border-rose-500/30'}`}
+              className={`w-full text-left p-4 sm:p-5 rounded-2xl border transition-all flex items-center justify-between group ${selectedRegion === region ? 'bg-rose-600 border-rose-600 text-white shadow-xl shadow-rose-600/20' : 'bg-white/5 border-white/10 text-slate-400 hover:border-rose-500/30'}`}
             >
               <div>
                 <span className="font-black uppercase text-sm block mb-1">{region}</span>
@@ -1228,13 +1282,13 @@ function RegionsSection({
         {/* Region Details & Team Assignments */}
         <div className="lg:col-span-2">
           {selectedRegion ? (
-            <div className="space-y-8">
-              <div className="bg-white/5 p-8 rounded-[2.5rem] border border-white/5 space-y-8">
-                <div className="flex items-center justify-between border-b border-white/5 pb-6">
+              <div className="space-y-4 sm:space-y-8">
+              <div className="bg-white/5 p-4 sm:p-8 rounded-[1.6rem] sm:rounded-[2.5rem] border border-white/5 space-y-6 sm:space-y-8">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/5 pb-4 sm:pb-6">
                   <h3 className="text-white font-black uppercase text-sm flex items-center gap-3">
                     Grappes associées à {selectedRegion}
                   </h3>
-                  <span className="px-3 py-1 bg-white/5 rounded-full text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                  <span className="px-3 py-1 bg-white/5 rounded-full text-[10px] font-bold text-slate-400 uppercase tracking-[0.08em] sm:tracking-widest">
                     Mise à jour auto via Village SIG
                   </span>
                 </div>
@@ -1267,14 +1321,14 @@ function RegionsSection({
                 </div>
               </div>
 
-              <div className="bg-slate-900/40 p-8 rounded-[2.5rem] border border-white/5 space-y-8">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-black text-rose-500 uppercase tracking-widest italic">
+              <div className="bg-slate-900/40 p-4 sm:p-8 rounded-[1.6rem] sm:rounded-[2.5rem] border border-white/5 space-y-6 sm:space-y-8">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <h4 className="text-[11px] sm:text-xs font-black text-rose-500 uppercase tracking-[0.08em] sm:tracking-widest">
                     Unités Terrain Allouées à la Région
                   </h4>
                   <button
                     onClick={() => handleAddAllocation(selectedRegion)}
-                    className="px-4 py-2 bg-rose-600/10 text-rose-500 border border-rose-500/20 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-rose-600 hover:text-white transition-all"
+                    className="px-4 py-3 min-h-[48px] bg-rose-600/10 text-rose-500 border border-rose-500/20 rounded-xl text-[10px] font-black uppercase tracking-[0.08em] sm:tracking-[0.2em] hover:bg-rose-600 hover:text-white transition-all"
                   >
                     + Allouer une Unité
                   </button>
@@ -1284,9 +1338,9 @@ function RegionsSection({
                   {(currentRegionConfig.teamAllocations || []).map((alloc: any) => (
                     <div
                       key={alloc.id}
-                      className="bg-slate-950 p-6 rounded-2xl border border-white/10 flex flex-wrap items-center gap-6 shadow-xl"
+                      className="bg-slate-950 p-4 sm:p-6 rounded-2xl border border-white/10 flex flex-col sm:flex-row sm:flex-wrap sm:items-end gap-4 sm:gap-6 shadow-xl"
                     >
-                      <div className="flex-1 min-w-[200px]">
+                      <div className="flex-1 min-w-0 sm:min-w-[200px]">
                         <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">
                           Unité de Travail
                         </label>
@@ -1315,7 +1369,7 @@ function RegionsSection({
                             ))}
                         </select>
                       </div>
-                      <div className="w-40">
+                      <div className="w-full sm:w-40">
                         <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2">
                           Priorité (1-10)
                         </label>
@@ -1337,7 +1391,7 @@ function RegionsSection({
                       <button
                         onClick={() => handleDeleteAllocation(selectedRegion, alloc.id)}
                         title="Supprimer l'affectation"
-                        className="mt-6 p-2 text-slate-600 hover:text-rose-500 transition-colors"
+                        className="self-end sm:mt-6 p-2 text-slate-600 hover:text-rose-500 transition-colors"
                       >
                         <Trash2 size={16} />
                       </button>
@@ -1354,7 +1408,7 @@ function RegionsSection({
               </div>
             </div>
           ) : (
-            <div className="h-full flex items-center justify-center p-20 bg-white/5 rounded-[2.5rem] border border-dashed border-white/10">
+            <div className="h-full flex items-center justify-center p-8 sm:p-20 bg-white/5 rounded-[1.6rem] sm:rounded-[2.5rem] border border-dashed border-white/10">
               <div className="text-center">
                 <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-6">
                   <MapPin size={24} className="text-slate-600" />
@@ -1434,22 +1488,22 @@ function LogisticsSection({ project, onUpdate }: { project: any; onUpdate: any }
   const subTeams = teams.filter((t: any) => t.parentTeamId);
 
   return (
-    <div className="space-y-12">
-      <h2 className="text-xl font-black text-white flex items-center gap-3 uppercase tracking-tight">
+    <div className="space-y-8 sm:space-y-12">
+      <h2 className="text-lg sm:text-xl font-black text-white flex items-center gap-3 uppercase tracking-tight">
         <Wrench className="text-blue-500" /> Dotations Matériel
       </h2>
-      <div className="grid grid-cols-1 gap-8">
+      <div className="grid grid-cols-1 gap-4 sm:gap-8">
         {subTeams.map((st: any) => (
           <div
             key={st.id}
-            className="bg-white/5 p-8 rounded-[2.5rem] border border-white/5 space-y-6"
+            className="bg-white/5 p-4 sm:p-8 rounded-[1.6rem] sm:rounded-[2.5rem] border border-white/5 space-y-6"
           >
-            <div className="flex justify-between items-center">
-              <h3 className="text-white font-black uppercase text-sm">{st.name}</h3>
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+              <h3 className="text-white font-black uppercase text-[11px] sm:text-sm">{st.name}</h3>
               <select
                 onChange={(e) => handleAddAllocation(st.id, e.target.value)}
                 title="Ajouter un article"
-                className="bg-slate-950 text-white text-xs p-2 rounded-xl border border-white/10 outline-none"
+                className="w-full sm:w-auto min-h-[48px] bg-slate-950 text-white text-xs p-3 rounded-xl border border-white/10 outline-none"
               >
                 <option value="">+ Ajouter Matériel...</option>
                 {materialCatalog.map((item) => (
@@ -1459,7 +1513,7 @@ function LogisticsSection({ project, onUpdate }: { project: any; onUpdate: any }
                 ))}
               </select>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
               {(allocations[st.id] || []).map((alloc: any) => {
                 const item = materialCatalog.find((c) => c.id === alloc.itemId);
                 return (

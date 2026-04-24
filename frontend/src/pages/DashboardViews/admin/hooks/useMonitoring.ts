@@ -15,7 +15,7 @@ export function useMonitoring(canViewReports: boolean) {
       }
     } catch (err: any) {
       if (err.response?.status !== 401) {
-        logger.error('Failed to fetch monitoring data', err);
+        logger.warn('Monitoring feed unavailable', err);
       }
     }
   }, [canViewReports]);

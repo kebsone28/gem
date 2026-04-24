@@ -26,8 +26,34 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 // ── Pure service initialisation — independent of React lifecycle ───────────
 import { startBackgroundSync } from './services/sync/backgroundSyncService';
 import { initOfflineListener } from './services/offline/offlineService';
+import logger from './utils/logger';
+
+async function cleanupDevServiceWorkers() {
+  if (!import.meta.env.DEV || typeof window === 'undefined' || !('serviceWorker' in navigator)) {
+    return;
+  }
+
+  try {
+    const registrations = await navigator.serviceWorker.getRegistrations();
+    await Promise.all(registrations.map((registration) => registration.unregister()));
+
+    if ('caches' in window) {
+      const cacheKeys = await caches.keys();
+      await Promise.all(
+        cacheKeys
+          .filter((key) => key.includes('workbox') || key.includes('api-cache') || key.includes('households-mvt-cache'))
+          .map((key) => caches.delete(key))
+      );
+    }
+
+    logger.debug('💎 [PWA] Service workers de développement nettoyés');
+  } catch (error) {
+    logger.warn('⚠️ [PWA] Impossible de nettoyer les service workers en dev', error);
+  }
+}
 
 // Start services before React mounts — they run for the full app lifetime
+void cleanupDevServiceWorkers();
 initOfflineListener();
 startBackgroundSync();
 

@@ -8,6 +8,7 @@ import {
   importMissionFromJSON,
 } from '../../services/missionTemplates';
 import type { MissionOrderData, MissionMember } from '../../pages/mission/core/missionTypes';
+import logger from '../../utils/logger';
 
 interface MissionQuickActionProps {
   currentData: Partial<MissionOrderData>;
@@ -37,7 +38,7 @@ export const MissionQuickAction: React.FC<MissionQuickActionProps> = ({
       onLoadTemplate(formData, members);
       setShowTemplates(false);
     } catch (err) {
-      console.error('Template error:', err);
+      logger.error('[MissionQuickAction] Template error', err);
     }
   };
 

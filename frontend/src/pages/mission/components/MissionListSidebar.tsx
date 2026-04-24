@@ -14,17 +14,32 @@ interface MissionListSidebarProps {
 type StatusFilter = 'all' | 'draft' | 'pending' | 'certified';
 
 const STATUS_CONFIG: Record<string, { label: string; dot: string; badge: string }> = {
-  certified: { label: 'SIGNÉE', dot: 'bg-emerald-500', badge: 'bg-emerald-500/15 text-emerald-500' },
-  pending: { label: 'ATTENTE', dot: 'bg-amber-500', badge: 'bg-amber-500/15 text-amber-500' },
+  certified: { label: 'OFFICIELLE', dot: 'bg-emerald-500', badge: 'bg-emerald-500/15 text-emerald-500' },
+  pending: { label: 'SOUMISE', dot: 'bg-amber-500', badge: 'bg-amber-500/15 text-amber-500' },
   draft: { label: 'BROUILLON', dot: 'bg-slate-400', badge: 'bg-slate-500/15 text-slate-400' },
 };
 
+const hasOfficialOrderNumber = (mission: any) =>
+  (mission.orderNumber && !mission.orderNumber.startsWith('TEMP-')) ||
+  (mission.data?.orderNumber && !mission.data?.orderNumber.startsWith('TEMP-'));
+
+const getMissionPrimaryLabel = (mission: any) => {
+  if (hasOfficialOrderNumber(mission)) {
+    return mission.orderNumber || mission.data?.orderNumber;
+  }
+  return mission.purpose || mission.title || 'Brouillon';
+};
+
+const getMissionSecondaryLabel = (mission: any) => {
+  return mission.region || mission.purpose || mission.title || 'Destination à préciser';
+};
+
 const getMissionStatus = (m: any, isCurrentSelectedCertified?: boolean): keyof typeof STATUS_CONFIG => {
-  const hasOfficialNumber = (m.orderNumber && !m.orderNumber.startsWith('TEMP-')) || (m.data?.orderNumber && !m.data?.orderNumber.startsWith('TEMP-'));
+  const hasOfficialNumber = hasOfficialOrderNumber(m);
   const isCertified = m.isCertified || m.data?.isCertified || hasOfficialNumber || m.status === 'approuvee' || m.status === 'certified' || isCurrentSelectedCertified;
   
   if (isCertified) return 'certified';
-  if (m.isSubmitted || m.data?.isSubmitted || m.status === 'soumise') return 'pending';
+  if (m.isSubmitted || m.data?.isSubmitted || m.status === 'soumise' || m.status === 'en_attente_validation') return 'pending';
   return 'draft';
 };
 
@@ -66,8 +81,10 @@ export const MissionListSidebar: React.FC<MissionListSidebarProps> = ({
           const q = search.toLowerCase();
           return (
             (m.orderNumber || '').toLowerCase().includes(q) ||
+            (m.data?.orderNumber || '').toLowerCase().includes(q) ||
             (m.region || '').toLowerCase().includes(q) ||
-            (m.purpose || '').toLowerCase().includes(q)
+            (m.purpose || '').toLowerCase().includes(q) ||
+            (m.title || '').toLowerCase().includes(q)
           );
         }
         return true;
@@ -114,13 +131,13 @@ export const MissionListSidebar: React.FC<MissionListSidebarProps> = ({
       },
       {
         key: 'pending',
-        label: 'ATTENTE',
+        label: 'SOUMISE',
         color: 'text-amber-400',
         activeColor: 'bg-amber-500 text-white',
       },
       {
         key: 'certified',
-        label: 'SIGNÉE',
+        label: 'OFFICIELLE',
         color: 'text-emerald-400',
         activeColor: 'bg-emerald-600 text-white',
       },
@@ -200,9 +217,7 @@ export const MissionListSidebar: React.FC<MissionListSidebarProps> = ({
             >
               <div className="flex items-center justify-between gap-2">
                 <span className="truncate font-black">
-                  {m.orderNumber && !m.orderNumber.startsWith('TEMP-')
-                    ? m.orderNumber
-                    : m.purpose || 'Brouillon'}
+                  {getMissionPrimaryLabel(m)}
                 </span>
                 <span
                   className={`flex-shrink-0 flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[8px] sm:text-[7px] font-black ${
@@ -224,7 +239,7 @@ export const MissionListSidebar: React.FC<MissionListSidebarProps> = ({
                 <span
                   className={`text-[10px] sm:text-[9px] truncate normal-case font-medium ${isActive ? 'text-white/70' : 'text-slate-500 dark:text-slate-500'}`}
                 >
-                  {m.region || (m.orderNumber && !m.orderNumber.startsWith('TEMP-') ? m.purpose : 'Destination à préciser')}
+                  {getMissionSecondaryLabel(m)}
                 </span>
               </div>
 
@@ -241,12 +256,12 @@ export const MissionListSidebar: React.FC<MissionListSidebarProps> = ({
                 tabIndex={0}
                 onClick={(e) => {
                   e.stopPropagation();
-                  onDeleteMission(m.id, m.orderNumber || 'Brouillon');
+                  onDeleteMission(m.id, getMissionPrimaryLabel(m));
                 }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     e.stopPropagation();
-                    onDeleteMission(m.id, m.orderNumber || 'Brouillon');
+                    onDeleteMission(m.id, getMissionPrimaryLabel(m));
                   }
                 }}
                 className="absolute bottom-2 right-2 p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 rounded-lg opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all z-10"

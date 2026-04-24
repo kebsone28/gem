@@ -1,5 +1,6 @@
 ﻿ 
 import apiClient from '../api/client';
+import logger from '../utils/logger';
 
 export const organizationService = {
   /**
@@ -10,7 +11,7 @@ export const organizationService = {
       const res = await apiClient.get('/organization/config');
       return res.data;
     } catch (error) {
-      console.error('Fetch org config error:', error);
+      logger.error('[organizationService] Fetch org config error', error);
       throw error;
     }
   },
@@ -23,7 +24,7 @@ export const organizationService = {
       const res = await apiClient.patch('/organization/config', { config });
       return res.data;
     } catch (error) {
-      console.error('Update org config error:', error);
+      logger.error('[organizationService] Update org config error', error);
       throw error;
     }
   },

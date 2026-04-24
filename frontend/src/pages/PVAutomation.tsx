@@ -32,6 +32,7 @@ import { audioService } from '../services/audioService';
 import { AnimatedCounter } from '../components/common/AnimatedCounter';
 import { useAuthStore } from '../store/authStore';
 import type { Household, Team } from '../utils/types';
+import logger from '../utils/logger';
 
 // --- Constants & Types ---
 
@@ -218,7 +219,7 @@ function usePVAutomation(): PVLogic {
       toast.success(`PV ${type} généré et envoyé`);
       setSelectedSubmission({ ...submission, activePVType: type, generatedPvId: stableId });
     } catch (err) {
-      console.error('[PV_GEN_ERROR]', err);
+      logger.error('[PVAutomation] [PV_GEN_ERROR]', err);
       toast.error('Erreur de génération');
     } finally {
       setIsGenerating(false);
@@ -421,7 +422,7 @@ function usePVAutomation(): PVLogic {
       saveAs(blob, `GEM_PV_GLOBAL_${type}_${Date.now()}.docx`);
       toast.success("PV Global généré !");
     } catch (e) {
-      console.error(e);
+      logger.error('[PVAutomation] Global export failed', e);
       toast.error("Échec de l'export global");
     } finally {
       setIsGenerating(false);
@@ -1013,7 +1014,7 @@ function PVArchivePanel({ logic, archivedPVs }: { logic: PVLogic, archivedPVs: P
                       // Petit délai pour éviter de bloquer le navigateur
                       await new Promise(r => setTimeout(r, 400));
                     } catch (e) {
-                      console.error("Erreur bulk download", e);
+                      logger.error('[PVAutomation] Erreur bulk download', e);
                     }
                   }
                 }

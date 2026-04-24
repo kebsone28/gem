@@ -151,20 +151,11 @@ export function missionReducer(state: MissionState, action: MissionAction): Miss
 
     case 'SET_CERTIFIED': {
       const isNowCertified = action.payload;
-      let newOrderNumber = state.formData.orderNumber;
-
-      // Génération automatique du N° d'ordre si validation et manquant ou temporaire
-      if (isNowCertified && (!newOrderNumber || newOrderNumber.includes('TEMP'))) {
-        const year = new Date().getFullYear();
-        const random = Math.floor(Math.random() * 900) + 100;
-        newOrderNumber = `MO-${year}-${random}`;
-      }
       return {
         ...state,
         isCertified: isNowCertified,
         formData: {
           ...state.formData,
-          orderNumber: newOrderNumber,
           isCertified: isNowCertified,
         },
         updatedAt: now,

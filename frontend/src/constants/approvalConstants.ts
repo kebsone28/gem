@@ -128,8 +128,8 @@ export const APPROVAL_STATUS_MESSAGES: Record<ApprovalStatus, string> = {
  */
 export const WORKFLOW_STATUS_MESSAGES: Record<WorkflowStatus, string> = {
   draft: 'Brouillon',
-  pending: 'Soumis (En attente DG)',
-  approved: '✅ Validé par le DG',
+  pending: 'Soumise (En attente de validation finale)',
+  approved: '✅ Validée et officialisée',
   rejected: '❌ Rejetée',
   executed: '🚀 Exécutée',
 };
@@ -149,7 +149,7 @@ export const STATUS_COLORS: Record<ApprovalStatus | WorkflowStatus, string> = {
 };
 
 /**
- * Le DG est l'unique vrai validateur
+ * Ordre de validation métier simplifié
  */
 export const APPROVAL_ROLE_ORDER: ApprovalRole[] = ['DIRECTEUR'];
 
@@ -159,7 +159,7 @@ export const APPROVAL_ROLE_ORDER: ApprovalRole[] = ['DIRECTEUR'];
 export const ROLE_LABELS: Record<ApprovalRole, string> = {
   INITIATEUR: 'Initiateur de la mission',
   ADMIN: 'Administrateur',
-  DIRECTEUR: 'Direction Générale (DG)',
+  DIRECTEUR: 'Direction / Validation finale',
 };
 
 /**

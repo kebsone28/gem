@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTerrainData } from '../../hooks/useTerrainData';
+import { useAuth } from '../../contexts/AuthContext';
 
 /**
  * CommandPalette (Axe 4 — Plan d'Amélioration Continue GEM-SAAS)
@@ -30,7 +31,8 @@ export const CommandPalette = () => {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
-  const { households } = useTerrainData();
+  const { user } = useAuth();
+  const { households } = useTerrainData({ enabled: Boolean(user) });
   const searchWorkerRef = useRef<Worker | null>(null);
 
   // 1️⃣ Initialisation du Search Worker

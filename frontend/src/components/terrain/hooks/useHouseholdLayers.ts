@@ -1,8 +1,6 @@
-﻿/* eslint-disable @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps */
 import { useEffect } from 'react';
-import type { MutableRefObject } from 'react';
 import maplibregl from 'maplibre-gl';
-import { STATUS_CONFIG } from '../mapConfig';
+import logger from '../../../utils/logger';
 
 /**
  * Hook: Household Layers Creation (Gold Standard Architecture)
@@ -19,28 +17,24 @@ import { STATUS_CONFIG } from '../mapConfig';
 export const useHouseholdLayers = (
   map: maplibregl.Map | null,
   styleIsReady: boolean,
-  setupCompleteRef: MutableRefObject<boolean>,
+  sourcesReady: boolean,
   showZones: boolean = false
 ): void => {
   useEffect(() => {
     if (!map || !styleIsReady) return;
-    if (!setupCompleteRef.current) return;
+    if (!sourcesReady) return;
 
-    console.log('💎 [useHouseholdLayers] Building Gold Standard layers...');
+    logger.debug('💎 [useHouseholdLayers] Building Gold Standard layers...');
 
     try {
-      // 🚨 CRITICAL FIX 1: Prevent fatal crashes if sources are not yet initialized by other hooks
       if (!map.getSource('households') || !map.getSource('supercluster-generated')) {
-        console.warn('⚠️ [useHouseholdLayers] Core sources unavailable. Retrying later...');
+        logger.debug('⚠️ [useHouseholdLayers] Core sources unavailable. Retrying later...');
         return;
       }
 
-      // Safe wrapper to prevent breaking Layer Ordering when dependencies are missing
-      const safeInsertLayer = (target: string) => map.getLayer(target) ? target : undefined;
-
+      const safeInsertLayer = (target: string) => (map.getLayer(target) ? target : undefined);
       const initialVisibility = showZones ? 'none' : 'visible';
 
-      // ── 1. CLUSTER HALO (Thin subtle aura)
       if (!map.getLayer('cluster-halo')) {
         map.addLayer({
           id: 'cluster-halo',
@@ -49,13 +43,7 @@ export const useHouseholdLayers = (
           filter: ['==', ['get', 'cluster'], true],
           layout: { visibility: initialVisibility },
           paint: {
-            'circle-radius': [
-              'interpolate',
-              ['linear'],
-              ['get', 'point_count'],
-              10, 24,
-              100, 48
-            ],
+            'circle-radius': ['interpolate', ['linear'], ['get', 'point_count'], 10, 24, 100, 48],
             'circle-color': '#ffffff',
             'circle-opacity': 0.15,
             'circle-blur': 1,
@@ -63,7 +51,6 @@ export const useHouseholdLayers = (
         });
       }
 
-      // ── 2. CLUSTER CIRCLES (Vibrant Gradients style)
       if (!map.getLayer('cluster-circles')) {
         map.addLayer({
           id: 'cluster-circles',
@@ -75,32 +62,30 @@ export const useHouseholdLayers = (
             'circle-color': [
               'step',
               ['to-number', ['coalesce', ['get', 'point_count'], 0]],
-              '#00D084', // 0-20 points: Emerald
-              20, '#FFD60A', // 20-50: Gold
-              50, '#FF9500', // 50-80: Orange
-              80, '#FF3B30'  // 80+: Red Pop
+              '#00D084',
+              20,
+              '#FFD60A',
+              50,
+              '#FF9500',
+              80,
+              '#FF3B30',
             ],
-            'circle-radius': [
-              'interpolate',
-              ['linear'],
-              ['get', 'point_count'],
-              10, 20,
-              100, 40
-            ],
+            'circle-radius': ['interpolate', ['linear'], ['get', 'point_count'], 10, 20, 100, 40],
             'circle-opacity': [
               'interpolate',
               ['linear'],
               ['get', 'point_count'],
-              10, 0.75,
-              100, 0.95
+              10,
+              0.75,
+              100,
+              0.95,
             ],
             'circle-stroke-width': 2,
-            'circle-stroke-color': '#ffffff'
-          }
+            'circle-stroke-color': '#ffffff',
+          },
         });
       }
 
-      // ── 3. CLUSTER COUNTS (Sharp Typography)
       if (!map.getLayer('cluster-counts')) {
         map.addLayer({
           id: 'cluster-counts',
@@ -112,9 +97,9 @@ export const useHouseholdLayers = (
             'text-font': ['Open Sans Bold', 'Inter Bold'],
             'text-size': 14,
             'text-allow-overlap': true,
-            'visibility': initialVisibility
+            visibility: initialVisibility,
           },
-          paint: { 
+          paint: {
             'text-color': '#ffffff',
             'text-halo-color': 'rgba(0,0,0,0.5)',
             'text-halo-width': 1,
@@ -122,67 +107,75 @@ export const useHouseholdLayers = (
         });
       }
 
-      // ── 3b. PROXIMITY HULLS (The "Trapezoidal" encirclement for GPS proximity)
       if (map.getSource('cluster-hulls')) {
         if (!map.getLayer('supercluster-hulls-fill')) {
-          map.addLayer({
-            id: 'supercluster-hulls-fill',
-            type: 'fill',
-            source: 'cluster-hulls', // Needs to be populated by useMapClustering
-            layout: { visibility: 'none' }, // Visible only in Zone mode
-            paint: {
-              'fill-color': '#ffffff',
-              'fill-opacity': 0.15,
+          map.addLayer(
+            {
+              id: 'supercluster-hulls-fill',
+              type: 'fill',
+              source: 'cluster-hulls',
+              layout: { visibility: 'none' },
+              paint: {
+                'fill-color': '#ffffff',
+                'fill-opacity': 0.15,
+              },
             },
-          }, safeInsertLayer('cluster-halo'));
+            safeInsertLayer('cluster-halo')
+          );
         }
 
         if (!map.getLayer('supercluster-hulls-outline')) {
-          map.addLayer({
-            id: 'supercluster-hulls-outline',
-            type: 'line',
-            source: 'cluster-hulls',
-            layout: { visibility: 'none' },
-            paint: {
-              'line-color': '#ffffff',
-              'line-width': 2,
-              'line-dasharray': [2, 2],
-              'line-opacity': 0.6,
+          map.addLayer(
+            {
+              id: 'supercluster-hulls-outline',
+              type: 'line',
+              source: 'cluster-hulls',
+              layout: { visibility: 'none' },
+              paint: {
+                'line-color': '#ffffff',
+                'line-width': 2,
+                'line-dasharray': [2, 2],
+                'line-opacity': 0.6,
+              },
             },
-          }, safeInsertLayer('cluster-halo'));
+            safeInsertLayer('cluster-halo')
+          );
         }
       }
 
-      // ── 4. POINT FALLBACK CIRCLES (Always visible, always interactive)
-      // This layer renders for ALL households regardless of icon registration state
       if (!map.getLayer('households-glow-layer')) {
         map.addLayer({
           id: 'households-glow-layer',
           type: 'circle',
           source: 'households',
           paint: {
-            'circle-radius': [
-              'interpolate', ['linear'], ['zoom'],
-              4, 2,
-              8, 3,
-              14, 5,
-              18, 8
-            ],
+            'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 2, 8, 3, 14, 5, 18, 8],
             'circle-color': [
               'match',
               ['coalesce', ['get', 'status'], 'default'],
-              'Contrôle conforme', '#00FF9D',
-              'Non conforme', '#FF0055',
-              'Intérieur terminé', '#6366F1',
-              'Réseau terminé', '#00D2FF',
-              'Murs terminés', '#FFD60A',
-              'Livraison effectuée', '#059669',
-              'Non éligible', '#64748B',
-              'Désistement', '#64748B',
-              'Refusé', '#F43F5E',
-              'Eligible', '#3B82F6',
-              'En attente', '#64748B',
-              '#6366F1' // default: indigo
+              'Contrôle conforme',
+              '#00FF9D',
+              'Non conforme',
+              '#FF0055',
+              'Intérieur terminé',
+              '#6366F1',
+              'Réseau terminé',
+              '#00D2FF',
+              'Murs terminés',
+              '#FFD60A',
+              'Livraison effectuée',
+              '#059669',
+              'Non éligible',
+              '#64748B',
+              'Désistement',
+              '#64748B',
+              'Refusé',
+              '#F43F5E',
+              'Eligible',
+              '#3B82F6',
+              'En attente',
+              '#64748B',
+              '#6366F1',
             ],
             'circle-opacity': 0.85,
             'circle-stroke-width': 1.5,
@@ -191,52 +184,44 @@ export const useHouseholdLayers = (
         });
       }
 
-
-      // ── 5. POINT ICONS (The Heart of the system)
       if (!map.getLayer('households-local-layer')) {
         map.addLayer({
           id: 'households-local-layer',
           type: 'symbol',
           source: 'households',
           layout: {
-            // 🚨 CRITICAL FIX 2: Apply COALESCE to prevent crash "Expected string but found null" in concat
             'icon-image': [
               'step',
               ['zoom'],
-              ['concat', 'icon-', ['coalesce', ['get', 'status'], 'default'], '-small'], 
+              ['concat', 'icon-', ['coalesce', ['get', 'status'], 'default'], '-small'],
               14.5,
               [
                 'case',
-                ['==', ['get', 'status'], 'Non conforme'], 'pulsing-Non conforme',
-                ['concat', 'icon-', ['coalesce', ['get', 'status'], 'default'], '-large']
-              ]
+                ['==', ['get', 'status'], 'Non conforme'],
+                'pulsing-Non conforme',
+                ['concat', 'icon-', ['coalesce', ['get', 'status'], 'default'], '-large'],
+              ],
             ],
-            'icon-size': [
-              'interpolate',
-              ['linear'], ['zoom'],
-              0, 0.35,
-              13, 0.65,
-              15, 0.9,
-              18, 1.1
-            ],
+            'icon-size': ['interpolate', ['linear'], ['zoom'], 0, 0.35, 13, 0.65, 15, 0.9, 18, 1.1],
             'icon-allow-overlap': true,
             'icon-ignore-placement': true,
             'icon-optional': true,
             'symbol-sort-key': [
               'case',
-              ['==', ['get', 'status'], 'Non conforme'], 100,
-              ['==', ['get', 'status'], 'Contrôle conforme'], 80,
-              10
+              ['==', ['get', 'status'], 'Non conforme'],
+              100,
+              ['==', ['get', 'status'], 'Contrôle conforme'],
+              80,
+              10,
             ],
-            'symbol-z-order': 'viewport-y'
+            'symbol-z-order': 'viewport-y',
           },
           paint: {
-            'icon-opacity': 1
-          }
+            'icon-opacity': 1,
+          },
         });
       }
 
-      // ── 5b. PHOTO MONITORING BADGES (Subtle overlay for documented sites)
       if (!map.getLayer('households-photo-badge')) {
         map.addLayer({
           id: 'households-photo-badge',
@@ -245,25 +230,18 @@ export const useHouseholdLayers = (
           filter: ['==', ['get', 'hasPhotos'], true],
           layout: {
             'icon-image': 'photo-indicator',
-            'icon-size': [
-              'interpolate',
-              ['linear'], ['zoom'],
-              13, 0.25,
-              15, 0.35,
-              18, 0.5
-            ],
+            'icon-size': ['interpolate', ['linear'], ['zoom'], 13, 0.25, 15, 0.35, 18, 0.5],
             'icon-offset': [14, -14],
             'icon-allow-overlap': true,
             'icon-ignore-placement': true,
-            'visibility': 'visible'
+            visibility: 'visible',
           },
           paint: {
-            'icon-opacity': ['step', ['zoom'], 0, 14, 1]
-          }
+            'icon-opacity': ['step', ['zoom'], 0, 14, 1],
+          },
         });
       }
 
-      // ── 6. SELECTED HOUSEHOLD (GPS Focus state)
       if (map.getSource('selected-household') && !map.getLayer('selected-household-layer')) {
         map.addLayer({
           id: 'selected-household-layer',
@@ -275,45 +253,45 @@ export const useHouseholdLayers = (
             'circle-stroke-color': '#3b82f6',
             'circle-stroke-width': 3,
             'circle-opacity': 1,
-            // Infinite slight pulse logic would go here if we used a direct animation, 
-            // but for now a static high-contrast blue focus is baseline.
           },
         });
       }
 
-      // ── 7. HEATMAP LAYER (Density visualization)
       if (!map.getLayer('heatmap')) {
-        map.addLayer({
-          id: 'heatmap',
-          type: 'heatmap',
-          source: 'households',
-          maxzoom: 17,
-          paint: {
-            // Increase the heatmap weight based on frequency and property magnitude
-            'heatmap-weight': 1,
-            // Increase the heatmap color weight by zoom level
-            'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 0, 1, 15, 8], // Boost intensity
-            // Color ramp for heatmap.
-            'heatmap-color': [
-              'interpolate',
-              ['linear'],
-              ['heatmap-density'],
-              0, 'rgba(67,56,202,0)',    // Transparent Indigo
-              0.2, 'rgba(79,70,229,0.3)', // Indigo
-              0.4, 'rgba(59,130,246,0.6)', // Blue
-              0.6, 'rgba(16,185,129,0.8)', // Emerald
-              0.8, 'rgba(245,158,11,0.9)', // Amber
-              1, 'rgba(239,68,68,1)'       // Red
-            ],
-            // Adjust the heatmap radius by zoom level
-            'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 0, 4, 15, 45], // Larger radius
-            // Visibility transition
-            'heatmap-opacity': ['interpolate', ['linear'], ['zoom'], 14, 0.9, 20, 0.4], // More persistent
+        map.addLayer(
+          {
+            id: 'heatmap',
+            type: 'heatmap',
+            source: 'households',
+            maxzoom: 17,
+            paint: {
+              'heatmap-weight': 1,
+              'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 0, 1, 15, 8],
+              'heatmap-color': [
+                'interpolate',
+                ['linear'],
+                ['heatmap-density'],
+                0,
+                'rgba(67,56,202,0)',
+                0.2,
+                'rgba(79,70,229,0.3)',
+                0.4,
+                'rgba(59,130,246,0.6)',
+                0.6,
+                'rgba(16,185,129,0.8)',
+                0.8,
+                'rgba(245,158,11,0.9)',
+                1,
+                'rgba(239,68,68,1)',
+              ],
+              'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 0, 4, 15, 45],
+              'heatmap-opacity': ['interpolate', ['linear'], ['zoom'], 14, 0.9, 20, 0.4],
+            },
           },
-        }, safeInsertLayer('cluster-halo')); // Place below clusters
+          safeInsertLayer('cluster-halo')
+        );
       }
 
-      // ── 8. HOUSEHOLD LABELS (Numeric)
       if (!map.getLayer('households-labels-simple')) {
         map.addLayer({
           id: 'households-labels-simple',
@@ -325,21 +303,21 @@ export const useHouseholdLayers = (
             'text-size': 11,
             'text-variable-anchor': ['top'],
             'text-radial-offset': 1.8,
-            'visibility': 'visible',
-            'text-allow-overlap': false
+            visibility: 'visible',
+            'text-allow-overlap': false,
           },
           paint: {
             'text-color': '#ffffff',
             'text-halo-color': 'rgba(0,0,0,0.8)',
             'text-halo-width': 1.5,
-            'text-opacity': ['step', ['zoom'], 0, 15, 1], // Only at deep zoom
+            'text-opacity': ['step', ['zoom'], 0, 15, 1],
           },
         });
       }
 
-      console.log('✅ [useHouseholdLayers] Gold Standard hierarchy complete');
+      logger.debug('✅ [useHouseholdLayers] Gold Standard hierarchy complete');
     } catch (err) {
-      console.error('🔴 [useHouseholdLayers] Layer construction failed:', err);
+      logger.error('🔴 [useHouseholdLayers] Layer construction failed:', err);
     }
-  }, [map, styleIsReady, setupCompleteRef]);
+  }, [map, styleIsReady, sourcesReady, showZones]);
 };

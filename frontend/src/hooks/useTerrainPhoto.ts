@@ -6,6 +6,7 @@
  */
 import { useState, useCallback, useEffect } from 'react';
 import toast from 'react-hot-toast';
+import logger from '../utils/logger';
 
 interface UseTerrainPhotoOptions {
   maxWidth?: number;
@@ -231,7 +232,7 @@ export const useTerrainOffline = () => {
    */
   const syncPendingActions = useCallback(async () => {
     // Logique de synchronisation à implémenter
-    console.log('Actions en attente:', pendingActions);
+    logger.debug('Actions en attente:', pendingActions);
   }, [pendingActions]);
 
   return {

@@ -10,6 +10,7 @@ import { getTechnicalAnswer } from './ElectricianQuran';
 import { analyzeDG, computeIGPPScore } from './DecisionEngine';
 import { getAIEngineConfig, type AIEngineSettings } from './AIEngineConfig';
 import { buildPublicAIKnowledgePrompt } from './AIKnowledgeBase';
+import logger from '../../utils/logger';
 
 // ─────────────────────────────────────────────
 // TYPES
@@ -2105,7 +2106,7 @@ ${statsCtx}
     return data.content[0].text;
   } catch (err: any) {
     clearTimeout(timer);
-    console.error('[Claude_AI] Call failed:', err);
+    logger.error('[MissionSageService] [Claude_AI] Call failed', err);
     if (err.name === 'AbortError')
       return '⏳ Le moteur Claude AI a mis trop de temps à répondre (Timeout).';
     throw err;
@@ -2146,7 +2147,7 @@ async function runClaudeEngine(
       _engine: 'CLAUDE',
     };
   } catch (err: any) {
-    console.error('[Claude_Engine] Managed error:', err);
+    logger.error('[MissionSageService] [Claude_Engine] Managed error', err);
 
     let userMsg = `❌ **Erreur Claude AI** : ${err.message || 'Impossible de joindre le moteur IA'}.`;
 

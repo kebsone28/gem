@@ -17,7 +17,6 @@ export default function PWAPrompt() {
 
   // avoid caching source files during development — ServiceWorker only for production builds
   if (import.meta.env.DEV) {
-    logger.log('💎 [PWA] Skipping SW UI in dev mode');
     return null;
   }
 

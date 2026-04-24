@@ -10,6 +10,47 @@ import type { User as DBUser } from '../utils/types';
 
 type LoginStep = 'credentials' | '2fa' | 'recovery';
 
+function getApiErrorMessage(err: any, fallback: string) {
+  const status = err?.response?.status;
+  const data = err?.response?.data;
+  const serverError = data?.error;
+  const serverMessage = data?.message;
+  const networkMessage = err?.message || '';
+
+  if (status === 401) {
+    return serverError || 'Identifiant, mot de passe ou réponse de sécurité incorrecte.';
+  }
+
+  if (status === 400) {
+    return serverError || serverMessage || fallback;
+  }
+
+  if (status === 403) {
+    return serverError || 'Accès refusé.';
+  }
+
+  if (status === 404) {
+    return serverError || 'Compte introuvable.';
+  }
+
+  if (status === 503) {
+    return (
+      serverMessage ||
+      "Backend ou base de données indisponible. Vérifiez que le serveur backend est bien démarré."
+    );
+  }
+
+  if (!err?.response) {
+    return 'Serveur backend indisponible. Vérifiez que `npm run dev:saas` est bien lancé.';
+  }
+
+  if (status === 500) {
+    return serverMessage || serverError || 'Erreur serveur interne.';
+  }
+
+  return serverError || serverMessage || networkMessage || fallback;
+}
+
 export default function Login() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -47,7 +88,7 @@ export default function Login() {
 
       const { accessToken: token1, token: token2, user: userPayload } = response.data;
       const accessToken = token1 || token2;
-      console.log('🔐 LOGIN RESPONSE DEBUG:', { userPayload, accessToken });
+      logger.debug('🔐 LOGIN RESPONSE DEBUG:', { userPayload, accessToken });
       const emailResp = userPayload?.email || '';
       const roleResp = userPayload?.role || '';
       const nameResp = userPayload?.name || '';
@@ -55,7 +96,7 @@ export default function Login() {
       const orgConfigResp = userPayload?.organizationConfig;
       const idResp = userPayload?.id;
       const requires2FA = userPayload?.requires2FA;
-      console.log('🔐 EXTRACTED FIELDS:', { emailResp, roleResp, nameResp, orgResp, idResp });
+      logger.debug('🔐 EXTRACTED FIELDS:', { emailResp, roleResp, nameResp, orgResp, idResp });
 
       if (requires2FA) {
         setPendingUser({
@@ -69,6 +110,7 @@ export default function Login() {
           accessToken,
         } as any);
         setStep('2fa');
+        setError('Validation secondaire requise. Saisissez votre réponse de sécurité pour continuer.');
         setLoading(false);
         return;
       }
@@ -77,27 +119,7 @@ export default function Login() {
       navigate('/dashboard');
     } catch (err: any) {
       logger.error('🔴 Login error:', err);
-
-      if (err.response?.status === 503 || err.message?.includes('Network Error')) {
-        setError(
-          '⚠️ Base de données inaccessible.\n\nActions:\n' +
-          '1. Vérifiez que le backend Node.js est lancé\n' +
-          '2. Vérifiez que Docker Desktop est ouvert\n' +
-          '3. Redémarrez: docker-compose restart postgres'
-        );
-      } else if (err.response?.status === 400) {
-        setError('❌ ' + (err.response?.data?.message || 'Requête invalide.'));
-      } else if (err.response?.status === 500) {
-        setError(
-          '❌ Erreur serveur.\n\n' +
-          'DEV: Vérifiez les logs du backend (npm run dev)\n' +
-          'Solution:\n' +
-          '1. node seed_admin.js (créer utilisateur)\n' +
-          '2. Redémarrer backend'
-        );
-      } else {
-        setError(err.response?.data?.error || 'Identifiant ou mot de passe incorrect.');
-      }
+      setError(getApiErrorMessage(err, 'Identifiant ou mot de passe incorrect.'));
     } finally {
       setLoading(false);
     }
@@ -129,7 +151,7 @@ export default function Login() {
       );
       navigate('/dashboard');
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Réponse secrète incorrecte. Accès refusé.');
+      setError(getApiErrorMessage(err, 'Réponse secrète incorrecte. Accès refusé.'));
     } finally {
       setLoading(false);
     }
@@ -187,7 +209,7 @@ export default function Login() {
       setStep('credentials');
       setPassword(''); // On vide l'ancien MDP
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Erreur lors de la réinitialisation.');
+      setError(getApiErrorMessage(err, 'Erreur lors de la réinitialisation.'));
     } finally {
       setLoading(false);
     }

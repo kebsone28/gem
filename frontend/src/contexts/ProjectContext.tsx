@@ -6,6 +6,7 @@ import type { Project } from '../utils/types';
 import apiClient from '../api/client';
 import * as safeStorage from '../utils/safeStorage';
 import logger from '../utils/logger';
+import { useAuth } from './AuthContext';
 
 interface ProjectContextType {
   project: Project | null;
@@ -24,42 +25,89 @@ interface ProjectContextType {
 
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
 
+const getStoredAccessToken = () => {
+  const token = safeStorage.getItem('access_token');
+  if (!token || token === 'undefined' || token === 'null') {
+    return null;
+  }
+  return token;
+};
+
 export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user } = useAuth();
   const [activeProjectId, setActiveProjectIdState] = useState<string | null>(
     safeStorage.getItem('active_project_id')
   );
-  const hasLoadedServerProjects = useRef(false);
+  const lastSyncedUserIdRef = useRef<string | null>(null);
 
   const projects = useLiveQuery(() => db.projects.toArray()) || [];
 
   const activeProject = useLiveQuery(async () => {
     if (activeProjectId) {
-      return await db.projects.get(activeProjectId);
+      return (await db.projects.get(activeProjectId)) ?? null;
     }
     const all = await db.projects.toArray();
     return all[0] ?? null;
   }, [activeProjectId]);
+
+  const persistActiveProjectId = (id: string | null) => {
+    setActiveProjectIdState(id);
+    if (id) {
+      safeStorage.setItem('active_project_id', id);
+    } else {
+      safeStorage.removeItem('active_project_id');
+    }
+  };
 
   useEffect(() => {
     let t: number | null = null;
     if (!activeProjectId && projects.length > 0) {
       t = window.setTimeout(() => {
         const firstId = projects[0].id;
-        setActiveProjectIdState(firstId);
-        safeStorage.setItem('active_project_id', firstId);
+        persistActiveProjectId(firstId);
       }, 0);
     }
     return () => { if (t) clearTimeout(t); };
   }, [projects.length, activeProjectId]);
 
+  useEffect(() => {
+    if (!activeProjectId || projects.length === 0) return;
+
+    if (!projects.some((project) => project.id === activeProjectId)) {
+      logger.warn(
+        `⚠️ [PROJECT] Active project ${activeProjectId} is stale. Falling back to the first valid project.`
+      );
+      const timeoutId = window.setTimeout(() => {
+        persistActiveProjectId(projects[0]?.id || null);
+      }, 0);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [projects, activeProjectId]);
+
   const syncProjectsFromServer = async (preferredProjectId?: string | null) => {
+    if (!getStoredAccessToken()) {
+      logger.warn('⚠️ [PROJECT] Synchronisation serveur ignorée: aucun token disponible.');
+      const localProjects = await db.projects.toArray();
+      const nextActiveId =
+        preferredProjectId && localProjects.some((project) => project.id === preferredProjectId)
+          ? preferredProjectId
+          : activeProjectId && localProjects.some((project) => project.id === activeProjectId)
+            ? activeProjectId
+            : localProjects[0]?.id || null;
+
+      persistActiveProjectId(nextActiveId);
+      return localProjects;
+    }
+
     const response = await apiClient.get('/projects');
     const serverProjects: Project[] = response.data.projects || response.data || [];
 
-    await db.projects.clear();
-    if (serverProjects.length > 0) {
-      await db.projects.bulkPut(serverProjects as any[]);
-    }
+    await db.transaction('rw', db.projects, async () => {
+      await db.projects.clear();
+      if (serverProjects.length > 0) {
+        await db.projects.bulkPut(serverProjects as any[]);
+      }
+    });
 
     const nextActiveId =
       preferredProjectId && serverProjects.some((project) => project.id === preferredProjectId)
@@ -68,42 +116,35 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
           ? activeProjectId
           : serverProjects[0]?.id || null;
 
-    setActiveProjectIdState(nextActiveId);
-    if (nextActiveId) {
-      safeStorage.setItem('active_project_id', nextActiveId);
-    } else {
-      safeStorage.removeItem('active_project_id');
-    }
+    persistActiveProjectId(nextActiveId);
 
-    logger.log(`♻️ [STORE] ${serverProjects.length} projets synchronisés depuis le serveur`);
+    logger.debug(`♻️ [STORE] ${serverProjects.length} projets synchronisés depuis le serveur`);
     return serverProjects;
   };
 
-  // 🔄 Auto-Sync server-first: au démarrage connecté, le serveur réaligne toujours le cache local.
+  // 🔄 Auto-Sync server-first: à chaque nouvelle session, le serveur réaligne le cache local.
   useEffect(() => {
     const fetchInitialProjects = async () => {
-      const token = safeStorage.getItem('access_token');
-      if (!token || hasLoadedServerProjects.current) return;
+      if (!user?.id || !getStoredAccessToken()) {
+        lastSyncedUserIdRef.current = null;
+        return;
+      }
+      if (lastSyncedUserIdRef.current === user.id) return;
 
-      hasLoadedServerProjects.current = true;
+      lastSyncedUserIdRef.current = user.id;
       try {
         await syncProjectsFromServer();
       } catch (err) {
         logger.error('❌ Échec de synchronisation initiale des projets', err);
+        lastSyncedUserIdRef.current = null;
       }
     };
-    fetchInitialProjects();
-  }, []);
+    void fetchInitialProjects();
+  }, [user?.id]);
 
   const setActiveProjectId = (id: string | null) => {
-    setActiveProjectIdState(id);
-    if (id) {
-      safeStorage.setItem('active_project_id', id);
-      logger.log(`🎯 [PROJECT] Switched to ${id}`);
-    } else {
-      safeStorage.removeItem('active_project_id');
-      logger.log('🎯 [PROJECT] Active project cleared');
-    }
+    persistActiveProjectId(id);
+    logger.debug(id ? `🎯 [PROJECT] Switched to ${id}` : '🎯 [PROJECT] Active project cleared');
   };
 
   const createProject = async (name: string) => {

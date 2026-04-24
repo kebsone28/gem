@@ -1,5 +1,6 @@
 ﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Maximize2,
   Crosshair,
@@ -52,10 +53,30 @@ const ToolbarButton: React.FC<ToolbarButtonProps> = ({ icon, title, onClick, act
 
 interface MapToolbarProps {
   onRecenter?: () => void;
+  features?: {
+    mapStyle?: boolean;
+    statusLegend?: boolean;
+    zoneOverlay?: boolean;
+    routing?: boolean;
+    grappeTools?: boolean;
+    analytics?: boolean;
+    heatmap?: boolean;
+    measure?: boolean;
+    lasso?: boolean;
+    drawZones?: boolean;
+    geoJsonLayers?: boolean;
+    regionDownload?: boolean;
+    dataHub?: boolean;
+  };
 }
 
-export const MapToolbar: React.FC<MapToolbarProps> = ({ onRecenter }) => {
+export const MapToolbar: React.FC<MapToolbarProps> = ({ onRecenter, features }) => {
   const [showStyleMenu, setShowStyleMenu] = useState(false);
+  const [styleMenuPosition, setStyleMenuPosition] = useState<{ top: number; left: number } | null>(
+    null
+  );
+  const styleMenuTriggerRef = useRef<HTMLDivElement | null>(null);
+  const styleMenuRef = useRef<HTMLDivElement | null>(null);
 
   // Zustand Selectors
   const setMapCommand = useTerrainUIStore((s) => s.setMapCommand);
@@ -89,7 +110,7 @@ export const MapToolbar: React.FC<MapToolbarProps> = ({ onRecenter }) => {
     // but here we should probably update the store to support 3 styles.
     // For now, let's assume toggleMapStyle cycles or we use the specific style.
     useTerrainUIStore.setState({ mapStyle: style });
-    localStorage.setItem('gem-map-style', style);
+    localStorage.setItem('gem-map-theme', style);
   };
 
   // Navigation Handlers
@@ -141,8 +162,54 @@ export const MapToolbar: React.FC<MapToolbarProps> = ({ onRecenter }) => {
     );
   };
 
+  useEffect(() => {
+    if (!showStyleMenu) return;
+
+    const updateStyleMenuPosition = () => {
+      const trigger = styleMenuTriggerRef.current;
+      if (!trigger) return;
+
+      const rect = trigger.getBoundingClientRect();
+      const menuWidth = 176;
+      const viewportPadding = 16;
+      const left = Math.min(
+        Math.max(viewportPadding, rect.right - menuWidth),
+        window.innerWidth - menuWidth - viewportPadding
+      );
+
+      setStyleMenuPosition({
+        top: rect.bottom + 12,
+        left,
+      });
+    };
+
+    const handleOutsideClick = (event: MouseEvent) => {
+      const target = event.target as Node | null;
+      if (
+        (styleMenuTriggerRef.current && styleMenuTriggerRef.current.contains(target)) ||
+        (styleMenuRef.current && styleMenuRef.current.contains(target))
+      ) {
+        return;
+      }
+
+      setShowStyleMenu(false);
+    };
+
+    updateStyleMenuPosition();
+    window.addEventListener('resize', updateStyleMenuPosition);
+    window.addEventListener('scroll', updateStyleMenuPosition, true);
+    document.addEventListener('mousedown', handleOutsideClick);
+
+    return () => {
+      window.removeEventListener('resize', updateStyleMenuPosition);
+      window.removeEventListener('scroll', updateStyleMenuPosition, true);
+      document.removeEventListener('mousedown', handleOutsideClick);
+    };
+  }, [showStyleMenu]);
+
   return (
-    <div className="map-toolbar-horizontal group">
+    <>
+      <div className="map-toolbar-horizontal group">
       {/* NAVIGATION GROUP */}
       <div className="toolbar-group">
         <div className="toolbar-divider" />
@@ -153,27 +220,159 @@ export const MapToolbar: React.FC<MapToolbarProps> = ({ onRecenter }) => {
       <div className="toolbar-divider" />
 
       {/* VISUALIZATION & STYLE GROUP */}
-      <div className="toolbar-group">
-        <div className="relative">
-          <ToolbarButton
-            icon={<MapIcon />}
-            title="Style de Carte"
-            onClick={() => setShowStyleMenu(!showStyleMenu)}
-            active={showStyleMenu}
-          />
-          <ToolbarButton
-            icon={<Info />}
-            title={showLegend ? 'Masquer la légende' : 'Afficher la légende'}
-            onClick={toggleLegend}
-            active={showLegend}
-          />
+      {(features?.mapStyle || features?.statusLegend || features?.zoneOverlay || features?.heatmap) && (
+        <>
+          <div className="toolbar-group">
+            {features?.mapStyle && (
+              <div ref={styleMenuTriggerRef} className="relative">
+                <ToolbarButton
+                  icon={<MapIcon />}
+                  title="Style de Carte"
+                  onClick={() => setShowStyleMenu(!showStyleMenu)}
+                  active={showStyleMenu}
+                />
+              </div>
+            )}
+            {features?.statusLegend && (
+              <ToolbarButton
+                icon={<Info />}
+                title={showLegend ? 'Masquer la légende' : 'Afficher la légende'}
+                onClick={toggleLegend}
+                active={showLegend}
+              />
+            )}
+            {features?.heatmap && (
+              <ToolbarButton
+                icon={<Flame />}
+                title="Heatmap"
+                onClick={toggleHeatmap}
+                active={showHeatmap}
+              />
+            )}
+            {features?.zoneOverlay && (
+              <ToolbarButton icon={<Layers />} title="Zones" onClick={toggleZones} active={showZones} />
+            )}
+          </div>
+          <div className="toolbar-divider" />
+        </>
+      )}
+
+      {/* EXPERT TOOLS GROUP */}
+      {(features?.routing || features?.grappeTools || features?.analytics) && (
+        <>
+          <div className="toolbar-group">
+            {features?.routing && (
+              <ToolbarButton
+                icon={<Truck />}
+                title="Itinéraire"
+                onClick={() => setPanel('routing')}
+                active={activePanel === 'routing'}
+              />
+            )}
+            {features?.grappeTools && (
+              <ToolbarButton
+                icon={<Database />}
+                title="Liste des Grappes"
+                onClick={() => setPanel('grappe')}
+                active={activePanel === 'grappe'}
+              />
+            )}
+            {features?.analytics && (
+              <ToolbarButton
+                icon={<BarChart3 />}
+                title="Stats Analytique"
+                onClick={toggleDatabaseStats}
+              />
+            )}
+          </div>
+          <div className="toolbar-divider" />
+        </>
+      )}
+      
+      {/* GIS TOOLS GROUP */}
+      {(features?.measure || features?.lasso || features?.drawZones || features?.geoJsonLayers || features?.regionDownload) && (
+        <>
+          <div className="toolbar-group">
+            {features?.measure && (
+              <ToolbarButton
+                icon={<Ruler />}
+                title="Mesurer Distance"
+                onClick={toggleMeasuring}
+                active={isMeasuring}
+                danger={isMeasuring}
+              />
+            )}
+            {features?.lasso && (
+              <ToolbarButton
+                icon={<MousePointer2 />}
+                title="Lasso de Sélection"
+                onClick={toggleSelecting}
+                active={isSelecting}
+                danger={isSelecting}
+              />
+            )}
+            {features?.drawZones && (
+              <ToolbarButton
+                icon={<PenTool />}
+                title="Dessiner Zone"
+                onClick={() => setPanel('draw')}
+                active={activePanel === 'draw'}
+                danger={activePanel === 'draw'}
+              />
+            )}
+            {features?.geoJsonLayers && (
+              <ToolbarButton
+                icon={<Layers />}
+                title="Couches externes"
+                onClick={() => setPanel('layers')}
+                active={activePanel === 'layers'}
+              />
+            )}
+            {features?.regionDownload && (
+              <ToolbarButton
+                icon={<Cloud />}
+                title="Cartes offline"
+                onClick={() => setPanel('region')}
+                active={activePanel === 'region'}
+              />
+            )}
+          </div>
+          <div className="toolbar-divider" />
+        </>
+      )}
+      
+      {/* DATA & CLOUD */}
+      {features?.dataHub && (
+        <>
+          <div className="toolbar-group">
+            <ToolbarButton
+              icon={<Cloud />}
+              title="Data Hub (Kobo)"
+              onClick={() => setPanel('datahub')}
+              active={activePanel === 'datahub'}
+            />
+          </div>
+          <div className="toolbar-divider" />
+        </>
+      )}
+      </div>
+
+      {typeof document !== 'undefined' &&
+        createPortal(
           <AnimatePresence>
-            {showStyleMenu && (
+            {showStyleMenu && styleMenuPosition && (
               <motion.div
+                ref={styleMenuRef}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 10 }}
-                className="absolute top-full mt-3 right-0 p-2 rounded-2xl bg-[#0D1E35] border border-white/10 shadow-2xl flex flex-col gap-2 min-w-[160px] z-[2000]"
+                style={{
+                  position: 'fixed',
+                  top: styleMenuPosition.top,
+                  left: styleMenuPosition.left,
+                  width: 176,
+                }}
+                className="p-2 rounded-2xl bg-[#0D1E35] border border-white/10 shadow-2xl flex flex-col gap-2 z-[2600]"
               >
                 <button
                   onClick={() => {
@@ -219,89 +418,9 @@ export const MapToolbar: React.FC<MapToolbarProps> = ({ onRecenter }) => {
                 </button>
               </motion.div>
             )}
-          </AnimatePresence>
-        </div>
-        <ToolbarButton
-          icon={<Flame />}
-          title="Heatmap"
-          onClick={toggleHeatmap}
-          active={showHeatmap}
-        />
-        <ToolbarButton icon={<Layers />} title="Zones" onClick={toggleZones} active={showZones} />
-      </div>
-
-      <div className="toolbar-divider" />
-
-      {/* EXPERT TOOLS GROUP */}
-      <div className="toolbar-group">
-        <ToolbarButton
-          icon={<Truck />}
-          title="Tournée Camion"
-          onClick={() => setPanel('routing')}
-          active={activePanel === 'routing'}
-        />
-        <ToolbarButton
-          icon={<Database />}
-          title="Liste des Grappes"
-          onClick={() => setPanel('grappe')}
-          active={activePanel === 'grappe'}
-        />
-        <ToolbarButton
-          icon={<BarChart3 />}
-          title="Stats Analytique"
-          onClick={toggleDatabaseStats}
-        />
-      </div>
-
-      <div className="toolbar-divider" />
-      
-      {/* GIS TOOLS GROUP */}
-      <div className="toolbar-group">
-        <ToolbarButton
-          icon={<Ruler />}
-          title="Mesurer Distance"
-          onClick={toggleMeasuring}
-          active={isMeasuring}
-          danger={isMeasuring}
-        />
-        <ToolbarButton
-          icon={<MousePointer2 />}
-          title="Lasso de Sélection"
-          onClick={toggleSelecting}
-          active={isSelecting}
-          danger={isSelecting}
-        />
-        <ToolbarButton
-          icon={<PenTool />}
-          title="Dessiner Zone"
-          onClick={() => setPanel('draw')}
-          active={activePanel === 'draw'}
-          danger={activePanel === 'draw'}
-        />
-      </div>
-
-      <div className="toolbar-divider" />
-      
-      {/* DATA & CLOUD */}
-      <div className="toolbar-group">
-        <ToolbarButton
-          icon={<Cloud />}
-          title="Data Hub (Kobo)"
-          onClick={() => setPanel('datahub')}
-          active={activePanel === 'datahub'}
-        />
-      </div>
-
-      <div className="toolbar-divider" />
-
-      {/* UTILS */}
-      <div className="toolbar-group">
-        <ToolbarButton
-          icon={<Maximize2 />}
-          title="Plein Écran"
-          onClick={() => document.documentElement.requestFullscreen()}
-        />
-      </div>
-    </div>
+          </AnimatePresence>,
+          document.body
+        )}
+    </>
   );
 };

@@ -11,33 +11,75 @@ import PWAPrompt from './components/PWAPrompt';
 import SyncNotification from './components/SyncNotification';
 import ImpersonationBanner from './components/ImpersonationBanner';
 import { CommandPalette } from './components/common/CommandPalette';
+import { LazyRouteErrorBoundary } from './components/LazyRouteErrorBoundary';
 import { Toaster } from 'react-hot-toast';
 import { PERMISSIONS, hasPermission } from './utils/permissions';
 
+function lazyWithRetry<T extends React.ComponentType<any>>(
+  importer: () => Promise<{ default: T }>,
+  cacheKey: string
+) {
+  return lazy(async () => {
+    try {
+      const module = await importer();
+      if (typeof window !== 'undefined') {
+        window.sessionStorage.removeItem(cacheKey);
+      }
+      return module;
+    } catch (error) {
+      if (typeof window !== 'undefined') {
+        const hasRetried = window.sessionStorage.getItem(cacheKey) === '1';
+        if (!hasRetried) {
+          window.sessionStorage.setItem(cacheKey, '1');
+          window.location.reload();
+          return new Promise(() => {});
+        }
+      }
+      throw error;
+    }
+  });
+}
+
 // ── Lazy-loaded heavy pages ────────────────────────────────────────────────
-const Dashboard = lazy(() => import('./pages/Dashboard'));
-const Terrain = lazy(() => import('./pages/Terrain'));
-const Cahier = lazy(() => import('./pages/Cahier'));
-const Logistique = lazy(() => import('./pages/Logistique'));
-const Charges = lazy(() => import('./pages/Charges'));
-const Settings = lazy(() => import('./pages/Settings'));
-const Simulation = lazy(() => import('./pages/Simulation'));
-const Reports = lazy(() => import('./pages/Reports'));
-const Aide = lazy(() => import('./pages/Aide'));
-const Bordereau = lazy(() => import('./pages/Bordereau'));
-const AdminUsers = lazy(() => import('./pages/AdminUsers'));
-const DiagnosticSante = lazy(() => import('./pages/DiagnosticSante'));
-const SecuritySettings = lazy(() => import('./pages/SecuritySettings'));
-const MissionOrder = lazy(() => import('./pages/MissionOrder'));
-const Approbation = lazy(() => import('./pages/Approbation'));
-const MissionVerification = lazy(() => import('./pages/MissionVerification'));
-const KoboTerminal = lazy(() => import('./pages/DashboardViews/KoboTerminal'));
-const KoboMappingMaster = lazy(() => import('./pages/KoboMappingMaster'));
-const OrganizationSettings = lazy(() => import('./pages/OrganizationSettings'));
-const PVAutomation = lazy(() => import('./pages/PVAutomation'));
-const Planning = lazy(() => import('./pages/Planning'));
-const PlanningFormation = lazy(() => import('./pages/PlanningFormation'));
-const Alerts = lazy(() => import('./pages/Alerts'));
+const Dashboard = lazyWithRetry(() => import('./pages/Dashboard'), 'lazy:dashboard');
+const Terrain = lazyWithRetry(() => import('./pages/Terrain'), 'lazy:terrain');
+const Cahier = lazyWithRetry(() => import('./pages/Cahier'), 'lazy:cahier');
+const Logistique = lazyWithRetry(() => import('./pages/Logistique'), 'lazy:logistique');
+const Charges = lazyWithRetry(() => import('./pages/Charges'), 'lazy:charges');
+const Settings = lazyWithRetry(() => import('./pages/Settings'), 'lazy:settings');
+const Simulation = lazyWithRetry(() => import('./pages/Simulation'), 'lazy:simulation');
+const Reports = lazyWithRetry(() => import('./pages/Reports'), 'lazy:reports');
+const Aide = lazyWithRetry(() => import('./pages/Aide'), 'lazy:aide');
+const Bordereau = lazyWithRetry(() => import('./pages/Bordereau'), 'lazy:bordereau');
+const AdminUsers = lazyWithRetry(() => import('./pages/AdminUsers'), 'lazy:admin-users');
+const DiagnosticSante = lazyWithRetry(() => import('./pages/DiagnosticSante'), 'lazy:diagnostic');
+const SecuritySettings = lazyWithRetry(() => import('./pages/SecuritySettings'), 'lazy:security');
+const MissionOrder = lazyWithRetry(() => import('./pages/MissionOrder'), 'lazy:mission-order');
+const Approbation = lazyWithRetry(() => import('./pages/Approbation'), 'lazy:approbation');
+const MissionVerification = lazyWithRetry(
+  () => import('./pages/MissionVerification'),
+  'lazy:mission-verification'
+);
+const KoboTerminal = lazyWithRetry(
+  () => import('./pages/DashboardViews/KoboTerminal'),
+  'lazy:kobo-terminal'
+);
+const KoboMappingMaster = lazyWithRetry(
+  () => import('./pages/KoboMappingMaster'),
+  'lazy:kobo-mapping'
+);
+const OrganizationSettings = lazyWithRetry(
+  () => import('./pages/OrganizationSettings'),
+  'lazy:organization'
+);
+const PVAutomation = lazyWithRetry(() => import('./pages/PVAutomation'), 'lazy:pv-automation');
+const Planning = lazyWithRetry(() => import('./pages/Planning'), 'lazy:planning');
+const PlanningFormation = lazyWithRetry(
+  () => import('./pages/PlanningFormation'),
+  'lazy:planning-formation'
+);
+const Alerts = lazyWithRetry(() => import('./pages/Alerts'), 'lazy:alerts');
+const Communication = lazyWithRetry(() => import('./pages/Communication'), 'lazy:communication');
 
 // Dev-only: MemoryDiagnostic loaded conditionally — zero cost in production
 const MemoryDiagnostic = import.meta.env.DEV
@@ -82,251 +124,262 @@ function App() {
       {/* Dexie → syncStore bridge (must live inside React tree for useLiveQuery) */}
       <BackgroundServices />
 
-      <Suspense fallback={<PageLoader />}>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/verify/mission/:identifier" element={<MissionVerification />} />
+      <LazyRouteErrorBoundary>
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/verify/mission/:identifier" element={<MissionVerification />} />
 
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            }
-          />
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              }
+            />
 
-          <Route
-            path="/terrain"
-            element={
-              <ProtectedRoute>
-                <PermissionRoute permission={PERMISSIONS.VOIR_CARTE}>
-                  <Terrain />
-                </PermissionRoute>
-              </ProtectedRoute>
-            }
-          />
+            <Route
+              path="/terrain"
+              element={
+                <ProtectedRoute>
+                  <PermissionRoute permission={PERMISSIONS.VOIR_CARTE}>
+                    <Terrain />
+                  </PermissionRoute>
+                </ProtectedRoute>
+              }
+            />
 
-          <Route
-            path="/cahier"
-            element={
-              <ProtectedRoute>
-                <PermissionRoute permission={PERMISSIONS.VOIR_RAPPORTS}>
-                  <Cahier />
-                </PermissionRoute>
-              </ProtectedRoute>
-            }
-          />
+            <Route
+              path="/cahier"
+              element={
+                <ProtectedRoute>
+                  <PermissionRoute permission={PERMISSIONS.VOIR_RAPPORTS}>
+                    <Cahier />
+                  </PermissionRoute>
+                </ProtectedRoute>
+              }
+            />
 
-          <Route
-            path="/logistique"
-            element={
-              <ProtectedRoute>
-                <PermissionRoute permission={PERMISSIONS.GERER_LOGISTIQUE}>
-                  <Logistique />
-                </PermissionRoute>
-              </ProtectedRoute>
-            }
-          />
+            <Route
+              path="/logistique"
+              element={
+                <ProtectedRoute>
+                  <PermissionRoute permission={PERMISSIONS.GERER_LOGISTIQUE}>
+                    <Logistique />
+                  </PermissionRoute>
+                </ProtectedRoute>
+              }
+            />
 
-          <Route
-            path="/finances"
-            element={
-              <ProtectedRoute>
-                <PermissionRoute permission={PERMISSIONS.VOIR_FINANCES}>
-                  <Charges />
-                </PermissionRoute>
-              </ProtectedRoute>
-            }
-          />
+            <Route
+              path="/finances"
+              element={
+                <ProtectedRoute>
+                  <PermissionRoute permission={PERMISSIONS.VOIR_FINANCES}>
+                    <Charges />
+                  </PermissionRoute>
+                </ProtectedRoute>
+              }
+            />
 
-          <Route
-            path="/settings"
-            element={
-              <ProtectedRoute>
-                <PermissionRoute permission={PERMISSIONS.GERER_PARAMETRES}>
-                  <Settings />
-                </PermissionRoute>
-              </ProtectedRoute>
-            }
-          />
+            <Route
+              path="/settings"
+              element={
+                <ProtectedRoute>
+                  <PermissionRoute permission={PERMISSIONS.GERER_PARAMETRES}>
+                    <Settings />
+                  </PermissionRoute>
+                </ProtectedRoute>
+              }
+            />
 
-          <Route
-            path="/simulation"
-            element={
-              <ProtectedRoute>
-                <PermissionRoute permission={PERMISSIONS.VOIR_SIMULATION}>
-                  <Simulation />
-                </PermissionRoute>
-              </ProtectedRoute>
-            }
-          />
+            <Route
+              path="/simulation"
+              element={
+                <ProtectedRoute>
+                  <PermissionRoute permission={PERMISSIONS.VOIR_SIMULATION}>
+                    <Simulation />
+                  </PermissionRoute>
+                </ProtectedRoute>
+              }
+            />
 
-          <Route
-            path="/rapports"
-            element={
-              <ProtectedRoute>
-                <Reports />
-              </ProtectedRoute>
-            }
-          />
+            <Route
+              path="/rapports"
+              element={
+                <ProtectedRoute>
+                  <Reports />
+                </ProtectedRoute>
+              }
+            />
 
-          <Route
-            path="/bordereau"
-            element={
-              <ProtectedRoute>
-                <PermissionRoute permission={PERMISSIONS.GERER_LOGISTIQUE}>
-                  <Bordereau />
-                </PermissionRoute>
-              </ProtectedRoute>
-            }
-          />
+            <Route
+              path="/bordereau"
+              element={
+                <ProtectedRoute>
+                  <PermissionRoute permission={PERMISSIONS.GERER_LOGISTIQUE}>
+                    <Bordereau />
+                  </PermissionRoute>
+                </ProtectedRoute>
+              }
+            />
 
-          <Route
-            path="/aide"
-            element={
-              <ProtectedRoute>
-                <Aide />
-              </ProtectedRoute>
-            }
-          />
+            <Route
+              path="/aide"
+              element={
+                <ProtectedRoute>
+                  <Aide />
+                </ProtectedRoute>
+              }
+            />
 
-          <Route
-            path="/admin/users"
-            element={
-              <ProtectedRoute>
-                <PermissionRoute permission={PERMISSIONS.GERER_UTILISATEURS}>
-                  <AdminUsers />
-                </PermissionRoute>
-              </ProtectedRoute>
-            }
-          />
+            <Route
+              path="/admin/users"
+              element={
+                <ProtectedRoute>
+                  <PermissionRoute permission={PERMISSIONS.GERER_UTILISATEURS}>
+                    <AdminUsers />
+                  </PermissionRoute>
+                </ProtectedRoute>
+              }
+            />
 
-          <Route
-            path="/admin/security"
-            element={
-              <ProtectedRoute>
-                <PermissionRoute permission={PERMISSIONS.GERER_PARAMETRES}>
-                  <SecuritySettings />
-                </PermissionRoute>
-              </ProtectedRoute>
-            }
-          />
+            <Route
+              path="/admin/security"
+              element={
+                <ProtectedRoute>
+                  <PermissionRoute permission={PERMISSIONS.GERER_PARAMETRES}>
+                    <SecuritySettings />
+                  </PermissionRoute>
+                </ProtectedRoute>
+              }
+            />
 
-          <Route
-            path="/admin/diagnostic"
-            element={
-              <ProtectedRoute>
-                <PermissionRoute permission={PERMISSIONS.VOIR_DIAGNOSTIC}>
-                  <DiagnosticSante />
-                </PermissionRoute>
-              </ProtectedRoute>
-            }
-          />
+            <Route
+              path="/admin/diagnostic"
+              element={
+                <ProtectedRoute>
+                  <PermissionRoute permission={PERMISSIONS.VOIR_DIAGNOSTIC}>
+                    <DiagnosticSante />
+                  </PermissionRoute>
+                </ProtectedRoute>
+              }
+            />
 
-          <Route
-            path="/admin/mission"
-            element={
-              <ProtectedRoute>
-                <PermissionRoute permission={PERMISSIONS.CREER_MISSION}>
-                  <MissionOrder />
-                </PermissionRoute>
-              </ProtectedRoute>
-            }
-          />
+            <Route
+              path="/admin/mission"
+              element={
+                <ProtectedRoute>
+                  <PermissionRoute permission={PERMISSIONS.CREER_MISSION}>
+                    <MissionOrder />
+                  </PermissionRoute>
+                </ProtectedRoute>
+              }
+            />
 
-          <Route
-            path="/admin/approval"
-            element={
-              <ProtectedRoute>
-                <PermissionRoute permission={PERMISSIONS.VALIDER_MISSION}>
-                  <Approbation />
-                </PermissionRoute>
-              </ProtectedRoute>
-            }
-          />
+            <Route
+              path="/admin/approval"
+              element={
+                <ProtectedRoute>
+                  <PermissionRoute permission={PERMISSIONS.VALIDER_MISSION}>
+                    <Approbation />
+                  </PermissionRoute>
+                </ProtectedRoute>
+              }
+            />
 
-          <Route
-            path="/admin/kobo-terminal"
-            element={
-              <ProtectedRoute>
-                <PermissionRoute permission={PERMISSIONS.ACCES_TERMINAL_KOBO}>
-                  <KoboTerminal />
-                </PermissionRoute>
-              </ProtectedRoute>
-            }
-          />
+            <Route
+              path="/admin/kobo-terminal"
+              element={
+                <ProtectedRoute>
+                  <PermissionRoute permission={PERMISSIONS.ACCES_TERMINAL_KOBO}>
+                    <KoboTerminal />
+                  </PermissionRoute>
+                </ProtectedRoute>
+              }
+            />
 
-          <Route
-            path="/admin/kobo-mapping"
-            element={
-              <ProtectedRoute>
-                <PermissionRoute permission={PERMISSIONS.GERER_PARAMETRES}>
-                  <KoboMappingMaster />
-                </PermissionRoute>
-              </ProtectedRoute>
-            }
-          />
+            <Route
+              path="/admin/kobo-mapping"
+              element={
+                <ProtectedRoute>
+                  <PermissionRoute permission={PERMISSIONS.GERER_PARAMETRES}>
+                    <KoboMappingMaster />
+                  </PermissionRoute>
+                </ProtectedRoute>
+              }
+            />
 
-          <Route
-            path="/admin/organization"
-            element={
-              <ProtectedRoute>
-                <PermissionRoute permission={PERMISSIONS.GERER_PARAMETRES}>
-                  <OrganizationSettings />
-                </PermissionRoute>
-              </ProtectedRoute>
-            }
-          />
+            <Route
+              path="/admin/organization"
+              element={
+                <ProtectedRoute>
+                  <PermissionRoute permission={PERMISSIONS.GERER_PARAMETRES}>
+                    <OrganizationSettings />
+                  </PermissionRoute>
+                </ProtectedRoute>
+              }
+            />
 
-          <Route
-            path="/admin/pv-automation"
-            element={
-              <ProtectedRoute>
-                <PermissionRoute permission={PERMISSIONS.GERER_PV}>
-                  <PVAutomation />
-                </PermissionRoute>
-              </ProtectedRoute>
-            }
-          />
+            <Route
+              path="/admin/pv-automation"
+              element={
+                <ProtectedRoute>
+                  <PermissionRoute permission={PERMISSIONS.GERER_PV}>
+                    <PVAutomation />
+                  </PermissionRoute>
+                </ProtectedRoute>
+              }
+            />
 
-          <Route
-            path="/planning"
-            element={
-              <ProtectedRoute>
-                <PermissionRoute permission={PERMISSIONS.VOIR_CARTE}>
-                  <Planning />
-                </PermissionRoute>
-              </ProtectedRoute>
-            }
-          />
+            <Route
+              path="/communication"
+              element={
+                <ProtectedRoute>
+                  <Communication />
+                </ProtectedRoute>
+              }
+            />
 
-          <Route
-            path="/planning-formation"
-            element={
-              <ProtectedRoute>
-                <PermissionRoute permission={PERMISSIONS.VOIR_CARTE}>
-                  <PlanningFormation />
-                </PermissionRoute>
-              </ProtectedRoute>
-            }
-          />
+            <Route
+              path="/planning"
+              element={
+                <ProtectedRoute>
+                  <PermissionRoute permission={PERMISSIONS.VOIR_CARTE}>
+                    <Planning />
+                  </PermissionRoute>
+                </ProtectedRoute>
+              }
+            />
 
-          <Route
-            path="/admin/alerts"
-            element={
-              <ProtectedRoute>
-                <PermissionRoute permission={PERMISSIONS.GERER_PV}>
-                  <Alerts />
-                </PermissionRoute>
-              </ProtectedRoute>
-            }
-          />
+            <Route
+              path="/planning-formation"
+              element={
+                <ProtectedRoute>
+                  <PermissionRoute permission={PERMISSIONS.VOIR_CARTE}>
+                    <PlanningFormation />
+                  </PermissionRoute>
+                </ProtectedRoute>
+              }
+            />
 
-          <Route path="/mission-order" element={<Navigate to="/admin/mission" replace />} />
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
-      </Suspense>
+            <Route
+              path="/admin/alerts"
+              element={
+                <ProtectedRoute>
+                  <PermissionRoute permission={PERMISSIONS.GERER_PV}>
+                    <Alerts />
+                  </PermissionRoute>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route path="/mission-order" element={<Navigate to="/admin/mission" replace />} />
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
+        </Suspense>
+      </LazyRouteErrorBoundary>
 
       {/* System-level UI — always mounted, no logic */}
       <SessionWarningToast />

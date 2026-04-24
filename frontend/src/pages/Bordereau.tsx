@@ -22,12 +22,21 @@ import { useProject } from '../contexts/ProjectContext';
 import { db } from '../store/db';
 import { useSyncListener } from '../hooks/useSyncListener';
 import { fmtNum } from '../utils/format';
+import logger from '../utils/logger';
 
 // Import centralized design system
 import { PageContainer, PageHeader, ContentArea, ActionBar } from '../components';
+import {
+  DASHBOARD_ACCENT_SURFACE,
+  DASHBOARD_INPUT,
+  DASHBOARD_MINI_STAT_CARD,
+  DASHBOARD_PRIMARY_BUTTON,
+  DASHBOARD_SECTION_SURFACE,
+} from '../components/dashboards/DashboardComponents';
 
 const Bordereau = () => {
-  const { activeProjectId: projectId } = useProject();
+  const { project } = useProject();
+  const projectId = project?.id || null;
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [data, setData] = useState({ grappes: [] });
@@ -35,6 +44,12 @@ const Bordereau = () => {
   const [expandedRegions, setExpandedRegions] = useState<Record<string, boolean>>({});
 
   const fetchData = async (forceRefresh = false) => {
+    if (!projectId) {
+      setData({ grappes: [] });
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
 
@@ -46,12 +61,12 @@ const Bordereau = () => {
           if (db.households && typeof db.households.clear === 'function') {
             await db.households.clear();
           }
-          console.log('[BORDEREAU] Cache cleared');
+          logger.debug('[BORDEREAU] Cache cleared');
         } catch (err) {
-          console.warn('[BORDEREAU] Could not clear cache:', err);
+          logger.warn('[BORDEREAU] Could not clear cache:', err);
         }
       } else if (forceRefresh && !db) {
-        console.warn('[BORDEREAU] Dexie DB not available for cache clear');
+        logger.warn('[BORDEREAU] Dexie DB not available for cache clear');
       }
 
       const response = await api.get(`/projects/${projectId}/bordereau?_t=${Date.now()}`);
@@ -66,7 +81,7 @@ const Bordereau = () => {
       });
       setExpandedRegions(initialExpanded);
     } catch (error) {
-      console.error('Error fetching bordereau:', error);
+      logger.error('Error fetching bordereau:', error);
       toast.error('Erreur lors du chargement du bordereau');
     } finally {
       setLoading(false);
@@ -80,7 +95,7 @@ const Bordereau = () => {
   }, [projectId]);
 
   useSyncListener((source) => {
-    console.log(`[BORDEREAU] Data changed by ${source} - refreshing...`);
+    logger.debug(`[BORDEREAU] Data changed by ${source} - refreshing...`);
     if (source === 'kobo' || source === 'import') {
       // Data is fully downloaded already, just re-fetch from cache
       fetchData(false);
@@ -90,13 +105,18 @@ const Bordereau = () => {
   });
 
   const handleRecalculate = async () => {
+    if (!projectId) {
+      toast.error('Aucun projet actif valide sélectionné');
+      return;
+    }
+
     try {
       setSyncing(true);
       await api.post(`/projects/${projectId}/recalculate-grappes`);
       toast.success('Recalculation des grappes terminée !');
       await fetchData();
     } catch (error) {
-      console.error('Sync error:', error);
+      logger.error('Sync error:', error);
       toast.error('Erreur lors de la synchronisation');
     } finally {
       setSyncing(false);
@@ -149,7 +169,7 @@ const Bordereau = () => {
         toast.success(`Affichage de la liste à venir pour ${grappe.name}`);
       }
     } catch (err) {
-      console.error('Export error:', err);
+      logger.error('Export error:', err);
       toast.error("Erreur lors de la génération de l'export");
     }
   };
@@ -210,19 +230,20 @@ const Bordereau = () => {
         title="Bordereau de Livraison"
         subtitle="Gestion et suivi des expéditions par zone"
         icon={<FileSpreadsheet size={24} />}
+        accent="bordereau"
         actions={
           <ActionBar>
             <button
               onClick={() => fetchData(true)}
               disabled={loading}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black bg-white/5 text-white hover:bg-white/10 border border-white/5 transition-all uppercase tracking-widest"
+              className="flex items-center gap-2 rounded-xl border border-white/8 bg-white/[0.04] px-4 py-2.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-white transition-all hover:bg-white/[0.08]"
             >
               <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Actualiser
             </button>
             <button
               onClick={handleRecalculate}
               disabled={syncing}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black bg-primary text-white hover:bg-primary-light shadow-lg shadow-primary/20 transition-all uppercase tracking-widest"
+              className={`${DASHBOARD_PRIMARY_BUTTON} h-auto px-4 py-2.5 text-[10px] tracking-[0.14em]`}
             >
               <RefreshCw size={14} className={syncing ? 'animate-spin' : ''} /> Recalculer
             </button>
@@ -252,21 +273,47 @@ const Bordereau = () => {
             ].map((kpi, i) => (
               <div
                 key={i}
-                className="card p-8 bg-white/5 border-white/5 hover:bg-white/10 transition-all group"
+                className={`${DASHBOARD_MINI_STAT_CARD} group p-8 hover:bg-white/[0.06] ${
+                  i === 0
+                    ? DASHBOARD_ACCENT_SURFACE.blue
+                    : i === 1
+                      ? DASHBOARD_ACCENT_SURFACE.amber
+                      : i === 2
+                        ? DASHBOARD_ACCENT_SURFACE.emerald
+                        : DASHBOARD_ACCENT_SURFACE.emerald
+                }`}
               >
                 <div className="flex items-center justify-between mb-6">
                   <kpi.icon
                     size={18}
-                    className="text-blue-400 group-hover:scale-110 transition-transform"
+                    className={`group-hover:scale-110 transition-transform ${
+                      i === 0
+                        ? 'text-blue-300'
+                        : i === 1
+                          ? 'text-amber-300'
+                          : 'text-emerald-300'
+                    }`}
                   />
-                  <span className="text-[10px] font-black text-blue-300/30 uppercase tracking-[0.2em]">
+                  <span className={`text-[10px] font-black uppercase tracking-[0.2em] ${
+                    i === 0
+                      ? 'text-blue-200/45'
+                      : i === 1
+                        ? 'text-amber-200/45'
+                        : 'text-emerald-200/45'
+                  }`}>
                     {kpi.label}
                   </span>
                 </div>
                 <div className="text-4xl font-black text-white italic tracking-tighter mb-1">
                   {kpi.value}
                 </div>
-                <div className="text-[10px] font-black text-blue-300/40 uppercase tracking-widest">
+                <div className={`text-[10px] font-black uppercase tracking-widest ${
+                  i === 0
+                    ? 'text-blue-200/45'
+                    : i === 1
+                      ? 'text-amber-200/45'
+                      : 'text-emerald-200/45'
+                }`}>
                   {kpi.sub}
                 </div>
               </div>
@@ -274,21 +321,21 @@ const Bordereau = () => {
           </div>
 
           {/* Filter Bar */}
-          <div className="relative group">
-            <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-blue-800 group-focus-within:text-primary transition-colors" />
+          <div className={`relative group rounded-3xl ${DASHBOARD_SECTION_SURFACE} ${DASHBOARD_ACCENT_SURFACE.emerald} p-2`}>
+            <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-300/55 group-focus-within:text-emerald-300 transition-colors" />
             <input
               type="text"
               placeholder="RECHERCHER UNE RÉGION OU UNE GRAPPE..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-16 pr-6 py-6 bg-white/5 border border-white/5 rounded-3xl text-white placeholder-blue-800 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:bg-white/10 transition-all font-black text-xs tracking-widest uppercase"
+              className={`${DASHBOARD_INPUT} rounded-[1.4rem] py-5 pl-16 pr-6 text-xs font-semibold uppercase tracking-[0.14em] placeholder:text-emerald-200/25 focus:border-emerald-400/35 focus:ring-2 focus:ring-emerald-500/15`}
             />
           </div>
 
           {/* Main Content */}
           <div className="space-y-4">
             {filteredRegions.length === 0 ? (
-              <div className="card py-24 bg-white/5 border-white/5 text-center flex flex-col items-center justify-center space-y-4 opacity-30">
+              <div className={`${DASHBOARD_SECTION_SURFACE} flex flex-col items-center justify-center space-y-4 py-24 text-center opacity-40`}>
                 <MapPin size={48} className="text-blue-300" />
                 <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-blue-300">
                   Aucune donnée correspondante
@@ -296,10 +343,10 @@ const Bordereau = () => {
               </div>
             ) : (
               filteredRegions.map((region: string) => (
-                <div key={region} className="card bg-white/5 border-white/5 overflow-hidden">
+                <div key={region} className={`${DASHBOARD_SECTION_SURFACE} overflow-hidden`}>
                   <button
                     onClick={() => toggleRegion(region)}
-                    className="w-full px-8 py-6 flex items-center justify-between hover:bg-white/5 transition-colors group"
+                    className="group flex w-full items-center justify-between px-8 py-6 transition-colors hover:bg-white/[0.04]"
                   >
                     <div className="flex items-center gap-6">
                       <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-blue-800 group-hover:text-primary transition-colors">
@@ -336,7 +383,7 @@ const Bordereau = () => {
                         initial={{ height: 0, opacity: 0 }}
                         animate={{ height: 'auto', opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }}
-                        className="px-8 pb-8 pt-2 border-t border-white/5 bg-black/20"
+                        className="border-t border-white/5 bg-black/20 px-8 pb-8 pt-2"
                       >
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
                           {groupedData[region]
@@ -354,7 +401,7 @@ const Bordereau = () => {
                               return (
                                 <div
                                   key={grappe.id}
-                                  className="p-6 rounded-2xl bg-white/5 border border-white/5 hover:border-primary/40 transition-all group flex flex-col justify-between"
+                                  className="group flex flex-col justify-between rounded-2xl border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.02))] p-6 transition-all hover:border-primary/40 hover:bg-white/[0.05]"
                                 >
                                   <div className="mb-6">
                                     <div className="flex items-start justify-between mb-4">

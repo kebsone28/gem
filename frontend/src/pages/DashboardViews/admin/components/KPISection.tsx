@@ -9,16 +9,40 @@ interface KPISectionProps {
   metrics: DashboardMetrics;
   missionStats: MissionStats | null;
   householdLabel: string;
+  isLoading?: boolean;
 }
 
-export const KPISection: React.FC<KPISectionProps> = ({ metrics, missionStats, householdLabel }) => {
+export const KPISection: React.FC<KPISectionProps> = ({
+  metrics,
+  missionStats,
+  householdLabel,
+  isLoading = false,
+}) => {
+  if (isLoading) {
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-6 lg:gap-8">
+        {[0, 1, 2, 3].map((idx) => (
+          <div
+            key={idx}
+            className="min-h-[142px] rounded-[1.4rem] border border-white/10 bg-slate-900/40 p-4 sm:p-6 animate-pulse"
+          >
+            <div className="h-10 w-10 rounded-xl bg-white/10" />
+            <div className="mt-6 h-4 w-28 rounded-full bg-white/10" />
+            <div className="mt-3 h-10 w-20 rounded-2xl bg-white/10" />
+            <div className="mt-3 h-3 w-24 rounded-full bg-white/10" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   return (
-    <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-6 lg:gap-8">
+    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-6 lg:gap-8">
       <KPICard
         title={`TOTAL ${householdLabel.toUpperCase()}`}
         value={fmtNum(metrics.totalHouseholds)}
         icon={<Users size={22} />}
-        trend={{ value: 8, isUp: true, label: 'VS PÉRIODE PRÉCÉDENTE' }}
+        trend={{ value: metrics.progressPercent, isUp: true, label: 'Base terrain active' }}
         sparkline={[30, 45, 35, 60, 55, 80, 70]}
       />
       <KPICard
@@ -30,7 +54,7 @@ export const KPISection: React.FC<KPISectionProps> = ({ metrics, missionStats, h
             ? {
                 value: Math.round((missionStats.totalCertified / (missionStats.totalMissions || 1)) * 100),
                 isUp: true,
-                label: 'Taux de Certification',
+                label: 'Certification',
               }
             : undefined
         }
@@ -39,13 +63,22 @@ export const KPISection: React.FC<KPISectionProps> = ({ metrics, missionStats, h
         title="MISSIONS CERTIFIÉES"
         value={missionStats ? missionStats.totalCertified.toString() : '0'}
         icon={<CheckCircle2 size={22} className="text-emerald-400" />}
+        trend={
+          missionStats
+            ? {
+                value: missionStats.totalCertified,
+                isUp: true,
+                label: 'Validees terrain',
+              }
+            : undefined
+        }
         sparkline={[40, 70, 45, 90, 65, 80, 95]}
       />
       <KPICard
         title="AGENTS DÉPLOYÉS"
         value={missionStats ? missionStats.totalMembersDeployed.toString() : '0'}
         icon={<LayoutGrid size={22} className="text-blue-400" />}
-        trend={{ value: 5, isUp: true, label: 'Ressources actives' }}
+        trend={{ value: Math.max(0, metrics.breakdown.byTeam.length), isUp: true, label: 'Equipes actives' }}
       />
     </div>
   );

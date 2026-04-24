@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React from 'react';
+import logger from './logger';
 
 /* ═══════════════════════════════════════════════════════════════════════════
    DESIGN SYSTEM ANALYTICS - MÉTRIQUES D'USAGE
@@ -42,8 +43,7 @@ class DesignSystemAnalytics {
     this.usageData.push(usage);
     this.saveToStorage();
 
-    // Log to console in development
-    console.debug(`🎨 [DS] ${component}`, {
+    logger.debug(`🎨 [DS] ${component}`, {
       props: usage.props,
       page: usage.page,
     });
@@ -157,7 +157,7 @@ class DesignSystemAnalytics {
     try {
       localStorage.setItem('design-system-analytics', JSON.stringify(this.usageData));
     } catch (error) {
-      console.warn('Failed to save design system analytics to localStorage:', error);
+      logger.warn('Failed to save design system analytics to localStorage:', error);
     }
   }
 
@@ -170,7 +170,7 @@ class DesignSystemAnalytics {
         this.usageData = JSON.parse(data);
       }
     } catch (error) {
-      console.warn('Failed to load design system analytics from localStorage:', error);
+      logger.warn('Failed to load design system analytics from localStorage:', error);
     }
   }
 }

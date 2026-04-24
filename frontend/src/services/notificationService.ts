@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { db } from '../store/db';
 import type { MissionNotification } from '../store/db';
+import logger from '../utils/logger';
 
 /**
  * Service de gestion des notifications (Approbations, Rejets, Alertes)
@@ -56,7 +57,7 @@ export const getNotifications = async (projectId?: string) => {
     }
     return await db.notifications.reverse().sortBy('createdAt');
   } catch (err) {
-    console.error('Error fetching notifications:', err);
+    logger.error('[notificationService] Error fetching notifications', err);
     return [];
   }
 };

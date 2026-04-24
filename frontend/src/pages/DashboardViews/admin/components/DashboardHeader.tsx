@@ -1,79 +1,285 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React from 'react';
-import { RefreshCw, Database, Download, ArrowRight } from 'lucide-react';
-import { StatusBadge, ActionBar } from '../../../../components/dashboards/DashboardComponents';
+import {
+  RefreshCw,
+  Database,
+  Download,
+  ArrowRight,
+  Plus,
+  Map,
+  ScanLine,
+  CheckCircle2,
+  AlertTriangle,
+  Clock3,
+  WifiOff,
+} from 'lucide-react';
+import {
+  DASHBOARD_ACTION_TILE_PRIMARY,
+  DASHBOARD_ACTION_TILE_SECONDARY,
+  DASHBOARD_MINI_STAT_CARD,
+  DASHBOARD_PRIMARY_BUTTON,
+  DASHBOARD_STICKY_PANEL,
+  StatusBadge,
+} from '../../../../components/dashboards/DashboardComponents';
 import { useNavigate } from 'react-router-dom';
 
 interface DashboardHeaderProps {
   projectName: string;
   isSyncing: boolean;
+  isLoading?: boolean;
   onSync: () => void;
   onExportCompta: () => void;
+  projectProgress: number;
+  missionsDone: number;
+  missionsInProgress: number;
+  errorCount: number;
+  syncHealth?: 'healthy' | 'degraded' | 'critical';
+  lastSyncLabel: string;
+  koboConnected: boolean;
+  exportAvailable: boolean;
 }
 
 export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   projectName,
   isSyncing,
+  isLoading = false,
   onSync,
   onExportCompta,
+  projectProgress,
+  missionsDone,
+  missionsInProgress,
+  errorCount,
+  syncHealth = 'healthy',
+  lastSyncLabel,
+  koboConnected,
+  exportAvailable,
 }) => {
   const navigate = useNavigate();
+  const safeMissionsDone = Number.isFinite(missionsDone) ? missionsDone : 0;
+  const safeMissionsInProgress = Number.isFinite(missionsInProgress) ? missionsInProgress : 0;
+  const safeErrorCount = Number.isFinite(errorCount) ? errorCount : 0;
+  const safeProjectProgress = Number.isFinite(projectProgress) ? projectProgress : 0;
+
+  const serviceTone =
+    syncHealth === 'critical' ? 'danger' : syncHealth === 'degraded' ? 'warning' : 'success';
+  const syncLabel = isSyncing
+    ? 'Synchronisation en cours'
+    : syncHealth === 'critical'
+      ? 'Erreur de synchronisation'
+      : syncHealth === 'degraded'
+        ? 'Synchronisation instable'
+        : 'Synchronisé';
+
+  const quickActions = [
+    {
+      label: 'Ajouter mission',
+      description: 'Planifier une intervention',
+      icon: Plus,
+      onClick: () => navigate('/planning'),
+      variant: 'secondary' as const,
+    },
+    {
+      label: 'Scanner / collecter',
+      description: 'Kobo et collecte rapide',
+      icon: ScanLine,
+      onClick: () => navigate('/admin/kobo-mapping'),
+      variant: 'secondary' as const,
+    },
+    {
+      label: 'Ouvrir carte',
+      description: 'Voir zones et menages',
+      icon: Map,
+      onClick: () => navigate('/terrain'),
+      variant: 'secondary' as const,
+    },
+    {
+      label: isSyncing ? 'Synchronisation...' : 'Synchroniser',
+      description: 'Action prioritaire',
+      icon: RefreshCw,
+      onClick: onSync,
+      disabled: isSyncing,
+      variant: 'primary' as const,
+    },
+  ];
+
+  const statusCards = [
+    {
+      title: 'Synchro Cloud',
+      value: syncLabel,
+      meta: `Derniere sync ${lastSyncLabel}`,
+      icon: syncHealth === 'critical' ? AlertTriangle : RefreshCw,
+      tone:
+        syncHealth === 'critical'
+          ? 'text-rose-300 border-rose-500/20 bg-rose-500/10'
+          : syncHealth === 'degraded'
+            ? 'text-amber-300 border-amber-500/20 bg-amber-500/10'
+            : 'text-emerald-300 border-emerald-500/20 bg-emerald-500/10',
+    },
+    {
+      title: 'Moteur Kobo',
+      value: koboConnected ? 'Connecte' : 'Deconnecte',
+      meta: koboConnected ? 'Collecte et mapping disponibles' : 'Connexion requise',
+      icon: koboConnected ? Database : WifiOff,
+      tone: koboConnected
+        ? 'text-blue-300 border-blue-500/20 bg-blue-500/10'
+        : 'text-rose-300 border-rose-500/20 bg-rose-500/10',
+    },
+    {
+      title: 'Export',
+      value: exportAvailable ? 'Disponible' : 'Indisponible',
+      meta: exportAvailable ? 'Export compta pret' : 'Donnees mission manquantes',
+      icon: Download,
+      tone: exportAvailable
+        ? 'text-emerald-300 border-emerald-500/20 bg-emerald-500/10'
+        : 'text-slate-300 border-white/10 bg-white/[0.03]',
+    },
+  ];
+
+  const pilotageCards = [
+    { label: 'Missions realisees', value: safeMissionsDone, icon: CheckCircle2 },
+    { label: 'En cours', value: safeMissionsInProgress, icon: Clock3 },
+    { label: 'Erreurs', value: safeErrorCount, icon: AlertTriangle },
+    { label: 'Progression', value: `${safeProjectProgress}%`, icon: ArrowRight },
+  ];
 
   return (
-    <div className="flex flex-col md:flex-row md:items-end justify-between gap-5 sm:gap-8 pb-2 sm:pb-4">
-      <div className="min-w-0">
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-3">
-          <StatusBadge status="info" label="Expert Console V.2" />
-          <span className="h-4 w-[1px] bg-white/10" />
-          <span className="min-w-0 truncate text-[8px] sm:text-[10px] font-black text-blue-400/40 uppercase tracking-[0.14em] sm:tracking-[0.3em] font-mono">
-            {projectName || 'INITIALISATION...'}
-          </span>
-        </div>
-        <h1 className="text-3xl sm:text-4xl md:text-6xl font-black tracking-tighter italic uppercase leading-[0.82] mb-1 text-white">
-          PILOTAGE{' '}
-          <span className="text-blue-500 drop-shadow-[0_0_15px_rgba(59,130,246,0.3)]">
-            STRATÉGIQUE
-          </span>
-        </h1>
-      </div>
+    <div className={DASHBOARD_STICKY_PANEL}>
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="min-w-0">
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <StatusBadge
+                status={serviceTone}
+                label={syncHealth === 'healthy' ? 'Terrain pret' : 'Verifier services'}
+              />
+              <span className="min-w-0 truncate text-[10px] font-black uppercase tracking-[0.08em] text-blue-300/55">
+                {projectName || 'Projet non defini'}
+              </span>
+            </div>
+            <h1 className="text-lg font-black tracking-tight text-white sm:text-xl">
+              Console terrain
+            </h1>
+            <p className="text-[13px] text-slate-400">
+              Pilotage terrain, sync et collecte hors-ligne.
+            </p>
+          </div>
 
-      <ActionBar className="w-full md:w-auto">
-        <button
-          onClick={onSync}
-          disabled={isSyncing}
-          className="h-12 sm:h-14 w-full sm:w-auto sm:min-w-[180px] px-4 sm:px-6 bg-slate-900/50 hover:bg-slate-800 border border-white/5 rounded-xl sm:rounded-2xl text-[9px] sm:text-[10px] font-black uppercase tracking-[0.16em] sm:tracking-widest text-slate-400 hover:text-white hover:border-blue-500/30 transition-all flex items-center justify-center gap-3 disabled:opacity-30 group"
-        >
-          <RefreshCw
-            size={16}
-            className={`${isSyncing ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-700'}`}
-          />
-          {isSyncing ? 'SYNCHRO EN COURS' : 'SYNCHRO CLOUD'}
-        </button>
-        <button
-          onClick={() => navigate('/admin/kobo-mapping')}
-          className="h-12 sm:h-14 w-full sm:w-auto sm:min-w-[180px] px-4 sm:px-6 bg-slate-900/50 hover:bg-slate-800 border border-white/5 rounded-xl sm:rounded-2xl text-[9px] sm:text-[10px] font-black uppercase tracking-[0.16em] sm:tracking-widest text-blue-400 hover:text-white hover:border-blue-500/30 transition-all flex items-center justify-center gap-3 active:scale-95 group"
-        >
-          <Database size={16} className="text-blue-500 group-hover:scale-110 transition-transform" />
-          MOTEUR KOBO
-        </button>
-        <button
-          onClick={onExportCompta}
-          className="h-12 sm:h-14 w-full sm:w-auto sm:min-w-[180px] px-4 sm:px-6 bg-emerald-600/10 hover:bg-emerald-600 border border-emerald-500/20 rounded-xl sm:rounded-2xl text-[9px] sm:text-[10px] font-black uppercase tracking-[0.16em] sm:tracking-widest text-emerald-400 hover:text-white transition-all flex items-center justify-center gap-3 group"
-          title="Exporter les missions certifiées en Excel"
-        >
-          <Download size={16} className="text-emerald-500 group-hover:text-white group-hover:bounce" />
-          EXPORTER COMPTA
-        </button>
-        <button
-          onClick={() => {
-            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true } as any));
-          }}
-          className="h-12 sm:h-14 w-full sm:w-auto sm:min-w-[180px] px-4 sm:px-8 bg-blue-600 hover:bg-blue-500 rounded-xl sm:rounded-2xl text-[9px] sm:text-[10px] font-black uppercase tracking-[0.16em] sm:tracking-widest text-white transition-all shadow-xl shadow-blue-600/30 active:scale-95 flex items-center justify-center gap-3 italic"
-        >
-          HUB D'ACTIONS
-          <ArrowRight size={16} />
-        </button>
-      </ActionBar>
+          <button
+            onClick={onSync}
+            disabled={isSyncing || isLoading}
+            className={`${DASHBOARD_PRIMARY_BUTTON} w-full disabled:cursor-not-allowed disabled:opacity-60 lg:w-auto lg:min-w-[220px]`}
+          >
+            <RefreshCw
+              size={16}
+              className={isSyncing ? 'animate-spin' : 'transition-transform duration-500'}
+            />
+            {isSyncing ? 'Synchronisation...' : 'Synchroniser maintenant'}
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+          <div className="grid grid-cols-2 gap-3">
+            {quickActions.map(({ label, description, icon: Icon, onClick, disabled, variant }) => (
+              <button
+                key={label}
+                onClick={onClick}
+                disabled={disabled || isLoading}
+                className={`${variant === 'primary' ? DASHBOARD_ACTION_TILE_PRIMARY : DASHBOARD_ACTION_TILE_SECONDARY} disabled:cursor-not-allowed disabled:opacity-50`}
+              >
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`flex h-10 w-10 items-center justify-center rounded-xl ${
+                      variant === 'primary' ? 'bg-white/15' : 'bg-white/5'
+                    }`}
+                  >
+                    <Icon
+                      size={18}
+                      className={
+                        disabled ? '' : variant === 'primary' ? 'text-white' : 'text-blue-300'
+                      }
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-black uppercase tracking-[0.06em]">{label}</p>
+                    <p
+                      className={`mt-1 text-[12px] ${
+                        variant === 'primary' ? 'text-blue-100/90' : 'text-slate-400'
+                      }`}
+                    >
+                      {description}
+                    </p>
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:grid-cols-1">
+            {statusCards.map(({ title, value, meta, icon: Icon, tone }) => (
+              <div key={title} className="rounded-2xl border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.02))] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+                <div className="flex items-start gap-3">
+                  <div
+                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${tone}`}
+                  >
+                    <Icon size={18} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-black uppercase tracking-[0.08em] text-slate-400">
+                      {title}
+                    </p>
+                    <p className="mt-1 text-sm font-bold text-white">{value}</p>
+                    <p className="mt-1 text-[12px] text-slate-400">{meta}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="overflow-x-auto pb-1">
+          <div className="flex min-w-max gap-3">
+            {pilotageCards.map(({ label, value, icon: Icon }) => (
+              <div
+                key={label}
+                className={DASHBOARD_MINI_STAT_CARD.replace('min-w-[170px]', 'min-w-[180px]')}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/5 text-blue-300">
+                    <Icon size={16} />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.06em] text-slate-400">
+                      {label}
+                    </p>
+                    <p className="mt-1 text-xl font-black tracking-tight text-white">{value}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={onExportCompta}
+            disabled={!exportAvailable}
+            className="flex h-11 items-center justify-center gap-2 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-300 transition-all hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.98]"
+            title="Exporter les missions certifiees en Excel"
+          >
+            <Download size={16} />
+            Exporter compta
+          </button>
+          <button
+            onClick={() => {
+              window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true } as any));
+            }}
+            className="flex h-11 items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.03] px-4 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-200 transition-all hover:bg-white/[0.06] active:scale-[0.98]"
+          >
+            Hub d'actions
+            <ArrowRight size={16} />
+          </button>
+        </div>
+      </div>
     </div>
   );
 };

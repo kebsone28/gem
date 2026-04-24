@@ -43,12 +43,12 @@ export const MissionApprovalStatusBanner: React.FC<MissionApprovalStatusBannerPr
               Status de Validation
             </h4>
             <p className="text-sm font-bold text-slate-700 dark:text-indigo-200">
-              En attente de validation par la direction
+              En attente de validation par la direction ou l'administration
             </p>
           </div>
         </div>
         <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest bg-slate-100 dark:bg-white/5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-white/10">
-          Étape {workflow.currentStep || 1} / 1
+          Validation finale en attente
         </div>
       </div>
     );
@@ -82,7 +82,7 @@ export const MissionApprovalStatusBanner: React.FC<MissionApprovalStatusBannerPr
             <div className="flex items-center gap-2 mb-1">
               <h4 className={`text-[10px] font-black uppercase tracking-[0.2em] ${textColor}`}>
                 {isApproved
-                  ? 'Mission Approuvée'
+                  ? 'Mission Validée'
                   : isRejected
                     ? 'Mission Rejetée'
                     : 'Validation en cours'}
@@ -95,10 +95,10 @@ export const MissionApprovalStatusBanner: React.FC<MissionApprovalStatusBannerPr
             </div>
             <p className="text-xl font-black text-slate-900 dark:text-white tracking-tight">
               {isApproved
-                ? 'Votre ordre de mission est certifié'
+                ? 'Votre ordre de mission est officiel'
                 : isRejected
                   ? 'La mission nécessite des corrections'
-                  : 'En attente de signature finale'}
+                  : 'En attente de validation finale'}
             </p>
           </div>
         </div>

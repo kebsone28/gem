@@ -354,13 +354,30 @@ const validateMissionBudget = (budget) => {
     return null;
 };
 
+const isSubmittedMissionStatus = (status) =>
+    status === 'soumise' || status === 'en_attente_validation';
+
+const buildMissionSubmissionData = (data, status) => {
+    const safeMissionData = typeof data === 'object' && data !== null ? data : {};
+    const shouldMarkSubmitted =
+        isSubmittedMissionStatus(status) || safeMissionData.isSubmitted === true;
+    const shouldMarkCertified = status === 'approuvee' || safeMissionData.isCertified === true;
+
+    return {
+        ...safeMissionData,
+        isSubmitted: shouldMarkSubmitted,
+        isCertified: shouldMarkCertified,
+    };
+};
+
 /**
  * Create a new mission
  */
 export const createMission = async (req, res) => {
     try {
-        let { projectId, title, description, startDate, endDate, budget, data } = req.body;
-        const { organizationId, id: userId } = req.user;
+        let { projectId, title, description, startDate, endDate, budget, data, status } = req.body;
+        const { organizationId, id: userId, role: rawUserRole } = req.user;
+        const userRole = normalizeRole(rawUserRole);
 
         if (!organizationId) {
             return res.status(400).json({ error: 'Organization ID manquante dans le contexte utilisateur' });
@@ -386,6 +403,16 @@ export const createMission = async (req, res) => {
             }
         }
 
+        const normalizedRequestedStatus = (status || '').toString().toLowerCase();
+        const canCreateApprovedMission = ['ADMIN_PROQUELEC', 'DIRECTEUR'].includes(userRole);
+        const finalStatus =
+            normalizedRequestedStatus === 'approuvee' && canCreateApprovedMission
+                ? 'approuvee'
+                : isSubmittedMissionStatus(normalizedRequestedStatus)
+                    ? normalizedRequestedStatus
+                    : 'draft';
+        const finalData = buildMissionSubmissionData(data, finalStatus);
+
         const mission = await prisma.mission.create({
             data: {
                 projectId: safeProjectId,
@@ -395,11 +422,34 @@ export const createMission = async (req, res) => {
                 startDate: safeDate(startDate),
                 endDate: safeDate(endDate),
                 budget: budget ? parseFloat(budget) : 0,
-                data: data || {},
+                data: finalData,
                 createdBy: userId,
-                status: 'draft'
+                status: finalStatus
             }
         });
+
+        if (isSubmittedMissionStatus(finalStatus)) {
+            try {
+                await createDefaultWorkflow(mission.id, organizationId);
+            } catch (workflowError) {
+                logger.error('[MISSION_CREATE_WORKFLOW_ERROR]', workflowError);
+            }
+
+            try {
+                await tracerAction(organizationId, userId, 'MISSION_SUBMITTED', 'Mission', mission.id, {
+                    title: mission.title,
+                    status: finalStatus,
+                });
+            } catch (auditError) {
+                logger.warn('[MISSION_CREATE] submit audit failed:', auditError?.message || auditError);
+            }
+
+            missionNotificationService
+                .notifyNextStep(mission, 'DIRECTEUR', organizationId)
+                .catch((notifError) =>
+                    logger.error('[MISSION_CREATE] workflow notification failed:', notifError)
+                );
+        }
 
         res.json(mission);
     } catch (error) {
@@ -478,6 +528,8 @@ export const updateMission = async (req, res) => {
                 logger.info(`✨ Mission ${id} certifiée par le DG. Numéro généré: ${finalOrderNumber}`);
             }
 
+            const safeMissionData = typeof data === 'object' && data !== null ? data : {};
+
             const updatedMission = await tx.mission.update({
                 where: { id },
                 data: {
@@ -487,7 +539,12 @@ export const updateMission = async (req, res) => {
                     ...(endDate !== undefined && { endDate: safeDate(endDate) }),
                     ...(budget !== undefined && { budget }),
                     ...(status !== undefined && { status }),
-                    ...(data !== undefined && { data }),
+                    ...(data !== undefined && {
+                        data:
+                            status === 'approuvee'
+                                ? { ...safeMissionData, isSubmitted: true, isCertified: true }
+                                : data
+                    }),
                     ...(finalOrderNumber && { orderNumber: finalOrderNumber })
                 }
             });
@@ -513,11 +570,12 @@ export const updateMission = async (req, res) => {
 
             // EMAIL NOTIFICATION: Alert full chain when a mission is submitted
             try {
-                const stakeholders = await prisma.user.findMany({
-                    where: { organizationId, role: { in: ['DG_PROQUELEC', 'DIRECTEUR', 'ADMIN_PROQUELEC', 'COMPTABLE'] } },
-                    select: { email: true }
-                });
-                const emails = [...new Set(stakeholders.map(u => u.email).filter(Boolean))];
+                const emails = await findMissionStakeholderEmails(organizationId, [
+                    'DG_PROQUELEC',
+                    'DIRECTEUR',
+                    'ADMIN_PROQUELEC',
+                    'COMPTABLE',
+                ]);
                 for (const email of emails) {
                     missionNotificationService.notifySubmission(mission, email)
                         .catch(err => logger.error('[NOTIF] Stakeholder notification failed:', err));
@@ -729,6 +787,35 @@ async function createDefaultWorkflow(missionId, organizationId) {
     });
 }
 
+async function findMissionStakeholderEmails(organizationId, roleNames) {
+    const normalizedRoles = (Array.isArray(roleNames) ? roleNames : [roleNames]).flatMap((roleName) => {
+        if (roleName === 'DIRECTEUR') {
+            return ['DIRECTEUR', 'DG_PROQUELEC', 'DG', 'DIRECTION', 'DIRECTEUR_GENERAL', 'DIR_GEN'];
+        }
+        if (roleName === 'ADMIN' || roleName === 'ADMIN_PROQUELEC') {
+            return ['ADMIN', 'ADMIN_PROQUELEC'];
+        }
+        return [roleName];
+    });
+
+    const stakeholders = await prisma.user.findMany({
+        where: {
+            organizationId,
+            active: true,
+            OR: [
+                { roleLegacy: { in: normalizedRoles } },
+                { role: { is: { name: { in: normalizedRoles } } } },
+            ],
+        },
+        select: {
+            email: true,
+            notificationEmail: true,
+        },
+    });
+
+    return [...new Set(stakeholders.map((user) => user.notificationEmail || user.email).filter(Boolean))];
+}
+
 /**
  * Get mission approval history and current status
  * @route GET /api/missions/:missionId/approval-history
@@ -808,9 +895,9 @@ export const getMissionApprovalHistory = async (req, res) => {
 
 /**
  * Approve a mission step in the workflow
- * Workflow: CHEF_PROJET → COMPTABLE → DIRECTEUR
- * After DIRECTEUR approves → auto-generate orderNumber
- * ADMIN can approve all steps at once (super-power)
+ * Workflow: submission by requester → final approval by DIRECTEUR or ADMIN
+ * After final approval → auto-generate orderNumber
+ * ADMIN can approve immediately (super-power)
  * 
  * @route POST /api/missions/:missionId/approve
  */
@@ -910,6 +997,8 @@ export const approveMissionStep = async (req, res) => {
                     orderNumber,
                     data: {
                         ...missionData,
+                        isSubmitted: true,
+                        isCertified: true,
                         signatureImage: req.body.signature || missionData?.signatureImage
                     }
                 }
@@ -928,6 +1017,7 @@ export const approveMissionStep = async (req, res) => {
                 success: true,
                 message: 'Mission approved by admin (all steps), orderNumber generated',
                 missionId,
+                projectId: mission.projectId,
                 orderNumber,
                 integrityHash: updatedWorkflow.integrityHash,
                 steps: updatedWorkflow.approvalSteps.map(s => ({
@@ -1018,6 +1108,8 @@ export const approveMissionStep = async (req, res) => {
                         orderNumber,
                         data: {
                             ...missionData,
+                            isSubmitted: true,
+                            isCertified: true,
                             signatureImage: req.body.signature || missionData?.signatureImage
                         }
                     }
@@ -1075,6 +1167,7 @@ export const approveMissionStep = async (req, res) => {
         res.json({
             success: true,
             missionId,
+            projectId: mission.projectId,
             title: mission.title,
             orderNumber: result.orderNumber,
             overallStatus: result.updatedWF.overallStatus,

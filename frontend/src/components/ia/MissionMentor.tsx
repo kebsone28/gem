@@ -22,6 +22,7 @@ import { missionSageService } from '../../services/ai/MissionSageService';
 import { wordReportService } from '../../services/ai/WordReportService';
 import { analyzeDG } from '../../services/ai/DecisionEngine';
 import type { MissionStats } from '../../services/missionStatsService';
+import logger from '../../utils/logger';
 import type { AuditLog, Household } from '../../utils/types';
 import AIEngineAdminPanel from './AIEngineAdminPanel';
 
@@ -91,7 +92,7 @@ export const MissionMentor: React.FC<MissionMentorProps> = ({ stats, auditLogs, 
           });
           if (msg) setHistory([msg]);
         } catch (err) {
-          console.error('Proactive message failed', err);
+          logger.warn('[MissionMentor] Proactive message unavailable', err);
         } finally {
           setIsThinking(false);
         }
@@ -153,7 +154,7 @@ export const MissionMentor: React.FC<MissionMentorProps> = ({ stats, auditLogs, 
           window.speechSynthesis.speak(utterance);
         }
       } catch (err: any) {
-        console.error('MissionMentor: Error processing query', err);
+        logger.error('[MissionMentor] Error processing query', err);
         setHistory((prev) => [
           ...prev,
           {
@@ -205,7 +206,15 @@ export const MissionMentor: React.FC<MissionMentorProps> = ({ stats, auditLogs, 
             window.speechSynthesis.speak(utterance);
           }
         } catch (err) {
-          console.error('Vision Analysis failed', err);
+          logger.error('[MissionMentor] Vision analysis failed', err);
+          setHistory((prev) => [
+            ...prev,
+            {
+              message:
+                "L'analyse visuelle n'a pas abouti. Vérifiez la connexion ou réessayez avec une autre image.",
+              type: 'error',
+            } as AIResponse,
+          ]);
         } finally {
           setIsThinking(false);
         }
@@ -239,7 +248,7 @@ export const MissionMentor: React.FC<MissionMentorProps> = ({ stats, auditLogs, 
     };
 
     recognition.onerror = (event: any) => {
-      console.error('Speech Recognition Error', event);
+      logger.warn('[MissionMentor] Speech recognition error', event);
       setIsListening(false);
     };
 
@@ -267,17 +276,17 @@ export const MissionMentor: React.FC<MissionMentorProps> = ({ stats, auditLogs, 
         `}
       </style>
       {/* FLOATING BUTTON (GEM-MINT) */}
-      <div className="fixed bottom-10 right-10 z-[1000] no-print" title="Ouvrir le Mentor GEM-MINT">
+      <div className="fixed right-4 bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:bottom-10 sm:right-10 z-[1000] no-print" title="Ouvrir le Mentor GEM-MINT">
         <motion.button
           whileHover={{ scale: 1.1, rotate: 5 }}
           whileTap={{ scale: 0.9 }}
           onClick={() => setIsOpen(!isOpen)}
           title="Assistant GEM-MINT"
           aria-label="Assistant GEM-MINT"
-          className="w-16 h-16 bg-blue-600 hover:bg-blue-500 rounded-3xl shadow-2xl shadow-blue-600/40 flex items-center justify-center border border-white/20 group relative overflow-hidden"
+          className="w-12 h-12 sm:w-16 sm:h-16 bg-slate-900/90 hover:bg-blue-500 rounded-2xl sm:rounded-3xl shadow-2xl shadow-blue-600/25 flex items-center justify-center border border-white/10 group relative overflow-hidden backdrop-blur-xl"
         >
           <div className="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent animate-pulse" />
-          <Bot size={28} className="text-white group-hover:scale-110 transition-transform" />
+          <Bot size={20} className="text-white group-hover:scale-110 transition-transform sm:size-7" />
           {!isOpen && history.length === 0 && (
             <span className="absolute -top-1 -right-1 flex h-4 w-4">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
@@ -294,24 +303,24 @@ export const MissionMentor: React.FC<MissionMentorProps> = ({ stats, auditLogs, 
             initial={{ opacity: 0, y: 100, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 100, scale: 0.9 }}
-            className={`fixed bottom-32 right-10 ${isMaximized ? 'w-[calc(100vw-80px)] md:w-[800px] h-[80vh]' : 'w-[400px] h-[600px]'} z-[1000] bg-slate-950/95 backdrop-blur-3xl !p-0 !rounded-[2.5rem] md:!rounded-[3rem] overflow-hidden flex flex-col shadow-[0_50px_100px_-20px_rgba(0,0,0,0.5)] border border-white/10 no-print transition-all duration-500 ease-out`}
+            className={`fixed left-3 right-3 bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] sm:left-auto sm:right-10 sm:bottom-32 ${isMaximized ? 'sm:w-[800px] sm:h-[80vh] w-auto h-[78vh]' : 'sm:w-[400px] sm:h-[600px] w-auto h-[72vh]'} z-[1000] bg-slate-950/95 backdrop-blur-3xl !p-0 !rounded-[1.75rem] sm:!rounded-[2.5rem] md:!rounded-[3rem] overflow-hidden flex flex-col shadow-[0_50px_100px_-20px_rgba(0,0,0,0.5)] border border-white/10 no-print transition-all duration-500 ease-out`}
           >
             {/* Header Sage */}
-            <div className="bg-slate-900 border-b border-white/5 p-6 flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center shadow-inner">
+            <div className="bg-slate-900 border-b border-white/5 p-4 sm:p-6 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center shadow-inner shrink-0">
                   <Sparkles className="text-blue-400" size={20} />
                 </div>
-                <div>
-                  <h2 className="text-[11px] font-black tracking-[0.3em] text-white uppercase italic leading-none">
+                <div className="min-w-0">
+                  <h2 className="text-[10px] sm:text-[11px] font-black tracking-[0.12em] sm:tracking-[0.3em] text-white uppercase italic leading-none truncate">
                     GEM-MINT
                   </h2>
-                  <p className="text-[8px] font-black text-blue-500/60 uppercase tracking-widest mt-1">
+                  <p className="text-[9px] sm:text-[8px] font-black text-blue-500/60 uppercase tracking-[0.06em] sm:tracking-widest mt-1 truncate">
                     Mentor Sage PROQUELEC
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 sm:gap-2 shrink-0">
                 <button
                   onClick={() => setIsMuted(!isMuted)}
                   title={isMuted ? 'Activer la voix (J.A.R.V.I.S)' : 'Désactiver la voix'}
@@ -349,10 +358,10 @@ export const MissionMentor: React.FC<MissionMentorProps> = ({ stats, auditLogs, 
             {/* Conversation Area */}
             <div
               ref={scrollRef}
-              className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar bg-slate-950/20"
+              className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6 custom-scrollbar bg-slate-950/20"
             >
               {history.length === 0 && (
-                <div className="text-center py-20 opacity-30 italic px-10">
+                <div className="text-center py-12 sm:py-20 opacity-30 italic px-4 sm:px-10">
                   <Bot size={48} className="mx-auto mb-6 text-blue-600" />
                   <p className="text-xs font-black uppercase tracking-widest leading-loose">
                     "Posez-moi une question sur vos missions, le terrain ou l'audit, et je vous
@@ -366,14 +375,14 @@ export const MissionMentor: React.FC<MissionMentorProps> = ({ stats, auditLogs, 
                   key={i}
                   initial={{ opacity: 0, x: resp.type === 'user' ? 20 : -20 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className={`p-5 rounded-[2rem] border relative overflow-hidden backdrop-blur-xl transition-all duration-300 ${
+                  className={`p-4 sm:p-5 rounded-[1.4rem] sm:rounded-[2rem] border relative overflow-hidden backdrop-blur-xl transition-all duration-300 ${
                     resp.type === 'user'
-                      ? `bg-slate-800 border-slate-700 text-slate-200 ${isMaximized ? 'ml-auto mr-4 max-w-[85%]' : 'ml-12'} rounded-tr-none shadow-md`
+                      ? `bg-slate-800 border-slate-700 text-slate-200 ${isMaximized ? 'ml-auto mr-0 sm:mr-4 max-w-[92%] sm:max-w-[85%]' : 'ml-0 sm:ml-12'} rounded-tr-none shadow-md`
                       : resp.type === 'warning'
-                        ? `bg-amber-950 border-amber-500/30 text-amber-100 ${isMaximized ? 'mr-auto ml-4 max-w-[85%]' : 'mr-12'} rounded-tl-none`
+                        ? `bg-amber-950 border-amber-500/30 text-amber-100 ${isMaximized ? 'mr-auto ml-0 sm:ml-4 max-w-[92%] sm:max-w-[85%]' : 'mr-0 sm:mr-12'} rounded-tl-none`
                         : resp.type === 'error'
-                          ? `bg-rose-950 border-rose-500/30 text-rose-100 ${isMaximized ? 'mr-auto ml-4 max-w-[85%]' : 'mr-12'} rounded-tl-none`
-                          : `bg-[#0a192e] border-blue-500/30 text-blue-50 shadow-xl ${isMaximized ? 'mr-auto ml-4 max-w-[85%]' : 'mr-12'} rounded-tl-none ai-message-anchor`
+                          ? `bg-rose-950 border-rose-500/30 text-rose-100 ${isMaximized ? 'mr-auto ml-0 sm:ml-4 max-w-[92%] sm:max-w-[85%]' : 'mr-0 sm:mr-12'} rounded-tl-none`
+                          : `bg-[#0a192e] border-blue-500/30 text-blue-50 shadow-xl ${isMaximized ? 'mr-auto ml-0 sm:ml-4 max-w-[92%] sm:max-w-[85%]' : 'mr-0 sm:mr-12'} rounded-tl-none ai-message-anchor`
                   }`}
                 >
                   <div className="flex gap-4 items-start">
@@ -398,7 +407,7 @@ export const MissionMentor: React.FC<MissionMentorProps> = ({ stats, auditLogs, 
                     )}
                     <div className="flex-1 space-y-4">
                       <p
-                        className={`text-[13px] font-bold leading-relaxed whitespace-pre-wrap ${resp.type === 'user' ? 'italic' : 'ai-response-first-line-visible'}`}
+                        className={`text-[13px] sm:text-[13px] font-bold leading-relaxed whitespace-pre-wrap ${resp.type === 'user' ? 'italic' : 'ai-response-first-line-visible'}`}
                       >
                         {resp.message}
                       </p>
@@ -487,7 +496,7 @@ export const MissionMentor: React.FC<MissionMentorProps> = ({ stats, auditLogs, 
             </div>
 
             {/* Input Area */}
-            <div className="p-6 bg-slate-900 border-t border-white/5">
+            <div className="p-4 sm:p-6 bg-slate-900 border-t border-white/5">
               <div className="relative group">
                 <input
                   id="ai-camera-upload"
@@ -506,7 +515,7 @@ export const MissionMentor: React.FC<MissionMentorProps> = ({ stats, auditLogs, 
                   onChange={(e) => setQuery(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                   placeholder="Posez votre question avec respect..."
-                  className="w-full bg-slate-950 border border-white/10 rounded-2xl pl-6 pr-[6.5rem] py-4 text-sm font-bold text-white outline-none focus:border-blue-500/50 transition-all shadow-inner placeholder-slate-600"
+                  className="w-full bg-slate-950 border border-white/10 rounded-2xl pl-4 sm:pl-6 pr-[6.5rem] py-3.5 sm:py-4 text-sm font-bold text-white outline-none focus:border-blue-500/50 transition-all shadow-inner placeholder-slate-600"
                 />
                 <button
                   onClick={() => fileInputRef.current?.click()}
@@ -536,7 +545,7 @@ export const MissionMentor: React.FC<MissionMentorProps> = ({ stats, auditLogs, 
                   <Send size={18} />
                 </button>
               </div>
-              <p className="text-center text-[8px] font-black text-slate-700 uppercase tracking-widest mt-4 flex items-center justify-center gap-2">
+              <p className="text-center text-[9px] sm:text-[8px] font-black text-slate-700 uppercase tracking-[0.06em] sm:tracking-widest mt-4 flex items-center justify-center gap-2">
                 <Heart size={10} /> Powered by GEM-SAGE Intelligence 8.0
               </p>
             </div>

@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import Dexie from 'dexie';
 import type { Table } from 'dexie';
+import logger from '../utils/logger';
 
 export interface LocalHousehold {
   id: string;
@@ -47,12 +48,12 @@ export const cacheHouseholdsForOffline = async (householdsArray: Record<string, 
 
     // Bulk put updates existing IDs and adds new ones seamlessly
     await offlineDB.households.bulkPut(records);
-    console.log(
+    logger.debug(
       `[PWA-OFFLINE] Successfully fully cached ${records.length} households in IndexedDB.`
     );
     return true;
   } catch (error) {
-    console.error('[PWA-OFFLINE] Cache failure:', error);
+    logger.error('[PWA-OFFLINE] Cache failure:', error);
     return false;
   }
 };

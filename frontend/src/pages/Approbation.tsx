@@ -28,6 +28,7 @@ import { fmtFCFA } from '../utils/format';
 import { syncEventBus } from '../utils/syncEventBus';
 import { generateMissionOrderPDF } from '../services/missionOrderGenerator';
 import StockMonitorWidget from '../components/logistique/StockMonitorWidget';
+import logger from '../utils/logger';
 
 export default function Approbation() {
   const { user } = useAuth();
@@ -43,10 +44,18 @@ export default function Approbation() {
 
   // ── ROLES & PERMISSIONS (VERSION ENTERPRISE) ──
   const userRole = (user?.role || 'USER').toUpperCase();
+  const normalizedWorkflowRole =
+    userRole === 'ADMIN' || userRole === 'ADMIN_PROQUELEC'
+      ? 'ADMIN'
+      : ['DIRECTEUR', 'DIRECTEUR_TECHNIQUE', 'DIRECTEUR_GENERAL', 'DG_PROQUELEC', 'DIR_GEN'].includes(
+            userRole
+          )
+        ? 'DIRECTEUR'
+        : userRole;
   const roleMetrics = {
-    isAdmin: ['ADMIN', 'ADMIN_PROQUELEC'].includes(userRole),
+    isAdmin: normalizedWorkflowRole === 'ADMIN',
     isDG: userRole === 'DG_PROQUELEC',
-    isDirector: userRole === 'DIRECTEUR_TECHNIQUE',
+    isDirector: normalizedWorkflowRole === 'DIRECTEUR',
     isAccountant: ['COMPTABLE', 'FINANCE'].includes(userRole),
     isProjectManager: ['CHEF_PROJET', 'PROJECT_MANAGER'].includes(userRole)
   };
@@ -59,20 +68,19 @@ export default function Approbation() {
   const canDelete = isAdmin || isDirector;
 
   // Role mapping for approval workflow levels
-  const roleMapping: Record<string, string> = {
-    DG_PROQUELEC: 'DIRECTEUR',
-    ADMIN_PROQUELEC: 'ADMIN',
-    CHEF_PROJET: 'CHEF_PROJET',
-    COMPTABLE: 'COMPTABLE',
-    DIRECTEUR_TECHNIQUE: 'DIRECTEUR'
-  };
-
-  const workflowRole = roleMapping[userRole] || userRole;
+  const workflowRole = normalizedWorkflowRole;
 
   const [isArchiveMode, setIsArchiveMode] = useState(false);
   const [counts, setCounts] = useState({ pending: 0, archive: 0 });
+  const isValidator = isAdmin || isDirector;
 
   const fetchPending = async () => {
+    if (!isValidator) {
+      setPendingMissions([]);
+      setSelectedMission(null);
+      setIsLoading(false);
+      return;
+    }
     setIsLoading(true);
     try {
       // Optimized : Single fetch for current mode
@@ -104,7 +112,7 @@ export default function Approbation() {
 
   useEffect(() => {
     fetchPending();
-  }, [isArchiveMode]);
+  }, [isArchiveMode, isValidator]);
 
   useEffect(() => {
     // 🔄 Auto-synchronisation intelligente du composant d'Approbation
@@ -119,7 +127,7 @@ export default function Approbation() {
       unsubSaved();
       unsubNotification();
     };
-  }, [isArchiveMode]); // On recommence pour garantir que le fetch lit bien `isArchiveMode` actuel
+  }, [isArchiveMode, isValidator]); // On recommence pour garantir que le fetch lit bien `isArchiveMode` actuel
 
   const handleDelete = async (e: React.MouseEvent, id: string, title: string) => {
     e.stopPropagation();
@@ -286,7 +294,7 @@ Ces missions n'ont pas encore été validées ni rejetées. Si vous videz la lis
           <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest max-w-xs">
             Cette mission est actuellement à l'étape {workflow?.currentStep} (
             {currentStep?.label || currentStep?.role}). Vous pourrez intervenir
-            une fois cette étape validée.
+            dès que cette validation Direction / Administration sera disponible.
           </p>
         </div>
       );
@@ -303,7 +311,7 @@ Ces missions n'ont pas encore été validées ni rejetées. Si vous videz la lis
               Panel de Décision ({currentStep?.label || workflowRole})
             </h4>
             <p className="text-[10px] font-bold text-emerald-500/60 uppercase tracking-widest">
-              Votre validation apposera votre signature électronique
+              La validation finale attribuera le numéro officiel de mission
             </p>
           </div>
         </div>
@@ -355,7 +363,7 @@ Ces missions n'ont pas encore été validées ni rejetées. Si vous videz la lis
               className="flex-[2] flex items-center justify-center gap-3 px-8 py-5 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase tracking-[0.2em] rounded-[1.5rem] transition-all shadow-xl shadow-emerald-600/20"
             >
               <CheckCircle2 size={18} />
-              Certifier la Mission
+              Valider la Mission
             </button>
           </div>
 
@@ -427,7 +435,7 @@ Ces missions n'ont pas encore été validées ni rejetées. Si vous videz la lis
           });
           // notify via logic or api
         } catch (pdfErr) {
-          console.error("PDF Fail but mission approved", pdfErr);
+          logger.warn('[Approbation] PDF generation failed after approval', pdfErr);
         }
       }
 
@@ -444,6 +452,27 @@ Ces missions n'ont pas encore été validées ni rejetées. Si vous videz la lis
       <div className="min-h-screen flex items-center justify-center bg-slate-950">
         <div className="w-12 h-12 border-4 border-blue-600/20 border-t-blue-600 rounded-full animate-spin"></div>
       </div>
+    );
+  }
+
+  if (!isValidator) {
+    return (
+      <PageContainer className="min-h-screen bg-slate-950 py-8">
+        <PageHeader
+          title="Validation des Missions"
+          subtitle="ACCÈS RÉSERVÉ À LA DIRECTION ET À L’ADMINISTRATION"
+          icon={<ShieldCheck size={24} className="text-emerald-500" />}
+        />
+        <div className="mt-8 glass-card !p-8 !rounded-[2rem] border-amber-500/20 bg-amber-500/5 text-center">
+          <p className="text-sm font-black uppercase tracking-[0.14em] text-amber-400">
+            Accès restreint
+          </p>
+          <p className="mt-3 text-sm text-slate-300">
+            Les missions peuvent être soumises par les équipes, mais la validation finale est
+            réservée au directeur ou à l’administrateur.
+          </p>
+        </div>
+      </PageContainer>
     );
   }
 

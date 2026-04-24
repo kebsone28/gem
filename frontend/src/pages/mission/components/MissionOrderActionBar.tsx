@@ -93,7 +93,16 @@ export const MissionOrderActionBar = (props: any) => {
     isSimplifiedMode,
   } = props;
 
-  const isAdmin = ['ADMIN', 'ADMIN_PROQUELEC', 'DG_PROQUELEC'].includes(role || '');
+  const normalizedRole = (role || '').toUpperCase();
+  const isValidator = [
+    'ADMIN',
+    'ADMIN_PROQUELEC',
+    'DIRECTEUR',
+    'DIRECTEUR_GENERAL',
+    'DIRECTEUR_TECHNIQUE',
+    'DG_PROQUELEC',
+    'DIR_GEN',
+  ].includes(normalizedRole);
 
   return (
     <ActionBar className="no-print !bg-slate-950/90 backdrop-blur-xl border-t border-white/5 px-3 py-3 sm:px-4 sm:py-2 shadow-2xl">
@@ -160,7 +169,7 @@ export const MissionOrderActionBar = (props: any) => {
                 : 'SAUVEGARDÉ'}
             </button>
 
-            {!isSubmitted && !isAdmin && (
+            {!isSubmitted && !isCertified && (
               <button
                 onClick={() => window.confirm('Soumettre la mission ?') && onSubmit()}
                 className="flex min-h-11 items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-[10px] font-black tracking-[0.14em] sm:tracking-widest shadow-lg shadow-indigo-600/20 active:scale-95 transition-all"
@@ -169,7 +178,7 @@ export const MissionOrderActionBar = (props: any) => {
               </button>
             )}
 
-            {isAdmin && !isCertified && (
+            {isValidator && isSubmitted && !isCertified && (
               <button
                 onClick={onValidate}
                 className="flex min-h-11 items-center justify-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl text-[10px] font-black tracking-[0.14em] sm:tracking-widest shadow-lg shadow-emerald-600/20 active:scale-95 transition-all"

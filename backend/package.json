@@ -5,8 +5,8 @@
   "main": "src/server.js",
   "type": "module",
   "scripts": {
-    "start": "npx prisma generate && (npx prisma db push --accept-data-loss || true) && (npx prisma db seed || true) && (node prisma/seed_households.js || true) && node src/server.js",
-    "dev": "nodemon src/server.js",
+    "start": "node scripts/ensure-backend-port-free.js && node scripts/prisma-generate-safe.js && (npx prisma db push --accept-data-loss || true) && (npx prisma db seed || true) && (node prisma/seed_households.js || true) && node src/server.js",
+    "dev": "node scripts/ensure-backend-port-free.js && node scripts/prisma-generate-safe.js && nodemon src/server.js",
     "dev:saas": "npm run dev",
     "build": "npx prisma generate",
     "migrate": "npx prisma migrate deploy",

@@ -13,17 +13,17 @@ export function useBackgroundSync() {
       return;
     }
     syncInitializedRef.current = true;
-    logger.log('🔄 [BackgroundSync] Initializing engine...');
+    logger.debug('🔄 [BackgroundSync] Initializing engine...');
 
     let isSyncing = false;
 
     const safeSync = async () => {
       if (!navigator.onLine) {
-        logger.log('📡 [BackgroundSync] Offline, skipping background sync.');
+        logger.debug('📡 [BackgroundSync] Offline, skipping background sync.');
         return;
       }
       if (document.hidden) {
-        logger.log('👁️ [BackgroundSync] App hidden, skipping background sync.');
+        logger.debug('👁️ [BackgroundSync] App hidden, skipping background sync.');
         return;
       }
       if (isSyncing) return;

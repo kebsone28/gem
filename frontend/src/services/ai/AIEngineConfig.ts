@@ -5,6 +5,8 @@
  * Réservé à l'Admin PROQUELEC — Basculement entre moteurs en temps réel
  */
 
+import logger from '../../utils/logger';
+
 export type AIEngineMode = 'RULES_ONLY' | 'CLAUDE_ONLY' | 'HYBRID_RULES_FIRST' | 'HYBRID_AI_FIRST';
 
 export type AIProvider = 'CLAUDE_ANTHROPIC' | 'LOCAL_OLLAMA' | 'PUBLIC_POLLINATIONS';
@@ -52,7 +54,7 @@ export function getAIEngineConfig(): AIEngineSettings {
       return { ...DEFAULT_CONFIG, ...parsed };
     }
   } catch (e) {
-    console.warn('AIEngineConfig: lecture échouée, utilisation des défauts.', e);
+    logger.warn('AIEngineConfig: lecture échouée, utilisation des défauts.', e);
   }
   return { ...DEFAULT_CONFIG };
 }
@@ -70,7 +72,7 @@ export function saveAIEngineConfig(
     lastUpdatedAt: Date.now(),
   };
   localStorage.setItem(CONFIG_KEY, JSON.stringify(updated));
-  console.info(`[AIEngine] Configuration mise à jour par ${adminEmail}:`, updated);
+  logger.debug(`[AIEngine] Configuration mise à jour par ${adminEmail}:`, updated);
   return updated;
 }
 

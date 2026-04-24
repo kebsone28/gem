@@ -1,4 +1,3 @@
-﻿ 
 import { TrendingUp, Activity, AlertTriangle, Zap, Timer } from 'lucide-react';
 import { useLogistique } from '../../hooks/useLogistique';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -10,33 +9,31 @@ interface AgentsTabProps {
 export default function AgentsTab({ searchQuery = '' }: AgentsTabProps) {
   const { agents } = useLogistique();
   const { isDarkMode } = useTheme();
+  const normalizedSearch = searchQuery.trim().toLowerCase();
 
   const filteredAgents =
-    agents?.filter((a) => a.name.toLowerCase().includes(searchQuery.toLowerCase())) || [];
+    agents?.filter((agent) => !normalizedSearch || agent.name.toLowerCase().includes(normalizedSearch)) || [];
 
   const activeAnomalies =
-    filteredAgents?.flatMap((a) => {
+    filteredAgents.flatMap((agent) => {
       const list = [];
-      if (a.status === 'Inactif') {
+      if (agent.status === 'Inactif') {
         list.push({
-          type: 'danger',
-          msg: `L'agent ${a.name} est inactif depuis plus de ${a.daysSince} jours.`,
+          msg: `L'agent ${agent.name} est inactif depuis plus de ${agent.daysSince} jours.`,
           icon: AlertTriangle,
           color: 'rose',
         });
       }
-      if (a.avgTime > 45) {
+      if (agent.avgTime > 45) {
         list.push({
-          type: 'warning',
-          msg: `Temps moyen excessif (${a.avgTime} min) pour ${a.name}.`,
+          msg: `Temps moyen excessif (${agent.avgTime} min) pour ${agent.name}.`,
           icon: Timer,
           color: 'amber',
         });
       }
-      if (a.status === 'Actif' && a.visits < 5) {
+      if (agent.status === 'Actif' && agent.visits < 5) {
         list.push({
-          type: 'info',
-          msg: `Volume de visites anormalement faible (${a.visits}) pour l'agent actif ${a.name}.`,
+          msg: `Volume de visites faible (${agent.visits}) pour l'agent actif ${agent.name}.`,
           icon: Activity,
           color: 'blue',
         });
@@ -82,23 +79,20 @@ export default function AgentsTab({ searchQuery = '' }: AgentsTabProps) {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      {/* Left Column: Performance Table */}
-      <div className="lg:col-span-2 space-y-6">
+    <div className="grid grid-cols-1 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500 lg:grid-cols-3">
+      <div className="space-y-6 lg:col-span-2">
         <div
           className={`${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'} border rounded-2xl overflow-hidden transition-all hover:shadow-lg`}
         >
           <div
-            className={`p-6 border-b ${isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'} flex justify-between items-center`}
+            className={`p-5 border-b ${isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'} flex justify-between items-center`}
           >
             <div className="flex items-center gap-3">
               <div className="p-3 bg-primary/10 rounded-xl">
                 <TrendingUp size={20} className="text-primary" />
               </div>
               <div>
-                <h3
-                  className={`text-xl font-black ${isDarkMode ? 'text-white' : 'text-slate-900'}`}
-                >
+                <h3 className={`text-lg sm:text-xl font-black ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                   Performances Agents
                 </h3>
                 <p
@@ -109,7 +103,63 @@ export default function AgentsTab({ searchQuery = '' }: AgentsTabProps) {
               </div>
             </div>
           </div>
-          <div className="overflow-x-auto">
+
+          <div className="space-y-3 p-4 md:hidden">
+            {filteredAgents.length > 0 ? (
+              filteredAgents.map((agent) => (
+                <article
+                  key={agent.name}
+                  className={`${isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'} border rounded-2xl p-4 space-y-3`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className={`font-semibold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                        {agent.name}
+                      </p>
+                      <p className={`text-xs mt-1 ${isDarkMode ? 'text-slate-500' : 'text-slate-600'}`}>
+                        Dernière visite:{' '}
+                        {agent.lastDate ? new Date(agent.lastDate).toLocaleDateString('fr-FR') : '—'}
+                      </p>
+                    </div>
+                    <span
+                      className={`inline-flex items-center px-3 py-1.5 rounded-lg font-semibold text-xs ${getStatusColor(agent.status)}`}
+                    >
+                      {agent.status}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div
+                      className={`${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'} border rounded-xl px-3 py-2`}
+                    >
+                      <p className={`text-[11px] uppercase font-bold ${isDarkMode ? 'text-slate-500' : 'text-slate-600'}`}>
+                        Visites
+                      </p>
+                      <p className={`text-lg font-black ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                        {agent.visits}
+                      </p>
+                    </div>
+                    <div
+                      className={`${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'} border rounded-xl px-3 py-2`}
+                    >
+                      <p className={`text-[11px] uppercase font-bold ${isDarkMode ? 'text-slate-500' : 'text-slate-600'}`}>
+                        Tps moyen
+                      </p>
+                      <p className={`text-lg font-black ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                        {agent.avgTime}m
+                      </p>
+                    </div>
+                  </div>
+                </article>
+              ))
+            ) : (
+              <div className="px-4 py-10 text-center">
+                <p className={isDarkMode ? 'text-slate-500' : 'text-slate-600'}>Aucun agent trouvé</p>
+              </div>
+            )}
+          </div>
+
+          <div className="hidden overflow-x-auto md:block">
             <table
               className={`w-full text-sm ${isDarkMode ? 'divide-slate-800' : 'divide-slate-200'}`}
             >
@@ -146,38 +196,38 @@ export default function AgentsTab({ searchQuery = '' }: AgentsTabProps) {
                 className={isDarkMode ? 'divide-y divide-slate-800' : 'divide-y divide-slate-200'}
               >
                 {filteredAgents.length > 0 ? (
-                  filteredAgents.map((a, i) => (
+                  filteredAgents.map((agent) => (
                     <tr
-                      key={i}
+                      key={agent.name}
                       className={isDarkMode ? 'hover:bg-slate-800/50' : 'hover:bg-slate-50'}
                     >
                       <td
                         className={`px-6 py-4 font-semibold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}
                       >
-                        {a.name}
+                        {agent.name}
                       </td>
                       <td
                         className={`px-6 py-4 text-center ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}
                       >
                         <span
                           className={`inline-flex items-center justify-center w-8 h-8 rounded-lg font-black ${isDarkMode ? 'bg-slate-800 text-primary' : 'bg-slate-100 text-primary'}`}
-                            >
-                            {a.visits}
-                          </span>
+                        >
+                          {agent.visits}
+                        </span>
                       </td>
-                      <td className={`px-6 py-4`}>
+                      <td className="px-6 py-4">
                         <div className="flex flex-col items-center gap-2">
                           <span
                             className={`font-bold ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}
                           >
-                            {a.avgTime}m
+                            {agent.avgTime}m
                           </span>
                           <div
                             className={`w-16 h-1.5 rounded-full overflow-hidden ${isDarkMode ? 'bg-slate-800' : 'bg-slate-200'}`}
                           >
                             <div
                               className="h-full bg-gradient-to-r from-primary to-blue-400"
-                              style={{ width: `${Math.min((a.avgTime / 60) * 100, 100)}%` }}
+                              style={{ width: `${Math.min((agent.avgTime / 60) * 100, 100)}%` }}
                             />
                           </div>
                         </div>
@@ -185,20 +235,20 @@ export default function AgentsTab({ searchQuery = '' }: AgentsTabProps) {
                       <td
                         className={`px-6 py-4 text-xs ${isDarkMode ? 'text-slate-500' : 'text-slate-600'}`}
                       >
-                        {a.lastDate ? new Date(a.lastDate).toLocaleDateString('fr-FR') : '—'}
+                        {agent.lastDate ? new Date(agent.lastDate).toLocaleDateString('fr-FR') : '—'}
                       </td>
-                      <td className={`px-6 py-4 text-right`}>
+                      <td className="px-6 py-4 text-right">
                         <span
-                          className={`inline-flex items-center px-3 py-1.5 rounded-lg font-semibold text-xs ${getStatusColor(a.status)}`}
+                          className={`inline-flex items-center px-3 py-1.5 rounded-lg font-semibold text-xs ${getStatusColor(agent.status)}`}
                         >
-                          {a.status}
+                          {agent.status}
                         </span>
                       </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={5} className={`px-6 py-16 text-center`}>
+                    <td colSpan={5} className="px-6 py-16 text-center">
                       <p className={isDarkMode ? 'text-slate-500' : 'text-slate-600'}>
                         Aucun agent trouvé
                       </p>
@@ -211,7 +261,6 @@ export default function AgentsTab({ searchQuery = '' }: AgentsTabProps) {
         </div>
       </div>
 
-      {/* Right Column: Anomalies */}
       <div className="space-y-6">
         <div
           className={`${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'} border rounded-2xl overflow-hidden transition-all hover:shadow-lg`}
@@ -229,19 +278,19 @@ export default function AgentsTab({ searchQuery = '' }: AgentsTabProps) {
               </h3>
             </div>
           </div>
-          <div className={`p-6 space-y-3 max-h-[500px] overflow-y-auto`}>
+          <div className="p-4 sm:p-6 space-y-3 max-h-[500px] overflow-y-auto">
             {activeAnomalies.length > 0 ? (
-              activeAnomalies.map((anom, i) => {
-                const colors = getAnomalyColors(anom.color);
-                const Icon = anom.icon;
+              activeAnomalies.map((anomaly, index) => {
+                const colors = getAnomalyColors(anomaly.color);
+                const Icon = anomaly.icon;
                 return (
                   <div
-                    key={i}
+                    key={index}
                     className={`${colors.bg} border ${colors.border} p-4 rounded-xl flex items-start gap-3`}
                   >
                     <Icon size={18} className={`${colors.icon} mt-0.5 shrink-0`} />
                     <p className={`text-xs ${colors.text} leading-relaxed font-medium`}>
-                      {anom.msg}
+                      {anomaly.msg}
                     </p>
                   </div>
                 );

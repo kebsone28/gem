@@ -21,7 +21,66 @@ interface PageHeaderProps {
   className?: string;
   /** Variant visuel : 'default' = ligne de séparation, 'gradient' = fond dégradé */
   variant?: 'default' | 'gradient';
+  accent?:
+    | 'default'
+    | 'terrain'
+    | 'planning'
+    | 'logistique'
+    | 'reports'
+    | 'simulation'
+    | 'bordereau'
+    | 'formation';
 }
+
+const PAGE_HEADER_ACCENTS: Record<
+  NonNullable<PageHeaderProps['accent']>,
+  {
+    icon: string;
+    subtitle: string;
+    border: string;
+  }
+> = {
+  default: {
+    icon: 'bg-[rgba(30,144,255,0.10)] dark:bg-[rgba(30,144,255,0.15)] text-[var(--color-primary)] dark:text-[#60AFFF]',
+    subtitle: 'text-[var(--color-text-secondary)]',
+    border: 'border-white/5',
+  },
+  terrain: {
+    icon: 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/15',
+    subtitle: 'text-emerald-200/75',
+    border: 'border-emerald-500/10',
+  },
+  planning: {
+    icon: 'bg-violet-500/10 text-violet-300 border border-violet-500/15',
+    subtitle: 'text-violet-200/75',
+    border: 'border-violet-500/10',
+  },
+  logistique: {
+    icon: 'bg-amber-500/10 text-amber-300 border border-amber-500/15',
+    subtitle: 'text-amber-100/75',
+    border: 'border-amber-500/10',
+  },
+  reports: {
+    icon: 'bg-cyan-500/10 text-cyan-300 border border-cyan-500/15',
+    subtitle: 'text-cyan-100/75',
+    border: 'border-cyan-500/10',
+  },
+  simulation: {
+    icon: 'bg-violet-500/10 text-violet-300 border border-violet-500/15',
+    subtitle: 'text-violet-200/75',
+    border: 'border-violet-500/10',
+  },
+  bordereau: {
+    icon: 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/15',
+    subtitle: 'text-emerald-100/75',
+    border: 'border-emerald-500/10',
+  },
+  formation: {
+    icon: 'bg-blue-500/10 text-blue-300 border border-blue-500/15',
+    subtitle: 'text-blue-100/75',
+    border: 'border-blue-500/10',
+  },
+};
 
 function renderIcon(icon?: React.ReactNode | React.ComponentType<any>) {
   if (!icon) return null;
@@ -34,7 +93,8 @@ function renderIcon(icon?: React.ReactNode | React.ComponentType<any>) {
 }
 
 export const PageHeader: React.FC<PageHeaderProps> = React.memo(withAnalytics(
-  ({ title, subtitle, icon, actions, className = '', variant = 'default' }) => {
+  ({ title, subtitle, icon, actions, className = '', variant = 'default', accent = 'default' }) => {
+    const accentStyles = PAGE_HEADER_ACCENTS[accent];
     if (variant === 'gradient') {
       return (
         <div className={`page-header mb-6 ${className}`}>
@@ -60,26 +120,22 @@ export const PageHeader: React.FC<PageHeaderProps> = React.memo(withAnalytics(
 
     // Variant default
     return (
-      <div className={`${COMMON_CLASSES.pageHeader} ${className}`}>
+      <div className={`${COMMON_CLASSES.pageHeader} ${accentStyles.border} ${className}`}>
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="flex items-start gap-2.5 min-w-0 flex-1 sm:items-center sm:gap-3">
             {icon && (
               <div
-                className="
-                p-2 rounded-xl shrink-0 sm:p-2.5
-                bg-[rgba(30,144,255,0.10)] dark:bg-[rgba(30,144,255,0.15)]
-                text-[var(--color-primary)] dark:text-[#60AFFF]
-              "
+                className={`p-2 rounded-xl shrink-0 sm:p-2.5 ${accentStyles.icon}`}
               >
                 {renderIcon(icon)}
               </div>
             )}
             <div className="min-w-0">
-              <h1 className="mb-0 break-words text-[clamp(2rem,7vw,3.25rem)] font-bold leading-[0.95] tracking-tight text-[var(--color-text-primary)]">
+              <h1 className="mb-0 break-words text-[clamp(1.5rem,6vw,3rem)] font-bold leading-[1] tracking-tight text-[var(--color-text-primary)]">
                 {title}
               </h1>
               {subtitle && (
-                <p className={`${COMMON_CLASSES.body} mt-1 max-w-[60ch] text-sm break-words sm:mt-0.5`}>
+                <p className={`${COMMON_CLASSES.body} ${accentStyles.subtitle} mt-1 max-w-[60ch] text-sm break-words sm:mt-0.5`}>
                   {subtitle}
                 </p>
               )}

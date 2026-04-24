@@ -216,7 +216,6 @@ self.onmessage = (event) => {
   if (!households) return;
   try {
     const coordCount: Record<string, number> = {};
-    console.log(`📡 [Worker] Processing ${households.length} households...`);
 
     const features = households
       .map((h: any) => {
@@ -299,10 +298,6 @@ self.onmessage = (event) => {
     });
 
     const finalFeatures = Array.from(seenNumeros.values());
-
-    console.log(
-      `✅ [Worker] Output: ${finalFeatures.length} / ${households.length} features (Deduplicated)`
-    );
 
     self.postMessage({
       type: 'GEOJSON_RESULT',

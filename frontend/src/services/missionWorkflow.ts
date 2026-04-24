@@ -1,7 +1,9 @@
 ﻿ 
+import logger from '../utils/logger';
+
 export interface ApprovalStep {
   id: string;
-  role: 'chef_projet' | 'admin' | 'directeur';
+  role: 'directeur';
   roleName: string;
   status: 'pending' | 'approved' | 'rejected' | 'commented';
   approvedBy?: string;
@@ -13,7 +15,7 @@ export interface ApprovalStep {
 
 export interface MissionApprovalWorkflow {
   missionId: string;
-  currentStep: number; // 0 = draft, 1 = chef_projet, 2 = admin, 3 = directeur
+  currentStep: number; // 0 = draft, 1 = validation finale direction
   steps: ApprovalStep[];
   status: 'draft' | 'in_review' | 'approved' | 'rejected' | 'executed' | 'cancelled';
   submittedAt?: number;
@@ -37,21 +39,9 @@ export const initializeWorkflow = (missionId: string): MissionApprovalWorkflow =
     history: [],
     steps: [
       {
-        id: 'chef_projet',
-        role: 'chef_projet',
-        roleName: 'Chef de Projet',
-        status: 'pending',
-      },
-      {
-        id: 'admin',
-        role: 'admin',
-        roleName: 'Administrateur',
-        status: 'pending',
-      },
-      {
         id: 'directeur',
         role: 'directeur',
-        roleName: 'Directeur Général',
+        roleName: 'Direction / Administration',
         status: 'pending',
       },
     ],
@@ -67,7 +57,7 @@ export const saveWorkflow = (workflow: MissionApprovalWorkflow): void => {
     workflow.updatedAt = Date.now();
     localStorage.setItem(`${STORAGE_KEY_PREFIX}${workflow.missionId}`, JSON.stringify(workflow));
   } catch (e) {
-    console.warn('Failed to save workflow:', e);
+    logger.warn('[missionWorkflow] Failed to save workflow', e);
   }
 };
 
@@ -76,7 +66,7 @@ export const getWorkflow = (missionId: string): MissionApprovalWorkflow | null =
     const stored = localStorage.getItem(`${STORAGE_KEY_PREFIX}${missionId}`);
     return stored ? JSON.parse(stored) : null;
   } catch (e) {
-    console.warn('Failed to load workflow:', e);
+    logger.warn('[missionWorkflow] Failed to load workflow', e);
     return null;
   }
 };
@@ -95,19 +85,11 @@ export const submitForApproval = (
   workflow.currentStep = 1;
   workflow.submittedAt = Date.now();
 
-  // Premier step (soumission) considéré comme auto-approuvé par le créateur
-  const step = workflow.steps[0];
-  step.status = 'approved';
-  step.approvedBy = submittedBy;
-  step.approvedAt = Date.now();
-  step.comment = comment || 'Soumis pour approbation officielle';
-  step.updatedAt = Date.now();
-
   workflow.history.push({
     status: 'Soumission',
     timestamp: Date.now(),
     user: submittedBy,
-    comment: step.comment,
+    comment: comment || 'Soumis pour validation finale',
   });
 
   saveWorkflow(workflow);
@@ -262,6 +244,6 @@ export const clearWorkflow = (missionId: string): void => {
   try {
     localStorage.removeItem(`${STORAGE_KEY_PREFIX}${missionId}`);
   } catch (e) {
-    console.warn('Failed to clear workflow:', e);
+    logger.warn('[missionWorkflow] Failed to clear workflow', e);
   }
 };

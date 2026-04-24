@@ -5,6 +5,7 @@
  */
 
 // Note: Sound synthesis is done via AudioContext API below
+import logger from '../utils/logger';
 
 class AudioService {
   private context: AudioContext | null = null;
@@ -42,7 +43,7 @@ class AudioService {
       osc.start();
       osc.stop(this.context.currentTime + 0.5);
     } catch (e) {
-      console.warn('Audio feedback failed:', e);
+      logger.debug('[audioService] Audio feedback failed', e);
     }
   }
 
@@ -70,7 +71,7 @@ class AudioService {
       osc.start();
       osc.stop(this.context.currentTime + 0.3);
     } catch (e) {
-      console.warn('Audio feedback failed:', e);
+      logger.debug('[audioService] Audio feedback failed', e);
     }
   }
 }

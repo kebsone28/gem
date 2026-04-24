@@ -26,7 +26,7 @@ export const useGeolocation = (onLocationFound?: (loc: [number, number]) => void
         const loc: [number, number] = [pos.coords.longitude, pos.coords.latitude];
         setUserLocation(loc);
         onLocationFoundRef.current?.(loc);
-        logger.log('📍 Auto-location detected:', loc);
+        logger.debug('📍 Auto-location detected:', loc);
       },
       (err) => {
         logger.warn('⚠️ Auto-location failed:', err);
@@ -49,7 +49,7 @@ export const useGeolocation = (onLocationFound?: (loc: [number, number]) => void
         setUserLocation(newLoc);
         if (onLocationFound) onLocationFound(newLoc);
         toast.success('✅ Position trouvée ! ' + newLoc.map((v) => v.toFixed(4)).join(', '));
-        logger.log('✅ Position obtenue:', newLoc);
+        logger.debug('✅ Position obtenue:', newLoc);
       },
       (err) => {
         let errorMsg = 'Position indisponible';

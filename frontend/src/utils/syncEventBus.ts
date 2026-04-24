@@ -6,6 +6,8 @@
  * Support WebSocket (Socket.io) pour notifications du backend
  */
 
+import logger from './logger';
+
 // ─── ANTI-DOUBLON EVENTS ──────────────────────────────────────────────────────
 /** Horodatage de la dernière émission par clé d'event */
 const _lastEventMap = new Map<string, number>();
@@ -34,17 +36,17 @@ class SyncEventBus {
     // Listen for backend events
     if (this.socket) {
       this.socket.on('import:complete', (data: unknown) => {
-        console.log('[SYNC-BUS] Received import:complete from backend');
+        logger.debug('[SYNC-BUS] Received import:complete from backend');
         this.emit('import:complete', data);
       });
 
       this.socket.on('kobo:syncComplete', (data: unknown) => {
-        console.log('[SYNC-BUS] Received kobo:syncComplete from backend');
+        logger.debug('[SYNC-BUS] Received kobo:syncComplete from backend');
         this.emit('kobo:syncComplete', data);
       });
 
       this.socket.on('project:reset', (data: unknown) => {
-        console.log('[SYNC-BUS] Received project:reset from backend');
+        logger.debug('[SYNC-BUS] Received project:reset from backend');
         this.emit('project:reset', data);
       });
     }
@@ -64,12 +66,12 @@ class SyncEventBus {
 
   emit(eventType: string, data?: unknown) {
     // Pas de dedup ici — shouldProcessEvent est appelée côté abonné si nécessaire
-    console.log(`[SYNC-BUS] Event: ${eventType}`, data);
+    logger.debug(`[SYNC-BUS] Event: ${eventType}`, data);
     this.listeners.get(eventType)?.forEach((callback) => {
       try {
         callback(data);
       } catch (err) {
-        console.error(`[SYNC-BUS] Error in listener for ${eventType}:`, err);
+        logger.error(`[SYNC-BUS] Error in listener for ${eventType}:`, err);
       }
     });
   }

@@ -49,7 +49,7 @@ const MissionApprovalHistory: React.FC<MissionApprovalHistoryProps> = ({
 
   // Workflow roles in sequence (Simplified)
   const WORKFLOW_SEQUENCE: { role: ApprovalRole; label: string; sequence: number }[] = [
-    { role: 'DIRECTEUR', label: '👔 Validation Direction Générale', sequence: 1 },
+    { role: 'DIRECTEUR', label: 'Validation Finale', sequence: 1 },
   ];
 
   useEffect(() => {
@@ -82,7 +82,9 @@ const MissionApprovalHistory: React.FC<MissionApprovalHistoryProps> = ({
       if (updated) {
         setWorkflow(updated);
         if (role === 'DIRECTEUR' && updated.orderNumber) {
-          logger.log(`✅ Mission approved by DG. Order number generated: ${updated.orderNumber}`);
+          logger.log(
+            `✅ Mission validated. Official order number generated: ${updated.orderNumber}`
+          );
         }
         onApprovalChanged?.();
       }
@@ -248,10 +250,10 @@ const MissionApprovalHistory: React.FC<MissionApprovalHistoryProps> = ({
             disabled={approving === 'ADMIN'}
             className="btn-admin-approve-all"
           >
-            🔑 {approving === 'ADMIN' ? 'Approbation en cours...' : 'APPROUVER TOUT (Admin)'}
+            🔑 {approving === 'ADMIN' ? 'Validation en cours...' : 'VALIDER (Admin)'}
           </button>
           <p className="text-xs text-gray-600">
-            Super-pouvoir: Approuve toutes les étapes en une seule action et génère le numéro
+            Validation administrative finale avec génération immédiate du numéro officiel
           </p>
         </div>
       )}
@@ -348,7 +350,7 @@ const MissionApprovalHistory: React.FC<MissionApprovalHistoryProps> = ({
             <div>
               <h4>✅ Approbation Complète</h4>
               <p>
-                Numéro de mission généré: <strong>{workflow.orderNumber}</strong>
+                Numéro officiel généré: <strong>{workflow.orderNumber}</strong>
               </p>
               {isAdmin && (
                 <button
@@ -376,10 +378,9 @@ const MissionApprovalHistory: React.FC<MissionApprovalHistoryProps> = ({
           <div className="status-pending">
             <Hourglass className="w-6 h-6" />
             <div>
-              <h4>⏳ En Attente d'Approbation</h4>
+              <h4>⏳ En Attente de Validation</h4>
               <p>
-                Étape {workflow.currentStep}/1: Attente de la validation par{' '}
-                {WORKFLOW_SEQUENCE.find((s) => s.sequence === workflow.currentStep)?.label}
+                Soumise et en attente de validation finale par la direction ou l’administration
               </p>
             </div>
           </div>

@@ -54,6 +54,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       logger.warn('🔐 [AUTH] Force logout: token refresh failed, clearing session');
       safeStorage.removeItem('access_token');
       safeStorage.removeItem('user');
+      safeStorage.removeItem('active_project_id');
+      safeStorage.removeItem('last_sync_timestamp');
       setUser(null);
     };
     window.addEventListener('auth:logout', handleForceLogout);
@@ -93,21 +95,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (accessToken) {
       safeStorage.setItem('access_token', accessToken);
-      
-      // Auto-resolve and cache the real server project ID on login
-      fetch('/api/projects', {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      })
-        .then((r) => r.json())
-        .then((data) => {
-          const projects = data.projects || data || [];
-          if (projects[0]?.id && !projects[0].id.startsWith('proj_')) {
-            safeStorage.setItem('active_project_id', projects[0].id);
-          }
-        })
-        .catch(() => {});
     }
-    
+
+    // Clear stale project/session-specific pointers. ProjectContext will repopulate them from the server.
+    safeStorage.removeItem('active_project_id');
+    safeStorage.removeItem('last_sync_timestamp');
     safeStorage.setItem('user', JSON.stringify(newUser));
   };
 
@@ -117,6 +109,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     safeStorage.removeItem('user');
     safeStorage.removeItem('admin_access_token');
     safeStorage.removeItem('admin_user_data');
+    safeStorage.removeItem('active_project_id');
+    safeStorage.removeItem('last_sync_timestamp');
     setUser(null);
   };
 

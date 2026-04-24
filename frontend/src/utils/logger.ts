@@ -1,9 +1,23 @@
 ﻿ 
-// simple abstraction over console to disable logs in production
+// simple abstraction over console with quiet-by-default dev mode
 const isProd = import.meta.env?.PROD;
 
+function isVerboseDevEnabled() {
+  if (isProd || typeof window === 'undefined') return false;
+
+  try {
+    return (
+      localStorage.getItem('gem:verbose-logs') === '1' ||
+      localStorage.getItem('debug') === '1' ||
+      (window as Window & { __GEM_VERBOSE_LOGS__?: boolean }).__GEM_VERBOSE_LOGS__ === true
+    );
+  } catch {
+    return false;
+  }
+}
+
 function log(...args: unknown[]) {
-  if (!isProd) console.log(...args);
+  if (!isProd && isVerboseDevEnabled()) console.log(...args);
 }
 function warn(...args: unknown[]) {
   if (!isProd) console.warn(...args);
@@ -13,11 +27,11 @@ function error(...args: unknown[]) {
 }
 
 function debug(...args: unknown[]) {
-  if (!isProd) console.debug(...args);
+  if (!isProd && isVerboseDevEnabled()) console.debug(...args);
 }
 
 function info(...args: unknown[]) {
-  if (!isProd) console.info(...args);
+  if (!isProd && isVerboseDevEnabled()) console.info(...args);
 }
 
 export default {

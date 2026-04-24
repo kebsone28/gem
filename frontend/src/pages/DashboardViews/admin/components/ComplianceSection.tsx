@@ -16,7 +16,7 @@ export const ComplianceSection: React.FC<ComplianceSectionProps> = ({ metrics })
 
   return (
     <div className="space-y-4 sm:space-y-8">
-      <div className="grid grid-cols-2 xl:grid-cols-6 gap-3 sm:gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-3 sm:gap-6">
         <KPICard
           title="CONFORMITÉ"
           value={metrics.conforme}
@@ -54,17 +54,17 @@ export const ComplianceSection: React.FC<ComplianceSectionProps> = ({ metrics })
         />
       </div>
 
-      <div className="grid grid-cols-3 gap-3 sm:gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-6">
         <div className="p-4 sm:p-6 rounded-[1.2rem] sm:rounded-[2rem] bg-slate-900/40 border border-white/5 backdrop-blur-xl">
-          <h4 className="text-[8px] sm:text-[10px] font-black text-blue-400/40 uppercase tracking-[0.12em] sm:tracking-[0.3em] mb-3 sm:mb-4 italic">PVNC</h4>
+          <h4 className="text-[11px] sm:text-[10px] font-black text-blue-300/70 uppercase tracking-[0.08em] sm:tracking-[0.3em] mb-2 sm:mb-4 italic">PVNC</h4>
           <p className="text-xl sm:text-3xl font-black text-white italic">{metrics.pvnc}</p>
         </div>
         <div className="p-4 sm:p-6 rounded-[1.2rem] sm:rounded-[2rem] bg-slate-900/40 border border-white/5 backdrop-blur-xl">
-          <h4 className="text-[8px] sm:text-[10px] font-black text-emerald-400/40 uppercase tracking-[0.12em] sm:tracking-[0.3em] mb-3 sm:mb-4 italic">PVR</h4>
+          <h4 className="text-[11px] sm:text-[10px] font-black text-emerald-300/70 uppercase tracking-[0.08em] sm:tracking-[0.3em] mb-2 sm:mb-4 italic">PVR</h4>
           <p className="text-xl sm:text-3xl font-black text-white italic">{metrics.pvr}</p>
         </div>
         <div className="p-4 sm:p-6 rounded-[1.2rem] sm:rounded-[2rem] bg-slate-900/40 border border-white/5 backdrop-blur-xl">
-          <h4 className="text-[8px] sm:text-[10px] font-black text-amber-400/40 uppercase tracking-[0.12em] sm:tracking-[0.3em] mb-3 sm:mb-4 italic">PVHSE</h4>
+          <h4 className="text-[11px] sm:text-[10px] font-black text-amber-300/70 uppercase tracking-[0.08em] sm:tracking-[0.3em] mb-2 sm:mb-4 italic">PVHSE</h4>
           <p className="text-xl sm:text-3xl font-black text-white italic">{metrics.pvhse}</p>
         </div>
       </div>

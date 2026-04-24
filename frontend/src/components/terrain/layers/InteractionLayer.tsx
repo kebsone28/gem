@@ -1,6 +1,7 @@
 ﻿/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useEffect } from 'react';
 import maplibregl from 'maplibre-gl';
+import logger from '../../../utils/logger';
 
 interface InteractionLayerProps {
   map: maplibregl.Map | null;
@@ -39,7 +40,7 @@ const InteractionLayer: React.FC<InteractionLayerProps> = ({
         });
       }
     } catch (err) {
-      console.warn('⚠️ Failed to add sources - style may not be ready:', err);
+      logger.debug('⚠️ Failed to add sources - style may not be ready:', err);
     }
   }, [map, styleIsReady]);
 
@@ -129,7 +130,7 @@ const InteractionLayer: React.FC<InteractionLayerProps> = ({
           });
         }
       } catch (err) {
-        console.warn('⚠️ Failed to add layers - style may not be ready:', err);
+        logger.debug('⚠️ Failed to add layers - style may not be ready:', err);
       }
     };
 

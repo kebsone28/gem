@@ -23,6 +23,7 @@ import {
   Eye,
   Calendar,
   GraduationCap,
+  MessagesSquare,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSync } from '../hooks/useSync';
@@ -44,32 +45,24 @@ function RoleLabel({ user, nRole, forceSync, isSyncing }: { user: any; nRole?: s
   const labelText = nRole ? labels[nRole] : user.role;
 
   return (
-    <div className="space-y-4">
-      <div className="p-4 rounded-3xl flex flex-col gap-3 border border-white/10 bg-white/5 shadow-xl">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-xs font-black text-white shadow-electric-sm bg-electric-gradient">
-            {user.name?.charAt(0).toUpperCase()}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="text-[13px] font-black truncate tracking-tight text-white">{user.name}</div>
-            <div className="flex items-center gap-2 mt-0.5">
-              <div className="relative flex">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px] shadow-emerald-500/50" />
-                <span className="absolute w-2 h-2 rounded-full bg-emerald-500 animate-ping opacity-75" />
-              </div>
-              <span className="text-xs font-black uppercase tracking-[0.15em] opacity-80 text-blue-200">
-                {labelText}
-              </span>
-            </div>
-          </div>
+    <div className="rounded-3xl border border-white/8 bg-white/[0.03] p-4">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">Rôle</p>
+          <p className="mt-1 text-sm font-semibold text-white">{labelText}</p>
         </div>
+        <span className="inline-flex h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
       </div>
 
-      <div className="p-5 rounded-3xl border border-white/5 bg-white/5 flex flex-col gap-3">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-black text-blue-300/50 uppercase tracking-widest">Connectivité</span>
+      <div className="border-t border-white/6 pt-3">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">Connectivité</span>
           <div
-            className={`px-2 py-0.5 rounded-full text-xs font-black tracking-widest flex items-center gap-1.5 ${navigator.onLine ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-500 border border-rose-500/20'}`}
+            className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold tracking-[0.14em] ${
+              navigator.onLine
+                ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300'
+                : 'border-rose-500/20 bg-rose-500/10 text-rose-300'
+            }`}
           >
             {navigator.onLine ? (
               <>
@@ -85,15 +78,19 @@ function RoleLabel({ user, nRole, forceSync, isSyncing }: { user: any; nRole?: s
         <button
           onClick={() => forceSync()}
           disabled={isSyncing || !navigator.onLine}
-          className={`w-full group relative overflow-hidden p-3 rounded-2xl transition-all ${isSyncing ? 'bg-primary shadow-lg shadow-primary/30' : 'bg-white/5 hover:bg-white/10 border border-white/5'}`}
+          className={`w-full rounded-2xl border px-3 py-3 text-left transition-all ${
+            isSyncing
+              ? 'border-blue-500/20 bg-blue-500/10 shadow-[0_10px_30px_rgba(37,99,235,0.18)]'
+              : 'border-white/5 bg-slate-900/35 hover:border-white/10 hover:bg-white/[0.05]'
+          }`}
         >
           <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-xl transition-all bg-primary/10 text-primary-light`}>
-              <RefreshCw size={14} strokeWidth={3} />
+            <div className="rounded-xl border border-white/5 bg-white/5 p-2 text-blue-300">
+              <RefreshCw size={14} strokeWidth={3} className={isSyncing ? 'animate-spin' : ''} />
             </div>
             <div className="text-left">
-              <p className={`text-xs font-black leading-tight text-blue-100`}>{'À Jour'}</p>
-              <span className={`text-xs text-blue-300/60 font-bold`}>Faisceau Cloud GEM</span>
+              <p className="text-sm font-semibold leading-tight text-white">Synchronisation</p>
+              <span className="text-xs text-slate-400">{isSyncing ? 'Mise à jour en cours' : 'Faisceau Cloud GEM à jour'}</span>
             </div>
           </div>
         </button>
@@ -119,6 +116,23 @@ export default function Sidebar() {
   const nRole = useMemo(() => normalizeRole(user?.role), [user?.role]);
   const isMaster = useMemo(() => isMasterAdmin(user), [user]);
   const missionLabel = getMissionLabel(user);
+  const roleLabels = useMemo(() => ({
+    [ROLES.ADMIN]: 'Admin',
+    [ROLES.DG]: 'Direction générale',
+    [ROLES.CLIENT_LSE]: 'Client LSE',
+    [ROLES.CHEF_EQUIPE]: "Chef d'équipe",
+    [ROLES.CHEF_PROJET]: 'Chef de projet',
+    [ROLES.COMPTABLE]: 'Comptable',
+  }), []);
+  const roleDisplay = (nRole && roleLabels[nRole]) || user?.role || 'Utilisateur';
+  const organizationName = (user?.organizationConfig as any)?.branding?.organizationName || 'GEM SAAS';
+  const projectLabel = project?.name || 'Wanekoo Core';
+  const userInitials = useMemo(() => {
+    const name = user?.name?.trim();
+    if (!name) return 'G';
+    const parts = name.split(/\s+/).filter(Boolean);
+    return parts.slice(0, 2).map((part: string) => part.charAt(0).toUpperCase()).join('');
+  }, [user?.name]);
 
   const handleLogout = () => {
     logout();
@@ -184,6 +198,13 @@ export default function Sidebar() {
         label: 'Terrain',
         title: 'Suivez les ménages sur la carte interactive en temps réel',
         permission: PERMISSIONS.VOIR_CARTE,
+        category: 'OPÉRATIONS',
+      },
+      {
+        to: '/communication',
+        icon: MessagesSquare,
+        label: 'Communication',
+        title: 'Messagerie équipe en direct, salons communs et discussions privées',
         category: 'OPÉRATIONS',
       },
       {
@@ -283,7 +304,7 @@ export default function Sidebar() {
         category: 'SYSTÈME' 
       },
     ],
-    [nRole, isMaster, PERMISSIONS, hasKoboTerminal, missionLabel]
+    [PERMISSIONS, hasKoboTerminal, isMaster, missionLabel]
   );
 
   // 🚀 [REACTIVITY] Re-calculate items when user or permissions change
@@ -327,17 +348,20 @@ export default function Sidebar() {
         onClick={() => setMobileOpen(!mobileOpen)}
         {...{ 'aria-expanded': mobileOpen }}
         aria-label={mobileOpen ? 'Fermer le menu' : 'Ouvrir le menu'}
-        className="lg:hidden fixed top-6 right-6 z-[60] w-12 h-12 bg-electric-gradient rounded-2xl flex items-center justify-center text-white shadow-electric transition-transform active:scale-95"
+        className="lg:hidden fixed right-4 top-4 z-[60] flex h-11 w-11 items-center justify-center rounded-2xl bg-electric-gradient text-white shadow-electric transition-transform active:scale-95"
       >
         {mobileOpen ? <X size={24} /> : <Menu size={24} />}
       </button>
 
       <aside
-        className={`fixed lg:static inset-y-0 left-0 w-80 bg-slate-950 flex flex-col z-50 border-r border-white/5 shadow-2xl transition-transform duration-500 ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}
+        className={`fixed lg:static inset-y-0 left-0 z-50 flex w-[21.5rem] max-w-[92vw] flex-col border-r border-white/8 bg-[radial-gradient(circle_at_top,#0b1531_0%,#070b1f_48%,#030712_100%)] shadow-2xl transition-transform duration-500 lg:w-80 ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}
       >
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(59,130,246,0.08),transparent_18%,transparent_78%,rgba(15,23,42,0.45))] pointer-events-none" />
+        <div className="pointer-events-none absolute inset-x-3 bottom-3 top-3 rounded-[1.75rem] border border-white/6 bg-white/[0.02] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] lg:inset-x-4 lg:bottom-4 lg:top-4 lg:rounded-[2rem]" />
+
         {/* Simulation Bar (God Mode) */}
         {user?.impersonatedBy && (
-          <div className="mx-6 mb-4 p-4 rounded-2xl bg-indigo-600 shadow-lg shadow-indigo-500/20 border border-indigo-400/30">
+          <div className="relative mx-4 mb-3 mt-4 rounded-2xl border border-indigo-400/30 bg-indigo-600 p-3 shadow-lg shadow-indigo-500/20 lg:mx-6 lg:mb-4 lg:mt-5 lg:p-4">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center animate-pulse">
@@ -364,10 +388,17 @@ export default function Sidebar() {
         )}
 
         {/* Logo Area */}
-        <div className="p-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-electric-gradient flex items-center justify-center shadow-electric-sm p-1 shrink-0">
+        <div className="relative border-b border-white/6 px-4 pb-4 pt-4 lg:px-6 lg:pb-5 lg:pt-6">
+          <div className="mb-2 flex items-center justify-between gap-3 lg:mb-3">
+            <div className="inline-flex items-center gap-2 rounded-full border border-blue-400/15 bg-blue-400/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-blue-200">
+              <span className="h-1.5 w-1.5 rounded-full bg-blue-300" />
+              Control Deck
+            </div>
+          </div>
+
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex min-w-0 flex-1 items-center gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/5 p-1 shadow-[0_10px_24px_rgba(2,6,23,0.28)] lg:h-14 lg:w-14">
                 {(user?.organizationConfig as any)?.branding?.logo ? (
                   <img
                     src={(user.organizationConfig as any).branding.logo}
@@ -378,19 +409,17 @@ export default function Sidebar() {
                   <BarChart3 className="text-white" size={24} />
                 )}
               </div>
-              <div className="min-w-0">
-                <h1 className="text-xl font-black tracking-tighter text-white italic leading-none truncate">
-                  {(user?.organizationConfig as any)?.branding?.organizationName || 'GEM SAAS'}
+              <div className="min-w-0 flex-1">
+                <h1 className="line-clamp-2 text-[20px] font-black leading-[0.98] tracking-[-0.04em] text-white/95 lg:text-[22px]">
+                  {organizationName}
                 </h1>
-                <div className="flex flex-col mt-1">
-                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-500 transition-all">
-                    {project?.name || 'Wanekoo Core'}
+                <div className="mt-1.5 flex flex-col gap-1 lg:mt-2">
+                  <span className="truncate text-[11px] font-semibold uppercase tracking-[0.16em] text-blue-300">
+                    {projectLabel}
                   </span>
-                  {project?.name && (
-                    <span className="text-[8px] font-black uppercase tracking-[0.3em] text-slate-600 mt-0.5">
-                      Projet Actif
-                    </span>
-                  )}
+                  <span className="text-[10px] font-medium uppercase tracking-[0.16em] text-slate-500">
+                    {project?.name ? 'Projet actif' : 'Espace principal'}
+                  </span>
                 </div>
               </div>
             </div>
@@ -398,16 +427,28 @@ export default function Sidebar() {
             {/* Notification Center Integration (Axe 4 - Amélioration Continue) */}
             <NotificationCenter />
           </div>
+
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-[10px] font-medium uppercase tracking-[0.16em] text-slate-400 lg:mt-4">
+            <span className="inline-flex items-center gap-2 rounded-full border border-emerald-500/15 bg-emerald-500/10 px-3 py-1 text-emerald-300">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
+              Session active
+            </span>
+            <span className="truncate rounded-full border border-white/8 bg-white/[0.04] px-3 py-1 text-slate-300">
+              {roleDisplay}
+            </span>
+          </div>
         </div>
 
         {/* Navigation Scroll Area */}
-        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-10 no-scrollbar">
+        <div className="relative flex-1 overflow-y-auto px-3 py-3 no-scrollbar lg:px-4 lg:py-5">
           {Object.entries(memoGroupedItems).map(([cat, items]) => (
-            <div key={cat} className="space-y-4">
-              <div className="flex items-center gap-3 px-2">
-                <div className={`w-1 h-3 rounded-full bg-blue-500 shadow-lg shadow-blue-500/50`} />
-                <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">
+            <div key={cat} className="mb-4 rounded-[1.45rem] border border-white/6 bg-white/[0.025] p-2.5 shadow-[0_10px_30px_rgba(2,6,23,0.15)] lg:mb-5 lg:rounded-[1.65rem] lg:p-3">
+              <div className="mb-2 flex items-center justify-between gap-3 px-1 lg:mb-3">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">
                   {categoryConfig[cat as keyof typeof categoryConfig]?.label || cat}
+                </span>
+                <span className="inline-flex min-w-7 items-center justify-center rounded-full border border-white/6 bg-white/[0.04] px-2 py-0.5 text-[10px] font-semibold text-slate-400">
+                  {items.length}
                 </span>
               </div>
               <nav className="space-y-1">
@@ -418,34 +459,47 @@ export default function Sidebar() {
                     title={item.title}
                     onClick={() => setMobileOpen(false)}
                     className={({ isActive }) => `
-                                                    group flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-300 relative overflow-hidden
-                                                    ${
-                                                      isActive
-                                                        ? 'bg-white/5 text-white shadow-inner'
-                                                        : 'text-slate-500 hover:text-white hover:bg-white/5'
-                                                    }
-                                                `}
+                      group relative flex items-center gap-3 overflow-hidden rounded-2xl px-3 py-2.5 transition-all duration-300 lg:py-3
+                      ${
+                        isActive
+                          ? 'border border-blue-500/20 bg-blue-500/10 text-white shadow-[0_12px_30px_rgba(37,99,235,0.12)]'
+                          : 'border border-transparent text-slate-400 hover:border-white/8 hover:bg-white/[0.04] hover:text-white'
+                      }
+                    `}
                   >
                     {({ isActive }) => (
                       <>
                         {isActive && (
                           <motion.div
                             layoutId="nav-active"
-                            className="absolute inset-0 bg-blue-600/5 backdrop-blur-sm border border-white/5"
+                            className="absolute inset-0 bg-blue-500/[0.07]"
                             transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
                           />
                         )}
-                        <item.icon
-                          size={18}
-                          className={`relative z-10 transition-transform duration-500 group-hover:scale-110 ${isActive ? 'text-blue-500' : 'text-slate-600'}`}
-                        />
-                        <span
-                          className={`relative z-10 text-xs font-black uppercase tracking-widest ${isActive ? 'opacity-100' : 'opacity-70 group-hover:opacity-100'}`}
-                        >
-                          {item.label}
-                        </span>
                         {isActive && (
-                          <div className="absolute right-4 w-1 h-1 rounded-full bg-blue-500 shadow-[0_0_8px] shadow-blue-500" />
+                          <div className="absolute bottom-2 left-3 top-2 w-[3px] rounded-full bg-blue-300/90 shadow-[0_0_14px_rgba(96,165,250,0.8)]" />
+                        )}
+                        <div className={`relative z-10 flex h-9 w-9 items-center justify-center rounded-xl border lg:h-10 lg:w-10 ${
+                          isActive
+                            ? 'border-blue-400/20 bg-blue-400/10'
+                            : 'border-white/5 bg-white/[0.03]'
+                        }`}>
+                          <item.icon
+                            size={18}
+                            className={`transition-transform duration-300 group-hover:scale-110 ${
+                              isActive ? 'text-blue-300' : 'text-slate-500'
+                            }`}
+                          />
+                        </div>
+                        <div className="relative z-10 min-w-0 flex-1">
+                          <span className={`block truncate text-[12.5px] font-semibold tracking-[0.04em] lg:text-[13px] lg:tracking-[0.06em] ${
+                            isActive ? 'text-white' : 'text-slate-300'
+                          }`}>
+                            {item.label}
+                          </span>
+                        </div>
+                        {isActive && (
+                          <div className="absolute right-4 h-2 w-2 rounded-full bg-blue-400 shadow-[0_0_10px_rgba(96,165,250,0.7)]" />
                         )}
                       </>
                     )}
@@ -457,13 +511,24 @@ export default function Sidebar() {
         </div>
 
         {/* Footer Context */}
-        <div className="p-6 mt-auto">
+        <div className="relative mt-auto border-t border-white/6 p-3 lg:p-4">
+          <div className="mb-3 flex items-center gap-3 rounded-2xl border border-white/6 bg-slate-950/30 px-3 py-3 lg:px-4">
+            <div className="flex h-9 w-9 items-center justify-center rounded-2xl border border-white/8 bg-white/5 text-xs font-black text-white lg:h-10 lg:w-10">
+              {userInitials}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold text-white">{user.name}</p>
+              <p className="truncate text-[11px] uppercase tracking-[0.16em] text-slate-400">
+                {roleDisplay}
+              </p>
+            </div>
+          </div>
           <RoleLabel user={user} nRole={nRole} forceSync={forceSync} isSyncing={isSyncing} />
           <button
             onClick={handleLogout}
-            className="w-full flex items-center justify-between mt-6 px-6 py-4 rounded-2xl bg-white/5 hover:bg-rose-500/10 text-slate-500 hover:text-rose-500 border border-white/5 transition-all group"
+            className="group mt-3 flex w-full items-center justify-between rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-3.5 text-slate-300 transition-all hover:border-rose-500/20 hover:bg-rose-500/10 hover:text-rose-300 lg:mt-4 lg:px-5 lg:py-4"
           >
-            <span className="text-xs font-black uppercase tracking-widest">Se Déconnecter</span>
+            <span className="text-[12px] font-semibold uppercase tracking-[0.16em]">Se déconnecter</span>
             <LogOut size={16} className="group-hover:translate-x-1 transition-transform" />
           </button>
         </div>

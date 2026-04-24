@@ -8,6 +8,20 @@
 
 const isProd = import.meta.env?.PROD ?? false;
 
+function isVerboseDevEnabled() {
+  if (isProd || typeof window === 'undefined') return false;
+
+  try {
+    return (
+      localStorage.getItem('gem:verbose-logs') === '1' ||
+      localStorage.getItem('debug') === '1' ||
+      (window as Window & { __GEM_VERBOSE_LOGS__?: boolean }).__GEM_VERBOSE_LOGS__ === true
+    );
+  } catch {
+    return false;
+  }
+}
+
 export type LogCategory =
   | 'SYNC'
   | 'OFFLINE'
@@ -82,6 +96,7 @@ function emit(level: LogLevel, category: LogCategory, message: string, data?: un
   pushToBuffer(entry);
 
   if (isProd && level !== 'error') return;
+  if (!isProd && (level === 'info' || level === 'debug') && !isVerboseDevEnabled()) return;
 
   const formatted = formatMessage(level, category, message);
 

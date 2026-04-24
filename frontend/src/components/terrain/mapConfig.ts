@@ -38,6 +38,26 @@ export const getStatusColor = (status?: string): string => {
 
 export const MAP_STYLE_DARK = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
 export const MAP_STYLE_LIGHT = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
+export const MAP_STYLE_FALLBACK_RASTER = {
+  version: 8,
+  sources: {
+    osm: {
+      type: 'raster',
+      tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+      tileSize: 256,
+      attribution: '&copy; OpenStreetMap contributors',
+    },
+  },
+  layers: [
+    {
+      id: 'osm-fallback',
+      type: 'raster',
+      source: 'osm',
+      minzoom: 0,
+      maxzoom: 20,
+    },
+  ],
+};
 export const MAP_STYLE_SATELLITE = {
   version: 8,
   sources: {

@@ -70,7 +70,7 @@ export const GeofencingAlerts: React.FC<GeofencingAlertsProps> = ({
 
   return (
     <div
-      className={`absolute top-4 right-4 z-[300] w-80 rounded-2xl border shadow-2xl backdrop-blur-xl overflow-hidden transition-all ${
+      className={`absolute top-[144px] left-3 right-3 md:top-4 md:left-auto md:right-4 z-[300] md:w-80 rounded-2xl border shadow-2xl backdrop-blur-xl overflow-hidden transition-all ${
         isDarkMode ? 'bg-rose-950/95 border-rose-800/60' : 'bg-rose-50/95 border-rose-200'
       }`}
     >

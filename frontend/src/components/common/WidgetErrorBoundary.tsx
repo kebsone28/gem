@@ -2,6 +2,7 @@
 import React, { Component, type ErrorInfo, type ReactNode } from 'react';
 import { AlertTriangle, RefreshCcw } from 'lucide-react';
 import { remoteLogger } from '../../utils/remoteLogger';
+import logger from '../../utils/logger';
 
 interface Props {
   children?: ReactNode;
@@ -31,7 +32,7 @@ export class WidgetErrorBoundary extends Component<Props, State> {
     remoteLogger.error(`Widget Crash: ${this.props.title || 'Unknown'}`, error, {
       componentStack: errorInfo.componentStack
     });
-    console.error(`Widget Crash: ${this.props.title || 'Unknown'}`, error);
+    logger.error(`Widget Crash: ${this.props.title || 'Unknown'}`, error);
   }
 
   private handleReset = () => {

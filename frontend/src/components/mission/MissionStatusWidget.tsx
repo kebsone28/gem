@@ -45,7 +45,7 @@ export const MissionStatusWidget: React.FC<MissionStatusWidgetProps> = ({
 }) => {
   const [isIntegrityValid, setIsIntegrityValid] = React.useState<boolean | null>(null);
 
-  const hasOfficialNumber = data.orderNumber && !data.orderNumber.includes('TEMP');
+  const hasOfficialNumber = data.orderNumber && !data.orderNumber.startsWith('TEMP-');
   const effectiveCertified = isCertified || hasOfficialNumber;
 
   React.useEffect(() => {
@@ -82,13 +82,13 @@ export const MissionStatusWidget: React.FC<MissionStatusWidgetProps> = ({
       bgGlow: 'bg-indigo-500/10',
     },
     certified: {
-      label: 'SIGNÉE',
-      color: 'bg-indigo-600',
+      label: 'OFFICIELLE',
+      color: 'bg-emerald-600',
       icon: CheckCircle2,
-      bgGlow: 'bg-indigo-500/10',
+      bgGlow: 'bg-emerald-500/10',
     },
     submitted: {
-      label: 'EN ATTENTE',
+      label: 'SOUMISE',
       color: 'bg-amber-500',
       icon: Clock,
       bgGlow: 'bg-amber-500/10',
@@ -178,7 +178,7 @@ export const MissionStatusWidget: React.FC<MissionStatusWidgetProps> = ({
       <div className="flex items-center justify-between">
         <div className="flex flex-col">
           <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-            Certification
+            Statut mission
           </h4>
           <span className="text-[8px] font-bold text-slate-500 uppercase">
             v{version} • {lastSync}
@@ -198,13 +198,13 @@ export const MissionStatusWidget: React.FC<MissionStatusWidgetProps> = ({
             Préparation
           </span>
           <span className="text-[11px] font-black text-slate-900 dark:text-white">
-            {isCertified ? '100%' : `${percentage.toFixed(0)}%`}
+            {effectiveCertified ? '100%' : `${percentage.toFixed(0)}%`}
           </span>
         </div>
         <div className="w-full h-2 bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden">
           <div
             className={`h-full transition-all duration-700 ease-out mission-status-bar ${config?.color || 'bg-slate-500'}`}
-            style={{ '--status-width': `${isCertified ? 100 : percentage}%` } as React.CSSProperties}
+            style={{ '--status-width': `${effectiveCertified ? 100 : percentage}%` } as React.CSSProperties}
           />
         </div>
       </div>

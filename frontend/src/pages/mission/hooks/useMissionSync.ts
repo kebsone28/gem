@@ -3,7 +3,7 @@ import { useCallback } from 'react';
 import { db } from '../../../store/db';
 import * as missionService from '../../../services/missionService';
 import { useAuth } from '../../../contexts/AuthContext';
-import { validateMission } from '../core/missionValidation';
+import { getMissionValidationMessages, validateMission } from '../core/missionValidation';
 import { calculateMissionTotals } from '../../../utils/missionBudget';
 import { syncEventBus, SYNC_EVENTS } from '../../../utils/syncEventBus';
 import { syncQueue } from '../core/missionSyncQueue';
@@ -90,6 +90,9 @@ export const useMissionSync = (
 
       const localVersion = state.version || 1;
 
+      const strictWorkflowAction =
+        overrideFlags?.isSubmitted === true || overrideFlags?.isCertified === true;
+
       const missionData = {
         id: finalId,
         projectId: activeProjectId,
@@ -106,22 +109,24 @@ export const useMissionSync = (
       try {
         actions.setStatus('saving');
 
+        if (strictWorkflowAction) {
+          const validation = validateMission({ formData, members, version: localVersion });
+
+          if (!validation.isValid) {
+            const validationMessages = getMissionValidationMessages(validation.errors);
+            actions.setStatus('error');
+            logger.warn('Validation échouée', validation.errors);
+            toast.error(
+              validationMessages[0] || 'Données incomplètes pour la soumission.'
+            );
+            return null;
+          }
+        }
+
         /**
          * 1. SAUVEGARDE LOCALE (TOUJOURS)
          */
         await db.missions.put(missionData as any);
-
-        /**
-         * 2. VALIDATION (uniquement si soumission)
-         */
-        const validation = validateMission({ formData, members, version: localVersion });
-
-        if (!validation.isValid && (finalIsSubmitted || finalIsCertified)) {
-          actions.setStatus('error');
-          logger.warn('Validation échouée', validation.errors);
-          toast.error("Données incomplètes pour la soumission.");
-          return null;
-        }
 
         let assignedId = finalId;
         let serverSuccess: boolean | null = null;

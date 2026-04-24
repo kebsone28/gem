@@ -18,6 +18,10 @@ export const MissionInfoSection: React.FC<MissionInfoSectionProps> = ({
   onUpdateField,
 }) => {
   const isLocked = isReadOnly || formData.isCertified || formData.isSubmitted;
+  const officialOrderNumber =
+    formData.orderNumber && !String(formData.orderNumber).startsWith('TEMP-')
+      ? formData.orderNumber
+      : (formData as any).officialNumber || '';
   const inputClass = (locked: boolean) =>
     `w-full ${locked ? 'bg-slate-100 dark:bg-white/5 cursor-not-allowed opacity-80 font-black text-slate-400' : 'bg-slate-50 dark:bg-white/5 text-indigo-900 dark:text-indigo-100'} border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-[11px] font-bold focus:ring-2 ring-indigo-500/20 transition-all outline-none`;
   return (
@@ -36,11 +40,11 @@ export const MissionInfoSection: React.FC<MissionInfoSectionProps> = ({
               id="mission-number"
               type="text"
               readOnly
-              value={formData.orderNumber && !formData.orderNumber.startsWith('TEMP-') ? formData.orderNumber : (formData.orderNumber && (formData as any).workflowStatus === 'approved' ? formData.orderNumber : (formData as any).officialNumber || formData.orderNumber || '')}
+              value={officialOrderNumber}
               placeholder="Génération après validation..."
               className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-[11px] font-black text-indigo-600 dark:text-indigo-400 focus:ring-0 transition-all outline-none cursor-not-allowed group-hover:border-indigo-500/30"
             />
-            {!formData.orderNumber && (
+            {!officialOrderNumber && (
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[8px] font-black text-slate-400 uppercase tracking-wider animate-pulse">
                 En attente
               </span>

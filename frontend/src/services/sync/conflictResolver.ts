@@ -33,6 +33,38 @@ const DEFAULT_STRATEGIES: Record<string, ConflictStrategy> = {
   teams: 'server-wins',
 };
 
+const cloneRecord = <T>(value: T): T => JSON.parse(JSON.stringify(value ?? {}));
+
+const getNestedValue = (source: Record<string, unknown>, path: string) =>
+  path.split('.').reduce<unknown>((current, key) => {
+    if (!current || typeof current !== 'object') return undefined;
+    return (current as Record<string, unknown>)[key];
+  }, source);
+
+const setNestedValue = (target: Record<string, unknown>, path: string, value: unknown) => {
+  const keys = path.split('.');
+  let current: Record<string, unknown> = target;
+
+  for (let i = 0; i < keys.length - 1; i++) {
+    const key = keys[i];
+    const existing = current[key];
+    if (!existing || typeof existing !== 'object' || Array.isArray(existing)) {
+      current[key] = {};
+    }
+    current = current[key] as Record<string, unknown>;
+  }
+
+  current[keys[keys.length - 1]] = value;
+};
+
+const isLockedPath = (path: string, overrides: string[]) =>
+  overrides.some(
+    (lockedPath) =>
+      lockedPath === path ||
+      path.startsWith(`${lockedPath}.`) ||
+      lockedPath.startsWith(`${path}.`)
+  );
+
 /**
  * Resolve a single conflict.
  * Returns the data that should be persisted locally.
@@ -54,22 +86,35 @@ export function resolveConflict(
 
     case 'merge': {
       // Base on server data (Kobo truth + system fields)
-      const merged: Record<string, unknown> = { ...serverData };
+      const merged: Record<string, unknown> = cloneRecord(serverData);
 
       // Intelligent Merge for Households
       if (entityType === 'households') {
         const localStatus = (localData['status'] as string) || '';
         const serverStatus = (serverData['status'] as string) || '';
+        const localOverrides = Array.isArray(localData['manualOverrides'])
+          ? (localData['manualOverrides'] as string[])
+          : [];
 
         // Prioritize advanced statuses locally so we don't regress work
         // Utilisation stricte de notre engine de règles
-        if (localStatus && canTransition(serverStatus, localStatus)) {
-            merged['status'] = localStatus;
+        if (
+          localStatus &&
+          (canTransition(serverStatus, localStatus) || isLockedPath('status', localOverrides))
+        ) {
+          merged['status'] = localStatus;
         }
 
-        // --- RÈGLE MÉTIER STRICTE ---
-        // Le Reste (Nom, Tél, GPS, Équipes, etc.) obéit toujours à Kobo/Serveur 
-        // L'unique exception locale est le statut forcé par l'admin ci-dessus.
+        // Kobo reste la source de vérité. Les seuls champs conservés localement
+        // sont ceux explicitement verrouillés par l'admin dans manualOverrides.
+        for (const lockedPath of localOverrides) {
+          const localValue = getNestedValue(localData, lockedPath);
+          if (localValue !== undefined) {
+            setNestedValue(merged, lockedPath, cloneRecord(localValue));
+          }
+        }
+
+        merged['manualOverrides'] = localOverrides;
       }
 
       // System fields MUST be server truth

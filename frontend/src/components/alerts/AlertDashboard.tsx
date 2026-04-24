@@ -22,6 +22,7 @@ import {
 import alertsAPI from '../../services/alertsAPI';
 import { useProject } from '../../contexts/ProjectContext';
 import toast from 'react-hot-toast';
+import logger from '../../utils/logger';
 
 interface Alert {
   id: string;
@@ -64,7 +65,7 @@ export const AlertDashboard: React.FC = () => {
         setAlerts(alertsData || []);
         setStats(statsData);
       } catch (err) {
-        console.error('Error fetching alerts:', err);
+        logger.error('[AlertDashboard] Error fetching alerts', err);
       } finally {
         setLoading(false);
       }

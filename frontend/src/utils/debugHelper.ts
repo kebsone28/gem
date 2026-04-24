@@ -4,6 +4,8 @@
  * Use in development to catch infinite render loops
  */
 
+import logger from './logger';
+
 // Augment Performance interface for memory property (Chrome/Chromium)
 declare global {
   interface Performance {
@@ -23,11 +25,11 @@ export function trackRender(componentName: string) {
 
   // Warn if rendering more than 5 times in a short period
   if (count > 5 && count % 10 === 0) {
-    console.warn(`⚠️ [RENDER LOOP] ${componentName} has rendered ${count} times`);
+    logger.warn(`⚠️ [RENDER LOOP] ${componentName} has rendered ${count} times`);
   }
 
-  if (process.env.NODE_ENV === 'development') {
-    console.log(`📊 ${componentName}: render #${count}`);
+  if (import.meta.env.DEV) {
+    logger.debug(`📊 ${componentName}: render #${count}`);
   }
 }
 
@@ -64,15 +66,15 @@ export function logMemoryWarning() {
   if (!info) return;
 
   if (info.isHighMemory) {
-    console.warn(
+    logger.warn(
       `⚠️ [MEMORY] High memory usage: ${info.used} / ${info.limit} (${info.percentUsed})`
     );
   } else {
-    console.log(`💾 [MEMORY] ${info.used} / ${info.limit} (${info.percentUsed})`);
+    logger.debug(`💾 [MEMORY] ${info.used} / ${info.limit} (${info.percentUsed})`);
   }
 }
 
 // Auto-check memory every 10 seconds in development
-if (process.env.NODE_ENV === 'development') {
+if (import.meta.env.DEV) {
   setInterval(logMemoryWarning, 10000);
 }

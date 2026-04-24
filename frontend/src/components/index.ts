@@ -53,6 +53,7 @@ export {
   ActionBar,
   ActivityFeed,
   AlertPanel,
+  ModulePageShell,
 } from './dashboards/DashboardComponents';
 
 //

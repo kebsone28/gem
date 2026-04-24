@@ -6,11 +6,13 @@ import {
   MAP_STYLE_SATELLITE,
 } from '../../components/terrain/mapConfig';
 import { registerIcons } from '../../components/terrain/mapUtils';
+import logger from '../../utils/logger';
 
 export class MapManager {
   public container: HTMLDivElement | null = null;
   public map: maplibregl.Map | null = null;
   public isInitializing: boolean = false;
+  public currentStyleSource: 'dark' | 'light' | 'satellite' | null = null;
 
   public async getMap(
     isDarkMode: boolean
@@ -56,6 +58,7 @@ export class MapManager {
         return { url };
       },
     });
+    this.currentStyleSource = isDarkMode ? 'dark' : 'light';
 
     // 3. Setup core controls
     this.map.addControl(
@@ -84,6 +87,13 @@ export class MapManager {
     return new Promise((resolve) => {
       if (!this.map) return resolve();
 
+      const nextSource =
+        targetSource === 'satellite' ? 'satellite' : targetSource === 'dark' ? 'dark' : 'light';
+
+      if (this.currentStyleSource === nextSource && this.map.isStyleLoaded()) {
+        return resolve();
+      }
+
       // Prevent updates if interrupted
       if ((this.map as unknown as { _removed?: boolean })._removed) return resolve();
 
@@ -105,19 +115,20 @@ export class MapManager {
           // We wait for 'style.load' which is the official "all good" signal
           const onStyleLoad = async () => {
             try {
-              console.log('[MapSingleton] Style loaded, registering icons...');
+              this.currentStyleSource = nextSource;
+              logger.debug('[MapSingleton] Style loaded, registering icons...');
               await registerIcons(this.map!);
-              console.log('[MapSingleton] Style transition complete.');
+              logger.debug('[MapSingleton] Style transition complete.');
               resolve();
             } catch (err) {
-              console.warn('[MapSingleton] Icon registration failed:', err);
+              logger.warn('[MapSingleton] Icon registration failed:', err);
               resolve(); // Still resolve to let app continue
             }
           };
 
           this.map!.once('style.load', onStyleLoad);
         } catch (e) {
-          console.warn('[SingletonMap] Style aborted safely', e);
+          logger.warn('[SingletonMap] Style aborted safely', e);
           resolve();
         }
       };

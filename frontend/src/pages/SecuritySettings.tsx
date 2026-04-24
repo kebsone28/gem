@@ -84,16 +84,16 @@ function Section({
     rose: 'bg-rose-500/10 border-rose-500/30 text-rose-400',
   };
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-5">
-      <div className="flex items-center gap-4">
+    <div className="bg-slate-900 border border-slate-800 rounded-[1.6rem] sm:rounded-3xl p-4 sm:p-6 space-y-5">
+      <div className="flex items-start sm:items-center gap-4">
         <div
           className={`w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 ${colors[color]}`}
         >
           <Icon size={18} />
         </div>
         <div>
-          <h2 className="text-white font-black text-lg">{title}</h2>
-          <p className="text-slate-500 text-sm">{subtitle}</p>
+          <h2 className="text-white font-black text-base sm:text-lg">{title}</h2>
+          <p className="text-slate-500 text-[13px] sm:text-sm">{subtitle}</p>
         </div>
       </div>
       {children}
@@ -279,7 +279,7 @@ export default function SecuritySettings() {
   return (
     <div className="min-h-screen bg-slate-950">
       {/* ── Toast Stack ── */}
-      <div className="fixed top-6 right-6 z-[9999] flex flex-col gap-2 pointer-events-none">
+      <div className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] right-4 sm:top-6 sm:right-6 sm:bottom-auto z-[9999] flex flex-col gap-2 pointer-events-none max-w-[calc(100vw-2rem)] sm:max-w-md">
         {toasts.map((t) => (
           <div
             key={t.id}
@@ -300,16 +300,16 @@ export default function SecuritySettings() {
       </div>
 
       {/* ── Recovery Modal ── */}
-      <PageContainer className="py-8">
+      <PageContainer className="py-4 sm:py-8">
         {recMode && (
-          <div className="fixed inset-0 z-[5000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-slate-900 border border-slate-700 rounded-3xl p-8 max-w-md w-full shadow-2xl">
+          <div className="fixed inset-0 z-[5000] bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-3 sm:p-4">
+            <div className="bg-slate-900 border border-slate-700 rounded-[1.6rem] sm:rounded-3xl p-4 sm:p-8 max-w-md w-full shadow-2xl max-h-[90vh] overflow-y-auto">
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-10 h-10 bg-amber-500/15 rounded-xl flex items-center justify-center">
                   <Unlock size={18} className="text-amber-400" />
                 </div>
                 <div>
-                  <h3 className="text-white font-black text-xl">Récupération d'accès admin</h3>
+                  <h3 className="text-white font-black text-lg sm:text-xl">Récupération d'accès admin</h3>
                   <p className="text-slate-500 text-sm">Étape {recStep}/2</p>
                 </div>
               </div>
@@ -339,7 +339,7 @@ export default function SecuritySettings() {
                   className="space-y-4"
                 >
                   <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20">
-                    <p className="text-amber-300 text-xs font-black uppercase tracking-widest mb-1">
+                    <p className="text-amber-300 text-[11px] sm:text-xs font-black uppercase tracking-[0.08em] sm:tracking-widest mb-1">
                       Question de sécurité
                     </p>
                     <p className="text-white font-bold text-sm">
@@ -357,7 +357,7 @@ export default function SecuritySettings() {
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2">
+                    <label className="text-[11px] sm:text-xs font-black text-slate-500 uppercase tracking-[0.08em] sm:tracking-widest block mb-2">
                       Réponse à la question OR code de récupération
                     </label>
                     <input
@@ -374,13 +374,13 @@ export default function SecuritySettings() {
                     <button
                       type="button"
                       onClick={() => setRecMode(false)}
-                      className="flex-1 py-3 bg-slate-800 text-slate-300 rounded-xl font-bold hover:bg-slate-700 transition-all"
+                      className="flex-1 min-h-[48px] py-3 bg-slate-800 text-slate-300 rounded-xl font-bold hover:bg-slate-700 transition-all"
                     >
                       Annuler
                     </button>
                     <button
                       type="submit"
-                      className="flex-1 py-3 bg-amber-500 hover:bg-amber-400 text-black rounded-xl font-black transition-all active:scale-95"
+                      className="flex-1 min-h-[48px] py-3 bg-amber-500 hover:bg-amber-400 text-black rounded-xl font-black transition-all active:scale-95"
                     >
                       Vérifier →
                     </button>
@@ -411,7 +411,7 @@ export default function SecuritySettings() {
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2">
+                    <label className="text-[11px] sm:text-xs font-black text-slate-500 uppercase tracking-[0.08em] sm:tracking-widest block mb-2">
                       Nouveau mot de passe (min. 8 car.)
                     </label>
                     <PasswordField
@@ -422,7 +422,7 @@ export default function SecuritySettings() {
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2">
+                    <label className="text-[11px] sm:text-xs font-black text-slate-500 uppercase tracking-[0.08em] sm:tracking-widest block mb-2">
                       Confirmer avec la réponse à la question de sécurité
                     </label>
                     <div className="p-3 rounded-xl bg-slate-800 text-slate-400 text-xs mb-2">
@@ -441,13 +441,13 @@ export default function SecuritySettings() {
                     <button
                       type="button"
                       onClick={() => setRecStep(1)}
-                      className="flex-1 py-3 bg-slate-800 text-slate-300 rounded-xl font-bold hover:bg-slate-700 transition-all"
+                      className="flex-1 min-h-[48px] py-3 bg-slate-800 text-slate-300 rounded-xl font-bold hover:bg-slate-700 transition-all"
                     >
                       ← Retour
                     </button>
                     <button
                       type="submit"
-                      className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-black transition-all active:scale-95 flex items-center justify-center gap-2"
+                      className="flex-1 min-h-[48px] py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-black transition-all active:scale-95 flex items-center justify-center gap-2"
                     >
                       <Save size={14} /> Réinitialiser
                     </button>
@@ -464,7 +464,7 @@ export default function SecuritySettings() {
           icon={<ShieldCheck size={24} className="text-white" />}
         />
 
-        <ContentArea className="space-y-6 p-8">
+        <ContentArea className="space-y-6 p-4 sm:p-8">
           <div className="max-w-3xl mx-auto space-y-6">
             {/* 1. Mot de passe suppression projet */}
             <Section
@@ -491,7 +491,7 @@ export default function SecuritySettings() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-1.5">
+                  <label className="text-[11px] sm:text-xs font-black text-slate-500 uppercase tracking-[0.08em] sm:tracking-widest block mb-1.5">
                     Mot de passe actuel
                   </label>
                   <PasswordField
@@ -502,7 +502,7 @@ export default function SecuritySettings() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-1.5">
+                  <label className="text-[11px] sm:text-xs font-black text-slate-500 uppercase tracking-[0.08em] sm:tracking-widest block mb-1.5">
                     Nouveau mot de passe
                   </label>
                   <PasswordField
@@ -513,7 +513,7 @@ export default function SecuritySettings() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-1.5">
+                  <label className="text-[11px] sm:text-xs font-black text-slate-500 uppercase tracking-[0.08em] sm:tracking-widest block mb-1.5">
                     Confirmer
                   </label>
                   <PasswordField
@@ -525,7 +525,7 @@ export default function SecuritySettings() {
                 </div>
                 <button
                   type="submit"
-                  className="w-full py-3 bg-rose-600 hover:bg-rose-500 text-white rounded-xl font-black transition-all flex items-center justify-center gap-2 active:scale-95 shadow-lg shadow-rose-600/20"
+                  className="w-full min-h-[48px] py-3 bg-rose-600 hover:bg-rose-500 text-white rounded-xl font-black transition-all flex items-center justify-center gap-2 active:scale-95 shadow-lg shadow-rose-600/20"
                 >
                   <Save size={15} /> Mettre à jour
                 </button>
@@ -557,7 +557,7 @@ export default function SecuritySettings() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-1.5">
+                  <label className="text-[11px] sm:text-xs font-black text-slate-500 uppercase tracking-[0.08em] sm:tracking-widest block mb-1.5">
                     Mot de passe actuel
                   </label>
                   <PasswordField
@@ -568,7 +568,7 @@ export default function SecuritySettings() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-1.5">
+                  <label className="text-[11px] sm:text-xs font-black text-slate-500 uppercase tracking-[0.08em] sm:tracking-widest block mb-1.5">
                     Nouveau mot de passe (min. 8 car.)
                   </label>
                   <PasswordField
@@ -579,7 +579,7 @@ export default function SecuritySettings() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-1.5">
+                  <label className="text-[11px] sm:text-xs font-black text-slate-500 uppercase tracking-[0.08em] sm:tracking-widest block mb-1.5">
                     Confirmer
                   </label>
                   <PasswordField
@@ -591,7 +591,7 @@ export default function SecuritySettings() {
                 </div>
                 <button
                   type="submit"
-                  className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-black transition-all flex items-center justify-center gap-2 active:scale-95 shadow-lg shadow-indigo-600/20"
+                  className="w-full min-h-[48px] py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-black transition-all flex items-center justify-center gap-2 active:scale-95 shadow-lg shadow-indigo-600/20"
                 >
                   <Save size={15} /> Mettre à jour
                 </button>
@@ -623,7 +623,7 @@ export default function SecuritySettings() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-1.5">
+                  <label className="text-[11px] sm:text-xs font-black text-slate-500 uppercase tracking-[0.08em] sm:tracking-widest block mb-1.5">
                     Nouvelle question
                   </label>
                   <input
@@ -636,7 +636,7 @@ export default function SecuritySettings() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-1.5">
+                  <label className="text-[11px] sm:text-xs font-black text-slate-500 uppercase tracking-[0.08em] sm:tracking-widest block mb-1.5">
                     Réponse (insensible à la casse)
                   </label>
                   <input
@@ -649,7 +649,7 @@ export default function SecuritySettings() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-1.5">
+                  <label className="text-[11px] sm:text-xs font-black text-slate-500 uppercase tracking-[0.08em] sm:tracking-widest block mb-1.5">
                     Confirmer avec le mot de passe admin
                   </label>
                   <PasswordField
@@ -661,7 +661,7 @@ export default function SecuritySettings() {
                 </div>
                 <button
                   type="submit"
-                  className="w-full py-3 bg-amber-500 hover:bg-amber-400 text-black rounded-xl font-black transition-all flex items-center justify-center gap-2 active:scale-95"
+                  className="w-full min-h-[48px] py-3 bg-amber-500 hover:bg-amber-400 text-black rounded-xl font-black transition-all flex items-center justify-center gap-2 active:scale-95"
                 >
                   <Save size={15} /> Enregistrer la question
                 </button>
@@ -677,7 +677,7 @@ export default function SecuritySettings() {
             >
               <div className="space-y-4">
                 {recoveryCode ? (
-                  <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between gap-4">
+                  <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <span className="font-mono font-bold text-emerald-300 tracking-widest text-sm">
                       {recoveryCode}
                     </span>
@@ -703,7 +703,7 @@ export default function SecuritySettings() {
                 </div>
                 <button
                   onClick={generateCode}
-                  className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-black transition-all flex items-center justify-center gap-2 active:scale-95 shadow-lg shadow-emerald-600/20"
+                  className="w-full min-h-[48px] py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-black transition-all flex items-center justify-center gap-2 active:scale-95 shadow-lg shadow-emerald-600/20"
                 >
                   <RefreshCw size={15} /> {recoveryCode ? 'Regénérer un code' : 'Générer le code'}
                 </button>
@@ -711,7 +711,7 @@ export default function SecuritySettings() {
             </Section>
 
             {/* 5. Récupération d'accès oublié */}
-            <div className="border border-dashed border-slate-700 rounded-3xl p-6 flex items-center justify-between gap-4">
+            <div className="border border-dashed border-slate-700 rounded-3xl p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <Unlock size={20} className="text-slate-500" />
                 <div>
@@ -723,7 +723,7 @@ export default function SecuritySettings() {
               </div>
               <button
                 onClick={startRecovery}
-                className="shrink-0 px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold text-sm transition-all flex items-center gap-2 border border-slate-700"
+                className="w-full sm:w-auto shrink-0 px-5 py-3 min-h-[48px] bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 border border-slate-700"
               >
                 <KeyRound size={14} /> Récupérer l'accès
               </button>

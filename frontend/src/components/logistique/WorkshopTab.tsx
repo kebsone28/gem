@@ -27,6 +27,44 @@ import { useLogistique } from '../../hooks/useLogistique';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
+const HEALTH_BADGE_STYLES = {
+  emerald: {
+    container: 'bg-emerald-500/10 border-emerald-500/30',
+    text: 'text-emerald-400',
+  },
+  slate: {
+    container: 'bg-slate-500/10 border-slate-500/30',
+    text: 'text-slate-300',
+  },
+  rose: {
+    container: 'bg-rose-500/10 border-rose-500/30',
+    text: 'text-rose-400',
+  },
+  amber: {
+    container: 'bg-amber-500/10 border-amber-500/30',
+    text: 'text-amber-400',
+  },
+} as const;
+
+const STOCK_CARD_STYLES = {
+  blue: {
+    container: 'border-blue-500/20',
+    text: 'text-blue-400',
+  },
+  emerald: {
+    container: 'border-emerald-500/20',
+    text: 'text-emerald-400',
+  },
+  rose: {
+    container: 'border-rose-500/20',
+    text: 'text-rose-400',
+  },
+  slate: {
+    container: 'border-slate-500/20',
+    text: 'text-slate-300',
+  },
+} as const;
+
 export default function WorkshopTab() {
   const {
     project,
@@ -84,6 +122,7 @@ export default function WorkshopTab() {
   if (velocity < 10) healthBadge = { text: 'Inactif', color: 'slate', icon: AlertTriangle };
   else if (velocity < 30) healthBadge = { text: 'En Retard', color: 'rose', icon: AlertTriangle };
   else if (velocity < 40) healthBadge = { text: 'Sous Tension', color: 'amber', icon: Activity };
+  const healthBadgeStyles = HEALTH_BADGE_STYLES[healthBadge.color];
 
   // Isolated teams for the active warehouse
   const filteredTeams = isGlobal
@@ -195,77 +234,79 @@ export default function WorkshopTab() {
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Header: Warehouse Selector */}
-      <div className="flex flex-wrap gap-2 items-center">
-        <span className="text-slate-400 text-xs font-bold uppercase tracking-widest mr-2">
-          Vue :
+      <div className="space-y-3">
+        <span className="text-slate-400 text-xs font-bold uppercase tracking-widest">
+          Vue
         </span>
 
-        <button
-          onClick={() => setSelectedWarehouseId('global')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm transition-all ${
-            selectedWarehouseId === 'global'
-              ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20'
-              : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white'
-          }`}
-        >
-          <Globe size={14} />
-          Réseau National
-        </button>
+        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+          <button
+            onClick={() => setSelectedWarehouseId('global')}
+            className={`shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm transition-all ${
+              selectedWarehouseId === 'global'
+                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20'
+                : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white'
+            }`}
+          >
+            <Globe size={14} />
+            Réseau National
+          </button>
 
-        <div className="w-px h-6 bg-slate-800 mx-2" />
-
-        {warehouses?.map((wh) => (
-          <div key={wh.id} className="relative group">
-            <button
-              onClick={() => setSelectedWarehouseId(wh.id)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm transition-all ${
-                selectedWarehouseId === wh.id
-                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'
-                  : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white'
-              }`}
-            >
-              <Warehouse size={14} />
-              {wh.name}
-              {warehouseStats?.find((s) => s.id === wh.id)?.hasAlert && (
-                <span className="w-2 h-2 bg-red-500 rounded-full" />
-              )}
-            </button>
-            {!isGlobal && selectedWarehouseId === wh.id && (
+          {warehouses?.map((wh) => (
+            <div key={wh.id} className="relative group shrink-0">
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDeleteWarehouse(wh.id, wh.name);
-                }}
-                className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
-                aria-label="Supprimer ce magasin"
+                onClick={() => setSelectedWarehouseId(wh.id)}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm transition-all ${
+                  selectedWarehouseId === wh.id
+                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'
+                    : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white'
+                }`}
               >
-                <X size={10} />
+                <Warehouse size={14} />
+                {wh.name}
+                {warehouseStats?.find((s) => s.id === wh.id)?.hasAlert && (
+                  <span className="w-2 h-2 bg-red-500 rounded-full" />
+                )}
               </button>
-            )}
-          </div>
-        ))}
+              {!isGlobal && selectedWarehouseId === wh.id && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteWarehouse(wh.id, wh.name);
+                  }}
+                  className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shadow-lg"
+                  aria-label="Supprimer ce magasin"
+                >
+                  <X size={10} />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
 
-        <button
-          onClick={() => setAddingWarehouse(true)}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm bg-slate-900 border border-dashed border-slate-700 text-slate-500 hover:text-white hover:border-blue-500 transition-all"
-        >
-          <Plus size={14} />
-          Ajouter Magasin
-        </button>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <button
+            onClick={() => setAddingWarehouse(true)}
+            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm bg-slate-900 border border-dashed border-slate-700 text-slate-500 hover:text-white hover:border-blue-500 transition-all"
+          >
+            <Plus size={14} />
+            Ajouter Magasin
+          </button>
 
-        <button
-          onClick={() => setShowTransferModal(true)}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm bg-indigo-900/20 border border-indigo-500/30 text-indigo-400 hover:bg-indigo-500 hover:text-white transition-all ml-auto"
-        >
-          <ArrowRightLeft size={14} />
-          Transfert Stock
-        </button>
+          <button
+            onClick={() => setShowTransferModal(true)}
+            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm bg-indigo-900/20 border border-indigo-500/30 text-indigo-400 hover:bg-indigo-500 hover:text-white transition-all"
+          >
+            <ArrowRightLeft size={14} />
+            Transfert Stock
+          </button>
+        </div>
       </div>
 
       {/* Modals: Add & Transfer */}
       {addingWarehouse && (
         <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 w-full max-w-md">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 sm:p-8 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <h3 className="text-xl font-black text-white mb-6">Nouveau Magasin</h3>
             <div className="space-y-4">
               <div>
@@ -298,7 +339,7 @@ export default function WorkshopTab() {
                 </select>
               </div>
             </div>
-            <div className="flex gap-3 mt-6">
+            <div className="flex flex-col gap-3 mt-6 sm:flex-row">
               <button
                 onClick={() => setAddingWarehouse(false)}
                 className="flex-1 py-3 rounded-xl bg-slate-800 text-slate-300 font-bold hover:bg-slate-700 transition-all"
@@ -318,7 +359,7 @@ export default function WorkshopTab() {
 
       {showTransferModal && (
         <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 w-full max-w-md">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 sm:p-8 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <h3 className="text-xl font-black text-white mb-6 flex items-center gap-3">
               <ArrowRightLeft className="text-indigo-400" />
               Transfert de Kits
@@ -375,7 +416,7 @@ export default function WorkshopTab() {
                 />
               </div>
             </div>
-            <div className="flex gap-3 mt-6">
+            <div className="flex flex-col gap-3 mt-6 sm:flex-row">
               <button
                 onClick={() => setShowTransferModal(false)}
                 className="flex-1 py-3 rounded-xl bg-slate-800 text-slate-300 font-bold hover:bg-slate-700 transition-all"
@@ -394,22 +435,22 @@ export default function WorkshopTab() {
       )}
 
       {/* Main Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-5">
         {/* Left Column: Stock/Consolidated or Map/Teams */}
         <div className="lg:col-span-3 space-y-6">
           {isGlobal ? (
             /* National Global Dashboard */
             <div className="space-y-6">
-              <div className="bg-slate-900 border border-slate-800 rounded-[2rem] p-8">
-                <div className="flex items-center gap-3 mb-8">
+              <div className="bg-slate-900 border border-slate-800 rounded-[2rem] p-5 sm:p-8">
+                <div className="flex items-center gap-3 mb-6 sm:mb-8">
                   <BarChart3 className="text-indigo-400" />
-                  <h3 className="text-2xl font-black text-white uppercase tracking-tight">
+                  <h3 className="text-xl sm:text-2xl font-black text-white uppercase tracking-tight">
                     Tableau de Bord National
                   </h3>
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                  <div className="bg-slate-950 border border-slate-800 rounded-2xl p-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
+                  <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 sm:p-6">
                     <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1">
                       Stock Pivot
                     </p>
@@ -418,7 +459,7 @@ export default function WorkshopTab() {
                       Kits Disponibles
                     </p>
                   </div>
-                  <div className="bg-slate-950 border border-slate-800 rounded-2xl p-6">
+                  <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 sm:p-6">
                     <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1">
                       Chargements / Jour
                     </p>
@@ -427,7 +468,7 @@ export default function WorkshopTab() {
                       Tous Magasins
                     </p>
                   </div>
-                  <div className="bg-slate-950 border border-slate-800 rounded-2xl p-6">
+                  <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 sm:p-6">
                     <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1">
                       En Transit
                     </p>
@@ -436,7 +477,7 @@ export default function WorkshopTab() {
                       Livraisons Terrain
                     </p>
                   </div>
-                  <div className="bg-slate-950 border border-slate-800 rounded-2xl p-6">
+                  <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 sm:p-6">
                     <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1">
                       Installations
                     </p>
@@ -457,9 +498,9 @@ export default function WorkshopTab() {
                     {warehouseStats.map((ws) => (
                       <div
                         key={ws.id}
-                        className="bg-slate-950/40 border border-slate-800 px-6 py-4 rounded-xl flex items-center justify-between"
+                        className="bg-slate-950/40 border border-slate-800 px-4 sm:px-6 py-4 rounded-xl flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between"
                       >
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-4 min-w-0">
                           <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-white">
                             <Warehouse size={18} />
                           </div>
@@ -470,7 +511,7 @@ export default function WorkshopTab() {
                             </p>
                           </div>
                         </div>
-                        <div className="text-right">
+                        <div className="w-full sm:w-auto sm:text-right">
                           <p className="font-black text-white">
                             {Math.max(0, ws.kitsLoadedToday - ws.kitsConsumed)}{' '}
                             <span className="text-xs text-slate-500">KITS</span>
@@ -504,28 +545,28 @@ export default function WorkshopTab() {
               /* Specific Warehouse View */
               <>
                 {/* Stock Card */}
-                <div className="bg-slate-900 border border-slate-800 rounded-[2rem] p-8 relative overflow-hidden">
+                <div className="bg-slate-900 border border-slate-800 rounded-[2rem] p-5 sm:p-8 relative overflow-hidden">
                   <div className="absolute top-0 right-0 p-10 opacity-5 pointer-events-none">
                     <Compass size={100} className="text-blue-500" />
                   </div>
-                  <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-3">
+                  <div className="flex flex-col gap-4 mb-6 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-3 min-w-0">
                       <Package className="text-blue-400" size={20} />
-                      <h3 className="text-xl font-black text-white">
+                      <h3 className="text-lg sm:text-xl font-black text-white">
                         Stock Local : {activeWh.name}
                       </h3>
                     </div>
                     <div
-                      className={`flex items-center gap-2 px-3 py-1.5 rounded-xl bg-${healthBadge.color}-500/10 border border-${healthBadge.color}-500/30`}
+                      className={`flex w-fit items-center gap-2 px-3 py-1.5 rounded-xl border ${healthBadgeStyles.container}`}
                     >
-                      <healthBadge.icon size={14} className={`text-${healthBadge.color}-400`} />
-                      <span className={`text-${healthBadge.color}-400 font-bold text-xs`}>
+                      <healthBadge.icon size={14} className={healthBadgeStyles.text} />
+                      <span className={`${healthBadgeStyles.text} font-bold text-xs`}>
                         {healthBadge.text}
                       </span>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-4 mb-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
                     {[
                       { label: 'Chargés (Auj)', val: kitsLoadedToday, color: 'blue' },
                       { label: 'Consommés (Zone)', val: kitsConsumed, color: 'emerald' },
@@ -534,19 +575,20 @@ export default function WorkshopTab() {
                         val: Math.max(0, kitsLoadedToday - kitsConsumed),
                         color: activeWh?.hasAlert ? 'rose' : 'slate',
                       },
-                    ].map((card) => (
+                    ].map((card) => {
+                      const styles = STOCK_CARD_STYLES[card.color];
+                      return (
                       <div
                         key={card.label}
-                        className={`bg-slate-950/60 border border-${card.color}-500/20 rounded-2xl p-4 text-center`}
+                        className={`bg-slate-950/60 border rounded-2xl p-4 text-center ${styles.container}`}
                       >
                         <p className="text-3xl font-black text-white">{card.val}</p>
-                        <p
-                          className={`text-xs font-bold text-${card.color}-400 uppercase tracking-widest mt-1`}
-                        >
+                        <p className={`text-xs font-bold uppercase tracking-widest mt-1 ${styles.text}`}>
                           {card.label}
                         </p>
                       </div>
-                    ))}
+                    );
+                    })}
                   </div>
                   <div className="mt-4 pt-4 border-t border-slate-800">
                     <button
@@ -572,7 +614,7 @@ export default function WorkshopTab() {
                 </div>
 
                 {/* GPS Card */}
-                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 sm:p-6">
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
                       <MapPin className="text-orange-400" size={18} />
@@ -598,7 +640,7 @@ export default function WorkshopTab() {
 
                   {editingCoords ? (
                     <div className="space-y-3">
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                           <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">
                             Latitude
@@ -672,13 +714,13 @@ export default function WorkshopTab() {
 
                 {/* Preparator Teams Filtered by Role & Region */}
                 <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
-                  <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-800 bg-slate-950">
+                  <div className="flex items-center gap-3 px-4 sm:px-6 py-4 border-b border-slate-800 bg-slate-950">
                     <Users size={16} className="text-blue-400" />
                     <h4 className="font-black text-white uppercase tracking-tight text-sm">
                       Équipes de Préparation : {activeWh.region}
                     </h4>
                   </div>
-                  <div className="px-6 py-3 bg-blue-900/10 border-b border-blue-900/30">
+                  <div className="px-4 sm:px-6 py-3 bg-blue-900/10 border-b border-blue-900/30">
                     <p className="text-blue-400 text-xs leading-relaxed font-black uppercase tracking-widest">
                       Isolation ERP : Seules les équipes de rôle "PRÉPARATION" assignées à cette
                       zone sont affichées.
@@ -690,13 +732,11 @@ export default function WorkshopTab() {
                       {filteredTeams.map((team) => {
                         const todayLoading = activeWh?.preparatorTeams
                           ?.find((pt: any) => pt.teamId === team.id)
-                          ?.loadings?.find(
-                            (l: any) => l.date === new Date().toISOString().split('T')[0]
-                          );
+                          ?.loadings?.find((l: any) => l.date === new Date().toISOString().split('T')[0]);
                         return (
                           <div
                             key={team.id}
-                            className="flex items-center gap-4 px-6 py-4 hover:bg-slate-800/20 transition-all"
+                            className="flex flex-col items-stretch gap-4 px-4 sm:px-6 py-4 hover:bg-slate-800/20 transition-all lg:flex-row lg:items-center"
                           >
                             <div className="flex-1">
                               <p className="font-bold text-white text-sm">{team.name}</p>
@@ -711,20 +751,20 @@ export default function WorkshopTab() {
                                 )}
                               </div>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                               {todayLoading && (
-                                <span className="text-xs font-black text-emerald-400 bg-emerald-500/10 px-3 py-1.5 rounded-xl border border-emerald-500/20">
+                                <span className="text-xs font-black text-emerald-400 bg-emerald-500/10 px-3 py-1.5 rounded-xl border border-emerald-500/20 w-fit">
                                   {todayLoading.kitsLoaded} KITS ✓
                                 </span>
                               )}
-                              <div className="flex items-center gap-1 bg-slate-950/60 p-1 rounded-xl border border-slate-800">
+                              <div className="flex items-center justify-between gap-1 bg-slate-950/60 p-1 rounded-xl border border-slate-800 w-full sm:w-auto">
                                 <select
                                   aria-label="Type de Kit"
                                   value={loadingVariants[team.id] || 'standard'}
                                   onChange={(e) =>
                                     setLoadingVariants((p) => ({ ...p, [team.id]: e.target.value }))
                                   }
-                                  className="bg-transparent text-xs font-black text-slate-400 outline-none border-r border-slate-800 pr-1 mr-1 uppercase"
+                                  className="bg-transparent text-xs font-black text-slate-400 outline-none border-r border-slate-800 pr-1 mr-1 uppercase min-w-[64px]"
                                 >
                                   {KIT_VARIANTS.map((v) => (
                                     <option key={v.id} value={v.id}>
@@ -772,7 +812,7 @@ export default function WorkshopTab() {
                               <button
                                 aria-label="Enregistrer les chargements"
                                 onClick={() => handleSaveLoading(activeWh!.id, team.id, team.name)}
-                                className="flex items-center justify-center w-10 h-10 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition-all shadow-lg active:scale-95"
+                                className="flex items-center justify-center w-full sm:w-10 h-10 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition-all shadow-lg active:scale-95"
                               >
                                 <Save size={16} />
                               </button>
@@ -803,7 +843,7 @@ export default function WorkshopTab() {
 
                 {/* Journal de Bord (Specific to this Warehouse) */}
                 <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
-                  <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-800 bg-slate-950">
+                  <div className="flex items-center gap-3 px-4 sm:px-6 py-4 border-b border-slate-800 bg-slate-950">
                     <Activity size={16} className="text-amber-400" />
                     <h4 className="font-black text-white uppercase tracking-tight text-sm">
                       Journal de Bord : {activeWh.name}
@@ -826,7 +866,7 @@ export default function WorkshopTab() {
                         .map((move: any) => (
                           <div
                             key={move.id}
-                            className="px-6 py-3 hover:bg-slate-800/20 transition-all flex items-center justify-between gap-4"
+                            className="px-4 sm:px-6 py-3 hover:bg-slate-800/20 transition-all flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
                           >
                             <div className="flex items-center gap-3">
                               <div
@@ -843,7 +883,7 @@ export default function WorkshopTab() {
                                 </p>
                               </div>
                             </div>
-                            <div className="text-right">
+                            <div className="sm:text-right">
                               <p
                                 className={`text-xs font-black ${move.type === 'ENTRY' ? 'text-emerald-400' : move.type === 'TRANSFER' ? 'text-amber-400' : 'text-blue-400'}`}
                               >
@@ -877,7 +917,7 @@ export default function WorkshopTab() {
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              className="bg-slate-900 border border-slate-800 rounded-[2rem] p-8 w-full max-w-md shadow-2xl"
+              className="bg-slate-900 border border-slate-800 rounded-[2rem] p-5 sm:p-8 w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl"
             >
               <h3 className="text-xl font-black text-white mb-2 uppercase tracking-tight">
                 Réception de Matériel
@@ -920,7 +960,7 @@ export default function WorkshopTab() {
                     placeholder="Ex: Arrivage Dakar Central"
                   />
                 </div>
-                <div className="flex gap-3 pt-4">
+                <div className="flex flex-col gap-3 pt-4 sm:flex-row">
                   <button
                     onClick={() => setShowReceiveModal(false)}
                     className="flex-1 py-3 rounded-xl bg-slate-800 text-slate-300 font-bold hover:bg-slate-700 transition-all"
@@ -941,7 +981,7 @@ export default function WorkshopTab() {
 
         {/* Right: Intelligence GEM */}
         <div className="lg:col-span-2">
-          <div className="bg-gradient-to-br from-indigo-900/40 via-slate-900 to-slate-900 border border-indigo-500/20 p-8 rounded-[2rem] shadow-2xl relative overflow-hidden group sticky top-6">
+          <div className="bg-gradient-to-br from-indigo-900/40 via-slate-900 to-slate-900 border border-indigo-500/20 p-5 sm:p-8 rounded-[2rem] shadow-2xl relative overflow-hidden group lg:sticky lg:top-6">
             <div className="absolute -top-6 -right-6 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl group-hover:bg-indigo-500/20 transition-all" />
 
             <div className="flex items-center gap-3 mb-6">

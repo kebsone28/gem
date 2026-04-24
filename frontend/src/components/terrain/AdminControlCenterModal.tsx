@@ -1,15 +1,16 @@
 ﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
+import {
   X, Save, User, Settings, MapPin, 
   Trash2, AlertTriangle, Check, ChevronRight,
-  Database, Activity, Users, Hash
+  Database, Users, Hash, Lock, LockOpen
 } from 'lucide-react';
 import type { Household } from '../../utils/types';
 import { db } from '../../store/db';
+import logger from '../../utils/logger';
 
 interface AdminControlCenterModalProps {
   isOpen: boolean;
@@ -41,13 +42,48 @@ export const AdminControlCenterModal: React.FC<AdminControlCenterModalProps> = (
     setZones(allZones);
   }
 
+  const manualOverrideFields = useMemo(
+    () => Array.from(new Set(formData.manualOverrides || [])),
+    [formData.manualOverrides]
+  );
+
+  const formatOverrideLabel = (path: string) => {
+    const directLabels: Record<string, string> = {
+      name: 'Nom complet',
+      phone: 'Téléphone',
+      latitude: 'Latitude',
+      longitude: 'Longitude',
+      numeroordre: "Numéro d'ordre",
+      zoneId: 'Zone géographique',
+      source: 'Source de données',
+      'constructionData.preparateur': 'Préparation',
+      'constructionData.livreur': 'Livraison',
+      'constructionData.macon': 'Maçonnerie',
+      'constructionData.reseau': 'Réseau',
+      'constructionData.interieur': 'Installation intérieure',
+      'constructionData.audit': 'Audit final',
+    };
+
+    if (directLabels[path]) return directLabels[path];
+
+    return path
+      .split('.')
+      .filter(Boolean)
+      .map((segment) =>
+        segment
+          .replace(/_/g, ' ')
+          .replace(/\b\w/g, (letter) => letter.toUpperCase())
+      )
+      .join(' / ');
+  };
+
   const handleSave = async () => {
     setIsSaving(true);
     try {
       await onUpdate(household.id, formData);
       onClose();
     } catch (error) {
-      console.error('Failed to update household:', error);
+      logger.error('[AdminControlCenterModal] Failed to update household', error);
     } finally {
       setIsSaving(false);
     }
@@ -62,11 +98,11 @@ export const AdminControlCenterModal: React.FC<AdminControlCenterModalProps> = (
     // Optimistic UI update
     setFormData({ ...formData, manualOverrides: newOverrides });
     
-    // Backend update (if unlocked, send to unlockFields)
+    // Persist the lock strategy itself so Kobo knows what may overwrite.
     if (isLocked) {
-      await onUpdate(household.id, { unlockFields: [fieldName] } as any);
+      await onUpdate(household.id, { manualOverrides: newOverrides, unlockFields: [fieldName] } as any);
     } else {
-      await onUpdate(household.id, { [fieldName]: (formData as any)[fieldName] });
+      await onUpdate(household.id, { manualOverrides: newOverrides } as any);
     }
   };
 
@@ -79,18 +115,23 @@ export const AdminControlCenterModal: React.FC<AdminControlCenterModalProps> = (
   };
 
   const FieldLock = ({ name, label }: { name: string, label?: string }) => {
-    const isLocked = formData.manualOverrides?.includes(name);
+    const isLocked = manualOverrideFields.includes(name);
     return (
       <div className="flex items-center gap-2">
         {label && <label className="text-[9px] font-black uppercase tracking-[0.1em] text-slate-500 italic">{label}</label>}
         <button 
           onClick={() => toggleLock(name)}
-          className={`p-1 rounded-lg transition-all ${isLocked ? 'text-rose-500 bg-rose-500/10' : 'text-slate-500 hover:text-blue-400 bg-white/5'}`}
-          title={isLocked ? 'Verrouillé : Kobo ne peut pas écraser ce champ' : 'Synchronisé : Kobo peut mettre à jour ce champ'}
-          aria-label={isLocked ? 'Verrouillé : Cliquez pour autoriser la mise à jour par Kobo' : 'Synchronisé : Cliquez pour verrouiller la valeur'}
+          className={`inline-flex items-center gap-2 rounded-xl border px-2.5 py-1.5 text-[9px] font-black uppercase tracking-[0.14em] transition-all ${
+            isLocked
+              ? 'border-amber-500/30 bg-amber-500/10 text-amber-300 shadow-[0_0_18px_rgba(245,158,11,0.12)]'
+              : 'border-white/10 bg-white/5 text-slate-300 hover:border-blue-400/30 hover:text-blue-300'
+          }`}
+          title={isLocked ? 'Verrouillé par admin : Kobo ne peut pas écraser ce champ' : 'Piloté par Kobo : la synchronisation peut mettre ce champ à jour'}
+          aria-label={isLocked ? 'Verrouillé par admin : Cliquez pour rendre ce champ piloté par Kobo' : 'Piloté par Kobo : Cliquez pour verrouiller cette valeur côté admin'}
           aria-pressed={isLocked}
         >
-          {isLocked ? <Database className="w-3 h-3" /> : <Activity className="w-3 h-3" />}
+          {isLocked ? <Lock className="w-3.5 h-3.5" /> : <LockOpen className="w-3.5 h-3.5" />}
+          <span>{isLocked ? 'Verrouillé' : 'Kobo'}</span>
         </button>
       </div>
     );
@@ -149,7 +190,8 @@ export const AdminControlCenterModal: React.FC<AdminControlCenterModalProps> = (
   const SectionResetButton = ({ fields }: { fields: string[] }) => (
     <button 
       onClick={async () => {
-        await onUpdate(household.id, { unlockFields: fields } as any);
+        const nextOverrides = (formData.manualOverrides || []).filter((field) => !fields.includes(field));
+        await onUpdate(household.id, { manualOverrides: nextOverrides, unlockFields: fields } as any);
         // On force un re-load ou on notifie l'utilisateur
         window.location.reload(); // Simple pour l'instant, à optimiser si besoin
       }}
@@ -170,34 +212,94 @@ export const AdminControlCenterModal: React.FC<AdminControlCenterModalProps> = (
         className="bg-slate-900 border border-white/10 rounded-3xl sm:rounded-[2.5rem] shadow-3xl max-w-4xl w-full max-h-[95vh] sm:max-h-[90vh] flex flex-col overflow-hidden mx-auto"
       >
         {/* Header */}
-        <div className="p-4 sm:p-8 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 sm:gap-3 mb-1">
-              <div className="p-1.5 sm:p-2 bg-blue-500/10 rounded-lg sm:rounded-xl">
-                <Settings className="w-4 h-4 sm:w-5 sm:h-5 text-blue-400" />
+        <div className="p-4 sm:p-8 border-b border-white/5 bg-white/[0.02]">
+          <div className="flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 sm:gap-3 mb-1">
+                <div className="p-1.5 sm:p-2 bg-blue-500/10 rounded-lg sm:rounded-xl">
+                  <Settings className="w-4 h-4 sm:w-5 sm:h-5 text-blue-400" />
+                </div>
+                <h2 className="text-base sm:text-xl font-black uppercase tracking-tighter text-white italic truncate">
+                  Control Center
+                </h2>
               </div>
-              <h2 className="text-base sm:text-xl font-black uppercase tracking-tighter text-white italic truncate">
-                Control Center
-              </h2>
+              <div className="flex items-center gap-3">
+                <p className="text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 italic truncate">
+                  {household.name || 'Ménage anonyme'}
+                </p>
+                <div className="w-1 h-1 rounded-full bg-slate-800" />
+                <p className="text-[7px] font-bold uppercase text-slate-600 tracking-widest italic">
+                  Dernière MàJ : {new Date(household.updatedAt || Date.now()).toLocaleDateString()} {new Date(household.updatedAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </p>
+              </div>
             </div>
-            <div className="flex items-center gap-3">
-              <p className="text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 italic truncate">
-                {household.name || 'Ménage anonyme'}
+            <button 
+              onClick={onClose}
+              className="p-3 bg-white/5 hover:bg-white/10 rounded-2xl text-slate-400 transition-all active:scale-95"
+              title="Fermer le centre de contrôle"
+              aria-label="Fermer le centre de contrôle"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+
+          <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,0.95fr)]">
+            <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[9px] font-black uppercase tracking-[0.22em] text-amber-300">
+                    Verrous admin
+                  </p>
+                  <p className="mt-1 text-sm font-semibold leading-relaxed text-amber-50">
+                    Les champs avec cadenas fermé restent forcés localement. Les autres continuent
+                    à être mis à jour par la synchronisation Kobo.
+                  </p>
+                </div>
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-amber-500/25 bg-black/20 text-amber-300">
+                  <Lock className="h-5 w-5" />
+                </div>
+              </div>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <span className="inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-black/20 px-3 py-1 text-[9px] font-black uppercase tracking-[0.16em] text-amber-200">
+                  <Lock className="h-3.5 w-3.5" />
+                  {manualOverrideFields.length} champ(s) verrouillé(s)
+                </span>
+                <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/20 px-3 py-1 text-[9px] font-black uppercase tracking-[0.16em] text-slate-300">
+                  <LockOpen className="h-3.5 w-3.5" />
+                  Kobo peut écraser le reste
+                </span>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+              <p className="text-[9px] font-black uppercase tracking-[0.22em] text-slate-400">
+                Champs actuellement forcés
               </p>
-              <div className="w-1 h-1 rounded-full bg-slate-800" />
-              <p className="text-[7px] font-bold uppercase text-slate-600 tracking-widest italic">
-                Dernière MàJ : {new Date(household.updatedAt || Date.now()).toLocaleDateString()} {new Date(household.updatedAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </p>
+              {manualOverrideFields.length > 0 ? (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {manualOverrideFields.slice(0, 6).map((field) => (
+                    <span
+                      key={field}
+                      className="inline-flex items-center gap-2 rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-[9px] font-black uppercase tracking-[0.14em] text-amber-200"
+                      title={field}
+                    >
+                      <Lock className="h-3 w-3" />
+                      {formatOverrideLabel(field)}
+                    </span>
+                  ))}
+                  {manualOverrideFields.length > 6 ? (
+                    <span className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[9px] font-black uppercase tracking-[0.14em] text-slate-300">
+                      +{manualOverrideFields.length - 6} autres
+                    </span>
+                  ) : null}
+                </div>
+              ) : (
+                <p className="mt-3 text-sm font-semibold leading-relaxed text-slate-400">
+                  Aucun cadenas actif. Ce ménage suit entièrement les mises à jour Kobo.
+                </p>
+              )}
             </div>
           </div>
-          <button 
-            onClick={onClose}
-            className="p-3 bg-white/5 hover:bg-white/10 rounded-2xl text-slate-400 transition-all active:scale-95"
-            title="Fermer le centre de contrôle"
-            aria-label="Fermer le centre de contrôle"
-          >
-            <X className="w-6 h-6" />
-          </button>
         </div>
 
         {/* Tab Navigation */}

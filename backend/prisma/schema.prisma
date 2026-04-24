@@ -53,6 +53,11 @@ model User {
   organization       Organization     @relation(fields: [organizationId], references: [id])
   role               Role?            @relation(fields: [roleId], references: [id])
   userMemory         UserMemory?
+  chatParticipations ChatParticipant[]
+  chatMessages       ChatMessage[]    @relation("ChatMessageSender")
+  chatCreated        ChatConversation[] @relation("ChatConversationCreator")
+  chatBlocksReceived ChatUserBlock[]  @relation("ChatBlockedUser")
+  chatBlocksIssued   ChatUserBlock[]  @relation("ChatBlockIssuer")
 }
 
 model Project {
@@ -678,4 +683,90 @@ model FormationPlanningHistory {
   @@index([sessionId])
   @@index([action])
   @@index([createdAt])
+}
+
+model FormationPlannerState {
+  id          String   @id
+  payload     Json
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([updatedAt])
+}
+
+// ============================================
+// TEAM CHAT / COMMUNICATION MODELS
+// ============================================
+
+model ChatConversation {
+  id             String            @id @default(uuid())
+  organizationId String
+  type           String
+  name           String?
+  scopeKey       String?
+  createdById    String?
+  archivedAt     DateTime?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  createdBy      User?             @relation("ChatConversationCreator", fields: [createdById], references: [id])
+  participants   ChatParticipant[]
+  messages       ChatMessage[]
+
+  @@unique([organizationId, scopeKey])
+  @@index([organizationId])
+  @@index([type])
+  @@index([updatedAt])
+}
+
+model ChatParticipant {
+  id             String           @id @default(uuid())
+  organizationId String
+  conversationId String
+  userId         String
+  role           String           @default("MEMBER")
+  joinedAt       DateTime         @default(now())
+  lastReadAt     DateTime?
+
+  conversation   ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@index([organizationId])
+  @@index([userId])
+}
+
+model ChatMessage {
+  id             String           @id @default(uuid())
+  organizationId String
+  conversationId String
+  senderId       String
+  content        String
+  createdAt      DateTime         @default(now())
+  editedAt       DateTime?
+
+  conversation   ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         User             @relation("ChatMessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, createdAt])
+  @@index([conversationId, createdAt])
+  @@index([senderId])
+}
+
+model ChatUserBlock {
+  id             String   @id @default(uuid())
+  organizationId String
+  userId         String
+  blockedById    String
+  reason         String?
+  active         Boolean  @default(true)
+  blockedAt      DateTime @default(now())
+  unblockedAt    DateTime?
+
+  user           User     @relation("ChatBlockedUser", fields: [userId], references: [id], onDelete: Cascade)
+  blockedBy      User     @relation("ChatBlockIssuer", fields: [blockedById], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@index([organizationId, active])
+  @@index([blockedById])
 }

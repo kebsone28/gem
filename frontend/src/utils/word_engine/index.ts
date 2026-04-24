@@ -18,6 +18,7 @@ import { createFrontPage } from './sections/frontPage';
 import { createRoleSection } from './sections/roleSection';
 import { createGeneralSection } from './sections/generalSection';
 import { generateQRCodeBuffer } from './utils/qrcodeGenerator';
+import logger from '../logger';
 
 export interface ExportData {
   role: string;
@@ -87,7 +88,7 @@ export const exportCahiersToWord = async (
   generalClauses?: string[]
 ) => {
   if (!tasks || tasks.length === 0) {
-    console.warn('[word_engine] exportCahiersToWord called with empty tasks array');
+    logger.warn('[word_engine] exportCahiersToWord called with empty tasks array');
     return;
   }
 

@@ -46,7 +46,7 @@ function scheduleSync(source: string, priority: 'high' | 'normal' | 'low' = 'nor
  */
 export function startBackgroundSync(): () => void {
   if (_initialized) {
-    logger.warn('SYNC', 'startBackgroundSync called more than once — skipping');
+    logger.debug('SYNC', 'startBackgroundSync called more than once — skipping');
     return stopBackgroundSync;
   }
   _initialized = true;

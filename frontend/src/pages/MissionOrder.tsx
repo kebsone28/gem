@@ -6,6 +6,9 @@ import { useAuth } from '../contexts/AuthContext';
 import * as safeStorage from '../utils/safeStorage';
 import { ClipboardList, MapPin, KeyRound, ShieldCheck } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import logger from '../utils/logger';
+import * as missionApprovalService from '../services/missionApprovalService';
+import * as missionService from '../services/missionService';
 
 // Services & Store
 import { generateMissionOrderPDF } from '../services/missionOrderGenerator';
@@ -55,6 +58,39 @@ const DEFAULT_PLANNING_STEPS = [
   "Jour 3 : Tamba (Négociations) ➔ Kaffrine\n• Matin : Finalisation de la négociation contractuelle avec l'entrepreneur.\n• Après-midi : Route vers Kaffrine (2.5h). Première visite de village.",
 ];
 
+const buildDraftReference = (suffix?: string) => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const randomSeq = String(Math.floor(Math.random() * 999) + 1).padStart(3, '0');
+  return `TEMP-${year}${month}${day}-${randomSeq}${suffix ? `-${suffix}` : ''}`;
+};
+
+const normalizeMissionApprovalRole = (rawRole?: string | null): 'ADMIN' | 'DIRECTEUR' | null => {
+  const role = (rawRole || '').toUpperCase();
+  if (['ADMIN', 'ADMIN_PROQUELEC'].includes(role)) return 'ADMIN';
+  if (
+    ['DIRECTEUR', 'DIRECTEUR_GENERAL', 'DIRECTEUR_TECHNIQUE', 'DG_PROQUELEC', 'DIR_GEN'].includes(
+      role
+    )
+  ) {
+    return 'DIRECTEUR';
+  }
+  return null;
+};
+
+const hasOfficialMissionNumber = (value?: string | null) =>
+  !!value && !value.startsWith('TEMP-');
+
+const getMissionReferenceLabel = (data: Partial<MissionOrderData>) => {
+  if (hasOfficialMissionNumber(data.orderNumber)) return data.orderNumber as string;
+  return data.purpose || 'BROUILLON';
+};
+
+const getMissionFileStem = (data: Partial<MissionOrderData>) =>
+  getMissionReferenceLabel(data).replace(/[\\/:"*?<>|]+/g, '-').replace(/\s+/g, '_');
+
 export default function MissionOrder() {
   const { user } = useAuth();
   const { devis } = useFinances();
@@ -88,13 +124,6 @@ export default function MissionOrder() {
     activeProjectId
   );
 
-  // Auto-save logic
-  useEffect(() => {
-    if (!missionState.isDirty || !state.currentMissionId) return;
-    const timer = setTimeout(() => handleSaveMission(), 2000);
-    return () => clearTimeout(timer);
-  }, [missionState.isDirty, handleSaveMission, state.currentMissionId]);
-
   // DB Queries & Filtered List
   const allMissions = useLiveQuery(() => db.missions.toArray()) || [];
   const savedMissions = useMemo(() => {
@@ -125,7 +154,20 @@ export default function MissionOrder() {
     [state, projectBudget]
   );
 
-  const { workflow, fetchWorkflow } = useMissionWorkflow(state.currentMissionId);
+  const { workflow, fetchWorkflow, setWorkflow } = useMissionWorkflow(state.currentMissionId);
+  const approvalRole = useMemo(
+    () => normalizeMissionApprovalRole(role || user?.role),
+    [role, user?.role]
+  );
+  const isWorkflowApproved = workflow?.overallStatus === 'approved';
+  const isWorkflowRejected = workflow?.overallStatus === 'rejected';
+  const isWorkflowPending =
+    !!workflow &&
+    !isWorkflowApproved &&
+    !isWorkflowRejected &&
+    workflow.overallStatus !== 'draft';
+  const effectiveIsCertified = !!state.isCertified || isWorkflowApproved;
+  const effectiveIsSubmitted = !effectiveIsCertified && (!!state.isSubmitted || isWorkflowPending);
 
   // Persistance de la mission : Recharger la demande via URL ou la dernière vue
   useEffect(() => {
@@ -179,12 +221,8 @@ export default function MissionOrder() {
 
   // Handlers
   const handleNewMission = () => {
-    // Format professionnel : OM-AAAA-MM-NNN (Ordre de Mission - Année - Mois - Numéro séquentiel)
     const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const randomSeq = String(Math.floor(Math.random() * 999) + 1).padStart(3, '0');
-    const orderNumber = `OM-${year}-${month}-${randomSeq}`;
+    const orderNumber = buildDraftReference();
     const date = now.toLocaleDateString('fr-FR');
     missionState.resetMission(orderNumber, date, DEFAULT_PLANNING_STEPS, user?.email || 'inconnu', user?.id);
     missionState.addAuditEntry('Nouvelle mission créée (Brouillon)', user?.name || 'Utilisateur');
@@ -196,13 +234,8 @@ export default function MissionOrder() {
 
   const handleDuplicate = async () => {
     if (!state.currentMissionId) return;
-    const newId = `om-${crypto.randomUUID()}`;
-    // Format professionnel pour la duplication
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const randomSeq = String(Math.floor(Math.random() * 999) + 1).padStart(3, '0');
-    const newOrderNumber = `OM-${year}-${month}-${randomSeq}-COPY`;
+    const newId = `temp-${crypto.randomUUID()}`;
+    const newOrderNumber = buildDraftReference('COPY');
 
     // Strip out status, workflow, metadata, AND strict boolean flags so it's a true "draft"
     const {
@@ -228,7 +261,7 @@ export default function MissionOrder() {
     // Load it into state as a completely new mission instance
     missionState.loadMission(newId, duplicatedData, state.members, 1, new Date().toISOString(), []);
 
-    // Trigger a change to make it "dirty" so the "Enregistrer" button becomes active and auto-save can pick it up
+    // Trigger a change to make it "dirty" so the "Enregistrer" button becomes active
     missionState.updateFormField('orderNumber', newOrderNumber);
 
     missionState.addAuditEntry('Mission dupliquée depuis une mission existante', 'Utilisateur');
@@ -236,14 +269,9 @@ export default function MissionOrder() {
   };
 
   const handleTemplateSelect = (templateId: string) => {
-    // Format professionnel : OM-AAAA-MM-NNN
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const randomSeq = String(Math.floor(Math.random() * 999) + 1).padStart(3, '0');
-    const orderNumber = `OM-${year}-${month}-${randomSeq}`;
+    const orderNumber = buildDraftReference();
     const mission = createMissionFromTemplate(templateId as any, { orderNumber });
-    missionState.loadMission(`om-${crypto.randomUUID()}`, mission.formData, mission.members);
+    missionState.loadMission(`temp-${crypto.randomUUID()}`, mission.formData, mission.members);
     setShowTemplates(false);
     missionState.addAuditEntry(`Modèle appliqué: ${templateId}`, 'Utilisateur');
   };
@@ -278,7 +306,7 @@ export default function MissionOrder() {
       }
       missionState.addAuditEntry(`Mission ${orderNumber} supprimée`, 'Utilisateur');
     } catch (err) {
-      console.error('Erreur suppression:', err);
+      logger.error('Erreur suppression:', err);
       alert('Erreur lors de la suppression.');
     }
   };
@@ -306,7 +334,7 @@ export default function MissionOrder() {
     if (blob) {
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
-      link.download = `${state.formData.orderNumber || 'Mission'}_OM.docx`;
+      link.download = `${getMissionFileStem(state.formData)}_OM.docx`;
       link.click();
       missionState.addAuditEntry('Export Word généré', 'Système');
     }
@@ -317,7 +345,7 @@ export default function MissionOrder() {
     if (blob) {
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
-      link.download = `${state.formData.orderNumber || 'Mission'}_Rapport.docx`;
+      link.download = `${getMissionFileStem(state.formData)}_Rapport.docx`;
       link.click();
       missionState.addAuditEntry('Rapport Word post-mission généré', 'Système');
       toast.success('Rapport Word exporté avec succès');
@@ -332,7 +360,7 @@ export default function MissionOrder() {
 
     // Feuille 1 : Infos Mission
     const infoRows = [
-      ['ORDRE DE MISSION', data.orderNumber || 'BROUILLON'],
+      ['ORDRE DE MISSION', getMissionReferenceLabel(data)],
       ['Organisation', data.branding?.organizationName || 'PROQUELEC'],
       ['Date', data.date || ''],
       ['Région / Destination', data.region || ''],
@@ -407,43 +435,41 @@ export default function MissionOrder() {
       XLSX.utils.book_append_sheet(wb, ws2, 'Planning');
     }
 
-    const filename = `OM_${(data.orderNumber || 'Mission').replace('/', '-')}_${new Date().toLocaleDateString('fr-FR').replace(/\//g, '-')}.xlsx`;
+    const filename = `OM_${getMissionFileStem(data)}_${new Date().toLocaleDateString('fr-FR').replace(/\//g, '-')}.xlsx`;
     XLSX.writeFile(wb, filename);
     missionState.addAuditEntry('Export Excel généré', 'Système');
   };
 
   const handleMissionSubmit = async () => {
     if (!state.currentMissionId || isSubmitting) return;
+    if (!navigator.onLine) {
+      toast.error('La soumission nécessite une connexion serveur.');
+      return;
+    }
 
     setIsSubmitting(true);
     try {
-      // 1. Sauvegarde des données actuelles
       const syncResult = await handleSaveMission({ isSubmitted: true });
 
-      if (syncResult?.serverSuccess === true || navigator.onLine === false) {
-        // 2. Initialisation et soumission du workflow d'approbation
-        import('../services/missionWorkflow').then((wfService) => {
-          wfService.submitForApproval(
-            state.currentMissionId!,
-            user?.name || 'Demandeur',
-            "Soumission initiale de l'ordre de mission pour validation hiérarchique."
-          );
-          fetchWorkflow(); // Rafraîchir l'UI du workflow
-        });
-
+      if (syncResult?.serverSuccess === true) {
         missionState.setSubmitted(true);
         missionState.addAuditEntry(
-          'Mission soumise pour approbation (Workflow activé)',
+          'Mission soumise pour validation Direction / Administration',
           user?.name || 'Utilisateur'
         );
-        const updated = await db.missions.get(syncResult?.assignedId || state.currentMissionId!);
+        const workflowMissionId = syncResult?.assignedId || state.currentMissionId!;
+        const updated = await db.missions.get(workflowMissionId);
         if (updated) handleLoadMission(updated);
+        const refreshedWorkflow = await missionApprovalService.getMissionApprovalHistory(
+          workflowMissionId
+        );
+        setWorkflow(refreshedWorkflow as any);
         toast.success('Mission envoyée en approbation');
       } else {
-        toast.error('Échec de la soumission. Veuillez vérifier votre connexion.');
+        toast.error("Échec de la soumission. Le serveur n'a pas confirmé l'entrée en workflow.");
       }
     } catch (error) {
-      console.error('Erreur soumission:', error);
+      logger.error('Erreur soumission:', error);
       toast.error('Erreur critique lors de la soumission');
     } finally {
       setIsSubmitting(false);
@@ -452,12 +478,20 @@ export default function MissionOrder() {
 
   const handleMissionCertify = () => {
     if (!state.currentMissionId || isSubmitting) return;
-
-    // On vérifie si on est à la dernière étape du workflow (Directeur)
-    if (workflow && typeof workflow.currentStep === 'number' && workflow.currentStep < 3) {
-      toast.error(
-        "Toutes les étapes d'approbation précédentes doivent être validées avant la certification DG."
-      );
+    if (!approvalRole) {
+      toast.error("Seule la direction ou l'administration peut valider cette mission.");
+      return;
+    }
+    if (!navigator.onLine) {
+      toast.error('La validation nécessite une connexion serveur.');
+      return;
+    }
+    if (!effectiveIsSubmitted || !workflow) {
+      toast.error("La mission doit d'abord être soumise avant validation.");
+      return;
+    }
+    if (isWorkflowApproved) {
+      toast.error('Cette mission est déjà validée.');
       return;
     }
 
@@ -474,39 +508,53 @@ export default function MissionOrder() {
     setIsPinModalOpen(false);
     setIsSubmitting(true);
     try {
-      const syncResult = await handleSaveMission({ isCertified: true });
+      if (!state.currentMissionId || !approvalRole) {
+        toast.error('Mission ou rôle de validation indisponible.');
+        return;
+      }
 
-      if (syncResult?.serverSuccess === true || navigator.onLine === false) {
-        // Finaliser le workflow localement
-        import('../services/missionWorkflow').then((wfService) => {
-          wfService.approveStep(
-            state.currentMissionId!,
-            'directeur',
-            user?.name || 'Directeur Général',
-            "Certification finale et signature de l'ordre de mission."
+      const result = await missionApprovalService.approveMissionStep(
+        state.currentMissionId,
+        approvalRole,
+        `Validation finale confirmée par ${user?.name || approvalRole}`
+      );
+
+      if (result) {
+        const updatedMission = await missionService.getMission(state.currentMissionId);
+        if (updatedMission) {
+          const normalizedMission = {
+            id: updatedMission.id,
+            projectId: updatedMission.projectId || activeProjectId,
+            ...((updatedMission.data || {}) as Record<string, unknown>),
+            version: updatedMission.version || 1,
+            updatedAt: updatedMission.updatedAt || new Date().toISOString(),
+            orderNumber: updatedMission.orderNumber || (updatedMission.data?.orderNumber as string | undefined),
+          };
+          await db.missions.put(normalizedMission as any);
+          missionState.loadMission(
+            normalizedMission.id,
+            normalizedMission as any,
+            ((updatedMission.data?.members as MissionMember[]) || state.members),
+            normalizedMission.version,
+            normalizedMission.updatedAt,
+            state.auditTrail
           );
-          fetchWorkflow();
-        });
-
-        missionState.setCertified(true);
-        if (syncResult?.orderNumber) {
-          missionState.updateFormField('orderNumber', syncResult.orderNumber);
-        }
-        missionState.addAuditEntry('Certification DG & Signature confirmée', 'Directeur Général');
-        const updated = await db.missions.get(syncResult?.assignedId || state.currentMissionId!);
-        if (updated) {
-          handleLoadMission(updated);
-          toast.success('Mission certifiée et signée.');
-          // On ne génère pas le PDF direct, l'utilisateur cliquera sur exporter
         } else {
-          toast.success('Mission certifiée avec succès');
+          missionState.setCertified(true);
+          missionState.setSubmitted(true);
+          if (result.orderNumber) {
+            missionState.updateFormField('orderNumber', result.orderNumber);
+          }
         }
+        missionState.addAuditEntry('Validation finale enregistrée', user?.name || approvalRole);
+        await fetchWorkflow();
+        toast.success('Mission validée avec succès.');
       } else {
-        toast.error('Échec de la certification. Veuillez vérifier votre connexion.');
+        toast.error('Échec de la validation finale.');
       }
     } catch (error) {
-      console.error('Erreur certification:', error);
-      toast.error('Erreur critique lors de la certification');
+      logger.error('Erreur validation finale:', error);
+      toast.error('Erreur critique lors de la validation');
     } finally {
       setIsSubmitting(false);
     }
@@ -515,16 +563,16 @@ export default function MissionOrder() {
 
   // Si la mission est signée/certifiée, forcer l'onglet rapport
   useEffect(() => {
-    if ((state.isCertified || state.isSubmitted) && activeTab !== 'report') {
+    if ((effectiveIsCertified || effectiveIsSubmitted) && activeTab !== 'report') {
       setActiveTab('report');
     }
-  }, [state.isCertified, state.isSubmitted]);
+  }, [activeTab, effectiveIsCertified, effectiveIsSubmitted]);
 
   // Mode terrain simplifié : accès direct au rapport
   if (state.isSimplifiedMode) {
     // Générer un planning terrain à partir du planning validé si la mission est signée/certifiée et qu'il n'y a pas de rapport terrain
     let missionData = state.formData as MissionOrderData;
-    if ((state.isCertified || state.isSubmitted) && (!missionData.reportDays || missionData.reportDays.length === 0) && Array.isArray(missionData.planning) && missionData.planning.length > 0) {
+    if ((effectiveIsCertified || effectiveIsSubmitted) && (!missionData.reportDays || missionData.reportDays.length === 0) && Array.isArray(missionData.planning) && missionData.planning.length > 0) {
       // Générer un rapport terrain basé sur le planning validé
       missionData = {
         ...missionData,
@@ -550,17 +598,17 @@ export default function MissionOrder() {
         members={state.members}
         onBack={() => missionState.setSimplifiedMode(false)}
         onSave={async (updatedReportDays) => {
-          console.log('=== onSave appelé ===', updatedReportDays);
+          logger.debug('=== onSave appelé ===', updatedReportDays);
           // Sauvegarder les données du rapport terrain
           missionState.updateFormField('reportDays', updatedReportDays);
-          console.log('reportDays mis à jour dans le state');
+          logger.debug('reportDays mis à jour dans le state');
           // Sauvegarder et synchroniser
           if (handleSaveMission) {
-            console.log('Appel de handleSaveMission...');
+            logger.debug('Appel de handleSaveMission...');
             const result = await handleSaveMission();
-            console.log('Résultat de handleSaveMission:', result);
+            logger.debug('Résultat de handleSaveMission:', result);
           } else {
-            console.error('handleSaveMission est undefined!');
+            logger.error('[MissionOrder] handleSaveMission est undefined');
           }
         }}
       />
@@ -615,8 +663,8 @@ export default function MissionOrder() {
             }}
             onValidate={handleMissionCertify}
             onSubmit={handleMissionSubmit}
-            isCertified={state.isCertified}
-            isSubmitted={state.isSubmitted}
+            isCertified={effectiveIsCertified}
+            isSubmitted={effectiveIsSubmitted}
           />
           </WidgetErrorBoundary>
         </div>
@@ -630,7 +678,7 @@ export default function MissionOrder() {
               currentMissionId={state.currentMissionId}
               onLoadMission={handleLoadMission}
               onDeleteMission={handleDeleteMission}
-              isCertifiedByWorkflow={workflow?.overallStatus === 'approved'}
+              isCertifiedByWorkflow={effectiveIsCertified}
             />
           </div>
 
@@ -639,7 +687,7 @@ export default function MissionOrder() {
             <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 sm:gap-6 lg:gap-8 items-start">
               {/* FORMULAIRE : COL-8 (interne) */}
               <div className="xl:col-span-8 space-y-4 sm:space-y-6 lg:space-y-8">
-                {(state.isSubmitted || state.isCertified) && (
+                {(effectiveIsSubmitted || effectiveIsCertified) && (
                   <MissionApprovalStatusBanner workflow={workflow} />
                 )}
 
@@ -682,7 +730,7 @@ export default function MissionOrder() {
                   <>
                 <MissionInfoSection
                   formData={state.formData}
-                  isReadOnly={state.isCertified || state.isSubmitted}
+                  isReadOnly={effectiveIsCertified || effectiveIsSubmitted}
                   onUpdateField={missionState.updateFormField}
                 />
                 {state.formData.features?.map && (
@@ -699,7 +747,7 @@ export default function MissionOrder() {
 
                 <MissionTeamEditor
                   members={state.members}
-                  isReadOnly={state.isCertified || state.isSubmitted}
+                  isReadOnly={effectiveIsCertified || effectiveIsSubmitted}
                   onUpdateMember={handleMemberUpdate}
                   onRemoveMember={handleRemoveMember}
                   onAddMember={handleAddMember}
@@ -708,7 +756,7 @@ export default function MissionOrder() {
 
                 <MissionItineraryEditor
                   planning={state.formData.planning || []}
-                  isReadOnly={state.isCertified || state.isSubmitted}
+                  isReadOnly={effectiveIsCertified || effectiveIsSubmitted}
                   onUpdateStep={(i: number, text: string) => {
                     const newPlanning = [...(state.formData.planning || [])];
                     newPlanning[i] = text;
@@ -1028,15 +1076,21 @@ export default function MissionOrder() {
                         {/* Statut de la mission */}
                         <div className="mt-6 p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl border border-indigo-200 dark:border-indigo-800">
                           <div className="flex items-center gap-3">
-                            <div className={`w-3 h-3 rounded-full ${state.isCertified || state.isSubmitted ? 'bg-emerald-500' : 'bg-amber-500'}`}></div>
+                            <div className={`w-3 h-3 rounded-full ${effectiveIsCertified ? 'bg-emerald-500' : effectiveIsSubmitted ? 'bg-blue-500' : 'bg-amber-500'}`}></div>
                             <div>
                               <p className="text-sm font-bold text-indigo-900 dark:text-indigo-300">
-                                {state.isCertified || state.isSubmitted ? 'Mission Certifiée & Archivée' : 'En attente de certification'}
+                                {effectiveIsCertified
+                                  ? 'Mission validée et archivée'
+                                  : effectiveIsSubmitted
+                                  ? 'Mission soumise en attente de validation'
+                                  : 'En attente de soumission'}
                               </p>
                               <p className="text-xs text-indigo-600 dark:text-indigo-400">
-                                {state.isCertified || state.isSubmitted 
-                                  ? `Archivé le ${new Date().toLocaleDateString('fr-FR')}` 
-                                  : 'Finalisez le rapport et certifiez la mission pour archiver'}
+                                {effectiveIsCertified
+                                  ? `Archivée le ${new Date().toLocaleDateString('fr-FR')}`
+                                  : effectiveIsSubmitted
+                                  ? 'Validation finale attendue par la direction ou l’administration'
+                                  : 'Enregistrez puis soumettez la mission pour démarrer le workflow'}
                               </p>
                             </div>
                           </div>
@@ -1059,8 +1113,8 @@ export default function MissionOrder() {
                 <MissionStatusWidget
                   data={state.formData}
                   members={state.members}
-                  isCertified={!!state.isCertified || workflow?.overallStatus === 'approved'}
-                  isSubmitted={!!state.isSubmitted || (workflow ? (workflow.currentStep || 0) > 1 : false)}
+                  isCertified={effectiveIsCertified}
+                  isSubmitted={effectiveIsSubmitted}
                   isSyncing={state.isSyncingServer}
                   lastSync={state.lastSavedAt || 'Synchronisé'}
                   version={state.version}
@@ -1083,7 +1137,7 @@ export default function MissionOrder() {
         />
       )}
 
-      {/* MODAL SIGNATURE DG */}
+      {/* MODAL VALIDATION FINALE */}
       {isPinModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-opacity">
           <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl p-8 max-w-md w-full animate-in zoom-in-95 duration-200 border border-slate-200 dark:border-slate-700">
@@ -1092,11 +1146,11 @@ export default function MissionOrder() {
                 <ShieldCheck className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
               </div>
               <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-2">
-                Signature Officielle
+                Validation Officielle
               </h3>
               <p className="text-sm font-medium text-slate-500 mb-8 max-w-[280px]">
-                Veuillez saisir votre code PIN de Directeur Général pour certifier et générer cet
-                ordre de mission.
+                Veuillez saisir votre code PIN pour confirmer la validation finale et générer le
+                numéro officiel de mission.
               </p>
 
               <div className="w-full relative mb-8">
@@ -1123,7 +1177,7 @@ export default function MissionOrder() {
                   disabled={pinCode.length < 4}
                   className="flex-1 py-3.5 px-4 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 disabled:dark:bg-slate-700 text-white rounded-2xl font-black shadow-lg shadow-emerald-500/30 transition-all disabled:opacity-50"
                 >
-                  Certifier & Signer
+                  Valider
                 </button>
               </div>
             </div>

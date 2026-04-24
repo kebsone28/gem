@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { MissionOrderData, MissionMember } from '../pages/mission/core/missionTypes';
+import logger from '../utils/logger';
 
 export interface MissionSnapshot {
   id: string;
@@ -53,12 +54,12 @@ export const saveMissionSnapshot = (
       try {
         const minimalHistory = history.slice(-3);
         localStorage.setItem(historyKey, JSON.stringify(minimalHistory));
-        console.log('Managed storage quota by reducing history depth to 3.');
+        logger.warn('Managed storage quota by reducing history depth to 3.');
       } catch {
-        console.warn('LocalStorage fully exhausted, could not even save minimal history.');
+        logger.warn('LocalStorage fully exhausted, could not even save minimal history.');
       }
     } else {
-      console.warn('Failed to save mission snapshot:', e);
+      logger.warn('Failed to save mission snapshot:', e);
     }
   }
 
@@ -71,7 +72,7 @@ export const getMissionHistory = (missionId: string): MissionSnapshot[] => {
     const stored = localStorage.getItem(historyKey);
     return stored ? JSON.parse(stored) : [];
   } catch (e) {
-    console.warn('Failed to load mission history:', e);
+    logger.warn('Failed to load mission history:', e);
     return [];
   }
 };
@@ -167,6 +168,6 @@ export const clearMissionHistory = (missionId: string): void => {
   try {
     localStorage.removeItem(historyKey);
   } catch (e) {
-    console.warn('Failed to clear mission history:', e);
+    logger.warn('Failed to clear mission history:', e);
   }
 };

@@ -72,7 +72,18 @@ async function triggerKoboSync(): Promise<void> {
   const activeProjectId = safeStorage.getItem('active_project_id');
   logger.debug('SYNC', 'Triggering Kobo external sync');
   try {
-    const payload = activeProjectId ? { projectId: activeProjectId } : {};
+    let payload: Record<string, string> = {};
+
+    if (activeProjectId) {
+      const projectExists = await db.projects.get(activeProjectId);
+      if (projectExists) {
+        payload = { projectId: activeProjectId };
+      } else {
+        logger.warn('SYNC', `Skipping stale active project during Kobo sync: ${activeProjectId}`);
+        safeStorage.removeItem('active_project_id');
+      }
+    }
+
     await apiClient.post('sync/kobo', payload);
   } catch (err) {
     logger.warn('SYNC', 'Kobo background sync failed (non-critical)', err);
@@ -211,8 +222,10 @@ async function pushPendingItems(): Promise<void> {
 export async function performSync(): Promise<void> {
   const { user } = useAuthStore.getState();
   const { isOnline } = useOfflineStore.getState();
+  const token = safeStorage.getItem('access_token');
+  const isOnLoginPage = typeof window !== 'undefined' && window.location.pathname === '/login';
 
-  if (!user || !isOnline || _isSyncRunning) {
+  if (!user || !token || !isOnline || isOnLoginPage || _isSyncRunning) {
     if (_isSyncRunning) logger.debug('SYNC', 'Sync already in progress — skipping');
     return;
   }

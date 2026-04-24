@@ -4,6 +4,7 @@ import type { MissionStats } from '../../../../services/missionStatsService';
 import { missionStatsService } from '../../../../services/missionStatsService';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../../../store/db';
+import logger from '../../../../utils/logger';
 
 export function useMissionStats(user: Record<string, unknown> | null, projectId: string) {
   const [stats, setStats] = useState<MissionStats | null>(null);
@@ -33,7 +34,7 @@ export function useMissionStats(user: Record<string, unknown> | null, projectId:
         await fetchStats();
       } catch (err) {
         if (!abortController.signal.aborted) {
-          console.error('Failed to fetch stats:', err);
+          logger.warn('Mission stats unavailable', err);
         }
       }
     };

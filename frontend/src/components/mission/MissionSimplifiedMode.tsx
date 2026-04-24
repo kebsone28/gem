@@ -1,6 +1,7 @@
 ﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 import React, { useState } from 'react';
 import { Camera, MapPin, Mic, CheckCircle2, ChevronRight, Menu, X, Plus, Image } from 'lucide-react';
+import logger from '../../utils/logger';
 import type {
   MissionOrderData,
   MissionMember,
@@ -31,7 +32,7 @@ export const MissionSimplifiedMode: React.FC<MissionSimplifiedModeProps> = ({
   const [isFullScreenMode, setIsFullScreenMode] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
-  console.log('Techniciens sur cette mission:', members.length);
+  logger.debug('Techniciens sur cette mission:', members.length);
 
   const currentDay = reportDays[currentDayIndex];
 
@@ -300,29 +301,29 @@ export const MissionSimplifiedMode: React.FC<MissionSimplifiedModeProps> = ({
         {/* Bouton Sauvegarder le rapport terrain */}
         <button
           onClick={async () => {
-            console.log('Bouton enregistrer cliqué - Début');
+            logger.debug('Bouton enregistrer cliqué - Début');
             if (isSaving) {
-              console.log('Sauvegarde en cours, ignoré');
+              logger.debug('Sauvegarde en cours, ignoré');
               return;
             }
             setIsSaving(true);
-            console.log('isSaving = true');
+            logger.debug('isSaving = true');
             try {
               if (onSave) {
-                console.log('Appel de onSave avec reportDays:', reportDays);
+                logger.debug('Appel de onSave avec reportDays:', reportDays);
                 await onSave(reportDays);
-                console.log('Sauvegarde terminée avec succès');
+                logger.debug('Sauvegarde terminée avec succès');
                 alert('Rapport terrain enregistré et synchronisé sur le serveur !');
               } else {
-                console.warn('onSave est undefined!');
+                logger.warn('onSave est undefined!');
                 alert('Fonction de sauvegarde non disponible.');
               }
             } catch (error) {
-              console.error('Erreur lors de la sauvegarde:', error);
+              logger.error('Erreur lors de la sauvegarde:', error);
               alert('Erreur lors de la sauvegarde. Veuillez réessayer.');
             } finally {
               setIsSaving(false);
-              console.log('isSaving = false');
+              logger.debug('isSaving = false');
             }
           }}
           disabled={isSaving}

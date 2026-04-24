@@ -2,6 +2,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Household } from '../utils/types';
 
+type ClusterWorkerMessage = {
+  success?: boolean;
+  panelData?: any[];
+  zones?: unknown;
+  centroids?: unknown;
+};
+
 export const useGrappeClustering = (households: Household[] | undefined) => {
   const [grappeClusters, setGrappeClusters] = useState<any[]>([]);
   const [grappeZonesData, setGrappeZonesData] = useState<any>(null);
@@ -17,13 +24,19 @@ export const useGrappeClustering = (households: Household[] | undefined) => {
   useEffect(() => {
     if (!households || households.length === 0) return;
 
+    let isCancelled = false;
+    let handler: ((e: MessageEvent<ClusterWorkerMessage>) => void) | null = null;
+
     const timer = setTimeout(() => {
+      if (isCancelled) return;
+
       setIsLoading(true);
 
-      const handler = (e: MessageEvent) => {
+      handler = (e: MessageEvent<ClusterWorkerMessage>) => {
+        if (isCancelled) return;
         const data = e.data;
         if (data && data.success) {
-          setGrappeClusters(data.panelData);
+          setGrappeClusters(data.panelData || []);
           setGrappeZonesData(data.zones);
           setGrappeCentroidsData(data.centroids);
           setIsLoading(false);
@@ -55,8 +68,11 @@ export const useGrappeClustering = (households: Household[] | undefined) => {
     }, 300);
 
     return () => {
+      isCancelled = true;
       clearTimeout(timer);
-      clusterWorker.removeEventListener('message', handler);
+      if (handler) {
+        clusterWorker.removeEventListener('message', handler);
+      }
     };
   }, [households, clusterWorker]);
 
@@ -66,5 +82,12 @@ export const useGrappeClustering = (households: Household[] | undefined) => {
     };
   }, [clusterWorker]);
 
-  return { grappeClusters, grappeZonesData, grappeCentroidsData, isLoading };
+  const hasHouseholds = Boolean(households && households.length > 0);
+
+  return {
+    grappeClusters: hasHouseholds ? grappeClusters : [],
+    grappeZonesData: hasHouseholds ? grappeZonesData : null,
+    grappeCentroidsData: hasHouseholds ? grappeCentroidsData : null,
+    isLoading: hasHouseholds ? isLoading : false,
+  };
 };

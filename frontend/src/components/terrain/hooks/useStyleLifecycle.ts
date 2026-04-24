@@ -1,6 +1,7 @@
 ﻿ 
 import { useEffect } from 'react';
 import maplibregl from 'maplibre-gl';
+import logger from '../../../utils/logger';
 
 /**
  * Hook: Style Lifecycle Management
@@ -16,7 +17,7 @@ export const useStyleLifecycle = (map: maplibregl.Map | null, onStyleReady: () =
     if (!map) return;
 
     const handleStyleLoad = () => {
-      console.log('✅ [useStyleLifecycle] Style loaded');
+      logger.debug('✅ [useStyleLifecycle] Style loaded');
       onStyleReady();
     };
 

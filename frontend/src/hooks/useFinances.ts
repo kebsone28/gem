@@ -5,6 +5,7 @@ import { db } from '../store/db';
 import type { Team, Project, Household } from '../utils/types';
 import * as safeStorage from '../utils/safeStorage';
 import { useProject } from '../contexts/ProjectContext';
+import logger from '../utils/logger';
 
 export interface DevisItem {
   id: string;
@@ -133,7 +134,7 @@ export function useFinances() {
           setHouseholdsServerCount(data.count);
         }
       } catch (err) {
-        console.warn(
+        logger.warn(
           'Failed to fetch absolute household count from server, falling back to local DB.',
           err
         );

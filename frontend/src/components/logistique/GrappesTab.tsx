@@ -81,25 +81,26 @@ export default function GrappesTab() {
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Summary Header */}
-      <div className="flex flex-wrap items-center justify-between gap-6">
+      <div className="flex flex-col gap-6 xl:flex-row xl:items-center xl:justify-between">
         <div>
-          <h3 className="text-2xl font-bold text-white">Planning de Déploiement Terrain</h3>
-          <p className="text-slate-500 font-medium mt-1">
+          <h3 className="text-xl sm:text-2xl font-bold text-white">Planning de Déploiement Terrain</h3>
+          <p className="text-slate-500 font-medium mt-1 max-w-2xl">
             Gérez le déploiement opérationnel des équipes sur les sous-grappes.
           </p>
         </div>
-        <div className="flex items-center space-x-4">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between xl:justify-end">
           <button
             onClick={() => {
               setIsBulkMode(!isBulkMode);
               setSelectedIds([]);
             }}
-            className={`px-4 py-2 rounded-xl font-bold flex items-center space-x-2 transition-all ${isBulkMode ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/20' : 'bg-slate-800 hover:bg-slate-700 text-slate-300'}`}
+            className={`px-4 py-2.5 rounded-xl font-bold flex items-center justify-center space-x-2 transition-all ${isBulkMode ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/20' : 'bg-slate-800 hover:bg-slate-700 text-slate-300'}`}
           >
             <Layers size={16} />
             <span>Sélection Multiple</span>
           </button>
-          <div className="flex -space-x-3">
+          <div className="flex items-center justify-between gap-4 sm:justify-start">
+            <div className="flex -space-x-3">
             {[1, 2, 3, 4].map((i) => (
               <div
                 key={i}
@@ -111,8 +112,9 @@ export default function GrappesTab() {
             <div className="w-10 h-10 rounded-full border-2 border-slate-950 bg-blue-600 flex items-center justify-center text-xs font-bold text-white">
               +12
             </div>
+            </div>
+            <span className="text-sm font-bold text-slate-300 whitespace-nowrap">16 Équipes Actives</span>
           </div>
-          <span className="text-sm font-bold text-slate-300">16 Équipes Actives</span>
         </div>
       </div>
 
@@ -211,7 +213,7 @@ export default function GrappesTab() {
 
       {/* Bulk Actions Bar */}
       {isBulkMode && selectedIds.length > 0 && (
-        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-slate-900 border border-slate-700 p-6 rounded-[2rem] shadow-2xl z-[1500] animate-in slide-in-from-bottom-8 w-full max-w-5xl flex items-center justify-between">
+        <div className="fixed inset-x-3 bottom-3 sm:inset-x-6 sm:bottom-6 bg-slate-900 border border-slate-700 p-4 sm:p-6 rounded-[2rem] shadow-2xl z-[1500] animate-in slide-in-from-bottom-8 w-auto max-w-5xl mx-auto flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div className="flex items-center space-x-4">
             <div className="w-12 h-12 bg-indigo-600 rounded-full flex items-center justify-center font-black text-white text-lg">
               {selectedIds.length}
@@ -222,7 +224,7 @@ export default function GrappesTab() {
             </div>
           </div>
 
-          <div className="flex-1 grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4 items-start">
+          <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5 gap-4 items-start">
             {Array.from(new Set(teams.map((t: Team) => t.tradeKey))).map((key: any) => {
               const tradeLabel = getTradeLabel(key);
               const currentBulk = bulkAssignments[key] || [];
@@ -321,10 +323,10 @@ export default function GrappesTab() {
             })}
           </div>
 
-          <div className="flex items-center space-x-4 ml-8">
+          <div className="flex items-center justify-end">
             <button
               onClick={handleBulkSave}
-              className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-8 rounded-xl shadow-lg shadow-indigo-600/30 transition-all flex items-center space-x-2"
+              className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-8 rounded-xl shadow-lg shadow-indigo-600/30 transition-all flex items-center justify-center space-x-2"
             >
               <Save size={18} />
               <span>Appliquer</span>
@@ -334,21 +336,21 @@ export default function GrappesTab() {
       )}
 
       {selectedSubGrappe && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[2000] flex items-center justify-center p-8">
-          <div className="bg-slate-900 border border-slate-800 rounded-[2.5rem] w-full max-w-2xl shadow-2xl p-10 relative animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[2000] flex items-center justify-center p-3 sm:p-6">
+          <div className="bg-slate-900 border border-slate-800 rounded-[2rem] sm:rounded-[2.5rem] w-full max-w-2xl shadow-2xl p-5 sm:p-8 lg:p-10 relative animate-in zoom-in-95 duration-200 max-h-[92vh] overflow-y-auto">
             <button
               onClick={() => setSelectedSubGrappe(null)}
-              className="absolute top-8 right-8 text-slate-500 hover:text-white"
+              className="absolute top-5 right-5 sm:top-8 sm:right-8 text-slate-500 hover:text-white"
             >
               ✕
             </button>
 
-            <div className="flex items-center space-x-4 mb-8">
+            <div className="flex items-center space-x-4 mb-6 sm:mb-8 pr-8">
               <div className="w-14 h-14 bg-blue-600/10 rounded-2xl flex items-center justify-center border border-blue-600/20">
                 <MapPin size={28} className="text-blue-400" />
               </div>
               <div>
-                <h3 className="text-2xl font-bold text-white">{selectedSubGrappe.nom}</h3>
+                <h3 className="text-xl sm:text-2xl font-bold text-white">{selectedSubGrappe.nom}</h3>
                 <p className="text-slate-500 font-medium">Affectation des équipes par métier</p>
               </div>
             </div>

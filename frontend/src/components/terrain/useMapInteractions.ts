@@ -14,8 +14,14 @@ export const useMapInteractions = (
 ) => {
   const setSelectedHouseholdId = useTerrainUIStore((s) => s.setSelectedHouseholdId);
   const dragStateRef = useRef({ isDragging: false, draggedFeatureId: null as string | null });
+  const lastHandledHouseholdClickRef = useRef(0);
 
   const popupRef = useRef<maplibregl.Popup | null>(null);
+  const householdInteractiveLayers = [
+    'households-local-layer',
+    'households-glow-layer',
+    'households-photo-badge',
+  ] as const;
 
   // ✅ Clean up popup on unmount
   useEffect(() => {
@@ -28,6 +34,37 @@ export const useMapInteractions = (
 
   const setupInteractions = useCallback(
     (map: maplibregl.Map) => {
+      const disposers: Array<() => void> = [];
+
+      const openHouseholdFromFeature = (feature: any) => {
+        if (!feature) return false;
+
+        const householdId =
+          feature.properties?.household_id ||
+          feature.properties?.id ||
+          (feature.id != null ? String(feature.id) : null);
+
+        if (!householdId) return false;
+
+        lastHandledHouseholdClickRef.current = Date.now();
+        setSelectedHouseholdId(householdId);
+
+        if (!popupRef.current) return true;
+
+        const shouldShowPopup = !window.matchMedia('(max-width: 768px)').matches;
+        if (!shouldShowPopup) {
+          popupRef.current.remove();
+          return true;
+        }
+
+        popupRef.current
+          .setLngLat((feature.geometry as any).coordinates)
+          .setHTML(generatePopupHTML(feature))
+          .addTo(map);
+
+        return true;
+      };
+
       // ✅ Initialize shared native popup
       if (!popupRef.current) {
         popupRef.current = new maplibregl.Popup({
@@ -52,17 +89,23 @@ export const useMapInteractions = (
 
       // Cursor pointer on hover
       const setupInteraction = (layerId: string) => {
-        map.on('mouseenter', layerId, () => {
+        const handleMouseEnter = () => {
           if (!readOnly || ['clusters', 'grappes-layer', 'auto-grappes-fill'].includes(layerId)) {
             map.getCanvas().style.cursor = 'pointer';
           }
-        });
-        map.on('mouseleave', layerId, () => (map.getCanvas().style.cursor = ''));
+        };
+        const handleMouseLeave = () => {
+          map.getCanvas().style.cursor = '';
+        };
+
+        map.on('mouseenter', layerId, handleMouseEnter);
+        map.on('mouseleave', layerId, handleMouseLeave);
+        disposers.push(() => map.off('mouseenter', layerId, handleMouseEnter));
+        disposers.push(() => map.off('mouseleave', layerId, handleMouseLeave));
       };
 
       [
-        'households-local-layer',
-        'households-glow-layer',
+        ...householdInteractiveLayers,
         'grappes-layer',
         'sous-grappes-layer',
         'grappes-labels',
@@ -71,7 +114,7 @@ export const useMapInteractions = (
 
       // Auto-Grappes hover state
       let hoveredAutoGrappeId: string | number | null = null;
-      map.on('mousemove', 'auto-grappes-fill', (e) => {
+      const handleAutoGrappeMove = (e: any) => {
         if (e.features && e.features.length > 0) {
           if (hoveredAutoGrappeId !== null) {
             map.setFeatureState(
@@ -82,9 +125,9 @@ export const useMapInteractions = (
           hoveredAutoGrappeId = e.features[0].id as string | number;
           map.setFeatureState({ source: 'auto-grappes', id: hoveredAutoGrappeId }, { hover: true });
         }
-      });
+      };
 
-      map.on('mouseleave', 'auto-grappes-fill', () => {
+      const handleAutoGrappeLeave = () => {
         if (hoveredAutoGrappeId !== null) {
           map.setFeatureState(
             { source: 'auto-grappes', id: hoveredAutoGrappeId },
@@ -92,7 +135,12 @@ export const useMapInteractions = (
           );
         }
         hoveredAutoGrappeId = null;
-      });
+      };
+
+      map.on('mousemove', 'auto-grappes-fill', handleAutoGrappeMove);
+      map.on('mouseleave', 'auto-grappes-fill', handleAutoGrappeLeave);
+      disposers.push(() => map.off('mousemove', 'auto-grappes-fill', handleAutoGrappeMove));
+      disposers.push(() => map.off('mouseleave', 'auto-grappes-fill', handleAutoGrappeLeave));
 
       // ── DRAG & DROP (Mouse + Touch) ──
       const endDrag = (lngLat: maplibregl.LngLat | null) => {
@@ -118,43 +166,47 @@ export const useMapInteractions = (
       };
 
       // Mouse drag
-      ['households-local-layer', 'households-glow-layer'].forEach(layerId => {
-        map.on('mousedown', layerId, (e) => {
-        if (readOnly) return;
-        const feature = e.features?.[0];
-        if (!feature) return;
+      ['households-local-layer', 'households-glow-layer'].forEach((layerId) => {
+        const handleMouseDown = (e: any) => {
+          if (readOnly) return;
+          const feature = e.features?.[0];
+          if (!feature) return;
 
-        // Wait a few ms to distinguish between click (for popup) and drag
-        // Simple threshold: if mouse stays down and moves, it's a drag
-        map.dragPan.disable();
-        dragStateRef.current = {
-          isDragging: true,
-          draggedFeatureId:
-            feature.properties.household_id || feature.properties.id || String(feature.id),
+          map.dragPan.disable();
+          dragStateRef.current = {
+            isDragging: true,
+            draggedFeatureId:
+              feature.properties.household_id || feature.properties.id || String(feature.id),
+          };
+          map.getCanvas().style.cursor = 'grabbing';
         };
-        map.getCanvas().style.cursor = 'grabbing';
-        });
+
+        map.on('mousedown', layerId, handleMouseDown);
+        disposers.push(() => map.off('mousedown', layerId, handleMouseDown));
       });
 
       // Touch drag
-      ['households-local-layer', 'households-glow-layer'].forEach(layerId => {
-        map.on('touchstart', layerId, (e) => {
-        if (readOnly) return;
-        const feature = e.features?.[0];
-        if (!feature) return;
+      ['households-local-layer', 'households-glow-layer'].forEach((layerId) => {
+        const handleTouchStart = (e: any) => {
+          if (readOnly) return;
+          const feature = e.features?.[0];
+          if (!feature) return;
 
-        map.dragPan.disable();
-        dragStateRef.current = {
-          isDragging: true,
-          draggedFeatureId:
-            feature.properties.household_id || feature.properties.id || String(feature.id),
+          map.dragPan.disable();
+          dragStateRef.current = {
+            isDragging: true,
+            draggedFeatureId:
+              feature.properties.household_id || feature.properties.id || String(feature.id),
+          };
+          map.getCanvas().style.cursor = 'grabbing';
         };
-        map.getCanvas().style.cursor = 'grabbing';
-        });
+
+        map.on('touchstart', layerId, handleTouchStart);
+        disposers.push(() => map.off('touchstart', layerId, handleTouchStart));
       });
 
       // Move callback
-      map.on('mousemove', (e) => {
+      const handleMouseMove = (e: any) => {
         if (!dragStateRef.current.isDragging || !dragStateRef.current.draggedFeatureId) return;
 
         const dragSource = map.getSource('drag-point') as maplibregl.GeoJSONSource;
@@ -170,47 +222,80 @@ export const useMapInteractions = (
             ],
           } as any);
         }
-      });
+      };
+      map.on('mousemove', handleMouseMove);
+      disposers.push(() => map.off('mousemove', handleMouseMove));
 
       // Mouse up
-      map.on('mouseup', (e) => endDrag(e.lngLat));
+      const handleMouseUp = (e: any) => endDrag(e.lngLat);
+      map.on('mouseup', handleMouseUp);
+      disposers.push(() => map.off('mouseup', handleMouseUp));
 
       // Touch end
-      map.on('touchend', (e) => {
+      const handleTouchEnd = (e: any) => {
         if (!dragStateRef.current.isDragging) return;
         endDrag(e.lngLat);
-      });
+      };
+      map.on('touchend', handleTouchEnd);
+      disposers.push(() => map.off('touchend', handleTouchEnd));
 
       // Safety: mouseleave during drag
-      ['households-local-layer', 'households-glow-layer'].forEach(layerId => {
-        map.on('mouseleave', layerId, () => {
+      householdInteractiveLayers.forEach((layerId) => {
+        const handleLayerMouseLeave = () => {
           if (dragStateRef.current.isDragging) endDrag(null);
-        });
+        };
+        map.on('mouseleave', layerId, handleLayerMouseLeave);
+        disposers.push(() => map.off('mouseleave', layerId, handleLayerMouseLeave));
       });
 
       // ── CLICK HANDLERS ──
-      ['households-local-layer', 'households-glow-layer'].forEach((layerId) => {
-        map.on('click', layerId, (e) => {
+      householdInteractiveLayers.forEach((layerId) => {
+        const handleLayerClick = (e: any) => {
           const feature = e.features?.[0];
-          if (feature && popupRef.current) {
-            // ✅ Show high-performance native popup
-            popupRef.current
-              .setLngLat((feature.geometry as any).coordinates)
-              .setHTML(generatePopupHTML(feature))
-              .addTo(map);
-          }
-        });
+          openHouseholdFromFeature(feature);
+        };
+
+        map.on('click', layerId, handleLayerClick);
+        disposers.push(() => map.off('click', layerId, handleLayerClick));
       });
 
-      map.on('click', 'grappes-layer', (e) => {
+      const handleMapClickFallback = (e: any) => {
+        if (Date.now() - lastHandledHouseholdClickRef.current < 150) return;
+
+        const point = e?.point;
+        if (!point) return;
+
+        const interactiveLayers = householdInteractiveLayers.filter((layerId) => map.getLayer(layerId));
+        if (interactiveLayers.length === 0) return;
+
+        const hitPadding = 10;
+        const features = map.queryRenderedFeatures(
+          [
+            [point.x - hitPadding, point.y - hitPadding],
+            [point.x + hitPadding, point.y + hitPadding],
+          ] as any,
+          { layers: [...interactiveLayers] as string[] }
+        );
+
+        if (features.length > 0) {
+          openHouseholdFromFeature(features[0]);
+        }
+      };
+
+      map.on('click', handleMapClickFallback);
+      disposers.push(() => map.off('click', handleMapClickFallback));
+
+      const handleGrappeClick = (e: any) => {
         const feature = e.features?.[0];
         if (feature && onZoneClickRef.current) {
           const coords = (feature.geometry as any).coordinates;
           onZoneClickRef.current([coords[1], coords[0]], 14);
         }
-      });
+      };
+      map.on('click', 'grappes-layer', handleGrappeClick);
+      disposers.push(() => map.off('click', 'grappes-layer', handleGrappeClick));
 
-      map.on('click', 'auto-grappes-fill', (e) => {
+      const handleAutoGrappeClick = (e: any) => {
         const feature = e.features?.[0];
         if (feature && onZoneClickRef.current) {
           const centroidX = feature.properties?.centroidX;
@@ -224,10 +309,13 @@ export const useMapInteractions = (
             useTerrainUIStore.getState().setPanel('grappe_allocation');
           }
         }
-      });
+      };
+      map.on('click', 'auto-grappes-fill', handleAutoGrappeClick);
+      disposers.push(() => map.off('click', 'auto-grappes-fill', handleAutoGrappeClick));
 
       return () => {
         window.removeEventListener('map:select-household', handleSelectEvent);
+        disposers.forEach((dispose) => dispose());
       };
     },
     [readOnly, householdsRef, setSelectedHouseholdId, onZoneClickRef, onDropRef]

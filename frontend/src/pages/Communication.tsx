@@ -1,0 +1,739 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { useEffect, useState } from 'react';
+import toast from 'react-hot-toast';
+import {
+  Circle,
+  Globe2,
+  Lock,
+  MessageSquare,
+  MessagesSquare,
+  Plus,
+  Search,
+  Send,
+  ShieldBan,
+  ShieldCheck,
+  Users2,
+} from 'lucide-react';
+import { PageContainer, PageHeader, EmptyState, LoadingState } from '../components/layout';
+import { ModulePageShell, DASHBOARD_INPUT, DASHBOARD_TEXTAREA, MODULE_ACCENTS } from '../components/dashboards/DashboardComponents';
+import { useAuth } from '../contexts/AuthContext';
+import { usePermissions } from '../hooks/usePermissions';
+import { getSocketInstance } from '../hooks/useWebSockets';
+import chatService, {
+  type ChatBootstrapResponse,
+  type ChatConversation,
+  type ChatMessage,
+  type ChatUserSummary,
+} from '../services/chatService';
+
+const accent = MODULE_ACCENTS.planning;
+
+const getConversationRoom = (conversationId: string) => `chat_conversation_${conversationId}`;
+
+function formatTime(value?: string | null) {
+  if (!value) return '';
+  try {
+    return new Date(value).toLocaleTimeString('fr-FR', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  } catch {
+    return '';
+  }
+}
+
+function formatDateTime(value?: string | null) {
+  if (!value) return '';
+  try {
+    return new Date(value).toLocaleString('fr-FR', {
+      day: '2-digit',
+      month: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  } catch {
+    return '';
+  }
+}
+
+export default function Communication() {
+  const { user } = useAuth();
+  const { isAdmin } = usePermissions();
+  const [bootstrapping, setBootstrapping] = useState(true);
+  const [loadingMessages, setLoadingMessages] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [users, setUsers] = useState<ChatUserSummary[]>([]);
+  const [conversations, setConversations] = useState<ChatConversation[]>([]);
+  const [messagesByConversation, setMessagesByConversation] = useState<Record<string, ChatMessage[]>>({});
+  const [activeConversationId, setActiveConversationId] = useState<string>('');
+  const [search, setSearch] = useState('');
+  const [composer, setComposer] = useState('');
+  const [groupName, setGroupName] = useState('');
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+  const [currentUserBlocked, setCurrentUserBlocked] = useState(false);
+  const [socketVersion, setSocketVersion] = useState(0);
+
+  const activeConversation = conversations.find((conversation) => conversation.id === activeConversationId) || null;
+
+  const displayedUsers = users.filter((member) => {
+    if (member.id === user?.id) return false;
+    const needle = search.trim().toLowerCase();
+    if (!needle) return true;
+    return (
+      member.name.toLowerCase().includes(needle) ||
+      member.email.toLowerCase().includes(needle) ||
+      member.role.toLowerCase().includes(needle)
+    );
+  });
+
+  const loadBootstrap = async () => {
+    try {
+      setBootstrapping(true);
+      const payload: ChatBootstrapResponse = await chatService.getBootstrap();
+      setUsers(payload.users);
+      setConversations(payload.conversations);
+      setCurrentUserBlocked(payload.currentUserBlocked);
+      setActiveConversationId((current) => current || payload.globalConversationId || payload.conversations[0]?.id || '');
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error || 'Impossible de charger la messagerie.');
+    } finally {
+      setBootstrapping(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadBootstrap();
+  }, []);
+
+  useEffect(() => {
+    if (!activeConversationId || messagesByConversation[activeConversationId]) return;
+
+    let active = true;
+
+    const loadMessages = async () => {
+      try {
+        setLoadingMessages(true);
+        const messages = await chatService.getMessages(activeConversationId);
+        if (!active) return;
+        setMessagesByConversation((current) => ({
+          ...current,
+          [activeConversationId]: messages,
+        }));
+      } catch (error: any) {
+        if (!active) return;
+        toast.error(error?.response?.data?.error || 'Impossible de charger cette conversation.');
+      } finally {
+        if (active) setLoadingMessages(false);
+      }
+    };
+
+    void loadMessages();
+
+    return () => {
+      active = false;
+    };
+  }, [activeConversationId, messagesByConversation]);
+
+  useEffect(() => {
+    const handleReady = () => setSocketVersion((current) => current + 1);
+    window.addEventListener('socket:ready', handleReady);
+    return () => window.removeEventListener('socket:ready', handleReady);
+  }, []);
+
+  useEffect(() => {
+    const socket = getSocketInstance();
+    if (!socket) return;
+
+    conversations.forEach((conversation) => {
+      socket.emit('join_room', getConversationRoom(conversation.id));
+    });
+  }, [conversations, socketVersion]);
+
+  useEffect(() => {
+    const socket = getSocketInstance();
+    if (!socket || !user?.id) return;
+
+    const handlePresence = (payload: { userIds: string[] }) => {
+      const onlineIds = new Set(payload?.userIds || []);
+      setUsers((current) =>
+        current.map((member) => ({
+          ...member,
+          online: onlineIds.has(member.id),
+        }))
+      );
+    };
+
+    const handleConversation = (payload: { conversation: ChatConversation }) => {
+      if (!payload?.conversation) return;
+
+      socket.emit('join_room', getConversationRoom(payload.conversation.id));
+
+      setConversations((current) => {
+        const existing = current.find((item) => item.id === payload.conversation.id);
+        const next = existing
+          ? current.map((item) => (item.id === payload.conversation.id ? payload.conversation : item))
+          : [payload.conversation, ...current];
+        return [...next].sort(
+          (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+        );
+      });
+
+      if (!activeConversationId) {
+        setActiveConversationId(payload.conversation.id);
+      }
+    };
+
+    const handleMessage = (payload: { message: ChatMessage }) => {
+      const message = payload?.message;
+      if (!message) return;
+
+      setMessagesByConversation((current) => {
+        const existing = current[message.conversationId] || [];
+        if (existing.some((item) => item.id === message.id)) {
+          return current;
+        }
+        return {
+          ...current,
+          [message.conversationId]: [...existing, message],
+        };
+      });
+
+      setConversations((current) => {
+        const next = current.map((conversation) =>
+          conversation.id === message.conversationId
+            ? {
+                ...conversation,
+                lastMessage: message,
+                updatedAt: message.createdAt,
+              }
+            : conversation
+        );
+
+        return [...next].sort(
+          (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+        );
+      });
+    };
+
+    const handleBlockState = (payload: { userId: string; blocked: boolean; reason?: string | null }) => {
+      if (!payload?.userId) return;
+
+      setUsers((current) =>
+        current.map((member) =>
+          member.id === payload.userId
+            ? {
+                ...member,
+                blocked: payload.blocked,
+                blockedReason: payload.reason || null,
+              }
+            : member
+        )
+      );
+
+      if (payload.userId === user.id) {
+        setCurrentUserBlocked(payload.blocked);
+        if (payload.blocked) {
+          toast.error('Votre accès à la messagerie a été bloqué par un administrateur.');
+        } else {
+          toast.success('Votre accès à la messagerie a été rétabli.');
+        }
+      }
+    };
+
+    socket.on('chat:presence', handlePresence);
+    socket.on('chat:conversation:new', handleConversation);
+    socket.on('chat:message:new', handleMessage);
+    socket.on('chat:user:block-state', handleBlockState);
+
+    return () => {
+      socket.off('chat:presence', handlePresence);
+      socket.off('chat:conversation:new', handleConversation);
+      socket.off('chat:message:new', handleMessage);
+      socket.off('chat:user:block-state', handleBlockState);
+    };
+  }, [activeConversationId, socketVersion, user?.id]);
+
+  const getConversationLabel = (conversation: ChatConversation) => {
+    if (conversation.isGlobal) return 'Salle générale';
+    if (conversation.name) return conversation.name;
+
+    const others = conversation.participants
+      .filter((participant) => participant.userId !== user?.id)
+      .map((participant) => participant.user.name);
+
+    return others.length > 0 ? others.join(', ') : 'Conversation privée';
+  };
+
+  const getConversationMeta = (conversation: ChatConversation) => {
+    if (conversation.isGlobal) {
+      return 'Canal commun à toute l’organisation';
+    }
+
+    const others = conversation.participants.filter((participant) => participant.userId !== user?.id);
+    if (conversation.type === 'DIRECT') {
+      return others[0]?.user.online ? 'En ligne' : 'Hors ligne';
+    }
+
+    return `${others.length} membre(s)`;
+  };
+
+  const handleUserSelection = (userId: string) => {
+    setSelectedUserIds((current) =>
+      current.includes(userId) ? current.filter((id) => id !== userId) : [...current, userId]
+    );
+  };
+
+  const handleOpenDirectConversation = async (targetUserId: string) => {
+    try {
+      const conversation = await chatService.createConversation({ participantIds: [targetUserId] });
+      setConversations((current) => {
+        const exists = current.some((item) => item.id === conversation.id);
+        const next = exists
+          ? current.map((item) => (item.id === conversation.id ? conversation : item))
+          : [conversation, ...current];
+        return [...next].sort(
+          (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+        );
+      });
+      setActiveConversationId(conversation.id);
+      setSelectedUserIds([]);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error || 'Impossible d’ouvrir cette discussion privée.');
+    }
+  };
+
+  const handleCreateSelectedConversation = async () => {
+    if (selectedUserIds.length === 0) {
+      toast.error('Sélectionnez au moins un membre.');
+      return;
+    }
+
+    try {
+      const conversation = await chatService.createConversation({
+        participantIds: selectedUserIds,
+        name: selectedUserIds.length > 1 ? groupName.trim() || undefined : undefined,
+      });
+      setConversations((current) => {
+        const exists = current.some((item) => item.id === conversation.id);
+        const next = exists
+          ? current.map((item) => (item.id === conversation.id ? conversation : item))
+          : [conversation, ...current];
+        return [...next].sort(
+          (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+        );
+      });
+      setActiveConversationId(conversation.id);
+      setSelectedUserIds([]);
+      setGroupName('');
+      toast.success(selectedUserIds.length > 1 ? 'Salon de groupe créé.' : 'Discussion privée ouverte.');
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error || 'Impossible de créer cette conversation.');
+    }
+  };
+
+  const handleToggleBlock = async (member: ChatUserSummary) => {
+    const nextBlocked = !member.blocked;
+    const reason =
+      nextBlocked && isAdmin
+        ? window.prompt(`Motif du blocage de ${member.name} dans la messagerie`, member.blockedReason || '')
+        : undefined;
+
+    try {
+      const payload = await chatService.setBlocked(member.id, nextBlocked, reason || undefined);
+      setUsers((current) =>
+        current.map((entry) =>
+          entry.id === member.id
+            ? {
+                ...entry,
+                blocked: payload.blocked,
+                blockedReason: payload.reason || null,
+              }
+            : entry
+        )
+      );
+      toast.success(payload.blocked ? `${member.name} est bloqué dans le chat.` : `${member.name} est débloqué.`);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error || 'Impossible de modifier ce blocage.');
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (!activeConversationId) return;
+
+    const content = composer.trim();
+    if (!content) return;
+
+    try {
+      setSending(true);
+      const message = await chatService.sendMessage(activeConversationId, content);
+      setMessagesByConversation((current) => {
+        const existing = current[activeConversationId] || [];
+        if (existing.some((item) => item.id === message.id)) {
+          return current;
+        }
+        return {
+          ...current,
+          [activeConversationId]: [...existing, message],
+        };
+      });
+      setConversations((current) =>
+        [...current]
+          .map((conversation) =>
+            conversation.id === activeConversationId
+              ? { ...conversation, lastMessage: message, updatedAt: message.createdAt }
+              : conversation
+          )
+          .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+      );
+      setComposer('');
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error || "Impossible d'envoyer ce message.");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  if (bootstrapping) {
+    return (
+      <PageContainer maxWidth="full">
+        <LoadingState text="Chargement de la messagerie..." minHeight="min-h-[60vh]" />
+      </PageContainer>
+    );
+  }
+
+  return (
+    <PageContainer maxWidth="full" className="space-y-6">
+      <PageHeader
+        title="Communication d’équipe"
+        subtitle="Salon général, conversations privées, groupes ciblés et régulation admin en temps réel."
+        icon={MessagesSquare}
+        accent="planning"
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.16em] ${accent.badge}`}>
+              <Circle size={8} className="fill-current" />
+              {users.filter((member) => member.online).length} en ligne
+            </span>
+            {currentUserBlocked && (
+              <span className="inline-flex items-center gap-2 rounded-full border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-rose-300">
+                <Lock size={12} />
+                Chat bloqué
+              </span>
+            )}
+          </div>
+        }
+      />
+
+      <ModulePageShell accent="planning">
+        <div className="grid gap-4 xl:grid-cols-[300px_340px_minmax(0,1fr)]">
+          <section className="rounded-[1.75rem] border border-white/10 bg-slate-950/35 p-4">
+            <div className="mb-4 flex items-center gap-3">
+              <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-violet-300">
+                <Users2 size={18} />
+              </div>
+              <div>
+                <h2 className="text-sm font-semibold text-white">Membres</h2>
+                <p className="text-xs text-slate-400">Présence live et sélection de groupe</p>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="relative">
+                <Search size={15} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+                <input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Rechercher un membre"
+                  className={`${DASHBOARD_INPUT} pl-11`}
+                />
+              </div>
+
+              <div className="max-h-[500px] space-y-2 overflow-y-auto pr-1">
+                {displayedUsers.map((member) => (
+                  <button
+                    key={member.id}
+                    type="button"
+                    onClick={() => void handleOpenDirectConversation(member.id)}
+                    className="w-full rounded-2xl border border-white/8 bg-white/[0.03] p-3 text-left transition hover:border-white/15 hover:bg-white/[0.05]"
+                  >
+                    <div className="flex items-start gap-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedUserIds.includes(member.id)}
+                        onChange={() => handleUserSelection(member.id)}
+                        onClick={(event) => event.stopPropagation()}
+                        className="mt-1 h-4 w-4 rounded border-white/20 bg-slate-950/60 text-violet-500"
+                      />
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold text-white">{member.name}</p>
+                            <p className="truncate text-[11px] uppercase tracking-[0.16em] text-slate-500">{member.role}</p>
+                          </div>
+                          <span className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${member.online ? 'bg-emerald-500/10 text-emerald-300' : 'bg-slate-800 text-slate-400'}`}>
+                            <Circle size={8} className={member.online ? 'fill-emerald-300' : 'fill-slate-500'} />
+                            {member.online ? 'Online' : 'Offline'}
+                          </span>
+                        </div>
+
+                        <p className="mt-2 truncate text-xs text-slate-400">{member.email}</p>
+                        <div className="mt-2 flex items-center justify-between gap-2">
+                          <span className="text-[11px] text-slate-500">
+                            {member.blocked
+                              ? member.blockedReason || 'Bloqué dans le chat'
+                              : member.lastLogin
+                                ? `Dernier accès ${formatDateTime(member.lastLogin)}`
+                                : 'Aucune connexion enregistrée'}
+                          </span>
+                          {isAdmin && member.id !== user?.id && (
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                void handleToggleBlock(member);
+                              }}
+                              className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${
+                                member.blocked
+                                  ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300'
+                                  : 'border-rose-500/20 bg-rose-500/10 text-rose-300'
+                              }`}
+                            >
+                              {member.blocked ? <ShieldCheck size={11} /> : <ShieldBan size={11} />}
+                              {member.blocked ? 'Débloquer' : 'Bloquer'}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+
+                {displayedUsers.length === 0 && (
+                  <EmptyState
+                    title="Aucun membre"
+                    description="Aucun utilisateur ne correspond à ce filtre."
+                    icon={<Users2 size={22} />}
+                    className="py-10"
+                  />
+                )}
+              </div>
+
+              <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-semibold text-white">Nouveau groupe</p>
+                    <p className="text-xs text-slate-400">{selectedUserIds.length} membre(s) sélectionné(s)</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => void handleCreateSelectedConversation()}
+                    disabled={currentUserBlocked || selectedUserIds.length === 0}
+                    className={`inline-flex h-11 items-center justify-center gap-2 rounded-2xl px-4 text-[11px] font-black uppercase tracking-[0.14em] text-white transition disabled:cursor-not-allowed disabled:opacity-40 ${accent.primaryButton}`}
+                  >
+                    <Plus size={14} />
+                    Ouvrir
+                  </button>
+                </div>
+
+                {selectedUserIds.length > 1 && (
+                  <input
+                    value={groupName}
+                    onChange={(event) => setGroupName(event.target.value)}
+                    placeholder="Nom du groupe (optionnel)"
+                    className={`${DASHBOARD_INPUT} mt-3`}
+                  />
+                )}
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-[1.75rem] border border-white/10 bg-slate-950/35 p-4">
+            <div className="mb-4 flex items-center gap-3">
+              <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-violet-300">
+                <MessageSquare size={18} />
+              </div>
+              <div>
+                <h2 className="text-sm font-semibold text-white">Conversations</h2>
+                <p className="text-xs text-slate-400">Salon général, privé ou groupe</p>
+              </div>
+            </div>
+
+            <div className="max-h-[640px] space-y-2 overflow-y-auto pr-1">
+              {conversations.map((conversation) => (
+                <button
+                  key={conversation.id}
+                  type="button"
+                  onClick={() => setActiveConversationId(conversation.id)}
+                  className={`w-full rounded-2xl border p-3 text-left transition ${
+                    conversation.id === activeConversationId
+                      ? 'border-violet-500/25 bg-violet-500/10'
+                      : 'border-white/8 bg-white/[0.03] hover:border-white/15 hover:bg-white/[0.05]'
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className={`mt-0.5 rounded-2xl border p-2 ${
+                      conversation.isGlobal
+                        ? 'border-blue-500/20 bg-blue-500/10 text-blue-300'
+                        : conversation.type === 'GROUP'
+                          ? 'border-violet-500/20 bg-violet-500/10 text-violet-300'
+                          : 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300'
+                    }`}>
+                      {conversation.isGlobal ? <Globe2 size={15} /> : conversation.type === 'GROUP' ? <Users2 size={15} /> : <MessageSquare size={15} />}
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-white">
+                            {getConversationLabel(conversation)}
+                          </p>
+                          <p className="mt-1 text-xs text-slate-400">{getConversationMeta(conversation)}</p>
+                        </div>
+                        <span className="text-[11px] text-slate-500">
+                          {conversation.lastMessage ? formatTime(conversation.lastMessage.createdAt) : ''}
+                        </span>
+                      </div>
+
+                      <p className="mt-3 line-clamp-2 text-xs text-slate-400">
+                        {conversation.lastMessage?.content || 'Aucun message pour le moment.'}
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <section className="rounded-[1.75rem] border border-white/10 bg-slate-950/35 p-4">
+            {activeConversation ? (
+              <div className="flex h-full min-h-[640px] flex-col">
+                <div className="flex flex-wrap items-start justify-between gap-4 border-b border-white/8 pb-4">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h2 className="truncate text-lg font-semibold text-white">
+                        {getConversationLabel(activeConversation)}
+                      </h2>
+                      {activeConversation.isGlobal && (
+                        <span className="rounded-full border border-blue-500/20 bg-blue-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-blue-300">
+                          Room
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-1 text-sm text-slate-400">{getConversationMeta(activeConversation)}</p>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    {activeConversation.participants
+                      .filter((participant) => participant.userId !== user?.id)
+                      .slice(0, 4)
+                      .map((participant) => (
+                        <span
+                          key={participant.id}
+                          className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-medium ${
+                            participant.user.online
+                              ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-200'
+                              : 'border-white/10 bg-white/[0.04] text-slate-300'
+                          }`}
+                        >
+                          <Circle size={8} className={participant.user.online ? 'fill-emerald-300' : 'fill-slate-500'} />
+                          {participant.user.name}
+                        </span>
+                      ))}
+                  </div>
+                </div>
+
+                {currentUserBlocked && (
+                  <div className="mt-4 rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+                    L’administrateur a désactivé votre capacité d’écriture dans la messagerie. Vous pouvez encore consulter les échanges.
+                  </div>
+                )}
+
+                <div className="mt-4 flex-1 space-y-3 overflow-y-auto pr-1">
+                  {loadingMessages && !messagesByConversation[activeConversation.id] ? (
+                    <LoadingState text="Chargement des messages..." minHeight="min-h-[280px]" />
+                  ) : (messagesByConversation[activeConversation.id] || []).length === 0 ? (
+                    <EmptyState
+                      title="Aucun message"
+                      description="Démarrez la conversation avec votre équipe."
+                      icon={<MessageSquare size={22} />}
+                      className="min-h-[280px]"
+                    />
+                  ) : (
+                    (messagesByConversation[activeConversation.id] || []).map((message) => {
+                      const own = message.senderId === user?.id;
+                      return (
+                        <div key={message.id} className={`flex ${own ? 'justify-end' : 'justify-start'}`}>
+                          <div
+                            className={`max-w-[80%] rounded-[1.5rem] border px-4 py-3 shadow-[0_18px_36px_rgba(2,6,23,0.18)] ${
+                              own
+                                ? 'border-violet-500/20 bg-violet-500/14 text-white'
+                                : 'border-white/8 bg-white/[0.04] text-slate-100'
+                            }`}
+                          >
+                            <div className="mb-2 flex items-center justify-between gap-3">
+                              <span className={`text-[11px] font-semibold uppercase tracking-[0.12em] ${own ? 'text-violet-200' : 'text-slate-400'}`}>
+                                {own ? 'Vous' : message.sender.name}
+                              </span>
+                              <span className="text-[11px] text-slate-500">{formatTime(message.createdAt)}</span>
+                            </div>
+                            <p className="whitespace-pre-wrap text-sm leading-6">{message.content}</p>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+                <div className="mt-4 border-t border-white/8 pt-4">
+                  <div className="grid gap-3">
+                    <textarea
+                      rows={4}
+                      value={composer}
+                      onChange={(event) => setComposer(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' && !event.shiftKey) {
+                          event.preventDefault();
+                          void handleSendMessage();
+                        }
+                      }}
+                      placeholder={
+                        currentUserBlocked
+                          ? 'Messagerie bloquée par un administrateur.'
+                          : 'Écrire un message...'
+                      }
+                      disabled={currentUserBlocked || sending}
+                      className={DASHBOARD_TEXTAREA}
+                    />
+
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-xs text-slate-500">
+                        Entrée pour envoyer, `Shift + Entrée` pour une nouvelle ligne.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => void handleSendMessage()}
+                        disabled={currentUserBlocked || sending || !composer.trim()}
+                        className={`inline-flex h-12 items-center justify-center gap-2 rounded-2xl px-5 text-[11px] font-black uppercase tracking-[0.14em] text-white transition disabled:cursor-not-allowed disabled:opacity-40 ${accent.primaryButton}`}
+                      >
+                        <Send size={14} />
+                        Envoyer
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <EmptyState
+                title="Sélectionnez une conversation"
+                description="Ouvrez la salle générale, un message privé ou un groupe."
+                icon={<MessagesSquare size={22} />}
+                className="min-h-[640px]"
+              />
+            )}
+          </section>
+        </div>
+      </ModulePageShell>
+    </PageContainer>
+  );
+}

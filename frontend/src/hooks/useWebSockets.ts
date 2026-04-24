@@ -4,8 +4,25 @@ import { io, Socket } from 'socket.io-client';
 import { useAuth } from '../contexts/AuthContext';
 import logger from '../utils/logger';
 import { syncEventBus } from '../utils/syncEventBus';
+import * as safeStorage from '../utils/safeStorage';
 
 let socketInstance: Socket | null = null;
+
+export const getSocketInstance = () => socketInstance;
+
+function getOrganizationIdFromToken() {
+  const token = safeStorage.getItem('access_token');
+  if (!token) return undefined;
+
+  try {
+    const [, payload] = token.split('.');
+    if (!payload) return undefined;
+    const parsed = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
+    return parsed?.organizationId;
+  } catch {
+    return undefined;
+  }
+}
 
 export const useWebSockets = () => {
   const { user } = useAuth();
@@ -59,7 +76,12 @@ export const useWebSockets = () => {
       socket.emit('authenticate', {
         userId: user?.id,
         role: user?.role,
+        organizationId: getOrganizationIdFromToken(),
       });
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('socket:ready'));
+      }
     });
 
     // Handle generic real-time notifications via standard event bus
