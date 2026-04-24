@@ -74,7 +74,13 @@ jobs:
           WANEKOO_PASSWORD: ${{ secrets.WANEKOO_PASSWORD }}
           WANEKOO_DEPLOY_PATH: ${{ secrets.WANEKOO_DEPLOY_PATH }}
         run: |
-          apt-get update && apt-get install -y openssh-client sshpass
+          set -euo pipefail
+
+          if [ -z "${WANEKOO_HOST:-}" ] || [ -z "${WANEKOO_USER:-}" ] || [ -z "${WANEKOO_DEPLOY_PATH:-}" ] || [ -z "${{ secrets.WANEKOO_SSH_KEY }}" ]; then
+            echo "Missing required Wanekoo deployment secrets."
+            echo "Expected: WANEKOO_HOST, WANEKOO_USER, WANEKOO_DEPLOY_PATH, WANEKOO_SSH_KEY"
+            exit 1
+          fi
 
           mkdir -p ~/.ssh
           echo "${{ secrets.WANEKOO_SSH_KEY }}" > ~/.ssh/id_rsa
