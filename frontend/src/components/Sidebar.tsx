@@ -47,9 +47,11 @@ export default function Sidebar() {
   const isSyncing = false;
   const { peut, PERMISSIONS } = usePermissions();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [isCompactDesktop, setIsCompactDesktop] = useState(() => {
+  const [sidebarMode, setSidebarMode] = useState<'wide' | 'compact' | 'rail'>(() => {
     if (typeof window === 'undefined') return false;
-    return window.localStorage.getItem('gem-sidebar-density') === 'compact';
+    const storedMode = window.localStorage.getItem('gem-sidebar-mode');
+    if (storedMode === 'wide' || storedMode === 'compact' || storedMode === 'rail') return storedMode;
+    return window.localStorage.getItem('gem-sidebar-density') === 'compact' ? 'compact' : 'wide';
   });
 
   // 1️⃣ Normalisation et bypass sécurisé via helpers
@@ -73,11 +75,12 @@ export default function Sidebar() {
     window.location.href = '/login';
   };
 
-  const toggleDesktopDensity = () => {
-    const next = !isCompactDesktop;
-    setIsCompactDesktop(next);
+  const cycleDesktopMode = () => {
+    const nextMode = sidebarMode === 'wide' ? 'compact' : sidebarMode === 'compact' ? 'rail' : 'wide';
+    setSidebarMode(nextMode);
     if (typeof window !== 'undefined') {
-      window.localStorage.setItem('gem-sidebar-density', next ? 'compact' : 'wide');
+      window.localStorage.setItem('gem-sidebar-mode', nextMode);
+      window.localStorage.setItem('gem-sidebar-density', nextMode === 'wide' ? 'wide' : 'compact');
     }
   };
 
@@ -270,7 +273,14 @@ export default function Sidebar() {
     OPÉRATIONS: { color: 'blue', label: 'OPÉRATIONS TERRAIN', glow: 'shadow-blue-500/10' },
     SYSTÈME: { color: 'blue', label: 'ADMINISTRATION', glow: 'shadow-blue-500/10' },
   };
-  const asideWidthClass = isCompactDesktop ? 'lg:w-[19.25rem] xl:w-[20.25rem]' : 'lg:w-[23.5rem] xl:w-[24.75rem]';
+  const isRailDesktop = sidebarMode === 'rail';
+  const isCompactDesktop = sidebarMode !== 'wide';
+  const asideWidthClass =
+    sidebarMode === 'rail'
+      ? 'lg:w-[6.25rem] xl:w-[6.5rem]'
+      : sidebarMode === 'compact'
+        ? 'lg:w-[19.25rem] xl:w-[20.25rem]'
+        : 'lg:w-[23.5rem] xl:w-[24.75rem]';
 
   // 🛡️ [RESILIENCE] If auth is loading, avoid empty black box
   if (!user) {
@@ -331,25 +341,39 @@ export default function Sidebar() {
         )}
 
         {/* Logo Area */}
-        <div className="relative border-b border-white/6 px-4 pb-3 pt-4 lg:px-6 lg:pb-4 lg:pt-5">
-          <div className="mb-2 flex items-center justify-between gap-3 lg:mb-2.5">
-            <div className="inline-flex items-center gap-2 rounded-full border border-blue-400/15 bg-blue-400/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-blue-200">
-              <span className="h-1.5 w-1.5 rounded-full bg-blue-300" />
-              Control Deck
-            </div>
+        <div className={`relative border-b border-white/6 px-4 pb-3 pt-4 lg:pb-4 lg:pt-5 ${isRailDesktop ? 'lg:px-3' : 'lg:px-6'}`}>
+          <div className={`mb-2 flex items-center gap-3 lg:mb-2.5 ${isRailDesktop ? 'justify-center' : 'justify-between'}`}>
+            {!isRailDesktop && (
+              <div className="inline-flex items-center gap-2 rounded-full border border-blue-400/15 bg-blue-400/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-blue-200">
+                <span className="h-1.5 w-1.5 rounded-full bg-blue-300" />
+                Control Deck
+              </div>
+            )}
             <button
               type="button"
-              onClick={toggleDesktopDensity}
+              onClick={cycleDesktopMode}
               className="hidden lg:inline-flex items-center justify-center rounded-full border border-white/8 bg-white/[0.04] p-2 text-slate-300 transition hover:border-white/12 hover:bg-white/[0.07] hover:text-white"
-              title={isCompactDesktop ? 'Passer en panneau large' : 'Passer en panneau compact'}
-              aria-label={isCompactDesktop ? 'Passer en panneau large' : 'Passer en panneau compact'}
+              title={
+                sidebarMode === 'wide'
+                  ? 'Passer en panneau compact'
+                  : sidebarMode === 'compact'
+                    ? 'Passer en rail icônes'
+                    : 'Revenir en panneau large'
+              }
+              aria-label={
+                sidebarMode === 'wide'
+                  ? 'Passer en panneau compact'
+                  : sidebarMode === 'compact'
+                    ? 'Passer en rail icônes'
+                    : 'Revenir en panneau large'
+              }
             >
-              {isCompactDesktop ? <PanelLeftOpen size={15} /> : <PanelLeftClose size={15} />}
+              {sidebarMode === 'wide' ? <PanelLeftClose size={15} /> : <PanelLeftOpen size={15} />}
             </button>
           </div>
 
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex min-w-0 flex-1 items-center gap-3">
+          <div className={`flex items-start gap-3 ${isRailDesktop ? 'justify-center' : 'justify-between'}`}>
+            <div className={`flex min-w-0 items-center gap-3 ${isRailDesktop ? 'justify-center' : 'flex-1'}`}>
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/5 p-1 shadow-[0_10px_24px_rgba(2,6,23,0.28)] lg:h-12 lg:w-12">
                 {(user?.organizationConfig as any)?.branding?.logo ? (
                   <img
@@ -361,7 +385,8 @@ export default function Sidebar() {
                   <BarChart3 className="text-white" size={22} />
                 )}
               </div>
-              <div className="min-w-0 flex-1">
+              {!isRailDesktop && (
+                <div className="min-w-0 flex-1">
                 <h1 className="line-clamp-2 text-[18px] font-black leading-[0.98] tracking-[-0.04em] text-white/95 lg:text-[20px]">
                   {organizationName}
                 </h1>
@@ -373,64 +398,102 @@ export default function Sidebar() {
                     {project?.name ? 'Projet actif' : 'Espace principal'}
                   </span>
                 </div>
-              </div>
+                </div>
+              )}
             </div>
             
             {/* Notification Center Integration (Axe 4 - Amélioration Continue) */}
-            <NotificationCenter />
+            {!isRailDesktop && <NotificationCenter />}
           </div>
 
-          <div className="mt-3 flex flex-wrap items-center gap-2 text-[10px] font-medium uppercase tracking-[0.16em] text-slate-400">
-            <span className="inline-flex items-center gap-2 rounded-full border border-emerald-500/15 bg-emerald-500/10 px-3 py-1 text-emerald-300">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
-              Session active
-            </span>
-            <span className="truncate rounded-full border border-white/8 bg-white/[0.04] px-3 py-1 text-slate-300">
-              {roleDisplay}
-            </span>
-            <button
-              onClick={() => forceSync()}
-              disabled={isSyncing || !navigator.onLine}
-              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] transition ${
-                isSyncing
-                  ? 'border-blue-500/20 bg-blue-500/10 text-blue-300'
-                  : 'border-white/8 bg-white/[0.04] text-slate-300 hover:border-white/12 hover:bg-white/[0.06] hover:text-white'
-              }`}
-              title="Lancer une synchronisation"
-            >
-              <RefreshCw size={11} className={isSyncing ? 'animate-spin' : ''} />
-              {isSyncing ? 'Sync...' : 'Sync'}
-            </button>
-            <span
-              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 ${
-                navigator.onLine
-                  ? 'border-emerald-500/15 bg-emerald-500/10 text-emerald-300'
-                  : 'border-rose-500/15 bg-rose-500/10 text-rose-300'
-              }`}
-            >
-              <Activity size={8} className={navigator.onLine ? 'animate-pulse' : ''} />
-              {navigator.onLine ? 'En ligne' : 'Hors ligne'}
-            </span>
-          </div>
+          {!isRailDesktop ? (
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-[10px] font-medium uppercase tracking-[0.16em] text-slate-400">
+              <span className="inline-flex items-center gap-2 rounded-full border border-emerald-500/15 bg-emerald-500/10 px-3 py-1 text-emerald-300">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
+                Session active
+              </span>
+              <span className="truncate rounded-full border border-white/8 bg-white/[0.04] px-3 py-1 text-slate-300">
+                {roleDisplay}
+              </span>
+              <button
+                onClick={() => forceSync()}
+                disabled={isSyncing || !navigator.onLine}
+                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] transition ${
+                  isSyncing
+                    ? 'border-blue-500/20 bg-blue-500/10 text-blue-300'
+                    : 'border-white/8 bg-white/[0.04] text-slate-300 hover:border-white/12 hover:bg-white/[0.06] hover:text-white'
+                }`}
+                title="Lancer une synchronisation"
+              >
+                <RefreshCw size={11} className={isSyncing ? 'animate-spin' : ''} />
+                {isSyncing ? 'Sync...' : 'Sync'}
+              </button>
+              <span
+                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 ${
+                  navigator.onLine
+                    ? 'border-emerald-500/15 bg-emerald-500/10 text-emerald-300'
+                    : 'border-rose-500/15 bg-rose-500/10 text-rose-300'
+                }`}
+              >
+                <Activity size={8} className={navigator.onLine ? 'animate-pulse' : ''} />
+                {navigator.onLine ? 'En ligne' : 'Hors ligne'}
+              </span>
+            </div>
+          ) : (
+            <div className="mt-3 flex flex-col items-center gap-2">
+              <NotificationCenter />
+              <button
+                onClick={() => forceSync()}
+                disabled={isSyncing || !navigator.onLine}
+                className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl border transition ${
+                  isSyncing
+                    ? 'border-blue-500/20 bg-blue-500/10 text-blue-300'
+                    : 'border-white/8 bg-white/[0.04] text-slate-300 hover:border-white/12 hover:bg-white/[0.06] hover:text-white'
+                }`}
+                title="Lancer une synchronisation"
+              >
+                <RefreshCw size={14} className={isSyncing ? 'animate-spin' : ''} />
+              </button>
+              <span
+                className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl border ${
+                  navigator.onLine
+                    ? 'border-emerald-500/15 bg-emerald-500/10 text-emerald-300'
+                    : 'border-rose-500/15 bg-rose-500/10 text-rose-300'
+                }`}
+                title={navigator.onLine ? 'En ligne' : 'Hors ligne'}
+              >
+                <Activity size={12} className={navigator.onLine ? 'animate-pulse' : ''} />
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Navigation Scroll Area */}
-        <div className="relative flex-1 overflow-y-auto px-3 py-3 no-scrollbar lg:px-4 lg:py-5">
-          <div className="rounded-[1.7rem] border border-white/6 bg-white/[0.025] px-2.5 py-2 shadow-[0_16px_38px_rgba(2,6,23,0.14)] lg:px-3 lg:py-3">
+        <div className={`relative flex-1 overflow-y-auto px-3 py-3 no-scrollbar lg:py-5 ${isRailDesktop ? 'lg:px-2.5' : 'lg:px-4'}`}>
+          <div className={`rounded-[1.7rem] border border-white/6 bg-white/[0.025] shadow-[0_16px_38px_rgba(2,6,23,0.14)] ${isRailDesktop ? 'px-2 py-3' : 'px-2.5 py-2 lg:px-3 lg:py-3'}`}>
             {Object.entries(memoGroupedItems).map(([cat, items], sectionIndex) => (
               <section
                 key={cat}
                 className={`${sectionIndex > 0 ? 'mt-3 border-t border-white/6 pt-3 lg:mt-4 lg:pt-4' : ''}`}
               >
-                <div className="mb-2 flex items-center justify-between gap-3 px-1 lg:mb-3">
-                  <span className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">
-                    {categoryConfig[cat as keyof typeof categoryConfig]?.label || cat}
-                  </span>
-                  <span className="inline-flex min-w-7 items-center justify-center rounded-full border border-white/6 bg-white/[0.04] px-2 py-0.5 text-[10px] font-semibold text-slate-400">
-                    {items.length}
-                  </span>
-                </div>
-                <nav className={`${isCompactDesktop ? 'space-y-1' : 'space-y-1 xl:grid xl:grid-cols-2 xl:gap-1.5 xl:space-y-0'}`}>
+                {!isRailDesktop ? (
+                  <div className="mb-2 flex items-center justify-between gap-3 px-1 lg:mb-3">
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">
+                      {categoryConfig[cat as keyof typeof categoryConfig]?.label || cat}
+                    </span>
+                    <span className="inline-flex min-w-7 items-center justify-center rounded-full border border-white/6 bg-white/[0.04] px-2 py-0.5 text-[10px] font-semibold text-slate-400">
+                      {items.length}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="mb-2 flex justify-center">
+                    <span
+                      className="h-px w-8 bg-white/8"
+                      title={categoryConfig[cat as keyof typeof categoryConfig]?.label || cat}
+                    />
+                  </div>
+                )}
+                <nav className={`${isRailDesktop ? 'space-y-2' : isCompactDesktop ? 'space-y-1' : 'space-y-1 xl:grid xl:grid-cols-2 xl:gap-1.5 xl:space-y-0'}`}>
                   {items.map((item) => (
                     <NavLink
                       key={item.to}
@@ -438,12 +501,13 @@ export default function Sidebar() {
                       title={item.title}
                       onClick={() => setMobileOpen(false)}
                       className={({ isActive }) => `
-                      group relative flex items-center gap-3 overflow-hidden rounded-2xl px-3 py-2.5 transition-all duration-300 lg:py-3
+                      group relative flex items-center overflow-hidden rounded-2xl transition-all duration-300
                       ${
                         isActive
                           ? 'border border-blue-500/20 bg-blue-500/10 text-white shadow-[0_12px_30px_rgba(37,99,235,0.12)]'
                           : 'border border-transparent text-slate-400 hover:border-white/8 hover:bg-white/[0.04] hover:text-white'
                       }
+                      ${isRailDesktop ? 'justify-center px-0 py-3' : 'gap-3 px-3 py-2.5 lg:py-3'}
                     `}
                     >
                       {({ isActive }) => (
@@ -456,7 +520,7 @@ export default function Sidebar() {
                             />
                           )}
                           {isActive && (
-                            <div className="absolute bottom-2 left-3 top-2 w-[3px] rounded-full bg-blue-300/90 shadow-[0_0_14px_rgba(96,165,250,0.8)]" />
+                            <div className={`absolute rounded-full bg-blue-300/90 shadow-[0_0_14px_rgba(96,165,250,0.8)] ${isRailDesktop ? 'bottom-2 left-1/2 h-1.5 w-7 -translate-x-1/2' : 'bottom-2 left-3 top-2 w-[3px]'}`} />
                           )}
                           <div className={`relative z-10 flex h-9 w-9 items-center justify-center rounded-xl border lg:h-10 lg:w-10 ${
                             isActive
@@ -470,14 +534,16 @@ export default function Sidebar() {
                               }`}
                             />
                           </div>
-                          <div className="relative z-10 min-w-0 flex-1">
-                            <span className={`block ${isCompactDesktop ? 'truncate' : 'line-clamp-2'} text-[12.5px] font-semibold tracking-[0.04em] lg:text-[13px] lg:tracking-[0.06em] ${
-                              isActive ? 'text-white' : 'text-slate-300'
-                            }`}>
-                              {item.label}
-                            </span>
-                          </div>
-                          {isActive && (
+                          {!isRailDesktop && (
+                            <div className="relative z-10 min-w-0 flex-1">
+                              <span className={`block ${isCompactDesktop ? 'truncate' : 'line-clamp-2'} text-[12.5px] font-semibold tracking-[0.04em] lg:text-[13px] lg:tracking-[0.06em] ${
+                                isActive ? 'text-white' : 'text-slate-300'
+                              }`}>
+                                {item.label}
+                              </span>
+                            </div>
+                          )}
+                          {isActive && !isRailDesktop && (
                             <div className="absolute right-4 h-2 w-2 rounded-full bg-blue-400 shadow-[0_0_10px_rgba(96,165,250,0.7)]" />
                           )}
                         </>
@@ -491,23 +557,26 @@ export default function Sidebar() {
         </div>
 
         {/* Footer Context */}
-        <div className="relative mt-auto border-t border-white/6 p-3 lg:p-4">
-          <div className="rounded-[1.5rem] border border-white/6 bg-white/[0.025] px-4 py-3 text-[11px] text-slate-400">
-            <div className="flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-white">{user.name}</p>
-                <p className="truncate uppercase tracking-[0.16em] text-slate-500">{roleDisplay}</p>
+        <div className={`relative mt-auto border-t border-white/6 p-3 ${isRailDesktop ? 'lg:px-2.5 lg:py-4' : 'lg:p-4'}`}>
+          {!isRailDesktop && (
+            <div className="rounded-[1.5rem] border border-white/6 bg-white/[0.025] px-4 py-3 text-[11px] text-slate-400">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-white">{user.name}</p>
+                  <p className="truncate uppercase tracking-[0.16em] text-slate-500">{roleDisplay}</p>
+                </div>
+                <span className="rounded-full border border-white/8 bg-white/[0.04] px-2.5 py-1 text-[10px] uppercase tracking-[0.14em] text-slate-300">
+                  {sidebarMode === 'compact' ? 'Compact' : 'Large'}
+                </span>
               </div>
-              <span className="rounded-full border border-white/8 bg-white/[0.04] px-2.5 py-1 text-[10px] uppercase tracking-[0.14em] text-slate-300">
-                {isCompactDesktop ? 'Compact' : 'Large'}
-              </span>
             </div>
-          </div>
+          )}
           <button
             onClick={handleLogout}
-            className="group mt-3 flex w-full items-center justify-between rounded-[1.4rem] border border-white/8 bg-white/[0.03] px-4 py-3.5 text-slate-300 transition-all hover:border-rose-500/20 hover:bg-rose-500/10 hover:text-rose-300 lg:mt-4 lg:px-5 lg:py-4"
+            title="Se déconnecter"
+            className={`group mt-3 flex w-full items-center border border-white/8 bg-white/[0.03] text-slate-300 transition-all hover:border-rose-500/20 hover:bg-rose-500/10 hover:text-rose-300 ${isRailDesktop ? 'justify-center rounded-2xl px-0 py-3.5' : 'justify-between rounded-[1.4rem] px-4 py-3.5 lg:mt-4 lg:px-5 lg:py-4'}`}
           >
-            <span className="text-[12px] font-semibold uppercase tracking-[0.16em]">Se déconnecter</span>
+            {!isRailDesktop && <span className="text-[12px] font-semibold uppercase tracking-[0.16em]">Se déconnecter</span>}
             <LogOut size={16} className="group-hover:translate-x-1 transition-transform" />
           </button>
         </div>
