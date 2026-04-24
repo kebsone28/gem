@@ -7,6 +7,306 @@ import prisma from '../../core/utils/prisma.js';
 import logger from '../../utils/logger.js';
 import { sendSMSViaProvider, sendEmailViaProvider } from '../../services/notificationProviders.js';
 
+const buildSmsMessage = (params = {}) => {
+  if (params.message) return params.message;
+
+  const severity = params.severity || 'INFO';
+  const title = params.title || 'Alerte';
+  const description = params.description ? `\n${params.description}` : '';
+  return `🚨 ALERTE ${severity}: ${title}${description}`;
+};
+
+const buildEmailPayload = (params = {}) => {
+  const alertData = params.alertData || {};
+  const subject = params.subject || `Alerte: ${params.title || alertData.title || 'Notification'}`;
+  const severity = params.severity || alertData.severity || 'INFO';
+  const type = params.type || alertData.type || 'SYSTEM';
+  const description = params.description || alertData.message || alertData.description || '';
+
+  const htmlContent = `
+    <html>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #d32f2f; margin-bottom: 10px;">🚨 ALERTE: ${subject}</h2>
+          <p><strong>Sévérité:</strong> ${severity}</p>
+          <p><strong>Type:</strong> ${type}</p>
+          <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;">
+          <p>${description}</p>
+          <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;">
+          <p style="font-size: 12px; color: #999;">
+            Alerte générée le ${new Date().toLocaleString('fr-FR')}
+          </p>
+        </div>
+      </body>
+    </html>
+  `;
+
+  return { subject, htmlContent };
+};
+
+export async function sendSMSAlert(params = {}) {
+  const alertId = params.alertId;
+  const to = params.to || params.phoneNumber;
+  const message = buildSmsMessage(params);
+
+  if (!to || !message) {
+    return { success: false, error: 'Missing recipient or message' };
+  }
+
+  try {
+    const result = await sendSMSViaProvider(to, message);
+
+    if (result.success && alertId) {
+      await prisma.alert.update({
+        where: { id: alertId },
+        data: {
+          smsNotified: true,
+          smsNotifiedAt: new Date(),
+        },
+      });
+    }
+
+    return result;
+  } catch (error) {
+    logger.error(`[ALERTS] Erreur SMS: ${error.message}`);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function sendEmailAlert(params = {}) {
+  const alertId = params.alertId;
+  const to = params.to || params.email;
+  const { subject, htmlContent } = buildEmailPayload(params);
+
+  if (!to) {
+    return { success: false, error: 'Missing email recipient' };
+  }
+
+  try {
+    const result = await sendEmailViaProvider(to, subject, htmlContent);
+
+    if (result.success && alertId) {
+      await prisma.alert.update({
+        where: { id: alertId },
+        data: {
+          emailNotified: true,
+          emailNotifiedAt: new Date(),
+        },
+      });
+    }
+
+    return result;
+  } catch (error) {
+    logger.error(`[ALERTS] Erreur Email: ${error.message}`);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function handleEscalation(params = null) {
+  try {
+    if (params?.organizationId) {
+      const alertsToEscalate = await prisma.alert.findMany({
+        where: {
+          organizationId: params.organizationId,
+          status: 'OPEN',
+        },
+      });
+
+      let escalatedCount = 0;
+      const now = Date.now();
+      const thresholdMs = (params.escalationDelay || 0) * 1000;
+
+      for (const alert of alertsToEscalate) {
+        const createdAt = alert.createdAt ? new Date(alert.createdAt).getTime() : now;
+        if (now - createdAt < thresholdMs) continue;
+
+        await prisma.alert.update({
+          where: { id: alert.id },
+          data: {
+            status: 'ESCALATED',
+            escalatedAt: new Date(),
+          },
+        });
+
+        escalatedCount += 1;
+      }
+
+      return { escalatedCount };
+    }
+
+    if (!prisma.alertConfiguration?.findMany) {
+      logger.warn('[ALERTS] prisma.alertConfiguration.findMany unavailable. Skipping escalation.');
+      return { escalatedCount: 0, skipped: true };
+    }
+
+    const configs = await prisma.alertConfiguration.findMany({});
+    let escalatedCount = 0;
+
+    for (const config of configs) {
+      const now = new Date();
+      const escalationThresholdTime = new Date(now.getTime() - config.escalationDelay * 1000);
+
+      const alertsToEscalate = await prisma.alert.findMany({
+        where: {
+          organizationId: config.organizationId,
+          severity: { in: ['CRITICAL', 'HIGH'] },
+          status: { in: ['OPEN'] },
+          createdAt: { lt: escalationThresholdTime },
+          escalatedAt: null,
+        },
+      });
+
+      for (const alert of alertsToEscalate) {
+        await prisma.alert.update({
+          where: { id: alert.id },
+          data: {
+            status: 'ESCALATED',
+            escalatedAt: new Date(),
+            escalationLevel: (alert.escalationLevel || 0) + 1,
+            escalationNotificationSent: true,
+            metadata: {
+              ...(alert.metadata || {}),
+              escalationReason: 'No acknowledgment within threshold',
+              escalationTime: new Date().toISOString(),
+            },
+          },
+        });
+
+        escalatedCount += 1;
+
+        if (config.escalationLoop) {
+          await alertsService.triggerNotifications(alert);
+        }
+      }
+    }
+
+    return { escalatedCount };
+  } catch (err) {
+    logger.error('[ALERTS] handleEscalation error:', err);
+    return { escalatedCount: 0, error: err.message };
+  }
+}
+
+export async function createIGPPAlerts(projectIdOrParams, kpiDataArg = {}) {
+  try {
+    const params =
+      typeof projectIdOrParams === 'object' && projectIdOrParams !== null
+        ? projectIdOrParams
+        : { projectId: projectIdOrParams, kpiData: kpiDataArg };
+
+    let { projectId, organizationId, kpiData = {} } = params;
+
+    if (!organizationId && projectId && prisma.project?.findUnique) {
+      const project = await prisma.project.findUnique({
+        where: { id: projectId },
+      });
+      organizationId = project?.organizationId;
+    }
+
+    if (!organizationId) {
+      return { alertsCreated: 0, duplicatesPrevented: 0, skipped: 'missing organization' };
+    }
+
+    const existingAlerts = prisma.alert.findMany
+      ? await prisma.alert.findMany({
+          where: {
+            projectId,
+            status: 'OPEN',
+          },
+        })
+      : [];
+
+    const hasOpenAlert = (type) =>
+      Array.isArray(existingAlerts) && existingAlerts.some((alert) => alert.type === type);
+
+    let duplicatesPrevented = ['IGPP_STOCK', 'IGPP_BUDGET', 'IGPP_ELECTRICITY'].reduce(
+      (count, type) => (hasOpenAlert(type) ? count + 1 : count),
+      0
+    );
+
+    const config = prisma.alertConfiguration?.findFirst
+      ? await prisma.alertConfiguration.findFirst({ where: { organizationId } })
+      : await prisma.alertConfiguration.findUnique?.({ where: { organizationId } });
+
+    if (!config) {
+      return { alertsCreated: 0, duplicatesPrevented, skipped: 'missing configuration' };
+    }
+
+    const alertsToCreate = [];
+
+    const kitPrepared = Number(kpiData.kitPrepared ?? Number.NaN);
+    if (Number.isFinite(kitPrepared) && Number.isFinite(config.stockCritical) && kitPrepared < config.stockCritical) {
+      if (hasOpenAlert('IGPP_STOCK')) {
+        duplicatesPrevented += 1;
+      } else {
+        alertsToCreate.push({
+          organizationId,
+          projectId,
+          type: 'IGPP_STOCK',
+          severity: 'critical',
+          status: 'OPEN',
+          message: `Stock niveau critique (${kitPrepared})`,
+        });
+      }
+    }
+
+    const budgetUsagePercent = Number(kpiData.budgetUsagePercent ?? Number.NaN);
+    if (
+      Number.isFinite(budgetUsagePercent) &&
+      Number.isFinite(config.budgetThreshold) &&
+      budgetUsagePercent > config.budgetThreshold
+    ) {
+      if (hasOpenAlert('IGPP_BUDGET')) {
+        duplicatesPrevented += 1;
+      } else {
+        alertsToCreate.push({
+          organizationId,
+          projectId,
+          type: 'IGPP_BUDGET',
+          severity: 'high',
+          status: 'OPEN',
+          message: `Budget seuil dépassé (${budgetUsagePercent}%)`,
+        });
+      }
+    }
+
+    const electricityAccess = Number(
+      kpiData.electricityAccess ?? kpiData.electrifiedHouseholds ?? Number.NaN
+    );
+    if (
+      Number.isFinite(electricityAccess) &&
+      Number.isFinite(config.electricityMin) &&
+      electricityAccess < config.electricityMin
+    ) {
+      if (hasOpenAlert('IGPP_ELECTRICITY')) {
+        duplicatesPrevented += 1;
+      } else {
+        alertsToCreate.push({
+          organizationId,
+          projectId,
+          type: 'IGPP_ELECTRICITY',
+          severity: 'medium',
+          status: 'OPEN',
+          message: `Accès électricité insuffisant (${electricityAccess})`,
+        });
+      }
+    }
+
+    let alertsCreated = 0;
+    for (const alert of alertsToCreate) {
+      if (prisma.alert.create) {
+        await prisma.alert.create({ data: alert });
+        alertsCreated += 1;
+      }
+    }
+
+    return { alertsCreated, duplicatesPrevented };
+  } catch (err) {
+    logger.error('[ALERTS] createIGPPAlerts error:', err);
+    return { alertsCreated: 0, duplicatesPrevented: 0, error: err.message };
+  }
+}
+
 export const alertsService = {
   /**
    * Déclenche les notifications SMS/Email pour une alerte critique
@@ -32,7 +332,7 @@ export const alertsService = {
 
       // Envoyer SMS si activé
       if (config.enableSMS && phoneNumber) {
-        await this.sendSMSAlert({
+        await sendSMSAlert({
           alertId: alert.id,
           to: phoneNumber,
           title: alert.title,
@@ -42,7 +342,7 @@ export const alertsService = {
 
       // Envoyer Email si activé
       if (config.enableEmail && email) {
-        await this.sendEmailAlert({
+        await sendEmailAlert({
           alertId: alert.id,
           to: email,
           title: alert.title,
@@ -71,238 +371,22 @@ export const alertsService = {
   /**
    * Envoie un SMS via Twilio (réel)
    */
-  async sendSMSAlert(params) {
-    const { alertId, to, title, description, _type, severity } = params;
-
-    try {
-      const message = `🚨 ALERTE ${severity}: ${title}\n${description}`;
-      const result = await sendSMSViaProvider(to, message);
-
-      if (result.success) {
-        logger.info(`[ALERTS] SMS envoyé pour l'alerte ${alertId}`);
-        await prisma.alert.update({
-          where: { id: alertId },
-          data: { smsNotified: true },
-        });
-      } else {
-        logger.warn(`[ALERTS] SMS échoué pour l'alerte ${alertId}: ${result.error}`);
-      }
-
-      return result;
-    } catch (error) {
-      logger.error(`[ALERTS] Erreur SMS: ${error.message}`);
-      return { success: false, error: error.message };
-    }
-  },
+  sendSMSAlert,
 
   /**
    * Envoie un email via SendGrid (réel)
    */
-  async sendEmailAlert(params) {
-    const { alertId, to, title, description, type, severity } = params;
-
-    try {
-      const htmlContent = `
-        <html>
-          <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-            <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-              <h2 style="color: #d32f2f; margin-bottom: 10px;">🚨 ALERTE: ${title}</h2>
-              <p><strong>Sévérité:</strong> ${severity}</p>
-              <p><strong>Type:</strong> ${type}</p>
-              <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;">
-              <p>${description}</p>
-              <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;">
-              <p style="font-size: 12px; color: #999;">
-                Alerte générée le ${new Date().toLocaleString('fr-FR')}
-              </p>
-            </div>
-          </body>
-        </html>
-      `;
-
-      const result = await sendEmailViaProvider(to, `Alerte: ${title}`, htmlContent);
-
-      if (result.success) {
-        logger.info(`[ALERTS] Email envoyé pour l'alerte ${alertId}`);
-        await prisma.alert.update({
-          where: { id: alertId },
-          data: { emailNotified: true },
-        });
-      } else {
-        logger.warn(`[ALERTS] Email échoué pour l'alerte ${alertId}: ${result.error}`);
-      }
-
-      return result;
-    } catch (error) {
-      logger.error(`[ALERTS] Erreur Email: ${error.message}`);
-      return { success: false, error: error.message };
-    }
-  },
+  sendEmailAlert,
 
   /**
    * Gère l'escalade automatique des alertes critiques non reconnues
    */
-  async handleEscalation() {
-    try {
-      if (!prisma.alertConfiguration) {
-        logger.warn('[ALERTS] prisma.alertConfiguration is undefined. Skipping escalation (Prisma client might need regeneration).');
-        return;
-      }
-      const configs = await prisma.alertConfiguration.findMany({});
-
-      for (const config of configs) {
-        const now = new Date();
-        const escalationThresholdTime = new Date(
-          now.getTime() - config.escalationDelay * 1000
-        );
-
-        // Trouver les alertes non reconnues depuis trop longtemps
-        const alertsToEscalate = await prisma.alert.findMany({
-          where: {
-            organizationId: config.organizationId,
-            severity: { in: ['CRITICAL', 'HIGH'] },
-            status: { in: ['OPEN'] },
-            createdAt: { lt: escalationThresholdTime },
-            escalatedAt: null,
-          },
-        });
-
-        for (const alert of alertsToEscalate) {
-          await prisma.alert.update({
-            where: { id: alert.id },
-            data: {
-              status: 'ESCALATED',
-              escalatedAt: new Date(),
-              escalationLevel: alert.escalationLevel + 1,
-              escalationNotificationSent: true,
-              metadata: {
-                ...(alert.metadata || {}),
-                escalationReason: 'No acknowledgment within threshold',
-                escalationTime: new Date().toISOString(),
-              },
-            },
-          });
-
-          // Re-notifier si la configuration le permet
-          if (config.escalationLoop) {
-            await this.triggerNotifications(alert);
-          }
-
-          logger.info(`[ALERTS] Alert ${alert.id} escalated to level ${alert.escalationLevel + 1}`);
-        }
-      }
-    } catch (err) {
-      logger.error('[ALERTS] handleEscalation error:', err);
-    }
-  },
+  handleEscalation,
 
   /**
    * Crée les alertes IGPP basées sur les KPI du projet
    */
-  async createIGPPAlerts(projectId, kpiData) {
-    try {
-      const project = await prisma.project.findUnique({
-        where: { id: projectId },
-      });
-
-      if (!project) return;
-
-      const config = await prisma.alertConfiguration.findUnique({
-        where: { organizationId: project.organizationId },
-      });
-
-      if (!config) return;
-
-      const alertsToCreate = [];
-
-      // Stock critique
-      if (kpiData.stockAlerts && kpiData.stockAlerts.length > config.stockCritical) {
-        const existingAlert = await prisma.alert.findFirst({
-          where: {
-            projectId,
-            type: 'IGPP_STOCK',
-            status: 'OPEN',
-          },
-        });
-
-        if (!existingAlert) {
-          alertsToCreate.push({
-            organizationId: project.organizationId,
-            projectId,
-            type: 'IGPP_STOCK',
-            severity: 'HIGH',
-            title: `Stock critique détecté (${kpiData.stockAlerts.length} alertes)`,
-            description: `Le nombre d'alertes stock dépasse le seuil de ${config.stockCritical}`,
-            recommendedAction: 'Consulter le dashboard logistique et réapprovisionner',
-            metadata: { alertCount: kpiData.stockAlerts.length },
-            status: 'OPEN',
-          });
-        }
-      }
-
-      // Budget épuisé
-      if (kpiData.budgetUsagePercent && kpiData.budgetUsagePercent > config.budgetThreshold) {
-        const existingAlert = await prisma.alert.findFirst({
-          where: {
-            projectId,
-            type: 'IGPP_BUDGET',
-            status: 'OPEN',
-          },
-        });
-
-        if (!existingAlert) {
-          alertsToCreate.push({
-            organizationId: project.organizationId,
-            projectId,
-            type: 'IGPP_BUDGET',
-            severity: 'HIGH',
-            title: `Budget épuisé à ${kpiData.budgetUsagePercent}%`,
-            description: `L'utilisation du budget dépasse le seuil de ${config.budgetThreshold}%`,
-            recommendedAction: 'Revoir les dépenses ou demander une augmentation de budget',
-            metadata: { usagePercent: kpiData.budgetUsagePercent },
-            status: 'OPEN',
-          });
-        }
-      }
-
-      // Électricité faible
-      if (kpiData.electricityAccess && kpiData.electricityAccess < config.electricityMin) {
-        const existingAlert = await prisma.alert.findFirst({
-          where: {
-            projectId,
-            type: 'IGPP_ELECTRICITY',
-            status: 'OPEN',
-          },
-        });
-
-        if (!existingAlert) {
-          alertsToCreate.push({
-            organizationId: project.organizationId,
-            projectId,
-            type: 'IGPP_ELECTRICITY',
-            severity: 'MEDIUM',
-            title: `Accès électricité faible (${kpiData.electricityAccess}%)`,
-            description: `L'accès électricité est en dessous du seuil de ${config.electricityMin}%`,
-            recommendedAction: 'Vérifier les installations électriques',
-            metadata: { electricityPercent: kpiData.electricityAccess },
-            status: 'OPEN',
-          });
-        }
-      }
-
-      // Créer les alertes en masse
-      if (alertsToCreate.length > 0) {
-        await prisma.alert.createMany({
-          data: alertsToCreate,
-          skipDuplicates: true,
-        });
-
-        logger.info(`[ALERTS] Created ${alertsToCreate.length} IGPP alerts for project ${projectId}`);
-      }
-    } catch (err) {
-      logger.error('[ALERTS] createIGPPAlerts error:', err);
-    }
-  },
+  createIGPPAlerts,
 
   /**
    * Crée une alerte PV automatiquement

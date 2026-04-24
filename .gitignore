@@ -42,6 +42,8 @@ tmp/
 *.jpg
 *.jpeg
 KOBO/
+!backend/src/modules/kobo/
+!backend/src/modules/kobo/koboEngineMaster.js
 backend/osrm_data/
 *.osrm*
 *.mvt

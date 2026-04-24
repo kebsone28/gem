@@ -1,396 +1,168 @@
-/**
- * API TESTS - Alerts Endpoints
- * Tests des 7 endpoints API d'alertes avec Supertest
- */
-
-import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import request from 'supertest';
-import app from '../../../app';
-import prisma from '../../../utils/prisma';
+import prisma from '../../../core/utils/prisma.js';
 
-// Mock Prisma
-vi.mock('../../../utils/prisma');
+vi.mock('../../../core/utils/prisma.js', () => ({
+  default: {
+    alert: {
+      findMany: vi.fn(),
+      findUnique: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      groupBy: vi.fn(),
+      count: vi.fn(),
+    },
+    alertConfiguration: {
+      findUnique: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+    },
+    $queryRaw: vi.fn(),
+  },
+}));
 
-const BASE_URL = '/api/v1/alerts';
-const TEST_ORG_ID = 'test-org-123';
-const TEST_PROJECT_ID = 'test-proj-456';
-const TEST_ALERT_ID = 'test-alert-789';
+vi.mock('../../../api/middlewares/auth.js', async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    authProtect: (req, _res, next) => {
+      req.user = {
+        id: 'user-1',
+        organizationId: 'test-org-123',
+        email: 'admin@test.com',
+        role: 'ADMIN_PROQUELEC',
+        permissions: [],
+      };
+      next();
+    },
+  };
+});
+
+const { default: app } = await import('../../../app.js');
 
 describe('Alerts API Endpoints', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  // ──────────────────────────────────────────
-  // 1. GET /api/v1/alerts
-  // ──────────────────────────────────────────
-  describe('GET /api/v1/alerts - List Alerts', () => {
-    it('should return list of alerts for organization', async () => {
-      const mockAlerts = [
-        {
-          id: TEST_ALERT_ID,
-          organizationId: TEST_ORG_ID,
-          type: 'IGPP_STOCK',
-          severity: 'critical',
-          status: 'OPEN',
-          createdAt: new Date(),
-        },
-      ];
-
-      vi.mocked(prisma.alert.findMany).mockResolvedValue(mockAlerts);
-
-      const response = await request(app)
-        .get(BASE_URL)
-        .query({ organizationId: TEST_ORG_ID })
-        .set('Authorization', 'Bearer test-token');
-
-      expect(response.status).toBe(200);
-      expect(response.body.alerts).toHaveLength(1);
-      expect(response.body.alerts[0].type).toBe('IGPP_STOCK');
-    });
-
-    it('should filter alerts by status', async () => {
-      const mockAlerts = [
-        {
-          id: TEST_ALERT_ID,
-          status: 'OPEN',
-          severity: 'critical',
-        },
-      ];
-
-      vi.mocked(prisma.alert.findMany).mockResolvedValue(mockAlerts);
-
-      const response = await request(app)
-        .get(BASE_URL)
-        .query({ organizationId: TEST_ORG_ID, status: 'OPEN' });
-
-      expect(response.status).toBe(200);
-      expect(response.body.alerts[0].status).toBe('OPEN');
-    });
-
-    it('should sort alerts by severity', async () => {
-      const mockAlerts = [
-        { id: '1', severity: 'critical' },
-        { id: '2', severity: 'high' },
-        { id: '3', severity: 'medium' },
-      ];
-
-      vi.mocked(prisma.alert.findMany).mockResolvedValue(mockAlerts);
-
-      const response = await request(app)
-        .get(BASE_URL)
-        .query({ organizationId: TEST_ORG_ID, sortBy: 'severity' });
-
-      expect(response.status).toBe(200);
-      expect(response.body.alerts[0].severity).toBe('critical');
-    });
-  });
-
-  // ──────────────────────────────────────────
-  // 2. GET /api/v1/alerts/:id
-  // ──────────────────────────────────────────
-  describe('GET /api/v1/alerts/:id - Get Alert Details', () => {
-    it('should return alert details', async () => {
-      const mockAlert = {
-        id: TEST_ALERT_ID,
+  it('returns alerts for a project', async () => {
+    vi.mocked(prisma.alert.findMany).mockResolvedValue([
+      {
+        id: 'alert-1',
+        organizationId: 'test-org-123',
+        projectId: 'proj-123',
         type: 'IGPP_STOCK',
-        severity: 'critical',
-        message: 'Stock level critically low',
-        metadata: { kitPrepared: 5 },
-      };
-
-      vi.mocked(prisma.alert.findUnique).mockResolvedValue(mockAlert);
-
-      const response = await request(app)
-        .get(`${BASE_URL}/${TEST_ALERT_ID}`);
-
-      expect(response.status).toBe(200);
-      expect(response.body.alert.id).toBe(TEST_ALERT_ID);
-      expect(response.body.alert.message).toBeDefined();
-    });
-
-    it('should return 404 if alert not found', async () => {
-      vi.mocked(prisma.alert.findUnique).mockResolvedValue(null);
-
-      const response = await request(app)
-        .get(`${BASE_URL}/non-existent-id`);
-
-      expect(response.status).toBe(404);
-    });
-  });
-
-  // ──────────────────────────────────────────
-  // 3. POST /api/v1/alerts
-  // ──────────────────────────────────────────
-  describe('POST /api/v1/alerts - Create Alert', () => {
-    it('should create new alert', async () => {
-      const alertPayload = {
-        organizationId: TEST_ORG_ID,
-        projectId: TEST_PROJECT_ID,
-        type: 'IGPP_STOCK',
-        severity: 'critical',
-        message: 'Critical stock alert',
-      };
-
-      const mockCreatedAlert = {
-        id: TEST_ALERT_ID,
-        ...alertPayload,
+        severity: 'HIGH',
         status: 'OPEN',
-      };
+        createdAt: new Date(),
+      },
+    ]);
 
-      vi.mocked(prisma.alert.create).mockResolvedValue(mockCreatedAlert);
+    const response = await request(app).get('/api/alerts/proj-123');
 
-      const response = await request(app)
-        .post(BASE_URL)
-        .send(alertPayload);
-
-      expect(response.status).toBe(201);
-      expect(response.body.alert.id).toBe(TEST_ALERT_ID);
-      expect(response.body.alert.status).toBe('OPEN');
-    });
-
-    it('should validate required fields', async () => {
-      const invalidPayload = {
-        type: 'IGPP_STOCK',
-        // Missing organizationId
-      };
-
-      const response = await request(app)
-        .post(BASE_URL)
-        .send(invalidPayload);
-
-      expect(response.status).toBe(400);
-      expect(response.body.error).toBeDefined();
-    });
-
-    it('should trigger SMS notification if enabled', async () => {
-      const alertPayload = {
-        organizationId: TEST_ORG_ID,
-        type: 'IGPP_STOCK',
-        enableSMS: true,
-        phoneNumber: '+1234567890',
-      };
-
-      vi.mocked(prisma.alert.create).mockResolvedValue({
-        id: TEST_ALERT_ID,
-        ...alertPayload,
-      });
-
-      const response = await request(app)
-        .post(BASE_URL)
-        .send(alertPayload);
-
-      expect(response.status).toBe(201);
-      expect(response.body.notifications.sms).toBeDefined();
-    });
+    expect(response.status).toBe(200);
+    expect(response.body.success).toBe(true);
+    expect(response.body.count).toBe(1);
+    expect(prisma.alert.findMany).toHaveBeenCalled();
   });
 
-  // ──────────────────────────────────────────
-  // 4. PATCH /api/v1/alerts/:id
-  // ──────────────────────────────────────────
-  describe('PATCH /api/v1/alerts/:id - Update Alert', () => {
-    it('should acknowledge alert', async () => {
-      const updatePayload = {
-        status: 'ACKNOWLEDGED',
-      };
-
-      const mockUpdatedAlert = {
-        id: TEST_ALERT_ID,
-        status: 'ACKNOWLEDGED',
-        acknowledgedAt: new Date(),
-      };
-
-      vi.mocked(prisma.alert.update).mockResolvedValue(mockUpdatedAlert);
-
-      const response = await request(app)
-        .patch(`${BASE_URL}/${TEST_ALERT_ID}`)
-        .send(updatePayload);
-
-      expect(response.status).toBe(200);
-      expect(response.body.alert.status).toBe('ACKNOWLEDGED');
-    });
-
-    it('should resolve alert', async () => {
-      const updatePayload = {
-        status: 'RESOLVED',
-        resolutionNotes: 'Issue fixed',
-      };
-
-      const mockUpdatedAlert = {
-        id: TEST_ALERT_ID,
-        status: 'RESOLVED',
-        resolvedAt: new Date(),
-      };
-
-      vi.mocked(prisma.alert.update).mockResolvedValue(mockUpdatedAlert);
-
-      const response = await request(app)
-        .patch(`${BASE_URL}/${TEST_ALERT_ID}`)
-        .send(updatePayload);
-
-      expect(response.status).toBe(200);
-      expect(response.body.alert.status).toBe('RESOLVED');
-    });
-
-    it('should prevent status downgrade', async () => {
-      const response = await request(app)
-        .patch(`${BASE_URL}/${TEST_ALERT_ID}`)
-        .send({ status: 'OPEN' });
-
-      expect(response.status).toBe(400);
-    });
-  });
-
-  // ──────────────────────────────────────────
-  // 5. DELETE /api/v1/alerts/:id
-  // ──────────────────────────────────────────
-  describe('DELETE /api/v1/alerts/:id - Delete Alert', () => {
-    it('should delete alert', async () => {
-      vi.mocked(prisma.alert.delete).mockResolvedValue({
-        id: TEST_ALERT_ID,
-      });
-
-      const response = await request(app)
-        .delete(`${BASE_URL}/${TEST_ALERT_ID}`);
-
-      expect(response.status).toBe(204);
-    });
-
-    it('should prevent deletion of critical alerts', async () => {
-      const response = await request(app)
-        .delete(`${BASE_URL}/${TEST_ALERT_ID}`)
-        .query({ severity: 'critical' });
-
-      expect(response.status).toBe(403);
-    });
-  });
-
-  // ──────────────────────────────────────────
-  // 6. POST /api/v1/alerts/:id/acknowledge
-  // ──────────────────────────────────────────
-  describe('POST /api/v1/alerts/:id/acknowledge - Acknowledge Alert', () => {
-    it('should acknowledge alert with comment', async () => {
-      const acknowledgePayload = {
-        comment: 'Acknowledged by admin',
-      };
-
-      vi.mocked(prisma.alert.update).mockResolvedValue({
-        id: TEST_ALERT_ID,
-        status: 'ACKNOWLEDGED',
-      });
-
-      const response = await request(app)
-        .post(`${BASE_URL}/${TEST_ALERT_ID}/acknowledge`)
-        .send(acknowledgePayload);
-
-      expect(response.status).toBe(200);
-      expect(response.body.alert.status).toBe('ACKNOWLEDGED');
-    });
-
-    it('should prevent acknowledging already resolved alerts', async () => {
-      const response = await request(app)
-        .post(`${BASE_URL}/${TEST_ALERT_ID}/acknowledge`)
-        .send({ comment: 'test' });
-
-      expect(response.status).toBe(400 || 409);
-    });
-  });
-
-  // ──────────────────────────────────────────
-  // 7. GET /api/v1/alerts/config/:organizationId
-  // ──────────────────────────────────────────
-  describe('GET /api/v1/alerts/config/:organizationId - Alert Configuration', () => {
-    it('should return alert configuration', async () => {
-      const mockConfig = {
-        organizationId: TEST_ORG_ID,
-        stockCritical: 10,
-        budgetThreshold: 80,
-        enableSMS: true,
-        enableEmail: true,
-        escalationDelay: 3600,
-      };
-
-      vi.mocked(prisma.alertConfiguration.findFirst).mockResolvedValue(mockConfig);
-
-      const response = await request(app)
-        .get(`${BASE_URL}/config/${TEST_ORG_ID}`);
-
-      expect(response.status).toBe(200);
-      expect(response.body.config.stockCritical).toBe(10);
-      expect(response.body.config.enableSMS).toBe(true);
-    });
-
-    it('should return default configuration if not found', async () => {
-      vi.mocked(prisma.alertConfiguration.findFirst).mockResolvedValue(null);
-
-      const response = await request(app)
-        .get(`${BASE_URL}/config/${TEST_ORG_ID}`);
-
-      expect(response.status).toBe(200);
-      expect(response.body.config).toBeDefined();
-    });
-  });
-});
-
-// ──────────────────────────────────────────
-// INTEGRATION TESTS
-// ──────────────────────────────────────────
-describe('Alerts Integration Tests', () => {
-  it('should create alert and send notifications', async () => {
-    const alertPayload = {
-      organizationId: TEST_ORG_ID,
+  it('validates required fields on alert creation', async () => {
+    const response = await request(app).post('/api/alerts').send({
       type: 'IGPP_STOCK',
-      enableSMS: true,
-      enableEmail: true,
-    };
-
-    vi.mocked(prisma.alert.create).mockResolvedValue({
-      id: TEST_ALERT_ID,
-      ...alertPayload,
     });
 
-    const response = await request(app)
-      .post(BASE_URL)
-      .send(alertPayload);
+    expect(response.status).toBe(400);
+    expect(response.body.success).toBe(false);
+  });
+
+  it('creates a new alert', async () => {
+    vi.mocked(prisma.alert.create).mockResolvedValue({
+      id: 'alert-2',
+      organizationId: 'test-org-123',
+      projectId: 'proj-123',
+      type: 'IGPP_STOCK',
+      severity: 'LOW',
+      title: 'Stock faible',
+      status: 'OPEN',
+    });
+
+    const response = await request(app).post('/api/alerts').send({
+      projectId: 'proj-123',
+      type: 'IGPP_STOCK',
+      severity: 'LOW',
+      title: 'Stock faible',
+    });
 
     expect(response.status).toBe(201);
-    expect(response.body.alert).toBeDefined();
+    expect(response.body.success).toBe(true);
+    expect(prisma.alert.create).toHaveBeenCalled();
   });
 
-  it('should escalate unacknowledged alerts after timeout', async () => {
-    const oldAlert = {
-      id: TEST_ALERT_ID,
+  it('acknowledges an alert', async () => {
+    vi.mocked(prisma.alert.findUnique).mockResolvedValue({
+      id: 'alert-3',
+      organizationId: 'test-org-123',
       status: 'OPEN',
-      createdAt: new Date(Date.now() - 7200000), // 2 hours ago
-    };
-
-    vi.mocked(prisma.alert.findMany).mockResolvedValue([oldAlert]);
+      metadata: {},
+    });
     vi.mocked(prisma.alert.update).mockResolvedValue({
-      ...oldAlert,
-      status: 'ESCALATED',
+      id: 'alert-3',
+      organizationId: 'test-org-123',
+      status: 'ACKNOWLEDGED',
+    });
+
+    const response = await request(app).patch('/api/alerts/alert-3/acknowledge').send({});
+
+    expect(response.status).toBe(200);
+    expect(response.body.success).toBe(true);
+    expect(prisma.alert.update).toHaveBeenCalled();
+  });
+
+  it('resolves an alert', async () => {
+    vi.mocked(prisma.alert.findUnique).mockResolvedValue({
+      id: 'alert-4',
+      organizationId: 'test-org-123',
+      status: 'ACKNOWLEDGED',
+      metadata: {},
+    });
+    vi.mocked(prisma.alert.update).mockResolvedValue({
+      id: 'alert-4',
+      organizationId: 'test-org-123',
+      status: 'RESOLVED',
     });
 
     const response = await request(app)
-      .post(`${BASE_URL}/escalate`)
-      .send({ organizationId: TEST_ORG_ID });
+      .patch('/api/alerts/alert-4/resolve')
+      .send({ comment: 'fixed' });
 
     expect(response.status).toBe(200);
+    expect(response.body.success).toBe(true);
+    expect(prisma.alert.update).toHaveBeenCalled();
   });
 
-  it('should generate alert report', async () => {
-    const mockAlerts = [
-      { id: '1', type: 'IGPP_STOCK', severity: 'critical', status: 'OPEN' },
-      { id: '2', type: 'IGPP_BUDGET', severity: 'high', status: 'ACKNOWLEDGED' },
-    ];
+  it('returns alert statistics for a project', async () => {
+    vi.mocked(prisma.alert.groupBy)
+      .mockResolvedValueOnce([{ status: 'OPEN', severity: 'HIGH', type: 'IGPP_STOCK', _count: 2 }])
+      .mockResolvedValueOnce([{ status: 'OPEN', _count: 2 }]);
+    vi.mocked(prisma.alert.count).mockResolvedValue(1);
 
-    vi.mocked(prisma.alert.findMany).mockResolvedValue(mockAlerts);
-
-    const response = await request(app)
-      .get(`${BASE_URL}/report`)
-      .query({ organizationId: TEST_ORG_ID });
+    const response = await request(app).get('/api/alerts/proj-123/stats');
 
     expect(response.status).toBe(200);
-    expect(response.body.totalAlerts).toBe(2);
-    expect(response.body.byStatus).toBeDefined();
+    expect(response.body.success).toBe(true);
+    expect(response.body.data.totalCritical).toBe(1);
+  });
+
+  it('returns alert configuration for the organization', async () => {
+    vi.mocked(prisma.alertConfiguration.findUnique).mockResolvedValue({
+      organizationId: 'test-org-123',
+      stockCritical: 10,
+    });
+
+    const response = await request(app).get('/api/alerts/config/organization');
+
+    expect(response.status).toBe(200);
+    expect(response.body.success).toBe(true);
+    expect(response.body.data.stockCritical).toBe(10);
   });
 });

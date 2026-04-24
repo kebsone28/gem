@@ -4,12 +4,12 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import prisma from '../../../../utils/prisma';
+import prisma from '../../../core/utils/prisma.js';
 import { sendSMSAlert, sendEmailAlert, handleEscalation, createIGPPAlerts } from '../alerts.service';
-import * as notificationProviders from '../../../services/notificationProviders';
+import * as notificationProviders from '../../../services/notificationProviders.js';
 
 // Mock Prisma
-vi.mock('../../../../utils/prisma', () => ({
+vi.mock('../../../core/utils/prisma.js', () => ({
   default: {
     alert: {
       create: vi.fn(),
@@ -29,7 +29,7 @@ vi.mock('../../../../utils/prisma', () => ({
 }));
 
 // Mock notification providers
-vi.mock('../../../services/notificationProviders', () => ({
+vi.mock('../../../services/notificationProviders.js', () => ({
   sendSMSViaProvider: vi.fn(),
   sendEmailViaProvider: vi.fn(),
   getNotificationStatus: vi.fn(),
@@ -154,6 +154,10 @@ describe('Alerts Service - SMS & Email', () => {
 });
 
 describe('Alerts Service - Escalation', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   describe('handleEscalation', () => {
     it('should escalate alert when threshold exceeded', async () => {
       const alertId = 'alert-esc-001';
@@ -209,6 +213,10 @@ describe('Alerts Service - Escalation', () => {
 });
 
 describe('Alerts Service - IGPP KPI', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   describe('createIGPPAlerts', () => {
     it('should create stock critical alert when threshold exceeded', async () => {
       const projectId = 'proj-123';
@@ -297,7 +305,7 @@ describe('Alerts Service - IGPP KPI', () => {
         },
       });
 
-      expect(prisma.alert.create).toHaveBeenCalledTimes(expect.any(Number));
+      expect(prisma.alert.create).toHaveBeenCalled();
     });
 
     it('should not create duplicate alerts', async () => {

@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/exhaustive-deps */
-import { useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -83,6 +83,12 @@ export default function Sidebar() {
       window.localStorage.setItem('gem-sidebar-density', nextMode === 'wide' ? 'wide' : 'compact');
     }
   };
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    document.documentElement.dataset.gemSidebarMode = sidebarMode;
+    window.dispatchEvent(new CustomEvent('gem:sidebar-mode-change', { detail: { mode: sidebarMode } }));
+  }, [sidebarMode]);
 
   interface NavItem {
     to: string;
@@ -307,7 +313,7 @@ export default function Sidebar() {
       </button>
 
       <aside
-        className={`fixed lg:static inset-y-0 left-0 z-50 flex w-[22.75rem] max-w-[94vw] flex-col border-r border-white/8 bg-[radial-gradient(circle_at_top,#0b1531_0%,#070b1f_48%,#030712_100%)] shadow-2xl transition-transform duration-500 ${asideWidthClass} ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}
+        className={`fixed lg:static inset-y-0 left-0 z-50 flex w-[22.75rem] max-w-[94vw] flex-col border-r border-white/8 bg-[radial-gradient(circle_at_top,#0b1531_0%,#070b1f_48%,#030712_100%)] shadow-2xl transition-[width,transform] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${asideWidthClass} ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}
       >
         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(59,130,246,0.08),transparent_18%,transparent_78%,rgba(15,23,42,0.45))] pointer-events-none" />
         <div className="pointer-events-none absolute inset-x-3 bottom-3 top-3 rounded-[1.75rem] border border-white/6 bg-white/[0.02] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] lg:inset-x-4 lg:bottom-4 lg:top-4 lg:rounded-[2rem]" />
@@ -501,7 +507,7 @@ export default function Sidebar() {
                       title={item.title}
                       onClick={() => setMobileOpen(false)}
                       className={({ isActive }) => `
-                      group relative flex items-center overflow-hidden rounded-2xl transition-all duration-300
+                      group relative flex items-center overflow-visible rounded-2xl transition-all duration-300
                       ${
                         isActive
                           ? 'border border-blue-500/20 bg-blue-500/10 text-white shadow-[0_12px_30px_rgba(37,99,235,0.12)]'
@@ -534,6 +540,12 @@ export default function Sidebar() {
                               }`}
                             />
                           </div>
+                          {isRailDesktop && (
+                            <div className="pointer-events-none absolute left-[calc(100%+0.8rem)] top-1/2 z-30 hidden -translate-y-1/2 whitespace-nowrap rounded-xl border border-white/10 bg-slate-950/95 px-3 py-2 text-[11px] font-semibold tracking-[0.08em] text-white shadow-[0_18px_40px_rgba(2,6,23,0.45)] backdrop-blur-md group-hover:block">
+                              {item.label}
+                              <div className="absolute left-[-5px] top-1/2 h-2.5 w-2.5 -translate-y-1/2 rotate-45 border-b border-l border-white/10 bg-slate-950/95" />
+                            </div>
+                          )}
                           {!isRailDesktop && (
                             <div className="relative z-10 min-w-0 flex-1">
                               <span className={`block ${isCompactDesktop ? 'truncate' : 'line-clamp-2'} text-[12.5px] font-semibold tracking-[0.04em] lg:text-[13px] lg:tracking-[0.06em] ${
