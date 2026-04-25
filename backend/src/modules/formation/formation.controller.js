@@ -867,6 +867,201 @@ function validatePlanSessionShape(session) {
   return null;
 }
 
+function getPlannerCoveredDates(startDate, endDate, includeSaturday, blockedDates, includeSunday = false) {
+  return buildDateRange(startDate, endDate).filter(dateValue => {
+    const parsed = parsePlannerDate(dateValue);
+    return parsed ? isWorkingDay(parsed, includeSaturday, blockedDates, includeSunday) : false;
+  });
+}
+
+function buildValidatedPreviewSession({
+  sourceSession,
+  updates,
+  plannerConfig,
+  trainers,
+  rooms,
+  planSessions,
+}) {
+  if (!sourceSession) {
+    throw new Error('Session prévisionnelle introuvable');
+  }
+
+  const includeSaturday = plannerConfig?.includeSaturday === true;
+  const equipmentPerParticipant = Math.max(1, Number(plannerConfig?.equipmentPerParticipant || 1));
+  const equipmentPool = Math.max(0, Number(plannerConfig?.equipmentPool || 0));
+  const maxParticipantsPerSession = Math.max(
+    1,
+    Number(plannerConfig?.maxParticipantsPerSession || sourceSession.participants || 1)
+  );
+  const blockedDates = new Set([
+    ...parseDateList(plannerConfig?.blockedDatesText),
+    ...parseDateList(plannerConfig?.holidaysText),
+  ]);
+
+  const activeTrainers = normalizePlannerResources(trainers, 'trainers').filter(item => item.active);
+  const activeRooms = normalizePlannerResources(rooms, 'rooms').filter(item => item.active);
+
+  const nextRegion = String(updates?.region || sourceSession.region || '');
+  if (!SENEGAL_REGIONS.includes(nextRegion)) {
+    throw new Error('Région invalide');
+  }
+
+  const nextParticipants = Math.max(
+    1,
+    Number(updates?.participants ?? sourceSession.participants ?? sourceSession.maxParticipants ?? 1)
+  );
+  const nextStartDate = String(updates?.startDate || sourceSession.startDate || '');
+  if (!parsePlannerDate(nextStartDate)) {
+    throw new Error('Date de démarrage invalide');
+  }
+
+  const room = activeRooms.find(item => item.id === String(updates?.roomId || sourceSession.roomId || ''));
+  if (!room) {
+    throw new Error('Salle invalide ou inactive');
+  }
+
+  const trainer = activeTrainers.find(item => item.id === String(updates?.trainerId || sourceSession.trainerId || ''));
+  if (!trainer) {
+    throw new Error('Formateur invalide ou inactif');
+  }
+
+  if (room.capacity < nextParticipants) {
+    throw new Error(`Capacité de salle insuffisante (${room.capacity})`);
+  }
+
+  const equipmentNeeded = nextParticipants * equipmentPerParticipant;
+  if (equipmentNeeded > equipmentPool) {
+    throw new Error("Stock d'équipements insuffisant pour cette session");
+  }
+
+  const normalizedModules = Array.isArray(sourceSession.modules)
+    ? sourceSession.modules.map((module, index) => ({
+        moduleId: String(module.moduleId || `module-${index}`),
+        name: module.name || module.moduleName || 'Module',
+        duration: Math.max(1, Number(module.duration || 1)),
+      }))
+    : [];
+
+  if (normalizedModules.length === 0) {
+    throw new Error('Modules de session manquants');
+  }
+
+  const totalModuleDays = normalizedModules.reduce((sum, module) => sum + module.duration, 0);
+  const endDate = computeSessionEndDate(nextStartDate, totalModuleDays, includeSaturday, blockedDates);
+  const coveredDates = getPlannerCoveredDates(nextStartDate, endDate, includeSaturday, blockedDates);
+  const trainerUnavailable = new Set(trainer.unavailableDates);
+  const roomUnavailable = new Set(room.unavailableDates);
+
+  if (coveredDates.some(dateValue => trainerUnavailable.has(dateValue))) {
+    throw new Error('Le formateur est indisponible sur la période choisie');
+  }
+  if (coveredDates.some(dateValue => roomUnavailable.has(dateValue))) {
+    throw new Error('La salle est indisponible sur la période choisie');
+  }
+
+  const conflictingSession = (planSessions || []).find(session => {
+    if (!session || session.id === sourceSession.id) return false;
+
+    const otherModules = Array.isArray(session.modules)
+      ? session.modules.map(module => ({
+          duration: Math.max(1, Number(module?.duration || 1)),
+        }))
+      : [];
+    const otherEndDate =
+      session.endDate ||
+      computeSessionEndDate(
+        String(session.startDate || ''),
+        otherModules.reduce((sum, module) => sum + module.duration, 0),
+        includeSaturday,
+        blockedDates
+      );
+    const otherCoveredDates = getPlannerCoveredDates(
+      String(session.startDate || ''),
+      otherEndDate,
+      includeSaturday,
+      blockedDates
+    );
+    const overlap = coveredDates.some(dateValue => otherCoveredDates.includes(dateValue));
+    if (!overlap) return false;
+
+    const roomConflict =
+      String(session.roomId || '') === room.id ||
+      String(session.roomName || session.salle || '').trim().toLowerCase() === room.name.trim().toLowerCase();
+    const trainerConflict =
+      String(session.trainerId || '') === trainer.id ||
+      String(session.trainerName || '').trim().toLowerCase() === trainer.name.trim().toLowerCase();
+
+    return roomConflict || trainerConflict;
+  });
+
+  if (conflictingSession) {
+    throw new Error(
+      `Conflit avec ${conflictingSession.region || 'une autre région'} session ${conflictingSession.indexInRegion || '?'}`
+    );
+  }
+
+  return {
+    ...sourceSession,
+    region: nextRegion,
+    participants: nextParticipants,
+    startDate: nextStartDate,
+    endDate,
+    durationDays: diffDaysInclusive(nextStartDate, endDate),
+    trainerId: trainer.id,
+    trainerName: trainer.name,
+    roomId: room.id,
+    roomName: room.name,
+    fillRate: Math.round((nextParticipants / maxParticipantsPerSession) * 100),
+    equipmentNeeded,
+    modules: normalizedModules,
+  };
+}
+
+function validateCommittedPlanSessions(planSessions, workSaturday, workSunday) {
+  const blockedDates = new Set();
+  const roomOccupation = new Map();
+  const trainerOccupation = new Map();
+
+  for (const session of [...planSessions].sort((a, b) => String(a.startDate).localeCompare(String(b.startDate)))) {
+    const validationError = validatePlanSessionShape(session);
+    if (validationError) return validationError;
+
+    const normalizedDuration = getSessionTotalDays(session);
+    const computedEndDate = formatIsoDate(
+      calculateEndDate(new Date(session.startDate), normalizedDuration, workSaturday, workSunday)
+    );
+    const coveredDates = getPlannerCoveredDates(
+      String(session.startDate),
+      computedEndDate,
+      workSaturday,
+      blockedDates,
+      workSunday
+    );
+
+    const roomKey = String(session.roomName || session.salle || '').trim().toLowerCase();
+    if (roomKey) {
+      const occupied = roomOccupation.get(roomKey) || new Set();
+      if (coveredDates.some(dateValue => occupied.has(dateValue))) {
+        return `Conflit de salle détecté pour ${session.roomName || session.salle}`;
+      }
+      coveredDates.forEach(dateValue => occupied.add(dateValue));
+      roomOccupation.set(roomKey, occupied);
+    }
+
+    const trainerKey = String(session.trainerName || '').trim().toLowerCase();
+    if (trainerKey) {
+      const occupied = trainerOccupation.get(trainerKey) || new Set();
+      if (coveredDates.some(dateValue => occupied.has(dateValue))) {
+        return `Conflit de formateur détecté pour ${session.trainerName}`;
+      }
+      coveredDates.forEach(dateValue => occupied.add(dateValue));
+      trainerOccupation.set(trainerKey, occupied);
+    }
+  }
+
+  return null;
+}
+
 async function generatePlannerPreview(body) {
   const plannerConfig = body?.plannerConfig || {};
   const selectedRegions = normalizePlannerRegions(body?.regions);
@@ -1067,6 +1262,34 @@ export const planify = async (req, res) => {
   } catch (error) {
     logger.error('[FORMATION_PLANIFY_ERROR]', error);
     res.status(400).json({ error: error?.message || 'Erreur lors de la génération du planning' });
+  }
+};
+
+/**
+ * POST /api/formations/planify/validate-preview-session
+ * Revalide une édition locale de session preview avec les mêmes règles que le moteur backend.
+ */
+export const validatePreviewSessionEdit = async (req, res) => {
+  try {
+    const { sessionId, updates, plan, plannerConfig, trainers, rooms } = req.body || {};
+    if (!sessionId || !plan || !Array.isArray(plan.sessions)) {
+      return res.status(400).json({ error: 'Session preview et plan courant requis' });
+    }
+
+    const sourceSession = plan.sessions.find(session => session.id === sessionId);
+    const session = buildValidatedPreviewSession({
+      sourceSession,
+      updates: updates || {},
+      plannerConfig: plannerConfig || {},
+      trainers,
+      rooms,
+      planSessions: plan.sessions,
+    });
+
+    return res.json({ session });
+  } catch (error) {
+    logger.error('[FORMATION_VALIDATE_PREVIEW_SESSION_ERROR]', error);
+    return res.status(400).json({ error: error?.message || 'Validation de session impossible' });
   }
 };
 
@@ -1635,6 +1858,11 @@ export const commitPlanify = async (req, res) => {
 
     const workSaturday = options?.workSaturday === true;
     const workSunday = options?.workSunday === true;
+    const planConflictError = validateCommittedPlanSessions(plan.sessions, workSaturday, workSunday);
+    if (planConflictError) {
+      return res.status(400).json({ error: planConflictError });
+    }
+
     const created = await prisma.$transaction(async tx => {
       const createdSessions = [];
 
@@ -1714,6 +1942,6 @@ export default {
   getSessions, createSession, updateSession, deleteSession,
   addModuleToSession, removeModuleFromSession,
   addParticipant, removeParticipant, toggleAttendance,
-  getRegions, planify, exportPlanify, commitPlanify, getPlanning, getStats, getPlannerState, savePlannerState, bulkCreateSessions,
+  getRegions, planify, validatePreviewSessionEdit, exportPlanify, commitPlanify, getPlanning, getStats, getPlannerState, savePlannerState, bulkCreateSessions,
   getHistory, createHistoryEntry, clearHistory, cascadeRescheduleSession
 };
