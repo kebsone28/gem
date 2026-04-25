@@ -31,7 +31,13 @@ import { useAuth } from '../contexts/AuthContext';
 import { useSync } from '../hooks/useSync';
 import { usePermissions } from '../hooks/usePermissions';
 import { motion } from 'framer-motion';
-import { normalizeRole, ROLES, isMasterAdmin, getMissionLabel } from '../utils/permissions';
+import {
+  normalizeRole,
+  ROLES,
+  isMasterAdmin,
+  getMissionLabel,
+  type UserRole,
+} from '../utils/permissions';
 import { useProject } from '../contexts/ProjectContext';
 import { NotificationCenter } from './layout';
 
@@ -48,7 +54,7 @@ export default function Sidebar() {
   const { peut, PERMISSIONS } = usePermissions();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [sidebarMode, setSidebarMode] = useState<'wide' | 'compact' | 'rail'>(() => {
-    if (typeof window === 'undefined') return false;
+    if (typeof window === 'undefined') return 'wide';
     const storedMode = window.localStorage.getItem('gem-sidebar-mode');
     if (storedMode === 'wide' || storedMode === 'compact' || storedMode === 'rail') return storedMode;
     return window.localStorage.getItem('gem-sidebar-density') === 'compact' ? 'compact' : 'wide';
@@ -58,12 +64,18 @@ export default function Sidebar() {
   const nRole = useMemo(() => normalizeRole(user?.role), [user?.role]);
   const isMaster = useMemo(() => isMasterAdmin(user), [user]);
   const missionLabel = getMissionLabel(user);
-  const roleLabels = useMemo(() => ({
+  const roleLabels = useMemo<Partial<Record<UserRole, string>>>(() => ({
     [ROLES.ADMIN]: 'Admin',
+    [ROLES.ADMIN_ALT]: 'Admin',
     [ROLES.DG]: 'Direction générale',
+    [ROLES.DG_ALT]: 'Direction générale',
+    [ROLES.DIRECTEUR]: 'Direction générale',
     [ROLES.CLIENT_LSE]: 'Client LSE',
     [ROLES.CHEF_EQUIPE]: "Chef d'équipe",
+    [ROLES.CHEF_CHANTIER]: "Chef d'équipe",
+    [ROLES.CHEF]: "Chef d'équipe",
     [ROLES.CHEF_PROJET]: 'Chef de projet',
+    [ROLES.CHEF_PROJET_ALT]: 'Chef de projet',
     [ROLES.COMPTABLE]: 'Comptable',
   }), []);
   const roleDisplay = (nRole && roleLabels[nRole]) || user?.role || 'Utilisateur';

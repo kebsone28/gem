@@ -818,9 +818,30 @@ export const DataHubModal: React.FC<DataHubModalProps> = ({ isOpen, onClose }) =
                               userEmail?.includes('admin@proquelec.com');
 
                             return (
-                              <button
+                              <div
                                 key={p.id}
+                                role="button"
+                                tabIndex={0}
                                 onClick={async () => {
+                                  if (isActive) return;
+                                  if (!canSwitch) {
+                                    toast.error(
+                                      "Seuls l'Admin, le DG ou le Comptable peuvent changer d'espace de travail."
+                                    );
+                                    return;
+                                  }
+                                  const confirmed = await showConfirm(
+                                    'Changer de projet',
+                                    `Voulez-vous basculer sur le projet "${p.name}" ?`
+                                  );
+                                  if (confirmed) {
+                                    setActiveProjectId(p.id);
+                                    toast.success(`Direction le projet : ${p.name}`);
+                                  }
+                                }}
+                                onKeyDown={async (event) => {
+                                  if (event.key !== 'Enter' && event.key !== ' ') return;
+                                  event.preventDefault();
                                   if (isActive) return;
                                   if (!canSwitch) {
                                     toast.error(
@@ -930,7 +951,7 @@ export const DataHubModal: React.FC<DataHubModalProps> = ({ isOpen, onClose }) =
                                     </span>
                                   </div>
                                 </div>
-                              </button>
+                              </div>
                             );
                           })}
                       </div>

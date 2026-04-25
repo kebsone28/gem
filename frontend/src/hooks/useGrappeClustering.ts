@@ -16,7 +16,6 @@ export const useGrappeClustering = (households: Household[] | undefined) => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   const clusterWorker = useMemo(
-    // @ts-expect-error - Vite specific URL syntax
     () => new Worker(new URL('../workers/clusterWorker.ts', import.meta.url), { type: 'module' }),
     []
   );

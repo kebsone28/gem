@@ -242,7 +242,7 @@ export function useLogistique(serverHouseholds?: Household[]) {
   }, [warehouseStats]);
 
   const movementHistory = useMemo(
-    () => (project?.config?.logistique?.history || []) as MovementHistoryEntry[],
+    () => (project?.config?.logistique?.history || []) as unknown as MovementHistoryEntry[],
     [project]
   );
 
@@ -254,20 +254,21 @@ export function useLogistique(serverHouseholds?: Household[]) {
     const newConfig = { ...project.config };
     const logistique = newConfig.logistique || { history: [] };
 
-    const newHistory = [
-      {
+    const newEntry: MovementHistoryEntry = {
         id: `mov_${Date.now()}`,
         timestamp: new Date().toISOString(),
         type,
-        ...details,
-      },
-      ...(logistique.history || []),
+        ...(details as Partial<MovementHistoryEntry>),
+      };
+    const newHistory: MovementHistoryEntry[] = [
+      newEntry,
+      ...((logistique.history || []) as unknown as MovementHistoryEntry[]),
     ];
 
     // Keep only last 200 moves to avoid bloat
     newConfig.logistique = {
       ...logistique,
-      history: newHistory.slice(0, 200) as MovementHistoryEntry[],
+      history: newHistory.slice(0, 200),
     };
 
     await updateProject({ config: newConfig }, project.id);
@@ -383,7 +384,7 @@ export function useLogistique(serverHouseholds?: Household[]) {
           .map(
             (t) => (t as Team & { type?: string }).type || t.tradeKey
           )
-          .filter(Boolean)
+          .filter((trade): trade is string => typeof trade === "string" && trade.length > 0)
       )
     );
     if (trades.length === 0) return 0;
@@ -485,7 +486,7 @@ export function useLogistique(serverHouseholds?: Household[]) {
     const updated = warehouses.map((wh) => {
       if (wh.id !== warehouseId) return wh;
       const teams = [...(wh.preparatorTeams || [])];
-      const sysIdx = teams.findIndex((t: Record<string, unknown>) => t.teamId === 'supply_system');
+      const sysIdx = teams.findIndex((team) => team.teamId === 'supply_system');
       const loading = { date: today, kitsLoaded: kitsCount, isEntry: true };
 
       if (sysIdx >= 0) {

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle,
   Calendar,
@@ -34,9 +34,12 @@ import {
   type FormationExpertQuestion,
   type FormationExpertReplyOption,
 } from '../services/formationExpertEngine';
+import './PlanningFormation.css';
 
 const API_BASE = '/api/formations';
 const AI_STRUCTURED_QUESTION_IDS = ['regional_volumes', 'modules', 'start_date', 'delivery_mode'] as const;
+const MAX_TIMELINE_DAYS_CLASS = 60;
+const MAX_TIMELINE_ROWS_CLASS = 40;
 
 const SENEGAL_REGIONS = [
   'Dakar',
@@ -2427,6 +2430,8 @@ export default function PlanningFormation() {
                                     <input
                                       type="checkbox"
                                       checked={region.selected}
+                                      aria-label={`Activer la région ${region.region}`}
+                                      title={`Activer la région ${region.region}`}
                                       onChange={(event) =>
                                         handleRegionChange(region.region, { selected: event.target.checked })
                                       }
@@ -2439,6 +2444,8 @@ export default function PlanningFormation() {
                                     type="number"
                                     min="0"
                                     value={region.participants}
+                                    aria-label={`Nombre de participants pour ${region.region}`}
+                                    title={`Participants pour ${region.region}`}
                                     onChange={(event) =>
                                       handleRegionChange(region.region, {
                                         participants: Math.max(0, Number(event.target.value || 0)),
@@ -2500,6 +2507,8 @@ export default function PlanningFormation() {
                                     <input
                                       type="checkbox"
                                       checked={checked}
+                                      aria-label={`Sélectionner le module ${module.name}`}
+                                      title={`Sélectionner le module ${module.name}`}
                                       onChange={(event) =>
                                         setSelectedModuleIds((current) =>
                                           event.target.checked
@@ -2554,6 +2563,8 @@ export default function PlanningFormation() {
                           <input
                             type="date"
                             value={plannerConfig.startDate}
+                            aria-label="Date de démarrage"
+                            title="Date de démarrage"
                             onChange={(event) =>
                               setPlannerConfig((current) => ({ ...current, startDate: event.target.value }))
                             }
@@ -2591,6 +2602,8 @@ export default function PlanningFormation() {
                               type="radio"
                               name="planner-delivery-mode"
                               checked={plannerDeliveryMode === 'single'}
+                              aria-label="Mode un seul formateur"
+                              title="Un seul formateur"
                               onChange={() => setPlannerDeliveryMode('single')}
                             />
                             <span>
@@ -2607,6 +2620,8 @@ export default function PlanningFormation() {
                               type="radio"
                               name="planner-delivery-mode"
                               checked={plannerDeliveryMode === 'multiple'}
+                              aria-label="Mode plusieurs formateurs"
+                              title="Plusieurs formateurs"
                               onChange={() => setPlannerDeliveryMode('multiple')}
                             />
                             <span>
@@ -2949,6 +2964,8 @@ export default function PlanningFormation() {
                   <input
                     type="date"
                     value={plannerConfig.startDate}
+                    aria-label="Date de démarrage globale"
+                    title="Date de démarrage globale"
                     onChange={(event) =>
                       setPlannerConfig((current) => ({ ...current, startDate: event.target.value }))
                     }
@@ -2960,6 +2977,8 @@ export default function PlanningFormation() {
                     type="number"
                     min="1"
                     value={plannerConfig.maxParticipantsPerSession}
+                    aria-label="Capacité maximale par session"
+                    title="Capacité maximale par session"
                     onChange={(event) =>
                       setPlannerConfig((current) => ({
                         ...current,
@@ -2974,6 +2993,8 @@ export default function PlanningFormation() {
                     type="number"
                     min="0"
                     value={plannerConfig.daysBetweenSessions}
+                    aria-label="Délai entre les sessions"
+                    title="Délai entre les sessions"
                     onChange={(event) =>
                       setPlannerConfig((current) => ({
                         ...current,
@@ -2988,6 +3009,8 @@ export default function PlanningFormation() {
                     <input
                       type="checkbox"
                       checked={plannerConfig.includeSaturday}
+                      aria-label="Inclure le samedi dans le calcul"
+                      title="Inclure le samedi dans le calcul"
                       onChange={(event) =>
                         setPlannerConfig((current) => ({
                           ...current,
@@ -3056,6 +3079,8 @@ export default function PlanningFormation() {
                             <input
                               type="checkbox"
                               checked={checked}
+                              aria-label={`Sélectionner le module ${module.name}`}
+                              title={`Sélectionner le module ${module.name}`}
                               onChange={(event) =>
                                 setSelectedModuleIds((current) =>
                                   event.target.checked
@@ -3100,6 +3125,8 @@ export default function PlanningFormation() {
                       type="number"
                       min="1"
                       value={plannerConfig.equipmentPool}
+                      aria-label="Stock total d'équipements"
+                      title="Stock total d'équipements"
                       onChange={(event) =>
                         setPlannerConfig((current) => ({
                           ...current,
@@ -3114,6 +3141,8 @@ export default function PlanningFormation() {
                       type="number"
                       min="1"
                       value={plannerConfig.equipmentPerParticipant}
+                      aria-label="Équipements par stagiaire"
+                      title="Équipements par stagiaire"
                       onChange={(event) =>
                         setPlannerConfig((current) => ({
                           ...current,
@@ -3145,6 +3174,8 @@ export default function PlanningFormation() {
                       <input
                         type="checkbox"
                         checked={region.selected}
+                        aria-label={`Activer la région ${region.region}`}
+                        title={`Activer la région ${region.region}`}
                         onChange={(event) =>
                           handleRegionChange(region.region, { selected: event.target.checked })
                         }
@@ -3159,6 +3190,8 @@ export default function PlanningFormation() {
                         type="number"
                         min="0"
                         value={region.participants}
+                        aria-label={`Stagiaires ${region.region}`}
+                        title={`Stagiaires ${region.region}`}
                         onChange={(event) =>
                           handleRegionChange(region.region, {
                             participants: Math.max(0, Number(event.target.value || 0)),
@@ -3233,6 +3266,8 @@ export default function PlanningFormation() {
                         <input
                           type="checkbox"
                           checked={region.selected}
+                          aria-label={`Activer la région ${region.region}`}
+                          title={`Activer la région ${region.region}`}
                           onChange={(event) =>
                             handleRegionChange(region.region, { selected: event.target.checked })
                           }
@@ -3244,6 +3279,8 @@ export default function PlanningFormation() {
                           type="number"
                           min="0"
                           value={region.participants}
+                          aria-label={`Nombre de participants pour ${region.region}`}
+                          title={`Participants pour ${region.region}`}
                           onChange={(event) =>
                             handleRegionChange(region.region, {
                               participants: Math.max(0, Number(event.target.value || 0)),
@@ -3313,6 +3350,8 @@ export default function PlanningFormation() {
                       <input
                         type="text"
                         value={trainer.name}
+                        aria-label={`Nom du formateur ${trainer.name}`}
+                        title={`Nom du formateur ${trainer.name}`}
                         onChange={(event) => handleTrainerChange(trainer.id, { name: event.target.value })}
                         className={inputClassName}
                       />
@@ -3320,6 +3359,8 @@ export default function PlanningFormation() {
                         <input
                           type="checkbox"
                           checked={trainer.active}
+                          aria-label={`Activer le formateur ${trainer.name}`}
+                          title={`Activer le formateur ${trainer.name}`}
                           onChange={(event) =>
                             handleTrainerChange(trainer.id, { active: event.target.checked })
                           }
@@ -3330,6 +3371,8 @@ export default function PlanningFormation() {
                     <textarea
                       rows={3}
                       value={trainer.unavailableDates.join(', ')}
+                      aria-label={`Dates d'indisponibilité du formateur ${trainer.name}`}
+                      title={`Indisponibilités du formateur ${trainer.name}`}
                       onChange={(event) =>
                         handleTrainerChange(trainer.id, {
                           unavailableDates: parseDateList(event.target.value),
@@ -3342,6 +3385,8 @@ export default function PlanningFormation() {
                       onClick={() =>
                         setTrainers((current) => current.filter((item) => item.id !== trainer.id))
                       }
+                      type="button"
+                      aria-label={`Supprimer le formateur ${trainer.name}`}
                       className="h-11 w-full rounded-2xl border border-rose-200 px-3 text-rose-600 transition hover:bg-rose-50 dark:border-rose-900/60 dark:text-rose-300 dark:hover:bg-rose-950/30 md:w-auto"
                       title="Supprimer formateur"
                     >
@@ -3383,6 +3428,8 @@ export default function PlanningFormation() {
                     <input
                       type="text"
                       value={room.name}
+                      aria-label={`Nom de la salle ${room.name}`}
+                      title={`Nom de la salle ${room.name}`}
                       onChange={(event) => handleRoomChange(room.id, { name: event.target.value })}
                       className={inputClassName}
                     />
@@ -3390,6 +3437,8 @@ export default function PlanningFormation() {
                       type="number"
                       min="1"
                       value={room.capacity}
+                      aria-label={`Capacité de la salle ${room.name}`}
+                      title={`Capacité de la salle ${room.name}`}
                       onChange={(event) =>
                         handleRoomChange(room.id, {
                           capacity: Math.max(1, Number(event.target.value || 1)),
@@ -3400,6 +3449,8 @@ export default function PlanningFormation() {
                     <textarea
                       rows={3}
                       value={room.unavailableDates.join(', ')}
+                      aria-label={`Dates d'indisponibilité de la salle ${room.name}`}
+                      title={`Indisponibilités de la salle ${room.name}`}
                       onChange={(event) =>
                         handleRoomChange(room.id, {
                           unavailableDates: parseDateList(event.target.value),
@@ -3413,12 +3464,16 @@ export default function PlanningFormation() {
                         <input
                           type="checkbox"
                           checked={room.active}
+                          aria-label={`Activer la salle ${room.name}`}
+                          title={`Activer la salle ${room.name}`}
                           onChange={(event) => handleRoomChange(room.id, { active: event.target.checked })}
                         />
                         Active
                       </label>
                       <button
                         onClick={() => setRooms((current) => current.filter((item) => item.id !== room.id))}
+                        type="button"
+                        aria-label={`Supprimer la salle ${room.name}`}
                         className="rounded-2xl border border-rose-200 px-3 py-2 text-rose-600 transition hover:bg-rose-50 dark:border-rose-900/60 dark:text-rose-300 dark:hover:bg-rose-950/30"
                         title="Supprimer salle"
                       >
@@ -3557,10 +3612,7 @@ export default function PlanningFormation() {
 
                 <div className="hidden overflow-x-auto md:block">
                   <div
-                    className="grid min-w-[1080px] gap-3"
-                    style={{
-                      gridTemplateColumns: `180px repeat(${Math.max(1, timelineDays.length)}, minmax(56px, 1fr))`,
-                    }}
+                    className={`grid min-w-[1080px] gap-3 ${getTimelineGridColumnsClass(timelineDays.length)}`}
                   >
                     <div className="sticky left-0 z-10 rounded-2xl bg-[var(--color-bg-primary)] p-3 text-xs font-bold uppercase tracking-[0.16em] text-[var(--color-text-muted)]">
                       Régions
@@ -3586,11 +3638,7 @@ export default function PlanningFormation() {
                             {region}
                           </div>
                           <div
-                            className="relative col-span-full grid min-h-[90px] gap-1 rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] p-2"
-                            style={{
-                              gridColumn: `2 / span ${Math.max(1, timelineDays.length)}`,
-                              gridTemplateColumns: `repeat(${Math.max(1, timelineDays.length)}, minmax(56px, 1fr))`,
-                            }}
+                            className={`relative col-span-full grid min-h-[90px] gap-1 rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] p-2 ${getTimelineLaneClass(timelineDays.length)}`}
                           >
                             {timelineDays.map((day) => (
                               <div
@@ -3627,11 +3675,11 @@ export default function PlanningFormation() {
                                       roomId: session.roomId,
                                     })
                                   }
-                                  className="group relative flex h-[72px] flex-col justify-between rounded-2xl border border-blue-200 bg-blue-50 p-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md dark:border-blue-900/50 dark:bg-blue-950/30"
-                                  style={{
-                                    gridColumn: `${startIndex + 1} / span ${Math.max(1, Math.min(session.durationDays, timelineDays.length - startIndex))}`,
-                                    gridRow: `${index + 1}`,
-                                  }}
+                                  className={`group relative flex h-[72px] flex-col justify-between rounded-2xl border border-blue-200 bg-blue-50 p-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md dark:border-blue-900/50 dark:bg-blue-950/30 ${getTimelineSessionPlacementClass(
+                                    startIndex + 1,
+                                    Math.max(1, Math.min(session.durationDays, timelineDays.length - startIndex)),
+                                    index + 1
+                                  )}`}
                                 >
                                   <div className="flex items-center justify-between gap-2">
                                     <span className="text-xs font-bold uppercase tracking-[0.12em] text-blue-700 dark:text-blue-300">
@@ -4199,6 +4247,8 @@ export default function PlanningFormation() {
               </div>
               <button
                 onClick={() => setModuleModalOpen(false)}
+                type="button"
+                aria-label="Fermer la fenêtre du module"
                 className="rounded-2xl p-2 text-[var(--color-text-secondary)] transition hover:bg-[var(--color-bg-secondary)]"
                 title="Fermer"
               >
@@ -4211,6 +4261,8 @@ export default function PlanningFormation() {
                 <input
                   type="text"
                   value={moduleForm.name}
+                  aria-label="Nom du module"
+                  title="Nom du module"
                   onChange={(event) => setModuleForm((current) => ({ ...current, name: event.target.value }))}
                   className={inputClassName}
                 />
@@ -4219,6 +4271,8 @@ export default function PlanningFormation() {
                 <textarea
                   rows={3}
                   value={moduleForm.description}
+                  aria-label="Description du module"
+                  title="Description du module"
                   onChange={(event) =>
                     setModuleForm((current) => ({ ...current, description: event.target.value }))
                   }
@@ -4231,6 +4285,8 @@ export default function PlanningFormation() {
                     type="number"
                     min="1"
                     value={moduleForm.duration}
+                    aria-label="Durée par défaut du module en jours"
+                    title="Durée par défaut du module en jours"
                     onChange={(event) =>
                       setModuleForm((current) => ({
                         ...current,
@@ -4245,6 +4301,8 @@ export default function PlanningFormation() {
                     type="number"
                     min="0"
                     value={moduleForm.order}
+                    aria-label="Ordre d'affichage du module"
+                    title="Ordre d'affichage du module"
                     onChange={(event) =>
                       setModuleForm((current) => ({
                         ...current,
@@ -4291,6 +4349,9 @@ export default function PlanningFormation() {
               </div>
               <button
                 onClick={() => setEditingPreviewSession(null)}
+                type="button"
+                aria-label="Fermer la fenêtre de reprogrammation de session"
+                title="Fermer"
                 className="rounded-2xl p-2 text-[var(--color-text-secondary)] transition hover:bg-[var(--color-bg-secondary)]"
               >
                 <XCircle className="h-5 w-5" />
@@ -4321,6 +4382,8 @@ export default function PlanningFormation() {
                   type="number"
                   min="1"
                   value={editingPreviewSession.participants}
+                  aria-label="Participants de la session générée"
+                  title="Participants de la session générée"
                   onChange={(event) =>
                     setEditingPreviewSession((current) =>
                       current
@@ -4338,6 +4401,8 @@ export default function PlanningFormation() {
                 <input
                   type="date"
                   value={editingPreviewSession.startDate}
+                  aria-label="Date de démarrage de la session générée"
+                  title="Date de démarrage de la session générée"
                   onChange={(event) =>
                     setEditingPreviewSession((current) =>
                       current ? { ...current, startDate: event.target.value } : current
@@ -4432,6 +4497,9 @@ export default function PlanningFormation() {
               </div>
               <button
                 onClick={() => setEditingBackendSession(null)}
+                type="button"
+                aria-label="Fermer la fenêtre de modification de session enregistrée"
+                title="Fermer"
                 className="rounded-2xl p-2 text-[var(--color-text-secondary)] transition hover:bg-[var(--color-bg-secondary)]"
               >
                 <XCircle className="h-5 w-5" />
@@ -4461,6 +4529,8 @@ export default function PlanningFormation() {
                 <input
                   type="text"
                   value={editingBackendSession.salle}
+                  aria-label="Salle de la session enregistrée"
+                  title="Salle de la session enregistrée"
                   onChange={(event) =>
                     setEditingBackendSession((current) =>
                       current ? { ...current, salle: event.target.value } : current
@@ -4473,6 +4543,8 @@ export default function PlanningFormation() {
                 <input
                   type="date"
                   value={editingBackendSession.startDate}
+                  aria-label="Date de démarrage de la session enregistrée"
+                  title="Date de démarrage de la session enregistrée"
                   onChange={(event) =>
                     setEditingBackendSession((current) =>
                       current ? { ...current, startDate: event.target.value } : current
@@ -4486,6 +4558,8 @@ export default function PlanningFormation() {
                   type="number"
                   min="1"
                   value={editingBackendSession.maxParticipants}
+                  aria-label="Capacité de la session enregistrée"
+                  title="Capacité de la session enregistrée"
                   onChange={(event) =>
                     setEditingBackendSession((current) =>
                       current
@@ -4522,6 +4596,8 @@ export default function PlanningFormation() {
                     <input
                       type="checkbox"
                       checked={editingBackendSession.workSaturday}
+                      aria-label="Samedi travaillé"
+                      title="Samedi travaillé"
                       onChange={(event) =>
                         setEditingBackendSession((current) =>
                           current ? { ...current, workSaturday: event.target.checked } : current
@@ -4534,6 +4610,8 @@ export default function PlanningFormation() {
                     <input
                       type="checkbox"
                       checked={editingBackendSession.workSunday}
+                      aria-label="Dimanche travaillé"
+                      title="Dimanche travaillé"
                       onChange={(event) =>
                         setEditingBackendSession((current) =>
                           current ? { ...current, workSunday: event.target.checked } : current
@@ -4546,6 +4624,8 @@ export default function PlanningFormation() {
                     <input
                       type="checkbox"
                       checked={editingBackendSession.cascadeRegion}
+                      aria-label="Recalculer les sessions suivantes de la région"
+                      title="Recalculer les sessions suivantes de la région"
                       onChange={(event) =>
                         setEditingBackendSession((current) =>
                           current ? { ...current, cascadeRegion: event.target.checked } : current
@@ -4561,6 +4641,8 @@ export default function PlanningFormation() {
                   <textarea
                     rows={3}
                     value={editingBackendSession.notes}
+                    aria-label="Notes de la session enregistrée"
+                    title="Notes de la session enregistrée"
                     onChange={(event) =>
                       setEditingBackendSession((current) =>
                         current ? { ...current, notes: event.target.value } : current
@@ -4630,11 +4712,36 @@ function SectionCard({
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  const generatedId = useId();
+  const childElement = React.isValidElement(children)
+    ? (children as React.ReactElement<Record<string, unknown>>)
+    : null;
+  const isFormControl =
+    childElement &&
+    typeof childElement.type === 'string' &&
+    ['input', 'select', 'textarea'].includes(childElement.type);
+  const childProps = childElement?.props;
+  const controlId =
+    isFormControl && childProps
+      ? (typeof childProps.id === 'string' ? childProps.id : generatedId)
+      : undefined;
+  const decoratedChild =
+    isFormControl && childElement && childProps
+      ? React.cloneElement(childElement, {
+          id: controlId,
+          'aria-label':
+            typeof childProps['aria-label'] === 'string' ? childProps['aria-label'] : label,
+          title: typeof childProps.title === 'string' ? childProps.title : label,
+        })
+      : children;
+
   return (
-    <label className="block">
-      <div className="mb-2 text-sm font-semibold text-[var(--color-text-primary)]">{label}</div>
-      {children}
-    </label>
+    <div className="block">
+      <label htmlFor={controlId} className="mb-2 block text-sm font-semibold text-[var(--color-text-primary)]">
+        {label}
+      </label>
+      {decoratedChild}
+    </div>
   );
 }
 
@@ -4678,6 +4785,30 @@ function QuickAnswerCard({ question, answer }: { question: string; answer: strin
   );
 }
 
+function clampTimelineDayClass(value: number) {
+  return Math.max(1, Math.min(MAX_TIMELINE_DAYS_CLASS, value));
+}
+
+function clampTimelineRowClass(value: number) {
+  return Math.max(1, Math.min(MAX_TIMELINE_ROWS_CLASS, value));
+}
+
+function getTimelineGridColumnsClass(dayCount: number) {
+  return `pf-timeline-grid-days-${clampTimelineDayClass(dayCount)}`;
+}
+
+function getTimelineLaneClass(dayCount: number) {
+  return `pf-timeline-lane-days-${clampTimelineDayClass(dayCount)}`;
+}
+
+function getTimelineSessionPlacementClass(start: number, span: number, row: number) {
+  return [
+    `pf-timeline-start-${clampTimelineDayClass(start)}`,
+    `pf-timeline-span-${clampTimelineDayClass(span)}`,
+    `pf-timeline-row-${clampTimelineRowClass(row)}`,
+  ].join(' ');
+}
+
 const inputClassName = `${DASHBOARD_INPUT} text-[var(--color-text-primary)]`;
 
 const textareaClassName = `${DASHBOARD_TEXTAREA} text-[var(--color-text-primary)]`;
@@ -4696,7 +4827,7 @@ function mapHistoryEntryFromApi(entry: ApiHistoryEntry): PlanningHistoryEntry {
   return {
     id: String(entry.id),
     timestamp: entry.createdAt || entry.timestamp || new Date().toISOString(),
-    type: typeMap[entry.action] || 'session_updated',
+    type: typeMap[entry.action ?? ''] || 'session_updated',
     title: entry.title || entry.action || 'Historique',
     details: entry.details || '',
   };

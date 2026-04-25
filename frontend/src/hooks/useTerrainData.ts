@@ -92,8 +92,12 @@ const normalizeHousehold = (h: Household): Household => {
   return h;
 };
 
+type OfflineHouseholdRecord = Partial<Household> & Record<string, unknown>;
+
+const toHousehold = (household: OfflineHouseholdRecord): Household => household as unknown as Household;
+
 const updateProjectCache = (
-  projectId: string | undefined,
+  projectId: string | null | undefined,
   updater: (current: Household[]) => Household[]
 ) => {
   if (!projectId) return;
@@ -169,8 +173,8 @@ const loadHouseholdsFromLocalFallback = async (projectId: string) => {
 
   const offlineRecords = await getOfflineHouseholds();
   return offlineRecords
-    .filter((household) => String((household as Household).projectId) === projectId)
-    .map((household) => normalizeHousehold(household as Household));
+    .filter((household) => String(toHousehold(household as OfflineHouseholdRecord).projectId) === projectId)
+    .map((household) => normalizeHousehold(toHousehold(household as OfflineHouseholdRecord)));
 };
 
 interface UseTerrainDataOptions {
@@ -443,8 +447,8 @@ export function useTerrainData(options: UseTerrainDataOptions = {}) {
       });
       const { url, key } = resp.data;
 
-      const patch = { koboData: { photo_installation: key, photoUrl: url } };
-      await updateHousehold(id, patch as Record<string, unknown>);
+      const patch: Partial<Household> = { koboData: { photo_installation: key, photoUrl: url } };
+      await updateHousehold(id, patch);
       return url;
     },
     [updateHousehold]

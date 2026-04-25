@@ -81,13 +81,6 @@ const PlanningFormation = lazyWithRetry(
 const Alerts = lazyWithRetry(() => import('./pages/Alerts'), 'lazy:alerts');
 const Communication = lazyWithRetry(() => import('./pages/Communication'), 'lazy:communication');
 
-// Dev-only: MemoryDiagnostic loaded conditionally — zero cost in production
-const MemoryDiagnostic = import.meta.env.DEV
-  ? lazy(() =>
-      import('./components/MemoryDiagnostic').then((m) => ({ default: m.MemoryDiagnostic }))
-    )
-  : null;
-
 // ── Fallback loader ────────────────────────────────────────────────────────
 const PageLoader = () => (
   <div className="min-h-screen flex items-center justify-center bg-[#0D1E35]">
@@ -389,12 +382,6 @@ function App() {
       <CommandPalette />
       <Toaster position="bottom-right" reverseOrder={false} />
 
-      {/* Dev diagnostics — completely absent from production bundle */}
-      {MemoryDiagnostic && (
-        <Suspense fallback={null}>
-          <MemoryDiagnostic />
-        </Suspense>
-      )}
     </Router>
   );
 }

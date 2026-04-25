@@ -58,6 +58,7 @@ import {
   isPreparationPlanningTeam,
   teamMatchesPlanningRegion,
 } from '../services/planningAllocation';
+import type { AuditLog } from '../utils/types';
 
 type ViewMode = 'calendar' | 'timeline' | 'kanban' | 'gantt';
 
@@ -130,7 +131,7 @@ export default function Planning() {
   useEffect(() => {
     if (typeof project?.duration === 'number' && Number.isFinite(project.duration) && project.duration > 0) {
       const timer = setTimeout(() => {
-        setTargetMonths(Math.max(1, Math.round(project.duration)));
+        setTargetMonths(Math.max(1, Math.round(project.duration ?? 0)));
       }, 0);
 
       return () => clearTimeout(timer);
@@ -215,7 +216,9 @@ export default function Planning() {
       if (households.length > 0 && !isLoading && teams.length > 0) {
         // Préparer un résumé régional pour l'IA
         const regionalSummaries: RegionalSummary[] = buildRegionalPlanningSummaries({
-          availableRegions,
+          availableRegions: availableRegions.filter(
+            (region): region is string => typeof region === 'string' && region.length > 0
+          ),
           households,
           tasks,
           teams,
@@ -223,7 +226,13 @@ export default function Planning() {
         const advice = await missionSageService.processQuery(
           "Analyse le planning actuel et suggère des réaffectations pour les tâches en retard.",
           { role: 'CHEF_PROJET', displayName: 'Coordinateur' },
-          { stats: stats as unknown as AIState['stats'], auditLogs: historyLogs, households, teams, regionalSummaries }
+          {
+            stats: stats as unknown as AIState['stats'],
+            auditLogs: historyLogs as unknown as AuditLog[],
+            households,
+            teams,
+            regionalSummaries,
+          }
         );
         setAiRecommendation(advice);
       }
@@ -937,7 +946,8 @@ export default function Planning() {
             </div>
 
             {Object.entries(stats.byPhase).map(([phase, count]) => {
-              const color = PHASE_COLORS[phase] || 'bg-slate-500';
+              const phaseKey = phase as keyof typeof PHASE_COLORS;
+              const color = PHASE_COLORS[phaseKey] || 'bg-slate-500';
               return (
                 <div key={phase} className="bg-slate-900/50 border border-white/5 rounded-2xl p-4">
                   <div className="flex items-center gap-2 mb-2">
@@ -967,7 +977,7 @@ export default function Planning() {
                   households,
                   teams,
                   targetMonths,
-                  selectedRegion: region,
+                  selectedRegion: region || 'ALL',
                   productionRates: project?.config?.productionRates,
                   includeSaturday,
                 });
@@ -1455,13 +1465,14 @@ export default function Planning() {
                 className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4"
               >
                 {['LIVRAISON', 'MACONNERIE', 'RESEAU', 'INTERIEUR', 'CONTROLE', 'TERMINE'].map(phase => {
+                  const phaseKey = phase as PlanningTask['phase'];
                   const phaseTasks = filteredTasks.filter(t => t.phase === phase);
                   return (
                     <div key={phase} className="bg-slate-900/50 border border-white/5 rounded-2xl p-3 sm:p-4">
                       <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-2">
-                          <div className={`w-2 h-2 rounded-full ${PHASE_COLORS[phase]}`} />
-                          <span className="text-sm font-medium text-slate-300">{PHASE_LABELS[phase as PlanningTask['phase']]}</span>
+                          <div className={`w-2 h-2 rounded-full ${PHASE_COLORS[phaseKey]}`} />
+                          <span className="text-sm font-medium text-slate-300">{PHASE_LABELS[phaseKey]}</span>
                         </div>
                         <span className="text-xs font-semibold text-white">{phaseTasks.length}</span>
                       </div>

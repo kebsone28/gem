@@ -49,6 +49,16 @@ export const MissionMentor: React.FC<MissionMentorProps> = ({ stats, auditLogs, 
   const [isMaximized, setIsMaximized] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const aiState = React.useMemo(
+    () => ({
+      stats,
+      auditLogs,
+      households,
+      teams: [],
+      regionalSummaries: [],
+    }),
+    [stats, auditLogs, households]
+  );
 
   // Auto-scroll à chaque nouveau message - ajusté pour montrer le début du message IA
   useEffect(() => {
@@ -85,11 +95,7 @@ export const MissionMentor: React.FC<MissionMentorProps> = ({ stats, auditLogs, 
       const checkProactive = async () => {
         setIsThinking(true);
         try {
-          const msg = await missionSageService.getProactiveMessage(user, {
-            stats,
-            auditLogs,
-            households,
-          });
+          const msg = await missionSageService.getProactiveMessage(user, aiState);
           if (msg) setHistory([msg]);
         } catch (err) {
           logger.warn('[MissionMentor] Proactive message unavailable', err);
@@ -115,9 +121,7 @@ export const MissionMentor: React.FC<MissionMentorProps> = ({ stats, auditLogs, 
     setTimeout(async () => {
       try {
         const resp = await missionSageService.processQuery(originalQuery, user, {
-          stats,
-          auditLogs,
-          households,
+          ...aiState,
         });
 
         // J.A.R.V.I.S : Génération dynamique de Smart Replies contextuelles
@@ -192,7 +196,7 @@ export const MissionMentor: React.FC<MissionMentorProps> = ({ stats, auditLogs, 
           const resp = await missionSageService.processQuery(
             'Analyse cette photo pour audit technique.',
             user!,
-            { stats, auditLogs, households },
+            aiState,
             base64
           );
           setHistory((prev) => [...prev, resp]);

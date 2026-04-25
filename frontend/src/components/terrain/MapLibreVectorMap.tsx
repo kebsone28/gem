@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps */
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import maplibregl from 'maplibre-gl';
+import type { StyleSpecification } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import toast from 'react-hot-toast';
 
@@ -62,9 +63,9 @@ const computeHouseholdHash = (households: any[]) => {
 const resolveMapStyle = (
   style: 'dark' | 'light' | 'satellite',
   isDarkMode: boolean
-) => {
+): string | StyleSpecification => {
   if (style === 'satellite') {
-    return { ...MAP_STYLE_SATELLITE, metadata: { source: 'satellite' } };
+    return { ...MAP_STYLE_SATELLITE, metadata: { source: 'satellite' } } as StyleSpecification;
   }
 
   if (style === 'light') return MAP_STYLE_LIGHT_VECTOR;
@@ -286,7 +287,7 @@ const MapLibreVectorMap: React.FC<any> = ({
       let zoom = 0;
 
       if (map && !(map as any)._removed) {
-        styleLoaded = map.isStyleLoaded();
+        styleLoaded = Boolean(map.isStyleLoaded());
         sourceHouseholds = !!map.getSource('households');
         sourceSupercluster = !!map.getSource('supercluster-generated');
         layerHouseholds = !!map.getLayer('households-local-layer');

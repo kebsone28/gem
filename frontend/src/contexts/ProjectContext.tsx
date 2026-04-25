@@ -102,12 +102,14 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const response = await apiClient.get('/projects');
     const serverProjects: Project[] = response.data.projects || response.data || [];
 
-    await db.transaction('rw', db.projects, async () => {
-      await db.projects.clear();
-      if (serverProjects.length > 0) {
-        await db.projects.bulkPut(serverProjects as any[]);
-      }
-    });
+    await db.projects.clear();
+    if (serverProjects.length > 0) {
+      await (
+        db.projects as unknown as {
+          bulkPut: (items: Array<Record<string, unknown>>) => Promise<unknown>;
+        }
+      ).bulkPut(serverProjects as unknown as Array<Record<string, unknown>>);
+    }
 
     const nextActiveId =
       preferredProjectId && serverProjects.some((project) => project.id === preferredProjectId)

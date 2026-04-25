@@ -21,6 +21,7 @@ import {
   ArrowRightLeft,
   Globe,
   BarChart3,
+  type LucideIcon,
 } from 'lucide-react';
 import { SENEGAL_REGIONS, KIT_VARIANTS } from '../../utils/config';
 import { useLogistique } from '../../hooks/useLogistique';
@@ -64,6 +65,9 @@ const STOCK_CARD_STYLES = {
     text: 'text-slate-300',
   },
 } as const;
+
+type HealthBadgeColor = keyof typeof HEALTH_BADGE_STYLES;
+type StockCardColor = keyof typeof STOCK_CARD_STYLES;
 
 export default function WorkshopTab() {
   const {
@@ -118,7 +122,11 @@ export default function WorkshopTab() {
   const estimatedDate = new Date();
   estimatedDate.setDate(estimatedDate.getDate() + daysRemaining);
 
-  let healthBadge = { text: 'En Avance', color: 'emerald', icon: CheckCircle2 };
+  let healthBadge: { text: string; color: HealthBadgeColor; icon: LucideIcon } = {
+    text: 'En Avance',
+    color: 'emerald',
+    icon: CheckCircle2,
+  };
   if (velocity < 10) healthBadge = { text: 'Inactif', color: 'slate', icon: AlertTriangle };
   else if (velocity < 30) healthBadge = { text: 'En Retard', color: 'rose', icon: AlertTriangle };
   else if (velocity < 40) healthBadge = { text: 'Sous Tension', color: 'amber', icon: Activity };
@@ -568,12 +576,12 @@ export default function WorkshopTab() {
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
                     {[
-                      { label: 'Chargés (Auj)', val: kitsLoadedToday, color: 'blue' },
-                      { label: 'Consommés (Zone)', val: kitsConsumed, color: 'emerald' },
+                      { label: 'Chargés (Auj)', val: kitsLoadedToday, color: 'blue' as StockCardColor },
+                      { label: 'Consommés (Zone)', val: kitsConsumed, color: 'emerald' as StockCardColor },
                       {
                         label: 'Disponible',
                         val: Math.max(0, kitsLoadedToday - kitsConsumed),
-                        color: activeWh?.hasAlert ? 'rose' : 'slate',
+                        color: (activeWh?.hasAlert ? 'rose' : 'slate') as StockCardColor,
                       },
                     ].map((card) => {
                       const styles = STOCK_CARD_STYLES[card.color];

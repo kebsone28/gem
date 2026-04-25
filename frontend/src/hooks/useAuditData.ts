@@ -30,7 +30,6 @@ export const useAuditData = (households: Household[] | undefined) => {
   const [auditResult, setAuditResult] = useState<any>(null);
 
   const auditWorker = useMemo(
-    // @ts-expect-error - Vite specific URL syntax
     () => new Worker(new URL('../workers/dataAuditWorker.ts', import.meta.url), { type: 'module' }),
     []
   );

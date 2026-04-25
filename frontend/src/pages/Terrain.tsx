@@ -681,7 +681,7 @@ const Terrain: React.FC = () => {
       className={`relative isolate flex h-full min-h-0 w-full flex-col overflow-hidden bg-[radial-gradient(circle_at_top,#0b1f1a_0%,#07131a_38%,#030712_100%)] ${terrainAccent.surface}`}
     >
       {/* 🗺️ MAP / LIST LAYER */}
-      <div className="absolute inset-0 z-0 pt-[164px] pb-[148px] md:pt-0 md:pb-0">
+      <div className="absolute inset-0 z-0 pt-[250px] pb-[96px] md:pt-0 md:pb-0">
         <ContentArea
           padding="none"
           className="h-full w-full border-none rounded-none bg-transparent"
@@ -756,7 +756,7 @@ const Terrain: React.FC = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 20 }}
-                className="h-full w-full overflow-hidden bg-[#0D1E35] z-[60] relative pt-[148px] pb-[132px] md:pt-24 md:pb-0"
+                className="relative z-[60] h-full w-full overflow-hidden bg-[#0D1E35]"
               >
                 <HouseholdListView
                   households={filteredHouseholds}
@@ -968,12 +968,14 @@ const Terrain: React.FC = () => {
         onClick={terrainFeatures.syncIssues ? () => setShowSyncIssues(true) : undefined}
       />
       
-      <QuickActions
-        onPhoto={terrainFeatures.photoCapture ? () => capturePhoto() : undefined}
-        onNavigate={terrainFeatures.recenter ? handleRecenterOnUser : undefined}
-      />
+      {viewMode === 'map' && (
+        <QuickActions
+          onPhoto={terrainFeatures.photoCapture ? () => capturePhoto() : undefined}
+          onNavigate={terrainFeatures.recenter ? handleRecenterOnUser : undefined}
+        />
+      )}
 
-      {terrainFeatures.photoCapture && (
+      {terrainFeatures.photoCapture && viewMode === 'map' && (
         <FloatingPhotoButton
           onCapture={capturePhoto}
           onSelect={selectFromGallery}
@@ -1039,7 +1041,6 @@ const Terrain: React.FC = () => {
                     const result = await createMission({
                       ...mission,
                       status: 'draft',
-                      organizationId: user?.organization || 'default',
                     });
                     if (result) {
                       toast.success('Mission sauvegardée comme brouillon');
@@ -1056,7 +1057,6 @@ const Terrain: React.FC = () => {
                     const result = await createMission({
                       ...mission,
                       status: 'soumise',
-                      organizationId: user?.organization || 'default',
                     });
                     if (result) {
                       toast.success('Mission soumise avec succès');

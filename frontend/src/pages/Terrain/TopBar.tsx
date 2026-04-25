@@ -96,6 +96,7 @@ const TopBar: React.FC<TopBarProps> = ({
                     bg-[#050F1F]/95 md:bg-transparent
                     backdrop-blur-xl md:backdrop-blur-0
 
+                    max-h-[52vh] overflow-y-auto md:max-h-none md:overflow-visible
                     px-3 pt-3 pb-3 md:p-0
 
                     grid grid-cols-1 md:grid-cols-[auto_1fr_auto]
@@ -198,8 +199,37 @@ const TopBar: React.FC<TopBarProps> = ({
             </div>
 
             {/* Team selector */}
+            {showListToggle && (
+              <div className="md:hidden flex items-center gap-1 p-1 rounded-2xl bg-slate-900/60 border border-white/10 shadow-xl w-full">
+                <button
+                  onClick={() => onViewModeChange('map')}
+                  className={`flex-1 rounded-xl px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] transition ${
+                    viewMode === 'map' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-white/5'
+                  }`}
+                >
+                  Carte
+                </button>
+                <button
+                  onClick={() => onViewModeChange('list')}
+                  className={`flex-1 rounded-xl px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] transition ${
+                    viewMode === 'list' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-white/5'
+                  }`}
+                >
+                  Liste
+                </button>
+                {showDataHub && peutVoirDataHub && (
+                  <button
+                    onClick={onOpenDataHub}
+                    className="rounded-xl bg-white/5 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-300"
+                  >
+                    Données
+                  </button>
+                )}
+              </div>
+            )}
+
             {(showTeamFilter || showStatusFilter) && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full">
+              <div className="grid grid-cols-2 gap-2 w-full">
                 {showTeamFilter && (
                   <div className="flex items-center justify-between md:justify-start gap-2 p-1 rounded-2xl bg-slate-900/60 border border-white/10 shadow-xl w-full">
                     <div className="pl-2 md:pl-3 pr-2 text-[9px] md:text-[10px] font-bold text-slate-400 uppercase border-r border-white/10">

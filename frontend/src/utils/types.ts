@@ -266,7 +266,23 @@ export interface ProjectConfig {
   clientProvidesMaterials?: boolean; // Legacy/Labor toggle
   includeSupply?: boolean; // NEW: Toggle to include material procurement costs
   logistique?: {
-    history: { date: string; action: string }[];
+    history: Array<{
+      date?: string;
+      action?: string;
+      id?: string;
+      timestamp?: string;
+      type?: 'ENTRY' | 'EXIT' | 'TRANSFER';
+      warehouseId?: string;
+      fromId?: string;
+      toId?: string;
+      fromWh?: string;
+      toWh?: string;
+      source?: string;
+      teamName?: string;
+      quantity?: number;
+      variantId?: string;
+      label?: string;
+    }>;
     geofencingRadius?: number;
     variantPricing?: Record<string, number>;
   };
