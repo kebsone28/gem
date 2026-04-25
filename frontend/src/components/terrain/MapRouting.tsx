@@ -46,6 +46,7 @@ export const MapRouting: React.FC<MapRoutingProps> = ({
       });
     }
   }, [enabled, startPoint, endPoint]);
+
   const fetchRoute = React.useCallback(async () => {
     const osrmMode = mode === 'driving' ? 'driving' : 'foot';
     const coords = points.map((p) => `${p[1]},${p[0]}`).join(';');
@@ -72,32 +73,6 @@ export const MapRouting: React.FC<MapRoutingProps> = ({
       fetchRoute();
     }
   }, [points, mode, fetchRoute]);
-
-  useEffect(() => {
-    if (points.length === 2) {
-      fetchRoute();
-    }
-  }, [points, mode]);
-  const fetchRoute = React.useCallback(async () => {
-    const osrmMode = mode === 'driving' ? 'driving' : 'foot';
-    const coords = points.map((p) => `${p[1]},${p[0]}`).join(';');
-    try {
-      const resp = await fetch(
-        `https://router.project-osrm.org/route/v1/${osrmMode}/${coords}?overview=full&geometries=geojson&steps=true`
-      );
-      const data = await resp.json();
-      if (data.routes && data.routes.length > 0) {
-        setRoute(data.routes[0]);
-        // Fit bounds if needed
-        const polyline = L.polyline(
-          data.routes[0].geometry.coordinates.map((c: any) => [c[1], c[0]])
-        );
-        map.fitBounds(polyline.getBounds(), { padding: [50, 50] });
-      }
-    } catch (e) {
-      logger.error('Routing error:', e);
-    }
-  }, [points, mode, map]);
 
   if (!enabled) return null;
 
