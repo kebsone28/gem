@@ -25,6 +25,17 @@ import { handleServerConflicts } from './conflictResolver';
 // Module-level guard — prevents concurrent sync across the entire app lifetime
 let _isSyncRunning = false;
 
+export function hasSyncAuthContext(): boolean {
+  const { user, isAuthenticated } = useAuthStore.getState();
+  const token = safeStorage.getItem('access_token');
+  const isValidToken =
+    !!token && token !== 'undefined' && token !== 'null' && token.length >= 20;
+  const isOnLoginPage =
+    typeof window !== 'undefined' && window.location.pathname === '/login';
+
+  return !!user && isAuthenticated && isValidToken && !isOnLoginPage;
+}
+
 /** Pull remote changes and apply them to the local Dexie database */
 async function pullUpdates(): Promise<void> {
   const lastSync = safeStorage.getItem('last_sync_timestamp');
@@ -220,12 +231,9 @@ async function pushPendingItems(): Promise<void> {
  * Updates syncStore and offlineStore throughout.
  */
 export async function performSync(): Promise<void> {
-  const { user } = useAuthStore.getState();
   const { isOnline } = useOfflineStore.getState();
-  const token = safeStorage.getItem('access_token');
-  const isOnLoginPage = typeof window !== 'undefined' && window.location.pathname === '/login';
 
-  if (!user || !token || !isOnline || isOnLoginPage || _isSyncRunning) {
+  if (!hasSyncAuthContext() || !isOnline || _isSyncRunning) {
     if (_isSyncRunning) logger.debug('SYNC', 'Sync already in progress — skipping');
     return;
   }
@@ -254,6 +262,14 @@ export async function performSync(): Promise<void> {
     logger.info('SYNC', `Sync cycle complete — ${remaining} pending item(s) remaining`);
   } catch (err) {
     logger.error('SYNC', 'Critical sync failure', err);
+    const status = (err as { response?: { status?: number } })?.response?.status;
+    if (status === 401) {
+      logger.warn('SYNC', 'Unauthorized sync detected — clearing auth session');
+      useAuthStore.getState().logout();
+      if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+        window.dispatchEvent(new CustomEvent('auth:logout'));
+      }
+    }
     syncStore.setSyncError(err instanceof Error ? err.message : 'Unknown sync error');
   } finally {
     _isSyncRunning = false;

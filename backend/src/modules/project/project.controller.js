@@ -580,25 +580,49 @@ export const dbMaintenance = async (req, res) => {
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-        const deleteHouseholds = prisma.household.deleteMany({
-            where: { deletedAt: { lte: thirtyDaysAgo } }
-        });
-        const deleteZones = prisma.zone.deleteMany({
-            where: { deletedAt: { lte: thirtyDaysAgo } }
-        });
-        const deleteProjects = prisma.project.deleteMany({
-            where: { deletedAt: { lte: thirtyDaysAgo } }
-        });
-        const deleteGrappes = prisma.grappe.deleteMany({
-            where: { deletedAt: { lte: thirtyDaysAgo } }
-        });
-
-        // 2. Transaction pour garantir la cohérence
-        const [hCount, zCount, pCount, gCount] = await prisma.$transaction([
-            deleteHouseholds, deleteZones, deleteProjects, deleteGrappes
+        // 2. Purge ordonnée uniquement sur les modèles réellement soft-deletés
+        // Household -> Team/Mission -> Zone -> Project
+        const [householdsResult, teamsResult, missionsResult] = await prisma.$transaction([
+            prisma.household.deleteMany({
+                where: {
+                    deletedAt: { lte: thirtyDaysAgo }
+                }
+            }),
+            prisma.team.deleteMany({
+                where: {
+                    deletedAt: { lte: thirtyDaysAgo }
+                }
+            }),
+            prisma.mission.deleteMany({
+                where: {
+                    deletedAt: { lte: thirtyDaysAgo }
+                }
+            })
         ]);
 
-        const totalCleaned = hCount.count + zCount.count + pCount.count + gCount.count;
+        const zonesResult = await prisma.zone.deleteMany({
+            where: {
+                deletedAt: { lte: thirtyDaysAgo },
+                households: { none: {} },
+                teams: { none: {} }
+            }
+        });
+
+        const projectsResult = await prisma.project.deleteMany({
+            where: {
+                deletedAt: { lte: thirtyDaysAgo },
+                zones: { none: {} },
+                teams: { none: {} },
+                missions: { none: {} }
+            }
+        });
+
+        const totalCleaned =
+            householdsResult.count +
+            teamsResult.count +
+            missionsResult.count +
+            zonesResult.count +
+            projectsResult.count;
 
         // 3. Exécuter un VACUUM (Optimisation PostgreSQL) si natif
         try {

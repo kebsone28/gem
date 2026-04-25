@@ -8,7 +8,7 @@
  * ✅ V2: Uses SyncEngine for dedup, priority queue, and safe retry.
  */
 
-import { performSync } from './syncService';
+import { hasSyncAuthContext, performSync } from './syncService';
 import { syncEngine } from '../../core/sync/syncEngine';
 import { shouldProcessEvent } from '../../utils/syncEventBus';
 import { logger } from '../logger';
@@ -23,6 +23,11 @@ let _intervalId: ReturnType<typeof setInterval> | null = null;
  * The engine handles dedup, priority, and retry internally.
  */
 function scheduleSync(source: string, priority: 'high' | 'normal' | 'low' = 'normal') {
+  if (!hasSyncAuthContext()) {
+    logger.debug('SYNC', `Skipping scheduled sync without valid auth context: ${source}`);
+    return;
+  }
+
   // Protection niveau event bus (cooldown 2s par source)
   if (!shouldProcessEvent(`bg-sync:${source}`, 2000)) {
     logger.debug('SYNC', `Event bus dedup — ignoring rapid trigger: ${source}`);
