@@ -23,8 +23,8 @@ export const HouseholdStatusTimeline: React.FC<HouseholdStatusTimelineProps> = R
   onEdit
 }) => {
   return (
-    <div className="p-8 rounded-[2.5rem] bg-white/5 border border-white/5 shadow-inner">
-      <h4 className="text-[9px] font-black uppercase tracking-[0.35em] mb-6 text-slate-500/70 italic">
+    <div className="p-6 sm:p-8 rounded-[2.25rem] bg-[radial-gradient(circle_at_top_left,rgba(148,163,184,0.12),transparent_35%),linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.04))] border border-white/10 shadow-inner">
+      <h4 className="text-[10px] font-black uppercase tracking-[0.28em] mb-6 text-slate-300/70">
         GLOBAL STATUS TRACKING
       </h4>
 
@@ -35,7 +35,7 @@ export const HouseholdStatusTimeline: React.FC<HouseholdStatusTimelineProps> = R
           <button
             onClick={() => onEdit(currentStatus || 'UNKNOWN')}
             title="Changer l'état global du ménage"
-            className="px-5 py-3 bg-white/5 text-blue-400 border border-white/10 rounded-2xl text-[9px] font-black uppercase tracking-widest shadow-inner hover:bg-white/10 hover:text-white transition-all duration-200 italic active:scale-95"
+            className="px-5 py-3 bg-slate-950/25 text-slate-100 border border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-[0.18em] shadow-inner hover:bg-white/10 hover:text-white transition-all duration-200 active:scale-95"
           >
             Modifier
           </button>

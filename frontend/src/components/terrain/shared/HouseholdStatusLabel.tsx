@@ -16,13 +16,13 @@ export const HouseholdStatusLabel: React.FC<HouseholdStatusLabelProps> = React.m
   return (
     <div className="flex flex-col">
       <p
-        className={`text-xl font-black italic uppercase tracking-tight ${meta.color} animate-pulse-slow`}
+        className={`text-2xl font-black uppercase tracking-[-0.04em] ${meta.color}`}
       >
         {meta.label}
       </p>
 
       {updatedAt && (
-        <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest mt-2">
+        <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.18em] mt-3">
           Dernière inspection :{' '}
           {new Date(updatedAt).toLocaleDateString('fr-FR')}
         </p>
