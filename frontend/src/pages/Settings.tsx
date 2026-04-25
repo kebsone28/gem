@@ -2,6 +2,9 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
+  AlertTriangle,
+  CheckCircle2,
+  Copy,
   Users,
   DollarSign,
   Layers,
@@ -33,7 +36,11 @@ import { KoboSettingsSection } from '../components/KoboSettingsSection';
 import { DataSection } from '../components/DataSection';
 import apiClient from '../api/client';
 import toast from 'react-hot-toast';
-import { probeLocalDeployAgent, triggerLocalDeploy } from '../services/localDeployAgent';
+import {
+  LOCAL_DEPLOY_AGENT_URL,
+  probeLocalDeployAgent,
+  triggerLocalDeploy,
+} from '../services/localDeployAgent';
 
 // Helper stable id generator (defined outside components to avoid impure calls during render)
 const makeId = (prefix = 'id') =>
@@ -70,6 +77,15 @@ type TabType =
 export default function Settings() {
   const [activeTab, setActiveTab] = useState<TabType>('teams');
   const [isDeploying, setIsDeploying] = useState(false);
+  const [localAgentState, setLocalAgentState] = useState<{
+    checked: boolean;
+    ok: boolean;
+    busy: boolean;
+  }>({
+    checked: false,
+    ok: false,
+    busy: false,
+  });
   const { project, updateProject, isLoading: isProjectLoading } = useProject();
   const { households, isLoading: isHouseholdsLoading } = useTerrainData();
   const { user } = useAuth();
@@ -89,14 +105,54 @@ export default function Settings() {
     }
   }, [activeTab, canAccessAdminOnlyTabs]);
 
+  useEffect(() => {
+    if (activeTab !== 'system') return;
+
+    let isMounted = true;
+
+    const refreshAgentState = async () => {
+      const health = await probeLocalDeployAgent();
+      if (!isMounted) return;
+
+      setLocalAgentState({
+        checked: true,
+        ok: !!health?.ok,
+        busy: !!health?.busy,
+      });
+    };
+
+    void refreshAgentState();
+    const intervalId = window.setInterval(() => {
+      void refreshAgentState();
+    }, 15000);
+
+    return () => {
+      isMounted = false;
+      window.clearInterval(intervalId);
+    };
+  }, [activeTab]);
+
   const handleDeployNow = async () => {
     if (isDeploying) return;
 
     setIsDeploying(true);
     try {
       const localAgent = await probeLocalDeployAgent();
+      setLocalAgentState({
+        checked: true,
+        ok: !!localAgent?.ok,
+        busy: !!localAgent?.busy,
+      });
 
       if (localAgent?.ok) {
+        if (localAgent?.busy) {
+          toast('Agent local déjà occupé. Attendez la fin du déploiement en cours.', {
+            icon: '⏳',
+            style: { background: '#1e293b', color: '#fff' },
+          });
+          return;
+        }
+
         const commitMessage = window.prompt(
           "Message de commit pour le déploiement local",
           "Deploy update"
@@ -127,11 +183,22 @@ export default function Settings() {
         return;
       }
 
+      const continueWithFallback = window.confirm(
+        "⚠️ Agent local introuvable.\n\nPour activer le mode complet sur ce poste, lancez d'abord :\n\nnpm run agent:deploy\n\nCliquez sur OK pour continuer en mode fallback GitHub seulement, ou Annuler pour interrompre."
+      );
+      if (!continueWithFallback) {
+        toast('Rappel: lancez `npm run agent:deploy`, puis recliquez sur le bouton.', {
+          icon: '💡',
+          style: { background: '#1e293b', color: '#fff' },
+        });
+        return;
+      }
+
       const hasPushed = window.confirm(
-        "⚠️ Agent local introuvable.\n\nLe mode fallback va seulement déployer ce qui est déjà sur GitHub. Avez-vous bien fait un Git Push de vos dernières modifications ?"
+        "Le mode fallback ne déploie que le code déjà poussé sur GitHub.\n\nAvez-vous bien fait un Git Push de vos dernières modifications ?"
       );
       if (!hasPushed) {
-        toast('🛑 Veuillez envoyer votre code sur GitHub avant de déployer.', {
+        toast('🛑 Veuillez faire `git push origin main` ou lancer `npm run agent:deploy` avant de déployer.', {
           style: { background: '#333', color: '#fff' },
         });
         return;
@@ -164,6 +231,22 @@ export default function Settings() {
         </div>
       </div>
     );
+
+  const localAgentStartCommand = 'npm run agent:deploy';
+  const localAgentStatusLabel = !localAgentState.checked
+    ? 'Détection de l’agent local...'
+    : localAgentState.ok
+      ? localAgentState.busy
+        ? 'Agent local actif, déploiement déjà en cours'
+        : 'Agent local disponible sur ce poste'
+      : 'Agent local non détecté sur ce poste';
+  const deployButtonLabel = isDeploying
+    ? 'DÉPLOIEMENT EN COURS...'
+    : localAgentState.ok
+      ? localAgentState.busy
+        ? 'AGENT LOCAL OCCUPÉ'
+        : 'COMMIT + PUSH + DÉPLOYER'
+      : 'DÉPLOYER DEPUIS GITHUB';
 
   const tabs = [
     { id: 'teams', label: 'Équipes', icon: Users },
@@ -447,12 +530,67 @@ export default function Settings() {
                             commit + push + déploiement VPS. Sinon, il déploie seulement la
                             dernière version déjà poussée sur GitHub.
                           </p>
+                          <div
+                            className={`rounded-2xl border px-4 py-3 ${
+                              localAgentState.ok
+                                ? 'border-emerald-500/20 bg-emerald-500/10'
+                                : 'border-amber-500/20 bg-amber-500/10'
+                            }`}
+                          >
+                            <div className="flex items-start gap-3">
+                              <div
+                                className={`mt-0.5 ${localAgentState.ok ? 'text-emerald-400' : 'text-amber-400'}`}
+                              >
+                                {localAgentState.ok ? (
+                                  <CheckCircle2 size={18} />
+                                ) : (
+                                  <AlertTriangle size={18} />
+                                )}
+                              </div>
+                              <div className="min-w-0 flex-1 space-y-2">
+                                <p className="text-[11px] font-black uppercase tracking-[0.08em] text-white">
+                                  {localAgentStatusLabel}
+                                </p>
+                                {!localAgentState.ok && (
+                                  <>
+                                    <p className="text-xs font-bold leading-relaxed text-slate-300">
+                                      Pour activer le mode complet sur cette machine, lancez
+                                      d&apos;abord l&apos;agent local dans un terminal ouvert sur ce dépôt.
+                                    </p>
+                                    <div className="flex flex-col gap-2 rounded-xl border border-white/10 bg-slate-950/80 p-3 sm:flex-row sm:items-center sm:justify-between">
+                                      <code className="break-all text-[11px] font-black text-cyan-300">
+                                        {localAgentStartCommand}
+                                      </code>
+                                      <button
+                                        type="button"
+                                        onClick={async () => {
+                                          try {
+                                            await navigator.clipboard.writeText(localAgentStartCommand);
+                                            toast.success('Commande copiée');
+                                          } catch {
+                                            toast.error('Copie impossible sur ce navigateur');
+                                          }
+                                        }}
+                                        className="inline-flex min-h-[40px] items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-[10px] font-black uppercase tracking-[0.08em] text-white transition hover:bg-white/10"
+                                      >
+                                        <Copy size={14} />
+                                        Copier
+                                      </button>
+                                    </div>
+                                    <p className="text-[11px] font-bold text-slate-500">
+                                      Endpoint attendu: {LOCAL_DEPLOY_AGENT_URL}
+                                    </p>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </div>
                           <button
                             onClick={handleDeployNow}
-                            disabled={isDeploying}
-                            className="w-full min-h-[48px] py-4 bg-blue-600 hover:bg-blue-500 text-white font-black uppercase text-[10px] sm:text-xs tracking-[0.08em] sm:tracking-[0.2em] rounded-2xl transition-all shadow-lg shadow-blue-500/10 active:scale-95"
+                            disabled={isDeploying || localAgentState.busy}
+                            className="w-full min-h-[48px] py-4 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-300 text-white font-black uppercase text-[10px] sm:text-xs tracking-[0.08em] sm:tracking-[0.2em] rounded-2xl transition-all shadow-lg shadow-blue-500/10 active:scale-95 disabled:cursor-not-allowed disabled:shadow-none"
                           >
-                            {isDeploying ? 'DÉPLOIEMENT EN COURS...' : 'Déployer maintenant'}
+                            {deployButtonLabel}
                           </button>
                         </div>
 
