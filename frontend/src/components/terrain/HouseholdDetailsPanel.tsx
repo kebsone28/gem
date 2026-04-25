@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 import React, { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import {
@@ -268,16 +268,16 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
       animate={{ x: 0 }}
       exit={{ x: '100%' }}
       transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-      className="fixed bottom-0 md:top-0 md:right-0 h-[88vh] sm:h-[92vh] md:h-screen w-full md:w-[460px] z-[2000] shadow-[-20px_0_100px_rgba(0,0,0,0.6)] border-t md:border-l rounded-t-[2rem] sm:rounded-t-[3rem] md:rounded-none overflow-y-auto custom-scrollbar bg-slate-950/80 backdrop-blur-3xl border-white/10 text-white flex flex-col pb-[env(safe-area-inset-bottom)]"
+      className="fixed bottom-0 md:top-0 md:right-0 h-[84vh] sm:h-[88vh] md:h-screen w-full md:w-[430px] lg:w-[446px] z-[2000] shadow-[-20px_0_90px_rgba(0,0,0,0.56)] border-t md:border-l rounded-t-[1.75rem] sm:rounded-t-[2.4rem] md:rounded-none overflow-y-auto custom-scrollbar bg-slate-950/78 backdrop-blur-3xl border-white/10 text-white flex flex-col pb-[env(safe-area-inset-bottom)]"
     >
       {/* Drag Handle for Mobile */}
-      <div className="md:hidden w-12 h-1.5 bg-white/10 rounded-full mx-auto my-4 shrink-0" />
+      <div className="md:hidden w-10 h-1.5 bg-white/10 rounded-full mx-auto my-3 shrink-0" />
 
       {/* Header Sticky */}
-      <div className="sticky top-0 z-10 px-4 py-4 sm:px-6 sm:py-5 md:px-8 md:py-6 bg-gradient-to-b from-slate-950/96 via-slate-950/84 to-slate-950/60 backdrop-blur-xl border-b border-white/5 flex justify-between items-start sm:items-center gap-3 shrink-0">
-          <div className="flex flex-col min-w-0">
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <h2 className="text-base sm:text-lg md:text-[1.7rem] font-black uppercase tracking-[-0.06em] leading-none text-white drop-shadow-sm truncate max-w-[220px] sm:max-w-none">
+      <div className="sticky top-0 z-10 px-4 py-3.5 sm:px-5 sm:py-4 md:px-7 md:py-5 bg-gradient-to-b from-slate-950/97 via-slate-950/86 to-slate-950/62 backdrop-blur-xl border-b border-white/5 flex justify-between items-start gap-3 shrink-0">
+          <div className="flex flex-col min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-[1.05rem] sm:text-[1.15rem] md:text-[1.5rem] font-black uppercase tracking-[-0.05em] leading-none text-white drop-shadow-sm truncate max-w-[210px] sm:max-w-[260px] md:max-w-none">
                 MÉNAGE {household.numeroordre || household.id.slice(-6)}
               </h2>
               {hasConflict && (
@@ -309,19 +309,19 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
               </div>
             )}
           </div>
-          <p className="mt-1.5 text-[11px] font-semibold text-slate-400 tracking-wide truncate">
+          <p className="mt-1.5 text-[10px] sm:text-[11px] font-bold text-slate-300 tracking-[0.08em] truncate uppercase">
             {household.village || household.departement || 'Terrain actif'}
           </p>
         </div>
-        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 pt-1">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             {/* Admin Edit Button */}
             {isAdmin && onUpdate && (
               <button
                 onClick={() => setShowAdminModal(true)}
-                className="w-11 h-11 sm:w-12 sm:h-12 bg-white/5 hover:bg-white/10 text-blue-400 rounded-2xl transition-all border border-white/5 shadow-inner active:scale-95 group flex items-center justify-center"
+                className="w-10 h-10 sm:w-11 sm:h-11 bg-white/5 hover:bg-white/10 text-blue-400 rounded-[1.1rem] transition-all border border-white/5 shadow-inner active:scale-95 group flex items-center justify-center"
                 title="Admin : Modifier tout le profil"
               >
-                <Settings2 className="w-5 h-5 sm:w-6 sm:h-6 group-hover:rotate-45 transition-transform duration-500" />
+                <Settings2 className="w-[18px] h-[18px] sm:w-5 sm:h-5 group-hover:rotate-45 transition-transform duration-500" />
               </button>
             )}
 
@@ -331,16 +331,16 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
                 closePanel();
               }}
               title="Fermer le panneau"
-              className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center transition-all bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 border border-white/5 shadow-inner group"
+              className="w-10 h-10 sm:w-11 sm:h-11 rounded-[1.1rem] flex items-center justify-center transition-all bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 border border-white/5 shadow-inner group"
             >
-              <X size={18} className="group-hover:rotate-90 transition-transform duration-300" />
+              <X size={16} className="group-hover:rotate-90 transition-transform duration-300" />
             </button>
         </div>
       </div>
 
       {/* Scrollable Content Container */}
-      <div className="flex-1 px-4 sm:px-6 md:px-8 py-5 sm:py-6 space-y-7 pb-8">
-        <div className="space-y-10 animate-in fade-in slide-in-from-bottom-2 duration-500">
+      <div className="flex-1 px-4 sm:px-5 md:px-7 py-4 sm:py-5 space-y-6 pb-6">
+        <div className="space-y-7 animate-in fade-in slide-in-from-bottom-2 duration-500">
           {/* ALERTES BLOQUANTES & SYSTÈME */}
           {alerts.length > 0 && (
             <div className="space-y-4">
@@ -487,12 +487,12 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
           )}
 
           {/* Gallery Section */}
-          <div className="space-y-3">
-            <h4 className="text-[10px] font-black uppercase tracking-[0.25em] flex items-center gap-2 text-blue-300/80">
-              <div className="w-1.5 h-1.5 rounded-full bg-blue-500/50 shadow-[0_0_10px_rgba(59,130,246,0.5)]" />
-              GALERIE TERRAIN
-            </h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-2.5">
+              <h4 className="text-[10px] font-black uppercase tracking-[0.25em] flex items-center gap-2 text-blue-300/80">
+                <div className="w-1.5 h-1.5 rounded-full bg-blue-500/50 shadow-[0_0_10px_rgba(59,130,246,0.5)]" />
+                GALERIE TERRAIN
+              </h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               {photoSrc ? (
                 <button
                   onClick={() => onPhotoOpen([{ url: photoSrc as string, label: 'Preuve' }], 0)}
@@ -557,76 +557,79 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
           </div>
 
           {/* Owner Identity Card */}
-          <div className="p-6 sm:p-7 rounded-[2.1rem] bg-gradient-to-br from-white/10 to-transparent border border-white/10 shadow-2xl relative overflow-hidden group">
-            <div className="absolute -right-10 -top-10 w-40 h-40 bg-blue-500/10 blur-[80px] rounded-full group-hover:bg-blue-500/20 transition-colors duration-1000" />
-            <div className="flex items-center justify-between mb-6 relative z-10">
-              <div className="w-12 h-12 bg-blue-600/10 text-blue-400 rounded-[1.2rem] flex items-center justify-center border border-blue-600/20 shadow-inner group-hover:scale-105 transition-transform duration-500">
-                <MapPin size={22} />
+          <div className="relative rounded-[1.5rem] border border-white/8 bg-[linear-gradient(180deg,rgba(59,130,246,0.045),rgba(15,23,42,0.58))] px-4 py-5 shadow-inner">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleFavorite();
+              }}
+              title={isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+              className={`absolute right-3.5 top-3.5 w-8 h-8 rounded-full border transition-all hover:scale-105 active:scale-95 flex items-center justify-center ${isFavorite ? 'bg-amber-400/16 border-amber-400/30 text-amber-400' : 'bg-slate-900/35 border-white/8 text-slate-500'}`}
+            >
+              <Star size={12} fill={isFavorite ? 'currentColor' : 'none'} />
+            </button>
+
+            <div className="flex flex-col items-center text-center">
+              <div className="w-11 h-11 rounded-[0.95rem] border border-blue-500/15 bg-blue-600/10 text-blue-300 flex items-center justify-center mb-3">
+                <MapPin size={18} />
               </div>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toggleFavorite();
-                }}
-                title={isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
-                className={`w-11 h-11 rounded-2xl border transition-all hover:scale-110 active:scale-95 shadow-lg flex items-center justify-center ${isFavorite ? 'bg-amber-400/20 border-amber-400/40 text-amber-500 shadow-amber-500/10' : 'bg-slate-900/50 border-white/5 text-slate-600'}`}
-              >
-                <Star size={14} fill={isFavorite ? 'currentColor' : 'none'} />
-              </button>
-            </div>
-            <div className="relative z-10">
-              <p className="text-[9px] font-black uppercase tracking-[0.34em] mb-2 text-blue-400/40 opacity-80">
-                TITULAIRE DU COMPTE
+
+              <p className="text-[8px] font-black uppercase tracking-[0.24em] text-blue-300/52">
+                Titulaire Du Compte
               </p>
-              <p className="text-white font-black text-[2rem] sm:text-[2.2rem] uppercase tracking-[-0.06em] leading-[0.92] mb-1 max-w-[280px]">
-                {(typeof household.owner === 'string' ? household.owner : null) || (household.owner as any)?.name || household.name || 'SANS NOM'}
+
+              <p className="mt-2.5 text-white font-black text-[1.02rem] sm:text-[1.12rem] uppercase tracking-[-0.025em] leading-[1.06] max-w-[240px]">
+                {(typeof household.owner === 'string' ? household.owner : null) || (household.owner as any)?.name || household.name || 'Sans Nom'}
               </p>
             </div>
           </div>
 
           {/* Practical Information List */}
-          <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-3.5">
             {/* Contact */}
-            <div className="p-5 rounded-[1.8rem] bg-white/5 border border-white/5 flex flex-col gap-4 group hover:bg-white/[0.08] transition-all sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-4 min-w-0">
-                <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/10 shadow-inner">
-                  <Phone size={20} />
+            <div className="rounded-[1.5rem] border border-white/8 bg-[linear-gradient(180deg,rgba(16,185,129,0.045),rgba(15,23,42,0.56))] px-4 py-4 shadow-inner">
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-[0.95rem] bg-emerald-500/10 text-emerald-300 flex items-center justify-center border border-emerald-500/15 shrink-0">
+                    <Phone size={17} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[8px] font-black text-slate-500 uppercase tracking-[0.24em] mb-1">
+                      Contact Direct
+                    </p>
+                    <p className="text-[1rem] sm:text-[1.08rem] font-black text-white tracking-[0.04em] truncate">
+                      {household.phone || household.ownerPhone || '—'}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-0.5 opacity-60">
-                    CONTACT DIRECT
-                  </p>
-                  <p className="text-base font-black text-white tracking-[0.1em]">
-                    {household.phone || household.ownerPhone || '—'}
-                  </p>
-                </div>
-              </div>
-              <div className="flex flex-col sm:flex-row gap-2">
-                <a
-                  href={`tel:${household.phone || household.ownerPhone}`}
-                  title="Appeler localement"
-                  className="px-4 py-2.5 bg-emerald-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest shadow-lg shadow-emerald-600/30 hover:brightness-110 transition-all active:scale-95 text-center"
-                >
-                  Appel
-                </a>
-                {(household.phone || household.ownerPhone) && (
+
+                <div className="grid grid-cols-2 gap-2">
                   <a
-                    href={`https://wa.me/${(household.phone || household.ownerPhone || '').toString().replace(/\D/g, '')}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    title="Ouvrir WhatsApp"
-                    className="px-4 py-2.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-lg hover:bg-emerald-500/30 transition-all active:scale-95 flex items-center justify-center gap-2"
+                    href={`tel:${household.phone || household.ownerPhone}`}
+                    title="Appeler localement"
+                    className="h-10 px-3.5 bg-emerald-500/90 text-white rounded-full text-[9px] font-black uppercase tracking-[0.14em] shadow-[0_8px_20px_rgba(16,185,129,0.2)] hover:brightness-110 transition-all active:scale-95 flex items-center justify-center"
                   >
-                    <MessageCircle size={14} /> WhatsApp
+                    Appel
                   </a>
-                )}
+                  {(household.phone || household.ownerPhone) && (
+                    <a
+                      href={`https://wa.me/${(household.phone || household.ownerPhone || '').toString().replace(/\D/g, '')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="Ouvrir WhatsApp"
+                      className="h-10 px-3.5 bg-transparent text-emerald-300 border border-emerald-500/25 rounded-full text-[9px] font-black uppercase tracking-[0.14em] hover:bg-emerald-500/10 transition-all active:scale-95 flex items-center justify-center gap-1.5"
+                    >
+                      <MessageCircle size={12} /> WhatsApp
+                    </a>
+                  )}
+                </div>
               </div>
             </div>
 
             {/* Localisation & Administratif */}
-            <div className={`p-6 rounded-[2rem] border space-y-6 relative overflow-hidden transition-colors ${alerts.some((a: any) => a.type === 'MISMATCH_GPS') ? 'bg-amber-900/10 border-amber-500/30 ring-1 ring-amber-500/20' : 'bg-white/5 border-white/5'}`}>
-              <div className="absolute top-0 right-0 p-4 opacity-5">
-                <Database size={100} />
+            <div className={`p-4 sm:p-5 rounded-[1.5rem] border space-y-4 relative overflow-hidden transition-colors ${alerts.some((a: any) => a.type === 'MISMATCH_GPS') ? 'bg-amber-900/10 border-amber-500/30 ring-1 ring-amber-500/20' : 'bg-[linear-gradient(180deg,rgba(59,130,246,0.045),rgba(15,23,42,0.56))] border-white/8'}`}>
+              <div className="absolute top-0 right-0 p-4 opacity-[0.035]">
+                <Database size={88} />
               </div>
               
               {alerts.some((a: any) => a.type === 'MISMATCH_GPS') && (
@@ -638,43 +641,43 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
                 </div>
               )}
 
-              <div className="flex gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-orange-500/10 text-orange-400 flex items-center justify-center shrink-0 border border-orange-500/10 shadow-inner">
-                  <MapPin size={20} />
+              <div className="flex gap-3">
+                <div className="w-10 h-10 rounded-[0.95rem] bg-orange-500/10 text-orange-300 flex items-center justify-center shrink-0 border border-orange-500/15">
+                  <MapPin size={17} />
                 </div>
                 <div className="flex-1">
-                  <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-2 opacity-60">
+                  <p className="text-[8px] font-black text-slate-500 uppercase tracking-[0.24em] mb-2">
                     HIÉRARCHIE GÉOGRAPHIQUE
                   </p>
-                  <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-slate-400 truncate">
-                    <span className="text-white">{household.region || '?'}</span>
+                  <div className="flex items-center gap-1.5 text-[9px] sm:text-[10px] font-black uppercase tracking-[0.1em] text-slate-400 truncate flex-wrap">
+                    <span className="text-white/95">{household.region || '?'}</span>
                     <ArrowRight size={10} />
-                    <span className="text-white/80">{household.departement || '?'}</span>
+                    <span className="text-white/75">{household.departement || '?'}</span>
                     <ArrowRight size={10} />
-                    <span className="text-orange-400 drop-shadow-md">
+                    <span className="text-orange-300">
                       {household.village || '?'}
                     </span>
                   </div>
                 </div>
               </div>
-              <div className="pt-6 border-t border-white/5 flex flex-col sm:flex-row gap-4 sm:gap-6">
-                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center shrink-0 border border-indigo-500/10 shadow-inner">
-                  <Navigation2 size={20} />
+              <div className="pt-4 border-t border-white/5 flex flex-col sm:flex-row gap-3 sm:gap-4">
+                <div className="w-10 h-10 rounded-[0.95rem] bg-indigo-500/10 text-indigo-300 flex items-center justify-center shrink-0 border border-indigo-500/15">
+                  <Navigation2 size={17} />
                 </div>
-                <div className="grid grid-cols-2 gap-4 sm:gap-8 flex-1">
+                <div className="grid grid-cols-2 gap-3 sm:gap-5 flex-1">
                   <div>
-                    <p className="text-[8px] sm:text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1 opacity-60">
+                    <p className="text-[8px] sm:text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">
                       LATITUDE
                     </p>
-                    <p className="text-[10px] sm:text-[11px] font-mono font-black text-blue-300 truncate">
+                    <p className="text-[10px] sm:text-[11px] font-mono font-black text-blue-200 truncate">
                       {household.latitude || '—'}
                     </p>
                   </div>
                   <div>
-                    <p className="text-[8px] sm:text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1 opacity-60">
+                    <p className="text-[8px] sm:text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">
                       LONGITUDE
                     </p>
-                    <p className="text-[10px] sm:text-[11px] font-mono font-black text-blue-300 truncate">
+                    <p className="text-[10px] sm:text-[11px] font-mono font-black text-blue-200 truncate">
                       {household.longitude || '—'}
                     </p>
                   </div>
@@ -687,7 +690,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
           {!isTerminalStatus && (
             <div className="p-8 rounded-[2.5rem] bg-white/5 border border-white/10 shadow-xl space-y-8">
               <h4 className="text-[9px] font-black uppercase tracking-[0.4em] text-blue-400/40">
-                CONSTRUCTION AUDIT LOG
+                JOURNAL D'AUDIT DE CONSTRUCTION
               </h4>
 
               {/* Main Metrics */}
@@ -807,22 +810,23 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
             <div className="p-6 sm:p-8 rounded-[2.25rem] border border-blue-400/20 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.16),transparent_35%),linear-gradient(180deg,rgba(59,130,246,0.08),rgba(15,23,42,0.34))] shadow-lg shadow-blue-500/10">
               <div className="flex items-center justify-between gap-4 mb-4">
                 <h4 className="text-[10px] font-black uppercase tracking-[0.24em] text-blue-200/75">
-                DOMAIN / UNIT
+                UNITÉ / GRAPPE
                 </h4>
                 <div className="rounded-full border border-blue-400/20 bg-blue-500/10 px-3 py-1 text-[9px] font-black uppercase tracking-[0.18em] text-blue-200">
                   {grappeInfo.count ?? 0} ménages
                 </div>
               </div>
 
-              <p className="text-blue-200 font-black text-lg uppercase tracking-[-0.04em] leading-tight break-words">
+              <p className="text-cyan-400 font-black text-xl uppercase tracking-tight leading-tight break-words drop-shadow-[0_2px_10px_rgba(34,211,238,0.3)]">
                 {grappeInfo.name}
               </p>
 
               <p className="text-[10px] font-bold uppercase tracking-[0.18em] mt-3 text-blue-300/80">
-                {grappeInfo.count ?? 0} SIBLINGS IN AREA
+                {grappeInfo.count ?? 0} MÉNAGES DANS LA ZONE
               </p>
             </div>
           )}
+
 
           {/* Kobo Metadata */}
           <div className="p-5 sm:p-8 rounded-[2rem] border-dashed border-2 border-slate-800 bg-slate-900/30 space-y-6">
@@ -947,11 +951,11 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
       </div>
 
       {/* Navigation Actions Bottom Sticky */}
-      <div className="sticky bottom-0 left-0 right-0 px-4 sm:px-6 md:px-8 py-3 sm:py-4 bg-[linear-gradient(180deg,rgba(2,6,23,0.55),rgba(2,6,23,0.96))] backdrop-blur-2xl border-t border-white/10 flex flex-col gap-2.5 shadow-[0_-18px_32px_rgba(0,0,0,0.42)] pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+      <div className="sticky bottom-0 left-0 right-0 px-4 sm:px-5 md:px-7 py-2.5 sm:py-3 bg-[linear-gradient(180deg,rgba(2,6,23,0.38),rgba(2,6,23,0.94))] backdrop-blur-2xl border-t border-white/10 flex flex-col gap-2 shadow-[0_-14px_26px_rgba(0,0,0,0.34)] pb-[calc(0.65rem+env(safe-area-inset-bottom))]">
         {!routingEnabled ? (
           <button
             onClick={onTraceItinerary}
-            className="w-full h-12 sm:h-14 bg-[linear-gradient(135deg,#2563eb,#1d4ed8)] hover:brightness-110 text-white rounded-2xl font-black text-[11px] sm:text-sm transition-all shadow-[0_14px_28px_rgba(37,99,235,0.28)] active:scale-95 flex items-center justify-center gap-2 uppercase tracking-[0.18em]"
+            className="w-full h-11 sm:h-12 bg-[linear-gradient(135deg,#2563eb,#1d4ed8)] hover:brightness-110 text-white rounded-[1.15rem] font-black text-[10px] sm:text-[11px] transition-all shadow-[0_12px_24px_rgba(37,99,235,0.24)] active:scale-95 flex items-center justify-center gap-2 uppercase tracking-[0.16em]"
           >
             <Navigation size={18} className="rotate-45" />
             CALCULER L'ITINÉRAIRE
