@@ -26,12 +26,14 @@ import logger from '../utils/logger';
 import { useTeams } from '../hooks/useTeams';
 import { StatusBadge } from '../components/dashboards/DashboardComponents';
 import { useTerrainData } from '../hooks/useTerrainData';
+import { useAuth } from '../contexts/AuthContext';
 
 import { FinancesSection } from '../components/finances/FinancesSection';
 import { KoboSettingsSection } from '../components/KoboSettingsSection';
 import { DataSection } from '../components/DataSection';
 import apiClient from '../api/client';
 import toast from 'react-hot-toast';
+import { probeLocalDeployAgent, triggerLocalDeploy } from '../services/localDeployAgent';
 
 // Helper stable id generator (defined outside components to avoid impure calls during render)
 const makeId = (prefix = 'id') =>
@@ -67,14 +69,89 @@ type TabType =
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState<TabType>('teams');
+  const [isDeploying, setIsDeploying] = useState(false);
   const { project, updateProject, isLoading: isProjectLoading } = useProject();
   const { households, isLoading: isHouseholdsLoading } = useTerrainData();
+  const { user } = useAuth();
 
   // Cast project config once at the top for type safety
   const cfg = ((project?.config || {}) as ProjectConfig) || ({} as ProjectConfig);
+  const canRunDbMaintenance = user?.email === 'admingem';
+  const canAccessAdminOnlyTabs =
+    user?.email === 'admingem' || user?.role === 'ADMIN_PROQUELEC';
 
 
   const isLoading = isProjectLoading || isHouseholdsLoading;
+
+  useEffect(() => {
+    if (!canAccessAdminOnlyTabs && ['kobo', 'data', 'system'].includes(activeTab)) {
+      setActiveTab('teams');
+    }
+  }, [activeTab, canAccessAdminOnlyTabs]);
+
+  const handleDeployNow = async () => {
+    if (isDeploying) return;
+
+    setIsDeploying(true);
+    try {
+      const localAgent = await probeLocalDeployAgent();
+
+      if (localAgent?.ok) {
+        const commitMessage = window.prompt(
+          "Message de commit pour le déploiement local",
+          "Deploy update"
+        );
+        if (commitMessage === null) {
+          return;
+        }
+
+        if (
+          !window.confirm(
+            "🚀 Lancer le mode local complet ?\n\nCette action va faire commit + push + déploiement VPS depuis cette machine."
+          )
+        ) {
+          return;
+        }
+
+        toast.loading('Agent local détecté: commit + push + déploiement en cours...', {
+          id: 'deploy-progress',
+        });
+
+        const result = await triggerLocalDeploy(commitMessage.trim());
+        toast.success(
+          result.stdout?.includes('Deployment sequence completed.')
+            ? 'Déploiement local complet terminé.'
+            : 'Déploiement local terminé.',
+          { id: 'deploy-progress', duration: 5000 }
+        );
+        return;
+      }
+
+      const hasPushed = window.confirm(
+        "⚠️ Agent local introuvable.\n\nLe mode fallback va seulement déployer ce qui est déjà sur GitHub. Avez-vous bien fait un Git Push de vos dernières modifications ?"
+      );
+      if (!hasPushed) {
+        toast('🛑 Veuillez envoyer votre code sur GitHub avant de déployer.', {
+          style: { background: '#333', color: '#fff' },
+        });
+        return;
+      }
+
+      if (
+        window.confirm(
+          "🚀 Lancer la mise à jour complète du serveur ?\n\nCette action va synchroniser le serveur avec GitHub et reconstruire l'application en arrière-plan."
+        )
+      ) {
+        const res = await apiClient.post('/projects/system/deploy');
+        toast.success(res.data.message || 'Le déploiement serveur a été lancé !');
+      }
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || err?.message || 'Erreur lors du déploiement');
+    } finally {
+      toast.dismiss('deploy-progress');
+      setIsDeploying(false);
+    }
+  };
 
   if (isLoading)
     return (
@@ -94,9 +171,13 @@ export default function Settings() {
     { id: 'regions', label: 'Régions & Affectations', icon: Layers },
     { id: 'logistics', label: 'Dotations Standard', icon: Wrench },
     { id: 'finances', label: 'Devis & Finances', icon: FileSpreadsheet },
-    { id: 'kobo', label: 'KoBo', icon: CloudDownload },
-    { id: 'data', label: 'Données', icon: Database },
-    { id: 'system', label: 'Système', icon: Server },
+    ...(canAccessAdminOnlyTabs
+      ? [
+          { id: 'kobo', label: 'KoBo', icon: CloudDownload },
+          { id: 'data', label: 'Données', icon: Database },
+          { id: 'system', label: 'Système', icon: Server },
+        ]
+      : []),
   ];
 
   return (
@@ -335,17 +416,17 @@ export default function Settings() {
                   {activeTab === 'finances' && (
                     <FinancesSection project={project} onUpdate={updateProject} />
                   )}
-                  {activeTab === 'kobo' && (
+                  {canAccessAdminOnlyTabs && activeTab === 'kobo' && (
                     <KoboSettingsSection project={project} onUpdate={updateProject} />
                   )}
-                  {activeTab === 'data' && (
+                  {canAccessAdminOnlyTabs && activeTab === 'data' && (
                     <DataSection
                       project={project}
                       households={households || []}
                       onUpdate={updateProject}
                     />
                   )}
-                  {activeTab === 'system' && (
+                  {canAccessAdminOnlyTabs && activeTab === 'system' && (
                     <div className="space-y-6 sm:space-y-8">
                       <div className="flex items-center justify-between mb-4">
                         <h2 className="text-lg sm:text-xl font-black text-white uppercase tracking-tight flex items-center gap-3">
@@ -362,82 +443,59 @@ export default function Settings() {
                             Mise à jour du serveur
                           </h3>
                           <p className="text-xs text-slate-400 font-bold leading-relaxed">
-                            Synchronise le code avec GitHub et reconstruit l'application. Cette
-                            action peut prendre quelques minutes durant lesquelles le serveur
-                            restera accessible mais en cours de reconstruction.
+                            Si un agent local est disponible sur ce poste, ce bouton lance
+                            commit + push + déploiement VPS. Sinon, il déploie seulement la
+                            dernière version déjà poussée sur GitHub.
                           </p>
                           <button
-                            onClick={async () => {
-                              const hasPushed = window.confirm(
-                                "⚠️ ATTENTION : Avez-vous bien fait un 'Git Push' de vos dernières modifications (via le script deploy_vps.ps1 ou VS Code) avant de lancer cette action ? \n\nCliquez sur OK si OUI, ou sur Annuler si NON."
-                              );
-                              if (!hasPushed) {
-                                toast(
-                                  '🛑 Veuillez envoyer votre code sur Github avant de déployer.',
-                                  { style: { background: '#333', color: '#fff' } }
-                                );
-                                return;
-                              }
-
-                              if (
-                                window.confirm(
-                                  "🚀 Lancer la mise à jour complète du serveur ? \n\nCette action va synchroniser le serveur avec GitHub et reconstruire l'application en arrière-plan."
-                                )
-                              ) {
-                                try {
-                                  const res = await apiClient.post('/projects/system/deploy');
-                                  toast.success(res.data.message || 'Le déploiement a été lancé !');
-                                } catch (err: any) {
-                                  toast.error(
-                                    err.response?.data?.error || 'Erreur lors du déploiement'
-                                  );
-                                }
-                              }
-                            }}
+                            onClick={handleDeployNow}
+                            disabled={isDeploying}
                             className="w-full min-h-[48px] py-4 bg-blue-600 hover:bg-blue-500 text-white font-black uppercase text-[10px] sm:text-xs tracking-[0.08em] sm:tracking-[0.2em] rounded-2xl transition-all shadow-lg shadow-blue-500/10 active:scale-95"
                           >
-                            Déployer maintenant
+                            {isDeploying ? 'DÉPLOIEMENT EN COURS...' : 'Déployer maintenant'}
                           </button>
                         </div>
 
-                        <div className="bg-slate-900/50 p-4 sm:p-8 rounded-[1.6rem] sm:rounded-3xl border border-white/5 space-y-4">
-                          <div className="w-12 h-12 bg-amber-500/10 rounded-2xl flex items-center justify-center text-amber-500">
-                            <Database size={24} />
-                          </div>
-                          <h3 className="text-white font-black uppercase text-[11px] sm:text-sm tracking-[0.08em] sm:tracking-widest">
-                            Nettoyage Base de Données
-                          </h3>
-                          <p className="text-xs text-slate-400 font-bold leading-relaxed">
-                            Supprime définitivement les éléments dans la corbeille depuis plus de 30
-                            jours et optimise les structures de la base PostgreSQL.
-                          </p>
-                          <button
-                            onClick={async () => {
-                              if (
-                                window.confirm(
-                                  '⚠️ Voulez-vous purger complètement la corbeille de la base de données ?\n\nCette action est irréversible et supprimera les données vieilles de +30 jours.'
-                                )
-                              ) {
-                                try {
-                                  const res = await apiClient.post(
-                                    '/projects/system/db-maintenance'
-                                  );
-                                  toast.success(res.data.details || 'Maintenance réussie', {
-                                    duration: 5000,
-                                    style: { background: '#22c55e', color: '#fff' },
-                                  });
-                                } catch (err: any) {
-                                  toast.error(
-                                    err.response?.data?.error || 'Erreur lors de la maintenance'
-                                  );
+                        {canRunDbMaintenance && (
+                          <div className="bg-slate-900/50 p-4 sm:p-8 rounded-[1.6rem] sm:rounded-3xl border border-white/5 space-y-4">
+                            <div className="w-12 h-12 bg-amber-500/10 rounded-2xl flex items-center justify-center text-amber-500">
+                              <Database size={24} />
+                            </div>
+                            <h3 className="text-white font-black uppercase text-[11px] sm:text-sm tracking-[0.08em] sm:tracking-widest">
+                              Nettoyage Base de Données
+                            </h3>
+                            <p className="text-xs text-slate-400 font-bold leading-relaxed">
+                              Supprime définitivement les éléments dans la corbeille depuis plus de 30
+                              jours et optimise les structures de la base PostgreSQL.
+                            </p>
+                            <button
+                              onClick={async () => {
+                                if (
+                                  window.confirm(
+                                    '⚠️ Voulez-vous purger complètement la corbeille de la base de données ?\n\nCette action est irréversible et supprimera les données vieilles de +30 jours.'
+                                  )
+                                ) {
+                                  try {
+                                    const res = await apiClient.post(
+                                      '/projects/system/db-maintenance'
+                                    );
+                                    toast.success(res.data.details || 'Maintenance réussie', {
+                                      duration: 5000,
+                                      style: { background: '#22c55e', color: '#fff' },
+                                    });
+                                  } catch (err: any) {
+                                    toast.error(
+                                      err.response?.data?.error || 'Erreur lors de la maintenance'
+                                    );
+                                  }
                                 }
-                              }
-                            }}
-                            className="w-full min-h-[48px] py-4 bg-amber-600 hover:bg-amber-500 text-white font-black uppercase text-[10px] sm:text-xs tracking-[0.08em] sm:tracking-[0.2em] rounded-2xl transition-all shadow-lg shadow-amber-500/10 active:scale-95"
-                          >
-                            OPTIMISER LA BASE
-                          </button>
-                        </div>
+                              }}
+                              className="w-full min-h-[48px] py-4 bg-amber-600 hover:bg-amber-500 text-white font-black uppercase text-[10px] sm:text-xs tracking-[0.08em] sm:tracking-[0.2em] rounded-2xl transition-all shadow-lg shadow-amber-500/10 active:scale-95"
+                            >
+                              OPTIMISER LA BASE
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}

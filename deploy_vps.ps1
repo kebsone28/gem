@@ -6,6 +6,7 @@ param(
   [string]$SshConfigHost = '',
   [string]$SshKeyPath = '',
   [string]$Branch = 'main',
+  [string]$CommitMessage = '',
   [switch]$AcceptHostKey,
   [switch]$Force,
   [switch]$SkipTests,
@@ -166,10 +167,13 @@ if (-not $SkipCommit) {
       return
     }
 
-    $defaultMessage = "Deploy update - $(Get-Date -Format 'yyyy-MM-dd HH:mm')"
-    $message = Read-Host "Message de commit"
+    $message = $CommitMessage
     if ([string]::IsNullOrWhiteSpace($message)) {
-      $message = $defaultMessage
+      $defaultMessage = "Deploy update - $(Get-Date -Format 'yyyy-MM-dd HH:mm')"
+      $message = Read-Host "Message de commit"
+      if ([string]::IsNullOrWhiteSpace($message)) {
+        $message = $defaultMessage
+      }
     }
 
     Invoke-Git 'commit' '-m' $message
