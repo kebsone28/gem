@@ -1,4 +1,6 @@
 ﻿ 
+import type { StyleSpecification } from 'maplibre-gl';
+
 /**
  * mapConfig.ts
  *
@@ -36,14 +38,16 @@ export const getStatusColor = (status?: string): string => {
   return match ? STATUS_CONFIG[match].color : STATUS_CONFIG.default.color;
 };
 
-export const MAP_STYLE_DARK = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
-export const MAP_STYLE_LIGHT = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
-export const MAP_STYLE_FALLBACK_RASTER = {
+const OSM_TILES = ['cached://https://tile.openstreetmap.org/{z}/{x}/{y}.png'];
+
+const createOsmRasterStyle = (
+  overrides: Record<string, unknown> = {}
+): StyleSpecification => ({
   version: 8,
   sources: {
     osm: {
       type: 'raster',
-      tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+      tiles: OSM_TILES,
       tileSize: 256,
       attribution: '&copy; OpenStreetMap contributors',
     },
@@ -55,16 +59,27 @@ export const MAP_STYLE_FALLBACK_RASTER = {
       source: 'osm',
       minzoom: 0,
       maxzoom: 20,
+      paint: overrides as any,
     },
   ],
-};
+});
+
+export const MAP_STYLE_LIGHT = createOsmRasterStyle();
+export const MAP_STYLE_DARK = createOsmRasterStyle({
+  'raster-brightness-max': 0.35,
+  'raster-brightness-min': 0.05,
+  'raster-contrast': 0.2,
+  'raster-saturation': -1,
+});
+export const MAP_STYLE_FALLBACK_RASTER = createOsmRasterStyle();
+
 export const MAP_STYLE_SATELLITE = {
   version: 8,
   sources: {
     esri: {
       type: 'raster',
       tiles: [
-        'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        'cached://https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
       ],
       tileSize: 256,
       attribution: '&copy; Esri, Earthstar Geographics',
