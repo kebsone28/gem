@@ -1,20 +1,137 @@
-# 🚀 GEM SAAS - Automated Deployment Script
-# Usage: Run this from your local project root
+[CmdletBinding()]
+param(
+  [string]$ServerHost = '',
+  [string]$ServerUser = '',
+  [string]$DeployPath = '',
+  [string]$Branch = 'main',
+  [switch]$SkipTests,
+  [switch]$SkipCommit,
+  [switch]$SkipPush,
+  [switch]$SkipDeploy
+)
 
-Write-Host "--- 📦 1. PREPARATION DES FICHIERS ---" -ForegroundColor Cyan
-git add .
-$msg = Read-Host "Message de mise à jour (ex: Correction bug carte)"
-if ($msg -eq "") { $msg = "Mise à jour automatique - $(Get-Date -Format 'dd/MM/yyyy HH:mm')" }
-git commit -m $msg
+$ErrorActionPreference = 'Stop'
+Set-StrictMode -Version Latest
 
-Write-Host "`n--- 📤 2. ENVOI VERS GITHUB ---" -ForegroundColor Cyan
-git push origin main
+function Get-FirstNonEmpty {
+  param([string[]]$Values)
 
-Write-Host "`n--- 🌐 3. CONNEXION ET MISE À JOUR DU VPS ---" -ForegroundColor Cyan
-Write-Host "Le terminal va vous demander le mot de passe ROOT du serveur." -ForegroundColor Yellow
+  foreach ($value in $Values) {
+    if (-not [string]::IsNullOrWhiteSpace($value)) {
+      return $value.Trim()
+    }
+  }
 
-# On se connecte et on enchaîne les commandes sur le serveur
-ssh root@gem.proquelec.sn "cd /var/www/proquelec/gem-saas && git fetch --all && git reset --hard origin/main && npm install --no-scripts --legacy-peer-deps && cd backend && npm install --no-scripts --legacy-peer-deps && cd ../frontend && npm install --no-scripts --legacy-peer-deps && npm run build && pm2 restart all"
+  return ''
+}
 
-Write-Host "`n✅ MISE À JOUR TERMINÉE SUR https://gem.proquelec.sn" -ForegroundColor Green
-Pause
+function Invoke-Step {
+  param(
+    [string]$Title,
+    [scriptblock]$Action
+  )
+
+  Write-Host ""
+  Write-Host "--- $Title ---" -ForegroundColor Cyan
+  & $Action
+}
+
+function Invoke-Git {
+  param(
+    [Parameter(ValueFromRemainingArguments = $true)]
+    [string[]]$Args
+  )
+
+  & git @Args
+  if ($LASTEXITCODE -ne 0) {
+    throw "Git command failed: git $($Args -join ' ')"
+  }
+}
+
+function Invoke-Npm {
+  param(
+    [Parameter(ValueFromRemainingArguments = $true)]
+    [string[]]$Args
+  )
+
+  & npm @Args
+  if ($LASTEXITCODE -ne 0) {
+    throw "NPM command failed: npm $($Args -join ' ')"
+  }
+}
+
+$resolvedHost = Get-FirstNonEmpty @($ServerHost, $env:WANEKOO_HOST, $env:DEPLOY_HOST, 'gem.proquelec.sn')
+$resolvedUser = Get-FirstNonEmpty @($ServerUser, $env:WANEKOO_USER, $env:DEPLOY_USER, 'root')
+$resolvedPath = Get-FirstNonEmpty @($DeployPath, $env:WANEKOO_DEPLOY_PATH, $env:DEPLOY_PATH, '/var/www/proquelec/gem-saas')
+
+Write-Host "GEM SAAS deployment" -ForegroundColor Green
+Write-Host "Target: $resolvedUser@$resolvedHost" -ForegroundColor DarkGray
+Write-Host "Path:   $resolvedPath" -ForegroundColor DarkGray
+Write-Host "Branch: $Branch" -ForegroundColor DarkGray
+
+Invoke-Step "1. Verification du depot" {
+  Invoke-Git 'rev-parse' '--show-toplevel'
+  Invoke-Git 'status' '--short' '--branch'
+}
+
+if (-not $SkipTests) {
+  Invoke-Step "2. Verification locale avant deploiement" {
+    Invoke-Npm 'run' 'build' '--prefix' 'frontend'
+  }
+}
+
+if (-not $SkipCommit) {
+  Invoke-Step "3. Preparation Git locale" {
+    Invoke-Git 'add' '-A'
+
+    & git diff --cached --quiet
+    $hasStagedChanges = $LASTEXITCODE -ne 0
+
+    if (-not $hasStagedChanges) {
+      Write-Host "Aucun changement a committer." -ForegroundColor Yellow
+      return
+    }
+
+    $defaultMessage = "Deploy update - $(Get-Date -Format 'yyyy-MM-dd HH:mm')"
+    $message = Read-Host "Message de commit"
+    if ([string]::IsNullOrWhiteSpace($message)) {
+      $message = $defaultMessage
+    }
+
+    Invoke-Git 'commit' '-m' $message
+  }
+}
+
+if (-not $SkipPush) {
+  Invoke-Step "4. Publication vers GitHub" {
+    Invoke-Git 'push' 'origin' "HEAD:$Branch"
+  }
+}
+
+if (-not $SkipDeploy) {
+  Invoke-Step "5. Deploiement VPS" {
+    $remoteCommands = @(
+      'set -e'
+      "cd $resolvedPath"
+      'git fetch --all'
+      "git reset --hard origin/$Branch"
+      'npm install --no-scripts --legacy-peer-deps'
+      'cd frontend'
+      'npm install --no-scripts --legacy-peer-deps'
+      "NODE_OPTIONS='--max-old-space-size=4096' npm run build"
+      'cd ../backend'
+      'npm install --no-scripts --legacy-peer-deps'
+      'npx pm2 restart all'
+      'sleep 10'
+      'curl -fsS http://localhost:5005/health'
+    ) -join ' && '
+
+    & ssh "$resolvedUser@$resolvedHost" $remoteCommands
+    if ($LASTEXITCODE -ne 0) {
+      throw "Remote deployment failed on $resolvedHost"
+    }
+  }
+}
+
+Write-Host ""
+Write-Host "Deployment sequence completed." -ForegroundColor Green
