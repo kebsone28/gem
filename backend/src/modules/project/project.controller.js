@@ -5,6 +5,10 @@ import { socketService } from '../../services/socket.service.js';
 import { recalculateProjectGrappes } from '../../services/project_config.service.js';
 import { exec } from 'child_process';
 import path from 'path';
+import {
+    DEFAULT_WANEKOO_DEPLOY_PATH,
+    buildWanekooDeployCommand,
+} from '../../core/config/serverDeploy.config.js';
 
 const DONE_STATUSES = new Set(['completed', 'Terminé', 'Réception: Validée', 'Conforme']);
 
@@ -515,8 +519,8 @@ export const deployServerUpdate = async (req, res) => {
             return res.status(403).json({ error: 'Privilèges insuffisants pour le déploiement système.' });
         }
 
-        const projectPath = '/var/www/proquelec/gem-saas';
-        const command = `cd ${projectPath} && git fetch --all && git reset --hard origin/main && npm install --no-scripts && cd frontend && npm install --no-scripts && npm run build`;
+        const projectPath = DEFAULT_WANEKOO_DEPLOY_PATH;
+        const command = buildWanekooDeployCommand(projectPath);
 
         console.log(`[SYSTEM] Déploiement initié par ${email}`);
 

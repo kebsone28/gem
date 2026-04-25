@@ -1,18 +1,23 @@
 import { NodeSSH } from 'node-ssh';
+import {
+  buildWanekooDeployCommand,
+  validateWanekooSshConfig,
+} from './src/core/config/serverDeploy.config.js';
 
 const ssh = new NodeSSH();
 
 async function deploy() {
   try {
+    const { host, username, password, privateKey, deployPath } = validateWanekooSshConfig();
     console.log('Connecting to VPS...');
     await ssh.connect({
-      host: '204.168.248.25',
-      username: 'root',
-      password: 'Ur94w4NVdhcpJJUPCnFj'
+      host,
+      username,
+      ...(privateKey ? { privateKey } : { password }),
     });
     console.log('Connected!');
 
-    const command = 'cd /var/www/proquelec/gem-saas && git fetch --all && git reset --hard origin/main && npm install --no-scripts --legacy-peer-deps && cd frontend && npm install --no-scripts --legacy-peer-deps && NODE_OPTIONS="--max-old-space-size=4096" npx vite build && cd ../backend && npm install --no-scripts --legacy-peer-deps && npx pm2 restart all';
+    const command = buildWanekooDeployCommand(deployPath);
     
     console.log('Executing deployment commands...');
     const result = await ssh.execCommand(command, {
