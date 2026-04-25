@@ -41,27 +41,26 @@ function Invoke-Step {
   & $Action
 }
 
-function Invoke-Git {
+function Invoke-ExternalCommand {
   param(
-    [Parameter(ValueFromRemainingArguments = $true)]
-    [string[]]$Args
+    [string]$FilePath,
+    [string[]]$Arguments
   )
 
-  & git @Args
-  if ($LASTEXITCODE -ne 0) {
-    throw "Git command failed: git $($Args -join ' ')"
+  $resolvedFilePath = $FilePath
+
+  $isWindowsPlatform = [System.Environment]::OSVersion.Platform -eq [System.PlatformID]::Win32NT
+
+  if ($isWindowsPlatform) {
+    switch ($FilePath.ToLowerInvariant()) {
+      'npm' { $resolvedFilePath = 'npm.cmd' }
+      'npx' { $resolvedFilePath = 'npx.cmd' }
+    }
   }
-}
 
-function Invoke-Npm {
-  param(
-    [Parameter(ValueFromRemainingArguments = $true)]
-    [string[]]$Args
-  )
-
-  & npm @Args
+  & $resolvedFilePath @Arguments
   if ($LASTEXITCODE -ne 0) {
-    throw "NPM command failed: npm $($Args -join ' ')"
+    throw "Command failed: $resolvedFilePath $($Arguments -join ' ')"
   }
 }
 
@@ -128,13 +127,13 @@ if ($resolvedSshKeyPath) {
 }
 
 Invoke-Step "1. Verification du depot" {
-  Invoke-Git 'rev-parse' '--show-toplevel'
-  Invoke-Git 'status' '--short' '--branch'
+  Invoke-ExternalCommand -FilePath 'git' -Arguments @('rev-parse', '--show-toplevel')
+  Invoke-ExternalCommand -FilePath 'git' -Arguments @('status', '--short', '--branch')
 }
 
 if (-not $SkipTests) {
   Invoke-Step "2. Verification locale avant deploiement" {
-    Invoke-Npm 'run' 'build' '--prefix' 'frontend'
+    Invoke-ExternalCommand -FilePath 'npm' -Arguments @('run', 'build', '--prefix', 'frontend')
   }
 }
 
@@ -157,7 +156,7 @@ if (-not $SkipCommit) {
       throw 'Commit aborted by user before staging.'
     }
 
-    Invoke-Git 'add' '-A'
+    Invoke-ExternalCommand -FilePath 'git' -Arguments @('add', '-A')
 
     & git diff --cached --quiet
     $hasStagedChanges = $LASTEXITCODE -ne 0
@@ -176,13 +175,13 @@ if (-not $SkipCommit) {
       }
     }
 
-    Invoke-Git 'commit' '-m' $message
+    Invoke-ExternalCommand -FilePath 'git' -Arguments @('commit', '-m', $message)
   }
 }
 
 if (-not $SkipPush) {
   Invoke-Step "4. Publication vers GitHub" {
-    Invoke-Git 'push' 'origin' "HEAD:$Branch"
+    Invoke-ExternalCommand -FilePath 'git' -Arguments @('push', 'origin', "HEAD:$Branch")
   }
 }
 
