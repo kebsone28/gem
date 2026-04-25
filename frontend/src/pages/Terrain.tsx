@@ -732,7 +732,7 @@ const Terrain: React.FC = () => {
                       isFilteringActive={
                         selectedTeam !== 'all' || selectedPhases.length !== ALL_STATUSES.length
                       }
-                      showLegend={terrainFeatures.statusLegend}
+                      showLegend={terrainFeatures.statusLegend && showLegend}
                       onZoneClick={handleZoneClick}
                       grappesConfig={grappesConfig}
                       readOnly={!peut(PERMISSIONS.MODIFIER_CARTE)}
@@ -746,7 +746,6 @@ const Terrain: React.FC = () => {
                       onAddPoint={addPendingPoint}
                       grappeZonesData={grappeZonesData}
                       grappeCentroidsData={grappeCentroidsData}
-                      showLegend={showLegend}
                     />
                   </Suspense>
                 </ErrorBoundary>

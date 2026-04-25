@@ -9,12 +9,8 @@ import { config } from '../config/config.js';
  * En développement local sans Redis, les queues sont désactivées (no-ops).
  */
 
-// Redis est disponible si une URL est fournie, ou si l'hôte n'est pas localhost
-const isRedisConfigured = !!config.redis.url || (
-    config.redis.host &&
-    config.redis.host !== 'localhost' &&
-    config.redis.host !== '127.0.0.1'
-);
+// Redis peut aussi être explicitement activé en production, même sur localhost.
+const isRedisConfigured = !!config.redis.enabled;
 
 let redisConnection = null;
 
@@ -51,8 +47,8 @@ if (isRedisConfigured) {
         console.log(`[REDIS] ✅ Connecté à Redis: ${config.redis.host || 'via URL'}:${config.redis.port}`);
     });
 } else {
-    console.warn('[REDIS] ⚠️  Redis non configuré en local. Les jobs asynchrones (BullMQ) sont désactivés.');
-    console.warn('[REDIS]    Ajoutez REDIS_URL dans backend/.env pour activer les queues.');
+    console.warn('[REDIS] ⚠️  Redis désactivé pour cet environnement. Les jobs asynchrones (BullMQ) sont désactivés.');
+    console.warn('[REDIS]    Définissez REDIS_ENABLED=true ou REDIS_URL dans backend/.env pour activer les queues.');
 }
 
 /**

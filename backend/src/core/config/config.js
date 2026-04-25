@@ -55,6 +55,15 @@ export const config = {
         dsn: process.env.SENTRY_DSN
     },
     redis: {
+        enabled: process.env.REDIS_ENABLED
+            ? process.env.REDIS_ENABLED === 'true'
+            : !!process.env.REDIS_URL ||
+              process.env.NODE_ENV === 'production' ||
+              !!(
+                  process.env.REDIS_HOST &&
+                  process.env.REDIS_HOST !== 'localhost' &&
+                  process.env.REDIS_HOST !== '127.0.0.1'
+              ),
         url: process.env.REDIS_URL, // Utilisé en priorité par IORedis sur Railway
         host: process.env.REDIS_HOST || 'localhost',
         port: parsePort(process.env.REDIS_PORT, 6379),

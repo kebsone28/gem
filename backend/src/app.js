@@ -110,7 +110,7 @@ app.get('/health', async (req, res) => {
         status: 'UP',
         services: {
             database: 'DOWN',
-            redis: 'DOWN'
+            redis: redisConnection ? 'DOWN' : 'N/A'
         },
         time: new Date(),
         version: '1.0.0-PRO'
