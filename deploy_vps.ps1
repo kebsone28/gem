@@ -202,6 +202,8 @@ if (-not $SkipDeploy) {
       "NODE_OPTIONS='--max-old-space-size=4096' npm run build"
       'cd ../backend'
       'npm install --no-scripts --legacy-peer-deps'
+      'npx prisma generate --schema=prisma/schema.prisma'
+      'npx prisma migrate deploy --schema=prisma/schema.prisma'
       'npx pm2 restart all'
       'sleep 10'
       'curl -fsS http://localhost:5005/health'
