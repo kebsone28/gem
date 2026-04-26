@@ -233,7 +233,54 @@ export const deleteUser = async (req, res) => {
             return res.status(400).json({ error: 'Vous ne pouvez pas supprimer votre propre compte' });
         }
 
-        await prisma.user.delete({ where: { id } });
+        if (user.roleLegacy === 'ADMIN_PROQUELEC') {
+            return res.status(400).json({ error: 'Impossible de supprimer un compte Administrateur.' });
+        }
+
+        await prisma.$transaction(async (tx) => {
+            await tx.team.updateMany({
+                where: { organizationId, leaderId: id },
+                data: { leaderId: null }
+            });
+
+            await tx.project.updateMany({
+                where: { organizationId, updatedById: id },
+                data: { updatedById: null }
+            });
+
+            await tx.mission.updateMany({
+                where: { organizationId, createdBy: id },
+                data: { createdBy: null }
+            });
+
+            await tx.chatConversation.updateMany({
+                where: { organizationId, createdById: id },
+                data: { createdById: null }
+            });
+
+            await tx.actionApproval.updateMany({
+                where: { organizationId, userId: id },
+                data: { userId: null }
+            });
+
+            await tx.auditLog.deleteMany({
+                where: { organizationId, userId: id }
+            });
+
+            await tx.performanceLog.deleteMany({
+                where: { organizationId, userId: id }
+            });
+
+            await tx.syncLog.deleteMany({
+                where: { organizationId, userId: id }
+            });
+
+            await tx.userMemory.deleteMany({
+                where: { userId: id }
+            });
+
+            await tx.user.delete({ where: { id } });
+        });
 
         try {
             await tracerAction({
@@ -246,6 +293,9 @@ export const deleteUser = async (req, res) => {
         res.json({ message: 'Utilisateur supprimé avec succès' });
     } catch (error) {
         console.error('Delete user error:', error);
-        res.status(500).json({ error: 'Server error while deleting user' });
+        res.status(500).json({
+            error: 'Server error while deleting user',
+            ...(isDev && { details: error.message, code: error.code })
+        });
     }
 };
