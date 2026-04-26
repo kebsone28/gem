@@ -111,6 +111,9 @@ export const getRecentActions = async (organizationId, limit = 10) => {
             take: limit
         });
     } catch (error) {
+        if (isPrismaSchemaDriftError(error)) {
+            return [];
+        }
         console.error('[ERREUR AUDIT] Impossible de récupérer les logs :', error);
         return [];
     }

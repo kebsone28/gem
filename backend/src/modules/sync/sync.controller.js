@@ -11,6 +11,7 @@ import {
     LEGACY_SAFE_HOUSEHOLD_READ_SELECT,
     normalizeLegacyHousehold
 } from '../household/household.compat.js';
+import { isPrismaSchemaDriftError } from '../../core/utils/prismaCompat.js';
 
 // Force relative path for reliable debugging across OS
 const DEBUG_LOG = path.join(process.cwd(), 'sync_debug.log');
@@ -648,7 +649,9 @@ export const syncKobo = async (req, res) => {
                 }
             });
         } catch (e) {
-            console.warn('[SYNC-KOBO] SyncLog not available:', e.message);
+            if (!isPrismaSchemaDriftError(e)) {
+                console.warn('[SYNC-KOBO] SyncLog not available:', e.message);
+            }
         }
 
         res.json({
