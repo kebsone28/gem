@@ -605,6 +605,14 @@ const Terrain: React.FC = () => {
     return 'custom';
   }, [selectedPhases]);
 
+  const hasZoneOverlayData = useMemo(() => {
+    const zoneCount = Array.isArray(grappeZonesData?.features) ? grappeZonesData.features.length : 0;
+    const centroidCount = Array.isArray(grappeCentroidsData?.features)
+      ? grappeCentroidsData.features.length
+      : 0;
+    return zoneCount > 0 || centroidCount > 0;
+  }, [grappeCentroidsData, grappeZonesData]);
+
   const selectedHouseholdGrappeInfo = useMemo(() => {
     if (!selectedHousehold) return undefined;
     const gId = selectedHousehold.grappeId;
@@ -860,6 +868,8 @@ const Terrain: React.FC = () => {
           mapStyle: terrainFeatures.mapStyle,
           statusLegend: terrainFeatures.statusLegend,
           zoneOverlay: terrainFeatures.zoneOverlay,
+          zoneOverlayReady: hasZoneOverlayData,
+          zoneOverlayLoading: isClustersLoading,
           routing: terrainFeatures.routing,
           grappeTools: terrainFeatures.grappeTools,
           analytics: terrainFeatures.analytics,

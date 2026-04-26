@@ -51,29 +51,48 @@ const messageInclude = {
 
 const getConversationRoom = (conversationId) => `chat_conversation_${conversationId}`;
 
-const toSafeUser = (user, activeBlocksByUserId = new Map(), onlineUserIds = new Set()) => ({
-  id: user.id,
-  email: user.email,
-  name: user.name || user.email,
-  role: user.roleLegacy || 'CHEF_EQUIPE',
-  active: user.active !== false,
-  lastLogin: user.lastLogin,
-  online: onlineUserIds.has(user.id),
-  blocked: activeBlocksByUserId.has(user.id),
-  blockedReason: activeBlocksByUserId.get(user.id)?.reason || null,
-});
+const toSafeUser = (user, activeBlocksByUserId = new Map(), onlineUserIds = new Set()) => {
+  if (!user) {
+    return {
+      id: 'unknown',
+      email: 'deleted@user',
+      name: 'Utilisateur supprimé',
+      role: 'UNKNOWN',
+      active: false,
+      online: false,
+      blocked: false,
+      blockedReason: null,
+    };
+  }
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name || user.email,
+    role: user.roleLegacy || 'CHEF_EQUIPE',
+    active: user.active !== false,
+    lastLogin: user.lastLogin,
+    online: onlineUserIds.has(user.id),
+    blocked: activeBlocksByUserId.has(user.id),
+    blockedReason: activeBlocksByUserId.get(user.id)?.reason || null,
+  };
+};
 
-const toSafeMessage = (message) => ({
-  id: message.id,
-  conversationId: message.conversationId,
-  senderId: message.senderId,
-  content: message.content,
-  createdAt: message.createdAt,
-  editedAt: message.editedAt,
-  sender: toSafeUser(message.sender),
-});
+const toSafeMessage = (message) => {
+  if (!message) return null;
+  return {
+    id: message.id,
+    conversationId: message.conversationId,
+    senderId: message.senderId,
+    content: message.content,
+    createdAt: message.createdAt,
+    editedAt: message.editedAt,
+    sender: toSafeUser(message.sender),
+  };
+};
 
 const toSafeConversation = (conversation, currentUserId, activeBlocksByUserId = new Map(), onlineUserIds = new Set()) => {
+  if (!conversation) return null;
+  
   const lastMessage = conversation.messages?.[0] ? toSafeMessage(conversation.messages[0]) : null;
 
   return {
@@ -206,13 +225,24 @@ async function broadcastConversationToParticipants(conversation, participantUser
 export const getChatBootstrap = async (req, res) => {
   try {
     const { organizationId, id: userId } = req.user;
+    if (!organizationId || !userId) {
+        return res.status(400).json({ error: 'Session invalide : organizationId ou userId manquant.' });
+    }
+
+    console.log(`[CHAT_BOOTSTRAP] Starting for user ${userId} in org ${organizationId}`);
 
     const [globalConversation, users, conversations, activeBlocksByUserId] = await Promise.all([
-      ensureGlobalConversation(organizationId, userId),
+      ensureGlobalConversation(organizationId, userId).catch(e => {
+          console.error('[CHAT_BOOTSTRAP] ensureGlobalConversation failed:', e);
+          throw e;
+      }),
       prisma.user.findMany({
         where: { organizationId },
         orderBy: [{ active: 'desc' }, { name: 'asc' }, { email: 'asc' }],
         select: userSelect,
+      }).catch(e => {
+          console.error('[CHAT_BOOTSTRAP] findMany users failed:', e);
+          throw e;
       }),
       prisma.chatConversation.findMany({
         where: {
@@ -228,19 +258,32 @@ export const getChatBootstrap = async (req, res) => {
         },
         include: conversationInclude,
         orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
+      }).catch(e => {
+          console.error('[CHAT_BOOTSTRAP] findMany conversations failed:', e);
+          throw e;
       }),
-      getActiveBlocksByUserId(organizationId),
+      getActiveBlocksByUserId(organizationId).catch(e => {
+          console.error('[CHAT_BOOTSTRAP] getActiveBlocksByUserId failed:', e);
+          throw e;
+      }),
     ]);
+
+    console.log(`[CHAT_BOOTSTRAP] Data fetched. GlobalConv: ${globalConversation?.id}, Users: ${users.length}, Convs: ${conversations.length}`);
 
     const onlineUserIds = new Set(socketService.getOrganizationPresence(organizationId));
     const safeUsers = users.map((user) => toSafeUser(user, activeBlocksByUserId, onlineUserIds));
 
     const uniqueConversations = new Map();
     [globalConversation, ...conversations].forEach((conversation) => {
-      uniqueConversations.set(
-        conversation.id,
-        toSafeConversation(conversation, userId, activeBlocksByUserId, onlineUserIds)
-      );
+      if (!conversation) return;
+      try {
+        uniqueConversations.set(
+            conversation.id,
+            toSafeConversation(conversation, userId, activeBlocksByUserId, onlineUserIds)
+          );
+      } catch (convError) {
+          console.error(`[CHAT_BOOTSTRAP] Error transforming conversation ${conversation.id}:`, convError);
+      }
     });
 
     res.json({
@@ -253,7 +296,7 @@ export const getChatBootstrap = async (req, res) => {
     });
   } catch (error) {
     console.error('[CHAT_BOOTSTRAP_ERROR]', error);
-    res.status(500).json({ error: 'Erreur lors du chargement de la messagerie.' });
+    res.status(500).json({ error: 'Erreur lors du chargement de la messagerie.', details: error.message });
   }
 };
 
@@ -289,8 +332,10 @@ export const createConversation = async (req, res) => {
     }
 
     const sortedIds = [...finalParticipantIds].sort();
-    const isDirect = sortedIds.length === 2;
+    const isPublic = req.body?.isPublic === true;
+    const isDirect = sortedIds.length === 2 && !req.body?.name && !isPublic;
     const scopeKey = isDirect ? `direct:${sortedIds.join(':')}` : null;
+    const type = isPublic ? CHAT_TYPES.GLOBAL : (isDirect ? CHAT_TYPES.DIRECT : CHAT_TYPES.GROUP);
 
     let conversation = null;
 
@@ -308,8 +353,8 @@ export const createConversation = async (req, res) => {
       conversation = await prisma.chatConversation.create({
         data: {
           organizationId,
-          type: isDirect ? CHAT_TYPES.DIRECT : CHAT_TYPES.GROUP,
-          name: isDirect ? null : (typeof name === 'string' && name.trim()) || 'Groupe de discussion',
+          type,
+          name: isDirect ? null : (typeof name === 'string' && name.trim()) || (isPublic ? 'Canal public' : 'Groupe de discussion'),
           scopeKey,
           createdById: userId,
           participants: {
@@ -500,3 +545,30 @@ export const toggleUserChatBlock = async (req, res) => {
     res.status(500).json({ error: 'Erreur lors de la mise à jour du blocage.' });
   }
 };
+
+export const deleteConversation = async (req, res) => {
+  try {
+    const { organizationId, id: userId } = req.user;
+    const { conversationId } = req.params;
+
+    const conversation = await prisma.chatConversation.findFirst({
+      where: { id: conversationId, organizationId }
+    });
+
+    if (!conversation || conversation.type === CHAT_TYPES.GLOBAL) {
+      return res.status(403).json({ error: 'Action non autorisée sur cette conversation.' });
+    }
+
+    await prisma.chatConversation.delete({
+      where: { id: conversationId }
+    });
+
+    socketService.emit('chat:conversation:deleted', { conversationId }, `org_${organizationId}`);
+
+    res.json({ success: true, conversationId });
+  } catch (error) {
+    console.error('[CHAT_DELETE_ERROR]', error);
+    res.status(500).json({ error: 'Erreur lors de la suppression de la conversation.' });
+  }
+};
+

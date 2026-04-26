@@ -67,7 +67,7 @@ const chatService = {
     return response.data.messages;
   },
 
-  async createConversation(payload: { participantIds: string[]; name?: string }) {
+  async createConversation(payload: { participantIds: string[]; name?: string; isPublic?: boolean }) {
     const response = await apiClient.post<{ conversation: ChatConversation }>(
       '/chat/conversations',
       payload
@@ -90,6 +90,14 @@ const chatService = {
     );
     return response.data;
   },
+
+  async deleteConversation(conversationId: string) {
+    const response = await apiClient.delete<{ success: boolean; conversationId: string }>(
+      `/chat/conversations/${conversationId}`
+    );
+    return response.data;
+  },
+
 };
 
 export default chatService;

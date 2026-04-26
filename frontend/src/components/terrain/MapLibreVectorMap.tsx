@@ -111,7 +111,7 @@ const MapLibreVectorMap: React.FC<any> = ({
   selectedHouseholdId,
   mapCommand,
   onZoneClick,
-  // grappesConfig, // Omitted to fix unused warning
+  grappesConfig,
   readOnly = false,
   grappeZonesData,
   grappeCentroidsData,
@@ -408,7 +408,11 @@ const MapLibreVectorMap: React.FC<any> = ({
     onZoneClickRef,
     onDropRef
   );
-  const { setupClusteringEvents, updateClusterDisplay } = useMapClustering(clusterWorker);
+  const { setupClusteringEvents, updateClusterDisplay } = useMapClustering(
+    clusterWorker,
+    activeHouseholds,
+    householdGeoJSON?.features || []
+  );
   const { setupUserMarker, cleanup: cleanupMarkers } = useMapMarkers(userLocation);
   const { setupMeasureTool } = useMapMeasure();
   const { setupLasso } = useMapLasso(isSelecting, householdsRef, onLassoSelection);
@@ -925,13 +929,12 @@ const MapLibreVectorMap: React.FC<any> = ({
     clusterWorker.isLoaded,
   ]);
 
-  // ── 9. LAYER VISIBILITY HARMONIZATION ──
-  // Si on affiche les Zones (Villages), on cache les grappes circulaires standard
+  // ── 9. HOUSEHOLD VISUAL HARMONIZATION ──
+  // HouseholdLayer remains the single authority for cluster/zone visibility.
   useEffect(() => {
     const currentMap = mapInstanceRef.current;
     if (!currentMap || !styleIsReady) return;
-    
-    const clusterLayers = ['cluster-halo', 'cluster-circles', 'cluster-counts'];
+
     const pointLayers = [
       'households-local-layer', 
       'households-glow-layer', 
@@ -939,32 +942,16 @@ const MapLibreVectorMap: React.FC<any> = ({
       'households-labels-simple',
       'households-photo-badge'
     ];
-    
-    clusterLayers.forEach(layerId => {
-      if (currentMap.getLayer(layerId)) {
-        currentMap.setLayoutProperty(layerId, 'visibility', 'visible');
-      }
-    });
 
     pointLayers.forEach(layerId => {
       if (currentMap.getLayer(layerId)) {
-        // On GARDE les ménages visibles
         currentMap.setLayoutProperty(layerId, 'visibility', 'visible');
-        
-        // MAIS on réduit drastiquement l'effet "cercle" (halo) pour ne pas polluer les trapèzes
+
         if (layerId === 'households-glow-layer') {
           currentMap.setPaintProperty(layerId, 'circle-opacity', zonesModeActive ? 0.2 : 0.85);
           currentMap.setPaintProperty(layerId, 'circle-stroke-width', zonesModeActive ? 0 : 1.5);
           currentMap.setPaintProperty(layerId, 'circle-radius', zonesModeActive ? 2 : 6);
         }
-      }
-    });
-
-    // ── NOUVEAU : On s'assure que les Grappes Proximité (Hulls) sont affichées
-    const superclusterHulls = ['supercluster-hulls-fill', 'supercluster-hulls-outline'];
-    superclusterHulls.forEach(id => {
-      if (currentMap.getLayer(id)) {
-        currentMap.setLayoutProperty(id, 'visibility', zonesModeActive ? 'visible' : 'none');
       }
     });
   }, [isMapReady, styleIsReady, zonesModeActive]);
@@ -1017,6 +1004,7 @@ const MapLibreVectorMap: React.FC<any> = ({
         styleIsReady={styleIsReady}
         grappeZonesData={grappeZonesData}
         grappeCentroidsData={grappeCentroidsData}
+        grappesConfig={grappesConfig}
         showZones={zonesModeActive}
       />
 

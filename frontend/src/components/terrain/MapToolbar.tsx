@@ -32,7 +32,13 @@ interface ToolbarButtonProps {
   danger?: boolean;
 }
 
-const ToolbarButton: React.FC<ToolbarButtonProps> = ({ icon, title, onClick, active, danger }) => {
+const ToolbarButton: React.FC<ToolbarButtonProps> = ({
+  icon,
+  title,
+  onClick,
+  active,
+  danger,
+}) => {
   return (
     <button
       onClick={onClick}
@@ -57,6 +63,8 @@ interface MapToolbarProps {
     mapStyle?: boolean;
     statusLegend?: boolean;
     zoneOverlay?: boolean;
+    zoneOverlayReady?: boolean;
+    zoneOverlayLoading?: boolean;
     routing?: boolean;
     grappeTools?: boolean;
     analytics?: boolean;
@@ -105,6 +113,8 @@ export const MapToolbar: React.FC<MapToolbarProps> = ({ onRecenter, features }) 
   const setIsDrawing = useTerrainUIStore((s) => s.setIsDrawing);
 
   const mapStyle = useTerrainUIStore((s) => s.mapStyle);
+  const zoneOverlayReady = features?.zoneOverlayReady !== false;
+  const zoneOverlayLoading = features?.zoneOverlayLoading === true;
   const setMapStyle = (style: 'dark' | 'light' | 'satellite') => {
     // We use a custom action or the existing toggle if it only has 2 states,
     // but here we should probably update the store to support 3 styles.
@@ -250,7 +260,33 @@ export const MapToolbar: React.FC<MapToolbarProps> = ({ onRecenter, features }) 
               />
             )}
             {features?.zoneOverlay && (
-              <ToolbarButton icon={<Layers />} title="Zones" onClick={toggleZones} active={showZones} />
+              <ToolbarButton
+                icon={<Layers />}
+                title={
+                  zoneOverlayReady
+                    ? 'Zones'
+                    : zoneOverlayLoading
+                      ? 'Chargement des zones'
+                      : 'Zones indisponibles'
+                }
+                onClick={() => {
+                  if (zoneOverlayReady) {
+                    toggleZones();
+                    return;
+                  }
+
+                  if (zoneOverlayLoading) {
+                    if (!showZones) toggleZones();
+                    toast('Chargement des zones en cours. Elles s’afficheront automatiquement.', {
+                      icon: '🗺️',
+                    });
+                    return;
+                  }
+
+                  toast.error('Aucune zone exploitable n’est disponible pour cette vue.');
+                }}
+                active={showZones && (zoneOverlayReady || zoneOverlayLoading)}
+              />
             )}
           </div>
           <div className="toolbar-divider" />
@@ -282,6 +318,7 @@ export const MapToolbar: React.FC<MapToolbarProps> = ({ onRecenter, features }) 
                 icon={<BarChart3 />}
                 title="Stats Analytique"
                 onClick={toggleDatabaseStats}
+                active={showDatabaseStats}
               />
             )}
           </div>

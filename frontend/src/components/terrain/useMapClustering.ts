@@ -9,7 +9,7 @@
  * - Anti-flicker et sécurité sur sources
  */
 
-import { useCallback, useRef } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import maplibregl from 'maplibre-gl';
 import logger from '../../utils/logger';
 import convex from '@turf/convex';
@@ -38,31 +38,155 @@ const computeBBox = (coordinates: number[][]) => {
   return [Math.min(...lons), Math.min(...lats), Math.max(...lons), Math.max(...lats)];
 };
 
+const intersectsBBox = (
+  a: [number, number, number, number] | number[] | null | undefined,
+  b: [number, number, number, number] | number[]
+) => {
+  if (!a || a.length !== 4 || b.length !== 4) return false;
+  return !(a[0] > b[2] || a[2] < b[0] || a[1] > b[3] || a[3] < b[1]);
+};
+
+const computeCentroid = (coordinates: number[][]): [number, number] | null => {
+  if (!coordinates.length) return null;
+  const [sumLon, sumLat] = coordinates.reduce(
+    ([accLon, accLat], [lon, lat]) => [accLon + lon, accLat + lat],
+    [0, 0]
+  );
+  return [sumLon / coordinates.length, sumLat / coordinates.length];
+};
+
 const roundCoord = (value: number) => Math.round(value * 100000) / 100000;
 
 const simplifyClosedRing = (ring: number[][]) => {
-  if (ring.length <= 6) {
-    return ring.map(([lon, lat]) => [roundCoord(lon), roundCoord(lat)]);
-  }
+  // Ne jamais retirer des sommets du hull métier: sinon certains ménages
+  // affichés aux extrémités peuvent sortir visuellement de la grappe.
+  const core = ring.slice(0, -1).map(([lon, lat]) => [roundCoord(lon), roundCoord(lat)]);
+  if (core.length === 0) return [];
 
-  const core = ring.slice(0, -1);
-  const stride = core.length > 14 ? 3 : 2;
-  const simplified = core.filter((_, index) => index === 0 || index === core.length - 1 || index % stride === 0);
-  const closed = [...simplified, simplified[0]];
-  return closed.map(([lon, lat]) => [roundCoord(lon), roundCoord(lat)]);
+  const first = core[0];
+  const last = core[core.length - 1];
+  const isClosed = first[0] === last[0] && first[1] === last[1];
+  return isClosed ? core : [...core, first];
 };
 
 const truncateLabel = (value: string, max = 20) =>
   value.length > max ? `${value.slice(0, max - 1)}…` : value;
 
-const getDominantVillage = (leaves: any[]) => {
-  const counts = new Map<string, number>();
-  for (const leaf of leaves) {
-    const village = String(leaf?.properties?.village || leaf?.properties?.departement || '').trim();
-    if (!village) continue;
-    counts.set(village, (counts.get(village) || 0) + 1);
+const getStatusBucket = (properties: Record<string, any>) => {
+  if ((properties.critical_count || 0) > 0) return 'critical';
+  if ((properties.blocked_count || 0) > 0) return 'blocked';
+  if ((properties.pending_count || 0) > 0) return 'pending';
+
+  const rawStatus = String(
+    properties.statusKey ||
+      properties.status_key ||
+      properties.status ||
+      properties.installationStatus ||
+      properties.currentStep ||
+      ''
+  )
+    .trim()
+    .toLowerCase();
+
+  if (
+    rawStatus.includes('non conforme') ||
+    rawStatus.includes('non_conforme') ||
+    rawStatus.includes('non-conforme') ||
+    rawStatus.includes('non eligible') ||
+    rawStatus.includes('non-eligible') ||
+    rawStatus.includes('critical')
+  ) {
+    return 'critical';
   }
-  return [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || 'Zone terrain';
+
+  if (
+    rawStatus.includes('livraison') ||
+    rawStatus.includes('murs') ||
+    rawStatus.includes('bloque') ||
+    rawStatus.includes('incident') ||
+    rawStatus.includes('blocked')
+  ) {
+    return 'blocked';
+  }
+
+  if (
+    rawStatus.includes('non encore installee') ||
+    rawStatus.includes('non encore installée') ||
+    rawStatus.includes('pending') ||
+    rawStatus.includes('en attente') ||
+    rawStatus.includes('a_planifier')
+  ) {
+    return 'pending';
+  }
+
+  if (
+    rawStatus.includes('controle conforme') ||
+    rawStatus.includes('contrôle conforme') ||
+    rawStatus.includes('conforme') ||
+    rawStatus.includes('validated') ||
+    rawStatus.includes('compliant')
+  ) {
+    return 'compliant';
+  }
+
+  return 'progress';
+};
+
+const accumulateZoneMetrics = (acc: Record<string, any>, properties: Record<string, any>) => {
+  const pointCount = Number(properties.point_count || 1);
+  acc.point_count = Number(acc.point_count || 0) + pointCount;
+
+  if ('critical_count' in properties || 'blocked_count' in properties || 'pending_count' in properties || 'compliant_count' in properties) {
+    acc.critical_count = Number(acc.critical_count || 0) + Number(properties.critical_count || 0);
+    acc.blocked_count = Number(acc.blocked_count || 0) + Number(properties.blocked_count || 0);
+    acc.pending_count = Number(acc.pending_count || 0) + Number(properties.pending_count || 0);
+    acc.compliant_count = Number(acc.compliant_count || 0) + Number(properties.compliant_count || 0);
+  } else {
+    const bucket = getStatusBucket(properties);
+    if (bucket === 'critical') acc.critical_count = Number(acc.critical_count || 0) + pointCount;
+    else if (bucket === 'blocked') acc.blocked_count = Number(acc.blocked_count || 0) + pointCount;
+    else if (bucket === 'pending') acc.pending_count = Number(acc.pending_count || 0) + pointCount;
+    else if (bucket === 'compliant') acc.compliant_count = Number(acc.compliant_count || 0) + pointCount;
+  }
+
+  const critical = Number(acc.critical_count || 0);
+  const blocked = Number(acc.blocked_count || 0);
+  const pending = Number(acc.pending_count || 0);
+  const compliant = Number(acc.compliant_count || 0);
+  acc.severity_score = critical * 5 + blocked * 3 + pending * 2 + compliant;
+  return acc;
+};
+
+const buildHullGeometry = (coordinates: [number, number][]) => {
+  if (coordinates.length >= 3) {
+    const points = featureCollection(coordinates.map((coords) => point(coords)));
+    const hull = convex(points);
+    if (hull?.geometry?.type === 'Polygon') {
+      return {
+        type: 'Polygon' as const,
+        coordinates: [simplifyClosedRing((hull.geometry.coordinates?.[0] || []) as number[][])],
+      };
+    }
+  }
+
+  const bbox = computeBBox(coordinates);
+  if (!bbox) return null;
+
+  const [minLon, minLat, maxLon, maxLat] = bbox;
+  const centerLat = (minLat + maxLat) / 2;
+  const latPadding = Math.max((maxLat - minLat) / 2, 0.0016);
+  const lonPadding = Math.max((maxLon - minLon) / 2, 0.0016 / Math.max(Math.cos((centerLat * Math.PI) / 180), 0.2));
+
+  return {
+    type: 'Polygon' as const,
+    coordinates: [[
+      [roundCoord(minLon - lonPadding), roundCoord(minLat - latPadding)],
+      [roundCoord(maxLon + lonPadding), roundCoord(minLat - latPadding)],
+      [roundCoord(maxLon + lonPadding), roundCoord(maxLat + latPadding)],
+      [roundCoord(minLon - lonPadding), roundCoord(maxLat + latPadding)],
+      [roundCoord(minLon - lonPadding), roundCoord(minLat - latPadding)],
+    ]],
+  };
 };
 
 export const useMapClustering = (
@@ -70,7 +194,9 @@ export const useMapClustering = (
     getClusters: (bbox: [number, number, number, number], zoom: number, callback: (clusters: any[]) => void) => void;
     getLeaves: (clusterId: number, limit?: number) => Promise<any[]>;
     isLoaded: boolean;
-  }
+  },
+  households: any[] = [],
+  displayedFeatures: any[] = []
 ) => {
   const clusterUpdateTimeoutRef = useRef<number | null>(null);
   
@@ -81,6 +207,139 @@ export const useMapClustering = (
   // ✅ THROTTLE: Minimum time between cluster updates (in ms)
   const THROTTLE_MS = 120;
   const lastUpdateTimeRef = useRef<number>(0);
+
+  const stableVillageZones = useMemo(() => {
+    const groups = new Map<string, { village: string; coordinates: [number, number][]; metrics: Record<string, any> }>();
+    const displayCoordsById = new Map<string, [number, number]>();
+
+    for (const feature of displayedFeatures || []) {
+      const featureId = String(
+        feature?.properties?.household_id ?? feature?.properties?.id ?? feature?.id ?? ''
+      ).trim();
+      const coords = feature?.geometry?.coordinates as [number, number] | undefined;
+      if (!featureId || !Array.isArray(coords) || coords.length < 2) continue;
+      displayCoordsById.set(featureId, coords);
+    }
+
+    for (const household of households || []) {
+      const householdId = String(household?.id ?? '').trim();
+      const displayedCoords = householdId ? displayCoordsById.get(householdId) : undefined;
+      const lon = Number(displayedCoords?.[0] ?? household?.location?.coordinates?.[0] ?? household?.longitude);
+      const lat = Number(displayedCoords?.[1] ?? household?.location?.coordinates?.[1] ?? household?.latitude);
+      if (!Number.isFinite(lon) || !Number.isFinite(lat) || (lon === 0 && lat === 0)) continue;
+
+      const village = String(
+        household?.village ||
+          household?.grappe ||
+          household?.sousGrappe ||
+          household?.sous_grappe ||
+          household?.departement ||
+          household?.region ||
+          'Zone terrain'
+      ).trim();
+
+      const key = village.toLowerCase() || 'zone-terrain';
+      const group = groups.get(key) || {
+        village: village || 'Zone terrain',
+        coordinates: [],
+        metrics: {},
+      };
+
+      group.coordinates.push([lon, lat]);
+      accumulateZoneMetrics(group.metrics, {
+        status: household?.status,
+        point_count: 1,
+        critical_count: household?.critical_count,
+        blocked_count: household?.blocked_count,
+        pending_count: household?.pending_count,
+        compliant_count: household?.compliant_count,
+      });
+      groups.set(key, group);
+    }
+
+    const features: any[] = [];
+    const labels: any[] = [];
+
+    [...groups.values()]
+      .filter((group) => group.coordinates.length > 0)
+      .forEach((group) => {
+        const bbox = computeBBox(group.coordinates);
+        const centroid = computeCentroid(group.coordinates);
+        const geometry = buildHullGeometry(group.coordinates);
+        if (!bbox || !centroid || !geometry) return;
+
+        const properties: Record<string, any> = {
+          ...group.metrics,
+          dominantVillage: group.village,
+          village: group.village,
+          bbox,
+        };
+        const pointCount = Number(properties.point_count || group.coordinates.length || 0);
+        const criticalCount = Number(properties.critical_count || 0);
+        const blockedCount = Number(properties.blocked_count || 0);
+        const pendingCount = Number(properties.pending_count || 0);
+        const tone = getClusterTone(properties);
+        const labelTiny = criticalCount > 0 ? `${pointCount} • ${criticalCount}u` : `${pointCount}`;
+        const labelHero =
+          criticalCount > 0
+            ? `${truncateLabel(group.village, 20)}\n${pointCount} MENAGES\n${criticalCount} URGENTS`
+            : `${truncateLabel(group.village, 20)}\n${pointCount} MENAGES`;
+        const labelName = truncateLabel(group.village, 22);
+        const labelMetric = criticalCount > 0 ? `${pointCount} • ${criticalCount} urg.` : `${pointCount} menages`;
+        const labelMetricCompact = `${pointCount}`;
+        const labelShort =
+          criticalCount > 0 ? `${pointCount}\n+ ${criticalCount} urg.` : `${pointCount} ménages`;
+        const labelDetail =
+          criticalCount > 0
+            ? `${truncateLabel(group.village)}\n${pointCount} ménages\n${criticalCount} urgents`
+            : `${truncateLabel(group.village)}\n${pointCount} ménages`;
+        const labelFull =
+          criticalCount > 0
+            ? `${group.village}\n${pointCount} ménages\n${criticalCount} urgents`
+            : `${group.village}\n${pointCount} ménages`;
+
+        features.push({
+          type: 'Feature',
+          geometry,
+          properties: {
+            ...properties,
+            zoneColor: tone.fill,
+            zoneStroke: tone.stroke,
+            zoneHalo: tone.halo,
+            labelTiny,
+            labelHero,
+            labelName,
+            labelMetric,
+            labelMetricCompact,
+            labelShort,
+            labelDetail,
+            labelFull,
+          },
+        });
+
+        labels.push({
+          type: 'Feature',
+          geometry: { type: 'Point', coordinates: centroid },
+          properties: {
+            ...properties,
+            labelTiny,
+            labelHero,
+            labelName,
+            labelMetric,
+            labelMetricCompact,
+            labelShort,
+            labelDetail,
+            labelFull,
+            showLabel: criticalCount > 0 || blockedCount > 0 || pointCount >= 12,
+            critical_count: criticalCount,
+            blocked_count: blockedCount,
+            pending_count: pendingCount,
+          },
+        });
+      });
+
+    return { features, labels };
+  }, [displayedFeatures, households]);
 
   /**
    * Met à jour les clusters pour la vue actuelle via le Worker
@@ -139,97 +398,13 @@ export const useMapClustering = (
             features: clusters,
           };
 
-          // Calcule les limites territoriales (Hulls) de manière asynchrone si besoin
-          const hullFeatures: any[] = [];
-          const hullLabelFeatures: any[] = [];
-          
-          // On garde une limite haute pour préserver les performances sans tronquer excessivement la lecture métier.
-          const clustersWithHulls = clusters
-            .filter(c => c.properties?.cluster)
-            .sort((a, b) => (b.properties.point_count || 0) - (a.properties.point_count || 0))
-            .slice(0, 36);
-
-          for (const c of clustersWithHulls) {
-            try {
-              const leaves = await worker.getLeaves(c.properties.cluster_id, 100);
-              if (leaves && leaves.length >= 3) {
-                const coordinates = leaves.map((l) => l.geometry.coordinates as [number, number]);
-                const points = featureCollection(coordinates.map((coords) => point(coords)));
-                const hull = convex(points);
-                if (hull) {
-                  const properties = c.properties || {};
-                  const dominantVillage = getDominantVillage(leaves);
-                  const bbox = computeBBox(coordinates);
-                  const pointCount = Number(properties.point_count || 0);
-                  const criticalCount = Number(properties.critical_count || 0);
-                  const blockedCount = Number(properties.blocked_count || 0);
-                  const pendingCount = Number(properties.pending_count || 0);
-                  const labelTiny =
-                    criticalCount > 0 ? `${pointCount} • ${criticalCount}u` : `${pointCount}`;
-                  const labelShort =
-                    criticalCount > 0 ? `${pointCount}\n+ ${criticalCount} urg.` : `${pointCount} ménages`;
-                  const labelDetail =
-                    criticalCount > 0
-                      ? `${truncateLabel(dominantVillage)}\n${pointCount} ménages\n${criticalCount} urgents`
-                      : `${truncateLabel(dominantVillage)}\n${pointCount} ménages`;
-                  const labelFull =
-                    criticalCount > 0
-                      ? `${dominantVillage}\n${pointCount} ménages\n${criticalCount} urgents`
-                      : `${dominantVillage}\n${pointCount} ménages`;
-                  const showLabel = criticalCount > 0 || blockedCount > 0 || pointCount >= 36;
-                  const tone = getClusterTone(properties);
-                  const hullGeometry = hull.geometry?.type === 'Polygon'
-                    ? {
-                        ...hull.geometry,
-                        coordinates: [simplifyClosedRing((hull.geometry.coordinates?.[0] || []) as number[][])],
-                      }
-                    : hull.geometry;
-
-                  hullFeatures.push({
-                    ...hull,
-                    geometry: hullGeometry,
-                    properties: {
-                      ...properties,
-                      dominantVillage,
-                      bbox,
-                      zoneColor: tone.fill,
-                      zoneStroke: tone.stroke,
-                      zoneHalo: tone.halo,
-                      labelTiny,
-                      labelShort,
-                      labelDetail,
-                      labelFull,
-                    },
-                  });
-
-                  if (showLabel) {
-                    hullLabelFeatures.push({
-                      type: 'Feature',
-                      geometry: {
-                        type: 'Point',
-                        coordinates: c.geometry.coordinates,
-                      },
-                      properties: {
-                        ...properties,
-                        dominantVillage,
-                        bbox,
-                        labelTiny,
-                        labelShort,
-                        labelDetail,
-                        labelFull,
-                        showLabel,
-                        critical_count: criticalCount,
-                        blocked_count: blockedCount,
-                        pending_count: pendingCount,
-                      },
-                    });
-                  }
-                }
-              }
-            } catch (hullErr) {
-              // Ignore single hull errors
-            }
-          }
+          const hullFeatures = stableVillageZones.features.filter((feature) =>
+            intersectsBBox(feature?.properties?.bbox, bbox)
+          );
+          const hullLabelFeatures = stableVillageZones.labels.filter(
+            (feature) =>
+              feature?.properties?.showLabel && intersectsBBox(feature?.properties?.bbox, bbox)
+          );
 
           const hullsGeoJSON = {
             type: 'FeatureCollection',
@@ -294,7 +469,7 @@ export const useMapClustering = (
         logger.error('Failed to update Supercluster clusters:', error);
       }
     },
-    [worker]
+    [stableVillageZones, worker]
   );
 
   /**

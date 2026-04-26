@@ -607,8 +607,9 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
                   <a
                     href={`tel:${household.phone || household.ownerPhone}`}
                     title="Appeler localement"
-                    className="h-10 px-3.5 bg-emerald-500/90 text-white rounded-full text-[9px] font-black uppercase tracking-[0.14em] shadow-[0_8px_20px_rgba(16,185,129,0.2)] hover:brightness-110 transition-all active:scale-95 flex items-center justify-center"
+                    className="h-10 px-3.5 rounded-full border border-emerald-400/20 bg-[linear-gradient(180deg,rgba(16,185,129,0.2),rgba(5,150,105,0.14))] text-emerald-100 text-[9px] font-black uppercase tracking-[0.14em] shadow-[0_8px_18px_rgba(16,185,129,0.12)] hover:border-emerald-300/35 hover:bg-[linear-gradient(180deg,rgba(16,185,129,0.28),rgba(5,150,105,0.18))] transition-all active:scale-95 flex items-center justify-center gap-1.5"
                   >
+                    <Phone size={12} />
                     Appel
                   </a>
                   {(household.phone || household.ownerPhone) && (
@@ -617,7 +618,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
                       target="_blank"
                       rel="noopener noreferrer"
                       title="Ouvrir WhatsApp"
-                      className="h-10 px-3.5 bg-transparent text-emerald-300 border border-emerald-500/25 rounded-full text-[9px] font-black uppercase tracking-[0.14em] hover:bg-emerald-500/10 transition-all active:scale-95 flex items-center justify-center gap-1.5"
+                      className="h-10 px-3.5 rounded-full border border-emerald-500/20 bg-transparent text-emerald-300 text-[9px] font-black uppercase tracking-[0.14em] hover:border-emerald-400/30 hover:bg-emerald-500/8 transition-all active:scale-95 flex items-center justify-center gap-1.5"
                     >
                       <MessageCircle size={12} /> WhatsApp
                     </a>

@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import toast from 'react-hot-toast';
 import {
   Circle,
@@ -12,6 +12,7 @@ import {
   Send,
   ShieldBan,
   ShieldCheck,
+  Trash,
   Users2,
 } from 'lucide-react';
 import { PageContainer, PageHeader, EmptyState, LoadingState } from '../components/layout';
@@ -69,9 +70,20 @@ export default function Communication() {
   const [search, setSearch] = useState('');
   const [composer, setComposer] = useState('');
   const [groupName, setGroupName] = useState('');
+  const [isGroupPublic, setIsGroupPublic] = useState(false);
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [currentUserBlocked, setCurrentUserBlocked] = useState(false);
   const [socketVersion, setSocketVersion] = useState(0);
+  const [unreadConversations, setUnreadConversations] = useState<Set<string>>(new Set());
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messagesByConversation, activeConversationId]);
 
   const activeConversation = conversations.find((conversation) => conversation.id === activeConversationId) || null;
 
@@ -187,6 +199,24 @@ export default function Communication() {
       const message = payload?.message;
       if (!message) return;
 
+      if (message.conversationId !== activeConversationId || document.visibilityState !== 'visible') {
+        if (message.conversationId !== activeConversationId) {
+          setUnreadConversations((current) => new Set(current).add(message.conversationId));
+        }
+        
+        if (message.senderId !== user?.id) {
+          toast(`Vous avez un message de ${message.sender.name}`, { icon: '💬', duration: 4000 });
+          try {
+            const utterance = new SpeechSynthesisUtterance(`Vous avez un message de ${message.sender.name}`);
+            utterance.lang = 'fr-FR';
+            utterance.rate = 1.0;
+            window.speechSynthesis.speak(utterance);
+          } catch (error) {
+            console.error('Audio notification failed:', error);
+          }
+        }
+      }
+
       setMessagesByConversation((current) => {
         const existing = current[message.conversationId] || [];
         if (existing.some((item) => item.id === message.id)) {
@@ -240,16 +270,23 @@ export default function Communication() {
       }
     };
 
+    const handleConversationDeleted = (payload: { conversationId: string }) => {
+      setConversations((current) => current.filter((c) => c.id !== payload.conversationId));
+      setActiveConversationId((current) => (current === payload.conversationId ? '' : current));
+    };
+
     socket.on('chat:presence', handlePresence);
     socket.on('chat:conversation:new', handleConversation);
     socket.on('chat:message:new', handleMessage);
     socket.on('chat:user:block-state', handleBlockState);
+    socket.on('chat:conversation:deleted', handleConversationDeleted);
 
     return () => {
       socket.off('chat:presence', handlePresence);
       socket.off('chat:conversation:new', handleConversation);
       socket.off('chat:message:new', handleMessage);
       socket.off('chat:user:block-state', handleBlockState);
+      socket.off('chat:conversation:deleted', handleConversationDeleted);
     };
   }, [activeConversationId, socketVersion, user?.id]);
 
@@ -311,7 +348,8 @@ export default function Communication() {
     try {
       const conversation = await chatService.createConversation({
         participantIds: selectedUserIds,
-        name: selectedUserIds.length > 1 ? groupName.trim() || undefined : undefined,
+        name: selectedUserIds.length > 1 || isGroupPublic ? groupName.trim() || undefined : undefined,
+        isPublic: isGroupPublic,
       });
       setConversations((current) => {
         const exists = current.some((item) => item.id === conversation.id);
@@ -325,7 +363,8 @@ export default function Communication() {
       setActiveConversationId(conversation.id);
       setSelectedUserIds([]);
       setGroupName('');
-      toast.success(selectedUserIds.length > 1 ? 'Salon de groupe créé.' : 'Discussion privée ouverte.');
+      setIsGroupPublic(false);
+      toast.success(isGroupPublic ? 'Canal public créé.' : selectedUserIds.length > 1 ? 'Salon de groupe créé.' : 'Discussion privée ouverte.');
     } catch (error: any) {
       toast.error(error?.response?.data?.error || 'Impossible de créer cette conversation.');
     }
@@ -354,6 +393,16 @@ export default function Communication() {
       toast.success(payload.blocked ? `${member.name} est bloqué dans le chat.` : `${member.name} est débloqué.`);
     } catch (error: any) {
       toast.error(error?.response?.data?.error || 'Impossible de modifier ce blocage.');
+    }
+  };
+
+  const handleDeleteConversation = async (conversationId: string) => {
+    if (!window.confirm("Voulez-vous vraiment supprimer ou quitter cette conversation ?")) return;
+    try {
+      await chatService.deleteConversation(conversationId);
+      // The socket event will handle the UI update
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error || "Impossible de supprimer la conversation.");
     }
   };
 
@@ -401,8 +450,61 @@ export default function Communication() {
     );
   }
 
+  const renderConversationBtn = (conversation: ChatConversation) => (
+    <button
+      key={conversation.id}
+      type="button"
+      onClick={() => {
+        setActiveConversationId(conversation.id);
+        setUnreadConversations((current) => {
+          const next = new Set(current);
+          next.delete(conversation.id);
+          return next;
+        });
+      }}
+      className={`w-full rounded-xl border p-2 text-left transition-all duration-300 relative overflow-hidden ${
+        conversation.id === activeConversationId
+          ? (conversation.isGlobal ? 'border-rose-500/40 bg-rose-500/10 shadow-[0_0_15px_rgba(244,63,94,0.15)]' : 'border-violet-500/40 bg-violet-500/10 shadow-[0_0_15px_rgba(139,92,246,0.15)]')
+          : (conversation.isGlobal ? 'border-rose-500/20 bg-rose-500/5 hover:border-rose-500/40 hover:bg-rose-500/10 hover:shadow-[0_0_15px_rgba(244,63,94,0.1)]' : 'border-white/8 bg-white/[0.03] hover:border-violet-500/30 hover:bg-violet-500/5 hover:shadow-[0_0_15px_rgba(139,92,246,0.1)]')
+      }`}
+    >
+      {unreadConversations.has(conversation.id) && (
+        <div className="absolute top-2.5 right-2.5 h-2 w-2 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.8)]" />
+      )}
+      <div className="flex items-start gap-3">
+        <div className={`mt-0.5 rounded-xl border p-2 ${
+          conversation.isGlobal
+            ? 'border-rose-500/20 bg-rose-500/10 text-rose-300'
+            : conversation.type === 'GROUP'
+              ? 'border-violet-500/20 bg-violet-500/10 text-violet-300'
+              : 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300'
+        }`}>
+          {conversation.isGlobal ? <Globe2 size={14} /> : conversation.type === 'GROUP' ? <Users2 size={14} /> : <MessageSquare size={14} />}
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-white">
+                {getConversationLabel(conversation)}
+              </p>
+              <p className="mt-1 text-xs text-slate-400">{getConversationMeta(conversation)}</p>
+            </div>
+            <span className="text-[11px] text-slate-500">
+              {conversation.lastMessage ? formatTime(conversation.lastMessage.createdAt) : ''}
+            </span>
+          </div>
+
+          <p className="mt-3 line-clamp-2 text-xs text-slate-400">
+            {conversation.lastMessage?.content || 'Aucun message pour le moment.'}
+          </p>
+        </div>
+      </div>
+    </button>
+  );
+
   return (
-    <PageContainer maxWidth="full" className="space-y-6">
+    <PageContainer maxWidth="full" className="space-y-6 pt-20 pb-10">
       <PageHeader
         title="Communication d’équipe"
         subtitle="Salon général, conversations privées, groupes ciblés et régulation admin en temps réel."
@@ -424,11 +526,21 @@ export default function Communication() {
         }
       />
 
+      <style>{`
+        @keyframes slideUpFade {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes messageSlideUp {
+          from { opacity: 0; transform: translateY(8px) scale(0.98); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+      `}</style>
       <ModulePageShell accent="planning">
-        <div className="grid gap-4 xl:grid-cols-[300px_340px_minmax(0,1fr)]">
-          <section className="rounded-[1.75rem] border border-white/10 bg-slate-950/35 p-4">
-            <div className="mb-4 flex items-center gap-3">
-              <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-violet-300">
+        <div className="grid gap-4 xl:grid-cols-2">
+          <section className="order-1 rounded-[1.75rem] border border-white/10 bg-slate-950/35 p-3">
+            <div className="mb-3 flex items-center gap-3">
+              <div className="rounded-xl border border-white/10 bg-white/[0.04] p-2 text-violet-300">
                 <Users2 size={18} />
               </div>
               <div>
@@ -448,13 +560,13 @@ export default function Communication() {
                 />
               </div>
 
-              <div className="max-h-[500px] space-y-2 overflow-y-auto pr-1">
+              <div className="max-h-[220px] space-y-2 overflow-y-auto pr-1 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/10">
                 {displayedUsers.map((member) => (
                   <button
                     key={member.id}
                     type="button"
                     onClick={() => void handleOpenDirectConversation(member.id)}
-                    className="w-full rounded-2xl border border-white/8 bg-white/[0.03] p-3 text-left transition hover:border-white/15 hover:bg-white/[0.05]"
+                    className="w-full rounded-xl border border-white/8 bg-white/[0.03] p-2 text-left transition hover:border-white/15 hover:bg-white/[0.05]"
                   >
                     <div className="flex items-start gap-3">
                       <input
@@ -471,9 +583,9 @@ export default function Communication() {
                             <p className="truncate text-sm font-semibold text-white">{member.name}</p>
                             <p className="truncate text-[11px] uppercase tracking-[0.16em] text-slate-500">{member.role}</p>
                           </div>
-                          <span className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${member.online ? 'bg-emerald-500/10 text-emerald-300' : 'bg-slate-800 text-slate-400'}`}>
-                            <Circle size={8} className={member.online ? 'fill-emerald-300' : 'fill-slate-500'} />
-                            {member.online ? 'Online' : 'Offline'}
+                          <span className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] ${member.online ? 'bg-emerald-500/10 text-emerald-300' : 'bg-slate-800 text-slate-400'}`}>
+                            <Circle size={6} className={member.online ? 'fill-emerald-300' : 'fill-slate-500'} />
+                            {member.online ? 'On' : 'Off'}
                           </span>
                         </div>
 
@@ -486,23 +598,36 @@ export default function Communication() {
                                 ? `Dernier accès ${formatDateTime(member.lastLogin)}`
                                 : 'Aucune connexion enregistrée'}
                           </span>
-                          {isAdmin && member.id !== user?.id && (
+                          <div className="flex items-center gap-2">
                             <button
                               type="button"
                               onClick={(event) => {
                                 event.stopPropagation();
-                                void handleToggleBlock(member);
+                                void handleOpenDirectConversation(member.id);
                               }}
-                              className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${
-                                member.blocked
-                                  ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300'
-                                  : 'border-rose-500/20 bg-rose-500/10 text-rose-300'
-                              }`}
+                              className="inline-flex items-center gap-1 rounded-lg border border-violet-500/20 bg-violet-500/10 px-2 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-violet-300 transition hover:bg-violet-500/20"
                             >
-                              {member.blocked ? <ShieldCheck size={11} /> : <ShieldBan size={11} />}
-                              {member.blocked ? 'Débloquer' : 'Bloquer'}
+                              <MessageSquare size={10} />
+                              MP
                             </button>
-                          )}
+                            {isAdmin && member.id !== user?.id && (
+                              <button
+                                type="button"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  void handleToggleBlock(member);
+                                }}
+                                className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[9px] font-black uppercase tracking-[0.12em] ${
+                                  member.blocked
+                                    ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300'
+                                    : 'border-rose-500/20 bg-rose-500/10 text-rose-300'
+                                }`}
+                              >
+                                {member.blocked ? <ShieldCheck size={10} /> : <ShieldBan size={10} />}
+                                {member.blocked ? 'Débloquer' : 'Bloquer'}
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -519,38 +644,52 @@ export default function Communication() {
                 )}
               </div>
 
-              <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-3">
-                <div className="flex items-center justify-between gap-2">
-                  <div>
-                    <p className="text-sm font-semibold text-white">Nouveau groupe</p>
-                    <p className="text-xs text-slate-400">{selectedUserIds.length} membre(s) sélectionné(s)</p>
+              {selectedUserIds.length > 0 && (
+                <div
+                  className="rounded-xl border border-violet-500/20 bg-violet-500/10 p-2"
+                  style={{ animation: 'slideUpFade 0.2s ease-out forwards' }}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-semibold text-white">Nouveau groupe</p>
+                      <p className="text-xs text-violet-300">{selectedUserIds.length} membre(s) sélectionné(s)</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => void handleCreateSelectedConversation()}
+                      disabled={currentUserBlocked || selectedUserIds.length === 0}
+                      className={`inline-flex h-11 items-center justify-center gap-2 rounded-2xl px-4 text-[11px] font-black uppercase tracking-[0.14em] text-white transition disabled:cursor-not-allowed disabled:opacity-40 ${accent.primaryButton}`}
+                    >
+                      <Plus size={14} />
+                      Ouvrir
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => void handleCreateSelectedConversation()}
-                    disabled={currentUserBlocked || selectedUserIds.length === 0}
-                    className={`inline-flex h-11 items-center justify-center gap-2 rounded-2xl px-4 text-[11px] font-black uppercase tracking-[0.14em] text-white transition disabled:cursor-not-allowed disabled:opacity-40 ${accent.primaryButton}`}
-                  >
-                    <Plus size={14} />
-                    Ouvrir
-                  </button>
-                </div>
 
-                {selectedUserIds.length > 1 && (
-                  <input
-                    value={groupName}
-                    onChange={(event) => setGroupName(event.target.value)}
-                    placeholder="Nom du groupe (optionnel)"
-                    className={`${DASHBOARD_INPUT} mt-3`}
-                  />
-                )}
-              </div>
+                  {(selectedUserIds.length > 1 || isGroupPublic) && (
+                    <input
+                      value={groupName}
+                      onChange={(event) => setGroupName(event.target.value)}
+                      placeholder="Nom du groupe (optionnel)"
+                      className={`${DASHBOARD_INPUT} mt-3`}
+                    />
+                  )}
+                  <label className="mt-3 flex items-center gap-2 cursor-pointer text-xs text-violet-200 hover:text-white transition-colors">
+                    <input 
+                      type="checkbox" 
+                      checked={isGroupPublic}
+                      onChange={(e) => setIsGroupPublic(e.target.checked)}
+                      className="rounded border-white/20 bg-white/5 text-violet-500 focus:ring-violet-500/30"
+                    />
+                    Groupe public (visible par tous)
+                  </label>
+                </div>
+              )}
             </div>
           </section>
 
-          <section className="rounded-[1.75rem] border border-white/10 bg-slate-950/35 p-4">
-            <div className="mb-4 flex items-center gap-3">
-              <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-violet-300">
+          <section className="order-2 rounded-[1.75rem] border border-white/10 bg-slate-950/35 p-3">
+            <div className="mb-3 flex items-center gap-3">
+              <div className="rounded-xl border border-white/10 bg-white/[0.04] p-2 text-violet-300">
                 <MessageSquare size={18} />
               </div>
               <div>
@@ -559,65 +698,53 @@ export default function Communication() {
               </div>
             </div>
 
-            <div className="max-h-[640px] space-y-2 overflow-y-auto pr-1">
-              {conversations.map((conversation) => (
-                <button
-                  key={conversation.id}
-                  type="button"
-                  onClick={() => setActiveConversationId(conversation.id)}
-                  className={`w-full rounded-2xl border p-3 text-left transition ${
-                    conversation.id === activeConversationId
-                      ? 'border-violet-500/25 bg-violet-500/10'
-                      : 'border-white/8 bg-white/[0.03] hover:border-white/15 hover:bg-white/[0.05]'
-                  }`}
-                >
-                  <div className="flex items-start gap-3">
-                    <div className={`mt-0.5 rounded-2xl border p-2 ${
-                      conversation.isGlobal
-                        ? 'border-blue-500/20 bg-blue-500/10 text-blue-300'
-                        : conversation.type === 'GROUP'
-                          ? 'border-violet-500/20 bg-violet-500/10 text-violet-300'
-                          : 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300'
-                    }`}>
-                      {conversation.isGlobal ? <Globe2 size={15} /> : conversation.type === 'GROUP' ? <Users2 size={15} /> : <MessageSquare size={15} />}
-                    </div>
+            <div className="max-h-[350px] space-y-4 overflow-y-auto pr-1 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/10">
+              {conversations.filter(c => c.isGlobal).length > 0 && (
+                <div className="space-y-2">
+                  <h3 className="text-[9px] font-black uppercase tracking-widest text-rose-400 pl-1">Canaux Publics</h3>
+                  {conversations.filter(c => c.isGlobal).map(renderConversationBtn)}
+                </div>
+              )}
 
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold text-white">
-                            {getConversationLabel(conversation)}
-                          </p>
-                          <p className="mt-1 text-xs text-slate-400">{getConversationMeta(conversation)}</p>
-                        </div>
-                        <span className="text-[11px] text-slate-500">
-                          {conversation.lastMessage ? formatTime(conversation.lastMessage.createdAt) : ''}
-                        </span>
-                      </div>
+              {conversations.filter(c => c.type === 'GROUP' && !c.isGlobal).length > 0 && (
+                <div className="space-y-2">
+                  <h3 className="text-[9px] font-black uppercase tracking-widest text-violet-400 pl-1 mt-2">Groupes Privés</h3>
+                  {conversations.filter(c => c.type === 'GROUP' && !c.isGlobal).map(renderConversationBtn)}
+                </div>
+              )}
 
-                      <p className="mt-3 line-clamp-2 text-xs text-slate-400">
-                        {conversation.lastMessage?.content || 'Aucun message pour le moment.'}
-                      </p>
-                    </div>
-                  </div>
-                </button>
-              ))}
+              {conversations.filter(c => c.type === 'DIRECT').length > 0 && (
+                <div className="space-y-2">
+                  <h3 className="text-[9px] font-black uppercase tracking-widest text-emerald-400 pl-1 mt-2">Messages Privés</h3>
+                  {conversations.filter(c => c.type === 'DIRECT').map(renderConversationBtn)}
+                </div>
+              )}
             </div>
           </section>
 
-          <section className="rounded-[1.75rem] border border-white/10 bg-slate-950/35 p-4">
+          <section className="order-3 xl:col-span-2 rounded-[1.75rem] border border-white/10 bg-slate-950/35 p-3">
             {activeConversation ? (
-              <div className="flex h-full min-h-[640px] flex-col">
-                <div className="flex flex-wrap items-start justify-between gap-4 border-b border-white/8 pb-4">
+              <div className="flex h-[600px] flex-col">
+                <div className="flex shrink-0 flex-wrap items-start justify-between gap-4 border-b border-white/8 pb-4">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <h2 className="truncate text-lg font-semibold text-white">
                         {getConversationLabel(activeConversation)}
                       </h2>
                       {activeConversation.isGlobal && (
-                        <span className="rounded-full border border-blue-500/20 bg-blue-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-blue-300">
-                          Room
+                        <span className="rounded-full border border-rose-500/20 bg-rose-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-rose-300">
+                          Public
                         </span>
+                      )}
+                      {!activeConversation.isGlobal && (
+                        <button
+                          type="button"
+                          onClick={() => void handleDeleteConversation(activeConversation.id)}
+                          className="ml-3 rounded-lg border border-rose-500/20 bg-rose-500/10 p-1.5 text-rose-400 transition hover:bg-rose-500/20 hover:text-rose-300"
+                          title="Supprimer la conversation"
+                        >
+                          <Trash size={14} />
+                        </button>
                       )}
                     </div>
                     <p className="mt-1 text-sm text-slate-400">{getConversationMeta(activeConversation)}</p>
@@ -644,12 +771,12 @@ export default function Communication() {
                 </div>
 
                 {currentUserBlocked && (
-                  <div className="mt-4 rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+                  <div className="mt-4 shrink-0 rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
                     L’administrateur a désactivé votre capacité d’écriture dans la messagerie. Vous pouvez encore consulter les échanges.
                   </div>
                 )}
 
-                <div className="mt-4 flex-1 space-y-3 overflow-y-auto pr-1">
+                <div className="mt-4 flex-1 min-h-0 space-y-3 overflow-y-auto pr-1 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/10">
                   {loadingMessages && !messagesByConversation[activeConversation.id] ? (
                     <LoadingState text="Chargement des messages..." minHeight="min-h-[280px]" />
                   ) : (messagesByConversation[activeConversation.id] || []).length === 0 ? (
@@ -663,7 +790,11 @@ export default function Communication() {
                     (messagesByConversation[activeConversation.id] || []).map((message) => {
                       const own = message.senderId === user?.id;
                       return (
-                        <div key={message.id} className={`flex ${own ? 'justify-end' : 'justify-start'}`}>
+                        <div
+                          key={message.id}
+                          className={`flex ${own ? 'justify-end' : 'justify-start'}`}
+                          style={{ animation: 'messageSlideUp 0.3s ease-out forwards' }}
+                        >
                           <div
                             className={`max-w-[80%] rounded-[1.5rem] border px-4 py-3 shadow-[0_18px_36px_rgba(2,6,23,0.18)] ${
                               own
@@ -683,9 +814,10 @@ export default function Communication() {
                       );
                     })
                   )}
+                  <div ref={messagesEndRef} />
                 </div>
 
-                <div className="mt-4 border-t border-white/8 pt-4">
+                <div className="mt-4 shrink-0 border-t border-white/8 pt-4">
                   <div className="grid gap-3">
                     <textarea
                       rows={4}
@@ -728,7 +860,7 @@ export default function Communication() {
                 title="Sélectionnez une conversation"
                 description="Ouvrez la salle générale, un message privé ou un groupe."
                 icon={<MessagesSquare size={22} />}
-                className="min-h-[640px]"
+                className="h-[600px]"
               />
             )}
           </section>

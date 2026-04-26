@@ -9,7 +9,13 @@
  */
 
 import maplibregl from 'maplibre-gl';
-import { STATUS_CONFIG, STATUS_ICON_IDS, ICON_SIZES, getStatusKeyByIconId } from './mapConfig';
+import {
+  STATUS_CONFIG,
+  STATUS_ICON_IDS,
+  ICON_SIZES,
+  getStatusKeyByIconId,
+  resolveStatusConfigKey,
+} from './mapConfig';
 import logger from '../../utils/logger';
 
 // ── SINGLETON ICON REGISTRY ──
@@ -216,6 +222,35 @@ const resolveStatusFromImageId = (imageId: string): { iconId: string; variant: '
   return null;
 };
 
+const resolveStatusKeyFromImageSegment = (segment: string): string => {
+  const fromIconId = getStatusKeyByIconId(segment);
+  if (fromIconId && fromIconId !== 'default') return fromIconId;
+
+  if (STATUS_CONFIG[segment]) return segment;
+
+  const fromDerivedStatus = resolveStatusConfigKey(segment);
+  if (fromDerivedStatus && fromDerivedStatus !== 'default') return fromDerivedStatus;
+
+  const normalizedSegment = segment
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase();
+
+  const normalizedStatus = Object.keys(STATUS_CONFIG).find((status) => {
+    if (status === 'default') return false;
+    return (
+      status
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim()
+        .toLowerCase() === normalizedSegment
+    );
+  });
+
+  return normalizedStatus || 'default';
+};
+
 export async function ensureMapImage(map: maplibregl.Map, imageId: string): Promise<boolean> {
   if (!map || !map.isStyleLoaded() || map.hasImage(imageId)) return false;
 
@@ -230,7 +265,7 @@ export async function ensureMapImage(map: maplibregl.Map, imageId: string): Prom
   const resolved = resolveStatusFromImageId(imageId);
   if (!resolved) return false;
 
-  const status = getStatusKeyByIconId(resolved.iconId);
+  const status = resolveStatusKeyFromImageSegment(resolved.iconId);
 
   if (resolved.variant === 'pulsing') {
     if (!map.hasImage(imageId)) {
@@ -362,6 +397,7 @@ export async function registerIcons(map: maplibregl.Map) {
   attachStyleImageFallback(map);
 
   const iconIds = Array.from(new Set(Object.values(STATUS_ICON_IDS)));
+  const legacyStatusKeys = Object.keys(STATUS_CONFIG).filter((status) => status !== 'default');
 
   for (const iconId of iconIds) {
     const smallId = `icon-${iconId}-small`;
@@ -379,6 +415,24 @@ export async function registerIcons(map: maplibregl.Map) {
     // Register breathing pulsing variant
     if (!map.hasImage(pulsingId)) {
       await ensureMapImage(map, pulsingId);
+    }
+  }
+
+  for (const statusKey of legacyStatusKeys) {
+    const legacySmallId = `icon-${statusKey}-small`;
+    const legacyLargeId = `icon-${statusKey}-large`;
+    const legacyPulsingId = `pulsing-${statusKey}`;
+
+    if (!map.hasImage(legacySmallId)) {
+      await ensureMapImage(map, legacySmallId);
+    }
+
+    if (!map.hasImage(legacyLargeId)) {
+      await ensureMapImage(map, legacyLargeId);
+    }
+
+    if (!map.hasImage(legacyPulsingId)) {
+      await ensureMapImage(map, legacyPulsingId);
     }
   }
 
