@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import maplibregl from 'maplibre-gl';
 import logger from '../../../utils/logger';
 
@@ -23,7 +23,7 @@ export const useHouseholdLayers = (
   showZones: boolean = false
 ): void => {
 
-  const buildLayers = () => {
+  const buildLayers = useCallback(() => {
     if (!map || !styleIsReady || !sourcesReady || !map.isStyleLoaded()) return;
 
     logger.debug('📎 [useHouseholdLayers] Building Gold Standard layers...');
@@ -321,7 +321,7 @@ export const useHouseholdLayers = (
     } catch (err) {
       logger.error('🔴 [useHouseholdLayers] Layer construction failed:', err);
     }
-  };
+  }, [map, sourcesReady, styleIsReady]);
 
   useEffect(() => {
     if (!map || !styleIsReady) return;
@@ -343,5 +343,5 @@ export const useHouseholdLayers = (
     return () => {
       if (!(map as any)._removed) map.off('styledata', handleStyleData);
     };
-  }, [map, styleIsReady, sourcesReady, showZones]);
+  }, [buildLayers, map, showZones, sourcesReady, styleIsReady]);
 };

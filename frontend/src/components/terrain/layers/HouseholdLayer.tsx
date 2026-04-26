@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import maplibregl from 'maplibre-gl';
 import { useTerrainUIStore } from '../../../store/terrainUIStore';
 import logger from '../../../utils/logger';
@@ -653,7 +653,7 @@ const HouseholdLayer: React.FC<HouseholdLayerProps> = ({
   }, [householdGeoJSON, households]);
 
   // ─── Click & Hover interactions ───────────────────────────────
-  const setupClickHandlers = (map: maplibregl.Map) => {
+  const setupClickHandlers = useCallback((map: maplibregl.Map) => {
     const INTERACTIVE_LAYERS = ['households-glow-layer', 'households-local-layer'];
 
     // Ensure popup instance
@@ -759,7 +759,7 @@ const HouseholdLayer: React.FC<HouseholdLayerProps> = ({
       });
       popupRef.current?.remove();
     };
-  };
+  }, [setSelectedHouseholdId]);
 
   // ── CORE: Setup sources + layers + data + click handlers ──
   useEffect(() => {
@@ -827,7 +827,7 @@ const HouseholdLayer: React.FC<HouseholdLayerProps> = ({
         map.off('style.load', handleStyleLoad);
       }
     };
-  }, [map, styleIsReady]);
+  }, [map, setupClickHandlers, styleIsReady]);
 
 
   // ── DATA UPDATE: re-push when GeoJSON changes ──

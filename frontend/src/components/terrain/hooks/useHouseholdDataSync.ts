@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, no-empty */
-import { useEffect, useRef, useMemo } from 'react';
+import { useCallback, useEffect, useRef, useMemo } from 'react';
 import maplibregl from 'maplibre-gl';
 import logger from '../../../utils/logger';
 
@@ -36,7 +36,7 @@ export const useHouseholdDataSync = (
   }, [householdGeoJSON, households]);
 
   // ── Build the GeoJSON to inject into the source ──
-  const buildDataToApply = (): any => {
+  const buildDataToApply = useCallback((): any => {
     // Priority 1: Worker-processed GeoJSON (already sanitized + deduplicated)
     if (householdGeoJSON?.features && householdGeoJSON.features.length > 0) {
       return householdGeoJSON;
@@ -75,7 +75,7 @@ export const useHouseholdDataSync = (
     }
 
     return { type: 'FeatureCollection', features: [] };
-  };
+  }, [householdGeoJSON, households]);
 
   // ── Main Sync Effect ──
   useEffect(() => {
@@ -181,7 +181,7 @@ export const useHouseholdDataSync = (
         retryIntervalRef.current = null;
       }
     };
-  }, [map, dataHash]); // Only re-run when map instance or data changes
+  }, [buildDataToApply, dataHash, map]); // Only re-run when map instance or data changes
 
   // Cleanup on unmount
   useEffect(() => {

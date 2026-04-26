@@ -705,7 +705,7 @@ const Terrain: React.FC = () => {
       name: nearest.nom || nearest.name || `Grappe ${nearest.id}`,
       count: count || nearest.nb_menages || 0,
     };
-  }, [selectedHousehold, households, grappesConfig?.grappes]);
+  }, [selectedHousehold, households, grappesConfig?.grappes, grappesConfig?.sous_grappes]);
 
   const peutVoirDataHub = peut(PERMISSIONS.GERER_UTILISATEURS) || user?.role === 'ADMIN_PROQUELEC';
 

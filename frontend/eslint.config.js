@@ -16,6 +16,9 @@ export default defineConfig([globalIgnores([
   'src/services/cluster/**',
   'src/services/households/useHouseholdSync.ts',
 ]), {
+  linterOptions: {
+    reportUnusedDisableDirectives: false,
+  },
   files: ['**/*.{ts,tsx}'],
   extends: [
     js.configs.recommended,

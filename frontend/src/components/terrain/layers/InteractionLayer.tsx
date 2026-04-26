@@ -10,17 +10,17 @@ interface InteractionLayerProps {
   pendingPoints: any[];
 }
 
+const EMPTY_COLLECTION = {
+  type: 'FeatureCollection' as const,
+  features: [] as any[],
+};
+
 const InteractionLayer: React.FC<InteractionLayerProps> = ({
   map,
   styleIsReady,
   drawnZones = [],
   pendingPoints = [],
 }) => {
-  const emptyCollection = {
-    type: 'FeatureCollection' as const,
-    features: [] as any[],
-  };
-
   // 🏷️ SOURCES
   useEffect(() => {
     if (!map || !styleIsReady || !map.isStyleLoaded() || (map as any)._removed) return;
@@ -32,19 +32,19 @@ const InteractionLayer: React.FC<InteractionLayerProps> = ({
         if (!map.getSource('route-source')) {
           map.addSource('route-source', {
             type: 'geojson',
-            data: emptyCollection,
+            data: EMPTY_COLLECTION,
           });
         }
         if (!map.getSource('pending-zone')) {
           map.addSource('pending-zone', {
             type: 'geojson',
-            data: emptyCollection,
+            data: EMPTY_COLLECTION,
           });
         }
         if (!map.getSource('drawn-zones')) {
           map.addSource('drawn-zones', {
             type: 'geojson',
-            data: emptyCollection,
+            data: EMPTY_COLLECTION,
           });
         }
       } catch (err) {

@@ -243,7 +243,7 @@ const ZoneLayer: React.FC<ZoneLayerProps> = ({
       type: 'FeatureCollection',
       features: [...officialFeatures, ...unmatchedAuto],
     };
-  }, [grappeCentroidsData, grappesConfig]);
+  }, [grappeCentroidsData, grappeZonesData, grappesConfig]);
 
   const setupLayers = useCallback(
     (m: maplibregl.Map) => {
