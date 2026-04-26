@@ -914,7 +914,7 @@ const MapLibreVectorMap: React.FC<any> = ({
   useEffect(() => {
     const currentMap = mapInstanceRef.current;
     if (currentMap && styleIsReady) {
-      updateClusterDisplay(currentMap, true);
+      updateClusterDisplay(currentMap, true, zonesModeActive);
     }
   }, [
     households,

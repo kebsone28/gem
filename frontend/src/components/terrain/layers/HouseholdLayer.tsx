@@ -497,7 +497,7 @@ const HouseholdLayer: React.FC<HouseholdLayerProps> = ({
     const updateVis = () => {
       if (!map.isStyleLoaded()) return;
       const zoom = map.getZoom();
-      const showClusters = zoom < 15;
+      const showClusters = zoom < 15 && !showZones;
 
       ['cluster-halo', 'cluster-circles', 'cluster-counts'].forEach((id) => {
         if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', showClusters ? 'visible' : 'none');
@@ -525,7 +525,7 @@ const HouseholdLayer: React.FC<HouseholdLayerProps> = ({
         map.off('styledata', updateVis);
       }
     };
-  }, [map]);
+  }, [map, showZones]);
 
   return null;
 };
