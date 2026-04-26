@@ -14,10 +14,24 @@ import prisma from '../core/utils/prisma.js';
 import { recalculateProjectGrappes } from './project_config.service.js';
 import { transformRowToHousehold } from './kobo.mapping.js';
 import { tracerAction } from './audit.service.js';
+import { normalizeLegacyHousehold } from '../modules/household/household.compat.js';
 
 const KOBO_API_URL = process.env.KOBO_API_URL || 'https://kf.kobotoolbox.org';
 const KOBO_TOKEN = process.env.KOBO_TOKEN || '';
 const KOBO_FORM_ID = process.env.KOBO_FORM_ID || '';
+const EXISTING_HOUSEHOLD_LOOKUP_SELECT = {
+    id: true,
+    organizationId: true,
+    zoneId: true,
+    status: true,
+    location: true,
+    owner: true,
+    koboData: true,
+    source: true,
+    version: true,
+    updatedAt: true,
+    deletedAt: true
+};
 
 // Region GPS bounds for validation (lat, lon in decimal degrees)
 const REGION_GPS_BOUNDS = {
@@ -322,7 +336,8 @@ export async function syncKoboToDatabase(organizationId, fallbackZoneId, since =
                                 { id: { equals: numeroDemande, mode: 'insensitive' } }
                             ],
                             deletedAt: null
-                        }
+                        },
+                        select: EXISTING_HOUSEHOLD_LOOKUP_SELECT
                     });
 
                     // 2. Fallback: If no match and it ends with a '0', it's likely a Kobo artifact
@@ -333,7 +348,8 @@ export async function syncKoboToDatabase(organizationId, fallbackZoneId, since =
                                 organizationId: organizationId,
                                 numeroordre: fallbackNumero,
                                 deletedAt: null
-                            }
+                            },
+                            select: EXISTING_HOUSEHOLD_LOOKUP_SELECT
                         });
                         
                         if (existingHousehold) {
@@ -372,6 +388,7 @@ export async function syncKoboToDatabase(organizationId, fallbackZoneId, since =
             const newHouseholdId = uuidv4();
 
             // 🔑 PROTECTION DES DONNÉES LOCALES (Anti-Overwriting Admin)
+            existingHousehold = existingHousehold ? normalizeLegacyHousehold(existingHousehold) : null;
             const overrides = existingHousehold?.manualOverrides || [];
             
             // Préparation des données de mise à jour
@@ -432,7 +449,8 @@ export async function syncKoboToDatabase(organizationId, fallbackZoneId, since =
                 console.log(`[KOBO-SYNC] 🔄 UPDATE existing household: ${existingHousehold.id} with N° ${numeroDemande}`);
                 await prisma.household.update({
                     where: { id: existingHousehold.id },
-                    data: updateData
+                    data: updateData,
+                    select: { id: true }
                 });
             } else {
                 // 🆕 CRÉATION ou UPSERT par ID Kobo (si n° demande n'a pas matché)
@@ -461,7 +479,8 @@ export async function syncKoboToDatabase(organizationId, fallbackZoneId, since =
                         numeroordre: numeroDemande,
                         source: 'KOBO',
                         version: 1
-                    }
+                    },
+                    select: { id: true }
                 });
             }
 

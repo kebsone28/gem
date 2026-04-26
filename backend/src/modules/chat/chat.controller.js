@@ -1,6 +1,7 @@
 import prisma from '../../core/utils/prisma.js';
 import { tracerAction } from '../../services/audit.service.js';
 import { socketService } from '../../services/socket.service.js';
+import { hasPrismaDelegate, isPrismaSchemaDriftError } from '../../core/utils/prismaCompat.js';
 
 const CHAT_TYPES = {
   GLOBAL: 'GLOBAL',
@@ -50,6 +51,14 @@ const messageInclude = {
 };
 
 const getConversationRoom = (conversationId) => `chat_conversation_${conversationId}`;
+
+function isChatPersistenceAvailable() {
+  return (
+    hasPrismaDelegate(prisma, 'chatConversation') &&
+    hasPrismaDelegate(prisma, 'chatUserBlock') &&
+    hasPrismaDelegate(prisma, 'chatMessage')
+  );
+}
 
 const toSafeUser = (user, activeBlocksByUserId = new Map(), onlineUserIds = new Set()) => {
   if (!user) {
@@ -222,6 +231,28 @@ async function broadcastConversationToParticipants(conversation, participantUser
   });
 }
 
+async function sendBootstrapFallback(res, organizationId, userId) {
+  const users = await prisma.user.findMany({
+    where: { organizationId },
+    orderBy: [{ active: 'desc' }, { name: 'asc' }, { email: 'asc' }],
+    select: userSelect,
+  });
+
+  const onlineUserIds = new Set(socketService.getOrganizationPresence(organizationId));
+  const safeUsers = users.map((user) => toSafeUser(user, new Map(), onlineUserIds));
+
+  res.json({
+    users: safeUsers,
+    conversations: [],
+    presence: Array.from(onlineUserIds),
+    blockedUserIds: [],
+    currentUserBlocked: false,
+    globalConversationId: null,
+    degraded: true,
+    message: 'La messagerie sera disponible apres la mise a niveau serveur.',
+  });
+}
+
 export const getChatBootstrap = async (req, res) => {
   try {
     const { organizationId, id: userId } = req.user;
@@ -230,6 +261,10 @@ export const getChatBootstrap = async (req, res) => {
     }
 
     console.log(`[CHAT_BOOTSTRAP] Starting for user ${userId} in org ${organizationId}`);
+
+    if (!isChatPersistenceAvailable()) {
+      return sendBootstrapFallback(res, organizationId, userId);
+    }
 
     const [globalConversation, users, conversations, activeBlocksByUserId] = await Promise.all([
       ensureGlobalConversation(organizationId, userId).catch(e => {
@@ -295,6 +330,9 @@ export const getChatBootstrap = async (req, res) => {
       globalConversationId: globalConversation.id,
     });
   } catch (error) {
+    if (isPrismaSchemaDriftError(error)) {
+      return sendBootstrapFallback(res, req.user.organizationId, req.user.id);
+    }
     console.error('[CHAT_BOOTSTRAP_ERROR]', error);
     res.status(500).json({ error: 'Erreur lors du chargement de la messagerie.', details: error.message });
   }
@@ -571,4 +609,3 @@ export const deleteConversation = async (req, res) => {
     res.status(500).json({ error: 'Erreur lors de la suppression de la conversation.' });
   }
 };
-

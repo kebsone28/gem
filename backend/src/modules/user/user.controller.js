@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import prisma from '../../core/utils/prisma.js';
 import { tracerAction } from '../../services/audit.service.js';
+import { hasPrismaDelegate } from '../../core/utils/prismaCompat.js';
 
 const isDev = process.env.NODE_ENV !== 'production';
 
@@ -253,10 +254,12 @@ export const deleteUser = async (req, res) => {
                 data: { createdBy: null }
             });
 
-            await tx.chatConversation.updateMany({
-                where: { organizationId, createdById: id },
-                data: { createdById: null }
-            });
+            if (hasPrismaDelegate(tx, 'chatConversation')) {
+                await tx.chatConversation.updateMany({
+                    where: { organizationId, createdById: id },
+                    data: { createdById: null }
+                });
+            }
 
             await tx.actionApproval.updateMany({
                 where: { organizationId, userId: id },
@@ -271,13 +274,17 @@ export const deleteUser = async (req, res) => {
                 where: { organizationId, userId: id }
             });
 
-            await tx.syncLog.deleteMany({
-                where: { organizationId, userId: id }
-            });
+            if (hasPrismaDelegate(tx, 'syncLog')) {
+                await tx.syncLog.deleteMany({
+                    where: { organizationId, userId: id }
+                });
+            }
 
-            await tx.userMemory.deleteMany({
-                where: { userId: id }
-            });
+            if (hasPrismaDelegate(tx, 'userMemory')) {
+                await tx.userMemory.deleteMany({
+                    where: { userId: id }
+                });
+            }
 
             await tx.user.delete({ where: { id } });
         });

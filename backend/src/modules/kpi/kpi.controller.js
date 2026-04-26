@@ -1,5 +1,6 @@
 import prisma from '../../core/utils/prisma.js';
 import { redisConnection } from '../../core/utils/queueManager.js';
+import { isPrismaSchemaDriftError } from '../../core/utils/prismaCompat.js';
 
 // @desc    Get project KPIs (Snapshot current state)
 // @route   GET /api/kpi/:projectId
@@ -143,30 +144,43 @@ export const getProjectKPIs = async (req, res) => {
         const totalPV = getCountByUPattern('PV');
         const totalArchived = validatedCount;
 
-        const actionRequiredCount = await prisma.household.count({
-            where: {
-                zone: { projectId },
-                organizationId,
-                deletedAt: null,
-                // Simplified count for alerts
-                NOT: { alerts: { equals: [] } }
+        let actionRequiredCount = 0;
+        try {
+            actionRequiredCount = await prisma.household.count({
+                where: {
+                    zone: { projectId },
+                    organizationId,
+                    deletedAt: null,
+                    NOT: { alerts: { equals: [] } }
+                }
+            });
+        } catch (error) {
+            if (!isPrismaSchemaDriftError(error)) {
+                throw error;
             }
-        });
+        }
 
         const nonConformeCount = getCountByPattern('non-conform');
         const conformeCount = getCountByPattern('conform');
 
         // Audit logs critiques (si besoin)
-        const auditLogs = await prisma.auditLog.findMany({
-            where: {
-                organizationId,
-                module: 'HSE',
-                severity: { in: ['critical', 'warning'] },
-                resource: { contains: projectId }
-            },
-            orderBy: { timestamp: 'desc' },
-            take: 10
-        });
+        let auditLogs = [];
+        try {
+            auditLogs = await prisma.auditLog.findMany({
+                where: {
+                    organizationId,
+                    module: 'HSE',
+                    severity: { in: ['critical', 'warning'] },
+                    resource: { contains: projectId }
+                },
+                orderBy: { timestamp: 'desc' },
+                take: 10
+            });
+        } catch (error) {
+            if (!isPrismaSchemaDriftError(error)) {
+                throw error;
+            }
+        }
 
         const igppRaw = totalHouseholds > 0 ? (
             (validatedCount * 1.0) + (interieurCount * 0.75) + (reseauCount * 0.45) + (murCount * 0.2)

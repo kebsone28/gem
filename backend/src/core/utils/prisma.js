@@ -2,6 +2,7 @@
 import { PrismaClient } from '@prisma/client';
 import { config } from '../config/config.js';
 import { getOrganizationId, getUserId, getProjectId } from '../context/storage.js';
+import { isPrismaSchemaDriftError } from './prismaCompat.js';
 
 if (process.env.NODE_ENV !== 'production') {
     console.log('🔧 Initializing Prisma for DB:', config.dbUrl);
@@ -116,7 +117,11 @@ export const prisma = basePrisma.$extends({
                   fields: args.data ? Object.keys(args.data) : (args.where ? Object.keys(args.where) : [])
                 }
               }
-            }).catch(e => console.warn(`[PRISMA_AUDIT] Fail: ${e.message}`));
+            }).catch((e) => {
+              if (!isPrismaSchemaDriftError(e)) {
+                console.warn(`[PRISMA_AUDIT] Fail: ${e.message}`);
+              }
+            });
           }
         }
 

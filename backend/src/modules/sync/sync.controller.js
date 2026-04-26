@@ -7,6 +7,10 @@ import { recalculateProjectGrappes } from '../../services/project_config.service
 import { logPerformance } from '../../services/performance.service.js';
 import fs from 'fs';
 import path from 'path';
+import {
+    LEGACY_SAFE_HOUSEHOLD_READ_SELECT,
+    normalizeLegacyHousehold
+} from '../household/household.compat.js';
 
 // Force relative path for reliable debugging across OS
 const DEBUG_LOG = path.join(process.cwd(), 'sync_debug.log');
@@ -46,15 +50,12 @@ export const pullChanges = async (req, res) => {
                 organizationId,
                 updatedAt: { gt: lastSync }
             },
-            include: {
-                zone: {
-                    select: { projectId: true }
-                }
-            }
+            select: LEGACY_SAFE_HOUSEHOLD_READ_SELECT
         });
 
         // Flatten projectId for frontend compatibility & SANITIZE coordinates for Mapbox
-        const households = rawHouseholds.map(h => {
+        const households = rawHouseholds.map((rawHousehold) => {
+            const h = normalizeLegacyHousehold(rawHousehold);
             // Mapbox and frontend filters rely on location.coordinates [lng, lat]
             const lat = Number(h.latitude);
             const lng = Number(h.longitude);

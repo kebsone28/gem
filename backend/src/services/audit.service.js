@@ -1,5 +1,6 @@
 import { basePrisma as prisma } from '../core/utils/prisma.js';
 import { sendMail } from './mail.service.js';
+import { isPrismaSchemaDriftError } from '../core/utils/prismaCompat.js';
 
 /**
  * Service d'Audit - PROQUELEC SaaS
@@ -56,6 +57,10 @@ export const tracerAction = async (dataOrOrgId, userId, action, resource, resour
         })
         .then(() => console.log(`[AUDIT] Action enregistrée en base : ${act}`))
         .catch(err => {
+            if (isPrismaSchemaDriftError(err)) {
+                console.warn(`[AUDIT] Journalisation ignorée (schéma legacy) pour ${act}`);
+                return;
+            }
             console.error(`[ERREUR AUDIT DB] Échec pour ${act}:`, err.message);
             // On ne crash pas le process, mais on log l'erreur critique
         });

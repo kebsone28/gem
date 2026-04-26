@@ -2,6 +2,10 @@ import prisma from '../../core/utils/prisma.js';
 import eventBus from '../../core/utils/eventBus.js';
 import { tracerAction } from '../../services/audit.service.js';
 import { logPerformance } from '../../services/performance.service.js';
+import {
+    LEGACY_SAFE_HOUSEHOLD_READ_SELECT,
+    normalizeLegacyHousehold
+} from './household.compat.js';
 
 function sanitizeBigIntForJson(value) {
     if (typeof value === 'bigint') {
@@ -77,16 +81,12 @@ export const getHouseholds = async (req, res) => {
 
         const households = await prisma.household.findMany({
             where,
-            include: {
-                zone: {
-                    select: { name: true, projectId: true }
-                }
-            },
+            select: LEGACY_SAFE_HOUSEHOLD_READ_SELECT,
             orderBy: { updatedAt: 'desc' },
             take: limitNum
         });
 
-        res.json({ households: sanitizeBigIntForJson(households) });
+        res.json({ households: sanitizeBigIntForJson(households.map(normalizeLegacyHousehold)) });
     } catch (error) {
         console.error('Get households error:', error);
         res.status(500).json({ error: 'Server error while fetching households' });
@@ -120,14 +120,14 @@ export const getHouseholdById = async (req, res) => {
 
         const household = await prisma.household.findFirst({
             where: { id, organizationId, deletedAt: null },
-            include: { zone: true }
+            select: LEGACY_SAFE_HOUSEHOLD_READ_SELECT
         });
 
         if (!household) {
             return res.status(404).json({ error: 'Household not found' });
         }
 
-        res.json(sanitizeBigIntForJson(household));
+        res.json(sanitizeBigIntForJson(normalizeLegacyHousehold(household)));
     } catch (error) {
         console.error('Get household error:', error);
         res.status(500).json({ error: 'Server error while fetching household' });
