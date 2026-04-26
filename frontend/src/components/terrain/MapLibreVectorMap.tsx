@@ -75,21 +75,31 @@ const withStyleSource = (
     },
   }) as StyleSpecification;
 
+const cloneStyle = (style: StyleSpecification): StyleSpecification => {
+  if (typeof structuredClone === 'function') {
+    return structuredClone(style);
+  }
+  return JSON.parse(JSON.stringify(style)) as StyleSpecification;
+};
+
 const resolveMapStyle = (
   style: TerrainMapStyle,
   isDarkMode: boolean
 ): StyleSpecification => {
   if (style === 'satellite') {
-    return withStyleSource(MAP_STYLE_SATELLITE, 'satellite');
+    return withStyleSource(cloneStyle(MAP_STYLE_SATELLITE), 'satellite');
   }
 
-  if (style === 'light') return withStyleSource(MAP_STYLE_LIGHT_VECTOR, 'light');
-  if (style === 'dark') return withStyleSource(MAP_STYLE_DARK, 'dark');
-  return withStyleSource(isDarkMode ? MAP_STYLE_DARK : MAP_STYLE_LIGHT_VECTOR, isDarkMode ? 'dark' : 'light');
+  if (style === 'light') return withStyleSource(cloneStyle(MAP_STYLE_LIGHT_VECTOR), 'light');
+  if (style === 'dark') return withStyleSource(cloneStyle(MAP_STYLE_DARK), 'dark');
+  return withStyleSource(
+    cloneStyle(isDarkMode ? MAP_STYLE_DARK : MAP_STYLE_LIGHT_VECTOR),
+    isDarkMode ? 'dark' : 'light'
+  );
 };
 
 const resolveFallbackStyle = (): StyleSpecification =>
-  withStyleSource(MAP_STYLE_FALLBACK_RASTER, FALLBACK_STYLE_SOURCE);
+  withStyleSource(cloneStyle(MAP_STYLE_FALLBACK_RASTER), FALLBACK_STYLE_SOURCE);
 
 const getCurrentStyleSource = (map: maplibregl.Map | null): string | null => {
   if (!map || (map as any)._removed) return null;
