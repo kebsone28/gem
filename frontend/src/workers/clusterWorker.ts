@@ -191,7 +191,7 @@ self.onmessage = (event) => {
     const panelData: { id: string; name: string; count: number; type: string; bbox: number[]; color: string }[] = [];
 
     let colorIdx = 0;
-    for (const [, { points }] of byVillage) {
+    for (const [key, { points }] of byVillage) {
       if (points.length === 0) continue;
       const color = VILLAGE_COLORS[colorIdx % VILLAGE_COLORS.length];
       colorIdx++;
