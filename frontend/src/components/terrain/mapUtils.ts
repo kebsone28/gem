@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 /**
  * mapUtils.ts
  *
@@ -9,7 +9,7 @@
  */
 
 import maplibregl from 'maplibre-gl';
-import { STATUS_CONFIG, ICON_SIZES } from './mapConfig';
+import { STATUS_CONFIG, STATUS_ICON_IDS, ICON_SIZES, getStatusKeyByIconId } from './mapConfig';
 import logger from '../../utils/logger';
 
 // ── SINGLETON ICON REGISTRY ──
@@ -196,11 +196,11 @@ async function generatePhotoIndicatorBitmap(): Promise<ImageBitmap> {
   return createImageBitmap(canvas);
 }
 
-const resolveStatusFromImageId = (imageId: string): { status: string; variant: 'small' | 'large' | 'pulsing' | null } | null => {
+const resolveStatusFromImageId = (imageId: string): { iconId: string; variant: 'small' | 'large' | 'pulsing' | null } | null => {
   const pulsingMatch = imageId.match(/^pulsing-(.+)$/);
   if (pulsingMatch) {
     return {
-      status: pulsingMatch[1],
+      iconId: pulsingMatch[1],
       variant: 'pulsing',
     };
   }
@@ -208,7 +208,7 @@ const resolveStatusFromImageId = (imageId: string): { status: string; variant: '
   const staticMatch = imageId.match(/^icon-(.+)-(small|large)$/);
   if (staticMatch) {
     return {
-      status: staticMatch[1],
+      iconId: staticMatch[1],
       variant: staticMatch[2] as 'small' | 'large',
     };
   }
@@ -230,7 +230,7 @@ export async function ensureMapImage(map: maplibregl.Map, imageId: string): Prom
   const resolved = resolveStatusFromImageId(imageId);
   if (!resolved) return false;
 
-  const status = STATUS_CONFIG[resolved.status] ? resolved.status : 'default';
+  const status = getStatusKeyByIconId(resolved.iconId);
 
   if (resolved.variant === 'pulsing') {
     if (!map.hasImage(imageId)) {
@@ -361,12 +361,12 @@ export async function registerIcons(map: maplibregl.Map) {
   if (!map || !map.isStyleLoaded()) return;
   attachStyleImageFallback(map);
 
-  const statuses = Object.keys(STATUS_CONFIG);
+  const iconIds = Array.from(new Set(Object.values(STATUS_ICON_IDS)));
 
-  for (const status of statuses) {
-    const smallId = `icon-${status}-small`;
-    const largeId = `icon-${status}-large`;
-    const pulsingId = `pulsing-${status}`;
+  for (const iconId of iconIds) {
+    const smallId = `icon-${iconId}-small`;
+    const largeId = `icon-${iconId}-large`;
+    const pulsingId = `pulsing-${iconId}`;
 
     if (!map.hasImage(smallId)) {
       await ensureMapImage(map, smallId);
@@ -441,27 +441,28 @@ export const generatePopupHTML = (feature: any): string => {
   const status = props.status || 'Inconnu';
 
   return `
-    <div class="popup-card p-4 min-w-[220px] font-sans bg-white/95 dark:bg-slate-950/95 rounded-3xl shadow-2xl border border-slate-200/80 dark:border-slate-700/80 backdrop-blur-xl">
-        <div class="flex items-start justify-between gap-3 mb-3">
-            <div class="flex items-center gap-2">
-                <span class="w-3 h-3 rounded-full" style="background-color: ${color}"></span>
-                <span class="text-[10px] font-black uppercase tracking-[0.35em] text-slate-500 dark:text-slate-400">${status}</span>
+    <div class="popup-card p-5 min-w-[240px] font-sans bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 backdrop-blur-xl">
+        <div class="flex items-start justify-between gap-3 mb-4">
+            <div class="flex items-center gap-2 bg-slate-100 dark:bg-slate-800/50 py-1 px-2 rounded-full">
+                <span class="w-2.5 h-2.5 rounded-full" style="background-color: ${color}"></span>
+                <span class="text-[9px] font-black uppercase tracking-[0.2em] text-slate-700 dark:text-slate-300">${status}</span>
             </div>
-            <span class="text-[10px] uppercase font-black text-slate-400">${props.owner ? props.owner : 'Sans propriétaire'}</span>
+            <span class="text-[9px] uppercase font-black text-slate-500 dark:text-slate-400">${props.owner && props.owner !== 'N/A' ? props.owner : 'Sans propriétaire'}</span>
         </div>
-        <div class="space-y-2">
-            <h3 class="text-base font-extrabold text-slate-900 dark:text-white tracking-tight">
+        <div class="space-y-1 mb-5">
+            <h3 class="text-lg font-black tracking-tight leading-tight dark:text-white" style="color: #0f172a;">
                 Ménage #${(props.household_id || props.id)?.slice(-6) || 'N/A'}
             </h3>
-            <p class="text-xs text-slate-500 dark:text-slate-400">
-                ID : <span class="font-mono text-[11px] text-slate-700 dark:text-slate-300">${props.household_id || props.id || 'N/A'}</span>
+            <p class="text-xs font-bold dark:text-slate-400" style="color: #475569;">
+                ID : <span class="font-mono dark:text-slate-200" style="color: #1e293b;">${props.household_id || props.id || 'N/A'}</span>
             </p>
         </div>
+
         <button 
             type="button"
             onclick="window.dispatchEvent(new CustomEvent('map:select-household', { detail: '${props.household_id || props.id}' }))"
-            class="mt-4 w-full inline-flex items-center justify-center gap-2 py-2 px-3 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-[0_16px_40px_rgba(15,23,42,0.18)] transition-transform duration-150 hover:-translate-y-0.5 active:scale-[0.98]"
-            style="background: #0f172a; color: #ffffff; border: 1px solid rgba(255,255,255,0.12);"
+            class="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-lg"
+            style="background: #0f172a; color: #ffffff; border: 1px solid rgba(255,255,255,0.1);"
         >
             Voir les détails
         </button>
