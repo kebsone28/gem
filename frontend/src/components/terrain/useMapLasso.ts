@@ -33,36 +33,62 @@ export const useMapLasso = (
 ) => {
   const lassoPointsRef = useRef<[number, number][]>([]);
   const isDrawingRef = useRef(false);
+  const isInitializedRef = useRef(false);
 
   const setupLasso = useCallback(
     (map: maplibregl.Map) => {
-      if (!map.getSource('lasso-source')) {
-        map.addSource('lasso-source', {
-          type: 'geojson',
-          data: { type: 'FeatureCollection', features: [] },
-        });
-
-        map.addLayer({
-          id: 'lasso-fill',
-          type: 'fill',
-          source: 'lasso-source',
-          paint: {
-            'fill-color': '#4f46e5',
-            'fill-opacity': 0.15,
-          },
-        });
-
-        map.addLayer({
-          id: 'lasso-stroke',
-          type: 'line',
-          source: 'lasso-source',
-          paint: {
-            'line-color': '#4f46e5',
-            'line-width': 2.5,
-            'line-dasharray': [2, 1],
-          },
-        });
+      if ((map as any)._removed || !map.isStyleLoaded()) {
+        return;
       }
+
+      const ensureLassoArtifacts = () => {
+        if ((map as any)._removed || !map.isStyleLoaded()) return false;
+
+        try {
+          if (!map.getSource('lasso-source')) {
+            map.addSource('lasso-source', {
+              type: 'geojson',
+              data: { type: 'FeatureCollection', features: [] },
+            });
+          }
+
+          if (!map.getLayer('lasso-fill')) {
+            map.addLayer({
+              id: 'lasso-fill',
+              type: 'fill',
+              source: 'lasso-source',
+              paint: {
+                'fill-color': '#4f46e5',
+                'fill-opacity': 0.15,
+              },
+            });
+          }
+
+          if (!map.getLayer('lasso-stroke')) {
+            map.addLayer({
+              id: 'lasso-stroke',
+              type: 'line',
+              source: 'lasso-source',
+              paint: {
+                'line-color': '#4f46e5',
+                'line-width': 2.5,
+                'line-dasharray': [2, 1],
+              },
+            });
+          }
+
+          return true;
+        } catch (error) {
+          logger.warn('[Lasso] Deferred initialization skipped:', error);
+          return false;
+        }
+      };
+
+      if (!ensureLassoArtifacts()) {
+        return;
+      }
+
+      isInitializedRef.current = true;
 
       const updateLassoSource = () => {
         const source = map.getSource('lasso-source') as maplibregl.GeoJSONSource;
@@ -161,6 +187,9 @@ export const useMapLasso = (
       map.on('mouseup', onMouseUp);
 
       return () => {
+        isInitializedRef.current = false;
+        isDrawingRef.current = false;
+        lassoPointsRef.current = [];
         map.off('mousedown', onMouseDown);
         map.off('mousemove', onMouseMove);
         map.off('mouseup', onMouseUp);

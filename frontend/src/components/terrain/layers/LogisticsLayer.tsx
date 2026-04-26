@@ -9,16 +9,29 @@ interface LogisticsLayerProps {
   warehouses: any[];
 }
 
+const EMPTY_WAREHOUSES_GEOJSON = {
+  type: 'FeatureCollection' as const,
+  features: [] as GeoJSON.Feature[],
+};
+const SAFE_TEXT_FONT = ['Open Sans Regular', 'Arial Unicode MS Regular'];
+
 const LogisticsLayer: React.FC<LogisticsLayerProps> = ({ map, styleIsReady, warehouses = [] }) => {
   // 🏷️ DATA GEOJSON
   const warehousesGeoJSON = useMemo(
     () => ({
       type: 'FeatureCollection',
       features: (warehouses || [])
-        .filter((w: any) => w.latitude != null && w.longitude != null)
+        .filter((w: any) => {
+          const latitude = Number(w.latitude);
+          const longitude = Number(w.longitude);
+          return Number.isFinite(latitude) && Number.isFinite(longitude);
+        })
         .map((w: any) => ({
           type: 'Feature',
-          geometry: { type: 'Point', coordinates: [Number(w.longitude), Number(w.latitude)] },
+          geometry: {
+            type: 'Point',
+            coordinates: [Number(w.longitude), Number(w.latitude)],
+          },
           properties: {
             id: w.id,
             name: w.name,
@@ -30,33 +43,37 @@ const LogisticsLayer: React.FC<LogisticsLayerProps> = ({ map, styleIsReady, ware
     [warehouses]
   );
 
-  // 🏷️ SOURCES
-  useEffect(() => {
-    if (!map || !styleIsReady || !map.isStyleLoaded()) return;
-
-    try {
-      if (!map.getSource('warehouses-source')) {
-        map.addSource('warehouses-source', { type: 'geojson', data: warehousesGeoJSON as any });
-      }
-    } catch (err) {
-      logger.debug('⚠️ Failed to add warehouse source - style may not be ready:', err);
-    }
-  }, [map, styleIsReady, warehousesGeoJSON]);
-
-  // 🏷️ DATA SYNC
+  // 🏷️ BOOTSTRAP SOURCE + LAYERS
   useEffect(() => {
     if (!map || !styleIsReady) return;
-    const source = map.getSource('warehouses-source') as maplibregl.GeoJSONSource | undefined;
-    if (source) source.setData(warehousesGeoJSON as any);
-  }, [map, styleIsReady, warehousesGeoJSON]);
 
-  // 🏷️ LAYERS
-  useEffect(() => {
-    if (!map || !styleIsReady || !map.isStyleLoaded()) return;
+    let isCancelled = false;
 
-    const setupLayers = () => {
+    const isMapUsable = () =>
+      !isCancelled && !!map && !(map as any)._removed && map.isStyleLoaded();
+
+    const ensureSource = () => {
+      if (!isMapUsable()) return false;
+
       try {
-        // Geofence circles
+        if (!map.getSource('warehouses-source')) {
+          map.addSource('warehouses-source', {
+            type: 'geojson',
+            data: EMPTY_WAREHOUSES_GEOJSON as any,
+          });
+        }
+
+        return true;
+      } catch (err) {
+        logger.debug('⚠️ Failed to add warehouse source - style may not be ready:', err);
+        return false;
+      }
+    };
+
+    const ensureLayers = () => {
+      if (!ensureSource()) return;
+
+      try {
         if (!map.getLayer('warehouses-geofence')) {
           map.addLayer({
             id: 'warehouses-geofence',
@@ -80,7 +97,6 @@ const LogisticsLayer: React.FC<LogisticsLayerProps> = ({ map, styleIsReady, ware
           });
         }
 
-        // Warehouse point
         if (!map.getLayer('warehouses-layer')) {
           map.addLayer({
             id: 'warehouses-layer',
@@ -101,7 +117,6 @@ const LogisticsLayer: React.FC<LogisticsLayerProps> = ({ map, styleIsReady, ware
           });
         }
 
-        // Labels
         if (!map.getLayer('warehouses-labels')) {
           map.addLayer({
             id: 'warehouses-labels',
@@ -109,12 +124,12 @@ const LogisticsLayer: React.FC<LogisticsLayerProps> = ({ map, styleIsReady, ware
             source: 'warehouses-source',
             minzoom: 8,
             layout: {
-              'text-field': ['get', 'name'],
-              'text-size': 12,
-              'text-font': ['Open Sans Bold', 'Inter Bold'],
-              'text-offset': [0, 1.2],
-              'text-anchor': 'top',
-            },
+            'text-field': ['get', 'name'],
+            'text-size': 12,
+            'text-font': SAFE_TEXT_FONT,
+            'text-offset': [0, 1.2],
+            'text-anchor': 'top',
+          },
             paint: {
               'text-color': '#ffffff',
               'text-halo-color': '#0f172a',
@@ -127,8 +142,39 @@ const LogisticsLayer: React.FC<LogisticsLayerProps> = ({ map, styleIsReady, ware
       }
     };
 
-    setupLayers();
+    const bootstrap = () => {
+      if (!isMapUsable()) return;
+      ensureLayers();
+    };
+
+    const queueBootstrap = () => {
+      if (!isMapUsable()) return;
+      setTimeout(bootstrap, 0);
+    };
+
+    if (map.isStyleLoaded()) {
+      queueBootstrap();
+    }
+
+    map.on('style.load', queueBootstrap);
+
+    return () => {
+      isCancelled = true;
+      map.off('style.load', queueBootstrap);
+    };
   }, [map, styleIsReady]);
+
+  // 🏷️ DATA SYNC
+  useEffect(() => {
+    if (!map || !styleIsReady || !map.isStyleLoaded() || (map as any)._removed) return;
+
+    try {
+      const source = map.getSource('warehouses-source') as maplibregl.GeoJSONSource | undefined;
+      source?.setData(warehousesGeoJSON as any);
+    } catch (err) {
+      logger.debug('⚠️ Failed to sync warehouse source data:', err);
+    }
+  }, [map, styleIsReady, warehousesGeoJSON]);
 
   return null;
 };

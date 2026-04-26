@@ -184,7 +184,9 @@ interface UseTerrainDataOptions {
 export function useTerrainData(options: UseTerrainDataOptions = {}) {
   const { enabled = true } = options;
   const { activeProjectId, project } = useProject();
-  const currentProjectId = project?.id ?? null;
+  // Keep using the persisted active project id while ProjectContext/Dexie
+  // is still hydrating or when /projects sync temporarily fails.
+  const currentProjectId = project?.id ?? activeProjectId ?? null;
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 

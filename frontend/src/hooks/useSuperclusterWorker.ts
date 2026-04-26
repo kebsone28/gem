@@ -21,17 +21,24 @@ export const useSuperclusterWorker = () => {
     worker.onmessage = (e) => {
       const { type, payload } = e.data;
 
-      if (type === 'LOADED') {
+      if (type === 'LOADED' || type === 'loaded') {
         setIsLoaded(true);
         return;
       }
 
-      if (type === 'CLUSTERS_DATA' || type === 'LEAVES_DATA' || type === 'EXPANSION_ZOOM_DATA') {
-        const requestId = payload.requestId || 'default';
+      if (
+        type === 'CLUSTERS_DATA' ||
+        type === 'LEAVES_DATA' ||
+        type === 'EXPANSION_ZOOM_DATA' ||
+        type === 'clusters' ||
+        type === 'leaves' ||
+        type === 'expansionZoom'
+      ) {
+        const requestId = payload?.requestId || e.data.requestId || 'default';
         if (callbacksRef.current[requestId]) {
-          callbacksRef.current[requestId](payload);
+          callbacksRef.current[requestId](payload || e.data);
           // Nettoyage si ce n'est pas un flux continu
-          if (type !== 'CLUSTERS_DATA') delete callbacksRef.current[requestId];
+          if (type !== 'CLUSTERS_DATA' && type !== 'clusters') delete callbacksRef.current[requestId];
         }
       }
     };
@@ -47,8 +54,9 @@ export const useSuperclusterWorker = () => {
     if (!workerRef.current) return;
     setIsLoaded(false);
     workerRef.current.postMessage({
-      type: 'LOAD_POINTS',
-      payload: { points, options },
+      type: 'load',
+      points,
+      options,
     });
   }, []);
 
@@ -63,8 +71,10 @@ export const useSuperclusterWorker = () => {
       callbacksRef.current[requestId] = (payload) => callback(payload.clusters);
 
       workerRef.current.postMessage({
-        type: 'GET_CLUSTERS',
-        payload: { bbox, zoom, requestId },
+        type: 'getClusters',
+        bbox,
+        zoom,
+        requestId,
       });
     },
     [isLoaded]
@@ -78,8 +88,10 @@ export const useSuperclusterWorker = () => {
         callbacksRef.current[requestId] = (payload) => resolve(payload.leaves);
 
         workerRef.current.postMessage({
-          type: 'GET_LEAVES',
-          payload: { clusterId, limit, requestId },
+          type: 'getLeaves',
+          clusterId,
+          limit,
+          requestId,
         });
       });
     },

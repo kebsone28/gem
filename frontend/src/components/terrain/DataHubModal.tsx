@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 import { useRef, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -193,22 +193,27 @@ export const DataHubModal: React.FC<DataHubModalProps> = ({ isOpen, onClose }) =
       };
 
       const aliases = {
-        id: ['id', 'numeroordre', 'identifiant', 'numero', 'n', 'code'],
-        owner: ['owner', 'nom', 'prenometnom', 'chefdemenage', 'client', 'prenomnom'],
-        phone: ['phone', 'telephone', 'tel', 'contact'],
-        lat: ['lat', 'latitude'],
-        lon: ['lon', 'lng', 'longitude'],
-        status: ['status', 'statut', 'etat'],
-        region: ['region', 'reg', 'province'],
-        departement: ['departement', 'dept', 'district'],
-        village: ['village', 'localite', 'commune', 'settlement'],
-        photo: ['photo', 'image', 'picture', 'file', 'media', 'lienphoto'],
+        id: ['id', 'numeroordre', 'identifiant', 'numero', 'n', 'code', 'num_ordre', 'ordre'],
+        owner: ['owner', 'nom', 'prenometnom', 'chefdemenage', 'client', 'prenomnom', 'beneficiaire', 'titulaire'],
+        phone: ['phone', 'telephone', 'tel', 'contact', 'mobile', 'cellulaire'],
+        lat: ['lat', 'latitude', 'gpslatitude', 'y', 'lat_gps'],
+        lon: ['lon', 'lng', 'longitude', 'gpslongitude', 'x', 'lon_gps', 'long'],
+        status: ['status', 'statut', 'etat', 'avancement', 'phase'],
+        region: ['region', 'reg', 'province', 'nom_region', 'region_nom'],
+        departement: ['departement', 'dept', 'district', 'prefecture', 'pref'],
+        village: ['village', 'nom_village', 'nom_grappe', 'grappe', 'localite', 'commune', 'settlement', 'quartier'],
+        photo: ['photo', 'image', 'picture', 'file', 'media', 'lienphoto', 'photo_lieu'],
       };
 
       const findValue = (obj: any, aliasList: string[]) => {
+        const normalizedObjKeys = new Map<string, string>();
         for (const key of Object.keys(obj)) {
-          if (aliasList.includes(normalizeKey(key))) {
-            return obj[key];
+          normalizedObjKeys.set(normalizeKey(key), key);
+        }
+        
+        for (const alias of aliasList) {
+          if (normalizedObjKeys.has(alias)) {
+            return obj[normalizedObjKeys.get(alias)!];
           }
         }
         return undefined;
@@ -353,6 +358,7 @@ export const DataHubModal: React.FC<DataHubModalProps> = ({ isOpen, onClose }) =
 
         // On met quand même à jour localement pour l'affichage immédiat
         await db.households.bulkPut(finalData);
+        await forceSync();
       } else {
         // 📱 LOCAL PWA IMPORT (OFFLINE-FIRST)
         await importHouseholds(finalData);

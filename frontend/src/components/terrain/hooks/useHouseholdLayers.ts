@@ -2,6 +2,8 @@ import { useEffect } from 'react';
 import maplibregl from 'maplibre-gl';
 import logger from '../../../utils/logger';
 
+const SAFE_TEXT_FONT = ['Open Sans Regular', 'Arial Unicode MS Regular'];
+
 /**
  * Hook: Household Layers Creation (Gold Standard Architecture)
  *
@@ -20,11 +22,11 @@ export const useHouseholdLayers = (
   sourcesReady: boolean,
   showZones: boolean = false
 ): void => {
-  useEffect(() => {
-    if (!map || !styleIsReady) return;
-    if (!sourcesReady) return;
 
-    logger.debug('💎 [useHouseholdLayers] Building Gold Standard layers...');
+  const buildLayers = () => {
+    if (!map || !styleIsReady || !sourcesReady || !map.isStyleLoaded()) return;
+
+    logger.debug('📎 [useHouseholdLayers] Building Gold Standard layers...');
 
     try {
       if (!map.getSource('households') || !map.getSource('supercluster-generated')) {
@@ -33,7 +35,7 @@ export const useHouseholdLayers = (
       }
 
       const safeInsertLayer = (target: string) => (map.getLayer(target) ? target : undefined);
-      const initialVisibility = showZones ? 'none' : 'visible';
+      const initialVisibility = 'visible';
 
       if (!map.getLayer('cluster-halo')) {
         map.addLayer({
@@ -94,7 +96,7 @@ export const useHouseholdLayers = (
           filter: ['==', ['get', 'cluster'], true],
           layout: {
             'text-field': ['to-string', ['get', 'point_count']],
-            'text-font': ['Open Sans Bold', 'Inter Bold'],
+            'text-font': SAFE_TEXT_FONT,
             'text-size': 14,
             'text-allow-overlap': true,
             visibility: initialVisibility,
@@ -299,7 +301,7 @@ export const useHouseholdLayers = (
           source: 'households',
           layout: {
             'text-field': ['coalesce', ['get', 'numeroordre'], ''],
-            'text-font': ['Open Sans Bold', 'Inter Bold'],
+            'text-font': SAFE_TEXT_FONT,
             'text-size': 11,
             'text-variable-anchor': ['top'],
             'text-radial-offset': 1.8,
@@ -319,5 +321,27 @@ export const useHouseholdLayers = (
     } catch (err) {
       logger.error('🔴 [useHouseholdLayers] Layer construction failed:', err);
     }
+  };
+
+  useEffect(() => {
+    if (!map || !styleIsReady) return;
+    if (!sourcesReady) return;
+
+    buildLayers();
+
+    // Re-build layers after any style reload (style switch wipes all custom layers)
+    const handleStyleData = () => {
+      if (!map.isStyleLoaded()) return;
+      // If our primary layer is gone, rebuild all layers
+      if (!map.getLayer('households-glow-layer')) {
+        logger.debug('[useHouseholdLayers] Layers wiped — rebuilding after style reload...');
+        buildLayers();
+      }
+    };
+
+    map.on('styledata', handleStyleData);
+    return () => {
+      if (!(map as any)._removed) map.off('styledata', handleStyleData);
+    };
   }, [map, styleIsReady, sourcesReady, showZones]);
 };

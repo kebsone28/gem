@@ -23,8 +23,9 @@ export const useHouseholdVisibility = (
 
       const zoom = map.getZoom();
 
-      // Supercluster circles + counts (Visibles uniquement si zoom < 15 ET zones désactivées)
-      const clusterVisible = zoom < 15 && !showZones;
+      // Supercluster circles + counts must stay available on low zoom, even when zones are enabled.
+      // Otherwise the country-wide view looks empty because individual markers are too small to read.
+      const clusterVisible = zoom < 15;
       
       if (map.getLayer('cluster-circles')) {
         map.setLayoutProperty('cluster-circles', 'visibility', clusterVisible ? 'visible' : 'none');

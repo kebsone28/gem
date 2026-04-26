@@ -138,6 +138,7 @@ const Terrain: React.FC = () => {
     grappeZonesData,
     grappeCentroidsData,
     isLoading: isClustersLoading,
+    progress: grappeProgress,
   } = useGrappeClustering(households);
   const { auditResult } = useAuditData(households);
   const {
@@ -632,9 +633,33 @@ const Terrain: React.FC = () => {
     };
 
     if (gId) {
-      const grappeDef = (allGrappes as any[]).find((g: any) => g.id === gId);
+      const grappeDef = (grappesConfig?.grappes as any[])?.find((g: any) => g.id === gId) ||
+                       (grappesConfig?.sous_grappes as any[])?.find((sg: any) => sg.id === gId);
+      
       const grappeName =
-        selectedHousehold.grappeName || grappeDef?.nom || grappeDef?.name || `Grappe ${gId}`;
+        selectedHousehold.grappeName || 
+        grappeDef?.nom || 
+        grappeDef?.name || 
+        grappeDef?.code || 
+        (grappeDef?.grappe_numero ? `Grappe ${grappeDef.grappe_numero}` : null) ||
+        (grappeDef?.numero ? `Grappe ${grappeDef.numero}` : null) ||
+        (() => {
+          // If it's an auto-generated grappe (UUID), try to find the most common village
+          const siblings = (households || []).filter((h) => h.grappeId === gId);
+          const villages = siblings.map(h => h.village || h.koboSync?.village).filter(Boolean);
+          if (villages.length > 0) {
+            const mostCommon = villages.reduce((acc, v) => {
+              acc[v!] = (acc[v!] || 0) + 1;
+              return acc;
+            }, {} as Record<string, number>);
+            const bestVillage = Object.entries(mostCommon).sort((a, b) => b[1] - a[1])[0][0];
+            return `Grappe ${bestVillage}`;
+          }
+          return `Grappe ${gId.slice(0, 8)}`;
+        })();
+
+
+        
       const grappeCount = (households || []).filter((h: Household) => h.grappeId === gId).length;
       return { id: gId, name: grappeName, count: grappeCount };
     }
@@ -917,6 +942,7 @@ const Terrain: React.FC = () => {
             onClose={closePanel}
             clusters={grappeClusters}
             isLoading={isClustersLoading}
+            progress={grappeProgress}
             onSelectGrappe={(_id, bbox) =>
               bbox && window.dispatchEvent(new CustomEvent('fit-bounds', { detail: bbox }))
             }

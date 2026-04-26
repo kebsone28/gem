@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/exhaustive-deps */
+/* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/exhaustive-deps */
 import { useCallback, useRef, useEffect } from 'react';
 import maplibregl from 'maplibre-gl';
 import toast from 'react-hot-toast';
@@ -248,43 +248,7 @@ export const useMapInteractions = (
         disposers.push(() => map.off('mouseleave', layerId, handleLayerMouseLeave));
       });
 
-      // ── CLICK HANDLERS ──
-      householdInteractiveLayers.forEach((layerId) => {
-        const handleLayerClick = (e: any) => {
-          const feature = e.features?.[0];
-          openHouseholdFromFeature(feature);
-        };
-
-        map.on('click', layerId, handleLayerClick);
-        disposers.push(() => map.off('click', layerId, handleLayerClick));
-      });
-
-      const handleMapClickFallback = (e: any) => {
-        if (Date.now() - lastHandledHouseholdClickRef.current < 150) return;
-
-        const point = e?.point;
-        if (!point) return;
-
-        const interactiveLayers = householdInteractiveLayers.filter((layerId) => map.getLayer(layerId));
-        if (interactiveLayers.length === 0) return;
-
-        const hitPadding = 10;
-        const features = map.queryRenderedFeatures(
-          [
-            [point.x - hitPadding, point.y - hitPadding],
-            [point.x + hitPadding, point.y + hitPadding],
-          ] as any,
-          { layers: [...interactiveLayers] as string[] }
-        );
-
-        if (features.length > 0) {
-          openHouseholdFromFeature(features[0]);
-        }
-      };
-
-      map.on('click', handleMapClickFallback);
-      disposers.push(() => map.off('click', handleMapClickFallback));
-
+      // ── CLICK HANDLERS (ZONES & GRAPPES) ──
       const handleGrappeClick = (e: any) => {
         const feature = e.features?.[0];
         if (feature && onZoneClickRef.current) {
@@ -312,6 +276,7 @@ export const useMapInteractions = (
       };
       map.on('click', 'auto-grappes-fill', handleAutoGrappeClick);
       disposers.push(() => map.off('click', 'auto-grappes-fill', handleAutoGrappeClick));
+
 
       return () => {
         window.removeEventListener('map:select-household', handleSelectEvent);

@@ -119,18 +119,31 @@ self.onmessage = (event) => {
       );
     });
 
-    // ── Group by village ─────────────────────────────────────────────
-    const byVillage = new Map<string, { points: Point[]; ids: string[] }>();
+    // ── Group by region + village ─────────────────────────────────────
+    const byVillage = new Map<string, { points: Point[]; ids: string[]; region: string; village: string }>();
     const inconnuPoints: { h: Record<string, unknown>; p: Point }[] = [];
 
-    for (const h of valid) {
+    const total = valid.length;
+    for (let i = 0; i < total; i++) {
+      const h = valid[i];
+      const rName = (h.region || '').trim();
       const vName = (h.village || h.departement || '').trim();
+      const key = rName ? `${rName} | ${vName}` : vName;
+
       if (vName) {
-        if (!byVillage.has(vName)) byVillage.set(vName, { points: [], ids: [] });
-        byVillage.get(vName)!.points.push({ lat: Number(h.lat), lon: Number(h.lon) });
-        byVillage.get(vName)!.ids.push(h.id);
+        if (!byVillage.has(key)) {
+          byVillage.set(key, { points: [], ids: [], region: rName, village: vName });
+        }
+        const entry = byVillage.get(key)!;
+        entry.points.push({ lat: Number(h.lat), lon: Number(h.lon) });
+        entry.ids.push(h.id);
       } else {
         inconnuPoints.push({ h, p: { lat: Number(h.lat), lon: Number(h.lon) } });
+      }
+
+      // Progress reporting for very large datasets
+      if (i > 0 && i % 500 === 0) {
+        self.postMessage({ type: 'progress', current: i, total });
       }
     }
 
@@ -161,7 +174,8 @@ self.onmessage = (event) => {
 
     // Add proximity clusters to byVillage with unique names
     clusters.forEach((pts, idx) => {
-      byVillage.set(`Zone Proximité ${idx + 1}`, { points: pts, ids: [] });
+      const name = `Zone Proximité ${idx + 1}`;
+      byVillage.set(name, { points: pts, ids: [], region: '', village: name });
     });
 
     const zonesFeatures: {
@@ -177,7 +191,7 @@ self.onmessage = (event) => {
     const panelData: { id: string; name: string; count: number; type: string; bbox: number[]; color: string }[] = [];
 
     let colorIdx = 0;
-    for (const [village, { points }] of byVillage) {
+    for (const [key, { points, region, village }] of byVillage) {
       if (points.length === 0) continue;
       const color = VILLAGE_COLORS[colorIdx % VILLAGE_COLORS.length];
       colorIdx++;
@@ -223,19 +237,19 @@ self.onmessage = (event) => {
 
       zonesFeatures.push({
         type: 'Feature',
-        properties: { village, count: points.length, color },
+        properties: { village: key, count: points.length, color },
         geometry: { type: 'Polygon', coordinates: [ring] },
       });
 
       centroidFeatures.push({
         type: 'Feature',
-        properties: { village, count: points.length, color },
+        properties: { village: key, count: points.length, color },
         geometry: { type: 'Point', coordinates: [cx, cy] },
       });
 
       panelData.push({
-        id: village,
-        name: village,
+        id: key,
+        name: key, // Now "Region | Village"
         count: points.length,
         type: 'village',
         bbox: computeBBox(points) as any,

@@ -11,11 +11,59 @@
 
 import { useCallback, useRef } from 'react';
 import maplibregl from 'maplibre-gl';
-import Supercluster from 'supercluster';
-import { getClustersForZoom } from '../../utils/clusteringUtils';
 import logger from '../../utils/logger';
 import convex from '@turf/convex';
 import { featureCollection, point } from '@turf/helpers';
+
+const ZONE_COLORS = {
+  critical: { fill: '#7F1D1D', stroke: '#FCA5A5', halo: '#EF4444' },
+  blocked: { fill: '#7C2D12', stroke: '#FCD34D', halo: '#F59E0B' },
+  pending: { fill: '#78350F', stroke: '#FDE68A', halo: '#EAB308' },
+  compliant: { fill: '#064E3B', stroke: '#A7F3D0', halo: '#10B981' },
+  progress: { fill: '#134E4A', stroke: '#99F6E4', halo: '#14B8A6' },
+} as const;
+
+const getClusterTone = (properties: Record<string, any>) => {
+  if ((properties.critical_count || 0) > 0) return ZONE_COLORS.critical;
+  if ((properties.blocked_count || 0) > 0) return ZONE_COLORS.blocked;
+  if ((properties.pending_count || 0) > 0) return ZONE_COLORS.pending;
+  if ((properties.compliant_count || 0) === (properties.point_count || 0)) return ZONE_COLORS.compliant;
+  return ZONE_COLORS.progress;
+};
+
+const computeBBox = (coordinates: number[][]) => {
+  if (!coordinates.length) return null;
+  const lons = coordinates.map(([lon]) => lon);
+  const lats = coordinates.map(([, lat]) => lat);
+  return [Math.min(...lons), Math.min(...lats), Math.max(...lons), Math.max(...lats)];
+};
+
+const roundCoord = (value: number) => Math.round(value * 100000) / 100000;
+
+const simplifyClosedRing = (ring: number[][]) => {
+  if (ring.length <= 6) {
+    return ring.map(([lon, lat]) => [roundCoord(lon), roundCoord(lat)]);
+  }
+
+  const core = ring.slice(0, -1);
+  const stride = core.length > 14 ? 3 : 2;
+  const simplified = core.filter((_, index) => index === 0 || index === core.length - 1 || index % stride === 0);
+  const closed = [...simplified, simplified[0]];
+  return closed.map(([lon, lat]) => [roundCoord(lon), roundCoord(lat)]);
+};
+
+const truncateLabel = (value: string, max = 20) =>
+  value.length > max ? `${value.slice(0, max - 1)}…` : value;
+
+const getDominantVillage = (leaves: any[]) => {
+  const counts = new Map<string, number>();
+  for (const leaf of leaves) {
+    const village = String(leaf?.properties?.village || leaf?.properties?.departement || '').trim();
+    if (!village) continue;
+    counts.set(village, (counts.get(village) || 0) + 1);
+  }
+  return [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || 'Zone terrain';
+};
 
 export const useMapClustering = (
   worker: { 
@@ -48,6 +96,9 @@ export const useMapClustering = (
         if (source?.setData) source.setData({ type: 'FeatureCollection', features: [] });
         const hullSource = map.getSource('cluster-hulls') as maplibregl.GeoJSONSource;
         if (hullSource?.setData) hullSource.setData({ type: 'FeatureCollection', features: [] });
+        const hullLabelSource = map.getSource('cluster-hull-labels') as maplibregl.GeoJSONSource;
+        if (hullLabelSource?.setData)
+          hullLabelSource.setData({ type: 'FeatureCollection', features: [] });
         return;
       }
 
@@ -90,20 +141,90 @@ export const useMapClustering = (
 
           // Calcule les limites territoriales (Hulls) de manière asynchrone si besoin
           const hullFeatures: any[] = [];
+          const hullLabelFeatures: any[] = [];
           
-          // Note: On limite le calcul des hulls aux 15 plus gros clusters visibles pour la perf UI
+          // On garde une limite haute pour préserver les performances sans tronquer excessivement la lecture métier.
           const clustersWithHulls = clusters
             .filter(c => c.properties?.cluster)
             .sort((a, b) => (b.properties.point_count || 0) - (a.properties.point_count || 0))
-            .slice(0, 15);
+            .slice(0, 36);
 
           for (const c of clustersWithHulls) {
             try {
               const leaves = await worker.getLeaves(c.properties.cluster_id, 100);
               if (leaves && leaves.length >= 3) {
-                const points = featureCollection(leaves.map((l) => point(l.geometry.coordinates)));
+                const coordinates = leaves.map((l) => l.geometry.coordinates as [number, number]);
+                const points = featureCollection(coordinates.map((coords) => point(coords)));
                 const hull = convex(points);
-                if (hull) hullFeatures.push(hull);
+                if (hull) {
+                  const properties = c.properties || {};
+                  const dominantVillage = getDominantVillage(leaves);
+                  const bbox = computeBBox(coordinates);
+                  const pointCount = Number(properties.point_count || 0);
+                  const criticalCount = Number(properties.critical_count || 0);
+                  const blockedCount = Number(properties.blocked_count || 0);
+                  const pendingCount = Number(properties.pending_count || 0);
+                  const labelTiny =
+                    criticalCount > 0 ? `${pointCount} • ${criticalCount}u` : `${pointCount}`;
+                  const labelShort =
+                    criticalCount > 0 ? `${pointCount}\n+ ${criticalCount} urg.` : `${pointCount} ménages`;
+                  const labelDetail =
+                    criticalCount > 0
+                      ? `${truncateLabel(dominantVillage)}\n${pointCount} ménages\n${criticalCount} urgents`
+                      : `${truncateLabel(dominantVillage)}\n${pointCount} ménages`;
+                  const labelFull =
+                    criticalCount > 0
+                      ? `${dominantVillage}\n${pointCount} ménages\n${criticalCount} urgents`
+                      : `${dominantVillage}\n${pointCount} ménages`;
+                  const showLabel = criticalCount > 0 || blockedCount > 0 || pointCount >= 36;
+                  const tone = getClusterTone(properties);
+                  const hullGeometry = hull.geometry?.type === 'Polygon'
+                    ? {
+                        ...hull.geometry,
+                        coordinates: [simplifyClosedRing((hull.geometry.coordinates?.[0] || []) as number[][])],
+                      }
+                    : hull.geometry;
+
+                  hullFeatures.push({
+                    ...hull,
+                    geometry: hullGeometry,
+                    properties: {
+                      ...properties,
+                      dominantVillage,
+                      bbox,
+                      zoneColor: tone.fill,
+                      zoneStroke: tone.stroke,
+                      zoneHalo: tone.halo,
+                      labelTiny,
+                      labelShort,
+                      labelDetail,
+                      labelFull,
+                    },
+                  });
+
+                  if (showLabel) {
+                    hullLabelFeatures.push({
+                      type: 'Feature',
+                      geometry: {
+                        type: 'Point',
+                        coordinates: c.geometry.coordinates,
+                      },
+                      properties: {
+                        ...properties,
+                        dominantVillage,
+                        bbox,
+                        labelTiny,
+                        labelShort,
+                        labelDetail,
+                        labelFull,
+                        showLabel,
+                        critical_count: criticalCount,
+                        blocked_count: blockedCount,
+                        pending_count: pendingCount,
+                      },
+                    });
+                  }
+                }
               }
             } catch (hullErr) {
               // Ignore single hull errors
@@ -113,6 +234,10 @@ export const useMapClustering = (
           const hullsGeoJSON = {
             type: 'FeatureCollection',
             features: hullFeatures,
+          };
+          const hullLabelsGeoJSON = {
+            type: 'FeatureCollection',
+            features: hullLabelFeatures,
           };
 
           let source = map.getSource('supercluster-generated') as maplibregl.GeoJSONSource;
@@ -143,6 +268,21 @@ export const useMapClustering = (
 
             if (hullSource && hullSource.setData) {
               hullSource.setData(hullsGeoJSON as any);
+            }
+
+            let hullLabelSource = map.getSource('cluster-hull-labels') as maplibregl.GeoJSONSource;
+            if (!hullLabelSource && map.isStyleLoaded()) {
+              try {
+                map.addSource('cluster-hull-labels', {
+                  type: 'geojson',
+                  data: hullLabelsGeoJSON as any,
+                });
+                hullLabelSource = map.getSource('cluster-hull-labels') as maplibregl.GeoJSONSource;
+              } catch (e) { /* ignore */ }
+            }
+
+            if (hullLabelSource?.setData) {
+              hullLabelSource.setData(hullLabelsGeoJSON as any);
             }
             lastUpdateTimeRef.current = Date.now();
           }

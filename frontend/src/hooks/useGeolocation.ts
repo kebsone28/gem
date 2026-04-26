@@ -13,27 +13,16 @@ export const useGeolocation = (onLocationFound?: (loc: [number, number]) => void
     onLocationFoundRef.current = onLocationFound;
   });
 
-  // Initial check — déclenché UNE SEULE FOIS au montage
+  // Do not request geolocation on mount. Browsers increasingly require
+  // a direct user gesture, and auto-requesting here causes console violations.
   useEffect(() => {
     if (!navigator.geolocation) {
       setGeolocationError('Géolocalisation non disponible sur ce navigateur');
       logger.warn('Geolocation not available');
-      return;
+    } else {
+      setGeolocationError(null);
     }
-
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const loc: [number, number] = [pos.coords.longitude, pos.coords.latitude];
-        setUserLocation(loc);
-        onLocationFoundRef.current?.(loc);
-        logger.debug('📍 Auto-location detected:', loc);
-      },
-      (err) => {
-        logger.warn('⚠️ Auto-location failed:', err);
-      },
-      { enableHighAccuracy: false, timeout: 5000 }
-    );
-  }, []); // Intentionnellement vide : exécuté une seule fois au montage
+  }, []);
 
   const handleRequestGeolocation = useCallback(() => {
     if (!navigator.geolocation) {

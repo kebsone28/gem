@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, no-empty */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, no-empty */
 import { useEffect, useRef, useMemo } from 'react';
 import maplibregl from 'maplibre-gl';
 import logger from '../../../utils/logger';
@@ -6,34 +6,27 @@ import logger from '../../../utils/logger';
 /**
  * Hook: Household Data Sync
  *
- * Syncs GeoJSON data to household sources using lightweight hash
- * for memory efficiency (no JSON.stringify).
- *
- * @param map - MapLibre GL map instance
- * @param householdGeoJSON - GeoJSON FeatureCollection from worker
- * @param households - Household array fallback
+ * Syncs GeoJSON data to the 'households' MapLibre source.
+ * Robust against race conditions: the source may not exist immediately
+ * after style load. Uses a retry loop (200ms) until source is available.
  */
 export const useHouseholdDataSync = (
   map: maplibregl.Map | null,
   householdGeoJSON?: any,
   households?: any[]
 ): void => {
-  /**
-   * REFINED: Lightweight hash instead of JSON.stringify.
-   * To prevent the 'String Meat Grinder' effect, we use length and total versions.
-   */
   const lastDataHashRef = useRef<string>('');
   const lastSourceRef = useRef<maplibregl.GeoJSONSource | null>(null);
   const setDataTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastRecoveryAttemptRef = useRef<number>(0);
+  const retryIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // ── Lightweight hash to skip unnecessary setData calls ──
   const dataHash = useMemo(() => {
     const versionChecksum = Array.isArray(households)
       ? households.reduce((sum, h) => sum + (h.version || 0), 0)
       : 0;
 
     if (householdGeoJSON?.features) {
-      // Worker result is already deduplicated; pair it with version checksum
       return `worker:${householdGeoJSON.features.length}:${versionChecksum}`;
     }
     if (households && households.length > 0) {
@@ -41,136 +34,167 @@ export const useHouseholdDataSync = (
     }
     return 'empty:0';
   }, [householdGeoJSON, households]);
-  const expectedFeatureCount = useMemo(() => {
-    if (householdGeoJSON?.features) return householdGeoJSON.features.length;
-    if (households && households.length > 0) return households.length;
-    return 0;
-  }, [householdGeoJSON, households]);
 
-  // ── Main GeoJSON Sync ──
+  // ── Build the GeoJSON to inject into the source ──
+  const buildDataToApply = (): any => {
+    // Priority 1: Worker-processed GeoJSON (already sanitized + deduplicated)
+    if (householdGeoJSON?.features && householdGeoJSON.features.length > 0) {
+      return householdGeoJSON;
+    }
+
+    // Priority 2: Raw households array (direct fallback)
+    if (households && households.length > 0) {
+      const features = households
+        .map((h: any) => {
+          let lng = Number(h.location?.coordinates?.[0] ?? h.longitude ?? 0);
+          let lat = Number(h.location?.coordinates?.[1] ?? h.latitude ?? 0);
+
+          // 🇸🇳 Auto-correct Senegal coordinates
+          if (lng > 0 && lat < 0) [lng, lat] = [lat, lng];
+          if (Math.abs(lng) > 11 && Math.abs(lng) < 18) lng = -Math.abs(lng);
+          if (Math.abs(lat) > 11 && Math.abs(lat) < 17) lat = Math.abs(lat);
+
+          if (!Number.isFinite(lng) || !Number.isFinite(lat) || (lng === 0 && lat === 0)) {
+            return null;
+          }
+
+          return {
+            type: 'Feature',
+            geometry: { type: 'Point', coordinates: [lng, lat] },
+            properties: {
+              id: h.id,
+              status: h.status || 'Non encore installée',
+              numeroordre: h.numeroordre || '',
+              name: h.owner?.name || h.name || 'N/A',
+            },
+          };
+        })
+        .filter(Boolean);
+
+      return { type: 'FeatureCollection', features };
+    }
+
+    return { type: 'FeatureCollection', features: [] };
+  };
+
+  // ── Main Sync Effect ──
   useEffect(() => {
     if (!map) return;
 
-    const buildDataToApply = () => {
-      if (householdGeoJSON?.features) {
-        return householdGeoJSON;
-      }
+    // Clear any pending retry from previous effect run
+    if (retryIntervalRef.current) {
+      clearInterval(retryIntervalRef.current);
+      retryIntervalRef.current = null;
+    }
 
-      if (households && households.length > 0) {
-        return {
-          type: 'FeatureCollection',
-          features: households.map((h: any) => {
-            let safeStatus = h.status || 'Non encore installée';
-            try {
-              const lower = safeStatus.toLowerCase();
-              if (
-                lower.includes('début') ||
-                lower.includes('debut') ||
-                lower.includes('demarr') ||
-                lower.includes('démarr') ||
-                lower.includes('pending') ||
-                lower.includes('install')
-              ) {
-                safeStatus = 'Non encore installée';
-              }
-            } catch (e) {}
-
-            return {
-              type: 'Feature',
-              geometry: { type: 'Point', coordinates: h.location?.coordinates || [0, 0] },
-              properties: { id: h.id, status: safeStatus },
-            };
-          }),
-        };
-      }
-
-      return { type: 'FeatureCollection', features: [] };
-    };
-
-    const applyData = (force = false) => {
-      if (!map.isStyleLoaded()) return;
+    const tryApply = (force = false): boolean => {
+      if (!map || (map as any)._removed) return true; // Map destroyed, stop retrying
+      if (!map.isStyleLoaded()) return false;
 
       const source = map.getSource('households') as maplibregl.GeoJSONSource | undefined;
-      if (!source) return;
-
-      // If the style reloaded, the source instance changes. Force a full re-apply.
-      if (lastSourceRef.current !== source) {
-        lastSourceRef.current = source;
-        lastDataHashRef.current = '';
+      if (!source) {
+        // Source not yet created by useHouseholdSources — keep retrying
+        return false;
       }
 
-      // Hash unchanged + source was already available = no update needed
-      if (!force && dataHash === lastDataHashRef.current) return;
+      // Detect source instance change after style reload (old source is gone)
+      if (lastSourceRef.current !== source) {
+        lastSourceRef.current = source;
+        lastDataHashRef.current = ''; // Force re-apply on new source instance
+      }
 
-      // Debounce setData to prevent rapid successive updates
+      // Skip if data unchanged and not forced
+      if (!force && dataHash === lastDataHashRef.current) return true;
+
+      // Debounce to batch rapid successive updates (e.g. filter change + data change)
       if (setDataTimeoutRef.current) clearTimeout(setDataTimeoutRef.current);
 
       setDataTimeoutRef.current = setTimeout(() => {
+        const s = map.getSource('households') as maplibregl.GeoJSONSource | undefined;
+        if (!s || (map as any)._removed) return;
+
         const dataToApply = buildDataToApply();
-
-        source.setData(dataToApply);
+        s.setData(dataToApply as any);
         lastDataHashRef.current = dataHash;
-        logger.debug(`🚀 [MapPerformance] Fast-Sync: ${dataToApply.features?.length || 0} pts`);
-      }, 16); // 16ms = 1 frame delay (smooth update)
+
+        logger.debug(
+          `✅ [DataSync] setData → ${dataToApply.features?.length ?? 0} features (${dataHash})`
+        );
+      }, 20);
+
+      return true;
     };
 
-    const recoverIfSourceLooksEmpty = () => {
-      if (!map.isStyleLoaded() || expectedFeatureCount <= 0) return;
+    // ── Attempt #1: immediate ──
+    const appliedImmediately = tryApply();
 
-      const source = map.getSource('households') as
-        | (maplibregl.GeoJSONSource & { _data?: { features?: unknown[] } })
-        | undefined;
-      if (!source) return;
+    // ── Attempt #2: retry loop if source not ready yet ──
+    if (!appliedImmediately) {
+      logger.debug('[DataSync] Source "households" not ready, polling every 200ms...');
+      retryIntervalRef.current = setInterval(() => {
+        const ok = tryApply(true);
+        if (ok) {
+          clearInterval(retryIntervalRef.current!);
+          retryIntervalRef.current = null;
+          logger.debug('[DataSync] ✅ Retry succeeded — data injected into source.');
+        }
+      }, 200);
+    }
 
-      const sourceFeatureCount = Array.isArray(source._data?.features) ? source._data.features.length : null;
-      const shouldRecover =
-        sourceFeatureCount === 0 &&
-        Date.now() - lastRecoveryAttemptRef.current > 800;
-
-      if (!shouldRecover) return;
-
-      lastRecoveryAttemptRef.current = Date.now();
+    // ── Re-apply on style reload (sources are wiped) ──
+    const handleStyleReload = () => {
       lastDataHashRef.current = '';
-      logger.warn('[Terrain] Source ménages vide alors que des données existent. Réinjection automatique.');
-      applyData(true);
+      lastSourceRef.current = null;
+
+      // Stop existing retry and start fresh
+      if (retryIntervalRef.current) {
+        clearInterval(retryIntervalRef.current);
+        retryIntervalRef.current = null;
+      }
+
+      const ok = tryApply(true);
+      if (!ok) {
+        retryIntervalRef.current = setInterval(() => {
+          const ok2 = tryApply(true);
+          if (ok2) {
+            clearInterval(retryIntervalRef.current!);
+            retryIntervalRef.current = null;
+          }
+        }, 200);
+      }
     };
 
-    // Try immediately — style may already be loaded
-    applyData();
-    recoverIfSourceLooksEmpty();
+    // ── Re-apply when map becomes fully idle (catches deferred style loads) ──
+    const handleIdle = () => tryApply();
 
-    // ✅ Retry when style becomes ready (handles race conditions on initial load)
-    map.on('styledata', applyData);
-    map.on('idle', applyData);
-    map.on('styledata', recoverIfSourceLooksEmpty);
-    map.on('idle', recoverIfSourceLooksEmpty);
+    map.on('styledata', handleStyleReload);
+    map.on('idle', handleIdle);
 
     return () => {
-      map.off('styledata', applyData);
-      map.off('idle', applyData);
-      map.off('styledata', recoverIfSourceLooksEmpty);
-      map.off('idle', recoverIfSourceLooksEmpty);
+      if (map && !(map as any)._removed) {
+        map.off('styledata', handleStyleReload);
+        map.off('idle', handleIdle);
+      }
       if (setDataTimeoutRef.current) clearTimeout(setDataTimeoutRef.current);
+      if (retryIntervalRef.current) {
+        clearInterval(retryIntervalRef.current);
+        retryIntervalRef.current = null;
+      }
     };
-  }, [map, dataHash, expectedFeatureCount, householdGeoJSON, households]);
+  }, [map, dataHash]); // Only re-run when map instance or data changes
 
-  // Cleanup timeout on unmount
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (setDataTimeoutRef.current) {
-        clearTimeout(setDataTimeoutRef.current);
-      }
+      if (setDataTimeoutRef.current) clearTimeout(setDataTimeoutRef.current);
+      if (retryIntervalRef.current) clearInterval(retryIntervalRef.current);
     };
   }, []);
 };
 
 /**
  * Hook: Selected Household Sync
- *
- * Syncs selected household coordinates to the selected-household source.
- *
- * @param map - MapLibre GL map instance
- * @param selectedCoords - Selected household coordinates [lng, lat]
+ * Syncs selected household coords to the 'selected-household' source.
  */
 export const useSelectedHouseholdSync = (
   map: maplibregl.Map | null,
@@ -179,23 +203,28 @@ export const useSelectedHouseholdSync = (
   useEffect(() => {
     if (!map) return;
 
-    const source = map.getSource('selected-household') as maplibregl.GeoJSONSource | undefined;
-    if (!source) return;
-
-    source.setData({
-      type: 'FeatureCollection',
-      features: selectedCoords
-        ? [
-            {
-              type: 'Feature',
-              geometry: {
-                type: 'Point',
-                coordinates: selectedCoords,
+    const trySet = () => {
+      if (!map.isStyleLoaded()) return;
+      const source = map.getSource('selected-household') as maplibregl.GeoJSONSource | undefined;
+      if (!source) return;
+      source.setData({
+        type: 'FeatureCollection',
+        features: selectedCoords
+          ? [
+              {
+                type: 'Feature',
+                geometry: { type: 'Point', coordinates: selectedCoords },
+                properties: { selected: true },
               },
-              properties: { selected: true },
-            },
-          ]
-        : [],
-    });
+            ]
+          : [],
+      });
+    };
+
+    trySet();
+    map.on('styledata', trySet);
+    return () => {
+      if (!(map as any)._removed) map.off('styledata', trySet);
+    };
   }, [map, selectedCoords]);
 };

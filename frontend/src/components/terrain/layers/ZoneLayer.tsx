@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * ZoneLayer.tsx — Village Region Renderer
  *
@@ -8,19 +8,24 @@
  * - A label showing village name + household count
  */
 
-import React, { useEffect, useCallback } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import maplibregl from 'maplibre-gl';
 import logger from '../../../utils/logger';
 
 interface ZoneLayerProps {
   map: maplibregl.Map | null;
   styleIsReady: boolean;
-  grappeZonesData: any;      // Village convex hulls GeoJSON
-  grappeCentroidsData: any;  // Village centroids GeoJSON
+  grappeZonesData: any;
+  grappeCentroidsData: any;
   showZones?: boolean;
 }
 
 const ZONE_LAYERS = ['village-fill', 'village-outline', 'village-outline-color', 'village-labels'];
+const SAFE_TEXT_FONT = ['Open Sans Regular', 'Arial Unicode MS Regular'];
+const EMPTY_FEATURE_COLLECTION = {
+  type: 'FeatureCollection' as const,
+  features: [] as GeoJSON.Feature[],
+};
 
 const ZoneLayer: React.FC<ZoneLayerProps> = ({
   map,
@@ -29,145 +34,141 @@ const ZoneLayer: React.FC<ZoneLayerProps> = ({
   grappeCentroidsData,
   showZones = true,
 }) => {
+  const setupLayers = useCallback(
+    (m: maplibregl.Map) => {
+      if ((m as any)._removed || !m.isStyleLoaded()) return;
 
-  // ── SETUP FUNCTION (idempotent) ──────────────────────────────────────
-  const setupLayers = useCallback((m: maplibregl.Map) => {
-    if (!m.isStyleLoaded()) return;
-    if (!grappeZonesData && !grappeCentroidsData) return;
+      try {
+        const zonesSrc = m.getSource('village-zones') as maplibregl.GeoJSONSource | undefined;
+        if (zonesSrc) {
+          zonesSrc.setData((grappeZonesData || EMPTY_FEATURE_COLLECTION) as any);
+        } else {
+          m.addSource('village-zones', {
+            type: 'geojson',
+            data: (grappeZonesData || EMPTY_FEATURE_COLLECTION) as any,
+            generateId: true,
+          });
+        }
 
-    try {
-      // Upsert zone source
-      const zonesSrc = m.getSource('village-zones') as maplibregl.GeoJSONSource | undefined;
-      if (zonesSrc) {
-        if (grappeZonesData) zonesSrc.setData(grappeZonesData);
-      } else if (grappeZonesData) {
-        m.addSource('village-zones', {
-          type: 'geojson',
-          data: grappeZonesData,
-          generateId: true,
-        });
+        const centroidsSrc = m.getSource('village-centroids') as
+          | maplibregl.GeoJSONSource
+          | undefined;
+        if (centroidsSrc) {
+          centroidsSrc.setData((grappeCentroidsData || EMPTY_FEATURE_COLLECTION) as any);
+        } else {
+          m.addSource('village-centroids', {
+            type: 'geojson',
+            data: (grappeCentroidsData || EMPTY_FEATURE_COLLECTION) as any,
+          });
+        }
+
+        if (m.getSource('village-zones') && !m.getLayer('village-fill')) {
+          m.addLayer({
+            id: 'village-fill',
+            type: 'fill',
+            source: 'village-zones',
+            layout: { visibility: showZones ? 'visible' : 'none' },
+            paint: {
+              'fill-color': ['coalesce', ['get', 'color'], '#6366F1'],
+              'fill-opacity': ['interpolate', ['linear'], ['zoom'], 4, 0.4, 12, 0.3, 16, 0.15],
+            },
+          });
+        }
+
+        if (m.getSource('village-zones') && !m.getLayer('village-outline')) {
+          m.addLayer({
+            id: 'village-outline',
+            type: 'line',
+            source: 'village-zones',
+            layout: {
+              visibility: showZones ? 'visible' : 'none',
+              'line-join': 'round',
+              'line-cap': 'round',
+            },
+            paint: {
+              'line-color': '#ffffff',
+              'line-width': ['interpolate', ['linear'], ['zoom'], 10, 2, 14, 4, 18, 6],
+              'line-opacity': 0.8,
+              'line-dasharray': [3, 2],
+            },
+          });
+        }
+
+        if (m.getSource('village-zones') && !m.getLayer('village-outline-color')) {
+          m.addLayer({
+            id: 'village-outline-color',
+            type: 'line',
+            source: 'village-zones',
+            layout: {
+              visibility: showZones ? 'visible' : 'none',
+              'line-join': 'round',
+              'line-cap': 'round',
+            },
+            paint: {
+              'line-color': ['coalesce', ['get', 'color'], '#6366F1'],
+              'line-width': ['interpolate', ['linear'], ['zoom'], 10, 1, 14, 2, 18, 3],
+              'line-opacity': 1,
+            },
+          });
+        }
+
+        if (m.getSource('village-centroids') && !m.getLayer('village-labels')) {
+          m.addLayer({
+            id: 'village-labels',
+            type: 'symbol',
+            source: 'village-centroids',
+            layout: {
+              visibility: showZones ? 'visible' : 'none',
+              'text-field': [
+                'concat',
+                ['upcase', ['coalesce', ['get', 'village'], 'Village']],
+                '\n',
+                ['to-string', ['to-number', ['get', 'count'], 0]],
+                ' ménages',
+              ],
+              'text-size': ['interpolate', ['linear'], ['zoom'], 10, 12, 14, 16, 18, 20],
+              'text-font': SAFE_TEXT_FONT,
+              'text-anchor': 'center',
+              'text-max-width': 12,
+              'text-line-height': 1.1,
+            },
+            paint: {
+              'text-color': '#ffffff',
+              'text-halo-color': '#000000',
+              'text-halo-width': 2,
+              'text-opacity': 1,
+            },
+          });
+        }
+
+        logger.debug(
+          `✅ [ZoneLayer] ${grappeZonesData?.features?.length ?? 0} village regions rendered`
+        );
+      } catch (err) {
+        logger.warn('⚠️ [ZoneLayer] Layer setup error:', err);
       }
+    },
+    [grappeZonesData, grappeCentroidsData, showZones]
+  );
 
-      // Upsert centroids source
-      const centroidsSrc = m.getSource('village-centroids') as maplibregl.GeoJSONSource | undefined;
-      if (centroidsSrc) {
-        if (grappeCentroidsData) centroidsSrc.setData(grappeCentroidsData);
-      } else if (grappeCentroidsData) {
-        m.addSource('village-centroids', {
-          type: 'geojson',
-          data: grappeCentroidsData,
-        });
-      }
-
-      // Fill layer
-      if (m.getSource('village-zones') && !m.getLayer('village-fill')) {
-        m.addLayer({
-          id: 'village-fill',
-          type: 'fill',
-          source: 'village-zones',
-          layout: { visibility: showZones ? 'visible' : 'none' },
-          paint: {
-            'fill-color': ['coalesce', ['get', 'color'], '#6366F1'],
-            'fill-opacity': [
-              'interpolate', ['linear'], ['zoom'],
-              4, 0.4,
-              12, 0.3,
-              16, 0.15
-            ],
-          },
-        });
-      }
-
-      // Outline layer (Thick, dashed, high-contrast)
-      if (m.getSource('village-zones') && !m.getLayer('village-outline')) {
-        m.addLayer({
-          id: 'village-outline',
-          type: 'line',
-          source: 'village-zones',
-          layout: {
-            visibility: showZones ? 'visible' : 'none',
-            'line-join': 'round',
-            'line-cap': 'round',
-          },
-          paint: {
-            'line-color': '#ffffff', // White outline for high contrast on black
-            'line-width': ['interpolate', ['linear'], ['zoom'], 10, 2, 14, 4, 18, 6],
-            'line-opacity': 0.8,
-            'line-dasharray': [3, 2],
-          },
-        });
-      }
-
-      // Inner stroke for color
-      if (m.getSource('village-zones') && !m.getLayer('village-outline-color')) {
-        m.addLayer({
-          id: 'village-outline-color',
-          type: 'line',
-          source: 'village-zones',
-          layout: {
-            visibility: showZones ? 'visible' : 'none',
-            'line-join': 'round',
-            'line-cap': 'round',
-          },
-          paint: {
-            'line-color': ['coalesce', ['get', 'color'], '#6366F1'],
-            'line-width': ['interpolate', ['linear'], ['zoom'], 10, 1, 14, 2, 18, 3],
-            'line-opacity': 1,
-          },
-        });
-      }
-
-      // Label layer (Village name + Count)
-      if (m.getSource('village-centroids') && !m.getLayer('village-labels')) {
-        m.addLayer({
-          id: 'village-labels',
-          type: 'symbol',
-          source: 'village-centroids',
-          layout: {
-            visibility: showZones ? 'visible' : 'none',
-            'text-field': [
-              'concat',
-              ['upcase', ['coalesce', ['get', 'village'], 'Village']],
-              '\n',
-              ['to-string', ['to-number', ['get', 'count'], 0]],
-              ' ménages',
-            ],
-            'text-size': ['interpolate', ['linear'], ['zoom'], 10, 12, 14, 16, 18, 20],
-            'text-font': ['Noto Sans Regular', 'Arial Unicode MS Regular'],
-            'text-anchor': 'center',
-            'text-max-width': 12,
-            'text-line-height': 1.1,
-          },
-          paint: {
-            'text-color': '#ffffff',
-            'text-halo-color': '#000000',
-            'text-halo-width': 2,
-            'text-opacity': 1,
-          },
-        });
-      }
-
-      logger.debug(`✅ [ZoneLayer] ${grappeZonesData?.features?.length ?? 0} village regions rendered`);
-    } catch (err) {
-      logger.warn('⚠️ [ZoneLayer] Layer setup error:', err);
-    }
-  }, [grappeZonesData, grappeCentroidsData, showZones]);
-
-  // ── MAIN EFFECT ───────────────────────────────────────────────────────
   useEffect(() => {
     if (!map || !styleIsReady) return;
-    if (!grappeZonesData && !grappeCentroidsData) return;
 
-    // Run immediately
-    setupLayers(map);
+    const queueSetup = () => {
+      if ((map as any)._removed || !map.isStyleLoaded()) return;
+      setTimeout(() => setupLayers(map), 0);
+    };
 
-    // Also re-run after style reload (theme switch)
-    const onStyleLoad = () => setupLayers(map);
-    map.on('style.load', onStyleLoad);
-    return () => { map.off('style.load', onStyleLoad); };
+    if (map.isStyleLoaded()) {
+      queueSetup();
+    }
+
+    map.on('style.load', queueSetup);
+    return () => {
+      map.off('style.load', queueSetup);
+    };
   }, [map, styleIsReady, grappeZonesData, grappeCentroidsData, setupLayers]);
 
-  // ── VISIBILITY TOGGLE ─────────────────────────────────────────────────
   useEffect(() => {
     if (!map || !styleIsReady) return;
     ZONE_LAYERS.forEach((id) => {
@@ -177,7 +178,6 @@ const ZoneLayer: React.FC<ZoneLayerProps> = ({
     });
   }, [map, showZones, styleIsReady]);
 
-  // ── HOVER STATE ───────────────────────────────────────────────────────
   useEffect(() => {
     if (!map || !styleIsReady) return;
     let hoveredId: number | string | null = null;

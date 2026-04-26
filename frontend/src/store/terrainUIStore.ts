@@ -150,7 +150,7 @@ export const useTerrainUIStore = create<TerrainUIState>((set) => ({
 
   // Map Overlays / Toggles
   showHeatmap: false,
-  showZones: true, // Enabled by default to show created Grappes polygons
+  showZones: false,
   showWarehouses: true,
   isMeasuring: false,
   isSelecting: false,

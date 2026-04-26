@@ -16,37 +16,56 @@ const InteractionLayer: React.FC<InteractionLayerProps> = ({
   drawnZones = [],
   pendingPoints = [],
 }) => {
+  const emptyCollection = {
+    type: 'FeatureCollection' as const,
+    features: [] as any[],
+  };
+
   // 🏷️ SOURCES
   useEffect(() => {
-    if (!map || !styleIsReady || !map.isStyleLoaded()) return;
+    if (!map || !styleIsReady || !map.isStyleLoaded() || (map as any)._removed) return;
 
-    try {
-      if (!map.getSource('route-source')) {
-        map.addSource('route-source', {
-          type: 'geojson',
-          data: { type: 'FeatureCollection', features: [] },
-        });
+    const ensureSources = () => {
+      if ((map as any)._removed || !map.isStyleLoaded()) return;
+
+      try {
+        if (!map.getSource('route-source')) {
+          map.addSource('route-source', {
+            type: 'geojson',
+            data: emptyCollection,
+          });
+        }
+        if (!map.getSource('pending-zone')) {
+          map.addSource('pending-zone', {
+            type: 'geojson',
+            data: emptyCollection,
+          });
+        }
+        if (!map.getSource('drawn-zones')) {
+          map.addSource('drawn-zones', {
+            type: 'geojson',
+            data: emptyCollection,
+          });
+        }
+      } catch (err) {
+        logger.debug('⚠️ Failed to add sources - style may not be ready:', err);
       }
-      if (!map.getSource('pending-zone')) {
-        map.addSource('pending-zone', {
-          type: 'geojson',
-          data: { type: 'FeatureCollection', features: [] },
-        });
-      }
-      if (!map.getSource('drawn-zones')) {
-        map.addSource('drawn-zones', {
-          type: 'geojson',
-          data: { type: 'FeatureCollection', features: [] },
-        });
-      }
-    } catch (err) {
-      logger.debug('⚠️ Failed to add sources - style may not be ready:', err);
+    };
+
+    if (map.loaded()) {
+      ensureSources();
+    } else {
+      map.once('idle', ensureSources);
     }
+
+    return () => {
+      map.off('idle', ensureSources);
+    };
   }, [map, styleIsReady]);
 
   // 🏷️ DATA SYNC (Pending Drawing)
   useEffect(() => {
-    if (!map || !styleIsReady) return;
+    if (!map || !styleIsReady || (map as any)._removed) return;
     const source = map.getSource('pending-zone') as maplibregl.GeoJSONSource | undefined;
     if (source) {
       source.setData({
@@ -70,7 +89,7 @@ const InteractionLayer: React.FC<InteractionLayerProps> = ({
 
   // 🏷️ DATA SYNC (Drawn Zones)
   useEffect(() => {
-    if (!map || !styleIsReady) return;
+    if (!map || !styleIsReady || (map as any)._removed) return;
     const source = map.getSource('drawn-zones') as maplibregl.GeoJSONSource | undefined;
     if (source) {
       source.setData({
@@ -86,9 +105,19 @@ const InteractionLayer: React.FC<InteractionLayerProps> = ({
 
   // 🏷️ LAYERS
   useEffect(() => {
-    if (!map || !styleIsReady || !map.isStyleLoaded()) return;
+    if (!map || !styleIsReady || !map.isStyleLoaded() || (map as any)._removed) return;
 
     const setupLayers = () => {
+      if (
+        (map as any)._removed ||
+        !map.isStyleLoaded() ||
+        !map.getSource('route-source') ||
+        !map.getSource('pending-zone') ||
+        !map.getSource('drawn-zones')
+      ) {
+        return;
+      }
+
       try {
         // Routing line
         if (!map.getLayer('route-layer')) {
@@ -134,7 +163,15 @@ const InteractionLayer: React.FC<InteractionLayerProps> = ({
       }
     };
 
-    setupLayers();
+    if (map.loaded()) {
+      setupLayers();
+    } else {
+      map.once('idle', setupLayers);
+    }
+
+    return () => {
+      map.off('idle', setupLayers);
+    };
   }, [map, styleIsReady]);
 
   return null;

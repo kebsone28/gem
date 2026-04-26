@@ -24,6 +24,7 @@ const SAFE_FONT = ['Open Sans Regular', 'Arial Unicode MS Regular'];
 const SRC_HOUSEHOLDS = 'households';
 const SRC_CLUSTERS = 'supercluster-generated';
 const SRC_HULLS = 'cluster-hulls';
+const SRC_HULL_LABELS = 'cluster-hull-labels';
 const SRC_SELECTED = 'selected-household';
 
 // ─── Create all GeoJSON sources on the map ────────────────────
@@ -38,6 +39,12 @@ function ensureSources(map: maplibregl.Map) {
   if (!map.getSource(SRC_HULLS)) {
     map.addSource(SRC_HULLS, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
   }
+  if (!map.getSource(SRC_HULL_LABELS)) {
+    map.addSource(SRC_HULL_LABELS, {
+      type: 'geojson',
+      data: { type: 'FeatureCollection', features: [] },
+    });
+  }
   if (!map.getSource(SRC_SELECTED)) {
     map.addSource(SRC_SELECTED, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
   }
@@ -48,6 +55,103 @@ function ensureLayers(map: maplibregl.Map) {
   // Guard: need sources
   if (!map.getSource(SRC_HOUSEHOLDS) || !map.getSource(SRC_CLUSTERS)) return;
 
+  if (!map.getLayer('cluster-zone-fill')) {
+    map.addLayer({
+      id: 'cluster-zone-fill',
+      type: 'fill',
+      source: SRC_HULLS,
+      paint: {
+        'fill-color': ['coalesce', ['get', 'zoneColor'], '#0F766E'],
+        'fill-opacity': [
+          'case',
+          ['>', ['coalesce', ['get', 'critical_count'], 0], 0],
+          0.14,
+          ['>', ['coalesce', ['get', 'blocked_count'], 0], 0],
+          0.11,
+          ['>', ['coalesce', ['get', 'pending_count'], 0], 0],
+          0.09,
+          ['==', ['coalesce', ['get', 'compliant_count'], 0], ['coalesce', ['get', 'point_count'], 0]],
+          0.05,
+          0.07,
+        ],
+      },
+    });
+  }
+
+  if (!map.getLayer('cluster-zone-outline')) {
+    map.addLayer({
+      id: 'cluster-zone-outline',
+      type: 'line',
+      source: SRC_HULLS,
+      layout: {
+        'line-join': 'round',
+        'line-cap': 'round',
+      },
+      paint: {
+        'line-color': ['coalesce', ['get', 'zoneStroke'], '#99F6E4'],
+        'line-width': ['interpolate', ['linear'], ['zoom'], 6, 1.1, 12, 2, 15, 2.8],
+        'line-opacity': 0.78,
+        'line-dasharray': [1.4, 1.8],
+      },
+    });
+  }
+
+  if (!map.getLayer('cluster-zone-halo')) {
+    map.addLayer({
+      id: 'cluster-zone-halo',
+      type: 'line',
+      source: SRC_HULLS,
+      layout: {
+        'line-join': 'round',
+        'line-cap': 'round',
+      },
+      paint: {
+        'line-color': ['coalesce', ['get', 'zoneHalo'], '#2DD4BF'],
+        'line-width': ['interpolate', ['linear'], ['zoom'], 6, 3.5, 12, 6, 15, 8],
+        'line-opacity': [
+          'case',
+          ['>', ['coalesce', ['get', 'critical_count'], 0], 0],
+          0.18,
+          0.06,
+        ],
+        'line-blur': 1.6,
+      },
+    });
+  }
+
+  if (!map.getLayer('cluster-zone-labels')) {
+    map.addLayer({
+      id: 'cluster-zone-labels',
+      type: 'symbol',
+      source: SRC_HULL_LABELS,
+      layout: {
+        'text-field': [
+          'step',
+          ['zoom'],
+          ['coalesce', ['get', 'labelTiny'], ''],
+          10.5,
+          ['coalesce', ['get', 'labelShort'], ''],
+          12.5,
+          ['coalesce', ['get', 'labelDetail'], ''],
+        ],
+        'text-font': SAFE_FONT,
+        'text-size': ['interpolate', ['linear'], ['get', 'point_count'], 8, 10, 100, 14],
+        'text-line-height': 0.92,
+        'text-letter-spacing': 0.01,
+        'text-justify': 'center',
+        'text-anchor': 'center',
+        'text-allow-overlap': true,
+        'text-max-width': 9,
+      },
+      paint: {
+        'text-color': '#F8FAFC',
+        'text-halo-color': 'rgba(2,6,23,0.82)',
+        'text-halo-width': 2.1,
+        'text-halo-blur': 0.35,
+      },
+    });
+  }
+
   // Cluster halo
   if (!map.getLayer('cluster-halo')) {
     map.addLayer({
@@ -56,10 +160,21 @@ function ensureLayers(map: maplibregl.Map) {
       source: SRC_CLUSTERS,
       filter: ['==', ['get', 'cluster'], true],
       paint: {
-        'circle-radius': ['interpolate', ['linear'], ['get', 'point_count'], 10, 28, 100, 56],
-        'circle-color': '#ffffff',
-        'circle-opacity': 0.12,
-        'circle-blur': 1,
+        'circle-radius': ['interpolate', ['linear'], ['get', 'point_count'], 10, 26, 100, 50],
+        'circle-color': [
+          'case',
+          ['>', ['coalesce', ['get', 'critical_count'], 0], 0],
+          '#7F1D1D',
+          ['>', ['coalesce', ['get', 'blocked_count'], 0], 0],
+          '#7C2D12',
+          ['>', ['coalesce', ['get', 'pending_count'], 0], 0],
+          '#78350F',
+          ['==', ['coalesce', ['get', 'compliant_count'], 0], ['coalesce', ['get', 'point_count'], 0]],
+          '#064E3B',
+          '#134E4A',
+        ],
+        'circle-opacity': 0.14,
+        'circle-blur': 1.2,
       },
     });
   }
@@ -73,13 +188,32 @@ function ensureLayers(map: maplibregl.Map) {
       filter: ['==', ['get', 'cluster'], true],
       paint: {
         'circle-color': [
-          'step', ['to-number', ['coalesce', ['get', 'point_count'], 0]],
-          '#00D084', 20, '#FFD60A', 50, '#FF9500', 80, '#FF3B30',
+          'case',
+          ['>', ['coalesce', ['get', 'critical_count'], 0], 0],
+          '#C62828',
+          ['>', ['coalesce', ['get', 'blocked_count'], 0], 0],
+          '#D97706',
+          ['>', ['coalesce', ['get', 'pending_count'], 0], 0],
+          '#C58F00',
+          ['==', ['coalesce', ['get', 'compliant_count'], 0], ['coalesce', ['get', 'point_count'], 0]],
+          '#059669',
+          '#0F766E',
         ],
-        'circle-radius': ['interpolate', ['linear'], ['get', 'point_count'], 10, 22, 100, 44],
-        'circle-opacity': 0.9,
-        'circle-stroke-width': 2,
-        'circle-stroke-color': '#ffffff',
+        'circle-radius': ['interpolate', ['linear'], ['get', 'point_count'], 10, 12, 100, 24],
+        'circle-opacity': 0.22,
+        'circle-stroke-width': ['interpolate', ['linear'], ['get', 'point_count'], 10, 2, 100, 3],
+        'circle-stroke-color': [
+          'case',
+          ['>', ['coalesce', ['get', 'critical_count'], 0], 0],
+          '#FCA5A5',
+          ['>', ['coalesce', ['get', 'blocked_count'], 0], 0],
+          '#FCD34D',
+          ['>', ['coalesce', ['get', 'pending_count'], 0], 0],
+          '#FDE68A',
+          ['==', ['coalesce', ['get', 'compliant_count'], 0], ['coalesce', ['get', 'point_count'], 0]],
+          '#A7F3D0',
+          '#99F6E4',
+        ],
       },
     });
   }
@@ -92,15 +226,31 @@ function ensureLayers(map: maplibregl.Map) {
       source: SRC_CLUSTERS,
       filter: ['==', ['get', 'cluster'], true],
       layout: {
-        'text-field': ['to-string', ['get', 'point_count']],
+        'text-field': [
+          'case',
+          ['>', ['coalesce', ['get', 'critical_count'], 0], 0],
+          [
+            'concat',
+            ['to-string', ['get', 'point_count']],
+            '\n',
+            ['to-string', ['get', 'critical_count']],
+            ' urg.',
+          ],
+          ['to-string', ['get', 'point_count']],
+        ],
         'text-font': SAFE_FONT,
-        'text-size': 16,
+        'text-size': ['interpolate', ['linear'], ['get', 'point_count'], 10, 11, 100, 13],
         'text-allow-overlap': true,
+        'text-line-height': 0.95,
+        'text-letter-spacing': 0.02,
+        'text-justify': 'center',
+        'text-anchor': 'center',
       },
       paint: { 
         'text-color': '#ffffff', 
-        'text-halo-color': 'rgba(0,0,0,0.7)', 
-        'text-halo-width': 2 
+        'text-halo-color': 'rgba(2,6,23,0.92)', 
+        'text-halo-width': 3,
+        'text-halo-blur': 0.5,
       },
     });
   }
@@ -128,7 +278,7 @@ function ensureLayers(map: maplibregl.Map) {
           'En attente', '#64748B',
           '#6366F1',
         ],
-        'circle-opacity': 0.9,
+        'circle-opacity': ['interpolate', ['linear'], ['zoom'], 10, 0.28, 13, 0.62, 16, 0.9],
         'circle-stroke-width': 1.5,
         'circle-stroke-color': 'rgba(255,255,255,0.5)',
       },
@@ -370,6 +520,29 @@ const HouseholdLayer: React.FC<HouseholdLayerProps> = ({
     };
     map.on('click', onMapClick);
 
+    const onZoneClick = (e: any) => {
+      const feature = e.features?.[0];
+      const bbox = feature?.properties?.bbox;
+      if (!Array.isArray(bbox) || bbox.length !== 4) return;
+      map.fitBounds(
+        [
+          [Number(bbox[0]), Number(bbox[1])],
+          [Number(bbox[2]), Number(bbox[3])],
+        ],
+        { padding: 72, duration: 700, maxZoom: 14 }
+      );
+    };
+
+    ['cluster-zone-fill', 'cluster-zone-labels'].forEach((layerId) => {
+      map.on('click', layerId, onZoneClick);
+      map.on('mouseenter', layerId, () => {
+        map.getCanvas().style.cursor = 'pointer';
+      });
+      map.on('mouseleave', layerId, () => {
+        map.getCanvas().style.cursor = '';
+      });
+    });
+
     // Cursor on hover
     INTERACTIVE_LAYERS.forEach((layerId) => {
       map.on('mouseenter', layerId, () => { map.getCanvas().style.cursor = 'pointer'; });
@@ -388,6 +561,9 @@ const HouseholdLayer: React.FC<HouseholdLayerProps> = ({
 
     return () => {
       window.removeEventListener('map:select-household', handleDetailEvent);
+      ['cluster-zone-fill', 'cluster-zone-labels'].forEach((layerId) => {
+        map.off('click', layerId, onZoneClick);
+      });
       popupRef.current?.remove();
     };
   };
@@ -496,19 +672,32 @@ const HouseholdLayer: React.FC<HouseholdLayerProps> = ({
     const updateVis = () => {
       if (!map.isStyleLoaded()) return;
       const zoom = map.getZoom();
-      const showClusters = zoom < 15 && !showZones;
+      const showZonePolygons = zoom < 12.75 && !showZones;
+      const showClusters = zoom >= 12.75 && zoom < 15 && !showZones;
+      const showHouseholdPoints = zoom >= 11.5 || showZones;
 
       ['cluster-halo', 'cluster-circles', 'cluster-counts'].forEach((id) => {
         if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', showClusters ? 'visible' : 'none');
       });
+      ['cluster-zone-fill', 'cluster-zone-outline', 'cluster-zone-halo', 'cluster-zone-labels'].forEach(
+        (id) => {
+          if (map.getLayer(id)) {
+            map.setLayoutProperty(id, 'visibility', showZonePolygons ? 'visible' : 'none');
+          }
+        }
+      );
       if (map.getLayer('households-glow-layer')) {
-        map.setLayoutProperty('households-glow-layer', 'visibility', 'visible');
+        map.setLayoutProperty('households-glow-layer', 'visibility', showHouseholdPoints ? 'visible' : 'none');
       }
       if (map.getLayer('households-local-layer')) {
-        map.setLayoutProperty('households-local-layer', 'visibility', 'visible');
+        map.setLayoutProperty('households-local-layer', 'visibility', showHouseholdPoints ? 'visible' : 'none');
       }
       if (map.getLayer('households-labels-simple')) {
-        map.setLayoutProperty('households-labels-simple', 'visibility', zoom >= 15 ? 'visible' : 'none');
+        map.setLayoutProperty(
+          'households-labels-simple',
+          'visibility',
+          zoom >= 15 && !showZonePolygons ? 'visible' : 'none'
+        );
       }
     };
 

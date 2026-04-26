@@ -13,6 +13,8 @@ import maplibregl from 'maplibre-gl';
 import { registerIcons } from './mapUtils';
 import { senegalRegions } from '../../data/senegal-regions';
 
+const SAFE_TEXT_FONT = ['Open Sans Regular', 'Arial Unicode MS Regular'];
+
 export const useMapSetup = () => {
   const setupLayersLock = useRef(false);
 
@@ -188,6 +190,7 @@ export const useMapSetup = () => {
           layout: {
             'text-field': ['coalesce', ['get', 'REGION'], ''],
             'text-size': 12,
+            'text-font': SAFE_TEXT_FONT,
             'text-anchor': 'center',
           },
           paint: {
@@ -249,6 +252,7 @@ export const useMapSetup = () => {
                 ' pts',
               ],
               'text-size': 12,
+              'text-font': SAFE_TEXT_FONT,
               'text-anchor': 'center',
             },
             paint: {
@@ -282,6 +286,7 @@ export const useMapSetup = () => {
             visibility: 'none',
             'text-field': ['get', 'nom'],
             'text-size': 10,
+            'text-font': SAFE_TEXT_FONT,
             'text-offset': [0, 3],
             'text-anchor': 'top',
           },
@@ -379,6 +384,7 @@ export const useMapSetup = () => {
             layout: {
               'text-field': '{point_count_abbreviated}',
               'text-size': 12,
+              'text-font': SAFE_TEXT_FONT,
             },
             paint: { 'text-color': '#ffffff' },
           });

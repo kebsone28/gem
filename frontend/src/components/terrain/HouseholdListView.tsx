@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { FileDown, MapPin, Home } from 'lucide-react';
@@ -133,15 +133,66 @@ export const HouseholdListView: React.FC<HouseholdListViewProps> = ({
         isDarkMode ? 'bg-transparent border-none' : 'bg-white border-slate-200'
       }`}
     >
+      {/* Region Summary */}
+      {households.length > 0 && (
+        <div className={`px-4 pt-4 pb-2 border-b overflow-x-auto ${isDarkMode ? 'border-slate-800 bg-slate-900/40' : 'border-slate-100 bg-slate-50'}`}>
+          <div className="flex gap-4 min-w-max pb-2">
+            {Object.entries(
+              households.reduce((acc, h) => {
+                const region = h.region || h.koboSync?.region || 'Inconnue';
+                if (!acc[region]) acc[region] = { count: 0, villages: new Set<string>() };
+                acc[region].count++;
+                const village = h.village || h.koboSync?.village || h.grappeName || 'Sans village';
+                acc[region].villages.add(village);
+                return acc;
+              }, {} as Record<string, { count: number; villages: Set<string> }>)
+            ).map(([region, stats]) => (
+              <div 
+                key={region} 
+                className={`p-4 rounded-[1.5rem] border shadow-sm flex flex-col gap-2 min-w-[220px] ${
+                  isDarkMode ? 'bg-slate-800/80 border-white/5' : 'bg-white border-slate-200'
+                }`}
+              >
+                <div className="flex justify-between items-start">
+                  <span className={`text-[10px] font-black uppercase tracking-widest ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`}>
+                    Région
+                  </span>
+                  <span className={`px-2 py-0.5 rounded-lg text-[9px] font-bold ${isDarkMode ? 'bg-slate-950 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
+                    {stats.count} ménages
+                  </span>
+                </div>
+                <p className={`text-sm font-black uppercase truncate ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                  {region}
+                </p>
+                <div className="mt-1 pt-2 border-t border-white/5 space-y-1">
+                  <p className={`text-[9px] font-bold uppercase tracking-wide ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
+                    {stats.villages.size} Villages (Grappes) :
+                  </p>
+                  <p className={`text-[10px] font-medium leading-relaxed ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+                    {Array.from(stats.villages).slice(0, 5).join(', ')}
+                    {stats.villages.size > 5 && ` + ${stats.villages.size - 5} autres`}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div
         className={`p-4 flex-shrink-0 border-b flex items-center justify-between ${
           isDarkMode ? 'border-slate-800' : 'border-slate-100'
         }`}
       >
-        <h3 className="text-sm font-black uppercase tracking-widest text-indigo-500">
-          Ménages ({households.length.toLocaleString()})
-        </h3>
+        <div className="flex items-center gap-3">
+          <h3 className="text-sm font-black uppercase tracking-widest text-indigo-500">
+            Détails des Ménages
+          </h3>
+          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isDarkMode ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-500'}`}>
+            {households.length.toLocaleString()} total
+          </span>
+        </div>
         <button
           onClick={handleExportCSV}
           className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
@@ -153,6 +204,7 @@ export const HouseholdListView: React.FC<HouseholdListViewProps> = ({
           <FileDown size={14} /> Exporter CSV
         </button>
       </div>
+
 
       {/* List body — native CSS scroll, no external lib */}
       <div className="flex-1 overflow-y-auto">

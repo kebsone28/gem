@@ -1,75 +1,133 @@
-﻿ 
-import Supercluster from 'supercluster';
+﻿import Supercluster from 'supercluster';
+import type { Feature, Point } from 'geojson';
+
+type Message = {
+  type: string;
+  requestId?: string;
+  options?: any;
+  points?: Feature<Point, Record<string, unknown>>[];
+  bbox?: [number, number, number, number];
+  zoom?: number;
+  clusterId?: number;
+  limit?: number;
+  offset?: number;
+};
 
 let index: Supercluster | null = null;
 
-/**
- * Supercluster Worker (Axe 4 — Plan d'Amélioration Continue GEM-SAAS)
- * Déportation du clustering intensif pour libérer le thread UI.
- * Supporte jusqu'à 500k points sans ralentir la navigation.
- */
-self.onmessage = (e: MessageEvent) => {
-  const { type, payload } = e.data;
+const STATUS_WEIGHTS: Record<string, number> = {
+  'Non conforme': 5,
+  Refusé: 5,
+  'Non éligible': 4,
+  Désistement: 4,
+  'En attente': 2,
+  'Non encore installée': 2,
+  Eligible: 1,
+  'Livraison effectuée': 1,
+  'Murs terminés': 1,
+  'Réseau terminé': 1,
+  'Intérieur terminé': 1,
+  'Contrôle conforme': 0,
+  default: 1,
+};
 
-  switch (type) {
-    case 'LOAD_POINTS': {
-      const { points, options } = payload;
-      
-      index = new Supercluster({
-        radius: 70,
-        maxZoom: 16,
-        ...options
-      });
-      
-      index.load(points);
-      self.postMessage({ type: 'LOADED' });
-      break;
-    }
+function getStatusWeight(status?: string) {
+  if (!status) return STATUS_WEIGHTS.default;
+  return STATUS_WEIGHTS[status] ?? STATUS_WEIGHTS.default;
+}
 
-    case 'GET_CLUSTERS': {
-      if (!index) return;
-      
-      const { bbox, zoom, requestId } = payload;
-      try {
-        const clusters = index.getClusters(bbox, zoom);
-        self.postMessage({ 
-          type: 'CLUSTERS_DATA', 
-          payload: { clusters, zoom, requestId } 
-        });
-      } catch (err) {
-        self.postMessage({
-          type: 'WORKER_ERROR',
-          payload: {
-            requestId,
-            message: err instanceof Error ? err.message : 'Cluster calculation error',
-          },
-        });
+function createSupercluster(options?: any) {
+  return new Supercluster({
+    radius: 60,
+    maxZoom: 16,
+    ...options,
+    map: (props: any) => {
+      const status = String(props?.status || '');
+      return {
+        severity_score: getStatusWeight(status),
+        critical_count: status === 'Non conforme' || status === 'Refusé' ? 1 : 0,
+        blocked_count: status === 'Non éligible' || status === 'Désistement' ? 1 : 0,
+        pending_count: status === 'En attente' || status === 'Non encore installée' ? 1 : 0,
+        compliant_count: status === 'Contrôle conforme' ? 1 : 0,
+        progress_count: [
+          'Eligible',
+          'Livraison effectuée',
+          'Murs terminés',
+          'Réseau terminé',
+          'Intérieur terminé',
+        ].includes(status)
+          ? 1
+          : 0,
+      };
+    },
+    reduce: (acc: any, props: any) => {
+      acc.severity_score = (acc.severity_score || 0) + (props.severity_score || 0);
+      acc.critical_count = (acc.critical_count || 0) + (props.critical_count || 0);
+      acc.blocked_count = (acc.blocked_count || 0) + (props.blocked_count || 0);
+      acc.pending_count = (acc.pending_count || 0) + (props.pending_count || 0);
+      acc.compliant_count = (acc.compliant_count || 0) + (props.compliant_count || 0);
+      acc.progress_count = (acc.progress_count || 0) + (props.progress_count || 0);
+    },
+  });
+}
+
+function post(type: string, payload: any = {}) {
+  (self as any).postMessage({ type, ...payload });
+}
+
+(self as any).onmessage = (ev: MessageEvent<Message>) => {
+  const msg = ev.data;
+  try {
+    switch (msg.type) {
+      case 'init': {
+        index = createSupercluster(msg.options);
+        post('ready');
+        return;
       }
-      break;
+      case 'load': {
+        if (!index) index = createSupercluster(msg.options);
+        index.load(msg.points || []);
+        post('loaded', { count: msg.points?.length || 0 });
+        return;
+      }
+      case 'getClusters': {
+        if (!index) {
+          post('clusters', { clusters: [], requestId: msg.requestId });
+          return;
+        }
+        const clusters = index.getClusters(msg.bbox!, msg.zoom!);
+        post('clusters', { clusters, requestId: msg.requestId });
+        return;
+      }
+      case 'getLeaves': {
+        if (!index) {
+          post('leaves', { leaves: [], requestId: msg.requestId });
+          return;
+        }
+        const leaves = index.getLeaves(msg.clusterId!, msg.limit || Infinity, msg.offset || 0);
+        post('leaves', { leaves, requestId: msg.requestId });
+        return;
+      }
+      case 'getClusterExpansionZoom': {
+        if (!index) {
+          post('expansionZoom', { zoom: null, requestId: msg.requestId });
+          return;
+        }
+        const zoom = index.getClusterExpansionZoom(msg.clusterId!);
+        post('expansionZoom', { zoom, requestId: msg.requestId });
+        return;
+      }
+      case 'getChildren': {
+        if (!index) {
+          post('children', { children: [], requestId: msg.requestId });
+          return;
+        }
+        const children = index.getChildren(msg.clusterId!);
+        post('children', { children, requestId: msg.requestId });
+        return;
+      }
     }
-
-    case 'GET_CHILDREN': {
-      if (!index) return;
-      const { clusterId, requestId } = payload;
-      const children = index.getChildren(clusterId);
-      self.postMessage({ type: 'CHILDREN_DATA', payload: { children, requestId } });
-      break;
-    }
-
-    case 'GET_EXPANSION_ZOOM': {
-      if (!index) return;
-      const { clusterId, requestId } = payload;
-      const zoom = index.getClusterExpansionZoom(clusterId);
-      self.postMessage({ type: 'EXPANSION_ZOOM_DATA', payload: { zoom, requestId } });
-      break;
-    }
-
-    case 'GET_LEAVES': {
-      if (!index) return;
-      const { clusterId, limit, offset } = payload;
-      const leaves = index.getLeaves(clusterId, limit || Infinity, offset || 0);
-      self.postMessage({ type: 'LEAVES_DATA', payload: { requestId: payload.requestId, leaves } });
-      break;
-    }
+  } catch (err: any) {
+    post('error', { message: err?.message || String(err), requestId: msg.requestId });
   }
 };

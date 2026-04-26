@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useMemo, useState } from 'react';
 import type { Household } from '../utils/types';
 
@@ -13,6 +13,7 @@ export const useGrappeClustering = (households: Household[] | undefined) => {
   const [grappeClusters, setGrappeClusters] = useState<any[]>([]);
   const [grappeZonesData, setGrappeZonesData] = useState<any>(null);
   const [grappeCentroidsData, setGrappeCentroidsData] = useState<any>(null);
+  const [progress, setProgress] = useState<{ current: number; total: number } | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   const clusterWorker = useMemo(
@@ -21,24 +22,35 @@ export const useGrappeClustering = (households: Household[] | undefined) => {
   );
 
   useEffect(() => {
-    if (!households || households.length === 0) return;
+    if (!households || households.length === 0) {
+        setIsLoading(false);
+        return;
+    }
 
     let isCancelled = false;
-    let handler: ((e: MessageEvent<ClusterWorkerMessage>) => void) | null = null;
+    let handler: ((e: MessageEvent<ClusterWorkerMessage & { type?: string, current?: number, total?: number }>) => void) | null = null;
 
     const timer = setTimeout(() => {
       if (isCancelled) return;
 
       setIsLoading(true);
+      setProgress(null);
 
-      handler = (e: MessageEvent<ClusterWorkerMessage>) => {
+      handler = (e: MessageEvent<ClusterWorkerMessage & { type?: string, current?: number, total?: number }>) => {
         if (isCancelled) return;
         const data = e.data;
+        
+        if (data && data.type === 'progress') {
+           setProgress({ current: data.current || 0, total: data.total || 0 });
+           return;
+        }
+
         if (data && data.success) {
           setGrappeClusters(data.panelData || []);
           setGrappeZonesData(data.zones);
           setGrappeCentroidsData(data.centroids);
           setIsLoading(false);
+          setProgress(null);
         }
       };
 
@@ -88,5 +100,6 @@ export const useGrappeClustering = (households: Household[] | undefined) => {
     grappeZonesData: hasHouseholds ? grappeZonesData : null,
     grappeCentroidsData: hasHouseholds ? grappeCentroidsData : null,
     isLoading: hasHouseholds ? isLoading : false,
+    progress: hasHouseholds ? progress : null,
   };
 };

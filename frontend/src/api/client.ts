@@ -31,6 +31,8 @@ apiClient.interceptors.request.use(
         safeStorage.removeItem('access_token');
       } else {
         config.headers.Authorization = `Bearer ${token}`;
+        // Diagnostic: confirm header presence (masked)
+        console.debug('[API-CLIENT] Authorization header set (masked)');
         // logger.debug('API-CLIENT', `Request to ${config.url} with token: ${token.substring(0, 10)}...`);
       }
     } else if (!isAuthRoute) {
@@ -72,6 +74,11 @@ apiClient.interceptors.response.use(
           logger.error('❌ [AUTH] No access token found in storage. Redirecting...');
           throw new Error('No token to refresh');
         }
+
+        // Diagnostic: log cookies available to the page (do not expose values)
+        try {
+          console.debug('[AUTH-REFRESH] document.cookie length=', (document.cookie || '').length);
+        } catch (e) {}
 
         // Call refresh endpoint
         const { data } = await apiClient.post('auth/refresh');
