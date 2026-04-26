@@ -60,6 +60,19 @@ function isChatPersistenceAvailable() {
   );
 }
 
+function createChatUnavailableError() {
+  const error = new Error('La messagerie n’est pas encore disponible sur ce serveur. Finalisez la mise à niveau de la base puis réessayez.');
+  error.statusCode = 503;
+  error.code = 'CHAT_UNAVAILABLE';
+  return error;
+}
+
+function assertChatPersistenceAvailable() {
+  if (!isChatPersistenceAvailable()) {
+    throw createChatUnavailableError();
+  }
+}
+
 const toSafeUser = (user, activeBlocksByUserId = new Map(), onlineUserIds = new Set()) => {
   if (!user) {
     return {
@@ -182,6 +195,8 @@ async function getAccessibleConversation(organizationId, userId, conversationId)
 }
 
 async function assertCanWriteToChat(organizationId, userId) {
+  assertChatPersistenceAvailable();
+
   const blockEntry = await prisma.chatUserBlock.findFirst({
     where: {
       organizationId,
@@ -343,6 +358,7 @@ export const createConversation = async (req, res) => {
     const { organizationId, id: userId } = req.user;
     const { participantIds, name } = req.body || {};
 
+    assertChatPersistenceAvailable();
     await assertCanWriteToChat(organizationId, userId);
 
     const requestedIds = Array.isArray(participantIds) ? participantIds.filter(Boolean) : [];
@@ -431,9 +447,14 @@ export const createConversation = async (req, res) => {
       conversation: toSafeConversation(conversation, userId, activeBlocksByUserId, onlineUserIds),
     });
   } catch (error) {
+    if (isPrismaSchemaDriftError(error)) {
+      error.statusCode = 503;
+      error.message = 'La messagerie n’est pas encore disponible sur ce serveur. Finalisez la mise à niveau de la base puis réessayez.';
+    }
     console.error('[CHAT_CREATE_CONVERSATION_ERROR]', error);
     res.status(error.statusCode || 500).json({
       error: error.message || 'Erreur lors de la création de la conversation.',
+      ...(error.code && { code: error.code }),
     });
   }
 };
@@ -444,6 +465,7 @@ export const getConversationMessages = async (req, res) => {
     const { conversationId } = req.params;
     const { limit } = req.query;
 
+    assertChatPersistenceAvailable();
     const result = await getConversationMessagesForUser(organizationId, userId, conversationId, limit);
 
     if (!result) {
@@ -454,8 +476,15 @@ export const getConversationMessages = async (req, res) => {
       messages: result.messages.map(toSafeMessage),
     });
   } catch (error) {
+    if (isPrismaSchemaDriftError(error)) {
+      error.statusCode = 503;
+      error.message = 'La messagerie n’est pas encore disponible sur ce serveur. Finalisez la mise à niveau de la base puis réessayez.';
+    }
     console.error('[CHAT_GET_MESSAGES_ERROR]', error);
-    res.status(500).json({ error: 'Erreur lors du chargement des messages.' });
+    res.status(error.statusCode || 500).json({
+      error: error.message || 'Erreur lors du chargement des messages.',
+      ...(error.code && { code: error.code }),
+    });
   }
 };
 
@@ -469,6 +498,7 @@ export const sendMessage = async (req, res) => {
       return res.status(400).json({ error: 'Le message est vide.' });
     }
 
+    assertChatPersistenceAvailable();
     await assertCanWriteToChat(organizationId, userId);
 
     const conversation = await getAccessibleConversation(organizationId, userId, conversationId);
@@ -500,9 +530,14 @@ export const sendMessage = async (req, res) => {
 
     res.status(201).json(payload);
   } catch (error) {
+    if (isPrismaSchemaDriftError(error)) {
+      error.statusCode = 503;
+      error.message = 'La messagerie n’est pas encore disponible sur ce serveur. Finalisez la mise à niveau de la base puis réessayez.';
+    }
     console.error('[CHAT_SEND_MESSAGE_ERROR]', error);
     res.status(error.statusCode || 500).json({
       error: error.message || "Erreur lors de l'envoi du message.",
+      ...(error.code && { code: error.code }),
     });
   }
 };
@@ -512,6 +547,8 @@ export const toggleUserChatBlock = async (req, res) => {
     const { organizationId, id: adminUserId } = req.user;
     const { userId } = req.params;
     const { blocked, reason } = req.body || {};
+
+    assertChatPersistenceAvailable();
 
     if (userId === adminUserId) {
       return res.status(400).json({ error: 'Vous ne pouvez pas vous bloquer vous-même.' });
@@ -579,8 +616,15 @@ export const toggleUserChatBlock = async (req, res) => {
 
     res.json(payload);
   } catch (error) {
+    if (isPrismaSchemaDriftError(error)) {
+      error.statusCode = 503;
+      error.message = 'La messagerie n’est pas encore disponible sur ce serveur. Finalisez la mise à niveau de la base puis réessayez.';
+    }
     console.error('[CHAT_BLOCK_ERROR]', error);
-    res.status(500).json({ error: 'Erreur lors de la mise à jour du blocage.' });
+    res.status(error.statusCode || 500).json({
+      error: error.message || 'Erreur lors de la mise à jour du blocage.',
+      ...(error.code && { code: error.code }),
+    });
   }
 };
 
@@ -588,6 +632,8 @@ export const deleteConversation = async (req, res) => {
   try {
     const { organizationId, id: userId } = req.user;
     const { conversationId } = req.params;
+
+    assertChatPersistenceAvailable();
 
     const conversation = await prisma.chatConversation.findFirst({
       where: { id: conversationId, organizationId }
@@ -605,7 +651,14 @@ export const deleteConversation = async (req, res) => {
 
     res.json({ success: true, conversationId });
   } catch (error) {
+    if (isPrismaSchemaDriftError(error)) {
+      error.statusCode = 503;
+      error.message = 'La messagerie n’est pas encore disponible sur ce serveur. Finalisez la mise à niveau de la base puis réessayez.';
+    }
     console.error('[CHAT_DELETE_ERROR]', error);
-    res.status(500).json({ error: 'Erreur lors de la suppression de la conversation.' });
+    res.status(error.statusCode || 500).json({
+      error: error.message || 'Erreur lors de la suppression de la conversation.',
+      ...(error.code && { code: error.code }),
+    });
   }
 };
