@@ -270,7 +270,10 @@ export const login = async (req, res) => {
 // @route   POST /api/auth/refresh
 export const refreshToken = async (req, res) => {
     try {
+        // Diagnostic logs for refresh flow
+        console.log('[AUTH-REFRESH] incoming refresh request from ip=', req.ip, 'origin=', req.headers.origin);
         const token = req.cookies.refreshToken;
+        console.log('[AUTH-REFRESH] hasRefreshCookie=', !!token);
         if (!token) return res.status(401).json({ error: 'No refresh token' });
 
         const decoded = verifyRefreshToken(token);
@@ -307,7 +310,8 @@ export const refreshToken = async (req, res) => {
 
         res.json({ accessToken: tokens.accessToken });
     } catch (error) {
-        res.status(401).json({ error: 'Invalid refresh token' });
+        console.error('[AUTH-REFRESH] refresh failed:', error.message);
+        res.status(401).json({ error: 'Invalid refresh token', details: error.message });
     }
 };
 

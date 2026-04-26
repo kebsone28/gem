@@ -97,17 +97,16 @@ export function generateDynamicGrappes(households, targetSize = 500) {
             lat = h.location.coordinates[1];
         }
 
-        if (isNaN(lat) || isNaN(lon)) continue;
-        
-        const region = h.region || 'REGION_INCONNUE';
-        const village = h.village || h.departement || 'VILLAGE_INCONNU';
+        const region = h.region || h.koboSync?.region || h.departement || 'REGION_INCONNUE';
+        const village = h.village || h.koboSync?.village || h.departement || 'VILLAGE_INCONNU';
         
         if (!hierarchy[region]) hierarchy[region] = {};
         if (!hierarchy[region][village]) hierarchy[region][village] = [];
         
+        // Even if coordinates are missing, we keep the household in the hierarchy for logical grouping
         hierarchy[region][village].push({
             id: h.id,
-            coords: { lat, lon },
+            coords: (!isNaN(lat) && !isNaN(lon)) ? { lat, lon } : null,
             original: h
         });
     }
@@ -119,14 +118,28 @@ export function generateDynamicGrappes(households, targetSize = 500) {
         let grappeCounterInRegion = 1;
 
         for (const villageName in hierarchy[regionName]) {
-            const points = hierarchy[regionName][villageName];
+            const allPoints = hierarchy[regionName][villageName];
+            const pointsWithCoords = allPoints.filter(p => p.coords);
+            const pointsWithoutCoords = allPoints.filter(p => !p.coords);
             
-            const kMain = Math.max(1, Math.round(points.length / targetSize));
-            const villageClusters = kMeansClustering(points, kMain);
+            // 1. Cluster points with coords
+            const kMain = Math.max(1, Math.round(pointsWithCoords.length / targetSize));
+            const villageClusters = pointsWithCoords.length > 0 ? kMeansClustering(pointsWithCoords, kMain) : [];
+
+            // 2. Handle points without coords (as a single cluster if any)
+            if (pointsWithoutCoords.length > 0) {
+                villageClusters.push({
+                    centroid: { lat: 0, lon: 0 }, // No real centroid
+                    points: pointsWithoutCoords,
+                    isLogical: true
+                });
+            }
 
             villageClusters.forEach((cluster, vIdx) => {
                 const grappeNumero = grappeCounterInRegion++;
-                const grappeId = `G-${regionName.substring(0, 3).toUpperCase()}-${villageName.substring(0, 3).toUpperCase()}-${grappeNumero}`;
+                const isLogical = cluster.isLogical;
+                const grappeId = `G-${regionName.substring(0, 3).toUpperCase()}-${villageName.substring(0, 3).toUpperCase()}-${grappeNumero}${isLogical ? '-LOG' : ''}`;
+
 
                 let maxRadius = 0;
                 let sumRadius = 0;
@@ -139,7 +152,8 @@ export function generateDynamicGrappes(households, targetSize = 500) {
 
                 newGrappes.push({
                     id: grappeId,
-                    nom: `${regionName} – ${villageName} – Grappe ${vIdx + 1}`,
+                    nom: isLogical ? `${regionName} – ${villageName} (Cluster Logique)` : `${regionName} – ${villageName} – Grappe ${vIdx + 1}`,
+
                     region: regionName,
                     village: villageName,
                     numero: grappeNumero,

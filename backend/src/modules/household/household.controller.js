@@ -1,4 +1,5 @@
 import prisma from '../../core/utils/prisma.js';
+import eventBus from '../../core/utils/eventBus.js';
 import { tracerAction } from '../../services/audit.service.js';
 import { logPerformance } from '../../services/performance.service.js';
 
@@ -181,6 +182,14 @@ export const createHousehold = async (req, res) => {
             }
         });
 
+        // Publish SSE event (dev-friendly incremental update)
+        try {
+            const payload = sanitizeBigIntForJson(household);
+            eventBus.emit('household:upsert', { action: 'upsert', household: payload });
+        } catch (e) {
+            console.error('EventBus emit createHousehold error:', e.message);
+        }
+
         // Sync PostGIS
         if (location && Array.isArray(location.coordinates)) {
             await prisma.$executeRaw`
@@ -288,6 +297,14 @@ export const updateHousehold = async (req, res) => {
             details: { oldStatus: household.status, newStatus: updates.status },
             req
         });
+
+        // Publish SSE event notifying listeners an update occurred
+        try {
+            const payload = sanitizeBigIntForJson(updated);
+            eventBus.emit('household:upsert', { action: 'update', household: payload });
+        } catch (e) {
+            console.error('EventBus emit updateHousehold error:', e.message);
+        }
 
         res.json(sanitizeBigIntForJson(updated));
     } catch (error) {

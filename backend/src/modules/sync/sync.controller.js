@@ -544,9 +544,7 @@ export const pushChanges = async (req, res) => {
                 // Trigger recalculation for each affected project
                 for (const projectId of affectedProjectIds) {
                     if (projectId) {
-                        // DESACTIVE pour eviter une surcharge CPU lors de sync massive.
-                        // L'utilisateur cliquera sur "Recalculer" depuis la page Bordereau.
-                        // await recalculateProjectGrappes(projectId, organizationId, true);
+                        await recalculateProjectGrappes(projectId, organizationId, true);
                     }
                 }
             } catch (recalcError) {
@@ -760,37 +758,58 @@ export const bulkImportHouseholds = async (req, res) => {
         const processedBatch = new Map();
         
         households.forEach(h => {
-            const lat = (h.location?.coordinates?.[1] !== undefined) ? parseFloat(h.location.coordinates[1]) : (h.latitude ? parseFloat(h.latitude) : null);
-            const lon = (h.location?.coordinates?.[0] !== undefined) ? parseFloat(h.location.coordinates[0]) : (h.longitude ? parseFloat(h.longitude) : null);
+            // Helper to find a value in 'h' by a key that might have variations (case, space, accents)
+            const getFuzzy = (keys) => {
+                const normalizedSearchKeys = keys.map(k => k.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim());
+                // Get all actual keys and their normalized versions once
+                const actualKeysMap = {};
+                for (const k in h) {
+                    actualKeysMap[k.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim()] = k;
+                }
+                
+                // Iterate through SEARCH keys in order of priority
+                for (const searchKey of normalizedSearchKeys) {
+                    if (actualKeysMap[searchKey]) return h[actualKeysMap[searchKey]];
+                }
+                return null;
+            };
+
+
+            const rawLat = getFuzzy(['latitude', 'lat', 'gps_latitude', 'y']);
+            const rawLon = getFuzzy(['longitude', 'lon', 'lng', 'long', 'gps_longitude', 'x']);
+            
+            const lat = (rawLat !== undefined && rawLat !== null && rawLat !== '') ? parseFloat(rawLat) : null;
+            const lon = (rawLon !== undefined && rawLon !== null && rawLon !== '') ? parseFloat(rawLon) : null;
+
             const ownerObject = (h.owner && typeof h.owner === 'object') ? h.owner : {};
             const derivedName =
                 h.name ||
+                getFuzzy(['name', 'nom', 'prenom et nom', 'beneficiaire']) ||
                 ownerObject.name ||
                 ownerObject.nom ||
-                h['Prénom et Nom'] ||
-                h['Nom'] ||
                 null;
+                
             const derivedPhone =
                 h.phone ||
+                getFuzzy(['phone', 'telephone', 'tel', 'mobile']) ||
                 ownerObject.phone ||
                 ownerObject.telephone ||
-                h.Telephone ||
-                h.telephone ||
                 null;
+
             const importMetadata = {
-                commune: h.commune || ownerObject.commune || null,
-                photo: h.photo || ownerObject.photo || null,
+                commune: getFuzzy(['commune', 'village', 'localite']) || null,
+                photo: h.photo || null,
                 importedFrom: 'bulk-import',
             };
 
-            let numeroordre = h.numeroordre || h.Numero_ordre || h.id;
+            let numeroordre = getFuzzy(['numeroordre', 'numero_ordre', 'n_ordre', 'id_menage', 'numero d\'ordre']) || h.id;
             if (numeroordre && String(numeroordre).endsWith('.0')) {
                 numeroordre = String(numeroordre).substring(0, String(numeroordre).length - 2);
             }
             const normalizedNum = numeroordre ? String(numeroordre).toUpperCase().trim() : null;
 
             const item = {
-                id: String(h.id),
+                id: String(h.id || normalizedNum || `import_${Math.random().toString(36).substr(2, 9)}`),
                 organizationId,
                 zoneId: zoneId,
                 numeroordre: normalizedNum,
@@ -798,19 +817,16 @@ export const bulkImportHouseholds = async (req, res) => {
                 owner: {
                     ...ownerObject,
                     name: derivedName,
-                    nom: derivedName,
                     phone: derivedPhone,
-                    telephone: derivedPhone,
                     commune: importMetadata.commune,
-                    photo: importMetadata.photo,
                 },
                 location: h.location || {},
                 koboData: importMetadata,
                 name: derivedName,
                 phone: derivedPhone,
-                region: h.region || null,
-                departement: h.departement || null,
-                village: h.village || h.commune || null,
+                region: getFuzzy(['region', 'region_nom', 'nom_region']) || null,
+                departement: getFuzzy(['departement', 'dept', 'prefecture']) || null,
+                village: getFuzzy(['village', 'nom village', 'nom_village', 'commune', 'localite', 'quartier']) || null,
                 latitude: lat,
                 longitude: lon,
                 source: h.source || 'Excel-Import',
@@ -893,6 +909,14 @@ export const bulkImportHouseholds = async (req, res) => {
 
         console.log(`[SYNC-BULK] Success: ${importedCount} households processed.`);
         
+        // 5. Trigger Grappe Recalculation after bulk import
+        const firstProject = await prisma.project.findFirst({ where: { organizationId } });
+        if (firstProject) {
+            await recalculateProjectGrappes(firstProject.id, organizationId, true).catch(err => {
+                console.error('[SYNC-BULK-RECALC] Failed to trigger grappe recalculation:', err.message);
+            });
+        }
+
         res.json({
             success: true,
             importedCount,
