@@ -39,6 +39,9 @@ import { registerIcons } from './mapUtils';
 
 registerTileCacheProtocol();
 
+type TerrainMapStyle = 'dark' | 'light' | 'satellite';
+const FALLBACK_STYLE_SOURCE = 'fallback-raster';
+
 const toLatLng = (coords: [number, number]): [number, number] => {
   if (coords[0] < 0 && coords[1] > 0) return [coords[1], coords[0]];
   return coords;
@@ -60,17 +63,37 @@ const computeHouseholdHash = (households: any[]) => {
   return `len:${households.length}-vsum:${versionSum}`;
 };
 
+const withStyleSource = (
+  style: StyleSpecification,
+  source: TerrainMapStyle | typeof FALLBACK_STYLE_SOURCE
+): StyleSpecification =>
+  ({
+    ...style,
+    metadata: {
+      ...((style as unknown as { metadata?: Record<string, unknown> }).metadata || {}),
+      source,
+    },
+  }) as StyleSpecification;
+
 const resolveMapStyle = (
-  style: 'dark' | 'light' | 'satellite',
+  style: TerrainMapStyle,
   isDarkMode: boolean
-): string | StyleSpecification => {
+): StyleSpecification => {
   if (style === 'satellite') {
-    return { ...MAP_STYLE_SATELLITE, metadata: { source: 'satellite' } } as StyleSpecification;
+    return withStyleSource(MAP_STYLE_SATELLITE, 'satellite');
   }
 
-  if (style === 'light') return MAP_STYLE_LIGHT_VECTOR;
-  if (style === 'dark') return MAP_STYLE_DARK;
-  return isDarkMode ? MAP_STYLE_DARK : MAP_STYLE_LIGHT_VECTOR;
+  if (style === 'light') return withStyleSource(MAP_STYLE_LIGHT_VECTOR, 'light');
+  if (style === 'dark') return withStyleSource(MAP_STYLE_DARK, 'dark');
+  return withStyleSource(isDarkMode ? MAP_STYLE_DARK : MAP_STYLE_LIGHT_VECTOR, isDarkMode ? 'dark' : 'light');
+};
+
+const resolveFallbackStyle = (): StyleSpecification =>
+  withStyleSource(MAP_STYLE_FALLBACK_RASTER, FALLBACK_STYLE_SOURCE);
+
+const getCurrentStyleSource = (map: maplibregl.Map | null): string | null => {
+  if (!map || (map as any)._removed) return null;
+  return ((map.getStyle() as unknown as { metadata?: { source?: string } })?.metadata?.source || null);
 };
 
 const MapLibreVectorMap: React.FC<any> = ({
@@ -204,6 +227,14 @@ const MapLibreVectorMap: React.FC<any> = ({
     () => `gem-terrain-viewport:${projectId || 'default'}`,
     [projectId]
   );
+  const hasZoneFeatures = useMemo(() => {
+    const zoneCount = Array.isArray(grappeZonesData?.features) ? grappeZonesData.features.length : 0;
+    const centroidCount = Array.isArray(grappeCentroidsData?.features)
+      ? grappeCentroidsData.features.length
+      : 0;
+    return zoneCount > 0 || centroidCount > 0;
+  }, [grappeZonesData, grappeCentroidsData]);
+  const zonesModeActive = showZones && hasZoneFeatures;
 
   // ✅ Sync GeoJSON via worker with debouncing and smart diffing
   const geoJsonDebounceRef = useRef<NodeJS.Timeout | null>(null);
@@ -389,7 +420,7 @@ const MapLibreVectorMap: React.FC<any> = ({
     const timeoutIds: ReturnType<typeof setTimeout>[] = [];
     let cleanupFn: (() => void) | null = null;
 
-    const initLocalMap = async () => {
+    const initLocalMap = () => {
       isDestroyingRef.current = false;
 
       let initialCenter: [number, number] = [-14.45, 14.5];
@@ -450,7 +481,7 @@ const MapLibreVectorMap: React.FC<any> = ({
         try {
           map = new maplibregl.Map({
             ...mapOptions,
-            style: MAP_STYLE_FALLBACK_RASTER as any,
+            style: resolveFallbackStyle() as any,
           });
           setMapInitError(null);
           toast.error('Style principal indisponible, carte chargée en mode de secours.');
@@ -467,7 +498,7 @@ const MapLibreVectorMap: React.FC<any> = ({
       );
       map.addControl(new maplibregl.ScaleControl({ unit: 'metric' }), 'bottom-right');
 
-      lastTargetSourceRef.current = mapStyle;
+      lastTargetSourceRef.current = getCurrentStyleSource(map) || mapStyle;
 
       const syncMapViewport = () => {
         if (!isMounted || !mapContainerRef.current || (map as any)._removed) return;
@@ -528,7 +559,7 @@ const MapLibreVectorMap: React.FC<any> = ({
         await registerIcons(map);
         setIconsReady(true);
         setIsMapReady(true);
-        lastTargetSourceRef.current = mapStyleRef.current;
+        lastTargetSourceRef.current = getCurrentStyleSource(map) || mapStyleRef.current;
         setMapInitError(null);
         syncMapViewport();
       };
@@ -544,12 +575,14 @@ const MapLibreVectorMap: React.FC<any> = ({
 
         const shouldFallback =
           !map.isStyleLoaded() &&
-          lastTargetSourceRef.current !== 'fallback-raster';
+          mapStyleRef.current !== 'satellite' &&
+          getCurrentStyleSource(map) !== FALLBACK_STYLE_SOURCE &&
+          /style|glyph|sprite|validation|source|layer|load/i.test(String(message));
 
         if (shouldFallback) {
-          lastTargetSourceRef.current = 'fallback-raster';
+          lastTargetSourceRef.current = FALLBACK_STYLE_SOURCE;
           try {
-            map.setStyle(MAP_STYLE_FALLBACK_RASTER as any, { diff: false });
+            map.setStyle(resolveFallbackStyle() as any, { diff: false });
             toast.error('Fond cartographique principal indisponible, passage en mode de secours.');
             return;
           } catch (fallbackError: any) {
@@ -662,13 +695,12 @@ const MapLibreVectorMap: React.FC<any> = ({
       };
     };
 
-    void initLocalMap().then((fn) => {
-      if (!isMounted || isDestroyingRef.current) {
-        fn?.();
-        return;
-      }
-      cleanupFn = fn || null;
-    });
+    const nextCleanup = initLocalMap();
+    if (!isMounted || isDestroyingRef.current) {
+      nextCleanup?.();
+    } else {
+      cleanupFn = nextCleanup || null;
+    }
 
     return () => {
       isMounted = false;
@@ -691,7 +723,8 @@ const MapLibreVectorMap: React.FC<any> = ({
     }
 
     const targetSource = mapStyle;
-    if (lastTargetSourceRef.current === targetSource && currentMap.isStyleLoaded()) {
+    const currentStyleSource = getCurrentStyleSource(currentMap) || lastTargetSourceRef.current;
+    if (currentStyleSource === targetSource && currentMap.isStyleLoaded()) {
       return;
     }
 
@@ -705,7 +738,8 @@ const MapLibreVectorMap: React.FC<any> = ({
         return;
       }
 
-      if (lastTargetSourceRef.current === targetSource && currentMap.isStyleLoaded()) {
+      const activeStyleSource = getCurrentStyleSource(currentMap) || lastTargetSourceRef.current;
+      if (activeStyleSource === targetSource && currentMap.isStyleLoaded()) {
         return;
       }
 
@@ -740,9 +774,9 @@ const MapLibreVectorMap: React.FC<any> = ({
     };
 
     if (!currentMap.isStyleLoaded()) {
-      currentMap.once('load', applyStyle);
+      currentMap.once('style.load', applyStyle);
       return () => {
-        currentMap.off('load', applyStyle);
+        currentMap.off('style.load', applyStyle);
       };
     }
 
@@ -870,17 +904,16 @@ const MapLibreVectorMap: React.FC<any> = ({
   useEffect(() => {
     const currentMap = mapInstanceRef.current;
     if (currentMap && styleIsReady) {
-      if (showZones) {
-        // Force clear generic clusters
-        const clusterSource = currentMap.getSource('supercluster-generated') as any;
-        if (clusterSource?.setData) clusterSource.setData({ type: 'FeatureCollection', features: [] });
-        const hullSource = currentMap.getSource('cluster-hulls') as any;
-        if (hullSource?.setData) hullSource.setData({ type: 'FeatureCollection', features: [] });
-      } else {
-        updateClusterDisplay(currentMap, true);
-      }
+      updateClusterDisplay(currentMap, true);
     }
-  }, [households, isMapReady, styleIsReady, updateClusterDisplay, showZones]);
+  }, [
+    households,
+    isMapReady,
+    styleIsReady,
+    updateClusterDisplay,
+    zonesModeActive,
+    clusterWorker.isLoaded,
+  ]);
 
   // ── 9. LAYER VISIBILITY HARMONIZATION ──
   // Si on affiche les Zones (Villages), on cache les grappes circulaires standard
@@ -899,8 +932,7 @@ const MapLibreVectorMap: React.FC<any> = ({
     
     clusterLayers.forEach(layerId => {
       if (currentMap.getLayer(layerId)) {
-        // Mode zones : on masque les grappes génériques (cercles/chiffres)
-        currentMap.setLayoutProperty(layerId, 'visibility', showZones ? 'none' : 'visible');
+        currentMap.setLayoutProperty(layerId, 'visibility', 'visible');
       }
     });
 
@@ -911,9 +943,9 @@ const MapLibreVectorMap: React.FC<any> = ({
         
         // MAIS on réduit drastiquement l'effet "cercle" (halo) pour ne pas polluer les trapèzes
         if (layerId === 'households-glow-layer') {
-          currentMap.setPaintProperty(layerId, 'circle-opacity', showZones ? 0.2 : 0.85);
-          currentMap.setPaintProperty(layerId, 'circle-stroke-width', showZones ? 0 : 1.5);
-          currentMap.setPaintProperty(layerId, 'circle-radius', showZones ? 2 : 6);
+          currentMap.setPaintProperty(layerId, 'circle-opacity', zonesModeActive ? 0.2 : 0.85);
+          currentMap.setPaintProperty(layerId, 'circle-stroke-width', zonesModeActive ? 0 : 1.5);
+          currentMap.setPaintProperty(layerId, 'circle-radius', zonesModeActive ? 2 : 6);
         }
       }
     });
@@ -922,10 +954,10 @@ const MapLibreVectorMap: React.FC<any> = ({
     const superclusterHulls = ['supercluster-hulls-fill', 'supercluster-hulls-outline'];
     superclusterHulls.forEach(id => {
       if (currentMap.getLayer(id)) {
-        currentMap.setLayoutProperty(id, 'visibility', showZones ? 'visible' : 'none');
+        currentMap.setLayoutProperty(id, 'visibility', zonesModeActive ? 'visible' : 'none');
       }
     });
-  }, [isMapReady, styleIsReady, showZones]);
+  }, [isMapReady, styleIsReady, zonesModeActive]);
 
   return (
     <div
@@ -943,7 +975,7 @@ const MapLibreVectorMap: React.FC<any> = ({
           </div>
         </div>
       )}
-      <div ref={mapHostRef} className="absolute inset-0 z-0" />
+      <div ref={mapHostRef} className="absolute inset-0 z-0 h-full" />
 
       <div className="pointer-events-none absolute right-3 top-3 z-[1200] max-w-[280px] rounded-2xl border border-white/10 bg-slate-950/88 px-3 py-2 font-mono text-[10px] text-cyan-100 shadow-2xl backdrop-blur">
         <div className="mb-1 text-[9px] font-black uppercase tracking-[0.18em] text-cyan-300">
@@ -968,13 +1000,14 @@ const MapLibreVectorMap: React.FC<any> = ({
         selectedHouseholdCoords={selectedHouseholdCoords}
         showHeatmap={showHeatmap}
         styleIsReady={styleIsReady && iconsReady}
+        showZones={zonesModeActive}
       />
       <ZoneLayer
         map={mapForChildren}
         styleIsReady={styleIsReady}
         grappeZonesData={grappeZonesData}
         grappeCentroidsData={grappeCentroidsData}
-        showZones={showZones}
+        showZones={zonesModeActive}
       />
 
       <LogisticsLayer map={mapForChildren} styleIsReady={styleIsReady} warehouses={warehouses} />
