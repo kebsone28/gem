@@ -96,7 +96,6 @@ function ensureLayers(map: maplibregl.Map) {
         'text-font': SAFE_FONT,
         'text-size': 16,
         'text-allow-overlap': true,
-        'text-font': SAFE_FONT,
       },
       paint: { 
         'text-color': '#ffffff', 
