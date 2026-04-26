@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Layers, MapPin, X, CheckCircle2, Database } from 'lucide-react';
+import { MapPin, X, CheckCircle2, Database } from 'lucide-react';
 
 interface ClusterPanelData {
   id: string;

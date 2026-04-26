@@ -637,21 +637,20 @@ const HouseholdLayer: React.FC<HouseholdLayerProps> = ({
   map,
   householdGeoJSON,
   households = [],
-  projectId,
   selectedHouseholdCoords = null,
   showHeatmap = false,
   styleIsReady,
   showZones = false,
 }) => {
-  const selectedPhases = useTerrainUIStore((s) => s.selectedPhases);
-  const selectedTeam = useTerrainUIStore((s) => s.selectedTeam);
-
   const setSelectedHouseholdId = useTerrainUIStore((s) => s.setSelectedHouseholdId);
   const dataRef = useRef({ householdGeoJSON, households });
-  dataRef.current = { householdGeoJSON, households };
 
   const retryRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const popupRef = useRef<maplibregl.Popup | null>(null);
+
+  useEffect(() => {
+    dataRef.current = { householdGeoJSON, households };
+  }, [householdGeoJSON, households]);
 
   // ─── Click & Hover interactions ───────────────────────────────
   const setupClickHandlers = (map: maplibregl.Map) => {

@@ -2,7 +2,6 @@
 import { useCallback, useRef, useEffect } from 'react';
 import maplibregl from 'maplibre-gl';
 import toast from 'react-hot-toast';
-import { generatePopupHTML } from './mapUtils';
 
 import { useTerrainUIStore } from '../../store/terrainUIStore';
 
@@ -14,7 +13,6 @@ export const useMapInteractions = (
 ) => {
   const setSelectedHouseholdId = useTerrainUIStore((s) => s.setSelectedHouseholdId);
   const dragStateRef = useRef({ isDragging: false, draggedFeatureId: null as string | null });
-  const lastHandledHouseholdClickRef = useRef(0);
 
   const popupRef = useRef<maplibregl.Popup | null>(null);
   const householdInteractiveLayers = [
@@ -35,35 +33,6 @@ export const useMapInteractions = (
   const setupInteractions = useCallback(
     (map: maplibregl.Map) => {
       const disposers: Array<() => void> = [];
-
-      const openHouseholdFromFeature = (feature: any) => {
-        if (!feature) return false;
-
-        const householdId =
-          feature.properties?.household_id ||
-          feature.properties?.id ||
-          (feature.id != null ? String(feature.id) : null);
-
-        if (!householdId) return false;
-
-        lastHandledHouseholdClickRef.current = Date.now();
-        setSelectedHouseholdId(householdId);
-
-        if (!popupRef.current) return true;
-
-        const shouldShowPopup = !window.matchMedia('(max-width: 768px)').matches;
-        if (!shouldShowPopup) {
-          popupRef.current.remove();
-          return true;
-        }
-
-        popupRef.current
-          .setLngLat((feature.geometry as any).coordinates)
-          .setHTML(generatePopupHTML(feature))
-          .addTo(map);
-
-        return true;
-      };
 
       // ✅ Initialize shared native popup
       if (!popupRef.current) {

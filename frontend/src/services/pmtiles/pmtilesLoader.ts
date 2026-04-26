@@ -21,7 +21,7 @@ export function removePMTilesSource(map: Map, sourceId: string) {
     if (!map) return;
     if (map.getLayer(sourceId)) map.removeLayer(sourceId);
     if (map.getSource(sourceId)) map.removeSource(sourceId);
-  } catch (e) {
+  } catch {
     /* swallow */
   }
 }

@@ -78,7 +78,9 @@ apiClient.interceptors.response.use(
         // Diagnostic: log cookies available to the page (do not expose values)
         try {
           console.debug('[AUTH-REFRESH] document.cookie length=', (document.cookie || '').length);
-        } catch (e) {}
+        } catch {
+          // Cookie inspection is diagnostic only.
+        }
 
         // Call refresh endpoint
         const { data } = await apiClient.post('auth/refresh');
