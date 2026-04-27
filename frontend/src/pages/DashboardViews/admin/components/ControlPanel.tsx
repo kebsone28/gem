@@ -31,56 +31,8 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   ];
 
   return (
-    <div className="lg:col-span-4 space-y-4 sm:space-y-6 lg:space-y-10">
-      <div className="p-4 sm:p-6 md:p-10 rounded-[1.8rem] sm:rounded-3xl md:rounded-[3rem] bg-slate-900/40 border border-white/5 backdrop-blur-3xl shadow-xl">
-        <AlertPanel>
-          {isLoading ? (
-            <div className="space-y-3 animate-pulse">
-              <div className="h-20 rounded-[1.3rem] bg-white/10" />
-              <div className="h-20 rounded-[1.3rem] bg-white/10" />
-            </div>
-          ) : (
-          <AnimatePresence>
-            {metrics.problemHouseholds > 0 && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="flex gap-3 sm:gap-4 p-4 sm:p-6 bg-rose-500/10 rounded-[1.3rem] sm:rounded-3xl border border-rose-500/20 mb-3 sm:mb-4"
-              >
-                <AlertCircle size={22} className="text-rose-500 shrink-0" />
-                <div>
-                  <p className="text-[11px] sm:text-xs font-black text-rose-400 uppercase tracking-[0.06em] italic">INCIDENTS CRITIQUES</p>
-                  <p className="text-[11px] sm:text-[11px] text-slate-300 mt-2 leading-relaxed font-bold">
-                    {metrics.problemHouseholds} UNITÉS NÉCESSITENT UNE ACTION IMMÉDIATE.
-                  </p>
-                </div>
-              </motion.div>
-            )}
-            {metrics.syncHealth !== 'healthy' && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="flex gap-3 sm:gap-4 p-4 sm:p-6 bg-amber-500/10 rounded-[1.3rem] sm:rounded-3xl border border-amber-500/20"
-              >
-                <RefreshCw size={22} className="text-amber-500 shrink-0" />
-                <div>
-                  <p className="text-[11px] sm:text-xs font-black text-amber-400 uppercase tracking-[0.06em] italic">ALERTE SYNCHRO</p>
-                  <p className="text-[11px] sm:text-[11px] text-slate-300 mt-2 leading-relaxed font-bold">LATENCE DÉTECTÉE DANS LA LIAISON CLOUD.</p>
-                </div>
-              </motion.div>
-            )}
-            {metrics.problemHouseholds === 0 && metrics.syncHealth === 'healthy' && (
-              <div className="py-10 sm:py-14 text-center bg-white/[0.02] rounded-[1.5rem] sm:rounded-[2.5rem] border border-dashed border-white/10">
-                <CheckCircle2 size={48} className="text-emerald-500 mx-auto mb-4 opacity-20" />
-                <p className="text-[10px] sm:text-[10px] font-black text-slate-500 uppercase tracking-[0.08em] sm:tracking-[0.22em] italic">SYSTÈMES OPÉRATIONNELS</p>
-              </div>
-            )}
-          </AnimatePresence>
-          )}
-        </AlertPanel>
-      </div>
-
-      <div className="p-4 sm:p-6 lg:p-10 rounded-[1.8rem] sm:rounded-[2.5rem] lg:rounded-[3.5rem] bg-slate-900/40 border border-white/5 backdrop-blur-3xl shadow-2xl h-[320px] sm:h-[420px] lg:h-[500px] flex flex-col overflow-hidden">
+    <section className="grid grid-cols-1 gap-4 sm:gap-5 lg:grid-cols-[minmax(0,1.05fr)_minmax(320px,0.95fr)] lg:items-start">
+      <div className="flex min-h-[320px] flex-col overflow-hidden rounded-[1.45rem] border border-white/5 bg-slate-900/40 p-4 shadow-2xl backdrop-blur-3xl sm:min-h-[380px] sm:rounded-[1.8rem] sm:p-5 lg:row-span-2 lg:min-h-[460px] lg:rounded-[2.2rem] lg:p-6">
         {isLoading ? (
           <div className="flex-1 space-y-4 animate-pulse">
             <div className="h-4 w-40 rounded-full bg-white/10" />
@@ -93,47 +45,95 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
         )}
       </div>
 
-      <div className="p-4 sm:p-6 lg:p-10 rounded-[1.8rem] sm:rounded-[2.2rem] lg:rounded-[3rem] bg-indigo-600/10 border border-indigo-500/20 backdrop-blur-3xl shadow-xl relative overflow-hidden group">
+      <div className="rounded-[1.45rem] border border-white/5 bg-slate-900/40 p-4 shadow-xl backdrop-blur-3xl sm:rounded-[1.8rem] sm:p-5 lg:rounded-[2.1rem] lg:p-6">
+        <AlertPanel>
+          {isLoading ? (
+            <div className="space-y-3 animate-pulse">
+              <div className="h-20 rounded-[1.3rem] bg-white/10" />
+              <div className="h-20 rounded-[1.3rem] bg-white/10" />
+            </div>
+          ) : (
+          <AnimatePresence>
+            {metrics.problemHouseholds > 0 && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="mb-3 flex gap-3 rounded-[1.15rem] border border-rose-500/20 bg-rose-500/10 p-4 sm:mb-4 sm:gap-4 sm:rounded-[1.35rem] sm:p-4.5"
+              >
+                <AlertCircle size={22} className="text-rose-500 shrink-0" />
+                <div>
+                  <p className="text-[11px] font-black uppercase tracking-[0.08em] text-rose-400 sm:text-xs">INCIDENTS CRITIQUES</p>
+                  <p className="mt-1.5 text-[11px] font-bold leading-relaxed text-slate-300">
+                    {metrics.problemHouseholds} UNITÉS NÉCESSITENT UNE ACTION IMMÉDIATE.
+                  </p>
+                </div>
+              </motion.div>
+            )}
+            {metrics.syncHealth !== 'healthy' && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="flex gap-3 rounded-[1.15rem] border border-amber-500/20 bg-amber-500/10 p-4 sm:gap-4 sm:rounded-[1.35rem] sm:p-4.5"
+              >
+                <RefreshCw size={22} className="text-amber-500 shrink-0" />
+                <div>
+                  <p className="text-[11px] font-black uppercase tracking-[0.08em] text-amber-400 sm:text-xs">ALERTE SYNCHRO</p>
+                  <p className="mt-1.5 text-[11px] font-bold leading-relaxed text-slate-300">LATENCE DÉTECTÉE DANS LA LIAISON CLOUD.</p>
+                </div>
+              </motion.div>
+            )}
+            {metrics.problemHouseholds === 0 && metrics.syncHealth === 'healthy' && (
+              <div className="rounded-[1.3rem] border border-dashed border-white/10 bg-white/[0.02] py-8 text-center sm:rounded-[1.7rem] sm:py-10">
+                <CheckCircle2 size={48} className="text-emerald-500 mx-auto mb-4 opacity-20" />
+                <p className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-500 sm:tracking-[0.22em]">SYSTÈMES OPÉRATIONNELS</p>
+              </div>
+            )}
+          </AnimatePresence>
+          )}
+        </AlertPanel>
+      </div>
+
+      <div className="group relative overflow-hidden rounded-[1.45rem] border border-indigo-500/20 bg-indigo-600/10 p-4 shadow-xl backdrop-blur-3xl sm:rounded-[1.8rem] sm:p-5 lg:rounded-[2.1rem] lg:p-6">
         <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-indigo-500/20 blur-[80px] rounded-full group-hover:bg-indigo-500/30 transition-all duration-1000" />
-        <h3 className="text-[11px] sm:text-[11px] font-black text-indigo-300 uppercase tracking-[0.08em] sm:tracking-[0.26em] mb-5 sm:mb-8 italic flex items-center gap-2 sm:gap-3">
+        <h3 className="mb-4 flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.1em] text-indigo-300 sm:mb-6 sm:gap-3 sm:tracking-[0.2em]">
           <Calendar size={18} /> PLANIFICATEUR DE MISSIONS
         </h3>
-        <div className="mb-4 sm:mb-6 grid grid-cols-1 gap-2">
+        <div className="mb-4 grid grid-cols-1 gap-2 sm:mb-5 sm:grid-cols-2">
           {priorityActions.map((action) => (
             <div
               key={action}
-              className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-[12px] text-slate-200"
+              className="rounded-[0.95rem] border border-white/10 bg-white/[0.03] px-3 py-2.5 text-[11px] leading-relaxed text-slate-200 sm:text-[12px]"
             >
               {action}
             </div>
           ))}
         </div>
-        <div className="space-y-3 sm:space-y-5 relative z-10">
+        <div className="relative z-10 space-y-3 sm:space-y-4">
           {!isLoading && missions.length > 0 ? (
-            missions.slice(0, 3).map((m, i) => (
-              <div key={i} className="p-4 sm:p-6 rounded-[1.3rem] sm:rounded-3xl bg-white/[0.03] border border-white/5 hover:bg-white/[0.06] transition-all cursor-pointer group">
-                <div className="flex justify-between items-start gap-3 mb-3">
-                  <p className="text-[13px] sm:text-sm font-black tracking-tight text-white italic uppercase line-clamp-2">{m.purpose}</p>
+            missions.slice(0, 4).map((m, i) => (
+              <div key={i} className="cursor-pointer rounded-[1.1rem] border border-white/5 bg-white/[0.03] p-3.5 transition-all hover:bg-white/[0.06] sm:rounded-[1.35rem] sm:p-4">
+                <div className="mb-2.5 flex items-start justify-between gap-3">
+                  <p className="line-clamp-2 text-[12px] font-black uppercase tracking-[0.02em] text-white sm:text-sm">{m.purpose}</p>
                   <StatusBadge status={m.isCertified ? 'success' : 'info'} label={m.isCertified ? 'CERT' : 'LIVE'} />
                 </div>
-                <p className="text-[10px] sm:text-[10px] text-indigo-200 font-black uppercase tracking-[0.06em] sm:tracking-widest opacity-75">
+                <p className="text-[10px] font-black uppercase tracking-[0.1em] text-indigo-200 opacity-75">
                   {m.startDate} › {m.endDate}
                 </p>
               </div>
             ))
           ) : isLoading ? (
             <div className="space-y-3 animate-pulse">
-              <div className="h-24 rounded-[1.3rem] bg-white/10" />
-              <div className="h-24 rounded-[1.3rem] bg-white/10" />
+              <div className="h-20 rounded-[1.1rem] bg-white/10" />
+              <div className="h-20 rounded-[1.1rem] bg-white/10" />
             </div>
           ) : (
-            <div className="py-10 sm:py-14 text-center opacity-20 flex flex-col items-center border border-dashed border-white/10 rounded-xl sm:rounded-2xl">
+            <div className="flex flex-col items-center rounded-xl border border-dashed border-white/10 py-8 text-center opacity-20 sm:rounded-2xl sm:py-10">
               <Calendar size={32} className="mb-4 text-white" />
-              <p className="text-[10px] sm:text-[10px] font-black uppercase tracking-[0.08em] sm:tracking-[0.2em] text-white">AUCUNE MISSION À VENIR</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.12em] text-white sm:tracking-[0.2em]">AUCUNE MISSION À VENIR</p>
             </div>
           )}
         </div>
       </div>
-    </div>
+    </section>
   );
 };

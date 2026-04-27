@@ -111,11 +111,11 @@ export default function AdminDashboard() {
         title="CONSOLE D'ADMINISTRATION"
         subtitle="Système de pilotage stratégique Haute-Performance"
         icon={<ShieldCheck size={28} className="text-blue-400 drop-shadow-[0_0_8px_rgba(96,165,250,0.5)]" />}
-        className="relative z-10 pt-12 pb-10"
+        className="relative z-10 pt-10 pb-8 sm:pt-12 sm:pb-10"
       />
 
       <ContentArea padding="none" className="bg-transparent border-none shadow-none relative z-10">
-        <div className="px-3 sm:px-6 lg:px-12 pb-36 sm:pb-24 space-y-6 sm:space-y-8 lg:space-y-12">
+        <div className="space-y-5 px-3 pb-28 sm:space-y-7 sm:px-6 sm:pb-24 lg:space-y-9 lg:px-10 xl:px-12">
           {/* Header & Main Actions */}
           <DashboardHeader
             projectName={project?.name || ''}
@@ -137,7 +137,7 @@ export default function AdminDashboard() {
           <GlobalProgressCard metrics={metrics} isLoading={isMetricsLoading} />
 
           {/* Team Production Performance */}
-          <div className="pt-2 sm:pt-6">
+          <div className="pt-1 sm:pt-4">
             <TeamPerformance
               teamStats={metrics.breakdown.byTeam}
               productionRates={project?.config?.productionRates}
@@ -159,17 +159,15 @@ export default function AdminDashboard() {
           <ComplianceSection metrics={metrics} />
 
           {/* Infrastructure Control & Live Activity */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-10">
-            <ControlPanel
-              metrics={metrics}
-              feedActivities={feedActivities}
-              missions={missions}
-              isLoading={isMetricsLoading}
-            />
-          </div>
+          <ControlPanel
+            metrics={metrics}
+            feedActivities={feedActivities}
+            missions={missions}
+            isLoading={isMetricsLoading}
+          />
 
           {/* Secondary Nav / Data Access */}
-          <footer className="flex flex-col sm:flex-row gap-4 sm:gap-8 pt-8 sm:pt-16 border-t border-white/5 relative z-10">
+          <footer className="grid grid-cols-1 gap-4 border-t border-white/5 pt-6 sm:grid-cols-2 sm:gap-5 sm:pt-10 relative z-10">
             <FooterButton
               onClick={() => navigate('/rapports')}
               label="CENTRE DE DONNÉES"
@@ -209,14 +207,14 @@ interface FooterButtonProps {
 const FooterButton = ({ onClick, label, title, Icon }: FooterButtonProps) => (
   <button
     onClick={onClick}
-    className="flex-1 flex items-center gap-4 sm:gap-6 px-5 sm:px-10 py-5 sm:py-8 bg-slate-900/40 rounded-[1.6rem] sm:rounded-[2.5rem] border border-white/5 hover:border-blue-500/40 transition-all group backdrop-blur-xl"
+    className="flex items-center gap-4 rounded-[1.4rem] border border-white/5 bg-slate-900/40 px-5 py-4 transition-all group backdrop-blur-xl hover:border-blue-500/40 sm:gap-5 sm:rounded-[1.9rem] sm:px-6 sm:py-5"
   >
-    <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl bg-white/5 flex items-center justify-center border border-white/5 group-hover:bg-blue-600 group-hover:text-white transition-all shadow-lg shrink-0">
-      <Icon size={24} className="text-blue-400 group-hover:text-white transition-colors" />
+    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[0.95rem] border border-white/5 bg-white/5 shadow-lg transition-all group-hover:bg-blue-600 group-hover:text-white sm:h-13 sm:w-13 sm:rounded-[1.1rem]">
+      <Icon size={20} className="text-blue-400 transition-colors group-hover:text-white" />
     </div>
     <div className="text-left">
-      <p className="text-[8px] sm:text-[11px] font-black uppercase tracking-[0.12em] sm:tracking-[0.3em] text-slate-500 italic group-hover:text-blue-400">{label}</p>
-      <p className="text-xs sm:text-sm font-black text-white italic uppercase tracking-tighter mt-1">{title}</p>
+      <p className="text-[0.58rem] font-black uppercase tracking-[0.16em] text-slate-500 group-hover:text-blue-400 sm:text-[0.68rem] sm:tracking-[0.22em]">{label}</p>
+      <p className="mt-1 text-[0.84rem] font-black uppercase tracking-[-0.02em] text-white sm:text-[0.95rem]">{title}</p>
     </div>
   </button>
 );

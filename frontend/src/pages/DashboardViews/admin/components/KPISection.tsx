@@ -20,11 +20,11 @@ export const KPISection: React.FC<KPISectionProps> = ({
 }) => {
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-6 lg:gap-8">
+      <div className="grid grid-cols-1 gap-3 min-[560px]:grid-cols-2 xl:grid-cols-4">
         {[0, 1, 2, 3].map((idx) => (
           <div
             key={idx}
-            className="min-h-[142px] rounded-[1.4rem] border border-white/10 bg-slate-900/40 p-4 sm:p-6 animate-pulse"
+            className="min-h-[126px] animate-pulse rounded-[1.3rem] border border-white/10 bg-slate-900/40 p-4 sm:min-h-[142px] sm:rounded-[1.55rem] sm:p-5"
           >
             <div className="h-10 w-10 rounded-xl bg-white/10" />
             <div className="mt-6 h-4 w-28 rounded-full bg-white/10" />
@@ -37,7 +37,7 @@ export const KPISection: React.FC<KPISectionProps> = ({
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-6 lg:gap-8">
+    <div className="grid grid-cols-1 gap-3 min-[560px]:grid-cols-2 xl:grid-cols-4">
       <KPICard
         title={`TOTAL ${householdLabel.toUpperCase()}`}
         value={fmtNum(metrics.totalHouseholds)}
