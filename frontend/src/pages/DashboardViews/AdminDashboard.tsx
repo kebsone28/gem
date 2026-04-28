@@ -1,7 +1,7 @@
 ﻿/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useCallback, useState } from 'react';
 import toast from 'react-hot-toast';
-import { ShieldCheck, BarChart3, Users } from 'lucide-react';
+import { ShieldCheck, BarChart3, Users, AlertTriangle, Activity, CheckCircle2 } from 'lucide-react';
 import { PageContainer, PageHeader, ContentArea } from '../../components';
 import { useNavigate } from 'react-router-dom';
 import { useProject } from '../../contexts/ProjectContext';
@@ -28,6 +28,7 @@ import { useMonitoring } from './admin/hooks/useMonitoring';
 import { useAuditLogs } from './admin/hooks/useAuditLogs';
 import { useSyncHandler } from './admin/hooks/useSyncHandler';
 import { useAutoRefresh } from './admin/hooks/useAutoRefresh';
+import { useServerAIContext } from './admin/hooks/useServerAIContext';
 
 // ── DEFAULT CONSOLE SETTINGS ──
 const DEFAULT_CONSOLE_SETTINGS: ConsoleSettingsConfig = {
@@ -66,6 +67,13 @@ export default function AdminDashboard() {
   const { stats: missionStats, missions, refresh: refreshMissions } = useMissionStats(user as any, projectId);
   const { activities, refresh: refreshMonitoring } = useMonitoring(canViewReports);
   const { feedActivities, refresh: refreshAudit } = useAuditLogs(activities);
+  const {
+    households: aiHouseholds,
+    teams: aiTeams,
+    auditLogs: aiAuditLogs,
+    regionalSummaries: aiRegionalSummaries,
+    refresh: refreshAIContext,
+  } = useServerAIContext(projectId, canViewReports);
 
   // ── ACTIONS & REFRESH ──
   const refreshAll = useCallback(async () => {
@@ -73,7 +81,8 @@ export default function AdminDashboard() {
     refreshMissions();
     refreshMonitoring();
     refreshAudit();
-  }, [refreshKPI, refreshMissions, refreshMonitoring, refreshAudit]);
+    refreshAIContext();
+  }, [refreshAIContext, refreshKPI, refreshMissions, refreshMonitoring, refreshAudit]);
 
   const { isSyncing, handleSync } = useSyncHandler(refreshKPI);
   useAutoRefresh(refreshAll, 60000); // Efficient auto-refresh every 1 min
@@ -89,6 +98,47 @@ export default function AdminDashboard() {
   const errorCount = metrics.problemHouseholds + metrics.actionRequired + metrics.incidentsHSE;
   const exportAvailable = Boolean(missionStats && missionStats.totalMissions >= 0);
   const koboConnected = canViewReports && Boolean(projectId);
+  const situationItems = [
+    {
+      label: 'Charge critique',
+      value: errorCount,
+      helper:
+        errorCount > 0
+          ? `${metrics.problemHouseholds} menages en anomalie, ${metrics.actionRequired} action(s) requise(s)`
+          : 'Aucune anomalie bloquante remontee',
+      tone:
+        errorCount > 0
+          ? 'border-rose-500/20 bg-rose-500/10 text-rose-200'
+          : 'border-emerald-500/20 bg-emerald-500/10 text-emerald-200',
+      icon: AlertTriangle,
+    },
+    {
+      label: 'Rythme mission',
+      value: missionsInProgress,
+      helper:
+        missionsInProgress > 0
+          ? `${missionsDone} mission(s) cloturee(s), ${missionStats?.totalMissions ?? 0} total`
+          : 'Aucune mission ouverte en ce moment',
+      tone: 'border-blue-500/20 bg-blue-500/10 text-blue-200',
+      icon: Activity,
+    },
+    {
+      label: 'Conformite terrain',
+      value: metrics.conforme,
+      helper: `${metrics.nonConforme} non conforme(s), ${metrics.incidentsHSE} incident(s) HSE`,
+      tone: 'border-emerald-500/20 bg-emerald-500/10 text-emerald-200',
+      icon: CheckCircle2,
+    },
+  ];
+  const topPriorities = [
+    errorCount > 0
+      ? `${errorCount} point(s) demandent un arbitrage rapide`
+      : 'Aucun point critique remonte dans le flux terrain',
+    metrics.pvRetard > 0
+      ? `${metrics.pvRetard} PV en retard sur ${metrics.totalPV || 0}`
+      : 'Aucun retard PV detecte',
+    koboConnected ? 'Collecte Kobo disponible pour les equipes' : 'Connexion Kobo a verifier',
+  ];
 
   const handleExportCompta = async () => {
     const tid = toast.loading("Préparation de l'export comptable...");
@@ -132,6 +182,58 @@ export default function AdminDashboard() {
             koboConnected={koboConnected}
             exportAvailable={exportAvailable}
           />
+
+          <section className="rounded-[1.55rem] border border-white/8 bg-[linear-gradient(180deg,rgba(15,23,42,0.76),rgba(2,6,23,0.88))] p-4 shadow-[0_18px_50px_rgba(2,6,23,0.22)] sm:rounded-[1.9rem] sm:p-5">
+            <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+              <div className="min-w-0 xl:max-w-[340px]">
+                <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">
+                  Situation du jour
+                </div>
+                <h2 className="mt-2 text-lg font-black tracking-tight text-white sm:text-xl">
+                  Lecture executive du terrain
+                </h2>
+                <p className="mt-2 text-sm leading-relaxed text-slate-400">
+                  Vue compacte pour juger la tension operationnelle, la cadence mission et la conformite sans quitter la console.
+                </p>
+              </div>
+
+              <div className="grid flex-1 gap-3 md:grid-cols-3">
+                {situationItems.map(({ label, value, helper, tone, icon: Icon }) => (
+                  <div key={label} className={`rounded-[1.25rem] border p-4 ${tone}`}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="text-[10px] font-black uppercase tracking-[0.16em] opacity-80">
+                          {label}
+                        </div>
+                        <div className="mt-2 text-2xl font-black tracking-tight text-white">
+                          {value}
+                        </div>
+                      </div>
+                      <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-black/10">
+                        <Icon size={18} />
+                      </div>
+                    </div>
+                    <p className="mt-3 text-xs leading-relaxed text-slate-300">
+                      {helper}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-4 border-t border-white/6 pt-4">
+              <div className="flex flex-wrap gap-2">
+                {topPriorities.map((item) => (
+                  <span
+                    key={item}
+                    className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[11px] font-semibold text-slate-300"
+                  >
+                    {item}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </section>
 
           {/* Level 1: Core Progress */}
           <GlobalProgressCard metrics={metrics} isLoading={isMetricsLoading} />
@@ -185,7 +287,13 @@ export default function AdminDashboard() {
       </ContentArea>
 
       {/* AI Sage (Knowledge Integration) */}
-      <MissionMentor stats={missionStats} auditLogs={[]} households={[]} />
+      <MissionMentor
+        stats={missionStats}
+        auditLogs={aiAuditLogs}
+        households={aiHouseholds}
+        teams={aiTeams}
+        regionalSummaries={aiRegionalSummaries}
+      />
     </PageContainer>
 
     {/* Console Settings Panel - Outside PageContainer for fixed positioning */}

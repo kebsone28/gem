@@ -12,6 +12,13 @@ export interface TechnicalDefinition {
   norm: string;
   keywords: string[];
   images?: { url: string; caption: string }[];
+  sourceFamily?: 'MFR' | 'NS01' | 'SENELEC' | 'GEM';
+  criticalChecks?: string[];
+  forbiddenPractices?: string[];
+  validationNote?: string;
+  defaultVerdict?: 'Conforme sous réserve' | 'Non conforme' | 'A verifier';
+  defaultSeverity?: 'critique' | 'majeure' | 'mineure' | 'information';
+  correctiveActions?: string[];
 }
 
 /** 🛠️ RÉFÉRENTIEL TECHNIQUE ORGANISÉ PAR THÈMES (PROQUELEC) */
@@ -41,6 +48,26 @@ export const ELECTRICIAN_GUIDE: Record<string, TechnicalDefinition> = {
       'Câbles armés enterrés (0.5m profondeur) sous grillage avertisseur rouge entre les pièces isolées',
     ],
     norm: 'Guide Ménages Faible Revenu - Chap 3',
+    sourceFamily: 'MFR',
+    criticalChecks: [
+      'Vérifier que le coffret disjoncteur est en zone couverte et accessible.',
+      'Vérifier que les interrupteurs sont uniquement en espace couvert.',
+      'Vérifier la pose enterrée des câbles armés entre pièces isolées.',
+    ],
+    forbiddenPractices: [
+      'Interrupteur exposé aux intempéries.',
+      'Câble apparent entre deux pièces sans protection mécanique.',
+      'Configuration installée différente du standard sans validation technique.',
+    ],
+    validationNote:
+      "En cas d'écart de configuration, faire valider la variante avant exécution ou certification.",
+    defaultVerdict: 'A verifier',
+    defaultSeverity: 'majeure',
+    correctiveActions: [
+      'Bloquer la certification si la configuration posée n’est pas celle validée.',
+      'Faire corriger les appareillages exposés ou les cheminements non protégés.',
+      'Programmer un recontrôle après remise en conformité.',
+    ],
     keywords: [
       'interieur',
       'lampe',
@@ -69,10 +96,41 @@ export const ELECTRICIAN_GUIDE: Record<string, TechnicalDefinition> = {
       'Protection mécanique par Tube PVC obligatoire du potelet au coffret',
     ],
     norm: 'Guide Ménages Faible Revenu - Chap 4',
+    sourceFamily: 'SENELEC',
+    criticalChecks: [
+      'Contrôler la pose du coffret compteur en limite de propriété.',
+      'Contrôler la hauteur du hublot à 1,60 m du sol.',
+      'Contrôler la hauteur libre du câble et la continuité de la protection PVC.',
+    ],
+    forbiddenPractices: [
+      "Coffret installé à l'intérieur de la concession.",
+      "Câble de branchement surplombant une autre habitation.",
+      'Absence de protection mécanique entre potelet et coffret.',
+    ],
+    validationNote:
+      'Toute non-conformité de branchement doit être traitée avant mise sous tension ou réception.',
+    defaultVerdict: 'Non conforme',
+    defaultSeverity: 'critique',
+    correctiveActions: [
+      'Repositionner le coffret en limite de propriété si nécessaire.',
+      'Corriger immédiatement le cheminement ou la hauteur libre du câble.',
+      'Compléter la protection mécanique avant toute réception.',
+    ],
     keywords: [
+      'branchement',
       'senelec',
+      'coffret compteur',
+      'coffret',
+      'compteur',
       'limite',
       'propriete',
+      'concession',
+      'interieur concession',
+      'surplomb',
+      'surplomber',
+      'autre maison',
+      'protection pvc',
+      'protection mecanique',
       'potelet',
       'pvc',
       'tube',
@@ -113,6 +171,26 @@ export const ELECTRICIAN_GUIDE: Record<string, TechnicalDefinition> = {
       'Utilisation de poteaux en bois pourris pour le branchement',
     ],
     norm: 'Guide Ménages Faible Revenu - Chap 5',
+    sourceFamily: 'MFR',
+    criticalChecks: [
+      'Contrôler l’absence totale de conducteurs visibles après pose.',
+      'Contrôler la position de la barrette de terre dans une zone intérieure protégée.',
+      'Contrôler le bon état mécanique des supports de branchement.',
+    ],
+    forbiddenPractices: [
+      'Découpe des conducteurs à la pince avec dégradation de l’isolant.',
+      'Barrette de terre posée à l’extérieur.',
+      'Utilisation de poteaux bois dégradés pour le branchement.',
+    ],
+    validationNote:
+      'Une anomalie critique documentée doit bloquer la validation jusqu’à correction et recontrôle.',
+    defaultVerdict: 'Non conforme',
+    defaultSeverity: 'critique',
+    correctiveActions: [
+      'Documenter l’anomalie par photo et commentaire de contrôle.',
+      'Bloquer la validation du lot concerné.',
+      'Exiger correction puis recontrôle contradictoire.',
+    ],
     keywords: [
       'anomalie',
       'eviter',
@@ -172,6 +250,19 @@ export const ELECTRICIAN_GUIDE: Record<string, TechnicalDefinition> = {
       'Exclusions : Locaux médicaux, traction, mines, HT',
     ],
     norm: 'NS 01-001 - Chapitre 1',
+    sourceFamily: 'NS01',
+    criticalChecks: [
+      'Vérifier que le périmètre de la question reste bien en basse tension.',
+      'Vérifier que l’installation n’entre pas dans un domaine explicitement exclu.',
+    ],
+    validationNote:
+      "Si l'installation sort du domaine BT ou du champ d'application courant, transmettre au référent études/ingénierie.",
+    defaultVerdict: 'A verifier',
+    defaultSeverity: 'information',
+    correctiveActions: [
+      'Qualifier le domaine exact de l’installation.',
+      'Transmettre au référent études si le cas sort du périmètre standard BT.',
+    ],
     keywords: ['ns 01-001', 'domaine', 'application', 'tension', 'bt', '1000', 'erp'],
   },
   ns01_terms: {
@@ -217,6 +308,25 @@ export const ELECTRICIAN_GUIDE: Record<string, TechnicalDefinition> = {
       'Surtensions : Protection parafoudre contre actes atmosphériques',
     ],
     norm: 'NS 01-001 - Chapitre 3',
+    sourceFamily: 'NS01',
+    criticalChecks: [
+      'Vérifier la protection contre les contacts directs.',
+      'Vérifier la coupure automatique en cas de défaut indirect.',
+      'Vérifier la coordination contre surcharge, court-circuit et surtension.',
+    ],
+    forbiddenPractices: [
+      'Absence de dispositif différentiel sur un circuit exposé.',
+      'Protection laissée inadaptée à la section ou au régime de neutre.',
+    ],
+    validationNote:
+      'La sécurité des personnes prime: si la chaîne de protection est incomplète, l’ouvrage ne doit pas être déclaré conforme.',
+    defaultVerdict: 'Non conforme',
+    defaultSeverity: 'critique',
+    correctiveActions: [
+      'Corriger immédiatement la chaîne de protection défaillante.',
+      'Interdire la mise en service tant que la protection n’est pas complète.',
+      'Recontrôler les dispositifs avant validation finale.',
+    ],
     keywords: [
       'protection',
       'choc electrique',
@@ -475,32 +585,100 @@ function matchDefinition(query: string): TechnicalDefinition | null {
   return bestScore >= 3 ? bestMatch : null;
 }
 
+function deriveCriticalChecks(def: TechnicalDefinition): string[] {
+  if (def.criticalChecks && def.criticalChecks.length > 0) {
+    return def.criticalChecks;
+  }
+
+  const derived = def.specs.filter((spec) =>
+    /obligatoire|strictement|minimum|≥|<=|≤|doit|conforme/i.test(spec)
+  );
+
+  return (derived.length > 0 ? derived : def.specs).slice(0, 3);
+}
+
+function deriveForbiddenPractices(def: TechnicalDefinition): string[] {
+  if (def.forbiddenPractices && def.forbiddenPractices.length > 0) {
+    return def.forbiddenPractices;
+  }
+
+  return def.specs
+    .filter((spec) => /interdit|jamais|ne jamais|à éviter|rejet|défaut/i.test(spec))
+    .slice(0, 3);
+}
+
+function deriveCorrectiveActions(def: TechnicalDefinition): string[] {
+  if (def.correctiveActions && def.correctiveActions.length > 0) {
+    return def.correctiveActions;
+  }
+
+  return [
+    'Consigner l’écart constaté dans le rapport de contrôle.',
+    'Faire corriger l’ouvrage avant certification.',
+    'Programmer un recontrôle après correction.',
+  ];
+}
+
+function formatSection(title: string, items: string[], numbered = false): string {
+  if (items.length === 0) return '';
+  const lines = items.map((item, index) => `${numbered ? `${index + 1}.` : '-'} ${item}`).join('\n');
+  return `**${title}**\n${lines}`;
+}
+
 function formatTechnicalResponse(def: TechnicalDefinition): string {
-  return `
-🕌 **${def.title}**
+  const criticalChecks = deriveCriticalChecks(def);
+  const forbiddenPractices = deriveForbiddenPractices(def);
+  const correctiveActions = deriveCorrectiveActions(def);
+  const validationNote =
+    def.validationNote ||
+    'Si une donnée terrain est incomplète ou contradictoire, suspendre la conclusion et faire confirmer par le superviseur technique.';
+  const verdict = def.defaultVerdict || 'A verifier';
+  const severity = def.defaultSeverity || 'information';
 
-📖 ${def.description}
-
-🛠️ **Règles essentielles :**
-${def.specs.map((s) => '• ' + s).join('\n')}
-
-📏 **Norme :** ${def.norm}
-
-⚡ **Conseil GEM-MINT :**
-Respectez strictement ces règles pour garantir la sécurité des ménages et la conformité COSSUEL.
-
-Al-Hamdulillah 🤲
-`;
+  return [
+    `**${def.title}**`,
+    '',
+    `Objet : ${def.description}`,
+    `Référence : ${def.norm}`,
+    def.sourceFamily ? `Source : ${def.sourceFamily}` : '',
+    `Verdict type : ${verdict}`,
+    `Gravité type : ${severity}`,
+    '',
+    formatSection('Exigences techniques', def.specs, true),
+    '',
+    formatSection('Points de contrôle', criticalChecks),
+    forbiddenPractices.length > 0 ? '' : '',
+    formatSection('Pratiques non conformes', forbiddenPractices),
+    '',
+    formatSection('Actions correctives', correctiveActions),
+    '',
+    `**Conclusion de contrôle**\n${validationNote}`,
+  ]
+    .filter(Boolean)
+    .join('\n');
 }
 
 export function getTechnicalAnswer(
   query: string
-): { message: string; images?: { url: string; caption: string }[] } | null {
+): {
+  message: string;
+  images?: { url: string; caption: string }[];
+  title: string;
+  reference: string;
+  verdict?: 'Conforme sous réserve' | 'Non conforme' | 'A verifier';
+  severity?: 'critique' | 'majeure' | 'mineure' | 'information';
+  recommendedAction?: string;
+} | null {
   const match = matchDefinition(query);
   if (!match) return null;
 
   return {
     message: formatTechnicalResponse(match),
     images: match.images,
+    title: match.title,
+    reference: match.norm,
+    verdict: match.defaultVerdict,
+    severity: match.defaultSeverity,
+    recommendedAction: deriveCorrectiveActions(match)[0],
   };
 }

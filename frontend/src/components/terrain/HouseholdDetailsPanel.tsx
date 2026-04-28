@@ -804,6 +804,12 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
             updatedAt={household.updatedAt}
             isAdmin={isAdmin}
             onEdit={(newStatus) => setShowStatusModal(true)}
+            stages={timelineStages.map((stage) => ({
+              label: stage,
+              value: stage,
+              description: stageVisuals[stage]?.description,
+              icon: stageVisuals[stage]?.icon,
+            }))}
           />
 
           {/* Grappe */}

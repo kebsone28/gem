@@ -170,15 +170,15 @@ export default function Aide() {
       bg: 'bg-violet-100 dark:bg-violet-900/50 text-violet-900 dark:text-violet-100',
       zap: 'text-violet-900 dark:text-violet-100',
       content: [
-        "Decision Engine (Cerveau) : Analyse prédictive des risques et génération d'insights stratégiques pour la DG.",
+        "Decision Engine (Cerveau) : Analyse assistée des risques et génération d'insights à partir des données serveur synchronisées.",
         'Electrician Quran : Base de connaissances immuable intégrant les normes NS 01-001 et NFC 15-100.',
-        'Vision AI : Analyse intelligente des photos terrain pour détecter les anomalies visuelles.',
-        'Mentor Sage Interactif : Chat intelligent redimensionnable pour un pilotage assisté par IA.',
+        'Vision assistée : Analyse photo orientée audit technique, utile pour le pré-diagnostic mais à confirmer humainement.',
+        'Mentor Sage Interactif : Chat contextuel branché sur les ménages, équipes et journaux d’audit côté serveur.',
       ],
       utility:
-        "Auditer automatiquement vos données avant validation. L'IA compare vos saisies terrain avec les normes techniques pour garantir un chantier sans défaut.",
+        "Aider au pilotage et au pré-contrôle avant validation. L'IA compare vos données terrain serveur avec les règles métier et les normes techniques pour signaler les points d'attention.",
       example:
-        "L'IA identifie une sous-utilisation des ressources à Kolda et suggère le redéploiement de 2 équipes vers Ziguinchor pour rattraper le retard.",
+        "Le mentor signale qu'une région concentre du retard et suggère un arbitrage à vérifier par le chef de projet avant décision.",
     },
     {
       id: 'pv_automation',
@@ -206,7 +206,7 @@ export default function Aide() {
       bg: 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-900 dark:text-indigo-100',
       zap: 'text-indigo-900 dark:text-indigo-100',
       content: [
-        'KPIs en temps réel : total ménages, % avancement, zones actives, alertes terrain — source de vérité PostgreSQL.',
+        'KPIs en temps réel : total ménages, % avancement, zones actives, alertes terrain — lecture serveur comme source de vérité.',
         'SaaS Multi-Tenant : Isolation stricte des données par organisation.',
         "Journal d'audit : Tracabilité complète de chaque action critique sur le serveur.",
         'Accès rapide : Rapports / Gestion Utilisateurs / Carte Terrain.',
@@ -494,9 +494,36 @@ export default function Aide() {
     <PageContainer>
       <PageHeader
         title="Aide & Tour d'Horizon"
-        subtitle="Guide complet de GEM SaaS v4.0 — architecture cloud avec backend PostgreSQL & performance temps réel."
+        subtitle="Guide produit et mode d'emploi interne — données de référence lues depuis le serveur, avec fonctions IA disponibles, assistées ou avancées."
         icon={HelpCircle}
       />
+
+      <Section title="Statut du Module IA">
+        <ContentArea>
+          <div className={`${COMMON_CLASSES.card} p-5 md:p-6`}>
+            <div className="grid gap-3 md:grid-cols-3">
+              <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4">
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-400">Disponible</p>
+                <p className="mt-2 text-sm font-semibold leading-relaxed">
+                  Chat mentor avec contexte serveur, base normative, lecture des ménages, équipes et activité récente.
+                </p>
+              </div>
+              <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4">
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-amber-400">Assisté</p>
+                <p className="mt-2 text-sm font-semibold leading-relaxed">
+                  Vision photo utile pour le pré-diagnostic terrain, mais qui reste un appui et non une validation automatique.
+                </p>
+              </div>
+              <div className="rounded-2xl border border-blue-500/20 bg-blue-500/10 p-4">
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-400">Cadre</p>
+                <p className="mt-2 text-sm font-semibold leading-relaxed">
+                  Les recommandations IA restent des propositions d'aide à la décision. La validation métier reste humaine.
+                </p>
+              </div>
+            </div>
+          </div>
+        </ContentArea>
+      </Section>
 
       <Section title="📸 Aperçu de l'Interface">
         <ScreenshotGallery />

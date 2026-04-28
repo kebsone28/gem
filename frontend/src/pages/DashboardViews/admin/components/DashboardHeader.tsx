@@ -69,6 +69,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
 
   const quickActions = [
     {
+      kicker: 'Planification',
       label: 'Ajouter mission',
       description: 'Planifier une intervention',
       icon: Plus,
@@ -76,6 +77,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
       variant: 'secondary' as const,
     },
     {
+      kicker: 'Collecte',
       label: 'Scanner / collecter',
       description: 'Kobo et collecte rapide',
       icon: ScanLine,
@@ -83,6 +85,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
       variant: 'secondary' as const,
     },
     {
+      kicker: 'Terrain',
       label: 'Ouvrir carte',
       description: 'Voir zones et menages',
       icon: Map,
@@ -90,6 +93,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
       variant: 'secondary' as const,
     },
     {
+      kicker: 'Priorité',
       label: isSyncing ? 'Synchronisation...' : 'Synchroniser',
       description: 'Action prioritaire',
       icon: RefreshCw,
@@ -139,6 +143,12 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
     { label: 'Progression', value: `${safeProjectProgress}%`, icon: ArrowRight },
   ];
 
+  const heroSignals = [
+    { label: 'Statut', value: syncHealth === 'healthy' ? 'Stable' : syncHealth === 'degraded' ? 'Surveillance' : 'Alerte' },
+    { label: 'Kobo', value: koboConnected ? 'Connecté' : 'Hors ligne' },
+    { label: 'Export', value: exportAvailable ? 'Prêt' : 'En attente' },
+  ];
+
   return (
     <section className="relative overflow-hidden rounded-[1.7rem] border border-white/10 bg-[linear-gradient(180deg,rgba(20,28,48,0.98),rgba(10,15,28,1))] px-4 py-4 shadow-[0_30px_80px_rgba(2,6,23,0.52)] backdrop-blur-2xl sm:rounded-[2.1rem] sm:px-5 sm:py-5 lg:px-7 lg:py-7">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.12),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.07),transparent_24%)]" />
@@ -162,6 +172,21 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
             <p className="mt-2 max-w-2xl text-[0.9rem] leading-relaxed text-slate-400 sm:text-[0.98rem]">
               Pilotage terrain, sync et collecte hors-ligne.
             </p>
+            <div className="mt-4 flex flex-wrap gap-2.5">
+              {heroSignals.map(({ label, value }) => (
+                <div
+                  key={label}
+                  className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
+                >
+                  <span className="text-[0.62rem] font-black uppercase tracking-[0.14em] text-slate-500">
+                    {label}
+                  </span>
+                  <span className="ml-2 text-[0.72rem] font-bold uppercase tracking-[0.08em] text-slate-200">
+                    {value}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
 
           <button
@@ -177,48 +202,69 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
           </button>
         </div>
 
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1.28fr)_minmax(290px,0.92fr)] lg:gap-4">
-          <div className="grid grid-cols-1 gap-3 min-[560px]:grid-cols-2 xl:grid-cols-4">
-            {quickActions.map(({ label, description, icon: Icon, onClick, disabled, variant }) => (
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1.18fr)_minmax(320px,0.82fr)] lg:gap-4">
+          <div className="grid grid-cols-1 gap-3 min-[560px]:grid-cols-2 2xl:grid-cols-4">
+            {quickActions.map(({ kicker, label, description, icon: Icon, onClick, disabled, variant }) => (
               <button
                 key={label}
                 onClick={onClick}
                 disabled={disabled || isLoading}
-                className={`${variant === 'primary' ? DASHBOARD_ACTION_TILE_PRIMARY : DASHBOARD_ACTION_TILE_SECONDARY} min-h-[100px] rounded-[1.3rem] border-white/10 px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-[116px] sm:px-4.5 sm:py-4.5 sm:rounded-[1.45rem] ${variant === 'primary' ? 'bg-[linear-gradient(180deg,rgba(13,20,35,0.98),rgba(11,18,32,1))] text-white ring-1 ring-blue-500/35 shadow-[0_20px_40px_rgba(37,99,235,0.18)]' : 'bg-[linear-gradient(180deg,rgba(13,20,35,0.92),rgba(11,18,32,0.98))]'}`}
+                className={`${variant === 'primary' ? DASHBOARD_ACTION_TILE_PRIMARY : DASHBOARD_ACTION_TILE_SECONDARY} min-h-[102px] rounded-[1.3rem] border-white/10 px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-[108px] sm:px-4.5 sm:py-4.5 sm:rounded-[1.45rem] ${variant === 'primary' ? 'bg-[linear-gradient(180deg,rgba(13,20,35,0.98),rgba(11,18,32,1))] text-white ring-1 ring-blue-500/35 shadow-[0_20px_40px_rgba(37,99,235,0.18)]' : 'bg-[linear-gradient(180deg,rgba(13,20,35,0.92),rgba(11,18,32,0.98))]'}`}
               >
-                <div className="flex items-start gap-3">
+                <div className="flex h-full flex-col justify-between gap-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div
+                      className={`flex h-11 w-11 items-center justify-center rounded-[0.95rem] border sm:h-12 sm:w-12 sm:rounded-[1rem] ${
+                        variant === 'primary'
+                          ? 'border-white/10 bg-white/15'
+                          : 'border-white/6 bg-white/[0.04]'
+                      }`}
+                    >
+                      <Icon
+                        size={20}
+                        className={
+                          disabled ? '' : variant === 'primary' ? 'text-white' : 'text-blue-300'
+                        }
+                      />
+                    </div>
+                    <span
+                      className={`rounded-full px-2.5 py-1 text-[0.58rem] font-black uppercase tracking-[0.14em] ${
+                        variant === 'primary'
+                          ? 'bg-blue-500/20 text-blue-100'
+                          : 'bg-white/[0.05] text-slate-500'
+                      }`}
+                    >
+                      {kicker}
+                    </span>
+                  </div>
                   <div
-                    className={`flex h-11 w-11 items-center justify-center rounded-[0.95rem] border sm:h-12 sm:w-12 sm:rounded-[1rem] ${
+                    className={`min-w-0 rounded-[1rem] border px-3 py-3 text-left ${
                       variant === 'primary'
-                        ? 'border-white/10 bg-white/15'
-                        : 'border-white/6 bg-white/[0.04]'
+                        ? 'border-white/8 bg-white/[0.04]'
+                        : 'border-white/6 bg-black/10'
                     }`}
                   >
-                    <Icon
-                      size={20}
-                      className={
-                        disabled ? '' : variant === 'primary' ? 'text-white' : 'text-blue-300'
-                      }
-                    />
-                  </div>
-                  <div className="min-w-0 text-left">
-                    <p className="text-[0.9rem] font-black uppercase tracking-[0.03em] text-white sm:text-[0.94rem]">
+                    <p className="text-[0.88rem] font-black uppercase tracking-[0.02em] text-white sm:text-[0.95rem]">
                       {label}
                     </p>
                     <p
-                      className={`mt-1 text-[0.82rem] leading-snug sm:text-[0.88rem] ${
+                      className={`mt-1 text-[0.8rem] leading-snug sm:text-[0.86rem] ${
                         variant === 'primary' ? 'text-blue-100/90' : 'text-slate-400'
                       }`}
                     >
                       {description}
                     </p>
+                    <div className="mt-3 flex items-center gap-2 text-[0.66rem] font-black uppercase tracking-[0.12em] text-slate-500">
+                      Ouvrir
+                      <ArrowRight size={12} className={variant === 'primary' ? 'text-blue-200' : 'text-slate-500'} />
+                    </div>
                   </div>
                 </div>
               </button>
             ))}
           </div>
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:grid-cols-1">
             {statusCards.map(({ title, value, meta, icon: Icon, tone }) => (
               <div
                 key={title}
@@ -245,7 +291,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
           {pilotageCards.map(({ label, value, icon: Icon }) => (
             <div
               key={label}

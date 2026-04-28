@@ -2,6 +2,9 @@ const EMPTY_OBJECT = {};
 
 export const LEGACY_SAFE_HOUSEHOLD_READ_SELECT = {
   id: true,
+  grappeId: true,
+  numeroordre: true,
+  phone: true,
   zoneId: true,
   organizationId: true,
   status: true,
@@ -49,7 +52,18 @@ export function normalizeLegacyHousehold(rawHousehold) {
     koboData,
     location: Object.keys(location).length > 0 ? location : null,
     name: pickFirstString(owner.name, koboData.name, koboData.nom, koboData.beneficiaire),
-    phone: pickFirstString(owner.phone, owner.telephone, koboData.phone, koboData.telephone),
+    phone: pickFirstString(
+      household.phone,
+      owner.phone,
+      owner.telephone,
+      koboData.phone,
+      koboData.telephone,
+      koboData.tel,
+      koboData.contact,
+      koboData.contact_phone,
+      koboData.numero_telephone,
+      koboData.tel_mobile
+    ),
     region: pickFirstString(koboData.region, owner.region),
     departement: pickFirstString(koboData.departement, owner.departement),
     village: pickFirstString(
@@ -57,6 +71,12 @@ export function normalizeLegacyHousehold(rawHousehold) {
       koboData.commune,
       koboData.localite,
       owner.village,
+      owner.commune
+    ),
+    commune: pickFirstString(
+      koboData.commune,
+      koboData.commune_nom,
+      koboData.commune_name,
       owner.commune
     ),
     latitude,

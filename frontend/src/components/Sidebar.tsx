@@ -259,12 +259,12 @@ export default function Sidebar() {
         permission: PERMISSIONS.GERER_PARAMETRES,
         category: 'SYSTÈME',
       },
-      { 
-        to: '/aide', 
-        icon: HelpCircle, 
-        label: "Centre d'Aide", 
+      {
+        to: '/aide',
+        icon: HelpCircle,
+        label: "Centre d'Aide",
         title: 'Besoin d’un guide ? Consultez notre documentation complète',
-        category: 'SYSTÈME' 
+        category: 'SYSTÈME',
       },
     ],
     [PERMISSIONS, hasKoboTerminal, isMaster, missionLabel]

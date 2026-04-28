@@ -27,6 +27,7 @@
     "agent:deploy": "node scripts/local-deploy-agent.mjs",
     "build": "cd frontend && npm run build",
     "preview": "cd frontend && npm run preview",
+    "mentor:audit": "node --experimental-strip-types ./scripts/mission_sage_auto_audit.ts",
     "prepare": "husky || true"
   },
   "devDependencies": {

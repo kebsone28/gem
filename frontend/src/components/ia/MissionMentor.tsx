@@ -5,8 +5,12 @@ import {
   Bot,
   Sparkles,
   X,
+  BookOpen,
   Info,
   ShieldAlert,
+  ShieldCheck,
+  TriangleAlert,
+  Search,
   Heart,
   Mic,
   Camera,
@@ -17,19 +21,23 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../contexts/AuthContext';
-import type { AIResponse } from '../../services/ai/MissionSageService';
+import type { AIResponse, RegionalSummary } from '../../services/ai/MissionSageService';
 import { missionSageService } from '../../services/ai/MissionSageService';
 import { wordReportService } from '../../services/ai/WordReportService';
 import { analyzeDG } from '../../services/ai/DecisionEngine';
 import type { MissionStats } from '../../services/missionStatsService';
 import logger from '../../utils/logger';
-import type { AuditLog, Household } from '../../utils/types';
+import type { AuditLog, Household, Team } from '../../utils/types';
 import AIEngineAdminPanel from './AIEngineAdminPanel';
+import AIPremiumMessage from './AIPremiumMessage';
+import AITrainingStudio from './AITrainingStudio';
 
 interface MissionMentorProps {
   stats: MissionStats | null;
   auditLogs: AuditLog[];
   households: Household[];
+  teams: Team[];
+  regionalSummaries: RegionalSummary[];
 }
 
 /**
@@ -37,7 +45,13 @@ interface MissionMentorProps {
  * Le Guide Intelligent de la plateforme PROQUELEC.
  * Sagesse, Respect, Sécurité et Direction Sécure.
  */
-export const MissionMentor: React.FC<MissionMentorProps> = ({ stats, auditLogs, households }) => {
+export const MissionMentor: React.FC<MissionMentorProps> = ({
+  stats,
+  auditLogs,
+  households,
+  teams,
+  regionalSummaries,
+}) => {
   const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -46,6 +60,7 @@ export const MissionMentor: React.FC<MissionMentorProps> = ({ stats, auditLogs, 
   const [isListening, setIsListening] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
+  const [isTrainingStudioOpen, setIsTrainingStudioOpen] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -54,11 +69,114 @@ export const MissionMentor: React.FC<MissionMentorProps> = ({ stats, auditLogs, 
       stats,
       auditLogs,
       households,
-      teams: [],
-      regionalSummaries: [],
+      teams,
+      regionalSummaries,
     }),
-    [stats, auditLogs, households]
+    [stats, auditLogs, households, teams, regionalSummaries]
   );
+  const canManageAI =
+    user?.role === 'ADMIN_PROQUELEC' || user?.role === 'ADMIN' || user?.email === 'admingem';
+
+  const speakResponse = (message: string) => {
+    if (isMuted || !('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    const pureText = message.replace(/[\u{1F600}-\u{1F6FF}|[\u{2600}-\u{26FF}]|\*/gu, '');
+    const utterance = new SpeechSynthesisUtterance(pureText);
+    utterance.lang = 'fr-FR';
+    utterance.rate = 1.05;
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const verdictBadgeClass = (verdict?: AIResponse['verdict']) => {
+    switch (verdict) {
+      case 'Conforme':
+      case 'Conforme sous réserve':
+        return 'border-emerald-500/30 bg-emerald-500/15 text-emerald-300';
+      case 'Non conforme':
+        return 'border-rose-500/30 bg-rose-500/15 text-rose-300';
+      case 'A verifier':
+        return 'border-amber-500/30 bg-amber-500/15 text-amber-300';
+      default:
+        return 'border-white/10 bg-white/5 text-slate-300';
+    }
+  };
+
+  const verdictAccentClass = (verdict?: AIResponse['verdict']) => {
+    switch (verdict) {
+      case 'Conforme':
+      case 'Conforme sous réserve':
+        return 'from-emerald-400/70 to-emerald-500/10';
+      case 'Non conforme':
+        return 'from-rose-400/80 to-rose-500/10';
+      case 'A verifier':
+        return 'from-amber-400/80 to-amber-500/10';
+      default:
+        return 'from-blue-400/50 to-transparent';
+    }
+  };
+
+  const severityAccentClass = (severity?: AIResponse['severity']) => {
+    switch (severity) {
+      case 'critique':
+        return 'shadow-[0_0_0_1px_rgba(244,63,94,0.22),0_18px_50px_-24px_rgba(244,63,94,0.45)]';
+      case 'majeure':
+        return 'shadow-[0_0_0_1px_rgba(249,115,22,0.18),0_18px_50px_-24px_rgba(249,115,22,0.35)]';
+      case 'mineure':
+        return 'shadow-[0_0_0_1px_rgba(14,165,233,0.18),0_18px_50px_-24px_rgba(14,165,233,0.35)]';
+      default:
+        return '';
+    }
+  };
+
+  const severityBadgeClass = (severity?: AIResponse['severity']) => {
+    switch (severity) {
+      case 'critique':
+        return 'border-rose-500/30 bg-rose-500/15 text-rose-300';
+      case 'majeure':
+        return 'border-orange-500/30 bg-orange-500/15 text-orange-300';
+      case 'mineure':
+        return 'border-sky-500/30 bg-sky-500/15 text-sky-300';
+      case 'information':
+        return 'border-blue-500/30 bg-blue-500/15 text-blue-300';
+      default:
+        return 'border-white/10 bg-white/5 text-slate-300';
+    }
+  };
+
+  const VerdictIcon = (verdict?: AIResponse['verdict']) => {
+    switch (verdict) {
+      case 'Conforme':
+      case 'Conforme sous réserve':
+        return ShieldCheck;
+      case 'Non conforme':
+        return ShieldAlert;
+      case 'A verifier':
+        return Search;
+      default:
+        return Info;
+    }
+  };
+
+  const SeverityIcon = (severity?: AIResponse['severity']) => {
+    switch (severity) {
+      case 'critique':
+      case 'majeure':
+        return TriangleAlert;
+      case 'mineure':
+      case 'information':
+        return Info;
+      default:
+        return Info;
+    }
+  };
+
+  const controlSheetEntries = (sheet?: AIResponse['controlSheet']) =>
+    [
+      { key: 'observation', label: 'Observation', value: sheet?.observation },
+      { key: 'referenceRule', label: 'Regle de reference', value: sheet?.referenceRule },
+      { key: 'mainRisk', label: 'Risque principal', value: sheet?.mainRisk },
+      { key: 'immediateAction', label: 'Action immediate', value: sheet?.immediateAction },
+    ].filter(entry => Boolean(entry.value));
 
   // Auto-scroll à chaque nouveau message - ajusté pour montrer le début du message IA
   useEffect(() => {
@@ -105,7 +223,7 @@ export const MissionMentor: React.FC<MissionMentorProps> = ({ stats, auditLogs, 
       };
       checkProactive();
     }
-  }, [isOpen, user, stats, auditLogs, households]);
+  }, [aiState, auditLogs.length, history.length, isOpen, stats, user]);
 
   const handleSend = async () => {
     if (!query.trim() || !user) return;
@@ -117,60 +235,23 @@ export const MissionMentor: React.FC<MissionMentorProps> = ({ stats, auditLogs, 
     // Afficher directement le message de l'utilisateur
     setHistory((prev) => [...prev, { message: originalQuery, type: 'user' } as AIResponse]);
 
-    // Simulation de réflexion de l'IA (Sagesse de Guide)
-    setTimeout(async () => {
-      try {
-        const resp = await missionSageService.processQuery(originalQuery, user, {
-          ...aiState,
-        });
-
-        // J.A.R.V.I.S : Génération dynamique de Smart Replies contextuelles
-        if (!resp.smartReplies) {
-          if (
-            resp.message.toLowerCase().includes('tech') ||
-            resp.message.toLowerCase().includes('norme')
-          ) {
-            resp.smartReplies = [
-              'Voir les Anomalies MFR',
-              'Comment dénuder un câble ?',
-              'Aide Vision AI',
-            ];
-          } else if (resp.message.toLowerCase().includes('mission')) {
-            resp.smartReplies = ['Aide Création OM', 'Comment certifier ?', 'QR Code Validation'];
-          } else {
-            resp.smartReplies = ['Aide Vision AI', 'Aide Rapports Word', 'Pilotage IGPP'];
-          }
-        }
-
-        setHistory((prev) => [...prev, resp]);
-
-        // TEXT-TO-SPEECH (J.A.R.V.I.S Mode)
-        if (!isMuted && 'speechSynthesis' in window) {
-          window.speechSynthesis.cancel();
-          // Strip emojis and markdown for pure voice
-          const pureText = resp.message.replace(
-            /[\u{1F600}-\u{1F6FF}|[\u{2600}-\u{26FF}]|\*/gu,
-            ''
-          );
-          const utterance = new SpeechSynthesisUtterance(pureText);
-          utterance.lang = 'fr-FR';
-          utterance.rate = 1.05;
-          window.speechSynthesis.speak(utterance);
-        }
-      } catch (err: any) {
-        logger.error('[MissionMentor] Error processing query', err);
-        setHistory((prev) => [
-          ...prev,
-          {
-            message:
-              "Désolé, une erreur technique a empêché la réponse. Vérifiez votre connexion ou la configuration de l'IA.",
-            type: 'error',
-          } as AIResponse,
-        ]);
-      } finally {
-        setIsThinking(false);
-      }
-    }, 1200);
+    try {
+      const resp = await missionSageService.processQuery(originalQuery, user, aiState);
+      setHistory((prev) => [...prev, resp]);
+      speakResponse(resp.message);
+    } catch (err: any) {
+      logger.error('[MissionMentor] Error processing query', err);
+      setHistory((prev) => [
+        ...prev,
+        {
+          message:
+            "Désolé, une erreur technique a empêché la réponse. Vérifiez votre connexion ou la configuration de l'IA.",
+          type: 'error',
+        } as AIResponse,
+      ]);
+    } finally {
+      setIsThinking(false);
+    }
   };
 
   const handleCameraUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -201,14 +282,7 @@ export const MissionMentor: React.FC<MissionMentorProps> = ({ stats, auditLogs, 
           );
           setHistory((prev) => [...prev, resp]);
 
-          if (!isMuted && 'speechSynthesis' in window) {
-            window.speechSynthesis.cancel();
-            const utterance = new SpeechSynthesisUtterance(
-              "Analyse terminée. J'ai détecté des points d'attention sur votre installation."
-            );
-            utterance.lang = 'fr-FR';
-            window.speechSynthesis.speak(utterance);
-          }
+          speakResponse("Analyse terminée. J'ai détecté des points d'attention sur votre installation.");
         } catch (err) {
           logger.error('[MissionMentor] Vision analysis failed', err);
           setHistory((prev) => [
@@ -263,22 +337,6 @@ export const MissionMentor: React.FC<MissionMentorProps> = ({ stats, auditLogs, 
 
   return (
     <>
-      <style>
-        {`
-          .ai-message-anchor::first-line {
-            font-size: 14px;
-            font-weight: 900;
-            color: #60a5fa;
-            border-left: 3px solid #3b82f6;
-            padding-left: 8px;
-            margin-bottom: 4px;
-            display: block;
-          }
-          .ai-response-first-line-visible {
-            padding-top: 8px;
-          }
-        `}
-      </style>
       {/* FLOATING BUTTON (GEM-MINT) */}
       <div className="fixed right-4 bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:bottom-10 sm:right-10 z-[1000] no-print" title="Ouvrir le Mentor GEM-MINT">
         <motion.button
@@ -339,14 +397,23 @@ export const MissionMentor: React.FC<MissionMentorProps> = ({ stats, auditLogs, 
                 >
                   {isMaximized ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
                 </button>
-                {(user?.role === 'ADMIN_PROQUELEC' || user?.email === 'admingem') && (
-                  <button
-                    onClick={() => setIsAdminPanelOpen(true)}
-                    title="Configuration Moteur IA"
-                    className="text-slate-500 hover:text-blue-400 transition-colors p-2 rounded-full hover:bg-blue-500/10"
-                  >
-                    <Bot size={16} />
-                  </button>
+                {canManageAI && (
+                  <>
+                    <button
+                      onClick={() => setIsTrainingStudioOpen(true)}
+                      title="Studio d'apprentissage"
+                      className="text-slate-500 hover:text-emerald-300 transition-colors p-2 rounded-full hover:bg-emerald-500/10"
+                    >
+                      <BookOpen size={16} />
+                    </button>
+                    <button
+                      onClick={() => setIsAdminPanelOpen(true)}
+                      title="Configuration Moteur IA"
+                      className="text-slate-500 hover:text-blue-400 transition-colors p-2 rounded-full hover:bg-blue-500/10"
+                    >
+                      <Bot size={16} />
+                    </button>
+                  </>
                 )}
                 <button
                   onClick={() => setIsOpen(false)}
@@ -386,9 +453,14 @@ export const MissionMentor: React.FC<MissionMentorProps> = ({ stats, auditLogs, 
                         ? `bg-amber-950 border-amber-500/30 text-amber-100 ${isMaximized ? 'mr-auto ml-0 sm:ml-4 max-w-[92%] sm:max-w-[85%]' : 'mr-0 sm:mr-12'} rounded-tl-none`
                         : resp.type === 'error'
                           ? `bg-rose-950 border-rose-500/30 text-rose-100 ${isMaximized ? 'mr-auto ml-0 sm:ml-4 max-w-[92%] sm:max-w-[85%]' : 'mr-0 sm:mr-12'} rounded-tl-none`
-                          : `bg-[#0a192e] border-blue-500/30 text-blue-50 shadow-xl ${isMaximized ? 'mr-auto ml-0 sm:ml-4 max-w-[92%] sm:max-w-[85%]' : 'mr-0 sm:mr-12'} rounded-tl-none ai-message-anchor`
-                  }`}
+                          : `bg-[#0a192e] border-blue-500/30 text-blue-50 shadow-xl ${isMaximized ? 'mr-auto ml-0 sm:ml-4 max-w-[92%] sm:max-w-[85%]' : 'mr-0 sm:mr-12'} rounded-tl-none`
+                  } ${resp.type !== 'user' ? severityAccentClass(resp.severity) : ''}`}
                 >
+                  {resp.type !== 'user' && (resp.verdict || resp.severity) && (
+                    <div
+                      className={`absolute inset-x-0 top-0 h-px bg-gradient-to-r ${verdictAccentClass(resp.verdict)}`}
+                    />
+                  )}
                   <div className="flex gap-4 items-start">
                     {resp.type !== 'user' && (
                       <div
@@ -410,11 +482,81 @@ export const MissionMentor: React.FC<MissionMentorProps> = ({ stats, auditLogs, 
                       </div>
                     )}
                     <div className="flex-1 space-y-4">
-                      <p
-                        className={`text-[13px] sm:text-[13px] font-bold leading-relaxed whitespace-pre-wrap ${resp.type === 'user' ? 'italic' : 'ai-response-first-line-visible'}`}
-                      >
-                        {resp.message}
-                      </p>
+                      {(resp.verdict || resp.severity) && (
+                        <div className="flex flex-wrap gap-2">
+                          {resp.verdict && (
+                            <span
+                              className={`inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] ${verdictBadgeClass(resp.verdict)}`}
+                            >
+                              {(() => {
+                                const Icon = VerdictIcon(resp.verdict);
+                                return <Icon size={12} className="mr-1.5" />;
+                              })()}
+                              {resp.verdict}
+                            </span>
+                          )}
+                          {resp.severity && (
+                            <span
+                              className={`inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] ${severityBadgeClass(resp.severity)}`}
+                            >
+                              {(() => {
+                                const Icon = SeverityIcon(resp.severity);
+                                return <Icon size={12} className="mr-1.5" />;
+                              })()}
+                              {resp.severity}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      {resp.type === 'user' ? (
+                        <p className="text-[13px] font-bold leading-7 whitespace-pre-wrap italic text-slate-100">
+                          {resp.message}
+                        </p>
+                      ) : (
+                        <AIPremiumMessage message={resp.message} />
+                      )}
+
+                      {resp.controlSheet && controlSheetEntries(resp.controlSheet).length > 0 && (
+                        <div className="rounded-[1.35rem] border border-white/10 bg-slate-950/35 p-4">
+                          <div className="mb-3 flex items-center justify-between gap-3">
+                            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-300">
+                              Fiche de controle terrain
+                            </p>
+                            {resp._engine === 'VISION' && (
+                              <span className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.18em] text-cyan-300">
+                                Vision assistee
+                              </span>
+                            )}
+                          </div>
+                          <div className="grid gap-3 sm:grid-cols-2">
+                            {controlSheetEntries(resp.controlSheet).map(entry => (
+                              <div
+                                key={entry.key}
+                                className="rounded-2xl border border-white/8 bg-white/[0.03] px-3 py-3"
+                              >
+                                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
+                                  {entry.label}
+                                </p>
+                                <p className="mt-2 text-[12px] font-semibold leading-relaxed text-slate-100">
+                                  {entry.value}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {resp.recommendedAction &&
+                        resp.recommendedAction !== resp.controlSheet?.immediateAction && (
+                        <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/10 px-4 py-3">
+                          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-300">
+                            Action recommandee
+                          </p>
+                          <p className="mt-2 text-[12px] font-semibold leading-relaxed text-cyan-50">
+                            {resp.recommendedAction}
+                          </p>
+                        </div>
+                      )}
 
                       {resp.images && resp.images.length > 0 && (
                         <div className="grid gap-4 mt-2">
@@ -560,6 +702,17 @@ export const MissionMentor: React.FC<MissionMentorProps> = ({ stats, auditLogs, 
       {/* AI ENGINE CONFIG MODAL */}
       {isAdminPanelOpen && user && (
         <AIEngineAdminPanel user={user} onClose={() => setIsAdminPanelOpen(false)} />
+      )}
+      {isTrainingStudioOpen && user && (
+        <AITrainingStudio
+          user={user}
+          stats={stats}
+          auditLogs={auditLogs}
+          households={households}
+          teams={teams}
+          regionalSummaries={regionalSummaries}
+          onClose={() => setIsTrainingStudioOpen(false)}
+        />
       )}
     </>
   );

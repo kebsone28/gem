@@ -13,7 +13,10 @@ import {
   Search,
   Package,
   TrendingUp,
+  Eye,
+  X,
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
 import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -23,6 +26,9 @@ import { db } from '../store/db';
 import { useSyncListener } from '../hooks/useSyncListener';
 import { fmtNum } from '../utils/format';
 import logger from '../utils/logger';
+import type { Household } from '../utils/types';
+import { HouseholdListView } from '../components/terrain/HouseholdListView';
+import { useTerrainUIStore } from '../store/terrainUIStore';
 
 // Import centralized design system
 import { PageContainer, PageHeader, ContentArea, ActionBar } from '../components';
@@ -35,13 +41,19 @@ import {
 } from '../components/dashboards/DashboardComponents';
 
 const Bordereau = () => {
+  const navigate = useNavigate();
   const { project } = useProject();
+  const setSelectedHouseholdId = useTerrainUIStore((s) => s.setSelectedHouseholdId);
   const projectId = project?.id || null;
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [data, setData] = useState({ grappes: [] });
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedRegions, setExpandedRegions] = useState<Record<string, boolean>>({});
+  const [detailGrappe, setDetailGrappe] = useState<any | null>(null);
+  const [detailHouseholds, setDetailHouseholds] = useState<Household[]>([]);
+  const [detailSearchQuery, setDetailSearchQuery] = useState('');
+  const [detailLoading, setDetailLoading] = useState(false);
 
   const fetchData = async (forceRefresh = false) => {
     if (!projectId) {
@@ -93,6 +105,19 @@ const Bordereau = () => {
       fetchData();
     }
   }, [projectId]);
+
+  useEffect(() => {
+    if (!detailGrappe) return undefined;
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        handleCloseGrappeDetails();
+      }
+    };
+
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [detailGrappe]);
 
   useSyncListener((source) => {
     logger.debug(`[BORDEREAU] Data changed by ${source} - refreshing...`);
@@ -157,21 +182,115 @@ const Bordereau = () => {
     });
   }, [groupedData, debouncedQuery]);
 
-  const handleExportGrappe = (grappe: any, format: string) => {
-    try {
-      if (format === 'pdf') {
-        generateGrappePDF({ ...grappe, date: new Date() }, 'Projet GEM');
-        toast.success(`Export PDF généré pour ${grappe.name}`);
-      } else if (format === 'excel') {
-        generateGrappeExcel({ ...grappe, date: new Date() });
-        toast.success(`Export Excel généré pour ${grappe.name}`);
-      } else {
-        toast.success(`Affichage de la liste à venir pour ${grappe.name}`);
+  const buildFallbackTeams = (households: any[]) => {
+    const labels = new Set<string>();
+
+    households.forEach((household: any) => {
+      if (Array.isArray(household.assignedTeams)) {
+        household.assignedTeams.forEach((entry: unknown) => {
+          if (typeof entry === 'string' && entry.trim()) {
+            labels.add(entry.trim());
+          }
+        });
       }
-    } catch (err) {
-      logger.error('Export error:', err);
-      toast.error("Erreur lors de la génération de l'export");
+    });
+
+    return Array.from(labels).map((label) => ({
+      id: `fallback-${label}`,
+      name: label,
+      type: 'Affectation terrain',
+    }));
+  };
+
+  const fetchHouseholdsForGrappe = async (grappe: any) => {
+    const isUnclassified = String(grappe.id).startsWith('unclassified_');
+    const response = await api.get('/households', {
+      params: {
+        projectId,
+        grappeId: isUnclassified ? '__unclassified__' : grappe.id,
+        limit: 10000,
+      },
+    });
+
+    let households = response.data?.households || [];
+
+    if (isUnclassified) {
+      households = households.filter(
+        (household: any) =>
+          !household.grappeId &&
+          (household.region || 'Sans Région') === (grappe.region || 'Sans Région')
+      );
     }
+
+    return households as Household[];
+  };
+
+  const handleOpenGrappeDetails = (grappe: any) => {
+    const runOpen = async () => {
+      try {
+        setDetailLoading(true);
+        setDetailSearchQuery('');
+        setDetailGrappe(grappe);
+        const households = await fetchHouseholdsForGrappe(grappe);
+        setDetailHouseholds(households);
+      } catch (err) {
+        logger.error('Detail load error:', err);
+        toast.error('Erreur lors du chargement des ménages');
+        setDetailGrappe(null);
+        setDetailHouseholds([]);
+      } finally {
+        setDetailLoading(false);
+      }
+    };
+
+    void runOpen();
+  };
+
+  const handleCloseGrappeDetails = () => {
+    setDetailGrappe(null);
+    setDetailHouseholds([]);
+    setDetailSearchQuery('');
+    setDetailLoading(false);
+  };
+
+  const handleSelectHousehold = (household: Household) => {
+    setSelectedHouseholdId(household.id);
+    navigate('/terrain');
+  };
+
+  const handleExportGrappe = (grappe: any, format: string) => {
+    const runExport = async () => {
+      try {
+        const households = await fetchHouseholdsForGrappe(grappe);
+
+        const exportPayload = {
+          ...grappe,
+          teams:
+            Array.isArray(grappe.teams) && grappe.teams.length > 0
+              ? grappe.teams
+              : buildFallbackTeams(households),
+          households,
+          householdCount: households.length || grappe.householdCount || 0,
+        };
+
+        if (format === 'pdf') {
+          generateGrappePDF(exportPayload, project?.name || 'Projet GEM');
+          toast.success(`Export PDF généré pour ${grappe.name}`);
+          return;
+        }
+
+        if (format === 'excel') {
+          generateGrappeExcel(exportPayload);
+          toast.success(`Export Excel généré pour ${grappe.name}`);
+          return;
+        }
+      } catch (err) {
+        logger.error('Export error:', err);
+        toast.error("Erreur lors de la génération de l'export");
+      }
+    };
+
+    void runExport();
   };
 
   const stats = useMemo(() => {
@@ -186,6 +305,23 @@ const Bordereau = () => {
 
     return { total, delivered, pending, pct, critical };
   }, [data]);
+
+  const filteredDetailHouseholds = useMemo(() => {
+    const query = detailSearchQuery.trim().toLowerCase();
+    if (!query) return detailHouseholds;
+
+    return detailHouseholds.filter((household: any) => {
+      const ownerName =
+        (typeof household.owner === 'string' ? household.owner : household.owner?.name) ||
+        household.name ||
+        '';
+      const idParts = [household.numeroordre, household.id, household.grappeName];
+      const locationParts = [household.region, household.departement, household.village];
+      return [...idParts, ownerName, ...locationParts]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(query));
+    });
+  }, [detailHouseholds, detailSearchQuery]);
 
   const getGrappeStatus = (g: any) => {
     if (!g.householdCount || g.householdCount === 0)
@@ -447,6 +583,13 @@ const Bordereau = () => {
                                   <div className="flex items-center justify-between pt-4 border-t border-white/5">
                                     <div className="flex gap-2">
                                       <button
+                                        title="Voir la liste des ménages"
+                                        onClick={() => handleOpenGrappeDetails(grappe)}
+                                        className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 hover:text-emerald-200 border border-emerald-500/20 transition-all"
+                                      >
+                                        <Eye size={16} />
+                                      </button>
+                                      <button
                                         title="Exporter en PDF"
                                         onClick={() => handleExportGrappe(grappe, 'pdf')}
                                         className="p-2.5 rounded-xl bg-white/5 text-white/50 hover:bg-white/10 hover:text-white border border-white/5 transition-all"
@@ -478,6 +621,87 @@ const Bordereau = () => {
           </div>
         </div>
       </ContentArea>
+
+      <AnimatePresence>
+        {detailGrappe && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/82 p-4 backdrop-blur-sm"
+            onClick={handleCloseGrappeDetails}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 20, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.98 }}
+              transition={{ duration: 0.18 }}
+              className="flex max-h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.98),rgba(2,6,23,0.98))] shadow-2xl"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="flex flex-wrap items-start justify-between gap-4 border-b border-white/10 px-6 py-5">
+                <div className="min-w-0">
+                  <p className="text-[10px] font-black uppercase tracking-[0.24em] text-emerald-300/60">
+                    Détail de grappe
+                  </p>
+                  <h2 className="mt-2 truncate text-xl font-black uppercase tracking-tight text-white">
+                    {detailGrappe.name}
+                  </h2>
+                  <div className="mt-2 flex flex-wrap items-center gap-3 text-[10px] font-black uppercase tracking-[0.18em]">
+                    <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-blue-200/75">
+                      {detailGrappe.region || 'Sans région'}
+                    </span>
+                    <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-emerald-300">
+                      {fmtNum(filteredDetailHouseholds.length)} ménages affichés
+                    </span>
+                    <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-white/55">
+                      {fmtNum(detailHouseholds.length)} total
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleCloseGrappeDetails}
+                  className="rounded-xl border border-white/10 bg-white/5 p-3 text-white/70 transition-all hover:bg-white/10 hover:text-white"
+                  title="Fermer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="border-b border-white/10 px-6 py-4">
+                <div className="relative">
+                  <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/35" />
+                  <input
+                    type="text"
+                    value={detailSearchQuery}
+                    onChange={(e) => setDetailSearchQuery(e.target.value)}
+                    placeholder="Rechercher un ménage, propriétaire, village..."
+                    className="w-full rounded-2xl border border-white/10 bg-white/[0.04] py-3 pl-11 pr-4 text-sm font-medium text-white outline-none transition-all placeholder:text-white/25 focus:border-emerald-400/35 focus:ring-2 focus:ring-emerald-500/15"
+                  />
+                </div>
+              </div>
+
+              <div className="min-h-0 flex-1 p-4">
+                {detailLoading ? (
+                  <div className="flex h-full min-h-[420px] flex-col items-center justify-center gap-4">
+                    <div className="h-10 w-10 animate-spin rounded-full border-4 border-emerald-500/15 border-t-emerald-400" />
+                    <p className="text-[10px] font-black uppercase tracking-[0.24em] text-emerald-300/60">
+                      Chargement des ménages
+                    </p>
+                  </div>
+                ) : (
+                  <HouseholdListView
+                    households={filteredDetailHouseholds}
+                    isDarkMode={true}
+                    onSelectHousehold={handleSelectHousehold}
+                  />
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </PageContainer>
   );
 };

@@ -7,6 +7,7 @@ import {
   getChatBootstrap,
   getConversationMessages,
   sendMessage,
+  deleteMessage,
   toggleUserChatBlock,
   deleteConversation,
 } from './chat.controller.js';
@@ -19,6 +20,11 @@ router.get('/bootstrap', getChatBootstrap);
 router.post('/conversations', createConversation);
 router.get('/conversations/:conversationId/messages', getConversationMessages);
 router.post('/conversations/:conversationId/messages', sendMessage);
+router.delete(
+  '/conversations/:conversationId/messages/:messageId',
+  verifierPermission(PERMISSIONS.GERER_UTILISATEURS),
+  deleteMessage
+);
 router.delete('/conversations/:conversationId', deleteConversation);
 router.patch(
   '/users/:userId/block',
@@ -27,4 +33,3 @@ router.patch(
 );
 
 export default router;
-

@@ -11,6 +11,7 @@ import {
   ArrowRight,
   Activity,
   ShieldCheck,
+  Clock3,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { fmtNum } from '../../utils/format';
@@ -73,6 +74,33 @@ export default function ClientDashboard() {
     }))
     .sort((a, b) => b.total - a.total)
     .slice(0, 4);
+  const biggestRegion = topRegions[0] || null;
+  const clientSignals = [
+    {
+      label: 'Charge restante',
+      value: fmtNum(pending),
+      helper: pending > 0 ? `${fmtNum(inProgress)} en cours de traitement` : 'Aucun site en attente',
+      tone:
+        pending > 0
+          ? 'border-amber-500/20 bg-amber-500/10 text-amber-200'
+          : 'border-emerald-500/20 bg-emerald-500/10 text-emerald-200',
+      icon: Clock3,
+    },
+    {
+      label: 'Rythme client',
+      value: `${pct}%`,
+      helper: `${fmtNum(done)} menages valides sur ${fmtNum(total)}`,
+      tone: 'border-blue-500/20 bg-blue-500/10 text-blue-200',
+      icon: TrendingUp,
+    },
+    {
+      label: 'Region moteur',
+      value: biggestRegion?.name || 'N/A',
+      helper: biggestRegion ? `${biggestRegion.pct}% de completion` : 'Aucune region active',
+      tone: 'border-violet-500/20 bg-violet-500/10 text-violet-200',
+      icon: MapPin,
+    },
+  ];
 
   return (
     <PageContainer className="min-h-screen bg-slate-950 text-white selection:bg-blue-500/30">
@@ -203,6 +231,29 @@ export default function ClientDashboard() {
                     </div>
                   ))}
                 </div>
+              </div>
+
+              <div className="grid gap-3 border-t border-white/6 pt-3 md:grid-cols-3">
+                {clientSignals.map(({ label, value, helper, tone, icon: Icon }) => (
+                  <div key={label} className={`rounded-[1.2rem] border p-4 ${tone}`}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-[0.16em] opacity-80">
+                          {label}
+                        </p>
+                        <p className="mt-2 text-2xl font-black tracking-tight text-white">
+                          {value}
+                        </p>
+                      </div>
+                      <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-black/10">
+                        <Icon size={18} />
+                      </div>
+                    </div>
+                    <p className="mt-3 text-xs leading-relaxed text-slate-300">
+                      {helper}
+                    </p>
+                  </div>
+                ))}
               </div>
             </div>
           </header>

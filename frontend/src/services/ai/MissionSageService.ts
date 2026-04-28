@@ -6,10 +6,12 @@
 import type { User, AuditLog, Household, Team } from '../../utils/types';
 import type { MissionStats } from '../missionStatsService';
 import { db } from '../../store/db';
-import { getTechnicalAnswer } from './ElectricianQuran';
+import apiClient from '../../api/client';
+import { ELECTRICIAN_GUIDE, KOBO_STANDARDS, getTechnicalAnswer } from './ElectricianQuran';
 import { analyzeDG, computeIGPPScore } from './DecisionEngine';
 import { getAIEngineConfig, type AIEngineSettings } from './AIEngineConfig';
-import { buildPublicAIKnowledgePrompt } from './AIKnowledgeBase';
+import { findGeneratedMissionSageOverride } from './generatedMissionSageOverrides';
+import { mentorTrainingService } from './mentorTrainingService';
 import logger from '../../utils/logger';
 
 // ─────────────────────────────────────────────
@@ -31,6 +33,26 @@ export interface RegionalSummary {
   teamsAssigned: { [tradeKey: string]: number };
 }
 
+interface RemoteAIContextSnapshot {
+  stats: MissionStats | null;
+  householdsCount: number;
+  teamsCount: number;
+  regionalSummaries: RegionalSummary[];
+  auditLogs: Array<{
+    action?: string;
+    moduleName?: string;
+    severity?: string;
+    createdAt?: string;
+  }>;
+}
+
+export interface ExpertControlSheet {
+  observation?: string;
+  referenceRule?: string;
+  mainRisk?: string;
+  immediateAction?: string;
+}
+
 export interface AIResponse {
   message: string;
   type: 'info' | 'success' | 'warning' | 'error' | 'user';
@@ -39,6 +61,10 @@ export interface AIResponse {
   actionType?: 'nav' | 'download_report' | 'download_contract';
   images?: { url: string; caption: string }[];
   smartReplies?: string[];
+  verdict?: 'Conforme' | 'Conforme sous réserve' | 'Non conforme' | 'A verifier';
+  severity?: 'critique' | 'majeure' | 'mineure' | 'information';
+  recommendedAction?: string;
+  controlSheet?: ExpertControlSheet;
   /** 🆕 Indique quel moteur a produit cette réponse (visible en mode admin debug) */
   _engine?: 'RULES' | 'CLAUDE' | 'RULES_FALLBACK' | 'CLAUDE_FALLBACK' | 'VISION' | 'VISION_ERROR';
 }
@@ -552,6 +578,154 @@ function getSmartSuggestions(q: string): string[] {
   ];
 }
 
+function ensureSmartReplies(response: AIResponse, query: string): AIResponse {
+  if (response.smartReplies && response.smartReplies.length > 0) {
+    return response;
+  }
+
+  return {
+    ...response,
+    smartReplies: getSmartSuggestions(query).slice(0, 4),
+  };
+}
+
+function buildRemoteAIContextSnapshot(state: AIState): RemoteAIContextSnapshot {
+  return {
+    stats: state.stats,
+    householdsCount: state.households?.length || 0,
+    teamsCount: state.teams?.length || 0,
+    regionalSummaries: (state.regionalSummaries || []).slice(0, 12),
+    auditLogs: (state.auditLogs || []).slice(0, 12).map(log => ({
+      action: log.action,
+      moduleName: log.module,
+      severity: log.severity,
+      createdAt: log.timestamp ? new Date(log.timestamp).toISOString() : undefined,
+    })),
+  };
+}
+
+function cleanStructuredValue(value?: string): string | undefined {
+  if (!value) return undefined;
+
+  const normalized = value
+    .replace(/\*\*/g, '')
+    .replace(/^[\s\-•:]+/, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  return normalized || undefined;
+}
+
+function extractExpertMetadata(message: string): Pick<
+  AIResponse,
+  'verdict' | 'severity' | 'recommendedAction' | 'controlSheet'
+> {
+  const controlSheet: ExpertControlSheet = {};
+  let verdict: AIResponse['verdict'] | undefined;
+  let severity: AIResponse['severity'] | undefined;
+  let recommendedAction: string | undefined;
+  let currentSection: keyof ExpertControlSheet | null = null;
+  let detectedStructuredSections = 0;
+
+  const lines = message
+    .split(/\r?\n/)
+    .map(line => line.replace(/\*\*/g, '').trim())
+    .filter(Boolean);
+
+  for (const line of lines) {
+    let match = line.match(/^(?:\d+\.\s*)?Observation(?:\s*:\s*(.+))?$/i);
+    if (match) {
+      currentSection = 'observation';
+      detectedStructuredSections += 1;
+      const value = cleanStructuredValue(match[1]);
+      if (value) controlSheet.observation = value;
+      continue;
+    }
+
+    match = line.match(/^(?:\d+\.\s*)?Verdict(?: terrain| type)?\s*:\s*(.+)$/i);
+    if (match) {
+      currentSection = null;
+      verdict = cleanStructuredValue(match[1]) as AIResponse['verdict'] | undefined;
+      continue;
+    }
+
+    match = line.match(/^(?:\d+\.\s*)?Gravit[eé](?: type)?\s*:\s*(.+)$/i);
+    if (match) {
+      currentSection = null;
+      severity = cleanStructuredValue(match[1]) as AIResponse['severity'] | undefined;
+      continue;
+    }
+
+    match = line.match(/^(?:\d+\.\s*)?R[eè]gle de r[eé]f[eé]rence\s*:?\s*(.*)$/i);
+    if (match) {
+      currentSection = 'referenceRule';
+      detectedStructuredSections += 1;
+      const value = cleanStructuredValue(match[1]);
+      if (value) controlSheet.referenceRule = value;
+      continue;
+    }
+
+    match = line.match(/^(?:\d+\.\s*)?Risque(?: principal)?\s*:?\s*(.*)$/i);
+    if (match) {
+      currentSection = 'mainRisk';
+      detectedStructuredSections += 1;
+      const value = cleanStructuredValue(match[1]);
+      if (value) controlSheet.mainRisk = value;
+      continue;
+    }
+
+    match = line.match(
+      /^(?:\d+\.\s*)?Action corrective(?: immediate| immédiate)?\s*:?\s*(.*)$/i
+    );
+    if (match) {
+      currentSection = 'immediateAction';
+      detectedStructuredSections += 1;
+      const value = cleanStructuredValue(match[1]);
+      if (value) {
+        controlSheet.immediateAction = value;
+        recommendedAction = value;
+      }
+      continue;
+    }
+
+    if (currentSection) {
+      const nextValue = cleanStructuredValue(line);
+      if (nextValue) {
+        controlSheet[currentSection] = [controlSheet[currentSection], nextValue]
+          .filter(Boolean)
+          .join(' ');
+        if (currentSection === 'immediateAction') {
+          recommendedAction = controlSheet.immediateAction;
+        }
+      }
+    }
+  }
+
+  const hasControlSheet =
+    detectedStructuredSections >= 2 &&
+    (Boolean(verdict) || Boolean(severity) || Object.values(controlSheet).filter(Boolean).length >= 2);
+
+  return {
+    verdict,
+    severity,
+    recommendedAction,
+    controlSheet: hasControlSheet ? controlSheet : undefined,
+  };
+}
+
+function enrichExpertMetadata(response: AIResponse): AIResponse {
+  if (response.verdict || response.severity || response.recommendedAction || response.controlSheet) {
+    return response;
+  }
+
+  const expertMetadata = extractExpertMetadata(response.message);
+
+  return {
+    ...response,
+    ...expertMetadata,
+  };
+}
+
 const CATEGORY_DISPLAY_NAME: Record<string, string> = {
   mission: 'Missions',
   finance: 'Finance',
@@ -657,7 +831,8 @@ function detectIntent(q: string) {
     kobo: /kobo|terrain|collect|sync|menage|point|donnee viennent|formulaire|audit terrain|saisie/.test(
       q
     ),
-    mission: /mission|\bom\b|ordre|certifi|soumi|creer mission|nouvelle mission|mes om|lancer/.test(
+    mission:
+      /mission|\bom\b|ordre de mission|ordre mission|soumi|creer mission|nouvelle mission|mes om|lancer|mission certifiee|mission certifie|certifier une mission|certification mission/.test(
       q
     ),
     workflow: /valide|circuit|qui fait quoi|qui valide|processus|etapes|parcours validation/.test(
@@ -710,7 +885,8 @@ function detectIntent(q: string) {
       q
     ),
     menu: /menu|aide|liste|question|aidez-moi|guide|quoi faire|que peux-tu|capacites/.test(q),
-    approbation: /approuver|valider mission|signature dg|sceau|certifier|signer|approbation/.test(
+    approbation:
+      /approuver|valider mission|signature dg|sceau|\bcertifier\b|signer|approbation|certification mission/.test(
       q
     ),
     performance: /igpp|score|taux|avancement|objectif|cible|pourcentage|progression/.test(q),
@@ -729,7 +905,7 @@ function detectIntent(q: string) {
         q
       ),
     branchement:
-      /branchement|senelec|limite propriete|potelet|pvc|tube|hublot|hauteur|surplomber|grillage/.test(
+      /branchement|senelec|limite propriete|potelet|pvc|tube|hublot|hauteur|surplomber|grillage|coffret compteur|coffret|concession|protection pvc|protection mecanique/.test(
         q
       ),
     interieur:
@@ -1084,6 +1260,516 @@ function buildContextualEnrichment(
   return parts.length > 0 ? '\n\n' + parts.join('\n') : '';
 }
 
+type SemanticEntryKey =
+  | 'global'
+  | 'kobo'
+  | 'mission'
+  | 'workflow'
+  | 'finance'
+  | 'dashboard'
+  | 'security'
+  | 'sync'
+  | 'org'
+  | 'mfr'
+  | 'norme'
+  | 'protection'
+  | 'anomalies'
+  | 'branchement'
+  | 'interieur'
+  | 'glossaire'
+  | 'decision'
+  | 'report';
+
+interface SemanticKnowledgeEntry {
+  title: string;
+  summary: string;
+  meaning: string;
+  anchors: string[];
+  checkpoints?: string[];
+  watchouts?: string[];
+  references: string[];
+  smartReplies: string[];
+  actionLine?: string;
+}
+
+const semanticGuide = {
+  branchement: ELECTRICIAN_GUIDE.projet_mfr_branchement,
+  interieur: ELECTRICIAN_GUIDE.projet_mfr_interieur,
+  anomalies: ELECTRICIAN_GUIDE.projet_mfr_anomalies,
+  mfr: ELECTRICIAN_GUIDE.projet_mfr_eligibilite,
+  norme: ELECTRICIAN_GUIDE.norme_ns_01_001_domaine,
+  protection: ELECTRICIAN_GUIDE.norme_ns_01_001_protection,
+  glossaire: ELECTRICIAN_GUIDE.ns01_terms,
+};
+
+const SEMANTIC_KNOWLEDGE_LIBRARY: Record<SemanticEntryKey, SemanticKnowledgeEntry> = {
+  global: {
+    title: 'GEM-MINT',
+    summary:
+      "GEM-MINT centralise le terrain, les missions, le pilotage et le contrôle financier dans un même système d'exploitation métier.",
+    meaning:
+      "L'intérêt n'est pas d'accumuler des écrans, mais de garder une seule chaîne de vérité entre le ménage, la mission, la validation et l'indemnisation.",
+    anchors: [
+      'Terrain : collecte Kobo, coordonnées GPS, photos et statut du ménage.',
+      'Missions : création, soumission, validation hiérarchique et certification.',
+      'Pilotage : KPIs, retards, alertes et suivi régional.',
+      'Finance : budget, indemnités et contrôle des écarts.',
+    ],
+    references: ['MISSION_SAGE_INTEGRATION_README', 'AIKnowledgeBase GEM-MINT'],
+    smartReplies: ['Mes missions', 'Terrain Kobo', 'Dashboard', 'Budget'],
+  },
+  kobo: {
+    title: 'Kobo et collecte terrain',
+    summary:
+      'Kobo sert à capturer le terrain au plus près de l’exécution, puis à rapprocher chaque formulaire avec GEM-MINT via le numeroordre.',
+    meaning:
+      "Le point important est le suivant : une bonne collecte Kobo ne vaut pas seulement par les champs remplis, mais par la qualité du rapprochement avec le ménage, le GPS et l'état réel du chantier.",
+    anchors: [
+      'Le `numeroordre` doit rester unique et exploitable comme clé de rapprochement.',
+      'La précision GPS doit rester cohérente avec la concession observée sur site.',
+      'La synchronisation remonte les données dès qu’une connexion est disponible.',
+      'Les pièces terrain utiles sont les photos, le statut d’avancement et les observations de contrôle.',
+    ],
+    checkpoints: [
+      'Vérifier le numeroordre avant soumission.',
+      'Vérifier la cohérence GPS et l’identité du ménage.',
+      'Contrôler que les champs obligatoires sont effectivement renseignés.',
+    ],
+    watchouts: [
+      'Numeroordre manquant ou réutilisé.',
+      'Coordonnées GPS décalées par rapport à la concession.',
+      'Formulaire validé alors que les observations de terrain sont incomplètes.',
+    ],
+    references: ['KOBO_STANDARDS', 'AIKnowledgeBase GEM-MINT', 'kobo.mapping.js'],
+    smartReplies: [
+      'Synchronisation Kobo',
+      'Que faire si Kobo ne remonte pas ?',
+      'Quels champs Kobo sont obligatoires ?',
+      'Comment éviter les doublons Kobo ?',
+    ],
+    actionLine:
+      'Avant de conclure à une panne Kobo, vérifier d’abord le numeroordre, la connectivité et la cohérence des champs critiques.',
+  },
+  mission: {
+    title: 'Ordres de mission',
+    summary:
+      'Une mission n’est pas seulement un déplacement. C’est l’unité de travail tracée qui relie un besoin terrain, une équipe, une validation et un impact financier.',
+    meaning:
+      "Si le flux mission est propre, le reste suit mieux : la lecture du terrain, le suivi DG et l'indemnisation restent cohérents.",
+    anchors: [
+      'Création : cadrage du besoin, zone, date, équipe et objectif.',
+      'Soumission : vérification par le chef de projet.',
+      'Certification : validation finale selon les règles hiérarchiques.',
+      'Traçabilité : chaque étape doit laisser une preuve exploitable.',
+    ],
+    checkpoints: [
+      'Le contenu de la mission décrit-il exactement l’intervention attendue ?',
+      'Les pièces justificatives sont-elles présentes avant soumission ?',
+      'La mission est-elle au bon statut avant la prochaine étape ?',
+    ],
+    references: ['MISSION_SAGE_INTEGRATION_README', 'Workflow OM interne'],
+    smartReplies: ['Comment créer une mission ?', 'Qui valide les OM ?', 'Voir mes missions', 'Comment certifier une mission ?'],
+    actionLine: 'Une mission mal cadrée au départ coûte toujours plus cher à corriger au moment de la validation.',
+  },
+  workflow: {
+    title: 'Circuit de validation',
+    summary:
+      'Le workflow sert à protéger la qualité des décisions. Il impose qui fait quoi, dans quel ordre, et avec quel niveau de preuve.',
+    meaning:
+      "Ce circuit est utile parce qu'il évite deux dérives classiques : des validations trop rapides et des responsabilités impossibles à reconstituer après coup.",
+    anchors: [
+      'L’agent ou le technicien renseigne le terrain.',
+      'Le chef de projet contrôle la cohérence opérationnelle et budgétaire.',
+      'La direction valide ce qui engage officiellement le projet.',
+    ],
+    checkpoints: [
+      'Le statut actuel autorise-t-il vraiment la transition suivante ?',
+      'La personne qui valide possède-t-elle le bon rôle ?',
+      'Les justificatifs permettent-ils un audit ultérieur ?',
+    ],
+    references: ['Workflow OM interne', 'MISSION_SAGE_INTEGRATION_README'],
+    smartReplies: ['Qui valide les OM ?', 'Comment corriger une mission rejetée ?', 'Rapport stratégique DG', 'Mes missions'],
+  },
+  finance: {
+    title: 'Contrôle financier',
+    summary:
+      'Le module finance consolide les coûts réels et prévisionnels pour que les missions, les équipements et les validations restent pilotables.',
+    meaning:
+      "Une lecture financière saine n'est pas seulement comptable. Elle sert à arbitrer tôt, avant que le projet ne subisse les écarts au lieu de les piloter.",
+    anchors: [
+      'Les indemnités dépendent des missions certifiées et des règles de calcul autorisées.',
+      'Le budget doit être lu avec les volumes terrain, pas isolément.',
+      'Un dépassement devient sérieux lorsqu’il se combine avec des retards ou des reprises.',
+    ],
+    checkpoints: [
+      'Le budget consommé reflète-t-il les missions réellement certifiées ?',
+      'Les écarts viennent-ils du terrain, du matériel ou de la logistique ?',
+      'Le niveau d’alerte justifie-t-il une revue DG ?',
+    ],
+    references: ['AIKnowledgeBase GEM-MINT', 'Bilan financier prévisionnel interne'],
+    smartReplies: ['Audit financier global', 'Indemnités de mission', 'Budget certifié', 'Que faire en cas de dépassement budgétaire ?'],
+  },
+  dashboard: {
+    title: 'Pilotage et KPIs',
+    summary:
+      'Le dashboard n’a de valeur que s’il transforme les données de terrain et de mission en décisions exploitables au bon moment.',
+    meaning:
+      "Un KPI utile ne décrit pas seulement l'état actuel. Il signale où intervenir en priorité, avec quelle intensité et sur quel périmètre.",
+    anchors: [
+      'Le taux de certification mesure la fluidité réelle du flux.',
+      'Les retards régionaux signalent les goulots d’étranglement terrain.',
+      'Le suivi des anomalies aide à distinguer défaut ponctuel et dérive de méthode.',
+    ],
+    checkpoints: [
+      'Le KPI correspond-il à une décision concrète ?',
+      'Le chiffre affiché est-il cohérent avec le volume réel de terrain ?',
+      'Une anomalie répétée traduit-elle un problème de méthode ?',
+    ],
+    references: ['MISSION_SAGE_INTEGRATION_README', 'AIKnowledgeBase GEM-MINT'],
+    smartReplies: ['Score IGPP', 'Voir Dashboard', 'Risque de retard DG', 'Analyse stratégique DG'],
+  },
+  security: {
+    title: 'Rôles et droits',
+    summary:
+      'Les droits ne servent pas seulement à bloquer. Ils servent surtout à maintenir la traçabilité, la responsabilité et la qualité de ce qui est validé.',
+    meaning:
+      "Quand une action est interdite, ce n'est pas une rigidité gratuite. C'est souvent une barrière pour éviter qu'une donnée certifiée soit rendue douteuse.",
+    anchors: [
+      'Chaque rôle agit dans un périmètre précis.',
+      'Les validations critiques doivent rester attribuables.',
+      'Une donnée certifiée ne doit pas être modifiée sans règle explicite.',
+    ],
+    references: ['RBAC interne', 'MISSION_SAGE_INTEGRATION_README'],
+    smartReplies: ['Mes droits', 'Qui valide les OM ?', 'Historique des actions', 'Organisation'],
+  },
+  sync: {
+    title: 'Synchronisation',
+    summary:
+      'La synchronisation doit préserver la vérité du terrain sans créer de doublons, de pertes silencieuses ou de régressions de statut.',
+    meaning:
+      "Le bon réflexe n'est pas seulement de relancer une sync. Il faut comprendre ce qui fait foi : le serveur, le numeroordre, le statut et les preuves terrain.",
+    anchors: [
+      'Le serveur reste la source de vérité pour les états consolidés.',
+      'Les conflits doivent être résolus avec une règle explicite.',
+      'Une resynchronisation ne doit pas dégrader un statut validé.',
+    ],
+    references: ['syncService', 'kobo.mapping.js', 'AIKnowledgeBase GEM-MINT'],
+    smartReplies: ['Synchronisation Kobo', 'Que faire si Kobo ne remonte pas ?', 'Conflit de données', 'Actualiser'],
+  },
+  org: {
+    title: 'Organisation projet',
+    summary:
+      'La plateforme reflète une chaîne de responsabilité : terrain, coordination, décision et contrôle.',
+    meaning:
+      "Une organisation claire évite que les problèmes techniques deviennent des problèmes de gouvernance. Chacun agit dans un couloir lisible.",
+    anchors: [
+      'Les techniciens et agents portent la vérité du terrain.',
+      'Le chef de projet arbitre l’exécution et la cohérence opérationnelle.',
+      'La direction tranche ce qui engage officiellement le projet.',
+    ],
+    references: ['MISSION_SAGE_INTEGRATION_README', 'Workflow OM interne'],
+    smartReplies: ['Qui fait quoi ?', 'Qui valide les OM ?', 'Mes droits', 'Dashboard'],
+  },
+  mfr: {
+    title: semanticGuide.mfr.title,
+    summary:
+      'Les critères MFR servent à qualifier les ménages réellement éligibles, pas seulement à remplir une case administrative.',
+    meaning:
+      "Le sens du référentiel MFR est d'éviter les raccordements non conformes à la cible sociale et technique du programme.",
+    anchors: semanticGuide.mfr.specs,
+    checkpoints: semanticGuide.mfr.criticalChecks,
+    references: [semanticGuide.mfr.norm, 'Guide MFR', 'AIKnowledgeBase GEM-MINT'],
+    smartReplies: ['Critères éligibilité', 'Branchement Senelec', 'Installation intérieure', 'Ménages raccordés'],
+  },
+  norme: {
+    title: semanticGuide.norme.title,
+    summary:
+      'La norme NS 01-001 définit le périmètre, le vocabulaire et les exigences de base pour juger une installation basse tension de manière cohérente.',
+    meaning:
+      "Quand une réponse technique cite la norme, elle doit d'abord dire dans quel domaine elle s'applique. C'est ce qui évite les conclusions hors périmètre.",
+    anchors: semanticGuide.norme.specs,
+    checkpoints: semanticGuide.norme.criticalChecks,
+    references: [semanticGuide.norme.norm, 'NS 01-001', 'ElectricianQuran'],
+    smartReplies: ['Domaine application', 'Protection', 'Glossaire', 'Quelle tension est permise ?'],
+  },
+  protection: {
+    title: semanticGuide.protection.title,
+    summary:
+      'La protection électrique ne se limite pas à un disjoncteur. C’est une chaîne complète contre les contacts, les défauts, les surcharges et les surtensions.',
+    meaning:
+      'Une installation peut fonctionner et rester pourtant dangereuse. La conformité dépend de la chaîne de protection, pas seulement de la présence de tension.',
+    anchors: semanticGuide.protection.specs,
+    checkpoints: semanticGuide.protection.criticalChecks,
+    watchouts: semanticGuide.protection.forbiddenPractices,
+    references: [semanticGuide.protection.norm, 'NS 01-001', 'ElectricianQuran'],
+    smartReplies: ['DDR', 'Contact direct', 'Parafoudre', 'Pourquoi le DDR est indispensable ?'],
+    actionLine:
+      'Dès qu’un maillon de la protection manque ou est douteux, la bonne réponse est de suspendre la mise en service et de reprendre le contrôle.',
+  },
+  anomalies: {
+    title: semanticGuide.anomalies.title,
+    summary:
+      'Une anomalie terrain ne doit jamais être décrite comme un simple défaut visuel si elle met en cause la sécurité, la durabilité ou la validité du raccordement.',
+    meaning:
+      'Le bon raisonnement consiste à qualifier l’écart, en mesurer le risque, puis décider si la validation doit être bloquée.',
+    anchors: semanticGuide.anomalies.specs,
+    checkpoints: semanticGuide.anomalies.criticalChecks,
+    watchouts: semanticGuide.anomalies.forbiddenPractices,
+    references: [semanticGuide.anomalies.norm, 'Guide MFR', 'ElectricianQuran'],
+    smartReplies: ['Fils visibles', 'Câbles extérieurs', 'Poteaux bois pourris', 'Comment signaler une anomalie ?'],
+    actionLine:
+      'Une anomalie critique documentée doit conduire à un blocage de validation jusqu’à correction et recontrôle.',
+  },
+  branchement: {
+    title: semanticGuide.branchement.title,
+    summary:
+      'Le branchement Senelec est un point de sécurité majeur. Sa conformité se juge sur la position du coffret, le cheminement du câble et la protection mécanique.',
+    meaning:
+      "Ce n'est pas un sujet de détail d'exécution. Un branchement mal posé compromet à la fois la sécurité du ménage et la recevabilité du lot.",
+    anchors: semanticGuide.branchement.specs,
+    checkpoints: semanticGuide.branchement.criticalChecks,
+    watchouts: semanticGuide.branchement.forbiddenPractices,
+    references: [semanticGuide.branchement.norm, 'Guide MFR', 'Senelec'],
+    smartReplies: ['Hauteur du câble Senelec', 'Limite de propriété', 'Protection PVC', 'Comment éviter le surplomb ?'],
+    actionLine:
+      'Sur un branchement, toute ambiguïté sur la limite de propriété, la hauteur libre ou la protection PVC doit être levée avant réception.',
+  },
+  interieur: {
+    title: semanticGuide.interieur.title,
+    summary:
+      'L’installation intérieure MFR obéit à une logique simple : sécurité des usagers, cohérence de pose et standardisation des ouvrages.',
+    meaning:
+      "Une installation intérieure propre n'est pas seulement esthétique. Elle doit rester contrôlable, protégée et fidèle au standard validé.",
+    anchors: semanticGuide.interieur.specs,
+    checkpoints: semanticGuide.interieur.criticalChecks,
+    watchouts: semanticGuide.interieur.forbiddenPractices,
+    references: [semanticGuide.interieur.norm, 'Guide MFR', 'ElectricianQuran'],
+    smartReplies: ['Coffret disjoncteur couvert', 'Configuration standard 3 lampes/1 prise', 'Câble armé enterré', 'Interrupteur en zone couverte'],
+  },
+  glossaire: {
+    title: semanticGuide.glossaire.title,
+    summary:
+      'Le glossaire technique sert à parler le même langage entre terrain, contrôle et décision. Sans définition stable, la conformité devient floue.',
+    meaning:
+      'Comprendre un terme comme `masse`, `partie active` ou `DDR` change directement la manière d’analyser un risque électrique.',
+    anchors: semanticGuide.glossaire.specs.slice(0, 6),
+    references: [semanticGuide.glossaire.norm, 'NS 01-001', 'ElectricianQuran'],
+    smartReplies: ['Partie active', 'Masse électrique', 'C’est quoi un DDR ?', 'C’est quoi une prise de terre ?'],
+  },
+  decision: {
+    title: 'Analyse stratégique',
+    summary:
+      'La décision DG doit combiner le terrain, la capacité d’exécution, les anomalies et la consommation budgétaire.',
+    meaning:
+      "Une synthèse utile n'empile pas des chiffres. Elle dit ce qui ralentit, ce qui coûte, et ce qui doit être arbitré maintenant.",
+    anchors: [
+      'Comparer retards, certifications et budget sur le même horizon.',
+      'Identifier les régions ou chaînes métier réellement sous tension.',
+      'Distinguer incident ponctuel et dérive structurelle.',
+    ],
+    references: ['DecisionEngine', 'KPIs projet', 'AIKnowledgeBase GEM-MINT'],
+    smartReplies: ['Analyse stratégique DG', 'Risque de retard DG', 'Rapport stratégique DG', 'Voir Dashboard'],
+  },
+  report: {
+    title: 'Rapports et export',
+    summary:
+      'Un rapport utile restitue le fait, la justification et la décision attendue. Il ne doit pas être une simple capture de données.',
+    meaning:
+      "L'intérêt du rapport Word ou PDF est de figer une lecture compréhensible par un décideur, un contrôleur ou un auditeur.",
+    anchors: [
+      'Décrire le contexte, l’écart et l’impact.',
+      'Relier les observations aux décisions prises.',
+      'Conserver une traçabilité exploitable après diffusion.',
+    ],
+    references: ['WordReportService', 'PVDocGenerator', 'Rapports internes GEM-MINT'],
+    smartReplies: ['Générer un rapport Word', 'Exporter un rapport PDF', 'Contenu du rapport stratégique', 'Comment partager un rapport ?'],
+  },
+};
+
+const SEMANTIC_ENTRY_ALIASES: Partial<Record<string, SemanticEntryKey>> = {
+  terms: 'glossaire',
+  specs: 'branchement',
+  protection_details: 'protection',
+  anomalies_details: 'anomalies',
+  sync: 'kobo',
+};
+
+function getSemanticEntry(entryKey: string): SemanticKnowledgeEntry | null {
+  const resolvedKey = (SEMANTIC_ENTRY_ALIASES[entryKey] || entryKey) as SemanticEntryKey;
+  return SEMANTIC_KNOWLEDGE_LIBRARY[resolvedKey] || null;
+}
+
+function formatSemanticSection(title: string, items?: string[], numbered = false): string {
+  if (!items || items.length === 0) return '';
+  return `**${title}**\n${items
+    .filter(Boolean)
+    .map((item, index) => `${numbered ? `${index + 1}.` : '-'} ${item}`)
+    .join('\n')}`;
+}
+
+function buildSemanticLead(query: string, entry: SemanticKnowledgeEntry): string {
+  const normalized = normalizeWord(query);
+
+  if (/pourquoi/.test(normalized)) {
+    return `${entry.summary}\n\n${entry.meaning}`;
+  }
+
+  if (/comment/.test(normalized)) {
+    return `${entry.summary}\n\nVoici la logique à garder en tête pour agir correctement.`;
+  }
+
+  if (/cest quoi|quest ce|definition|definir|signifie/.test(normalized)) {
+    return `${entry.summary}\n\nVoici la définition opérationnelle à retenir.`;
+  }
+
+  return `${entry.summary}\n\n${entry.meaning}`;
+}
+
+function buildSemanticFocus(query: string, entryKey: SemanticEntryKey): string {
+  const normalized = normalizeWord(query);
+
+  if (entryKey === 'kobo') {
+    if (/gps|coordonne/.test(normalized)) {
+      return 'Sur la partie GPS, le bon niveau d’exigence consiste à vérifier que le point correspond réellement à la concession observée sur site, pas seulement à un point proche.';
+    }
+    if (/doublon|numeroordre|numero ordre/.test(normalized)) {
+      return 'Sur les doublons, la première vérification porte sur le `numeroordre`, car c’est lui qui structure le rapprochement entre Kobo et GEM-MINT.';
+    }
+    if (/champ|obligatoire|formulaire/.test(normalized)) {
+      return 'Pour les champs obligatoires, il faut distinguer les champs purement descriptifs des champs de contrôle qui conditionnent vraiment la qualité de la synchronisation.';
+    }
+  }
+
+  if (entryKey === 'norme') {
+    if (/exclusion|hors perimetre|hors domaine/.test(normalized)) {
+      return 'La bonne lecture de la norme commence toujours par son périmètre. Une réponse techniquement juste mais hors champ reste une mauvaise réponse.';
+    }
+    if (/tension|bt|basse tension/.test(normalized)) {
+      return 'Le seuil de tension est un point de cadrage. Il dit si vous êtes encore dans le domaine standard de la NS 01-001 ou s’il faut basculer vers un autre référentiel.';
+    }
+  }
+
+  if (entryKey === 'branchement') {
+    if (/hublot|hauteur/.test(normalized)) {
+      return 'Sur la hauteur, il faut répondre par une exigence mesurable, jamais par une appréciation visuelle approximative.';
+    }
+    if (/limite|propriete|coffret/.test(normalized)) {
+      return 'Sur la position du coffret, la règle n’est pas décorative. Elle conditionne l’accessibilité, la sécurité et la conformité du branchement.';
+    }
+  }
+
+  if (entryKey === 'glossaire') {
+    if (/ddr/.test(normalized)) {
+      return 'Un DDR n’est pas un simple accessoire. C’est un organe de protection des personnes contre les courants de fuite vers la terre.';
+    }
+    if (/prise terre|prise de terre|terre/.test(normalized)) {
+      return 'La prise de terre donne une voie de sécurité aux défauts. Sans elle, toute la logique de protection indirecte devient fragile.';
+    }
+    if (/partie active|masse/.test(normalized)) {
+      return 'La distinction entre partie active et masse est essentielle, car elle détermine la nature du risque et donc le type de protection attendu.';
+    }
+  }
+
+  return '';
+}
+
+function buildSemanticStateNote(entryKey: SemanticEntryKey, state: AIState): string {
+  if (entryKey === 'mission' && state.stats) {
+    const remaining = Math.max(0, state.stats.totalMissions - state.stats.totalCertified);
+    return `**Contexte actuel**\n- Missions totales : ${state.stats.totalMissions}\n- Missions certifiées : ${state.stats.totalCertified}\n- Missions non certifiées : ${remaining}`;
+  }
+
+  if (entryKey === 'finance' && state.stats) {
+    return `**Contexte actuel**\n- Indemnités consolidées : ${new Intl.NumberFormat('fr-FR').format(state.stats.totalIndemnities)} FCFA`;
+  }
+
+  if (entryKey === 'dashboard' && state.stats) {
+    const certRate =
+      state.stats.totalMissions > 0
+        ? Math.round((state.stats.totalCertified / state.stats.totalMissions) * 100)
+        : 0;
+    return `**Contexte actuel**\n- Missions totales : ${state.stats.totalMissions}\n- Certifiées : ${state.stats.totalCertified}\n- Taux de certification : ${certRate}%`;
+  }
+
+  if (entryKey === 'kobo' && state.households.length > 0) {
+    return `**Contexte terrain**\n- Ménages visibles : ${state.households.length}\n- Activités récentes : ${state.auditLogs.length}`;
+  }
+
+  return '';
+}
+
+function buildSemanticResponse(entryKey: string, query: string, state: AIState): string | null {
+  const entry = getSemanticEntry(entryKey);
+  if (!entry) return null;
+
+  const resolvedKey = (SEMANTIC_ENTRY_ALIASES[entryKey] || entryKey) as SemanticEntryKey;
+  const focus = buildSemanticFocus(query, resolvedKey);
+  const stateNote = buildSemanticStateNote(resolvedKey, state);
+
+  return [
+    `**${entry.title}**`,
+    '',
+    buildSemanticLead(query, entry),
+    focus ? `\n${focus}` : '',
+    '',
+    formatSemanticSection('Points essentiels', entry.anchors, true),
+    '',
+    formatSemanticSection('Points de contrôle', entry.checkpoints),
+    '',
+    formatSemanticSection('Points de vigilance', entry.watchouts),
+    '',
+    stateNote,
+    entry.actionLine ? `**Action utile**\n${entry.actionLine}` : '',
+    '',
+    `**Références**\n- ${entry.references.join('\n- ')}`,
+  ]
+    .filter(Boolean)
+    .join('\n');
+}
+
+function resolveSemanticEntryKey(intent: any): SemanticEntryKey | null {
+  if (intent.kobo) return 'kobo';
+  if (intent.mfr) return 'mfr';
+  if (intent.norme) return 'norme';
+  if (intent.protection) return 'protection';
+  if (intent.anomalies) return 'anomalies';
+  if (intent.branchement || intent.senelec || intent.compteur) return 'branchement';
+  if (intent.interieur) return 'interieur';
+  if (intent.glossaire || intent.terms) return 'glossaire';
+  if (intent.workflow) return 'workflow';
+  if (intent.mission) return 'mission';
+  if (intent.finance) return 'finance';
+  if (intent.dashboard || intent.performance) return 'dashboard';
+  if (intent.security || intent.rights) return 'security';
+  if (intent.org) return 'org';
+  if (intent.decision) return 'decision';
+  if (intent.report) return 'report';
+  if (intent.global) return 'global';
+  return null;
+}
+
+const TECHNICAL_SEMANTIC_KEYS = new Set<SemanticEntryKey>([
+  'mfr',
+  'norme',
+  'protection',
+  'anomalies',
+  'branchement',
+  'interieur',
+  'glossaire',
+]);
+
+function isAuditControlQuestion(query: string): boolean {
+  const normalized = normalizeWord(query);
+  const explanatory = /cest quoi|quest ce|definition|pourquoi|difference|a quoi sert|comment fonctionne/.test(
+    normalized
+  );
+  if (explanatory) return false;
+
+  return /audit|controle|conforme|non conforme|verdict|gravite|inspection|photo|terrain|correction|recontrole|anomalie|certifiable|recevable|reception|mise sous tension|bloque|rejete|rejet/.test(
+    normalized
+  );
+}
+
 const KNOWLEDGE = {
   global:
     'PROQUELEC est votre bastion SaaS de gestion énergétique. Il repose sur 4 piliers stratégiques : 🏗️ Terrain (Kobo), 📋 Logistique (Missions), 📊 Pilotage (Dashboard) et 💰 Finance (Contrôle).',
@@ -1164,29 +1850,72 @@ async function runRulesEngine(
   const isDG = ['DG_PROQUELEC', 'DIRECTEUR', 'COMPTABLE', 'ADMIN_PROQUELEC'].includes(user.role);
 
   const DYNAMIC_GREETINGS = [
-    `As-Salam Alaykum ${formattedName} 🌙`,
-    `As-Salam Alaykum noble ${formattedName}, pilier du bastion PROQUELEC 🏗️`,
-    `Que la Baraka et la Sagesse guident vos pas ${formattedName} ✨`,
+    `Bonjour ${formattedName}.`,
+    `Bonjour ${formattedName}, je suis prêt à vous aider.`,
+    `Bonjour ${formattedName}, dites-moi ce dont vous avez besoin.`,
   ];
 
   let greeting = '';
   if (memory.history.length <= 2) {
     greeting = DYNAMIC_GREETINGS[Math.floor(Math.random() * DYNAMIC_GREETINGS.length)];
-    if (isDG || isMaster) greeting = `🏛️ **CONSEILLER DG** : ${greeting}`;
-    else if (user.role === 'CHEF_PROJET') greeting = `📋 **SYNTHÈSE CHEF DE PROJET** : ${greeting}`;
-    else greeting = `⚡ **ASSISTANT TECHNIQUE** : ${greeting}`;
+    if (isDG || isMaster) greeting = `**Conseiller GEM** : ${greeting}`;
+    else if (user.role === 'CHEF_PROJET') greeting = `**Assistant projet** : ${greeting}`;
+    else greeting = `**Assistant technique** : ${greeting}`;
   }
 
   const pfx = (txt: string) => (greeting ? `${greeting}\n\n${txt}` : txt);
   const relatedQuestions = getQuestionSuggestions(query);
+  let intent = detectIntent(q);
+  intent = getContextualIntent(memory, intent);
+  const activeIntents = getActiveIntents(intent);
+  const semanticEntryKey = resolveSemanticEntryKey(intent);
+
+  const generatedOverride = findGeneratedMissionSageOverride(q);
+  if (generatedOverride) {
+    memory.lastIntent = `override:${generatedOverride.domain}`;
+    return {
+      message: pfx(generatedOverride.message),
+      type: 'info',
+      verdict: generatedOverride.verdict,
+      severity: generatedOverride.severity,
+      recommendedAction: generatedOverride.recommendedAction,
+      smartReplies:
+        generatedOverride.smartReplies && generatedOverride.smartReplies.length > 0
+          ? generatedOverride.smartReplies
+          : relatedQuestions,
+      _engine: 'RULES',
+    };
+  }
 
   const techAnswer = getTechnicalAnswer(q);
   if (techAnswer) {
     memory.lastIntent = 'tech';
+    const shouldKeepStrictTechnicalAnswer =
+      intent.tech ||
+      isAuditControlQuestion(q) ||
+      (semanticEntryKey ? !TECHNICAL_SEMANTIC_KEYS.has(semanticEntryKey) : false);
+
+    if (!shouldKeepStrictTechnicalAnswer && semanticEntryKey) {
+      const semanticResponse = buildSemanticResponse(semanticEntryKey, query, state);
+      if (semanticResponse) {
+        return {
+          message: pfx(semanticResponse),
+          type: 'info',
+          images: techAnswer.images,
+          smartReplies:
+            relatedQuestions.length > 0 ? relatedQuestions : getSemanticEntry(semanticEntryKey)?.smartReplies,
+          _engine: 'RULES',
+        };
+      }
+    }
+
     return {
-      message: pfx(techAnswer.message),
+      message: techAnswer.message,
       type: 'info',
       images: techAnswer.images,
+      verdict: techAnswer.verdict,
+      severity: techAnswer.severity,
+      recommendedAction: techAnswer.recommendedAction,
       smartReplies:
         relatedQuestions.length > 0
           ? relatedQuestions
@@ -1194,10 +1923,6 @@ async function runRulesEngine(
       _engine: 'RULES',
     };
   }
-
-  let intent = detectIntent(q);
-  intent = getContextualIntent(memory, intent);
-  const activeIntents = getActiveIntents(intent);
 
   // NOUVELLE LOGIQUE TECHNIQUE AMÉLIORÉE
   if (
@@ -1212,10 +1937,25 @@ async function runRulesEngine(
     // Détection spécifique des sous-domaines techniques
     if (q.includes('branchement') || q.includes('senelec') || q.includes('compteur')) {
       return {
-        message: pfx(
-          `🏗️ **BRANCHEMENT SENELEC**\n\nLe branchement Senelec nécessite impérativement :\n• Coffret compteur en limite de propriété\n• Hublot à 1.60m minimum\n• Câble enterré à 0.5m sous grillage rouge\n• Hauteur ≥ 4m en ruelle, ≥ 6m sur route\n• Protection mécanique PVC obligatoire\n\n**Anomalies critiques** : poteaux bois pourris, câbles non enterrés, absence de prise terre.`
-        ),
+        message:
+          `**Branchement Senelec**\n\n` +
+          `Référence : Guide MFR - Branchement / prescriptions Senelec\n\n` +
+          `Verdict type : Non conforme\n` +
+          `Gravité type : critique\n\n` +
+          `**Exigences techniques**\n` +
+          `1. Coffret compteur en limite de propriété.\n` +
+          `2. Hublot à 1,60 m minimum.\n` +
+          `3. Câble enterré à 0,50 m sous grillage avertisseur.\n` +
+          `4. Hauteur libre minimale 4 m en ruelle et 6 m en traversée routière.\n` +
+          `5. Protection mécanique PVC obligatoire.\n\n` +
+          `**Verdict terrain**\n` +
+          `Non conforme si le coffret est intérieur, si le câble surplombe une habitation ou si la protection mécanique est absente.\n\n` +
+          `**Action corrective**\n` +
+          `Reprendre la pose, corriger le cheminement et recontrôler avant réception.`,
         type: 'info',
+        verdict: 'Non conforme',
+        severity: 'critique',
+        recommendedAction: 'Reprendre la pose, corriger le cheminement et recontrôler avant réception.',
         smartReplies: ['Installation intérieure', 'Sécurité électrique', 'Anomalies terrain'],
         _engine: 'RULES',
       };
@@ -1223,10 +1963,25 @@ async function runRulesEngine(
 
     if (q.includes('sécurité') || q.includes('ddr') || q.includes('protection')) {
       return {
-        message: pfx(
-          `🛡️ **SÉCURITÉ ÉLECTRIQUE**\n\nLa sécurité est primordiale en BT ≤ 1000V :\n• DDR (dispositif de coupure fuite terre) obligatoire\n• Prise terre PE vert/jaune correctement installée\n• Protection mécanique PVC pour tous câbles\n• Absence de masses touchables sous tension\n• Vérification systématique des anomalies\n\n**Rappel** : La norme NS 01-001 impose ces protections.`
-        ),
+        message:
+          `**Sécurité électrique en BT**\n\n` +
+          `Référence : NS 01-001 - protections des personnes et des biens\n\n` +
+          `Verdict type : Non conforme\n` +
+          `Gravité type : critique\n\n` +
+          `**Exigences techniques**\n` +
+          `1. DDR adapté et opérationnel.\n` +
+          `2. Conducteur de protection PE présent et correctement raccordé.\n` +
+          `3. Protection mécanique des câbles exposés.\n` +
+          `4. Absence de masse accessible susceptible d'être mise sous tension.\n\n` +
+          `**Verdict terrain**\n` +
+          `Toute chaîne de protection incomplète doit être classée non conforme jusqu'à remise en état.\n\n` +
+          `**Action corrective**\n` +
+          `Consigner l’écart, interdire la mise en service et recontrôler après correction.`,
         type: 'info',
+        verdict: 'Non conforme',
+        severity: 'critique',
+        recommendedAction:
+          'Consigner l’écart, interdire la mise en service et recontrôler après correction.',
         smartReplies: ['Normes NS 01-001', 'Installation intérieure', 'Contrôle qualité'],
         _engine: 'RULES',
       };
@@ -1234,10 +1989,22 @@ async function runRulesEngine(
 
     if (q.includes('anomalie') || q.includes('problème') || q.includes('erreur')) {
       return {
-        message: pfx(
-          `⚠️ **ANOMALIES À ÉVITER**\n\nLes anomalies critiques sur le terrain :\n• Fils visibles ou câbles extérieurs\n• Barrette terre en dehors du bâtiment\n• Poteaux bois pourris ou endommagés\n• Surplombement de lignes interdit\n• Coordonnées GPS incorrectes (±5m précision requise)\n• Absence de protection mécanique PVC\n\n**Procédure** : Signaler immédiatement et documenter avec photos.`
-        ),
+        message:
+          `**Anomalies critiques à traiter**\n\n` +
+          `Verdict type : Non conforme\n` +
+          `Gravité type : critique\n\n` +
+          `**Points de rejet fréquents**\n` +
+          `- Conducteurs visibles après pose.\n` +
+          `- Câbles laissés en plein air sans protection.\n` +
+          `- Barrette de terre à l'extérieur.\n` +
+          `- Poteau bois dégradé ou support instable.\n` +
+          `- Absence de protection mécanique PVC.\n\n` +
+          `**Consigne expert**\n` +
+          `Documenter, bloquer la validation et exiger correction avant recontrôle.`,
         type: 'warning',
+        verdict: 'Non conforme',
+        severity: 'critique',
+        recommendedAction: 'Documenter, bloquer la validation et exiger correction avant recontrôle.',
         smartReplies: ['Résolution anomalies', 'Photos terrain', 'Rapport qualité'],
         _engine: 'RULES',
       };
@@ -1250,10 +2017,24 @@ async function runRulesEngine(
       q.includes('prise')
     ) {
       return {
-        message: pfx(
-          `🏠 **INSTALLATION INTÉRIEURE MFR**\n\nConfiguration standard :\n• Coffret disjoncteur dans couloir couvert\n• 3 lampes + 1 prise par défaut\n• Interrupteurs en zone couverte uniquement\n• Câbles armés enterrés obligatoires\n• Protection contre l'humidité\n\n**Qualité** : Vérifier l'absence de fils apparents et la conformité aux normes.`
-        ),
+        message:
+          `**Installation intérieure MFR**\n\n` +
+          `Référence : Guide MFR - installation intérieure\n\n` +
+          `Verdict type : A verifier\n` +
+          `Gravité type : majeure\n\n` +
+          `**Configuration standard**\n` +
+          `1. Coffret disjoncteur en couloir couvert ou mur clos adossé.\n` +
+          `2. Trois lampes et une prise en configuration de base.\n` +
+          `3. Interrupteurs uniquement en zone couverte.\n` +
+          `4. Câbles armés enterrés entre pièces isolées.\n\n` +
+          `**Verdict terrain**\n` +
+          `Non conforme si les appareillages sont exposés, si les câbles sont apparents ou si la configuration posée n'est pas validée.\n\n` +
+          `**Action corrective**\n` +
+          `Faire corriger les écarts de pose puis recontrôler avant certification.`,
         type: 'info',
+        verdict: 'A verifier',
+        severity: 'majeure',
+        recommendedAction: 'Faire corriger les écarts de pose puis recontrôler avant certification.',
         smartReplies: ['Configuration avancée', 'Matériel requis', 'Contrôle final'],
         _engine: 'RULES',
       };
@@ -1261,9 +2042,16 @@ async function runRulesEngine(
 
     // Réponse générique technique améliorée
     return {
-      message: pfx(
-        `⚡ **RÉFÉRENTIEL TECHNIQUE GEM-MINT**\n\nJe maîtrise les normes Senelec et NS 01-001 :\n• Installations basse tension BT ≤ 1000V\n• Branchements en limite de propriété\n• Sécurité électrique et protections\n• Anomalies terrain et résolutions\n• Configurations MFR standard\n\nPosez votre question technique spécifique !`
-      ),
+      message:
+        `**Référentiel technique GEM-MINT**\n\n` +
+        `Sortie attendue : verdict, gravité et action corrective.\n\n` +
+        `Domaines couverts :\n` +
+        `- Branchement Senelec\n` +
+        `- Installation intérieure MFR\n` +
+        `- Sécurité BT et protections\n` +
+        `- Anomalies et critères de rejet\n` +
+        `- Norme NS 01-001\n\n` +
+        `Formulez la question par ouvrage, anomalie, équipement ou règle de référence pour obtenir une réponse de contrôle structurée.`,
       type: 'info',
       smartReplies: [
         'Branchement Senelec',
@@ -1321,17 +2109,13 @@ async function runRulesEngine(
     };
   }
   if (intent.finance && (isDG || isMaster)) {
+    const financeMessage = buildSemanticResponse('finance', query, state) || KNOWLEDGE.finance;
     return {
-      message: pfx(
-        KNOWLEDGE.finance +
-          (stats
-            ? `\n\n💰 **BUDGET ACTUEL** : ${new Intl.NumberFormat('fr-FR').format(stats.totalIndemnities)} FCFA dépensés.`
-            : '')
-      ),
+      message: pfx(financeMessage),
       type: 'info',
       actionLabel: 'Voir Finances',
       actionPath: '/admin',
-      smartReplies: ['Rapport budgétaire', 'Seuil critique', 'Indemnités'],
+      smartReplies: getSemanticEntry('finance')?.smartReplies || ['Rapport budgétaire', 'Seuil critique', 'Indemnités'],
       _engine: 'RULES',
     };
   }
@@ -1407,34 +2191,46 @@ async function runRulesEngine(
   }
 
   if (intent.global) {
+    const globalMessage = buildSemanticResponse('global', query, state) || KNOWLEDGE.global;
     return {
-      message: pfx(KNOWLEDGE.global),
+      message: pfx(globalMessage),
       type: 'info',
       actionLabel: 'Dashboard',
       actionPath: '/admin',
+      smartReplies: getSemanticEntry('global')?.smartReplies,
       _engine: 'RULES',
     };
   }
   if (intent.kobo) {
     memory.lastIntent = 'kobo';
-    return { message: pfx(KNOWLEDGE.kobo), type: 'info', _engine: 'RULES' };
+    return {
+      message: pfx(buildSemanticResponse('kobo', query, state) || KNOWLEDGE.kobo),
+      type: 'info',
+      smartReplies: getSemanticEntry('kobo')?.smartReplies,
+      _engine: 'RULES',
+    };
   }
   if (intent.mission) {
     memory.lastIntent = 'mission';
-    const enrich = buildContextualEnrichment(intent, stats, households);
+    const missionMessage =
+      buildSemanticResponse('mission', query, state) ||
+      KNOWLEDGE.mission + buildContextualEnrichment(intent, stats, households);
     return {
-      message: pfx(
-        KNOWLEDGE.mission + (stats ? ` (${stats.totalMissions} missions)` : '') + enrich
-      ),
+      message: pfx(missionMessage),
       type: 'info',
       actionLabel: 'Mes Missions',
       actionPath: '/mission-order',
-      smartReplies: ['Créer mission', 'Voir mes missions', 'Budget', 'Validation'],
+      smartReplies: getSemanticEntry('mission')?.smartReplies || ['Créer mission', 'Voir mes missions', 'Budget', 'Validation'],
       _engine: 'RULES',
     };
   }
   if (intent.workflow) {
-    return { message: pfx(KNOWLEDGE.workflow), type: 'info', _engine: 'RULES' };
+    return {
+      message: pfx(buildSemanticResponse('workflow', query, state) || KNOWLEDGE.workflow),
+      type: 'info',
+      smartReplies: getSemanticEntry('workflow')?.smartReplies,
+      _engine: 'RULES',
+    };
   }
   if (intent.decision && (isMaster || isDG)) {
     const insights = analyzeDG(stats, households, auditLogs);
@@ -1797,56 +2593,56 @@ async function runRulesEngine(
   // Nouveaux cas pour ElectricianQuran
   if (intent.mfr) {
     return {
-      message: pfx(KNOWLEDGE.mfr),
+      message: pfx(buildSemanticResponse('mfr', query, state) || KNOWLEDGE.mfr),
       type: 'info',
-      smartReplies: ['Critères éligibilité', 'Installation intérieure', 'Branchement Senelec'],
+      smartReplies: getSemanticEntry('mfr')?.smartReplies || ['Critères éligibilité', 'Installation intérieure', 'Branchement Senelec'],
       _engine: 'RULES',
     };
   }
   if (intent.norme) {
     return {
-      message: pfx(KNOWLEDGE.norme),
+      message: pfx(buildSemanticResponse('norme', query, state) || KNOWLEDGE.norme),
       type: 'info',
-      smartReplies: ['Domaine application', 'Protection', 'Glossaire'],
+      smartReplies: getSemanticEntry('norme')?.smartReplies || ['Domaine application', 'Protection', 'Glossaire'],
       _engine: 'RULES',
     };
   }
   if (intent.protection) {
     return {
-      message: pfx(KNOWLEDGE.protection),
+      message: pfx(buildSemanticResponse('protection', query, state) || KNOWLEDGE.protection),
       type: 'info',
-      smartReplies: ['Contact direct', 'DDR', 'Parafoudre'],
+      smartReplies: getSemanticEntry('protection')?.smartReplies || ['Contact direct', 'DDR', 'Parafoudre'],
       _engine: 'RULES',
     };
   }
   if (intent.anomalies)
     return {
-      message: pfx(KNOWLEDGE.anomalies),
+      message: pfx(buildSemanticResponse('anomalies', query, state) || KNOWLEDGE.anomalies),
       type: 'info',
-      smartReplies: ['Fils visibles', 'Câbles extérieurs', 'Poteaux bois'],
+      smartReplies: getSemanticEntry('anomalies')?.smartReplies || ['Fils visibles', 'Câbles extérieurs', 'Poteaux bois'],
       _engine: 'RULES',
     };
   if (intent.branchement) {
     return {
-      message: pfx(KNOWLEDGE.branchement),
+      message: pfx(buildSemanticResponse('branchement', query, state) || KNOWLEDGE.branchement),
       type: 'info',
-      smartReplies: ['Limite propriété', 'Hauteur câble', 'Protection PVC'],
+      smartReplies: getSemanticEntry('branchement')?.smartReplies || ['Limite propriété', 'Hauteur câble', 'Protection PVC'],
       _engine: 'RULES',
     };
   }
   if (intent.interieur) {
     return {
-      message: pfx(KNOWLEDGE.interieur),
+      message: pfx(buildSemanticResponse('interieur', query, state) || KNOWLEDGE.interieur),
       type: 'info',
-      smartReplies: ['Coffret disjoncteur', 'Câbles armés', 'Grillage rouge'],
+      smartReplies: getSemanticEntry('interieur')?.smartReplies || ['Coffret disjoncteur', 'Câbles armés', 'Grillage rouge'],
       _engine: 'RULES',
     };
   }
   if (intent.glossaire) {
     return {
-      message: pfx(KNOWLEDGE.glossaire),
+      message: pfx(buildSemanticResponse('glossaire', query, state) || KNOWLEDGE.glossaire),
       type: 'info',
-      smartReplies: ['Partie active', 'Conducteur PE', 'Section'],
+      smartReplies: getSemanticEntry('glossaire')?.smartReplies || ['Partie active', 'Conducteur PE', 'Section'],
       _engine: 'RULES',
     };
   }
@@ -1854,33 +2650,33 @@ async function runRulesEngine(
   // Extensions pour 20 questions supplémentaires
   if (intent.terms) {
     return {
-      message: pfx(KNOWLEDGE.terms),
+      message: pfx(buildSemanticResponse('glossaire', query, state) || KNOWLEDGE.terms),
       type: 'info',
-      smartReplies: ['Partie active', 'Masse électrique', 'Contact indirect'],
+      smartReplies: getSemanticEntry('glossaire')?.smartReplies || ['Partie active', 'Masse électrique', 'Contact indirect'],
       _engine: 'RULES',
     };
   }
   if (intent.specs) {
     return {
-      message: pfx(KNOWLEDGE.specs),
+      message: pfx(buildSemanticResponse('branchement', query, state) || KNOWLEDGE.specs),
       type: 'info',
-      smartReplies: ['Hauteur minimale', 'Configuration standard', 'Protection mécanique'],
+      smartReplies: getSemanticEntry('branchement')?.smartReplies || ['Hauteur minimale', 'Configuration standard', 'Protection mécanique'],
       _engine: 'RULES',
     };
   }
   if (intent.protection_details) {
     return {
-      message: pfx(KNOWLEDGE.protection_details),
+      message: pfx(buildSemanticResponse('protection', query, state) || KNOWLEDGE.protection_details),
       type: 'info',
-      smartReplies: ['Éviter contact indirect', 'Parafoudre', 'Fusible'],
+      smartReplies: getSemanticEntry('protection')?.smartReplies || ['Éviter contact indirect', 'Parafoudre', 'Fusible'],
       _engine: 'RULES',
     };
   }
   if (intent.anomalies_details) {
     return {
-      message: pfx(KNOWLEDGE.anomalies_details),
+      message: pfx(buildSemanticResponse('anomalies', query, state) || KNOWLEDGE.anomalies_details),
       type: 'info',
-      smartReplies: ['Fils visibles', 'Câbles plein air', 'Poteaux bois'],
+      smartReplies: getSemanticEntry('anomalies')?.smartReplies || ['Fils visibles', 'Câbles plein air', 'Poteaux bois'],
       _engine: 'RULES',
     };
   }
@@ -1893,11 +2689,12 @@ async function runRulesEngine(
       if (intentKey === 'mission' && stats) msg += ` (${stats.totalMissions} missions)`;
 
       const enrich = buildContextualEnrichment(intent, stats, households);
+      const semanticMessage = buildSemanticResponse(intentKey, query, state);
 
       return {
-        message: pfx(msg + enrich),
+        message: pfx(semanticMessage || msg + enrich),
         type: 'info',
-        smartReplies: getSmartSuggestions(query),
+        smartReplies: getSemanticEntry(intentKey)?.smartReplies || getSmartSuggestions(query),
         _engine: 'RULES',
       };
     }
@@ -1957,65 +2754,35 @@ async function runRulesEngine(
 // 🤖 MOTEUR 2 : CLAUDE AI (V2.0)
 // ═══════════════════════════════════════════════════════════════
 
-async function callOllamaAI(query: string, timeout: number): Promise<string> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeout);
-  try {
-    const response = await fetch('http://localhost:11434/api/generate', {
-      method: 'POST',
-      body: JSON.stringify({
-        model: 'llama3',
-        prompt: query,
-        stream: false,
-      }),
-      signal: controller.signal,
-    });
-    if (!response.ok) throw new Error('Ollama non détecté sur localhost:11434');
-    const data = await response.json();
-    return data.response;
-  } catch (e: any) {
-    throw new Error('Ollama unreachable. Install it from ollama.com');
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
 async function callVisionAI(
   query: string,
   base64Image: string,
   user?: any,
   state?: AIState
 ): Promise<AIResponse> {
-  const visionPrompt = `
-Tu es l'Oeil du Mentor GEM-MINT. Analyse cette image d'installation électrique PROQUELEC.
-INSTRUCTION: Détecte les anomalies techniques (fils nus, absence PVC, poteau bois, etc.).
-CONTEXTE: ${user?.role || 'Technicien'} ${user?.displayName || ''}. 
-STATS: Missions=${state?.stats?.totalMissions || 0}.
-
-SI TU VOIS UNE ANOMALIE:
-1. Décris-la précisément (ex: "Câble 2.5mm² sans gaine PVC").
-2. Donne la règle Senelec/NS 01-001 correspondante.
-3. Propose une action corrective.
-
-IMAGE ANALYSIS REQUEST: ${query || 'Analyse visuelle de cette installation.'}
-`;
-
+  void user;
   try {
-    // Nettoyer le base64 pour l'URL si besoin, mais Pollinations attend souvent une URL ou un format spécifique.
-    // Pour text.pollinations.ai, on peut parfois passer des descriptions d'images,
-    // mais pour une vraie vision, on utilise gen.pollinations.ai ou un proxy.
-    // Ici, on simule l'appel vision via Pollinations (qui supporte la description d'image par prompt enrichi ou multimodal)
-    const response = await fetch(
-      `https://text.pollinations.ai/${encodeURIComponent(visionPrompt)}?model=openai&image=${encodeURIComponent(base64Image)}`
-    );
-    if (!response.ok) throw new Error('Service Vision indisponible.');
-    const text = await response.text();
-
+    const { data } = await apiClient.post('/ai/mentor/query', {
+      message: query || 'Analyse visuelle de cette installation.',
+      context: buildRemoteAIContextSnapshot(state || {
+        stats: null,
+        auditLogs: [],
+        households: [],
+        teams: [],
+        regionalSummaries: [],
+      }),
+      history: [],
+      image: base64Image,
+    });
+    const expertMetadata = extractExpertMetadata(data?.message || '');
     return {
-      message: `👁️ **ANALYSE VISUELLE DU MENTOR**\n\n${text}`,
-      type: 'warning',
-      images: [{ url: base64Image, caption: 'Scan Oculaire GEM-MINT' }],
-      _engine: 'VISION',
+      message: expertMetadata.controlSheet
+        ? "**Analyse visuelle assistée**\n\nFiche de contrôle générée à partir du cliché transmis."
+        : `**Analyse visuelle assistée**\n\n${data?.message || ''}`,
+      type: data?.type || 'warning',
+      images: [{ url: base64Image, caption: 'Cliche analyse' }],
+      ...expertMetadata,
+      _engine: data?._engine || 'VISION',
     };
   } catch (e: any) {
     return {
@@ -2026,91 +2793,27 @@ IMAGE ANALYSIS REQUEST: ${query || 'Analyse visuelle de cette installation.'}
   }
 }
 
-async function callPublicFreeAI(query: string, user?: any, state?: AIState): Promise<string> {
-  const contextPrompt = buildPublicAIKnowledgePrompt(query, user, state);
-
-  const response = await fetch(
-    `https://text.pollinations.ai/${encodeURIComponent(contextPrompt)}?model=openai`
-  );
-  if (!response.ok) throw new Error('Service public Pollinations indisponible.');
-  return await response.text();
-}
-
 async function callClaudeAI(
   query: string,
   user: any,
   state: AIState,
   history: any[],
   timeout: number
-): Promise<string> {
-  const config = getAIEngineConfig();
+): Promise<AIResponse> {
+  void user;
+  void timeout;
 
-  if (config.provider === 'LOCAL_OLLAMA') {
-    return await callOllamaAI(query, timeout);
-  }
+  const { data } = await apiClient.post('/ai/mentor/query', {
+    message: query,
+    context: buildRemoteAIContextSnapshot(state),
+    history: (history || []).slice(-getAIEngineConfig().maxHistoryTurns),
+  });
 
-  if (config.provider === 'PUBLIC_POLLINATIONS') {
-    return await callPublicFreeAI(query, user, state);
-  }
-
-  if (!config.claudeApiKey) {
-    return "⚠️ Le moteur Claude AI n'est pas configuré. Veuillez contacter l'Admin PROQUELEC pour renseigner la clé API.";
-  }
-
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeout);
-
-  try {
-    const isDG = ['DG_PROQUELEC', 'DIRECTEUR', 'COMPTABLE', 'ADMIN_PROQUELEC'].includes(user.role);
-    const statsCtx = state.stats
-      ? `• Missions totales : ${state.stats.totalMissions}\n• Missions certifiées : ${state.stats.totalCertified}\n• Budget indemnités : ${new Intl.NumberFormat('fr-FR').format(state.stats.totalIndemnities)} FCFA`
-      : 'Statistiques non disponibles.';
-
-    const systemPrompt = `Tu es GEM-MINT, l'assistant IA expert de PROQUELEC.
-## CONTEXTE UTILISATEUR: Nom=${user.displayName || user.name}, Rôle=${user.role}
-## DONNÉES TEMPS RÉEL:
-${statsCtx}
-• Ménages terrain : ${(state.households || []).length}
-## DIRECTIVES: Réponds en français, précis, technique (Norme NS 01-001) ou stratégique. ${!isDG ? 'Refuser poliment les demandes financières confidentielles.' : ''}`;
-
-    const messages = [
-      ...(history || []).slice(-(config.maxHistoryTurns || 10)),
-      { role: 'user', content: query },
-    ];
-
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': config.claudeApiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true', // Required if calling from browser directly
-      },
-      signal: controller.signal,
-      body: JSON.stringify({
-        model: 'claude-3-sonnet-20240229',
-        max_tokens: 1024,
-        system: systemPrompt,
-        messages: messages,
-      }),
-    });
-
-    clearTimeout(timer);
-
-    if (!response.ok) {
-      const err = await response.json();
-      throw new Error(err.error?.message || 'Erreur API Claude');
-    }
-
-    const data = await response.json();
-    return data.content[0].text;
-  } catch (err: any) {
-    clearTimeout(timer);
-    logger.error('[MissionSageService] [Claude_AI] Call failed', err);
-    if (err.name === 'AbortError')
-      return '⏳ Le moteur Claude AI a mis trop de temps à répondre (Timeout).';
-    throw err;
-  }
+  return {
+    message: data?.message || "Je n'ai pas pu produire une réponse exploitable.",
+    type: data?.type || 'info',
+    _engine: data?._engine || 'CLAUDE',
+  };
 }
 
 async function runClaudeEngine(
@@ -2141,10 +2844,9 @@ async function runClaudeEngine(
       settings.claudeTimeoutMs
     );
     return {
-      message: ans,
-      type: 'info',
-      smartReplies: getSmartSuggestions(query),
-      _engine: 'CLAUDE',
+      ...ans,
+      smartReplies: ans.smartReplies?.length ? ans.smartReplies : getSmartSuggestions(query),
+      _engine: ans._engine || 'CLAUDE',
     };
   } catch (err: any) {
     logger.error('[MissionSageService] [Claude_Engine] Managed error', err);
@@ -2228,7 +2930,22 @@ export const missionSageService = {
       // Direct pass to Vision AI if image is provided
       response = await callVisionAI(query, image, user, state);
     } else {
-      response = await orchestrate(query, user, state, memory);
+      let memorizedResponse: AIResponse | null = null;
+
+      try {
+        const trainingMatch = await mentorTrainingService.findMatch(query);
+        if (trainingMatch?.answer) {
+          memorizedResponse = {
+            message: trainingMatch.answer,
+            type: 'info',
+            _engine: 'RULES',
+          };
+        }
+      } catch (error) {
+        logger.warn('[MissionSage] Mentor training lookup failed', error);
+      }
+
+      response = memorizedResponse || (await orchestrate(query, user, state, memory));
     }
 
     const config = getAIEngineConfig();
@@ -2236,8 +2953,9 @@ export const missionSageService = {
       memory.contextHistory.push({ role: 'user', content: query });
       memory.contextHistory.push({ role: 'assistant', content: response.message });
     }
+    const normalizedResponse = enrichExpertMetadata(ensureSmartReplies(response, query));
     saveMemory(userId, memory);
-    return response;
+    return normalizedResponse;
   },
 
   async getProactiveMessage(user: User, state: AIState): Promise<AIResponse | null> {
@@ -2250,6 +2968,7 @@ export const missionSageService = {
         type: 'warning',
         actionLabel: 'Auditer',
         actionPath: '/admin',
+        smartReplies: ['Rapport budgétaire', 'Voir le dashboard', 'Indemnités'],
       };
     return null;
   },

@@ -41,10 +41,31 @@ import {
   probeLocalDeployAgent,
   triggerLocalDeploy,
 } from '../services/localDeployAgent';
+import { computeTheoreticalNeeds, getAvailablePlanningRegions } from '../services/planningDomain';
 
 // Helper stable id generator (defined outside components to avoid impure calls during render)
 const makeId = (prefix = 'id') =>
   `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
+
+const normalizeGeoKey = (value: unknown) =>
+  String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase();
+
+const AUTO_TEAM_BLUEPRINTS = [
+  { needKey: 'livraison', tradeKey: 'livraison', role: 'LOGISTICS', label: 'Logistique' },
+  { needKey: 'macons', tradeKey: 'macons', role: 'INSTALLATION', label: 'Maçonnerie' },
+  { needKey: 'reseau', tradeKey: 'reseau', role: 'INSTALLATION', label: 'Réseau' },
+  {
+    needKey: 'interieur',
+    tradeKey: 'interieur_type1',
+    role: 'INSTALLATION',
+    label: 'Installations intérieures',
+  },
+  { needKey: 'controle', tradeKey: 'controle', role: 'SUPERVISION', label: 'Contrôle' },
+] as const;
 
 // ─── TYPE DEFINITIONS ───────────────────────────────────────────────────
 type ProjectConfig = Record<string, unknown> & {
@@ -87,7 +108,11 @@ export default function Settings() {
     busy: false,
   });
   const { project, updateProject, isLoading: isProjectLoading } = useProject();
-  const { households, isLoading: isHouseholdsLoading } = useTerrainData();
+  const {
+    households,
+    isLoading: isHouseholdsLoading,
+    error: householdsError,
+  } = useTerrainData();
   const { user } = useAuth();
 
   // Cast project config once at the top for type safety
@@ -482,7 +507,13 @@ export default function Settings() {
                 <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/5 blur-[100px] pointer-events-none rounded-full" />
 
                 <div className="relative z-10">
-                  {activeTab === 'teams' && <TeamsSection project={project} />}
+                  {activeTab === 'teams' && (
+                    <TeamsSection
+                      project={project}
+                      households={households}
+                      householdsError={householdsError}
+                    />
+                  )}
                   {activeTab === 'costs' && (
                     <CostsSection project={project} onUpdate={updateProject} />
                   )}
@@ -647,7 +678,15 @@ export default function Settings() {
   );
 }
 
-function TeamsSection({ project }: { project: any }) {
+function TeamsSection({
+  project,
+  households,
+  householdsError,
+}: {
+  project: any;
+  households: any[];
+  householdsError?: string | null;
+}) {
   const {
     teamTree,
     regions,
@@ -672,6 +711,7 @@ function TeamsSection({ project }: { project: any }) {
   const [collapsedTeams, setCollapsedTeams] = useState<Record<string, boolean>>({});
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [confirmResetAll, setConfirmResetAll] = useState(false);
+  const [isAutoGenerating, setIsAutoGenerating] = useState(false);
 
   useEffect(() => {
     fetchTeamTree();
@@ -713,6 +753,34 @@ function TeamsSection({ project }: { project: any }) {
       0
     ),
   };
+
+  const detectedHouseholdRegions = getAvailablePlanningRegions((households || []) as any[]).filter(
+    (region): region is string => typeof region === 'string' && region.trim().length > 0
+  );
+  const detectedServerRegions = (regions || [])
+    .map((region: any) => region?.name)
+    .filter((region: unknown): region is string => typeof region === 'string' && region.trim().length > 0);
+  const configuredRegions = Object.keys(project?.config?.regionsConfig || {}).filter(
+    (region): region is string => typeof region === 'string' && region.trim().length > 0
+  );
+  const detectedRegions = (
+    detectedHouseholdRegions.length > 0
+      ? detectedHouseholdRegions
+      : [...detectedServerRegions, ...configuredRegions]
+  ).filter((region, index, list) => list.findIndex((entry) => normalizeGeoKey(entry) === normalizeGeoKey(region)) === index);
+  const regionSourceLabel =
+    detectedHouseholdRegions.length > 0
+      ? 'ménages chargés'
+      : detectedServerRegions.length > 0
+        ? 'régions serveur'
+        : configuredRegions.length > 0
+          ? 'configuration projet'
+          : 'aucune source disponible';
+  const projectDurationMonths =
+    typeof project?.duration === 'number' && Number.isFinite(project.duration) && project.duration > 0
+      ? Math.max(1, Math.round(project.duration))
+      : 1;
+  const projectWorkingDays = projectDurationMonths * 22;
 
   const handleUpdateProductionRate = (trade: string, value: number) => {
     updateProject({
@@ -827,6 +895,179 @@ function TeamsSection({ project }: { project: any }) {
     }
   };
 
+  const buildLegacyTeamSnapshot = (parents: any[]) =>
+    parents.map((parent) => ({
+      id: parent.id,
+      name: parent.name,
+      role: parent.role,
+      tradeKey: parent.tradeKey,
+      regionId: parent.regionId,
+      capacity: parent.capacity,
+      subTeams: (parent.children || []).map((child: any) => ({
+        id: child.id,
+        name: child.name,
+        role: child.role,
+        tradeKey: child.tradeKey,
+        regionId: child.regionId,
+        capacity: child.capacity,
+        parentTeamId: child.parentTeamId,
+        status: child.status,
+      })),
+    }));
+
+  const handleAutoGenerateTeams = async () => {
+    if (!project?.id) {
+      toast.error('Projet introuvable.');
+      return;
+    }
+
+    if (!households?.length) {
+      toast.error('Aucun ménage chargé pour générer les équipes.');
+      return;
+    }
+
+    if (!detectedRegions.length) {
+      toast.error('Aucune région détectée dans les ménages du projet.');
+      return;
+    }
+
+    if (!households?.length) {
+      toast.error(
+        householdsError ||
+          'Les ménages du projet ne sont pas chargés. Rechargez les données avant la génération.'
+      );
+      return;
+    }
+
+    const confirmMessage =
+      teamTree.length > 0
+        ? `Cette action va supprimer ${teamTree.length} groupement(s) existant(s) puis recréer automatiquement les équipes par région. Continuer ?`
+        : `Créer automatiquement les équipes pour ${detectedRegions.length} région(s) et ${households.length} ménage(s) ?`;
+
+    if (!window.confirm(confirmMessage)) {
+      return;
+    }
+
+    setIsAutoGenerating(true);
+    const toastId = toast.loading('Génération automatique des équipes...');
+
+    try {
+      if (teamTree.length > 0) {
+        const existingIds: string[] = [];
+        teamTree.forEach((parent: any) => {
+          (parent.children || []).forEach((child: any) => existingIds.push(child.id));
+          existingIds.push(parent.id);
+        });
+
+        for (const id of existingIds) {
+          await deleteTeam(id);
+        }
+      }
+
+      const regionLookup = new Map(
+        (regions || []).map((region: any) => [normalizeGeoKey(region.name), region])
+      );
+      const generatedParents: any[] = [];
+      const nextRegionsConfig = { ...(project?.config?.regionsConfig || {}) };
+      let generatedSubTeams = 0;
+
+      for (const regionName of detectedRegions) {
+        const matchedRegion = regionLookup.get(normalizeGeoKey(regionName));
+        const regionalNeeds = computeTheoreticalNeeds({
+          households,
+          targetMonths: projectDurationMonths,
+          selectedRegion: regionName,
+          productionRates,
+        });
+
+        if (!regionalNeeds) {
+          continue;
+        }
+
+        const parentTeam = await createTeam({
+          name: `Cellule ${regionName}`,
+          role: 'INSTALLATION',
+          regionId: matchedRegion?.id,
+          capacity: 0,
+        });
+
+        const generatedChildren: any[] = [];
+
+        for (const blueprint of AUTO_TEAM_BLUEPRINTS) {
+          const requiredTeams = Math.max(
+            0,
+            Number(regionalNeeds[blueprint.needKey as keyof typeof regionalNeeds] || 0)
+          );
+          const teamCapacity =
+            Number(
+              blueprint.needKey === 'interieur'
+                ? regionalNeeds.effectiveRates.interieur
+                : regionalNeeds.effectiveRates[
+                    blueprint.needKey as keyof typeof regionalNeeds.effectiveRates
+                  ]
+            ) || Number(productionRates?.[blueprint.tradeKey]) || 1;
+
+          for (let index = 0; index < requiredTeams; index += 1) {
+            const child = await createTeam({
+              name: `${blueprint.label} ${index + 1} - ${regionName}`,
+              role: blueprint.role as any,
+              tradeKey: blueprint.tradeKey,
+              parentTeamId: parentTeam.id,
+              regionId: matchedRegion?.id,
+              capacity: Math.max(1, Math.round(teamCapacity)),
+            });
+
+            generatedChildren.push(child);
+            generatedSubTeams += 1;
+          }
+        }
+
+        generatedParents.push({
+          ...parentTeam,
+          regionId: matchedRegion?.id,
+          children: generatedChildren,
+        });
+
+        nextRegionsConfig[regionName] = {
+          ...(nextRegionsConfig[regionName] || {}),
+          autoGenerated: true,
+          planningWindowMonths: projectDurationMonths,
+          householdCount: households.filter((household) => household.region === regionName).length,
+          teamAllocations: generatedChildren.map((child: any, index: number) => ({
+            id: makeId('alloc'),
+            subTeamId: child.id,
+            priority: index + 1,
+          })),
+        };
+      }
+
+      await updateProject({
+        config: {
+          ...project.config,
+          teams: buildLegacyTeamSnapshot(generatedParents),
+          regionsConfig: nextRegionsConfig,
+        },
+      });
+
+      await Promise.all([fetchTeamTree(), fetchRegions(), fetchGrappes()]);
+
+      toast.success(
+        `${generatedParents.length} cellule(s) régionale(s) et ${generatedSubTeams} équipe(s) terrain générées automatiquement.`,
+        { id: toastId, duration: 5000 }
+      );
+    } catch (err: any) {
+      logger.error('❌ Génération automatique des équipes impossible:', err);
+      toast.error(
+        err?.response?.data?.error ||
+          err?.message ||
+          'Erreur lors de la génération automatique des équipes.',
+        { id: toastId }
+      );
+    } finally {
+      setIsAutoGenerating(false);
+    }
+  };
+
   if (isTeamsLoading && teamTree.length === 0)
     return <div className="p-8 text-slate-400">Chargement des équipes...</div>;
 
@@ -854,6 +1095,84 @@ function TeamsSection({ project }: { project: any }) {
             <span className="text-xs font-black text-emerald-900 dark:text-emerald-100 uppercase tracking-tight">
               {stats.active} Actives
             </span>
+          </div>
+          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 rounded-xl border border-white/10">
+            <MapPin size={12} className="text-slate-300" />
+            <span className="text-xs font-black text-slate-200 uppercase tracking-tight">
+              {detectedRegions.length} Régions
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 rounded-xl border border-white/10">
+            <Layers size={12} className="text-slate-300" />
+            <span className="text-xs font-black text-slate-200 uppercase tracking-tight">
+              {households.length} Ménages
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 rounded-xl border border-white/10">
+            <Zap size={12} className="text-amber-400" />
+            <span className="text-xs font-black text-slate-200 uppercase tracking-tight">
+              {projectDurationMonths} Mois Cible
+            </span>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">
+            Source régions: <span className="text-slate-200">{regionSourceLabel}</span>
+          </div>
+          {householdsError ? (
+            <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-amber-200">
+              {householdsError}
+            </div>
+          ) : null}
+        </div>
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.8fr)]">
+          <div className="rounded-[1.5rem] border border-blue-500/15 bg-[linear-gradient(135deg,rgba(37,99,235,0.16),rgba(15,23,42,0.8))] p-5 shadow-[0_18px_40px_rgba(15,23,42,0.28)]">
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-2">
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-300">
+                  Auto-allocation projet
+                </p>
+                <h3 className="text-base font-black text-white sm:text-lg">
+                  Générer automatiquement les équipes et les affectations régionales
+                </h3>
+                <p className="max-w-3xl text-sm text-slate-300">
+                  Le calcul utilise le nombre de régions détectées, le volume de ménages dans
+                  chaque région et la durée cible du projet pour créer les unités terrain.
+                </p>
+              </div>
+              <button
+                onClick={handleAutoGenerateTeams}
+                disabled={isAutoGenerating || households.length === 0}
+                className="min-h-[48px] shrink-0 rounded-xl border border-blue-400/30 bg-blue-600 px-5 py-3 text-[10px] font-black uppercase tracking-[0.08em] text-white shadow-lg shadow-blue-600/20 transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isAutoGenerating ? 'Génération...' : 'Auto-créer & affecter'}
+              </button>
+            </div>
+          </div>
+          <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-5">
+            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
+              Fenêtre de calcul
+            </p>
+            <div className="mt-3 grid grid-cols-3 gap-3">
+              <div className="rounded-xl border border-white/10 bg-slate-950/60 px-3 py-3">
+                <p className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">
+                  Régions
+                </p>
+                <p className="mt-2 text-2xl font-black text-white">{detectedRegions.length}</p>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-slate-950/60 px-3 py-3">
+                <p className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">
+                  Ménages
+                </p>
+                <p className="mt-2 text-2xl font-black text-white">{households.length}</p>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-slate-950/60 px-3 py-3">
+                <p className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">
+                  Jours ouvrés
+                </p>
+                <p className="mt-2 text-2xl font-black text-white">{projectWorkingDays}</p>
+              </div>
+            </div>
           </div>
         </div>
         <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-stretch sm:items-center">

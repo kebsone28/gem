@@ -60,9 +60,11 @@ function mergeJsonField(existingValue, nextValue) {
 export const getHouseholds = async (req, res) => {
     try {
         const { organizationId } = req.user;
-        const { projectId, zoneId, status, bbox, limit = '5000' } = req.query;
+        const { projectId, zoneId, grappeId, status, bbox, limit = '5000', page = '1' } = req.query;
 
         const limitNum = Math.min(parseInt(limit), 10000);
+        const pageNum = Math.max(parseInt(page, 10) || 1, 1);
+        const skip = (pageNum - 1) * limitNum;
 
         const where = {
             organizationId,
@@ -75,6 +77,10 @@ export const getHouseholds = async (req, res) => {
             where.zone = { projectId };
         }
 
+        if (grappeId) {
+            where.grappeId = grappeId === '__unclassified__' ? null : grappeId;
+        }
+
         if (status) {
             where.status = status;
         }
@@ -83,10 +89,16 @@ export const getHouseholds = async (req, res) => {
             where,
             select: LEGACY_SAFE_HOUSEHOLD_READ_SELECT,
             orderBy: { updatedAt: 'desc' },
+            skip,
             take: limitNum
         });
 
-        res.json({ households: sanitizeBigIntForJson(households.map(normalizeLegacyHousehold)) });
+        res.json({
+            households: sanitizeBigIntForJson(households.map(normalizeLegacyHousehold)),
+            page: pageNum,
+            limit: limitNum,
+            hasMore: households.length === limitNum
+        });
     } catch (error) {
         console.error('Get households error:', error);
         res.status(500).json({ error: 'Server error while fetching households' });

@@ -345,6 +345,11 @@ export default function PlanningFormation() {
   const activeTrainerCount = useMemo(() => trainers.filter((trainer) => trainer.active).length, [trainers]);
   const activeRoomCount = useMemo(() => rooms.filter((room) => room.active).length, [rooms]);
   const roomCapacityMax = useMemo(() => rooms.filter((room) => room.active).reduce((max, room) => Math.max(max, room.capacity), 0), [rooms]);
+  const selectedRegionNames = useMemo(() => selectedRegions.map((region) => region.region), [selectedRegions]);
+  const selectedModuleNames = useMemo(() => selectedModules.map((module) => module.name), [selectedModules]);
+  const hasPlanningDraft = useMemo(() => Boolean(previewPlan && previewPlan.sessions.length > 0), [previewPlan]);
+  const blockingAlertCount = useMemo(() => previewPlan?.alerts.length || 0, [previewPlan]);
+  const impossibleRegionCount = useMemo(() => previewPlan?.impossibleRegions.length || 0, [previewPlan]);
 
   const expertEvaluation = useMemo(() => {
     return evaluateFormationExpert({
@@ -1490,6 +1495,32 @@ export default function PlanningFormation() {
     }
   };
 
+  const openPreviewSessionEditor = (session: PreviewPlan['sessions'][number]) => {
+    setEditingPreviewSession({
+      id: session.id,
+      region: session.region,
+      participants: session.participants,
+      startDate: session.startDate,
+      trainerId: session.trainerId,
+      roomId: session.roomId,
+    });
+  };
+
+  const openBackendSessionEditor = (session: FormationSession) => {
+    setEditingBackendSession({
+      id: session.id,
+      region: session.region,
+      salle: session.salle,
+      maxParticipants: session.maxParticipants,
+      startDate: session.startDate,
+      workSaturday: session.workSaturday,
+      workSunday: session.workSunday,
+      status: session.status,
+      notes: session.notes || '',
+      cascadeRegion: true,
+    });
+  };
+
   const savePreviewSessionEdit = async () => {
     if (!editingPreviewSession) return;
 
@@ -1752,6 +1783,100 @@ export default function PlanningFormation() {
             <span className="hidden sm:inline">{tab.label}</span>
           </button>
         ))}
+      </div>
+
+      <div className="mb-4 rounded-[28px] border border-[var(--color-border-primary)] bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(248,250,252,0.94))] p-4 shadow-sm dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.82),rgba(2,6,23,0.92))] sm:mb-5 sm:p-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0 flex-1">
+            <div className="text-[10px] font-black uppercase tracking-[0.18em] text-[var(--color-text-muted)]">
+              Périmètre actif
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <span className="rounded-full border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-[var(--color-text-primary)]">
+                {activeTab === 'planner'
+                  ? plannerMode === 'ai'
+                    ? 'Planner AI'
+                    : 'Planner manuel'
+                  : activeTab === 'sessions'
+                    ? 'Sessions'
+                    : 'Modules'}
+              </span>
+              <span className="rounded-full border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-[var(--color-text-primary)]">
+                {plannerDeliveryMode === 'single'
+                  ? 'Mode séquentiel'
+                  : plannerDeliveryMode === 'multiple'
+                    ? 'Mode parallèle'
+                    : 'Mode non défini'}
+              </span>
+              <span className={`rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] ${
+                plannerConfig.includeSaturday
+                  ? 'border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/20 dark:text-emerald-300'
+                  : 'border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)]'
+              }`}>
+                {plannerConfig.includeSaturday ? 'Samedi inclus' : 'Lun-Ven'}
+              </span>
+              <span className={`rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] ${
+                hasPlanningDraft
+                  ? blockingAlertCount > 0
+                    ? 'border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/20 dark:text-amber-300'
+                    : 'border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/20 dark:text-emerald-300'
+                  : 'border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)]'
+              }`}>
+                {hasPlanningDraft
+                  ? blockingAlertCount > 0
+                    ? `${blockingAlertCount} alerte(s)`
+                    : 'Planning généré'
+                  : 'Aucun brouillon'}
+              </span>
+            </div>
+
+            <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+              <SummaryChip label="Régions actives" value={`${plannerSummary.totalRegions}`} helper={selectedRegionNames.slice(0, 3).join(', ') || 'Aucune région sélectionnée'} />
+              <SummaryChip label="Modules retenus" value={`${selectedModules.length}`} helper={selectedModuleNames.slice(0, 3).join(', ') || 'Aucun module retenu'} />
+              <SummaryChip label="Formateurs / salles" value={`${activeTrainerCount} / ${activeRoomCount}`} helper={roomCapacityMax > 0 ? `Capacité salle max ${roomCapacityMax}` : 'Aucune salle active'} />
+              <SummaryChip label="Volumes visés" value={`${plannerSummary.totalParticipants} pers`} helper={`${plannerSummary.totalSessions} session(s) théoriques`} />
+            </div>
+          </div>
+
+          <div className="grid min-w-full gap-2 sm:min-w-[240px]">
+            <button
+              onClick={generatePlan}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[var(--color-primary)] px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:opacity-95"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Régénérer le planning
+            </button>
+            {hasPlanningDraft ? (
+              <button
+                onClick={() => setPlannerMode('manual')}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] px-4 py-3 text-sm font-semibold text-[var(--color-text-primary)] transition hover:border-[var(--color-primary)]"
+              >
+                <Settings2 className="h-4 w-4" />
+                Ouvrir l'édition détaillée
+              </button>
+            ) : null}
+          </div>
+        </div>
+
+        {(blockingAlertCount > 0 || impossibleRegionCount > 0 || blockedDates.size > 0) && (
+          <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-[var(--color-border-primary)] pt-4">
+            {blockingAlertCount > 0 && (
+              <span className="rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/20 dark:text-amber-300">
+                {blockingAlertCount} contrainte(s) à arbitrer
+              </span>
+            )}
+            {impossibleRegionCount > 0 && (
+              <span className="rounded-full border border-rose-300 bg-rose-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/20 dark:text-rose-300">
+                {impossibleRegionCount} région(s) non planifiable(s)
+              </span>
+            )}
+            {blockedDates.size > 0 && (
+              <span className="rounded-full border border-blue-300 bg-blue-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-blue-700 dark:border-blue-900/60 dark:bg-blue-950/20 dark:text-blue-300">
+                {blockedDates.size} date(s) bloquée(s)
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       {activeTab === 'planner' && (
@@ -3018,150 +3143,15 @@ export default function PlanningFormation() {
                   </div>
                 }
               >
-                <div className="space-y-4 md:hidden">
-                  <div className="rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] p-4 text-sm text-[var(--color-text-secondary)]">
-                    La timeline complète est disponible sur écran large. Sur mobile, utilisez la liste simplifiée ci-dessous pour relire et reprogrammer les sessions.
-                  </div>
-                  <div className="space-y-3">
-                    {previewPlan.sessions.map((session) => (
-                      <div
-                        key={session.id}
-                        className="rounded-3xl border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] p-4"
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <div className="text-sm font-semibold text-[var(--color-text-primary)]">
-                              {session.region} • Session {session.indexInRegion}
-                            </div>
-                            <div className="mt-1 text-xs text-[var(--color-text-secondary)]">
-                              {session.startDate} au {session.endDate} • {session.durationDays} j
-                            </div>
-                          </div>
-                          <span className="rounded-full bg-blue-100 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-blue-700 dark:bg-blue-950/30 dark:text-blue-300">
-                            {session.participants} pers
-                          </span>
-                        </div>
-                        <div className="mt-3 text-sm text-[var(--color-text-secondary)]">
-                          {session.trainerName} • {session.roomName}
-                        </div>
-                        <button
-                          onClick={() =>
-                            setEditingPreviewSession({
-                              id: session.id,
-                              region: session.region,
-                              participants: session.participants,
-                              startDate: session.startDate,
-                              trainerId: session.trainerId,
-                              roomId: session.roomId,
-                            })
-                          }
-                          className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--color-border-primary)] px-3 py-2 text-xs font-semibold text-[var(--color-text-primary)] transition hover:border-[var(--color-primary)]"
-                        >
-                          <RefreshCw className="h-4 w-4" />
-                          Reprogrammer
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="hidden overflow-x-auto md:block">
-                  <div
-                    className={`grid min-w-[1080px] gap-3 ${getTimelineGridColumnsClass(timelineDays.length)}`}
-                  >
-                    <div className="sticky left-0 z-10 rounded-2xl bg-[var(--color-bg-primary)] p-3 text-xs font-bold uppercase tracking-[0.16em] text-[var(--color-text-muted)]">
-                      Régions
-                    </div>
-                    {timelineDays.map((day) => (
-                      <div
-                        key={day.iso}
-                        className="rounded-2xl bg-[var(--color-bg-secondary)] p-2 text-center"
-                      >
-                        <div className="text-[11px] font-bold text-[var(--color-text-primary)]">{day.label}</div>
-                        <div className="text-[10px] uppercase text-[var(--color-text-muted)]">{day.shortLabel}</div>
-                      </div>
-                    ))}
-
-                    {timelineRegions.map((region) => {
-                      const regionSessions = previewPlan.sessions
-                        .filter((session) => session.region === region)
-                        .sort((a, b) => a.startDate.localeCompare(b.startDate));
-
-                      return (
-                        <React.Fragment key={region}>
-                          <div className="sticky left-0 z-10 flex min-h-[90px] items-center rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] px-4 text-sm font-semibold text-[var(--color-text-primary)]">
-                            {region}
-                          </div>
-                          <div
-                            className={`relative col-span-full grid min-h-[90px] gap-1 rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] p-2 ${getTimelineLaneClass(timelineDays.length)}`}
-                          >
-                            {timelineDays.map((day) => (
-                              <div
-                                key={`${region}-${day.iso}`}
-                                onDragOver={(event) => event.preventDefault()}
-                                onDrop={(event) => {
-                                  event.preventDefault();
-                                  if (draggedPreviewSessionId) {
-                                    void movePreviewSessionToDate(draggedPreviewSessionId, day.iso);
-                                    setDraggedPreviewSessionId(null);
-                                  }
-                                }}
-                                className="rounded-xl border border-dashed border-[var(--color-border-primary)]/40"
-                              />
-                            ))}
-
-                            {regionSessions.map((session, index) => {
-                              const startIndex = timelineDays.findIndex((day) => day.iso === session.startDate);
-                              if (startIndex === -1) return null;
-
-                              return (
-                                <button
-                                  key={session.id}
-                                  draggable
-                                  onDragStart={() => setDraggedPreviewSessionId(session.id)}
-                                  onDragEnd={() => setDraggedPreviewSessionId(null)}
-                                  onClick={() =>
-                                    setEditingPreviewSession({
-                                      id: session.id,
-                                      region: session.region,
-                                      participants: session.participants,
-                                      startDate: session.startDate,
-                                      trainerId: session.trainerId,
-                                      roomId: session.roomId,
-                                    })
-                                  }
-                                  className={`group relative flex h-[72px] flex-col justify-between rounded-2xl border border-blue-200 bg-blue-50 p-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md dark:border-blue-900/50 dark:bg-blue-950/30 ${getTimelineSessionPlacementClass(
-                                    startIndex + 1,
-                                    Math.max(1, Math.min(session.durationDays, timelineDays.length - startIndex)),
-                                    index + 1
-                                  )}`}
-                                >
-                                  <div className="flex items-center justify-between gap-2">
-                                    <span className="text-xs font-bold uppercase tracking-[0.12em] text-blue-700 dark:text-blue-300">
-                                      S{session.indexInRegion}
-                                    </span>
-                                    <span className="text-[10px] font-semibold text-blue-600 dark:text-blue-400">
-                                      {session.participants} pers
-                                    </span>
-                                  </div>
-                                  <div className="text-xs font-semibold text-[var(--color-text-primary)]">
-                                    {session.trainerName}
-                                  </div>
-                                  <div className="truncate text-[11px] text-[var(--color-text-secondary)]">
-                                    {session.roomName}
-                                  </div>
-                                  <div className="pointer-events-none absolute inset-0 hidden items-center justify-center rounded-2xl bg-blue-600/10 text-[10px] font-bold uppercase tracking-[0.14em] text-blue-700 group-hover:flex dark:text-blue-200">
-                                    Glisser ou éditer
-                                  </div>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </React.Fragment>
-                      );
-                    })}
-                  </div>
-                </div>
+                <PreviewTimelineSection
+                  previewPlan={previewPlan}
+                  timelineDays={timelineDays}
+                  timelineRegions={timelineRegions}
+                  draggedPreviewSessionId={draggedPreviewSessionId}
+                  setDraggedPreviewSessionId={setDraggedPreviewSessionId}
+                  movePreviewSessionToDate={movePreviewSessionToDate}
+                  onEditSession={openPreviewSessionEditor}
+                />
               </SectionCard>
 
               <div className="grid gap-6 xl:grid-cols-[0.95fr_1.35fr]">
@@ -3176,61 +3166,12 @@ export default function PlanningFormation() {
                     )
                   }
                 >
-                  <div className="space-y-4">
-                    {previewPlan.alerts.length === 0 ? (
-                      <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300">
-                        Planning cohérent: aucun conflit salle, formateur ou équipement détecté.
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        {previewPlan.alerts.map((alert) => (
-                          <div
-                            key={alert}
-                            className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300"
-                          >
-                            {alert}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {previewPlan.impossibleRegions.length > 0 && (
-                      <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-300">
-                        Régions non totalement planifiables: {previewPlan.impossibleRegions.join(', ')}
-                      </div>
-                    )}
-
-                    <div className="flex flex-wrap gap-3">
-                      <button
-                        onClick={exportPreviewCsv}
-                        className="inline-flex items-center gap-2 rounded-2xl border border-[var(--color-border-primary)] px-4 py-2 text-sm font-semibold text-[var(--color-text-primary)] transition hover:border-[var(--color-primary)]"
-                      >
-                        <Download className="h-4 w-4" />
-                        Export CSV
-                      </button>
-                      <button
-                        onClick={exportPreviewPrint}
-                        className="inline-flex items-center gap-2 rounded-2xl border border-[var(--color-border-primary)] px-4 py-2 text-sm font-semibold text-[var(--color-text-primary)] transition hover:border-[var(--color-primary)]"
-                      >
-                        <Download className="h-4 w-4" />
-                        Export PDF / impression
-                      </button>
-                      <button
-                        onClick={() => exportPreviewViaBackend('pdf')}
-                        className="inline-flex items-center gap-2 rounded-2xl border border-[var(--color-border-primary)] px-4 py-2 text-sm font-semibold text-[var(--color-text-primary)] transition hover:border-[var(--color-primary)]"
-                      >
-                        <Download className="h-4 w-4" />
-                        Télécharger PDF
-                      </button>
-                      <button
-                        onClick={() => exportPreviewViaBackend('docx')}
-                        className="inline-flex items-center gap-2 rounded-2xl border border-[var(--color-border-primary)] px-4 py-2 text-sm font-semibold text-[var(--color-text-primary)] transition hover:border-[var(--color-primary)]"
-                      >
-                        <Download className="h-4 w-4" />
-                        Télécharger Word (.docx)
-                      </button>
-                    </div>
-                  </div>
+                  <PreviewValidationSection
+                    previewPlan={previewPlan}
+                    onExportCsv={exportPreviewCsv}
+                    onExportPrint={exportPreviewPrint}
+                    onExportBackend={exportPreviewViaBackend}
+                  />
                 </SectionCard>
 
                 <SectionCard
@@ -3238,149 +3179,10 @@ export default function PlanningFormation() {
                   subtitle="Ordonnancement généré par priorité régionale puis par disponibilité réelle."
                   icon={<Calendar className="h-5 w-5" />}
                 >
-                  <div className="space-y-3 md:hidden">
-                    {previewPlan.sessions.map((session) => (
-                      <div
-                        key={session.id}
-                        className="rounded-3xl border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] p-4"
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <div className="font-semibold text-[var(--color-text-primary)]">{session.region}</div>
-                            <div className="text-xs text-[var(--color-text-secondary)]">
-                              Session #{session.indexInRegion} • Priorité {session.priority}
-                            </div>
-                          </div>
-                          <span className="rounded-full bg-[var(--color-bg-primary)] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--color-text-secondary)]">
-                            {session.participants} pers
-                          </span>
-                        </div>
-
-                        <div className="mt-4 grid gap-3 text-sm">
-                          <div>
-                            <div className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
-                              Période
-                            </div>
-                            <div className="mt-1 text-[var(--color-text-primary)]">
-                              {session.startDate} au {session.endDate}
-                            </div>
-                            <div className="text-xs font-semibold text-[var(--color-text-secondary)]">
-                              Durée session: {session.durationDays} jour(s)
-                            </div>
-                          </div>
-                          <div>
-                            <div className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
-                              Ressources
-                            </div>
-                            <div className="mt-1 text-[var(--color-text-primary)]">
-                              {session.trainerName} • {session.roomName}
-                            </div>
-                          </div>
-                          <div>
-                            <div className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
-                              Charge
-                            </div>
-                            <div className="mt-1 text-[var(--color-text-primary)]">
-                              {session.fillRate}% • {session.equipmentNeeded} équipements
-                            </div>
-                          </div>
-                          <div>
-                            <div className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
-                              Modules
-                            </div>
-                            <div className="mt-1 text-xs text-[var(--color-text-secondary)]">
-                              {session.modules.map((module) => `${module.name} (${module.duration}j)`).join(', ')}
-                            </div>
-                          </div>
-                        </div>
-
-                        <button
-                          onClick={() =>
-                            setEditingPreviewSession({
-                              id: session.id,
-                              region: session.region,
-                              participants: session.participants,
-                              startDate: session.startDate,
-                              trainerId: session.trainerId,
-                              roomId: session.roomId,
-                            })
-                          }
-                          className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--color-border-primary)] px-3 py-2 text-xs font-semibold text-[var(--color-text-primary)] transition hover:border-[var(--color-primary)]"
-                        >
-                          <RefreshCw className="h-4 w-4" />
-                          Reprogrammer
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className={`hidden overflow-x-auto md:block ${DASHBOARD_TABLE_SHELL}`}>
-                    <table className="min-w-full text-sm">
-                      <thead>
-                        <tr className={DASHBOARD_TABLE_HEAD_ROW}>
-                          <th className="pb-3">Région</th>
-                          <th className="pb-3">Session</th>
-                          <th className="pb-3">Durée</th>
-                          <th className="pb-3">Période</th>
-                          <th className="pb-3">Ressources</th>
-                          <th className="pb-3">Charge</th>
-                          <th className="pb-3">Modules</th>
-                          <th className="pb-3">Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {previewPlan.sessions.map((session) => (
-                          <tr key={session.id} className={`${DASHBOARD_TABLE_ROW} align-top`}>
-                            <td className="py-3">
-                              <div className="font-semibold text-[var(--color-text-primary)]">{session.region}</div>
-                              <div className="text-xs text-[var(--color-text-secondary)]">Priorité {session.priority}</div>
-                            </td>
-                            <td className="py-3 text-[var(--color-text-primary)]">#{session.indexInRegion}</td>
-                            <td className="py-3 text-[var(--color-text-primary)]">{session.durationDays} j</td>
-                            <td className="py-3">
-                              <div className="font-medium text-[var(--color-text-primary)]">{session.startDate}</div>
-                              <div className="text-xs text-[var(--color-text-secondary)]">
-                                au {session.endDate}
-                              </div>
-                            </td>
-                            <td className="py-3">
-                              <div className="text-[var(--color-text-primary)]">{session.trainerName}</div>
-                              <div className="text-xs text-[var(--color-text-secondary)]">{session.roomName}</div>
-                            </td>
-                            <td className="py-3">
-                              <div className="font-semibold text-[var(--color-text-primary)]">
-                                {session.participants} stagiaires
-                              </div>
-                              <div className="text-xs text-[var(--color-text-secondary)]">
-                                {session.fillRate}% • {session.equipmentNeeded} équipements
-                              </div>
-                            </td>
-                            <td className="py-3 text-xs text-[var(--color-text-secondary)]">
-                              {session.modules.map((module) => `${module.name} (${module.duration}j)`).join(', ')}
-                            </td>
-                            <td className="py-3">
-                              <button
-                                onClick={() =>
-                                  setEditingPreviewSession({
-                                    id: session.id,
-                                    region: session.region,
-                                    participants: session.participants,
-                                    startDate: session.startDate,
-                                    trainerId: session.trainerId,
-                                    roomId: session.roomId,
-                                  })
-                                }
-                                className="inline-flex items-center gap-2 rounded-xl border border-[var(--color-border-primary)] px-3 py-2 text-xs font-semibold text-[var(--color-text-primary)] transition hover:border-[var(--color-primary)]"
-                              >
-                                <RefreshCw className="h-4 w-4" />
-                                Reprogrammer
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                  <PreviewSessionDetailsSection
+                    sessions={previewPlan.sessions}
+                    onEditSession={openPreviewSessionEditor}
+                  />
                 </SectionCard>
               </div>
             </>
@@ -3422,164 +3224,11 @@ export default function PlanningFormation() {
               icon={<GraduationCap className="h-5 w-5" />}
             />
           </div>
-
-          <div className="space-y-3 md:hidden">
-            {filteredBackendSessions.length === 0 && (
-              <div className="rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] p-8 text-center text-sm text-[var(--color-text-secondary)]">
-                Aucune session enregistrée.
-              </div>
-            )}
-            {filteredBackendSessions.map((session) => (
-              <div
-                key={session.id}
-                className="rounded-3xl border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] p-4"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <div className="font-semibold text-[var(--color-text-primary)]">{session.region}</div>
-                    <div className="text-sm text-[var(--color-text-secondary)]">{session.salle}</div>
-                  </div>
-                  <span className="rounded-full bg-[var(--color-info-light)] px-3 py-1 text-[10px] font-semibold text-[var(--color-info)]">
-                    {session.status}
-                  </span>
-                </div>
-
-                <div className="mt-4 grid gap-3 text-sm">
-                  <div>
-                    <div className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
-                      Période
-                    </div>
-                    <div className="mt-1 text-[var(--color-text-primary)]">
-                      {session.startDate} au {session.endDate || 'non calculée'}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
-                      Modules
-                    </div>
-                    <div className="mt-1 text-xs text-[var(--color-text-secondary)]">
-                      {session.sessionModules?.length
-                        ? session.sessionModules
-                            .sort((a, b) => a.orderIndex - b.orderIndex)
-                            .map((item) => `${item.module?.name || 'Module'} (${item.duration || item.module?.duration || 0}j)`)
-                            .join(', ')
-                        : 'Aucun module'}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-4 flex flex-col gap-2">
-                  <button
-                    onClick={() =>
-                      setEditingBackendSession({
-                        id: session.id,
-                        region: session.region,
-                        salle: session.salle,
-                        maxParticipants: session.maxParticipants,
-                        startDate: session.startDate,
-                        workSaturday: session.workSaturday,
-                        workSunday: session.workSunday,
-                        status: session.status,
-                        notes: session.notes || '',
-                        cascadeRegion: true,
-                      })
-                    }
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--color-border-primary)] px-3 py-2 text-xs font-semibold text-[var(--color-text-primary)] transition hover:border-[var(--color-primary)]"
-                  >
-                    <RefreshCw className="h-4 w-4" />
-                    Modifier
-                  </button>
-                  <button
-                    onClick={() => handleDeleteSession(session.id)}
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-600 transition hover:bg-rose-50 dark:border-rose-900/60 dark:text-rose-300 dark:hover:bg-rose-950/30"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    Supprimer
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className={`hidden overflow-x-auto md:block ${DASHBOARD_TABLE_SHELL}`}>
-            <table className="min-w-full text-sm">
-              <thead>
-                <tr className={DASHBOARD_TABLE_HEAD_ROW}>
-                  <th className="pb-3">Région</th>
-                  <th className="pb-3">Salle</th>
-                  <th className="pb-3">Période</th>
-                  <th className="pb-3">Modules</th>
-                  <th className="pb-3">Statut</th>
-                  <th className="pb-3">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredBackendSessions.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="py-10 text-center text-[var(--color-text-secondary)]">
-                      Aucune session enregistrée.
-                    </td>
-                  </tr>
-                )}
-                {filteredBackendSessions.map((session) => (
-                  <tr key={session.id} className={`${DASHBOARD_TABLE_ROW} align-top`}>
-                    <td className="py-3 font-semibold text-[var(--color-text-primary)]">{session.region}</td>
-                    <td className="py-3 text-[var(--color-text-secondary)]">{session.salle}</td>
-                    <td className="py-3">
-                      <div className="text-[var(--color-text-primary)]">{session.startDate}</div>
-                      <div className="text-xs text-[var(--color-text-secondary)]">
-                        au {session.endDate || 'non calculée'}
-                      </div>
-                    </td>
-                    <td className="py-3 text-xs text-[var(--color-text-secondary)]">
-                      {session.sessionModules?.length
-                        ? session.sessionModules
-                            .sort((a, b) => a.orderIndex - b.orderIndex)
-                            .map((item) => `${item.module?.name || 'Module'} (${item.duration || item.module?.duration || 0}j)`)
-                            .join(', ')
-                        : 'Aucun module'}
-                    </td>
-                    <td className="py-3">
-                      <span className="rounded-full bg-[var(--color-info-light)] px-3 py-1 text-xs font-semibold text-[var(--color-info)]">
-                        {session.status}
-                      </span>
-                    </td>
-                    <td className="py-3">
-                      <div className="flex flex-wrap gap-2">
-                        <button
-                          onClick={() =>
-                            setEditingBackendSession({
-                              id: session.id,
-                              region: session.region,
-                              salle: session.salle,
-                              maxParticipants: session.maxParticipants,
-                              startDate: session.startDate,
-                              workSaturday: session.workSaturday,
-                              workSunday: session.workSunday,
-                              status: session.status,
-                              notes: session.notes || '',
-                              cascadeRegion: true,
-                            })
-                          }
-                          className="inline-flex items-center gap-2 rounded-xl border border-[var(--color-border-primary)] px-3 py-2 text-xs font-semibold text-[var(--color-text-primary)] transition hover:border-[var(--color-primary)]"
-                        >
-                          <RefreshCw className="h-4 w-4" />
-                          Modifier
-                        </button>
-                        <button
-                          onClick={() => handleDeleteSession(session.id)}
-                          className="inline-flex items-center gap-2 rounded-xl border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-600 transition hover:bg-rose-50 dark:border-rose-900/60 dark:text-rose-300 dark:hover:bg-rose-950/30"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          Supprimer
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <BackendSessionsSection
+            sessions={filteredBackendSessions}
+            onEditSession={openBackendSessionEditor}
+            onDeleteSession={handleDeleteSession}
+          />
         </SectionCard>
       )}
 
@@ -3665,468 +3314,42 @@ export default function PlanningFormation() {
           ) : undefined
         }
       >
-        <div className="space-y-3">
-          {historyEntries.length === 0 && (
-            <div className="rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] p-4 text-sm text-[var(--color-text-secondary)]">
-              Aucun changement enregistré pour le moment.
-            </div>
-          )}
-          {historyEntries.map((entry) => (
-            <div
-              key={entry.id}
-              className="rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] p-4"
-            >
-              <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
-                <div className="text-sm font-semibold text-[var(--color-text-primary)]">{entry.title}</div>
-                <div className="text-xs text-[var(--color-text-muted)]">
-                  {new Date(entry.timestamp).toLocaleString('fr-FR')}
-                </div>
-              </div>
-              <div className="mt-2 text-sm text-[var(--color-text-secondary)]">{entry.details}</div>
-            </div>
-          ))}
-        </div>
+        <PlanningHistorySection historyEntries={historyEntries} />
       </SectionCard>
 
       {moduleModalOpen && (
-        <div className="fixed inset-0 z-[500] flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-lg rounded-3xl border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] p-6 shadow-2xl">
-            <div className="mb-5 flex items-center justify-between">
-              <div>
-                <div className="text-xl font-bold text-[var(--color-text-primary)]">
-                  {editingModuleId ? 'Modifier le module' : 'Créer un module'}
-                </div>
-                <div className="text-sm text-[var(--color-text-secondary)]">
-                  Définir un module réutilisable dans le moteur de planning.
-                </div>
-              </div>
-              <button
-                onClick={() => setModuleModalOpen(false)}
-                type="button"
-                aria-label="Fermer la fenêtre du module"
-                className="rounded-2xl p-2 text-[var(--color-text-secondary)] transition hover:bg-[var(--color-bg-secondary)]"
-                title="Fermer"
-              >
-                <XCircle className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="grid gap-4">
-              <Field label="Nom du module">
-                <input
-                  type="text"
-                  value={moduleForm.name}
-                  aria-label="Nom du module"
-                  title="Nom du module"
-                  onChange={(event) => setModuleForm((current) => ({ ...current, name: event.target.value }))}
-                  className={inputClassName}
-                />
-              </Field>
-              <Field label="Description">
-                <textarea
-                  rows={3}
-                  value={moduleForm.description}
-                  aria-label="Description du module"
-                  title="Description du module"
-                  onChange={(event) =>
-                    setModuleForm((current) => ({ ...current, description: event.target.value }))
-                  }
-                  className={textareaClassName}
-                />
-              </Field>
-              <div className="grid gap-4 md:grid-cols-2">
-                <Field label="Durée par défaut (jours)">
-                  <input
-                    type="number"
-                    min="1"
-                    value={moduleForm.duration}
-                    aria-label="Durée par défaut du module en jours"
-                    title="Durée par défaut du module en jours"
-                    onChange={(event) =>
-                      setModuleForm((current) => ({
-                        ...current,
-                        duration: Math.max(1, Number(event.target.value || 1)),
-                      }))
-                    }
-                    className={inputClassName}
-                  />
-                </Field>
-                <Field label="Ordre d'affichage">
-                  <input
-                    type="number"
-                    min="0"
-                    value={moduleForm.order}
-                    aria-label="Ordre d'affichage du module"
-                    title="Ordre d'affichage du module"
-                    onChange={(event) =>
-                      setModuleForm((current) => ({
-                        ...current,
-                        order: Math.max(0, Number(event.target.value || 0)),
-                      }))
-                    }
-                    className={inputClassName}
-                  />
-                </Field>
-              </div>
-            </div>
-
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                onClick={() => setModuleModalOpen(false)}
-                className="rounded-xl border border-[var(--color-border-primary)] px-4 py-2 text-sm font-semibold text-[var(--color-text-primary)]"
-              >
-                Annuler
-              </button>
-              <button
-                onClick={handleSaveModule}
-                disabled={submitting}
-                className="inline-flex items-center gap-2 rounded-xl bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-              >
-                <Save className="h-4 w-4" />
-                Enregistrer
-              </button>
-            </div>
-          </div>
-        </div>
+        <ModuleEditModal
+          editingModuleId={editingModuleId}
+          moduleForm={moduleForm}
+          setModuleForm={setModuleForm}
+          onClose={() => setModuleModalOpen(false)}
+          onSave={handleSaveModule}
+          submitting={submitting}
+        />
       )}
 
       {editingPreviewSession && (
-        <div className="fixed inset-0 z-[500] flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-2xl rounded-3xl border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] p-6 shadow-2xl">
-            <div className="mb-5 flex items-center justify-between">
-              <div>
-                <div className="text-xl font-bold text-[var(--color-text-primary)]">
-                  Reprogrammer une session générée
-                </div>
-                <div className="text-sm text-[var(--color-text-secondary)]">
-                  Modification locale avec revalidation immédiate des conflits.
-                </div>
-              </div>
-              <button
-                onClick={() => setEditingPreviewSession(null)}
-                type="button"
-                aria-label="Fermer la fenêtre de reprogrammation de session"
-                title="Fermer"
-                className="rounded-2xl p-2 text-[var(--color-text-secondary)] transition hover:bg-[var(--color-bg-secondary)]"
-              >
-                <XCircle className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <Field label="Région">
-                <select
-                  value={editingPreviewSession.region}
-                  onChange={(event) =>
-                    setEditingPreviewSession((current) =>
-                      current ? { ...current, region: event.target.value } : current
-                    )
-                  }
-                  className={inputClassName}
-                  title="Région"
-                >
-                  {SENEGAL_REGIONS.map((region) => (
-                    <option key={region} value={region}>
-                      {region}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-              <Field label="Participants">
-                <input
-                  type="number"
-                  min="1"
-                  value={editingPreviewSession.participants}
-                  aria-label="Participants de la session générée"
-                  title="Participants de la session générée"
-                  onChange={(event) =>
-                    setEditingPreviewSession((current) =>
-                      current
-                        ? {
-                            ...current,
-                            participants: Math.max(1, Number(event.target.value || 1)),
-                          }
-                        : current
-                    )
-                  }
-                  className={inputClassName}
-                />
-              </Field>
-              <Field label="Date de démarrage">
-                <input
-                  type="date"
-                  value={editingPreviewSession.startDate}
-                  aria-label="Date de démarrage de la session générée"
-                  title="Date de démarrage de la session générée"
-                  onChange={(event) =>
-                    setEditingPreviewSession((current) =>
-                      current ? { ...current, startDate: event.target.value } : current
-                    )
-                  }
-                  className={inputClassName}
-                />
-              </Field>
-              <Field label="Formateur">
-                <select
-                  value={editingPreviewSession.trainerId}
-                  onChange={(event) =>
-                    setEditingPreviewSession((current) =>
-                      current ? { ...current, trainerId: event.target.value } : current
-                    )
-                  }
-                  className={inputClassName}
-                  title="Formateur"
-                >
-                  {trainers
-                    .filter((trainer) => trainer.active)
-                    .map((trainer) => (
-                      <option key={trainer.id} value={trainer.id}>
-                        {trainer.name}
-                      </option>
-                    ))}
-                </select>
-              </Field>
-              <Field label="Salle">
-                <select
-                  value={editingPreviewSession.roomId}
-                  onChange={(event) =>
-                    setEditingPreviewSession((current) =>
-                      current ? { ...current, roomId: event.target.value } : current
-                    )
-                  }
-                  className={inputClassName}
-                  title="Salle"
-                >
-                  {rooms
-                    .filter((room) => room.active)
-                    .map((room) => (
-                      <option key={room.id} value={room.id}>
-                        {room.name} ({room.capacity})
-                      </option>
-                    ))}
-                </select>
-              </Field>
-              <div className="rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] p-4 text-sm text-[var(--color-text-secondary)]">
-                Fin recalculée automatiquement selon les modules sélectionnés:{" "}
-                <span className="font-semibold text-[var(--color-text-primary)]">
-                  {computeSessionEndDate(
-                    editingPreviewSession.startDate,
-                    totalModuleDays,
-                    plannerConfig.includeSaturday,
-                    blockedDates
-                  )}
-                </span>
-              </div>
-            </div>
-
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                onClick={() => setEditingPreviewSession(null)}
-                className="rounded-xl border border-[var(--color-border-primary)] px-4 py-2 text-sm font-semibold text-[var(--color-text-primary)]"
-              >
-                Annuler
-              </button>
-              <button
-                onClick={savePreviewSessionEdit}
-                className="inline-flex items-center gap-2 rounded-xl bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white"
-              >
-                <Save className="h-4 w-4" />
-                Appliquer
-              </button>
-            </div>
-          </div>
-        </div>
+        <PreviewSessionEditModal
+          editingPreviewSession={editingPreviewSession}
+          setEditingPreviewSession={setEditingPreviewSession}
+          trainers={trainers}
+          rooms={rooms}
+          totalModuleDays={totalModuleDays}
+          includeSaturday={plannerConfig.includeSaturday}
+          blockedDates={blockedDates}
+          onSave={savePreviewSessionEdit}
+          onClose={() => setEditingPreviewSession(null)}
+        />
       )}
 
       {editingBackendSession && (
-        <div className="fixed inset-0 z-[500] flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-2xl rounded-3xl border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] p-6 shadow-2xl">
-            <div className="mb-5 flex items-center justify-between">
-              <div>
-                <div className="text-xl font-bold text-[var(--color-text-primary)]">
-                  Modifier une session enregistrée
-                </div>
-                <div className="text-sm text-[var(--color-text-secondary)]">
-                  La date de fin sera recalculée par l'API en fonction des modules déjà liés.
-                </div>
-              </div>
-              <button
-                onClick={() => setEditingBackendSession(null)}
-                type="button"
-                aria-label="Fermer la fenêtre de modification de session enregistrée"
-                title="Fermer"
-                className="rounded-2xl p-2 text-[var(--color-text-secondary)] transition hover:bg-[var(--color-bg-secondary)]"
-              >
-                <XCircle className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <Field label="Région">
-                <select
-                  value={editingBackendSession.region}
-                  onChange={(event) =>
-                    setEditingBackendSession((current) =>
-                      current ? { ...current, region: event.target.value } : current
-                    )
-                  }
-                  className={inputClassName}
-                  title="Région"
-                >
-                  {SENEGAL_REGIONS.map((region) => (
-                    <option key={region} value={region}>
-                      {region}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-              <Field label="Salle">
-                <input
-                  type="text"
-                  value={editingBackendSession.salle}
-                  aria-label="Salle de la session enregistrée"
-                  title="Salle de la session enregistrée"
-                  onChange={(event) =>
-                    setEditingBackendSession((current) =>
-                      current ? { ...current, salle: event.target.value } : current
-                    )
-                  }
-                  className={inputClassName}
-                />
-              </Field>
-              <Field label="Date de démarrage">
-                <input
-                  type="date"
-                  value={editingBackendSession.startDate}
-                  aria-label="Date de démarrage de la session enregistrée"
-                  title="Date de démarrage de la session enregistrée"
-                  onChange={(event) =>
-                    setEditingBackendSession((current) =>
-                      current ? { ...current, startDate: event.target.value } : current
-                    )
-                  }
-                  className={inputClassName}
-                />
-              </Field>
-              <Field label="Capacité">
-                <input
-                  type="number"
-                  min="1"
-                  value={editingBackendSession.maxParticipants}
-                  aria-label="Capacité de la session enregistrée"
-                  title="Capacité de la session enregistrée"
-                  onChange={(event) =>
-                    setEditingBackendSession((current) =>
-                      current
-                        ? {
-                            ...current,
-                            maxParticipants: Math.max(1, Number(event.target.value || 1)),
-                          }
-                        : current
-                    )
-                  }
-                  className={inputClassName}
-                />
-              </Field>
-              <Field label="Statut">
-                <select
-                  value={editingBackendSession.status}
-                  onChange={(event) =>
-                    setEditingBackendSession((current) =>
-                      current ? { ...current, status: event.target.value } : current
-                    )
-                  }
-                  className={inputClassName}
-                  title="Statut"
-                >
-                  <option value="PLANIFIEE">PLANIFIEE</option>
-                  <option value="EN_COURS">EN_COURS</option>
-                  <option value="TERMINEE">TERMINEE</option>
-                  <option value="ANNULEE">ANNULEE</option>
-                </select>
-              </Field>
-              <Field label="Calendrier">
-                <div className="grid gap-2 rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] p-4 text-sm text-[var(--color-text-secondary)]">
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={editingBackendSession.workSaturday}
-                      aria-label="Samedi travaillé"
-                      title="Samedi travaillé"
-                      onChange={(event) =>
-                        setEditingBackendSession((current) =>
-                          current ? { ...current, workSaturday: event.target.checked } : current
-                        )
-                      }
-                    />
-                    Samedi travaillé
-                  </label>
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={editingBackendSession.workSunday}
-                      aria-label="Dimanche travaillé"
-                      title="Dimanche travaillé"
-                      onChange={(event) =>
-                        setEditingBackendSession((current) =>
-                          current ? { ...current, workSunday: event.target.checked } : current
-                        )
-                      }
-                    />
-                    Dimanche travaillé
-                  </label>
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={editingBackendSession.cascadeRegion}
-                      aria-label="Recalculer les sessions suivantes de la région"
-                      title="Recalculer les sessions suivantes de la région"
-                      onChange={(event) =>
-                        setEditingBackendSession((current) =>
-                          current ? { ...current, cascadeRegion: event.target.checked } : current
-                        )
-                      }
-                    />
-                    Recalculer les sessions suivantes de la région
-                  </label>
-                </div>
-              </Field>
-              <div className="md:col-span-2">
-                <Field label="Notes">
-                  <textarea
-                    rows={3}
-                    value={editingBackendSession.notes}
-                    aria-label="Notes de la session enregistrée"
-                    title="Notes de la session enregistrée"
-                    onChange={(event) =>
-                      setEditingBackendSession((current) =>
-                        current ? { ...current, notes: event.target.value } : current
-                      )
-                    }
-                    className={textareaClassName}
-                  />
-                </Field>
-              </div>
-            </div>
-
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                onClick={() => setEditingBackendSession(null)}
-                className="rounded-xl border border-[var(--color-border-primary)] px-4 py-2 text-sm font-semibold text-[var(--color-text-primary)]"
-              >
-                Annuler
-              </button>
-              <button
-                onClick={saveBackendSessionEdit}
-                disabled={submitting}
-                className="inline-flex items-center gap-2 rounded-xl bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-              >
-                <Save className="h-4 w-4" />
-                Mettre à jour
-              </button>
-            </div>
-          </div>
-        </div>
+        <BackendSessionEditModal
+          editingBackendSession={editingBackendSession}
+          setEditingBackendSession={setEditingBackendSession}
+          onSave={saveBackendSessionEdit}
+          onClose={() => setEditingBackendSession(null)}
+          submitting={submitting}
+        />
       )}
     </PageContainer>
   );
@@ -4236,6 +3459,1058 @@ function QuickAnswerCard({ question, answer }: { question: string; answer: strin
         {question}
       </div>
       <div className="mt-2 text-sm text-[var(--color-text-secondary)]">{answer}</div>
+    </div>
+  );
+}
+
+function SummaryChip({
+  label,
+  value,
+  helper,
+}: {
+  label: string;
+  value: string;
+  helper?: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] px-4 py-3">
+      <div className="text-[10px] font-black uppercase tracking-[0.16em] text-[var(--color-text-muted)]">
+        {label}
+      </div>
+      <div className="mt-1 text-sm font-bold text-[var(--color-text-primary)]">{value}</div>
+      {helper ? <div className="mt-1 text-xs text-[var(--color-text-secondary)]">{helper}</div> : null}
+    </div>
+  );
+}
+
+function formatPreviewModules(modules: Array<{ name: string; duration: number }>) {
+  return modules.map((module) => `${module.name} (${module.duration}j)`).join(', ');
+}
+
+function formatBackendModules(session: FormationSession) {
+  return session.sessionModules?.length
+    ? session.sessionModules
+        .sort((a, b) => a.orderIndex - b.orderIndex)
+        .map((item) => `${item.module?.name || 'Module'} (${item.duration || item.module?.duration || 0}j)`)
+        .join(', ')
+    : 'Aucun module';
+}
+
+function PreviewTimelineSection({
+  previewPlan,
+  timelineDays,
+  timelineRegions,
+  draggedPreviewSessionId,
+  setDraggedPreviewSessionId,
+  movePreviewSessionToDate,
+  onEditSession,
+}: {
+  previewPlan: PreviewPlan;
+  timelineDays: TimelineDay[];
+  timelineRegions: string[];
+  draggedPreviewSessionId: string | null;
+  setDraggedPreviewSessionId: (id: string | null) => void;
+  movePreviewSessionToDate: (sessionId: string, nextStartDate: string) => Promise<void>;
+  onEditSession: (session: PreviewPlan['sessions'][number]) => void;
+}) {
+  return (
+    <>
+      <div className="space-y-4 md:hidden">
+        <div className="rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] p-4 text-sm text-[var(--color-text-secondary)]">
+          La timeline complète est disponible sur écran large. Sur mobile, utilisez la liste simplifiée ci-dessous pour relire et reprogrammer les sessions.
+        </div>
+        <div className="space-y-3">
+          {previewPlan.sessions.map((session) => (
+            <div
+              key={session.id}
+              className="rounded-3xl border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] p-4"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="text-sm font-semibold text-[var(--color-text-primary)]">
+                    {session.region} • Session {session.indexInRegion}
+                  </div>
+                  <div className="mt-1 text-xs text-[var(--color-text-secondary)]">
+                    {session.startDate} au {session.endDate} • {session.durationDays} j
+                  </div>
+                </div>
+                <span className="rounded-full bg-blue-100 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-blue-700 dark:bg-blue-950/30 dark:text-blue-300">
+                  {session.participants} pers
+                </span>
+              </div>
+              <div className="mt-3 text-sm text-[var(--color-text-secondary)]">
+                {session.trainerName} • {session.roomName}
+              </div>
+              <button
+                onClick={() => onEditSession(session)}
+                className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--color-border-primary)] px-3 py-2 text-xs font-semibold text-[var(--color-text-primary)] transition hover:border-[var(--color-primary)]"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Reprogrammer
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="hidden overflow-x-auto md:block">
+        <div className={`grid min-w-[1080px] gap-3 ${getTimelineGridColumnsClass(timelineDays.length)}`}>
+          <div className="sticky left-0 z-10 rounded-2xl bg-[var(--color-bg-primary)] p-3 text-xs font-bold uppercase tracking-[0.16em] text-[var(--color-text-muted)]">
+            Régions
+          </div>
+          {timelineDays.map((day) => (
+            <div key={day.iso} className="rounded-2xl bg-[var(--color-bg-secondary)] p-2 text-center">
+              <div className="text-[11px] font-bold text-[var(--color-text-primary)]">{day.label}</div>
+              <div className="text-[10px] uppercase text-[var(--color-text-muted)]">{day.shortLabel}</div>
+            </div>
+          ))}
+
+          {timelineRegions.map((region) => {
+            const regionSessions = previewPlan.sessions
+              .filter((session) => session.region === region)
+              .sort((a, b) => a.startDate.localeCompare(b.startDate));
+
+            return (
+              <React.Fragment key={region}>
+                <div className="sticky left-0 z-10 flex min-h-[90px] items-center rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] px-4 text-sm font-semibold text-[var(--color-text-primary)]">
+                  {region}
+                </div>
+                <div
+                  className={`relative col-span-full grid min-h-[90px] gap-1 rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] p-2 ${getTimelineLaneClass(timelineDays.length)}`}
+                >
+                  {timelineDays.map((day) => (
+                    <div
+                      key={`${region}-${day.iso}`}
+                      onDragOver={(event) => event.preventDefault()}
+                      onDrop={(event) => {
+                        event.preventDefault();
+                        if (draggedPreviewSessionId) {
+                          void movePreviewSessionToDate(draggedPreviewSessionId, day.iso);
+                          setDraggedPreviewSessionId(null);
+                        }
+                      }}
+                      className="rounded-xl border border-dashed border-[var(--color-border-primary)]/40"
+                    />
+                  ))}
+
+                  {regionSessions.map((session, index) => {
+                    const startIndex = timelineDays.findIndex((day) => day.iso === session.startDate);
+                    if (startIndex === -1) return null;
+
+                    return (
+                      <button
+                        key={session.id}
+                        draggable
+                        onDragStart={() => setDraggedPreviewSessionId(session.id)}
+                        onDragEnd={() => setDraggedPreviewSessionId(null)}
+                        onClick={() => onEditSession(session)}
+                        className={`group relative flex h-[72px] flex-col justify-between rounded-2xl border border-blue-200 bg-blue-50 p-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md dark:border-blue-900/50 dark:bg-blue-950/30 ${getTimelineSessionPlacementClass(
+                          startIndex + 1,
+                          Math.max(1, Math.min(session.durationDays, timelineDays.length - startIndex)),
+                          index + 1
+                        )}`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-xs font-bold uppercase tracking-[0.12em] text-blue-700 dark:text-blue-300">
+                            S{session.indexInRegion}
+                          </span>
+                          <span className="text-[10px] font-semibold text-blue-600 dark:text-blue-400">
+                            {session.participants} pers
+                          </span>
+                        </div>
+                        <div className="text-xs font-semibold text-[var(--color-text-primary)]">
+                          {session.trainerName}
+                        </div>
+                        <div className="truncate text-[11px] text-[var(--color-text-secondary)]">
+                          {session.roomName}
+                        </div>
+                        <div className="pointer-events-none absolute inset-0 hidden items-center justify-center rounded-2xl bg-blue-600/10 text-[10px] font-bold uppercase tracking-[0.14em] text-blue-700 group-hover:flex dark:text-blue-200">
+                          Glisser ou éditer
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </React.Fragment>
+            );
+          })}
+        </div>
+      </div>
+    </>
+  );
+}
+
+function PreviewSessionDetailsSection({
+  sessions,
+  onEditSession,
+}: {
+  sessions: PreviewPlan['sessions'];
+  onEditSession: (session: PreviewPlan['sessions'][number]) => void;
+}) {
+  return (
+    <>
+      <div className="space-y-3 md:hidden">
+        {sessions.map((session) => (
+          <div
+            key={session.id}
+            className="rounded-3xl border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] p-4"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="font-semibold text-[var(--color-text-primary)]">{session.region}</div>
+                <div className="text-xs text-[var(--color-text-secondary)]">
+                  Session #{session.indexInRegion} • Priorité {session.priority}
+                </div>
+              </div>
+              <span className="rounded-full bg-[var(--color-bg-primary)] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--color-text-secondary)]">
+                {session.participants} pers
+              </span>
+            </div>
+
+            <div className="mt-4 grid gap-3 text-sm">
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
+                  Période
+                </div>
+                <div className="mt-1 text-[var(--color-text-primary)]">
+                  {session.startDate} au {session.endDate}
+                </div>
+                <div className="text-xs font-semibold text-[var(--color-text-secondary)]">
+                  Durée session: {session.durationDays} jour(s)
+                </div>
+              </div>
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
+                  Ressources
+                </div>
+                <div className="mt-1 text-[var(--color-text-primary)]">
+                  {session.trainerName} • {session.roomName}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
+                  Charge
+                </div>
+                <div className="mt-1 text-[var(--color-text-primary)]">
+                  {session.fillRate}% • {session.equipmentNeeded} équipements
+                </div>
+              </div>
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
+                  Modules
+                </div>
+                <div className="mt-1 text-xs text-[var(--color-text-secondary)]">
+                  {formatPreviewModules(session.modules)}
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={() => onEditSession(session)}
+              className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--color-border-primary)] px-3 py-2 text-xs font-semibold text-[var(--color-text-primary)] transition hover:border-[var(--color-primary)]"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Reprogrammer
+            </button>
+          </div>
+        ))}
+      </div>
+
+      <div className={`hidden overflow-x-auto md:block ${DASHBOARD_TABLE_SHELL}`}>
+        <table className="min-w-full text-sm">
+          <thead>
+            <tr className={DASHBOARD_TABLE_HEAD_ROW}>
+              <th className="pb-3">Région</th>
+              <th className="pb-3">Session</th>
+              <th className="pb-3">Durée</th>
+              <th className="pb-3">Période</th>
+              <th className="pb-3">Ressources</th>
+              <th className="pb-3">Charge</th>
+              <th className="pb-3">Modules</th>
+              <th className="pb-3">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sessions.map((session) => (
+              <tr key={session.id} className={`${DASHBOARD_TABLE_ROW} align-top`}>
+                <td className="py-3">
+                  <div className="font-semibold text-[var(--color-text-primary)]">{session.region}</div>
+                  <div className="text-xs text-[var(--color-text-secondary)]">Priorité {session.priority}</div>
+                </td>
+                <td className="py-3 text-[var(--color-text-primary)]">#{session.indexInRegion}</td>
+                <td className="py-3 text-[var(--color-text-primary)]">{session.durationDays} j</td>
+                <td className="py-3">
+                  <div className="font-medium text-[var(--color-text-primary)]">{session.startDate}</div>
+                  <div className="text-xs text-[var(--color-text-secondary)]">au {session.endDate}</div>
+                </td>
+                <td className="py-3">
+                  <div className="text-[var(--color-text-primary)]">{session.trainerName}</div>
+                  <div className="text-xs text-[var(--color-text-secondary)]">{session.roomName}</div>
+                </td>
+                <td className="py-3">
+                  <div className="font-semibold text-[var(--color-text-primary)]">
+                    {session.participants} stagiaires
+                  </div>
+                  <div className="text-xs text-[var(--color-text-secondary)]">
+                    {session.fillRate}% • {session.equipmentNeeded} équipements
+                  </div>
+                </td>
+                <td className="py-3 text-xs text-[var(--color-text-secondary)]">
+                  {formatPreviewModules(session.modules)}
+                </td>
+                <td className="py-3">
+                  <button
+                    onClick={() => onEditSession(session)}
+                    className="inline-flex items-center gap-2 rounded-xl border border-[var(--color-border-primary)] px-3 py-2 text-xs font-semibold text-[var(--color-text-primary)] transition hover:border-[var(--color-primary)]"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    Reprogrammer
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
+}
+
+function PreviewValidationSection({
+  previewPlan,
+  onExportCsv,
+  onExportPrint,
+  onExportBackend,
+}: {
+  previewPlan: PreviewPlan;
+  onExportCsv: () => void;
+  onExportPrint: () => void;
+  onExportBackend: (format: 'pdf' | 'docx') => Promise<void>;
+}) {
+  return (
+    <div className="space-y-4">
+      {previewPlan.alerts.length === 0 ? (
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300">
+          Planning cohérent: aucun conflit salle, formateur ou équipement détecté.
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {previewPlan.alerts.map((alert) => (
+            <div
+              key={alert}
+              className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300"
+            >
+              {alert}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {previewPlan.impossibleRegions.length > 0 && (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-300">
+          Régions non totalement planifiables: {previewPlan.impossibleRegions.join(', ')}
+        </div>
+      )}
+
+      <div className="flex flex-wrap gap-3">
+        <button
+          onClick={onExportCsv}
+          className="inline-flex items-center gap-2 rounded-2xl border border-[var(--color-border-primary)] px-4 py-2 text-sm font-semibold text-[var(--color-text-primary)] transition hover:border-[var(--color-primary)]"
+        >
+          <Download className="h-4 w-4" />
+          Export CSV
+        </button>
+        <button
+          onClick={onExportPrint}
+          className="inline-flex items-center gap-2 rounded-2xl border border-[var(--color-border-primary)] px-4 py-2 text-sm font-semibold text-[var(--color-text-primary)] transition hover:border-[var(--color-primary)]"
+        >
+          <Download className="h-4 w-4" />
+          Export PDF / impression
+        </button>
+        <button
+          onClick={() => void onExportBackend('pdf')}
+          className="inline-flex items-center gap-2 rounded-2xl border border-[var(--color-border-primary)] px-4 py-2 text-sm font-semibold text-[var(--color-text-primary)] transition hover:border-[var(--color-primary)]"
+        >
+          <Download className="h-4 w-4" />
+          Télécharger PDF
+        </button>
+        <button
+          onClick={() => void onExportBackend('docx')}
+          className="inline-flex items-center gap-2 rounded-2xl border border-[var(--color-border-primary)] px-4 py-2 text-sm font-semibold text-[var(--color-text-primary)] transition hover:border-[var(--color-primary)]"
+        >
+          <Download className="h-4 w-4" />
+          Télécharger Word (.docx)
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function BackendSessionsSection({
+  sessions,
+  onEditSession,
+  onDeleteSession,
+}: {
+  sessions: FormationSession[];
+  onEditSession: (session: FormationSession) => void;
+  onDeleteSession: (sessionId: string) => void;
+}) {
+  return (
+    <>
+      <div className="space-y-3 md:hidden">
+        {sessions.length === 0 && (
+          <div className="rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] p-8 text-center text-sm text-[var(--color-text-secondary)]">
+            Aucune session enregistrée.
+          </div>
+        )}
+        {sessions.map((session) => (
+          <div
+            key={session.id}
+            className="rounded-3xl border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] p-4"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="font-semibold text-[var(--color-text-primary)]">{session.region}</div>
+                <div className="text-sm text-[var(--color-text-secondary)]">{session.salle}</div>
+              </div>
+              <span className="rounded-full bg-[var(--color-info-light)] px-3 py-1 text-[10px] font-semibold text-[var(--color-info)]">
+                {session.status}
+              </span>
+            </div>
+
+            <div className="mt-4 grid gap-3 text-sm">
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
+                  Période
+                </div>
+                <div className="mt-1 text-[var(--color-text-primary)]">
+                  {session.startDate} au {session.endDate || 'non calculée'}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
+                  Modules
+                </div>
+                <div className="mt-1 text-xs text-[var(--color-text-secondary)]">
+                  {formatBackendModules(session)}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 flex flex-col gap-2">
+              <button
+                onClick={() => onEditSession(session)}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--color-border-primary)] px-3 py-2 text-xs font-semibold text-[var(--color-text-primary)] transition hover:border-[var(--color-primary)]"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Modifier
+              </button>
+              <button
+                onClick={() => onDeleteSession(session.id)}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-600 transition hover:bg-rose-50 dark:border-rose-900/60 dark:text-rose-300 dark:hover:bg-rose-950/30"
+              >
+                <Trash2 className="h-4 w-4" />
+                Supprimer
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className={`hidden overflow-x-auto md:block ${DASHBOARD_TABLE_SHELL}`}>
+        <table className="min-w-full text-sm">
+          <thead>
+            <tr className={DASHBOARD_TABLE_HEAD_ROW}>
+              <th className="pb-3">Région</th>
+              <th className="pb-3">Salle</th>
+              <th className="pb-3">Période</th>
+              <th className="pb-3">Modules</th>
+              <th className="pb-3">Statut</th>
+              <th className="pb-3">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sessions.length === 0 && (
+              <tr>
+                <td colSpan={6} className="py-10 text-center text-[var(--color-text-secondary)]">
+                  Aucune session enregistrée.
+                </td>
+              </tr>
+            )}
+            {sessions.map((session) => (
+              <tr key={session.id} className={`${DASHBOARD_TABLE_ROW} align-top`}>
+                <td className="py-3 font-semibold text-[var(--color-text-primary)]">{session.region}</td>
+                <td className="py-3 text-[var(--color-text-secondary)]">{session.salle}</td>
+                <td className="py-3">
+                  <div className="text-[var(--color-text-primary)]">{session.startDate}</div>
+                  <div className="text-xs text-[var(--color-text-secondary)]">
+                    au {session.endDate || 'non calculée'}
+                  </div>
+                </td>
+                <td className="py-3 text-xs text-[var(--color-text-secondary)]">
+                  {formatBackendModules(session)}
+                </td>
+                <td className="py-3">
+                  <span className="rounded-full bg-[var(--color-info-light)] px-3 py-1 text-xs font-semibold text-[var(--color-info)]">
+                    {session.status}
+                  </span>
+                </td>
+                <td className="py-3">
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => onEditSession(session)}
+                      className="inline-flex items-center gap-2 rounded-xl border border-[var(--color-border-primary)] px-3 py-2 text-xs font-semibold text-[var(--color-text-primary)] transition hover:border-[var(--color-primary)]"
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                      Modifier
+                    </button>
+                    <button
+                      onClick={() => onDeleteSession(session.id)}
+                      className="inline-flex items-center gap-2 rounded-xl border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-600 transition hover:bg-rose-50 dark:border-rose-900/60 dark:text-rose-300 dark:hover:bg-rose-950/30"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Supprimer
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
+}
+
+function PreviewSessionEditModal({
+  editingPreviewSession,
+  setEditingPreviewSession,
+  trainers,
+  rooms,
+  totalModuleDays,
+  includeSaturday,
+  blockedDates,
+  onSave,
+  onClose,
+}: {
+  editingPreviewSession: PreviewSessionEditState;
+  setEditingPreviewSession: React.Dispatch<React.SetStateAction<PreviewSessionEditState | null>>;
+  trainers: TrainerResource[];
+  rooms: RoomResource[];
+  totalModuleDays: number;
+  includeSaturday: boolean;
+  blockedDates: Set<string>;
+  onSave: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-[500] flex items-center justify-center bg-black/50 p-4">
+      <div className="w-full max-w-2xl rounded-3xl border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] p-6 shadow-2xl">
+        <div className="mb-5 flex items-center justify-between">
+          <div>
+            <div className="text-xl font-bold text-[var(--color-text-primary)]">
+              Reprogrammer une session générée
+            </div>
+            <div className="text-sm text-[var(--color-text-secondary)]">
+              Modification locale avec revalidation immédiate des conflits.
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            type="button"
+            aria-label="Fermer la fenêtre de reprogrammation de session"
+            title="Fermer"
+            className="rounded-2xl p-2 text-[var(--color-text-secondary)] transition hover:bg-[var(--color-bg-secondary)]"
+          >
+            <XCircle className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <Field label="Région">
+            <select
+              value={editingPreviewSession.region}
+              onChange={(event) =>
+                setEditingPreviewSession((current) =>
+                  current ? { ...current, region: event.target.value } : current
+                )
+              }
+              className={inputClassName}
+              title="Région"
+            >
+              {SENEGAL_REGIONS.map((region) => (
+                <option key={region} value={region}>
+                  {region}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Participants">
+            <input
+              type="number"
+              min="1"
+              value={editingPreviewSession.participants}
+              aria-label="Participants de la session générée"
+              title="Participants de la session générée"
+              onChange={(event) =>
+                setEditingPreviewSession((current) =>
+                  current
+                    ? {
+                        ...current,
+                        participants: Math.max(1, Number(event.target.value || 1)),
+                      }
+                    : current
+                )
+              }
+              className={inputClassName}
+            />
+          </Field>
+          <Field label="Date de démarrage">
+            <input
+              type="date"
+              value={editingPreviewSession.startDate}
+              aria-label="Date de démarrage de la session générée"
+              title="Date de démarrage de la session générée"
+              onChange={(event) =>
+                setEditingPreviewSession((current) =>
+                  current ? { ...current, startDate: event.target.value } : current
+                )
+              }
+              className={inputClassName}
+            />
+          </Field>
+          <Field label="Formateur">
+            <select
+              value={editingPreviewSession.trainerId}
+              onChange={(event) =>
+                setEditingPreviewSession((current) =>
+                  current ? { ...current, trainerId: event.target.value } : current
+                )
+              }
+              className={inputClassName}
+              title="Formateur"
+            >
+              {trainers
+                .filter((trainer) => trainer.active)
+                .map((trainer) => (
+                  <option key={trainer.id} value={trainer.id}>
+                    {trainer.name}
+                  </option>
+                ))}
+            </select>
+          </Field>
+          <Field label="Salle">
+            <select
+              value={editingPreviewSession.roomId}
+              onChange={(event) =>
+                setEditingPreviewSession((current) =>
+                  current ? { ...current, roomId: event.target.value } : current
+                )
+              }
+              className={inputClassName}
+              title="Salle"
+            >
+              {rooms
+                .filter((room) => room.active)
+                .map((room) => (
+                  <option key={room.id} value={room.id}>
+                    {room.name} ({room.capacity})
+                  </option>
+                ))}
+            </select>
+          </Field>
+          <div className="rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] p-4 text-sm text-[var(--color-text-secondary)]">
+            Fin recalculée automatiquement selon les modules sélectionnés:{' '}
+            <span className="font-semibold text-[var(--color-text-primary)]">
+              {computeSessionEndDate(
+                editingPreviewSession.startDate,
+                totalModuleDays,
+                includeSaturday,
+                blockedDates
+              )}
+            </span>
+          </div>
+        </div>
+
+        <div className="mt-6 flex justify-end gap-3">
+          <button
+            onClick={onClose}
+            className="rounded-xl border border-[var(--color-border-primary)] px-4 py-2 text-sm font-semibold text-[var(--color-text-primary)]"
+          >
+            Annuler
+          </button>
+          <button
+            onClick={onSave}
+            className="inline-flex items-center gap-2 rounded-xl bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white"
+          >
+            <Save className="h-4 w-4" />
+            Appliquer
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BackendSessionEditModal({
+  editingBackendSession,
+  setEditingBackendSession,
+  onSave,
+  onClose,
+  submitting,
+}: {
+  editingBackendSession: BackendSessionEditState;
+  setEditingBackendSession: React.Dispatch<
+    React.SetStateAction<BackendSessionEditState | null>
+  >;
+  onSave: () => void;
+  onClose: () => void;
+  submitting: boolean;
+}) {
+  return (
+    <div className="fixed inset-0 z-[500] flex items-center justify-center bg-black/50 p-4">
+      <div className="w-full max-w-2xl rounded-3xl border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] p-6 shadow-2xl">
+        <div className="mb-5 flex items-center justify-between">
+          <div>
+            <div className="text-xl font-bold text-[var(--color-text-primary)]">
+              Modifier une session enregistrée
+            </div>
+            <div className="text-sm text-[var(--color-text-secondary)]">
+              La date de fin sera recalculée par l'API en fonction des modules déjà liés.
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            type="button"
+            aria-label="Fermer la fenêtre de modification de session enregistrée"
+            title="Fermer"
+            className="rounded-2xl p-2 text-[var(--color-text-secondary)] transition hover:bg-[var(--color-bg-secondary)]"
+          >
+            <XCircle className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <Field label="Région">
+            <select
+              value={editingBackendSession.region}
+              onChange={(event) =>
+                setEditingBackendSession((current) =>
+                  current ? { ...current, region: event.target.value } : current
+                )
+              }
+              className={inputClassName}
+              title="Région"
+            >
+              {SENEGAL_REGIONS.map((region) => (
+                <option key={region} value={region}>
+                  {region}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Salle">
+            <input
+              type="text"
+              value={editingBackendSession.salle}
+              aria-label="Salle de la session enregistrée"
+              title="Salle de la session enregistrée"
+              onChange={(event) =>
+                setEditingBackendSession((current) =>
+                  current ? { ...current, salle: event.target.value } : current
+                )
+              }
+              className={inputClassName}
+            />
+          </Field>
+          <Field label="Date de démarrage">
+            <input
+              type="date"
+              value={editingBackendSession.startDate}
+              aria-label="Date de démarrage de la session enregistrée"
+              title="Date de démarrage de la session enregistrée"
+              onChange={(event) =>
+                setEditingBackendSession((current) =>
+                  current ? { ...current, startDate: event.target.value } : current
+                )
+              }
+              className={inputClassName}
+            />
+          </Field>
+          <Field label="Capacité">
+            <input
+              type="number"
+              min="1"
+              value={editingBackendSession.maxParticipants}
+              aria-label="Capacité de la session enregistrée"
+              title="Capacité de la session enregistrée"
+              onChange={(event) =>
+                setEditingBackendSession((current) =>
+                  current
+                    ? {
+                        ...current,
+                        maxParticipants: Math.max(1, Number(event.target.value || 1)),
+                      }
+                    : current
+                )
+              }
+              className={inputClassName}
+            />
+          </Field>
+          <Field label="Statut">
+            <select
+              value={editingBackendSession.status}
+              onChange={(event) =>
+                setEditingBackendSession((current) =>
+                  current ? { ...current, status: event.target.value } : current
+                )
+              }
+              className={inputClassName}
+              title="Statut"
+            >
+              <option value="PLANIFIEE">PLANIFIEE</option>
+              <option value="EN_COURS">EN_COURS</option>
+              <option value="TERMINEE">TERMINEE</option>
+              <option value="ANNULEE">ANNULEE</option>
+            </select>
+          </Field>
+          <Field label="Calendrier">
+            <div className="grid gap-2 rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] p-4 text-sm text-[var(--color-text-secondary)]">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={editingBackendSession.workSaturday}
+                  aria-label="Samedi travaillé"
+                  title="Samedi travaillé"
+                  onChange={(event) =>
+                    setEditingBackendSession((current) =>
+                      current ? { ...current, workSaturday: event.target.checked } : current
+                    )
+                  }
+                />
+                Samedi travaillé
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={editingBackendSession.workSunday}
+                  aria-label="Dimanche travaillé"
+                  title="Dimanche travaillé"
+                  onChange={(event) =>
+                    setEditingBackendSession((current) =>
+                      current ? { ...current, workSunday: event.target.checked } : current
+                    )
+                  }
+                />
+                Dimanche travaillé
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={editingBackendSession.cascadeRegion}
+                  aria-label="Recalculer les sessions suivantes de la région"
+                  title="Recalculer les sessions suivantes de la région"
+                  onChange={(event) =>
+                    setEditingBackendSession((current) =>
+                      current ? { ...current, cascadeRegion: event.target.checked } : current
+                    )
+                  }
+                />
+                Recalculer les sessions suivantes de la région
+              </label>
+            </div>
+          </Field>
+          <div className="md:col-span-2">
+            <Field label="Notes">
+              <textarea
+                rows={3}
+                value={editingBackendSession.notes}
+                aria-label="Notes de la session enregistrée"
+                title="Notes de la session enregistrée"
+                onChange={(event) =>
+                  setEditingBackendSession((current) =>
+                    current ? { ...current, notes: event.target.value } : current
+                  )
+                }
+                className={textareaClassName}
+              />
+            </Field>
+          </div>
+        </div>
+
+        <div className="mt-6 flex justify-end gap-3">
+          <button
+            onClick={onClose}
+            className="rounded-xl border border-[var(--color-border-primary)] px-4 py-2 text-sm font-semibold text-[var(--color-text-primary)]"
+          >
+            Annuler
+          </button>
+          <button
+            onClick={onSave}
+            disabled={submitting}
+            className="inline-flex items-center gap-2 rounded-xl bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+          >
+            <Save className="h-4 w-4" />
+            Mettre à jour
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PlanningHistorySection({ historyEntries }: { historyEntries: PlanningHistoryEntry[] }) {
+  return (
+    <div className="space-y-3">
+      {historyEntries.length === 0 && (
+        <div className="rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] p-4 text-sm text-[var(--color-text-secondary)]">
+          Aucun changement enregistré pour le moment.
+        </div>
+      )}
+      {historyEntries.map((entry) => (
+        <div
+          key={entry.id}
+          className="rounded-2xl border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] p-4"
+        >
+          <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
+            <div className="text-sm font-semibold text-[var(--color-text-primary)]">{entry.title}</div>
+            <div className="text-xs text-[var(--color-text-muted)]">
+              {new Date(entry.timestamp).toLocaleString('fr-FR')}
+            </div>
+          </div>
+          <div className="mt-2 text-sm text-[var(--color-text-secondary)]">{entry.details}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ModuleEditModal({
+  editingModuleId,
+  moduleForm,
+  setModuleForm,
+  onClose,
+  onSave,
+  submitting,
+}: {
+  editingModuleId: string | null;
+  moduleForm: {
+    name: string;
+    description: string;
+    duration: number;
+    order: number;
+  };
+  setModuleForm: React.Dispatch<
+    React.SetStateAction<{
+      name: string;
+      description: string;
+      duration: number;
+      order: number;
+    }>
+  >;
+  onClose: () => void;
+  onSave: () => void;
+  submitting: boolean;
+}) {
+  return (
+    <div className="fixed inset-0 z-[500] flex items-center justify-center bg-black/50 p-4">
+      <div className="w-full max-w-lg rounded-3xl border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] p-6 shadow-2xl">
+        <div className="mb-5 flex items-center justify-between">
+          <div>
+            <div className="text-xl font-bold text-[var(--color-text-primary)]">
+              {editingModuleId ? 'Modifier le module' : 'Créer un module'}
+            </div>
+            <div className="text-sm text-[var(--color-text-secondary)]">
+              Définir un module réutilisable dans le moteur de planning.
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            type="button"
+            aria-label="Fermer la fenêtre du module"
+            className="rounded-2xl p-2 text-[var(--color-text-secondary)] transition hover:bg-[var(--color-bg-secondary)]"
+            title="Fermer"
+          >
+            <XCircle className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="grid gap-4">
+          <Field label="Nom du module">
+            <input
+              type="text"
+              value={moduleForm.name}
+              aria-label="Nom du module"
+              title="Nom du module"
+              onChange={(event) => setModuleForm((current) => ({ ...current, name: event.target.value }))}
+              className={inputClassName}
+            />
+          </Field>
+          <Field label="Description">
+            <textarea
+              rows={3}
+              value={moduleForm.description}
+              aria-label="Description du module"
+              title="Description du module"
+              onChange={(event) =>
+                setModuleForm((current) => ({ ...current, description: event.target.value }))
+              }
+              className={textareaClassName}
+            />
+          </Field>
+          <div className="grid gap-4 md:grid-cols-2">
+            <Field label="Durée par défaut (jours)">
+              <input
+                type="number"
+                min="1"
+                value={moduleForm.duration}
+                aria-label="Durée par défaut du module en jours"
+                title="Durée par défaut du module en jours"
+                onChange={(event) =>
+                  setModuleForm((current) => ({
+                    ...current,
+                    duration: Math.max(1, Number(event.target.value || 1)),
+                  }))
+                }
+                className={inputClassName}
+              />
+            </Field>
+            <Field label="Ordre d'affichage">
+              <input
+                type="number"
+                min="0"
+                value={moduleForm.order}
+                aria-label="Ordre d'affichage du module"
+                title="Ordre d'affichage du module"
+                onChange={(event) =>
+                  setModuleForm((current) => ({
+                    ...current,
+                    order: Math.max(0, Number(event.target.value || 0)),
+                  }))
+                }
+                className={inputClassName}
+              />
+            </Field>
+          </div>
+        </div>
+
+        <div className="mt-6 flex justify-end gap-3">
+          <button
+            onClick={onClose}
+            className="rounded-xl border border-[var(--color-border-primary)] px-4 py-2 text-sm font-semibold text-[var(--color-text-primary)]"
+          >
+            Annuler
+          </button>
+          <button
+            onClick={onSave}
+            disabled={submitting}
+            className="inline-flex items-center gap-2 rounded-xl bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+          >
+            <Save className="h-4 w-4" />
+            Enregistrer
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

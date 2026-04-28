@@ -1,6 +1,7 @@
 import { addDays, differenceInDays } from 'date-fns';
 import type { Household, ProjectConfig, Team } from '../utils/types';
 import {
+  PHASE_TRADE_KEYS,
   isLogisticsPlanningTeam,
   isPreparationPlanningTeam,
   recommendTeamForPlanningTask,
@@ -803,16 +804,19 @@ export function filterPlanningTasks({
   selectedRegion,
   phaseFilter,
   selectedTeam,
+  selectedTrade,
 }: {
   tasks: PlanningTask[];
   selectedRegion: string;
   phaseFilter: PhaseFilter;
   selectedTeam: string;
+  selectedTrade: string;
 }) {
   return tasks.filter((task) => {
     if (selectedRegion !== 'ALL' && task.region !== selectedRegion) return false;
     if (phaseFilter !== 'ALL' && task.phase !== phaseFilter) return false;
     if (selectedTeam !== 'ALL' && task.teamId !== selectedTeam) return false;
+    if (selectedTrade !== 'ALL' && PHASE_TRADE_KEYS[task.phase] !== selectedTrade) return false;
     return true;
   });
 }

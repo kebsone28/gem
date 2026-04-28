@@ -118,6 +118,17 @@ export default function AIEngineAdminPanel({ user, onClose }: Props) {
         </div>
 
         <div className="p-6 space-y-8 overflow-y-auto custom-scrollbar">
+          <section className="rounded-2xl border border-cyan-500/20 bg-cyan-500/10 p-4">
+            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-300">
+              Backend Securise
+            </p>
+            <p className="mt-2 text-sm leading-relaxed text-cyan-50">
+              Les fournisseurs IA, les secrets API et les appels Vision/Claude sont désormais
+              gérés côté serveur. Cette console pilote seulement le mode d’orchestration local du
+              mentor et sa mémoire de conversation.
+            </p>
+          </section>
+
           {/* Mode Selection */}
           <section>
             <h3 className="text-xs font-bold text-blue-400 uppercase tracking-widest mb-4">
@@ -186,88 +197,31 @@ export default function AIEngineAdminPanel({ user, onClose }: Props) {
           {/* IA Source Selection */}
           <section>
             <h3 className="text-xs font-bold text-blue-400 uppercase tracking-widest mb-4">
-              Source de l'IA
+              Fournisseur IA
             </h3>
-            <div className="flex gap-2">
-              {[
-                { id: 'CLAUDE_ANTHROPIC', label: 'Claude (Propriétaire)', icon: '✨' },
-                { id: 'PUBLIC_POLLINATIONS', label: 'Public (Gratuit)', icon: '🌍' },
-                { id: 'LOCAL_OLLAMA', label: 'Local (Ollama)', icon: '🏠' },
-              ].map((p) => (
-                <button
-                  key={p.id}
-                  onClick={() => update({ provider: p.id as any })}
-                  className={`flex-1 p-3 rounded-xl border-2 transition-all flex flex-col items-center gap-1 ${
-                    config.provider === p.id
-                      ? 'border-blue-500 bg-blue-900/20'
-                      : 'border-gray-800 bg-gray-900/50 hover:bg-gray-800'
-                  }`}
-                >
-                  <span className="text-xl">{p.icon}</span>
-                  <span
-                    className={`text-[9px] font-bold ${config.provider === p.id ? 'text-white' : 'text-gray-500'}`}
-                  >
-                    {p.label}
-                  </span>
-                </button>
-              ))}
+            <div className="rounded-2xl border border-gray-800 bg-gray-900/50 p-4">
+              <p className="text-sm font-bold text-white">Géré côté serveur</p>
+              <p className="mt-2 text-xs leading-relaxed text-gray-400">
+                Le mentor n’utilise plus la clé API, le fournisseur ou le timeout stockés dans ce
+                navigateur. La source réelle est maintenant définie sur le backend via les variables
+                d’environnement et les endpoints sécurisés.
+              </p>
             </div>
-            {config.provider === 'PUBLIC_POLLINATIONS' && (
-              <p className="text-[10px] text-green-500 mt-2 italic">
-                ✓ Mode Gratuit : Aucune clé ni inscription requise via Pollinations AI.
-              </p>
-            )}
-            {config.provider === 'LOCAL_OLLAMA' && (
-              <p className="text-[10px] text-orange-500 mt-2 italic">
-                ⚠ Nécessite Ollama fonctionnant sur localhost:11434.
-              </p>
-            )}
           </section>
 
           {/* Advanced Settings */}
           {claudeActive && (
             <div className="space-y-6 animate-in slide-in-from-top-4 duration-300">
               <h3 className="text-xs font-bold text-purple-400 uppercase tracking-widest">
-                Paramètres Claude AI
+                Contexte Local du Mentor
               </h3>
 
               <div className="grid grid-cols-1 gap-3">
-                {/* 🔑 API Key Field */}
-                {config.provider === 'CLAUDE_ANTHROPIC' && (
-                  <div className="p-4 bg-gray-900 shadow-inner rounded-2xl border border-purple-500/30">
-                    <p className="text-xs font-bold text-purple-400 mb-2 uppercase flex items-center gap-1">
-                      <span>🔑</span> Clé API Anthropic
-                    </p>
-                    <input
-                      type="password"
-                      placeholder="sk-ant-..."
-                      value={config.claudeApiKey}
-                      onChange={(e) => update({ claudeApiKey: e.target.value })}
-                      className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-3 text-sm font-mono text-purple-200 outline-none focus:border-purple-500 transition-all"
-                    />
-                    <p className="text-[9px] text-gray-500 mt-2 italic px-1">
-                      Attention: Conservez cette clé secrète. Elle est nécessaire pour les modes
-                      "HYBRID" et "CLAUDE_ONLY".
-                    </p>
-                  </div>
-                )}
-
-                {/* Toggles */}
                 {[
                   {
                     key: 'enableConversationMemory',
                     label: 'Mémoire contextuelle',
-                    desc: 'Claude retient les 10 derniers échanges.',
-                  },
-                  {
-                    key: 'claudeEnrichTechnical',
-                    label: 'Enrichissement Technique',
-                    desc: 'Claude approfondit les normes NS 01-001.',
-                  },
-                  {
-                    key: 'claudeEnrichDecision',
-                    label: 'Enrichissement DG',
-                    desc: 'Analyses stratégiques avancées.',
+                    desc: 'Le mentor conserve localement les derniers échanges pour contextualiser la session.',
                   },
                 ].map((opt) => (
                   <label
@@ -292,31 +246,26 @@ export default function AIEngineAdminPanel({ user, onClose }: Props) {
                 ))}
               </div>
 
-              {/* Sliders */}
-              <div className="space-y-4">
-                <div className="p-5 bg-gray-900/50 border border-gray-800 rounded-2xl">
-                  <div className="flex justify-between items-end mb-4">
-                    <div>
-                      <p className="text-sm font-bold text-white">Délai d'attente (Timeout)</p>
-                      <p className="text-[10px] text-gray-500">
-                        Basculement sur les règles si l'IA latence.
-                      </p>
-                    </div>
-                    <p className="text-lg font-black text-purple-400">
-                      {config.claudeTimeoutMs / 1000}s
+              <div className="p-5 bg-gray-900/50 border border-gray-800 rounded-2xl">
+                <div className="flex justify-between items-end mb-4">
+                  <div>
+                    <p className="text-sm font-bold text-white">Historique gardé localement</p>
+                    <p className="text-[10px] text-gray-500">
+                      Nombre maximum de tours renvoyés au backend pour conserver le fil de la conversation.
                     </p>
                   </div>
-                  <input
-                    type="range"
-                    min={2000}
-                    max={15000}
-                    step={1000}
-                    title="Délai d'attente (Timeout)"
-                    value={config.claudeTimeoutMs}
-                    onChange={(e) => update({ claudeTimeoutMs: Number(e.target.value) })}
-                    className="w-full accent-purple-500 bg-gray-800 rounded-full h-1.5 appearance-none cursor-pointer"
-                  />
+                  <p className="text-lg font-black text-purple-400">{config.maxHistoryTurns}</p>
                 </div>
+                <input
+                  type="range"
+                  min={4}
+                  max={20}
+                  step={1}
+                  title="Historique local"
+                  value={config.maxHistoryTurns}
+                  onChange={(e) => update({ maxHistoryTurns: Number(e.target.value) })}
+                  className="w-full accent-purple-500 bg-gray-800 rounded-full h-1.5 appearance-none cursor-pointer"
+                />
               </div>
             </div>
           )}

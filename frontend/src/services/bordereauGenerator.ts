@@ -22,6 +22,7 @@ interface GrappeData {
     name?: string;
     phone?: string;
     village?: string;
+    commune?: string;
     departement?: string;
     status: string;
     owner?: Record<string, unknown>;
@@ -62,6 +63,42 @@ const resolveVillage = (h: any): string => {
   if (kobo.village) return kobo.village;
   if (kobo.commune) return kobo.commune;
   return 'Non spécifié';
+};
+
+const resolveCommune = (h: any): string => {
+  if (h.commune && h.commune.trim()) return h.commune.trim();
+  const kobo = h.koboData || h.koboSync || {};
+  if (kobo.commune) return kobo.commune;
+  if (kobo.commune_nom) return kobo.commune_nom;
+  if (kobo.commune_name) return kobo.commune_name;
+  if (h.owner?.commune) return h.owner.commune;
+  return '-';
+};
+
+const resolvePhone = (h: any): string => {
+  const candidates = [
+    h.phone,
+    h.owner?.phone,
+    h.owner?.telephone,
+    h.koboData?.phone,
+    h.koboData?.telephone,
+    h.koboData?.tel,
+    h.koboData?.contact,
+    h.koboData?.contact_phone,
+    h.koboData?.numero_telephone,
+    h.koboData?.tel_mobile,
+    h.koboSync?.phone,
+    h.koboSync?.telephone,
+    h.koboSync?.tel,
+  ];
+
+  for (const candidate of candidates) {
+    if (typeof candidate === 'string' && candidate.trim()) {
+      return candidate.trim();
+    }
+  }
+
+  return '-';
 };
 
 /**
@@ -149,10 +186,12 @@ export const generateGrappePDF = (grappe: GrappeData, projectName: string = 'Pro
       index + 1,
       h.numeroordre || h.id?.substring(0, 8) || 'N/A',
       resolveName(h),
+      grappe.region || '-',
+      resolveCommune(h),
       resolveVillage(h),
       coords.lat,
       coords.lon,
-      h.phone || h.koboSync?.tel || h.owner?.telephone || '-',
+      resolvePhone(h),
       h.status === 'completed' || h.status === 'Terminé'
         ? 'Terminé'
         : h.status === 'in_progress'
@@ -168,6 +207,8 @@ export const generateGrappePDF = (grappe: GrappeData, projectName: string = 'Pro
         '#',
         'ID B.',
         'Nom du Ménage / Propriétaire',
+        'Région',
+        'Commune',
         'Village',
         'Lat.',
         'Long.',
@@ -188,10 +229,13 @@ export const generateGrappePDF = (grappe: GrappeData, projectName: string = 'Pro
       0: { halign: 'center', cellWidth: 10 },
       1: { halign: 'center', cellWidth: 15 },
       2: { cellWidth: 'auto' },
-      4: { halign: 'center', cellWidth: 22 },
-      5: { halign: 'center', cellWidth: 22 },
-      6: { halign: 'center', cellWidth: 25 },
-      7: { halign: 'center', cellWidth: 22 },
+      3: { cellWidth: 20 },
+      4: { cellWidth: 24 },
+      5: { cellWidth: 22 },
+      6: { halign: 'center', cellWidth: 21 },
+      7: { halign: 'center', cellWidth: 21 },
+      8: { halign: 'center', cellWidth: 25 },
+      9: { halign: 'center', cellWidth: 22 },
     },
     bodyStyles: {
       fontSize: 8,
@@ -223,12 +267,13 @@ export const generateGrappeExcel = (grappe: GrappeData) => {
       'N°': index + 1,
       'ID Borne': h.numeroordre || h.id,
       'Nom du Propriétaire': resolveName(h),
+      Région: grappe.region,
+      Commune: resolveCommune(h),
       Village: resolveVillage(h),
       Latitude: coords.lat === '-' ? null : Number(coords.lat),
       Longitude: coords.lon === '-' ? null : Number(coords.lon),
-      Téléphone: h.phone || h.koboSync?.tel || h.owner?.telephone || '-',
+      Téléphone: resolvePhone(h),
       'Équipes Affectées': teamNames,
-      Région: grappe.region,
       Grappe: grappe.name,
       Statut:
         h.status === 'completed' || h.status === 'Terminé'
@@ -247,12 +292,13 @@ export const generateGrappeExcel = (grappe: GrappeData) => {
     { wch: 5 }, // N°
     { wch: 15 }, // ID Borne
     { wch: 35 }, // Nom
+    { wch: 15 }, // Region
+    { wch: 20 }, // Commune
     { wch: 20 }, // Village
     { wch: 12 }, // Lat
     { wch: 12 }, // Lon
     { wch: 15 }, // Telephone
     { wch: 30 }, // Equipes
-    { wch: 15 }, // Region
     { wch: 20 }, // Grappe
     { wch: 15 }, // Statut
   ];

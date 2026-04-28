@@ -76,8 +76,13 @@ export const config = {
         model: process.env.OPENAI_MODEL || 'gpt-4.1-mini',
         maxTokens: parseInt(process.env.OPENAI_MAX_TOKENS || '700', 10),
         temperature: parseFloat(process.env.OPENAI_TEMPERATURE || '0.3'),
+        provider: process.env.AI_PROVIDER || 'PUBLIC_POLLINATIONS',
+        anthropicKey: process.env.ANTHROPIC_API_KEY || '',
+        anthropicModel: process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20241022',
+        anthropicTimeoutMs: parseInt(process.env.ANTHROPIC_TIMEOUT_MS || '12000', 10),
         ollamaBaseUrl: process.env.OLLAMA_BASE_URL || 'https://proquelec.wanekoohost.com',
         ollamaModel: process.env.OLLAMA_MODEL || 'qwen2.5-coder:7b',
+        pollinationsModel: process.env.POLLINATIONS_MODEL || 'openai',
         cacheTtlSeconds: parseInt(process.env.AI_CACHE_TTL_SECONDS || '300', 10)
     },
     storage: {

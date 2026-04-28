@@ -262,7 +262,7 @@ export const KPICard: React.FC<KPICardProps> = ({ title, value, icon, trend, spa
       </div>
 
       <div className="relative z-10 flex min-h-[68px] flex-col justify-between">
-        <h3 className="mb-2 max-w-[12ch] text-[10px] font-semibold uppercase leading-[1.12] tracking-[0.12em] text-slate-300 sm:mb-3 sm:text-[11px] lg:text-[12px]">
+        <h3 className="mb-2 max-w-full break-words text-[9px] font-semibold uppercase leading-[1.04] tracking-[0.08em] text-slate-300 sm:mb-3 sm:text-[10px] lg:text-[11px]">
           {title}
         </h3>
         <p className="text-[2rem] font-black leading-none tracking-tight text-white drop-shadow-md sm:text-3xl lg:text-4xl">

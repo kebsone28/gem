@@ -83,6 +83,16 @@ const chatService = {
     return response.data.message;
   },
 
+  async deleteMessage(conversationId: string, messageId: string) {
+    const response = await apiClient.delete<{
+      success: boolean;
+      conversationId: string;
+      messageId: string;
+      lastMessage?: ChatMessage | null;
+    }>(`/chat/conversations/${conversationId}/messages/${messageId}`);
+    return response.data;
+  },
+
   async setBlocked(userId: string, blocked: boolean, reason?: string) {
     const response = await apiClient.patch<{ userId: string; blocked: boolean; reason?: string | null }>(
       `/chat/users/${userId}/block`,

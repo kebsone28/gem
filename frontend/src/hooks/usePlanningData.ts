@@ -55,7 +55,7 @@ export function usePlanningData(projectId: string | null): UsePlanningDataResult
         ]);
 
         setHouseholds(((householdsRes.data as HouseholdsResponse).households || []) as PlanningHousehold[]);
-        setTeams(((teamsRes.data as TeamsResponse).teams || []).filter((team: Team) => team.status === 'active'));
+        setTeams(((teamsRes.data as TeamsResponse).teams || []).filter((team: Team) => !team.deletedAt));
         setDataSource('server');
       } catch (error) {
         logger.warn('[PlanningData] Server fetch unavailable, falling back to local data', error);
@@ -69,7 +69,7 @@ export function usePlanningData(projectId: string | null): UsePlanningDataResult
           db.teams
             .where('projectId')
             .equals(projectId)
-            .and((team) => team.status === 'active')
+            .and((team) => !team.deletedAt)
             .toArray(),
         ]);
 

@@ -101,5 +101,5 @@ export function useDashboardData(projectId: string, canViewReports: boolean) {
     };
   }, [remoteMetrics, localHouseholds]);
 
-  return { metrics, isLoading, error, refresh: fetchMetrics, localZonesCount };
+  return { metrics, isLoading, error, refresh: fetchMetrics, localZonesCount, localHouseholds };
 }

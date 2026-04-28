@@ -68,6 +68,7 @@ export default function Communication() {
   const [messagesByConversation, setMessagesByConversation] = useState<Record<string, ChatMessage[]>>({});
   const [activeConversationId, setActiveConversationId] = useState<string>('');
   const [search, setSearch] = useState('');
+  const [conversationSearch, setConversationSearch] = useState('');
   const [composer, setComposer] = useState('');
   const [groupName, setGroupName] = useState('');
   const [isGroupPublic, setIsGroupPublic] = useState(false);
@@ -86,6 +87,9 @@ export default function Communication() {
   }, [messagesByConversation, activeConversationId]);
 
   const activeConversation = conversations.find((conversation) => conversation.id === activeConversationId) || null;
+  const activeConversationMessages = activeConversation ? messagesByConversation[activeConversation.id] || [] : [];
+  const onlineUsersCount = users.filter((member) => member.online).length;
+  const blockedUsersCount = users.filter((member) => member.blocked).length;
 
   const displayedUsers = users.filter((member) => {
     if (member.id === user?.id) return false;
@@ -97,6 +101,26 @@ export default function Communication() {
       member.role.toLowerCase().includes(needle)
     );
   });
+
+  const filteredConversations = conversations.filter((conversation) => {
+    const needle = conversationSearch.trim().toLowerCase();
+    if (!needle) return true;
+
+    const haystacks = [
+      getConversationLabel(conversation),
+      getConversationMeta(conversation),
+      conversation.lastMessage?.content || '',
+      ...(conversation.participants || []).map((participant) => participant.user?.name || ''),
+    ];
+
+    return haystacks.some((value) => String(value).toLowerCase().includes(needle));
+  });
+
+  const globalConversations = filteredConversations.filter((conversation) => conversation.isGlobal);
+  const groupConversations = filteredConversations.filter(
+    (conversation) => conversation.type === 'GROUP' && !conversation.isGlobal
+  );
+  const directConversations = filteredConversations.filter((conversation) => conversation.type === 'DIRECT');
 
   const loadBootstrap = async () => {
     try {
@@ -203,7 +227,7 @@ export default function Communication() {
         if (message.conversationId !== activeConversationId) {
           setUnreadConversations((current) => new Set(current).add(message.conversationId));
         }
-        
+
         if (message.senderId !== user?.id) {
           toast(`Vous avez un message de ${message.sender.name}`, { icon: '💬', duration: 4000 });
           try {
@@ -232,10 +256,10 @@ export default function Communication() {
         const next = current.map((conversation) =>
           conversation.id === message.conversationId
             ? {
-                ...conversation,
-                lastMessage: message,
-                updatedAt: message.createdAt,
-              }
+              ...conversation,
+              lastMessage: message,
+              updatedAt: message.createdAt,
+            }
             : conversation
         );
 
@@ -252,10 +276,10 @@ export default function Communication() {
         current.map((member) =>
           member.id === payload.userId
             ? {
-                ...member,
-                blocked: payload.blocked,
-                blockedReason: payload.reason || null,
-              }
+              ...member,
+              blocked: payload.blocked,
+              blockedReason: payload.reason || null,
+            }
             : member
         )
       );
@@ -270,14 +294,56 @@ export default function Communication() {
       }
     };
 
-    const handleConversationDeleted = (payload: { conversationId: string }) => {
+  const handleConversationDeleted = (payload: { conversationId: string }) => {
       setConversations((current) => current.filter((c) => c.id !== payload.conversationId));
       setActiveConversationId((current) => (current === payload.conversationId ? '' : current));
+    };
+
+    const handleMessageDeleted = (payload: {
+      conversationId: string;
+      messageId: string;
+      conversation?: ChatConversation;
+      lastMessage?: ChatMessage | null;
+    }) => {
+      if (!payload?.conversationId || !payload?.messageId) return;
+
+      setMessagesByConversation((current) => {
+        const existing = current[payload.conversationId];
+        if (!existing) return current;
+        return {
+          ...current,
+          [payload.conversationId]: existing.filter((message) => message.id !== payload.messageId),
+        };
+      });
+
+      if (payload.conversation) {
+        setConversations((current) =>
+          current
+            .map((conversation) =>
+              conversation.id === payload.conversationId ? payload.conversation ?? conversation : conversation
+            )
+            .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+        );
+        return;
+      }
+
+      setConversations((current) =>
+        current.map((conversation) =>
+          conversation.id === payload.conversationId
+            ? {
+                ...conversation,
+                lastMessage: payload.lastMessage || null,
+                updatedAt: payload.lastMessage?.createdAt || conversation.createdAt,
+              }
+            : conversation
+        )
+      );
     };
 
     socket.on('chat:presence', handlePresence);
     socket.on('chat:conversation:new', handleConversation);
     socket.on('chat:message:new', handleMessage);
+    socket.on('chat:message:deleted', handleMessageDeleted);
     socket.on('chat:user:block-state', handleBlockState);
     socket.on('chat:conversation:deleted', handleConversationDeleted);
 
@@ -285,6 +351,7 @@ export default function Communication() {
       socket.off('chat:presence', handlePresence);
       socket.off('chat:conversation:new', handleConversation);
       socket.off('chat:message:new', handleMessage);
+      socket.off('chat:message:deleted', handleMessageDeleted);
       socket.off('chat:user:block-state', handleBlockState);
       socket.off('chat:conversation:deleted', handleConversationDeleted);
     };
@@ -383,10 +450,10 @@ export default function Communication() {
         current.map((entry) =>
           entry.id === member.id
             ? {
-                ...entry,
-                blocked: payload.blocked,
-                blockedReason: payload.reason || null,
-              }
+              ...entry,
+              blocked: payload.blocked,
+              blockedReason: payload.reason || null,
+            }
             : entry
         )
       );
@@ -403,6 +470,16 @@ export default function Communication() {
       // The socket event will handle the UI update
     } catch (error: any) {
       toast.error(error?.response?.data?.error || "Impossible de supprimer la conversation.");
+    }
+  };
+
+  const handleDeleteMessage = async (conversationId: string, messageId: string) => {
+    if (!window.confirm('Supprimer définitivement ce message du chat ?')) return;
+    try {
+      await chatService.deleteMessage(conversationId, messageId);
+      toast.success('Message supprimé.');
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error || 'Impossible de supprimer ce message.');
     }
   };
 
@@ -462,23 +539,21 @@ export default function Communication() {
           return next;
         });
       }}
-      className={`w-full rounded-xl border p-2 text-left transition-all duration-300 relative overflow-hidden ${
-        conversation.id === activeConversationId
+      className={`w-full rounded-xl border p-2 text-left transition-all duration-300 relative overflow-hidden ${conversation.id === activeConversationId
           ? (conversation.isGlobal ? 'border-rose-500/40 bg-rose-500/10 shadow-[0_0_15px_rgba(244,63,94,0.15)]' : 'border-violet-500/40 bg-violet-500/10 shadow-[0_0_15px_rgba(139,92,246,0.15)]')
           : (conversation.isGlobal ? 'border-rose-500/20 bg-rose-500/5 hover:border-rose-500/40 hover:bg-rose-500/10 hover:shadow-[0_0_15px_rgba(244,63,94,0.1)]' : 'border-white/8 bg-white/[0.03] hover:border-violet-500/30 hover:bg-violet-500/5 hover:shadow-[0_0_15px_rgba(139,92,246,0.1)]')
-      }`}
+        }`}
     >
       {unreadConversations.has(conversation.id) && (
         <div className="absolute top-2.5 right-2.5 h-2 w-2 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.8)]" />
       )}
       <div className="flex items-start gap-3">
-        <div className={`mt-0.5 rounded-xl border p-2 ${
-          conversation.isGlobal
+        <div className={`mt-0.5 rounded-xl border p-2 ${conversation.isGlobal
             ? 'border-rose-500/20 bg-rose-500/10 text-rose-300'
             : conversation.type === 'GROUP'
               ? 'border-violet-500/20 bg-violet-500/10 text-violet-300'
               : 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300'
-        }`}>
+          }`}>
           {conversation.isGlobal ? <Globe2 size={14} /> : conversation.type === 'GROUP' ? <Users2 size={14} /> : <MessageSquare size={14} />}
         </div>
 
@@ -537,6 +612,37 @@ export default function Communication() {
         }
       `}</style>
       <ModulePageShell accent="planning">
+        <div className="mb-4 rounded-[1.75rem] border border-white/10 bg-slate-950/35 p-3">
+          <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.16em] ${accent.badge}`}>
+                <Circle size={8} className="fill-current" />
+                {onlineUsersCount} en ligne
+              </span>
+              <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-300">
+                {filteredConversations.length} conversation(s)
+              </span>
+              <span className="inline-flex items-center gap-2 rounded-full border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-rose-300">
+                {unreadConversations.size} non lue(s)
+              </span>
+              {isAdmin && blockedUsersCount > 0 && (
+                <span className="inline-flex items-center gap-2 rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-300">
+                  {blockedUsersCount} accès bloqué(s)
+                </span>
+              )}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400">
+              <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-2">
+                Actif: {activeConversation ? getConversationLabel(activeConversation) : 'Aucune conversation'}
+              </span>
+              <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-2">
+                {activeConversationMessages.length} message(s) chargé(s)
+              </span>
+            </div>
+          </div>
+        </div>
+
         <div className="grid gap-4 xl:grid-cols-2">
           <section className="order-1 rounded-[1.75rem] border border-white/10 bg-slate-950/35 p-3">
             <div className="mb-3 flex items-center gap-3">
@@ -617,11 +723,10 @@ export default function Communication() {
                                   event.stopPropagation();
                                   void handleToggleBlock(member);
                                 }}
-                                className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[9px] font-black uppercase tracking-[0.12em] ${
-                                  member.blocked
+                                className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[9px] font-black uppercase tracking-[0.12em] ${member.blocked
                                     ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300'
                                     : 'border-rose-500/20 bg-rose-500/10 text-rose-300'
-                                }`}
+                                  }`}
                               >
                                 {member.blocked ? <ShieldCheck size={10} /> : <ShieldBan size={10} />}
                                 {member.blocked ? 'Débloquer' : 'Bloquer'}
@@ -674,8 +779,8 @@ export default function Communication() {
                     />
                   )}
                   <label className="mt-3 flex items-center gap-2 cursor-pointer text-xs text-violet-200 hover:text-white transition-colors">
-                    <input 
-                      type="checkbox" 
+                    <input
+                      type="checkbox"
                       checked={isGroupPublic}
                       onChange={(e) => setIsGroupPublic(e.target.checked)}
                       className="rounded border-white/20 bg-white/5 text-violet-500 focus:ring-violet-500/30"
@@ -698,26 +803,45 @@ export default function Communication() {
               </div>
             </div>
 
+            <div className="mb-3 relative">
+              <Search size={15} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+              <input
+                value={conversationSearch}
+                onChange={(event) => setConversationSearch(event.target.value)}
+                placeholder="Rechercher une conversation"
+                className={`${DASHBOARD_INPUT} pl-11`}
+              />
+            </div>
+
             <div className="max-h-[350px] space-y-4 overflow-y-auto pr-1 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/10">
-              {conversations.filter(c => c.isGlobal).length > 0 && (
+              {globalConversations.length > 0 && (
                 <div className="space-y-2">
                   <h3 className="text-[9px] font-black uppercase tracking-widest text-rose-400 pl-1">Canaux Publics</h3>
-                  {conversations.filter(c => c.isGlobal).map(renderConversationBtn)}
+                  {globalConversations.map(renderConversationBtn)}
                 </div>
               )}
 
-              {conversations.filter(c => c.type === 'GROUP' && !c.isGlobal).length > 0 && (
+              {groupConversations.length > 0 && (
                 <div className="space-y-2">
                   <h3 className="text-[9px] font-black uppercase tracking-widest text-violet-400 pl-1 mt-2">Groupes Privés</h3>
-                  {conversations.filter(c => c.type === 'GROUP' && !c.isGlobal).map(renderConversationBtn)}
+                  {groupConversations.map(renderConversationBtn)}
                 </div>
               )}
 
-              {conversations.filter(c => c.type === 'DIRECT').length > 0 && (
+              {directConversations.length > 0 && (
                 <div className="space-y-2">
                   <h3 className="text-[9px] font-black uppercase tracking-widest text-emerald-400 pl-1 mt-2">Messages Privés</h3>
-                  {conversations.filter(c => c.type === 'DIRECT').map(renderConversationBtn)}
+                  {directConversations.map(renderConversationBtn)}
                 </div>
+              )}
+
+              {filteredConversations.length === 0 && (
+                <EmptyState
+                  title="Aucune conversation"
+                  description="Aucun salon ne correspond à cette recherche."
+                  icon={<MessageSquare size={22} />}
+                  className="py-12"
+                />
               )}
             </div>
           </section>
@@ -757,11 +881,10 @@ export default function Communication() {
                       .map((participant) => (
                         <span
                           key={participant.id}
-                          className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-medium ${
-                            participant.user.online
+                          className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-medium ${participant.user.online
                               ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-200'
                               : 'border-white/10 bg-white/[0.04] text-slate-300'
-                          }`}
+                            }`}
                         >
                           <Circle size={8} className={participant.user.online ? 'fill-emerald-300' : 'fill-slate-500'} />
                           {participant.user.name}
@@ -779,7 +902,7 @@ export default function Communication() {
                 <div className="mt-4 flex-1 min-h-0 space-y-3 overflow-y-auto pr-1 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/10">
                   {loadingMessages && !messagesByConversation[activeConversation.id] ? (
                     <LoadingState text="Chargement des messages..." minHeight="min-h-[280px]" />
-                  ) : (messagesByConversation[activeConversation.id] || []).length === 0 ? (
+                  ) : activeConversationMessages.length === 0 ? (
                     <EmptyState
                       title="Aucun message"
                       description="Démarrez la conversation avec votre équipe."
@@ -787,7 +910,7 @@ export default function Communication() {
                       className="min-h-[280px]"
                     />
                   ) : (
-                    (messagesByConversation[activeConversation.id] || []).map((message) => {
+                    activeConversationMessages.map((message) => {
                       const own = message.senderId === user?.id;
                       return (
                         <div
@@ -796,17 +919,28 @@ export default function Communication() {
                           style={{ animation: 'messageSlideUp 0.3s ease-out forwards' }}
                         >
                           <div
-                            className={`max-w-[80%] rounded-[1.5rem] border px-4 py-3 shadow-[0_18px_36px_rgba(2,6,23,0.18)] ${
-                              own
+                            className={`max-w-[80%] rounded-[1.5rem] border px-4 py-3 shadow-[0_18px_36px_rgba(2,6,23,0.18)] ${own
                                 ? 'border-violet-500/20 bg-violet-500/14 text-white'
                                 : 'border-white/8 bg-white/[0.04] text-slate-100'
-                            }`}
+                              }`}
                           >
                             <div className="mb-2 flex items-center justify-between gap-3">
                               <span className={`text-[11px] font-semibold uppercase tracking-[0.12em] ${own ? 'text-violet-200' : 'text-slate-400'}`}>
                                 {own ? 'Vous' : message.sender.name}
                               </span>
-                              <span className="text-[11px] text-slate-500">{formatTime(message.createdAt)}</span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-[11px] text-slate-500">{formatTime(message.createdAt)}</span>
+                                {isAdmin && (
+                                  <button
+                                    type="button"
+                                    onClick={() => void handleDeleteMessage(message.conversationId, message.id)}
+                                    className="rounded-lg border border-rose-500/20 bg-rose-500/10 p-1 text-rose-300 transition hover:bg-rose-500/20"
+                                    title="Supprimer ce message"
+                                  >
+                                    <Trash size={12} />
+                                  </button>
+                                )}
+                              </div>
                             </div>
                             <p className="whitespace-pre-wrap text-sm leading-6">{message.content}</p>
                           </div>

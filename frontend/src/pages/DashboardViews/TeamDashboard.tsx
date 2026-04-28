@@ -140,6 +140,34 @@ export default function TeamDashboard() {
       .sort((a, b) => b.pct - a.pct)
       .slice(0, 4);
   }, [myTrade, households, zones]);
+  const topRegion = regionBreakdown[0] || null;
+  const teamSignals = [
+    {
+      label: 'Etat brigade',
+      value: isBlocked ? 'En attente' : 'Active',
+      helper: isBlocked && predecessorTrade
+        ? `Dependance: ${predecessorTrade.label} a ${predecessorTrade.progress}%`
+        : 'Brigade disponible pour l execution',
+      tone: isBlocked
+        ? 'border-amber-500/20 bg-amber-500/10 text-amber-200'
+        : 'border-emerald-500/20 bg-emerald-500/10 text-emerald-200',
+      icon: AlertTriangle,
+    },
+    {
+      label: 'Metier pilote',
+      value: myTrade?.label || 'N/A',
+      helper: myTrade ? `${myTrade.progress}% de progression metier` : 'Aucune brigade detectee',
+      tone: 'border-blue-500/20 bg-blue-500/10 text-blue-200',
+      icon: Activity,
+    },
+    {
+      label: 'Zone prioritaire',
+      value: topRegion?.region || 'N/A',
+      helper: topRegion ? `${topRegion.pct}% de couverture locale` : 'Aucune zone dominante',
+      tone: 'border-violet-500/20 bg-violet-500/10 text-violet-200',
+      icon: MapPin,
+    },
+  ];
 
   return (
     <PageContainer className="min-h-screen bg-slate-950 text-white selection:bg-blue-500/30">
@@ -270,6 +298,29 @@ export default function TeamDashboard() {
                     </div>
                   ))}
                 </div>
+              </div>
+
+              <div className="grid gap-3 border-t border-white/6 pt-3 md:grid-cols-3">
+                {teamSignals.map(({ label, value, helper, tone, icon: Icon }) => (
+                  <div key={label} className={`rounded-[1.2rem] border p-4 ${tone}`}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-[0.16em] opacity-80">
+                          {label}
+                        </p>
+                        <p className="mt-2 text-2xl font-black tracking-tight text-white">
+                          {value}
+                        </p>
+                      </div>
+                      <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-black/10">
+                        <Icon size={18} />
+                      </div>
+                    </div>
+                    <p className="mt-3 text-xs leading-relaxed text-slate-300">
+                      {helper}
+                    </p>
+                  </div>
+                ))}
               </div>
             </div>
           </header>

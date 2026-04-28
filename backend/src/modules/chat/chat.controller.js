@@ -542,6 +542,110 @@ export const sendMessage = async (req, res) => {
   }
 };
 
+export const deleteMessage = async (req, res) => {
+  try {
+    const { organizationId, id: adminUserId } = req.user;
+    const { conversationId, messageId } = req.params;
+
+    assertChatPersistenceAvailable();
+
+    const message = await prisma.chatMessage.findFirst({
+      where: {
+        id: messageId,
+        conversationId,
+        organizationId,
+      },
+      include: messageInclude,
+    });
+
+    if (!message) {
+      return res.status(404).json({ error: 'Message introuvable.' });
+    }
+
+    const conversation = await prisma.chatConversation.findFirst({
+      where: {
+        id: conversationId,
+        organizationId,
+      },
+      include: conversationInclude,
+    });
+
+    if (!conversation) {
+      return res.status(404).json({ error: 'Conversation introuvable.' });
+    }
+
+    await prisma.chatMessage.delete({
+      where: { id: messageId },
+    });
+
+    const latestMessage = await prisma.chatMessage.findFirst({
+      where: {
+        organizationId,
+        conversationId,
+      },
+      include: messageInclude,
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    const updatedConversation = await prisma.chatConversation.update({
+      where: { id: conversationId },
+      data: {
+        updatedAt: latestMessage?.createdAt || conversation.createdAt,
+      },
+      include: conversationInclude,
+    });
+
+    await tracerAction({
+      userId: adminUserId,
+      organizationId,
+      action: 'CHAT_MESSAGE_DELETED',
+      resource: 'ChatMessage',
+      resourceId: messageId,
+      details: {
+        conversationId,
+        senderId: message.senderId,
+        deletedContentPreview: message.content.slice(0, 120),
+      },
+      req,
+    }).catch((auditError) => {
+      console.warn('[CHAT_AUDIT] deleteMessage failed:', auditError.message);
+    });
+
+    const activeBlocksByUserId = await getActiveBlocksByUserId(organizationId);
+    const onlineUserIds = new Set(socketService.getOrganizationPresence(organizationId));
+
+    socketService.emit(
+      'chat:message:deleted',
+      {
+        conversationId,
+        messageId,
+        conversation: toSafeConversation(updatedConversation, adminUserId, activeBlocksByUserId, onlineUserIds),
+        lastMessage: latestMessage ? toSafeMessage(latestMessage) : null,
+      },
+      getConversationRoom(conversationId)
+    );
+
+    res.json({
+      success: true,
+      conversationId,
+      messageId,
+      lastMessage: latestMessage ? toSafeMessage(latestMessage) : null,
+    });
+  } catch (error) {
+    if (isPrismaSchemaDriftError(error)) {
+      error.statusCode = 503;
+      error.message = 'La messagerie n’est pas encore disponible sur ce serveur. Finalisez la mise à niveau de la base puis réessayez.';
+    }
+    console.error('[CHAT_DELETE_MESSAGE_ERROR]', error);
+    res.status(error.statusCode || 500).json({
+      error: error.message || 'Erreur lors de la suppression du message.',
+      ...(error.code && { code: error.code }),
+    });
+  }
+};
+
 export const toggleUserChatBlock = async (req, res) => {
   try {
     const { organizationId, id: adminUserId } = req.user;

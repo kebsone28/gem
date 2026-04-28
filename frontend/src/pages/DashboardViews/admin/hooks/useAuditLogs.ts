@@ -1,16 +1,71 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { auditService } from '../../../../services/auditService';
+import apiClient from '../../../../api/client';
 import logger from '../../../../utils/logger';
 import type { AuditLog } from '../../../../utils/types';
 import type { Activity } from '../types';
+
+function inferSeverity(activity: any): AuditLog['severity'] {
+  const action = String(activity?.action || '').toLowerCase();
+  const details =
+    typeof activity?.details === 'string'
+      ? activity.details.toLowerCase()
+      : JSON.stringify(activity?.details || {}).toLowerCase();
+
+  if (
+    action.includes('delete') ||
+    action.includes('suppression') ||
+    action.includes('reset') ||
+    details.includes('critical')
+  ) {
+    return 'critical';
+  }
+
+  if (
+    action.includes('warning') ||
+    action.includes('block') ||
+    action.includes('reject') ||
+    details.includes('warning')
+  ) {
+    return 'warning';
+  }
+
+  return 'info';
+}
+
+function mapActivityToAuditLog(activity: any, index: number): AuditLog {
+  const rawDetails = activity?.details;
+  const details =
+    typeof rawDetails === 'string'
+      ? rawDetails
+      : rawDetails && Object.keys(rawDetails).length > 0
+        ? JSON.stringify(rawDetails)
+        : activity?.resourceId || '';
+
+  return {
+    id: activity?.id || `${activity?.timestamp || 'activity'}-${index}`,
+    userId: activity?.userId || activity?.user?.id || 'system',
+    userName: activity?.user?.name || activity?.userName || 'Système',
+    action: activity?.action || 'ACTIVITE',
+    module: activity?.resource || activity?.module || 'SYSTEME',
+    details,
+    timestamp: activity?.timestamp || new Date().toISOString(),
+    severity: inferSeverity(activity),
+  };
+}
 
 export function useAuditLogs(remoteActivities: any[] = []) {
   const [logs, setLogs] = useState<AuditLog[]>([]);
 
   const fetchLogs = useCallback(async () => {
-    const data = await auditService.getLastLogs(5);
-    setLogs(data);
+    try {
+      const response = await apiClient.get('/monitoring/activity');
+      const activities = response.data?.activities || [];
+      setLogs(activities.slice(0, 5).map(mapActivityToAuditLog));
+    } catch (e) {
+      logger.warn('[audit] server feed unavailable', e);
+      setLogs([]);
+    }
   }, []);
 
   useEffect(() => {
@@ -18,10 +73,11 @@ export function useAuditLogs(remoteActivities: any[] = []) {
     const t = window.setTimeout(() => {
       (async () => {
         try {
-          const data = await auditService.getLastLogs(5);
-          if (mounted) setLogs(data);
+          const response = await apiClient.get('/monitoring/activity');
+          const activities = response.data?.activities || [];
+          if (mounted) setLogs(activities.slice(0, 5).map(mapActivityToAuditLog));
         } catch (e) {
-          logger.warn('[audit] feed unavailable', e);
+          logger.warn('[audit] server feed unavailable', e);
         }
       })();
     }, 0);
@@ -65,5 +121,5 @@ export function useAuditLogs(remoteActivities: any[] = []) {
     }));
   }, [logs, remoteActivities]);
 
-  return { feedActivities, refresh: fetchLogs };
+  return { feedActivities, refresh: fetchLogs, auditLogs: logs };
 }

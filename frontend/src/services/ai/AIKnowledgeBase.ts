@@ -1,5 +1,5 @@
 ﻿ 
-import { KOBO_STANDARDS } from './ElectricianQuran';
+import { KOBO_STANDARDS } from './ElectricianQuran.ts';
 
 export interface AIStateForPrompt {
   stats?: { totalMissions?: number; totalCertified?: number; totalIndemnities?: number } | null;
