@@ -191,25 +191,87 @@ if (-not $SkipDeploy) {
       throw 'Deployment aborted by user.'
     }
 
-    $remoteCommands = @(
-      'set -e'
-      "cd $resolvedPath"
-      'git fetch --all'
-      "git reset --hard origin/$Branch"
-      'npm install --no-scripts --legacy-peer-deps'
-      'cd frontend'
-      'npm install --no-scripts --legacy-peer-deps'
-      "NODE_OPTIONS='--max-old-space-size=4096' npm run build"
-      'cd ../backend'
-      'npm install --no-scripts --legacy-peer-deps'
-      'npx prisma generate --schema=prisma/schema.prisma'
-      'npx prisma migrate deploy --schema=prisma/schema.prisma'
-      'npx pm2 restart all'
-      'sleep 10'
-      'curl -fsS http://localhost:5005/health'
-    ) -join ' && '
+    $remoteScriptTemplate = @'
+set -e
 
-    Invoke-Ssh -Target $sshTarget -Command $remoteCommands -IdentityFile $resolvedSshKeyPath -AutoAcceptHostKey:$AcceptHostKey
+install_node_dependencies() {
+  if [ -f package-lock.json ]; then
+    npm ci --ignore-scripts --legacy-peer-deps
+  else
+    npm install --ignore-scripts --legacy-peer-deps
+  fi
+}
+
+run_prisma_migrate() {
+  set +e
+  PRISMA_MIGRATE_OUTPUT=$(npx prisma migrate deploy --schema=prisma/schema.prisma 2>&1)
+  PRISMA_MIGRATE_EXIT=$?
+  set -e
+
+  printf '%s\n' "$PRISMA_MIGRATE_OUTPUT"
+
+  if [ $PRISMA_MIGRATE_EXIT -ne 0 ]; then
+    if printf '%s' "$PRISMA_MIGRATE_OUTPUT" | grep -q 'P3005'; then
+      echo '[DEPLOY] Prisma migrate skipped: production database is not baselined yet (P3005).'
+      echo '[DEPLOY] Baseline Prisma on production before introducing schema migrations that must be applied automatically.'
+      return 0
+    fi
+
+    return $PRISMA_MIGRATE_EXIT
+  fi
+}
+
+restart_backend() {
+  if command -v pm2 >/dev/null 2>&1; then
+    pm2 restart gem-backend --update-env || pm2 restart all --update-env
+    pm2 save || true
+    return 0
+  fi
+
+  if command -v npx >/dev/null 2>&1; then
+    npx pm2 restart gem-backend --update-env || npx pm2 restart all --update-env
+    npx pm2 save || true
+    return 0
+  fi
+
+  if [ -x /root/.nvm/versions/node/v18.20.8/bin/pm2 ]; then
+    /root/.nvm/versions/node/v18.20.8/bin/pm2 restart gem-backend --update-env || /root/.nvm/versions/node/v18.20.8/bin/pm2 restart all --update-env
+    /root/.nvm/versions/node/v18.20.8/bin/pm2 save || true
+    return 0
+  fi
+
+  echo '[DEPLOY] Unable to locate pm2 in the remote shell environment.'
+  return 1
+}
+
+cd "__DEPLOY_PATH__"
+git fetch --all
+git reset --hard origin/__BRANCH__
+
+install_node_dependencies
+
+cd frontend
+install_node_dependencies
+NODE_OPTIONS='--max-old-space-size=4096' npm run build
+
+cd ../backend
+install_node_dependencies
+npx prisma generate --schema=prisma/schema.prisma
+run_prisma_migrate
+restart_backend
+
+sleep 10
+curl -fsS http://localhost:5005/health
+'@
+
+    $remoteScript = $remoteScriptTemplate.
+      Replace('__DEPLOY_PATH__', $resolvedPath).
+      Replace('__BRANCH__', $Branch)
+
+    $remoteScriptBase64 = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($remoteScript))
+    $remoteCommand = "printf '%s' '$remoteScriptBase64' | base64 -d | bash"
+
+    Invoke-Ssh -Target $sshTarget -Command $remoteCommand -IdentityFile $resolvedSshKeyPath -AutoAcceptHostKey:$AcceptHostKey
   }
 }
 
