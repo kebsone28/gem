@@ -13,19 +13,88 @@ const apiClient = axios.create({
   withCredentials: true,
 });
 
+let refreshPromise: Promise<string> | null = null;
+let logoutTriggered = false;
+
+function isPublicAuthRoute(url = ''): boolean {
+  return (
+    url.includes('auth/login') ||
+    url.includes('auth/register') ||
+    url.includes('auth/verify-2fa') ||
+    url.includes('auth/reset-password')
+  );
+}
+
+function isRefreshRoute(url = ''): boolean {
+  return url.includes('auth/refresh');
+}
+
+function resetRefreshState() {
+  refreshPromise = null;
+}
+
+function triggerSingleLogout(isAlreadyAtLogin: boolean) {
+  safeStorage.removeItem('access_token');
+  safeStorage.removeItem('user');
+
+  if (logoutTriggered || isAlreadyAtLogin) return;
+
+  logoutTriggered = true;
+  window.dispatchEvent(new CustomEvent('auth:logout'));
+  setTimeout(() => {
+    window.location.href = '/login';
+  }, 100);
+}
+
+async function performTokenRefresh(): Promise<string> {
+  if (refreshPromise) {
+    logger.debug('🔐 [AUTH] Refresh already in progress. Waiting for shared refresh promise...');
+    return refreshPromise;
+  }
+
+  refreshPromise = (async () => {
+    const hasToken = !!safeStorage.getItem('access_token');
+    if (!hasToken) {
+      logger.error('❌ [AUTH] No access token found in storage. Refresh cancelled.');
+      throw new Error('No token to refresh');
+    }
+
+    try {
+      try {
+        console.debug('[AUTH-REFRESH] document.cookie length=', (document.cookie || '').length);
+      } catch {
+        // Cookie inspection is diagnostic only.
+      }
+
+      const { data } = await apiClient.post('auth/refresh');
+      if (!data?.accessToken) {
+        logger.error('❌ [AUTH] Refresh response missing accessToken');
+        throw new Error('No token in refresh response');
+      }
+
+      logger.log('✅ [AUTH] Token refreshed successfully');
+      safeStorage.setItem('access_token', data.accessToken);
+      window.dispatchEvent(new CustomEvent('auth:token-refreshed', { detail: data.accessToken }));
+      logoutTriggered = false;
+      return data.accessToken as string;
+    } finally {
+      resetRefreshState();
+    }
+  })();
+
+  return refreshPromise;
+}
+
 // Request Interceptor: Add Auth Token & Project Context
 apiClient.interceptors.request.use(
   (config) => {
     const token = safeStorage.getItem('access_token');
     const activeProjectId = safeStorage.getItem('active_project_id');
     const url = config.url || '';
-    const isAuthRoute =
-      url.includes('auth/login') ||
-      url.includes('auth/register') ||
-      url.includes('auth/refresh') ||
-      url.includes('auth/verify');
+    const publicAuthRoute = isPublicAuthRoute(url);
+    const refreshRoute = isRefreshRoute(url);
 
-    if (token) {
+    if (token && !refreshRoute) {
       if (token === 'undefined' || token === 'null') {
         logger.warn('API-CLIENT', `Found invalid token string in storage: "${token}". Removing.`);
         safeStorage.removeItem('access_token');
@@ -35,7 +104,7 @@ apiClient.interceptors.request.use(
         console.debug('[API-CLIENT] Authorization header set (masked)');
         // logger.debug('API-CLIENT', `Request to ${config.url} with token: ${token.substring(0, 10)}...`);
       }
-    } else if (!isAuthRoute) {
+    } else if (!publicAuthRoute && !refreshRoute) {
       logger.debug('API-CLIENT', `Request to ${config.url} sent WITHOUT token`);
     }
 
@@ -53,67 +122,30 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+    if (!originalRequest) {
+      return Promise.reject(error);
+    }
 
     // 1. Handle Token Refresh (401)
     // ✅ Use flexible matching - URL may be 'auth/login' OR '/auth/login' depending on context
     const url = originalRequest.url || '';
-    const isAuthRoute =
-      url.includes('auth/login') ||
-      url.includes('auth/register') ||
-      url.includes('auth/refresh') ||
-      url.includes('auth/verify');
+    const publicAuthRoute = isPublicAuthRoute(url);
+    const refreshRoute = isRefreshRoute(url);
     const isAlreadyAtLogin = window.location.pathname === '/login';
 
-    if (error.response?.status === 401 && !originalRequest._retry && !isAuthRoute) {
+    if (error.response?.status === 401 && !originalRequest._retry && !publicAuthRoute && !refreshRoute) {
       originalRequest._retry = true;
       logger.debug(`🔐 [AUTH] 401 detected on ${url}. Attempting token refresh...`);
 
       try {
-        const hasToken = !!safeStorage.getItem('access_token');
-        if (!hasToken) {
-          logger.error('❌ [AUTH] No access token found in storage. Redirecting...');
-          throw new Error('No token to refresh');
-        }
-
-        // Diagnostic: log cookies available to the page (do not expose values)
-        try {
-          console.debug('[AUTH-REFRESH] document.cookie length=', (document.cookie || '').length);
-        } catch {
-          // Cookie inspection is diagnostic only.
-        }
-
-        // Call refresh endpoint
-        const { data } = await apiClient.post('auth/refresh');
-
-        if (data.accessToken) {
-          logger.log('✅ [AUTH] Token refreshed successfully');
-          safeStorage.setItem('access_token', data.accessToken);
-
-          // Force update the original request header
-          originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
-
-          // Re-set global store if needed (CustomEvent to update AuthStore if not done automatically)
-          window.dispatchEvent(
-            new CustomEvent('auth:token-refreshed', { detail: data.accessToken })
-          );
-
-          return apiClient(originalRequest);
-        } else {
-          logger.error('❌ [AUTH] Refresh response missing accessToken');
-          throw new Error('No token in refresh response');
-        }
+        const refreshedAccessToken = await performTokenRefresh();
+        originalRequest.headers = originalRequest.headers || {};
+        originalRequest.headers.Authorization = `Bearer ${refreshedAccessToken}`;
+        return apiClient(originalRequest);
       } catch (refreshError: unknown) {
-        const error = refreshError as { message?: string };
-        safeStorage.removeItem('access_token');
-        safeStorage.removeItem('user');
-
-        // Only notify logout if NOT already on login page (avoid event loops)
-        if (!isAlreadyAtLogin) {
-          window.dispatchEvent(new CustomEvent('auth:logout'));
-          setTimeout(() => {
-            window.location.href = '/login';
-          }, 100);
-        }
+        const refreshMessage = (refreshError as { message?: string })?.message;
+        logger.error(`❌ [AUTH] Token refresh failed while replaying ${url}: ${refreshMessage || 'unknown error'}`);
+        triggerSingleLogout(isAlreadyAtLogin);
         return Promise.reject(refreshError);
       }
     }
