@@ -135,7 +135,7 @@ function parsePremiumMessageBlocks(message: string): PremiumMessageBlock[] {
       continue;
     }
 
-    const kvMatch = line.match(/^([A-Za-zÀ-ÿ0-9'’()\/\-\s]{2,34})\s*:\s+(.+)$/);
+    const kvMatch = line.match(/^([A-Za-zÀ-ÿ0-9'’()/\-\s]{2,34})\s*:\s+(.+)$/);
     if (kvMatch) {
       flushList();
       blocks.push({

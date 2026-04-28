@@ -374,10 +374,6 @@ function toTitleCase(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
-function slugify(text: string): string {
-  return normalizeText(text).replace(/\s+/g, '-');
-}
-
 function extractKeywords(text: string): string[] {
   return Array.from(
     new Set(
@@ -923,4 +919,3 @@ export function findGeneratedMissionSageOverride(normalizedQuery: string): Gener
 export function normalizeAuditQuestion(text: string): string {
   return normalizeText(text);
 }
-
