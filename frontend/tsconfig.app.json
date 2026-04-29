@@ -23,7 +23,8 @@
       "@components/*": ["components/*"],
       "@contexts/*": ["contexts/*"],
       "@utils/*": ["utils/*"],
-      "@assets/*": ["assets/*"]
+      "@assets/*": ["assets/*"],
+      "xlsx": ["utils/safeExcel.ts"]
     },
 
     /* Linting */

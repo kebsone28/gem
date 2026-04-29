@@ -99,7 +99,7 @@ export default function MaterialDatabase() {
     reader.onload = async (evt) => {
       try {
         const bstr = evt.target?.result;
-        const wb = XLSX.read(bstr, { type: 'binary' });
+        const wb = await XLSX.read(String(bstr || ''), { type: 'binary' });
         const wsname = wb.SheetNames[0];
         const ws = wb.Sheets[wsname];
         const data = XLSX.utils.sheet_to_json(ws);

@@ -419,7 +419,7 @@ export default function Settings() {
                     if (!file) return;
                     try {
                       const { read, utils } = await import('xlsx');
-                      const wb = read(await file.arrayBuffer(), { type: 'array' });
+                      const wb = await read(await file.arrayBuffer(), { type: 'array' });
                       const newConfig = { ...(project?.config || {}) };
                       if (wb.SheetNames.includes('Devis Items')) {
                         const data: any[] = utils.sheet_to_json(wb.Sheets['Devis Items']);

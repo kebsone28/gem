@@ -129,7 +129,7 @@ export default function DevisVsReel() {
       } else {
         const { read, utils } = await import('xlsx');
         const arrayBuffer = await file.arrayBuffer();
-        const workbook = read(arrayBuffer, { type: 'array' });
+        const workbook = await read(arrayBuffer, { type: 'array' });
         const sheetName = workbook.SheetNames[0];
         rawData = utils.sheet_to_json(workbook.Sheets[sheetName]);
       }

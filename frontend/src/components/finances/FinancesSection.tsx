@@ -194,7 +194,7 @@ export function FinancesSection({ project, onUpdate }: Props) {
         }
       } else {
         const { read, utils } = await import('xlsx');
-        const wb = read(await file.arrayBuffer(), { type: 'array' });
+        const wb = await read(await file.arrayBuffer(), { type: 'array' });
         rawData = utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
       }
       const errors: string[] = [];

@@ -1,14 +1,11 @@
 
-import xlsx from 'xlsx';
 import path from 'path';
+import { readFirstSheetJson } from './src/utils/safeExcel.js';
 
 const filePath = 'c:/Mes-Sites-Web/GEM_SAAS/Liste/Liste-LSE.xlsx';
 
 try {
-    const workbook = xlsx.readFile(filePath);
-    const sheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[sheetName];
-    const data = xlsx.utils.sheet_to_json(worksheet, { header: 1 });
+    const data = await readFirstSheetJson(filePath, { header: 1 });
 
     console.log('--- Excel Peak (First 10 rows) ---');
     console.log(JSON.stringify(data.slice(0, 10), null, 2));

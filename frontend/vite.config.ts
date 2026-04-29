@@ -204,7 +204,7 @@ export default defineConfig({
               id.includes('html2canvas')
             )
               return 'pdf';
-            if (id.includes('xlsx')) return 'xlsx';
+            if (id.includes('exceljs')) return 'excel';
             if (id.includes('framer-motion')) return 'animation';
             if (id.includes('dexie')) return 'dexie';
             return 'vendor';
@@ -219,6 +219,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(dirname, './src'),
+      xlsx: path.resolve(dirname, './src/utils/safeExcel.ts'),
       '@components': path.resolve(dirname, './src/components'),
       '@lib': path.resolve(dirname, './src/lib'),
       '@hooks': path.resolve(dirname, './src/hooks'),

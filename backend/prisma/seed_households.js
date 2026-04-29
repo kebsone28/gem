@@ -7,9 +7,9 @@
  */
 
 import { PrismaClient } from '@prisma/client';
-import xlsx from 'xlsx';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { readFirstSheetJson } from '../src/utils/safeExcel.js';
 
 const prisma = new PrismaClient();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -63,9 +63,7 @@ async function seedHouseholds() {
 
     // Read Excel file
     console.log(`📂 Reading Excel: ${EXCEL_PATH}`);
-    const workbook = xlsx.readFile(EXCEL_PATH);
-    const sheetName = workbook.SheetNames[0];
-    const data = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName]);
+    const data = await readFirstSheetJson(EXCEL_PATH);
 
     console.log(`📊 Found ${data.length} households in Excel`);
 

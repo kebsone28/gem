@@ -130,7 +130,9 @@ test.describe('Mission OM approval workflow', () => {
             response.ok() &&
             body?.id &&
             matchesTitle &&
-            (body.status === 'soumise' || body.data?.isSubmitted === true)
+            (body.status === 'soumise' ||
+              body.status === 'en_attente_validation' ||
+              body.data?.isSubmitted === true)
           ) {
             return body;
           }
@@ -226,8 +228,16 @@ test.describe('Mission OM approval workflow', () => {
       await page.locator('#mission-start').fill('29/04/2026');
       await page.locator('#mission-end').fill('30/04/2026');
       await page.locator('#mission-purpose').fill(title);
-      await page.getByRole('button', { name: /^ajouter$/i }).click();
-      await page.locator('input[placeholder*="opératif"]').first().fill('Agent E2E');
+      const memberInput = page.locator('input[placeholder*="opératif"]').first();
+      const addMemberButton = page.getByRole('button', { name: /^ajouter$/i });
+      await addMemberButton.scrollIntoViewIfNeeded();
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        if ((await memberInput.count()) > 0) break;
+        await addMemberButton.click();
+        await page.waitForTimeout(500);
+      }
+      await expect(memberInput).toBeVisible({ timeout: 10_000 });
+      await memberInput.fill('Agent E2E');
 
       const submittedMission = await waitForSubmittedMission(page, title, async () => {
         await page.getByRole('button', { name: /soumettre/i }).click();

@@ -1,12 +1,9 @@
-import XLSX from 'xlsx';
+import { readFirstSheetJson } from './src/utils/safeExcel.js';
 
 const filePath = 'C:\\Mes-Sites-Web\\GEM_SAAS\\archive\\Liste\\formulaire-kobo.xlsx';
 
 try {
-    const workbook = XLSX.readFile(filePath);
-    const sheetName = workbook.SheetNames[0];
-    const sheet = workbook.Sheets[sheetName];
-    const data = XLSX.utils.sheet_to_json(sheet);
+    const data = await readFirstSheetJson(filePath);
     
     console.log('--- ALL FIELD NAMES ---');
     const names = data.map(r => r.name).filter(Boolean);

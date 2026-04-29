@@ -1,14 +1,10 @@
 
-import xlsx from 'xlsx';
+import { readFirstSheetJson } from './src/utils/safeExcel.js';
 
 const filePath = 'c:/Mes-Sites-Web/GEM_SAAS/Liste/Liste-LSE.xlsx';
 
 try {
-    const workbook = xlsx.readFile(filePath);
-    const sheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[sheetName];
-    // Get headers
-    const data = xlsx.utils.sheet_to_json(worksheet);
+    const data = await readFirstSheetJson(filePath);
 
     console.log('--- Column Names ---');
     if (data.length > 0) {

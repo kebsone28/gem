@@ -176,7 +176,7 @@ export const DataHubModal: React.FC<DataHubModalProps> = ({ isOpen, onClose }) =
       } else if (extension === 'xlsx' || extension === 'xls') {
         const { read, utils } = await import('xlsx');
         const arrayBuffer = await file.arrayBuffer();
-        const workbook = read(arrayBuffer, { type: 'array' });
+        const workbook = await read(arrayBuffer, { type: 'array' });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
         rawData = utils.sheet_to_json(worksheet);

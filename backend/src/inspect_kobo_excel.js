@@ -1,15 +1,12 @@
 /* eslint-disable no-console, @typescript-eslint/no-unused-vars */
-import xlsx from 'xlsx';
+import { readFirstSheetJson } from './utils/safeExcel.js';
 
 const EXCEL_PATH = 'C:/Mes-Sites-Web/GEM_SAAS/archive/Liste/Suivi_Électrification_menages_V2.xlsx';
 
-function inspectExcel() {
+async function inspectExcel() {
     console.log(`--- 📊 Inspection du fichier Excel Kobo ---`);
     try {
-        const workbook = xlsx.readFile(EXCEL_PATH);
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        const data = xlsx.utils.sheet_to_json(worksheet);
+        const data = await readFirstSheetJson(EXCEL_PATH);
 
         console.log(`Nombre total de lignes dans l'Excel : ${data.length}`);
         

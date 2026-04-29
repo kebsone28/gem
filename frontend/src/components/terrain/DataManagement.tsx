@@ -15,9 +15,9 @@ export default function DataManagement({ onImport, onClear, totalCount }: DataMa
     const file = acceptedFiles[0];
     const reader = new FileReader();
 
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       const data = e.target?.result;
-      const workbook = XLSX.read(data, { type: 'binary' });
+      const workbook = await XLSX.read(String(data || ''), { type: 'binary' });
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
       const json: any[] = XLSX.utils.sheet_to_json(worksheet);

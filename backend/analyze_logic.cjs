@@ -1,13 +1,21 @@
 
-const xlsx = require('xlsx');
-const fs = require('fs');
+const ExcelJS = require('exceljs');
 
 const path = 'c:/Mes-Sites-Web/GEM_SAAS/archive/Liste/aEYZwPujJiFBTNb6mxMGCB.xlsx';
 
+const worksheetToJson = (worksheet) => {
+    const rows = [];
+    worksheet.eachRow({ includeEmpty: false }, row => rows.push(row.values.slice(1)));
+    const [headers = [], ...dataRows] = rows;
+    return dataRows.map(row => Object.fromEntries(headers.map((header, index) => [header, row[index]])));
+};
+
+(async () => {
 try {
-    const workbook = xlsx.readFile(path);
-    const surveySheet = workbook.Sheets['survey'];
-    const survey = xlsx.utils.sheet_to_json(surveySheet);
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.readFile(path);
+    const surveySheet = workbook.getWorksheet('survey');
+    const survey = worksheetToJson(surveySheet);
     
     // Extract metadata including skip logic (relevant column)
     const logicMap = survey.filter(r => r.name).map(r => ({
@@ -29,3 +37,4 @@ try {
 } catch (e) {
     console.error('Error:', e.message);
 }
+})();

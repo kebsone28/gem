@@ -1,6 +1,6 @@
 
-import xlsx from 'xlsx';
 import { PrismaClient } from '@prisma/client';
+import { readFirstSheetJson } from './src/utils/safeExcel.js';
 
 const prisma = new PrismaClient();
 
@@ -18,9 +18,7 @@ async function main() {
     });
 
     // 2. Read Excel
-    const workbook = xlsx.readFile(filePath);
-    const sheetName = workbook.SheetNames[0];
-    const data = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName]);
+    const data = await readFirstSheetJson(filePath);
     console.log(`📊 Found ${data.length} households in Excel.`);
 
     const zoneMap = new Map();

@@ -76,7 +76,7 @@ export const downloadCertifiedMissionDocument = async (
   const response = await api.get(`/missions/${missionId}/certified-document`, {
     responseType: 'blob',
   });
-  const contentType = response.headers?.['content-type'] || '';
+  const contentType = String(response.headers?.['content-type'] || '');
   if (!contentType.includes('application/pdf')) {
     throw new Error('Le serveur n’a pas renvoyé un document PDF.');
   }
