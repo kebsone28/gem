@@ -12,6 +12,8 @@ import {
     duplicateMission,
     overrideOrderNumber,
     verifyMissionPublic,
+    downloadMissionCertifiedDocumentPublic,
+    downloadMissionCertifiedDocument,
     sendMissionDocumentEmail,
     analyzeMissionIA
 } from '../../modules/mission/mission.controller.js';
@@ -25,6 +27,7 @@ const router = express.Router();
 
 // Public route - MUST BE BEFORE authProtect
 router.get('/verify/:identifier', verifyMissionPublic);
+router.get('/verify/:identifier/document', downloadMissionCertifiedDocumentPublic);
 
 // Secure routes - require authentication
 router.use(authProtect);
@@ -62,6 +65,7 @@ router.get('/:missionId/approval-history', getMissionApprovalHistory);
 router.post('/:missionId/approve', authorize('ADMIN_PROQUELEC', 'DIRECTEUR'), approveMissionStep);
 router.post('/:missionId/reject',  authorize('ADMIN_PROQUELEC', 'DIRECTEUR'), rejectMissionStep);
 router.post('/:missionId/override-order-number', authorize('ADMIN_PROQUELEC'), overrideOrderNumber);
+router.get('/:missionId/certified-document', downloadMissionCertifiedDocument);
 router.post('/:missionId/send-document-email', upload.single('document'), sendMissionDocumentEmail);
 router.post('/:missionId/analyze-ia', authorize('ADMIN_PROQUELEC', 'DIRECTEUR'), analyzeMissionIA);
 

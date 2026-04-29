@@ -70,6 +70,7 @@ export const MissionOrderActionBar = (props: any) => {
     isSyncing,
     isSyncingServer,
     isDirty,
+    syncStatus,
     showAudit,
     unreadCount = 0,
     onNewMission,
@@ -103,6 +104,15 @@ export const MissionOrderActionBar = (props: any) => {
     'DG_PROQUELEC',
     'DIR_GEN',
   ].includes(normalizedRole);
+
+  const saveLabel = (() => {
+    if (isSubmitted || isCertified) return 'VERROUILLÉ';
+    if (isSyncing || isSyncingServer) return 'SYNC...';
+    if (isDirty) return 'MODIFIÉ';
+    if (syncStatus === 'pending') return 'LOCAL';
+    if (syncStatus === 'failed') return 'À RESYNC';
+    return 'SYNCHRONISÉ';
+  })();
 
   return (
     <ActionBar className="no-print !bg-slate-950/90 backdrop-blur-xl border-t border-white/5 px-3 py-3 sm:px-4 sm:py-2 shadow-2xl">
@@ -160,13 +170,7 @@ export const MissionOrderActionBar = (props: any) => {
               }`}
             >
               <Save size={14} className={isSyncing ? 'animate-spin' : ''} />
-              {isSubmitted || isCertified
-                ? 'VERROUILLÉ'
-                : isSyncing
-                ? 'SYNC...'
-                : isDirty
-                ? 'SAUVEGARDER*'
-                : 'SAUVEGARDÉ'}
+              {saveLabel}
             </button>
 
             {!isSubmitted && !isCertified && (

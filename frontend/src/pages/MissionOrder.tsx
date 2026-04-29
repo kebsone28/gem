@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps */
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useAuth } from '../contexts/AuthContext';
@@ -104,6 +104,7 @@ export default function MissionOrder() {
   const [showAudit, setShowAudit] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const autosaveTimerRef = useRef<number | null>(null);
   // Toujours initialiser à 'prep' pour éviter l'accès prématuré à state
   const [activeTab, setActiveTab] = useState<'prep' | 'report' | 'approval'>('prep');
 
@@ -133,8 +134,15 @@ export default function MissionOrder() {
     if (isPowerful) return allMissions;
     
     // Inclure les missions créées par l'utilisateur OU les missions sans 'createdBy' (données legacy)
-    return allMissions.filter((m: any) => !m.createdBy || m.createdBy === user?.id || m.createdBy === 'inconnu');
-  }, [allMissions, role, user?.id]);
+    return allMissions.filter(
+      (m: any) =>
+        !m.createdBy ||
+        m.createdBy === user?.id ||
+        m.createdBy === user?.email ||
+        m.creatorId === user?.id ||
+        m.createdBy === 'inconnu'
+    );
+  }, [allMissions, role, user?.id, user?.email]);
 
   const unreadCount = useLiveQuery(() => db.notifications.where('read').equals(0).count(), []) || 0;
 
@@ -168,6 +176,49 @@ export default function MissionOrder() {
     workflow.overallStatus !== 'draft';
   const effectiveIsCertified = !!state.isCertified || isWorkflowApproved;
   const effectiveIsSubmitted = !effectiveIsCertified && (!!state.isSubmitted || isWorkflowPending);
+  const isMissionLocked = effectiveIsSubmitted || effectiveIsCertified;
+
+  useEffect(() => {
+    const hasUnsavedChanges =
+      missionState.isDirty &&
+      !!state.currentMissionId &&
+      !isMissionLocked &&
+      state.status !== 'saving';
+
+    if (!hasUnsavedChanges) return;
+
+    if (autosaveTimerRef.current) {
+      window.clearTimeout(autosaveTimerRef.current);
+    }
+
+    autosaveTimerRef.current = window.setTimeout(() => {
+      handleSaveMission()
+        .then((result) => {
+          if (result) {
+            logger.debug('[MissionOrder] Autosave completed', {
+              missionId: result.assignedId || state.currentMissionId,
+              serverSuccess: result.serverSuccess,
+            });
+          }
+        })
+        .catch((error) => {
+          logger.warn('[MissionOrder] Autosave failed', error);
+        });
+    }, 2500);
+
+    return () => {
+      if (autosaveTimerRef.current) {
+        window.clearTimeout(autosaveTimerRef.current);
+      }
+    };
+  }, [
+    missionState.isDirty,
+    state.currentMissionId,
+    state.status,
+    state.version,
+    isMissionLocked,
+    handleSaveMission,
+  ]);
 
   // Persistance de la mission : Recharger la demande via URL ou la dernière vue
   useEffect(() => {
@@ -220,12 +271,82 @@ export default function MissionOrder() {
   }, [state.currentMissionId, fetchWorkflow]);
 
   // Handlers
-  const handleNewMission = () => {
+  const handleNewMission = async () => {
+    const existingEmptyDraft = savedMissions.find((mission: any) => {
+      const isDraft =
+        !mission.isSubmitted &&
+        !mission.data?.isSubmitted &&
+        !mission.isCertified &&
+        !mission.data?.isCertified &&
+        (mission.status === 'draft' || !mission.status);
+      const belongsToUser =
+        !mission.createdBy ||
+        mission.createdBy === user?.id ||
+        mission.createdBy === user?.email ||
+        mission.creatorId === user?.id ||
+        mission.createdBy === 'inconnu';
+      const hasContent = Boolean(
+        mission.purpose ||
+          mission.title ||
+          mission.region ||
+          mission.startDate ||
+          mission.endDate ||
+          (Array.isArray(mission.members) && mission.members.length > 0)
+      );
+
+      return isDraft && belongsToUser && !hasContent;
+    });
+
+    if (existingEmptyDraft) {
+      const shouldReuse = window.confirm(
+        'Un brouillon vide existe déjà. Voulez-vous le reprendre au lieu d’en créer un autre ?'
+      );
+      if (shouldReuse) {
+        handleLoadMission(existingEmptyDraft);
+        safeStorage.setItem('last_viewed_mission_id', existingEmptyDraft.id);
+        return;
+      }
+    }
+
     const now = new Date();
+    const missionId = `temp-${crypto.randomUUID()}`;
     const orderNumber = buildDraftReference();
     const date = now.toLocaleDateString('fr-FR');
-    missionState.resetMission(orderNumber, date, DEFAULT_PLANNING_STEPS, user?.email || 'inconnu', user?.id);
-    missionState.addAuditEntry('Nouvelle mission créée (Brouillon)', user?.name || 'Utilisateur');
+    const updatedAt = now.toISOString();
+    const auditEntry = {
+      id: crypto.randomUUID(),
+      action: 'Nouvelle mission créée (Brouillon)',
+      author: user?.name || 'Utilisateur',
+      timestamp: updatedAt,
+    };
+    const draftMission = {
+      id: missionId,
+      projectId: activeProjectId,
+      orderNumber,
+      date,
+      planning: DEFAULT_PLANNING_STEPS,
+      features: { map: true, expenses: false, inventory: false, ai: false },
+      transport: 'Véhicule de service',
+      createdBy: user?.id || user?.email || 'inconnu',
+      creatorId: user?.id,
+      members: [],
+      version: 1,
+      updatedAt,
+      auditTrail: [auditEntry],
+      status: 'draft',
+      isCertified: false,
+      isSubmitted: false,
+    };
+
+    try {
+      await db.missions.put(draftMission as any);
+      missionState.loadMission(missionId, draftMission, [], 1, updatedAt, [auditEntry]);
+      safeStorage.setItem('last_viewed_mission_id', missionId);
+      toast.success('Brouillon créé');
+    } catch (error) {
+      logger.error('[MissionOrder] Failed to create local draft', error);
+      toast.error('Impossible de créer le brouillon local');
+    }
   };
 
   const handleLoadMission = (m: any) => {
@@ -325,8 +446,23 @@ export default function MissionOrder() {
   };
 
   const handleExportPDF = async () => {
+    if (effectiveIsCertified && state.currentMissionId && !state.currentMissionId.startsWith('temp')) {
+      try {
+        await missionApprovalService.downloadCertifiedMissionDocument(
+          state.currentMissionId,
+          `${getMissionFileStem(state.formData)}_OM_certifie.pdf`
+        );
+        missionState.addAuditEntry('PDF certifié serveur téléchargé', 'Système');
+        return;
+      } catch (error) {
+        logger.error('[MissionOrder] Certified PDF download failed', error);
+        toast.error('Impossible de télécharger le PDF certifié serveur.');
+        return;
+      }
+    }
+
     await generateMissionOrderPDF(state.formData as MissionOrderData);
-    missionState.addAuditEntry('Export PDF généré', 'Système');
+    missionState.addAuditEntry('Export PDF brouillon généré', 'Système');
   };
 
   const handleExportWord = async () => {
@@ -634,6 +770,7 @@ export default function MissionOrder() {
             isSyncing={state.isSyncing}
             isSyncingServer={state.isSyncingServer}
             isDirty={missionState.isDirty}
+            syncStatus={state.syncStatus}
             showTemplates={showTemplates}
             showConfig={showConfig}
             showAudit={showAudit}

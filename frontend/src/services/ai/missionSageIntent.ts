@@ -1,0 +1,90 @@
+export const INTENT_PATTERNS: Record<string, RegExp> = {
+  greeting: /\b(salam|bonjour|hello|hi|salut|bonsoir|hey|wesh|yo|as-salam|assalam)\b/,
+  greeting_how: /\b(ca\s*va|comment\s*(ca\s*va|tu\s*vas|allez[\s-]vous))\b/,
+  global: /\b(explique|plateforme|logiciel|systeme|comment\s*ca\s*marche|cest\s*quoi|fonction|quoi\s*sert|kesako|c\s*quoi|decrire)\b/,
+  kobo: /\b(kobo|terrain|collect|sync|menage|point|donnee|formulaire|audit\s*terrain|saisie)\b/,
+  mission: /\b(mission|om|ordre\s*(de\s*)?mission|soumi|creer\s*mission|nouvelle\s*mission|mes\s*om|lancer|certifier\s*une\s*mission|certification\s*mission)\b/,
+  workflow: /\b(valide|circuit|qui\s*(fait\s*quoi|valide)|processus|etapes|parcours\s*validation)\b/,
+  finance: /\b(argent|budget|montant|indemnite|finance|compta|prix|paye|cout|fcfa|depense|tresorerie)\b/,
+  dashboard: /\b(stats|igpp|chiffre|performance|indicateur|kpi|tableau\s*de\s*bord|tdb)\b/,
+  security: /\b(role|acces|droit|admin|securite|permis|bloque|interdit|autoris|habilitat)\b/,
+  sync: /\b(remonte|sync|real\s*time|force\s*sync|actualise|recharge|rafraich|mise\s*a\s*jour)\b/,
+  org: /\b(dg|chef|agent|technicien|organisation|equipe|hierarchie|qui\s*est|responsable)\b/,
+  forbidden: /\b(modif|chang|suppr|triche|edit|interdit|effac|annul|retour\s*arriere)\b/,
+  vague: /\b(aide|comprends\s*pas|faire\s*quoi|complique|perdu|confus|expliquer|aide\s*moi|stp)\b/,
+  fast: /^(mission|budget|kobo|stats|aide|bonjour|salam|hi|hello)$/,
+  tech: /\b(compteur|disjoncteur|transform|branchement|norme|spec|37500|faible\s*revenu|eligibilit|interieur|senelec|ns\s*01-001|protection|anomalie|cable|choc\s*electrique|fusible|conducteur|mise\s*a\s*la\s*terre|ppe|ddp|ddr)\b/,
+  geo: /\b(region|zone|dakar|saint-louis|podor|pikine|tivaouane|kaolack|thies|louga|matam|diourbel|fatick|ziguinchor|tambacounda)\b/,
+  audit: /\b(qui\s*fait\s*quoi|activite|action|log|historique|derniere|trace|journal|mouvement)\b/,
+  household: /\b(menage|famille|maison|habitant|foyer|beneficiaire|client|concession)\b/,
+  rights: /\b(droit|acces|permission|pouvoir|autorise|mon\s*role|mes\s*droits|capacite)\b/,
+  simulation: /\b(devis|simul|calculer|prix\s*branchement|estimation|cout\s*previsionnel|chiffrage)\b/,
+  inventory: /\b(stock|materiel|inventaire|logistique|flux|equipement|cable\s*en\s*stock|compteur\s*disponible)\b/,
+  diagnostic: /\b(sante|erreur|bug|diagnostic|etat\s*systeme|latence|lent|plante|crash|probleme\s*technique)\b/,
+  mapping: /\b(champs|kobo\s*mapping|correspondance|donnee\s*kobo|champ\s*form|lien\s*kobo)\b/,
+  decision: /\b(decision|analyse|strategie|etat\s*global|rapport\s*dg|bilan|synthese|vue\s*ensemble)\b/,
+  menu: /\b(menu|aide|liste|question|aidez-moi|guide|quoi\s*faire|que\s*peux-tu|capacites)\b/,
+  approbation: /\b(approuver|valider\s*mission|signature\s*dg|sceau|certifier|signer|approbation|certification\s*mission)\b/,
+  performance: /\b(igpp|score|taux|avancement|objectif|cible|pourcentage|progression)\b/,
+  planning: /\b(planif|calendrier|semaine|mois|programme|agenda|delai|echeance)\b/,
+  report: /\b(rapport|compte\s*rendu|cr|export|telecharger|generer\s*rapport|word|pdf)\b/,
+  help_create: /\b(comment\s*(creer|faire)|etapes\s*pour|procedure|tutoriel|demarche)\b/,
+  mfr: /\b(mfr|menage\s*faible\s*revenu|eligibilite|critere\s*selection|faible\s*revenu|projet\s*mfr)\b/,
+  norme: /\b(ns\s*01-001|norme|regle\s*generale|domaine\s*application|tension|bt|erp|habitation)\b/,
+  protection: /\b(protection|choc\s*electrique|contact\s*(direct|indirect)|surintensite|surtension|ddr|fusible|parafoudre)\b/,
+  anomalies: /\b(anomalie|eviter|mauvais|erreur|defaut|interdit|mauvaise?\s*pratique|visible|fils|cables\s*exterieurs|barrette\s*terre)\b/,
+  branchement: /\b(branchement|senelec|limite\s*propriete|potelet|pvc|tube|hublot|hauteur|surplomber|grillage|coffret\s*compteur|coffret|concession|protection\s*(pvc|mecanique))\b/,
+  interieur: /\b(interieur|installation\s*interieure|coffret\s*disjoncteur|couloir|couvert|prise|lampe|interrupteur|cable\s*arme|enterr)\b/,
+  glossaire: /\b(glossaire|definition|terme|masse|partie\s*active|contact|equipotentielle|prise\s*terre|conducteur\s*pe|section)\b/,
+  terms: /\b(partie\s*active|masse\s*electrique|contact\s*indirect|liaison\s*equipotentielle|ddr\s*role|prise\s*terre|couleur\s*pe|section\s*nominale)\b/,
+  specs: /\b(hauteur\s*minimale|configuration\s*standard|protection\s*mecanique|hublot\s*hauteur|cables\s*plein\s*air|barrette\s*terre\s*exterieur|poteaux\s*bois|surplomber)\b/,
+  protection_details: /\b(eviter\s*contact\s*indirect|parafoudre|surtensions|fusible|surintensites)\b/,
+  anomalies_details: /\b(fils\s*visibles|cutteur|pince|enterrer\s*cables|grillage\s*rouge|bois\s*pourris|limite\s*propriete)\b/,
+  contract: /\b(contrat|cahier\s*(de|des)\s*charges?|clause|caution|engagement|assurance|garantie)\b/,
+  funName: /\b(comment\s*tu\s*(t\s*)?appel|qui\s*es\s*tu|ton\s*nom|tu\s*t\s*appelles|ton\s*identite|quel\s*est\s*ton\s*nom|comment\s*s\s*appel)\b/,
+  funTime: /\b(quelle\s*heure|il\s*est|l\s*heure|quelle\s*est\s*l\s*heure|dis\s*moi\s*l\s*heure)\b/,
+  funDate: /\b(quel\s*jour|aujourd\s*hui|c\s*est\s*quel\s*jour|on\s*est\s*quel\s*jour|demain|hier|quelle\s*date)\b/,
+  funJoke: /\b(blague|rigolo|drole|faire\s*rire|c\s*est\s*une\s*blague|plaisante|humour|blague\s*du\s*jour|joke)\b/,
+  funWeather: /\b(meteo|temps\s*qu\s*il\s*fait|il\s*fait|pluvieux|chaud|froid|soleil|pluie|vent)\b/,
+  dailyHelloGood: /\b(ca\s*va|comment\s*(ca\s*va|allez[\s-]vous|tu\s*vas)|tu\s*vas\s*bien)\b/,
+  dailyWhatDoing: /\b(tu\s*fais\s*quoi|qu\s*est\s*ce\s*que\s*tu\s*fais|c\s*est\s*quoi\s*ton\s*truc|tu\s*bosse)\b/,
+  dailyCanHelp: /\b(tu\s*peux\s*(m\s*)?aider|aide\s*moi|pourrais[\s-]tu|help)\b/,
+  dailyHuman: /\b(tu\s*es\s*(humain|un\s*bot|un\s*robot|une\s*ia)|es\s*tu\s*humain|vraie\s*personne)\b/,
+  dailySleep: /\b(tu\s*(dors|dormes|peux\s*dormir)|sieste|repos|fatigue)\b/,
+  dailyLove: /\b(tu\s*m\s*aimes?|m\s*aimes\s*tu|je\s*t\s*aime)\b/,
+  dailyTired: /\b(je\s*suis\s*(fatigue|epuise)|j\s*ai\s*(sommeil|mal\s*a\s*la\s*tete|pas\s*d\s*energie))\b/,
+  dailyOverwork: /\b(j\s*ai\s*trop\s*de\s*travail|surcharge|overcharge|trop\s*de\s*trucs|pas\s*assez\s*de\s*temps|deborde)\b/,
+  dailyMistake: /\b(j\s*ai\s*(fait\s*une\s*erreur|echoue)|je\s*me\s*suis\s*trompe|c\s*est\s*ma\s*faute)\b/,
+  dailyStressed: /\b(je\s*suis\s*(stresse|anxieux)|c\s*est\s*stressant|pas\s*bien|panique|bloque)\b/,
+  dailyQuit: /\b(j\s*abandonne|j\s*en\s*peux\s*plus|c\s*est\s*trop|je\s*vais\s*craquer|je\s*lache\s*tout)\b/,
+  dailyWhosBest: /\b(qui\s*est\s*le\s*meilleur|toi\s*ou\s*moi|tu\s*es\s*meilleur|je\s*suis\s*meilleur|t\s*es\s*fort)\b/,
+  dailyKnowAll: /\b(tu\s*sais\s*tout|connais\s*tu\s*tout|est\s*ce\s*que\s*tu\s*sais|tout\s*savoir|omniscient)\b/,
+  dailyCanMistake: /\b(tu\s*peux\s*te\s*tromper|tu\s*te\s*trompes|tu\s*fais\s*des\s*erreurs|pas\s*infaillible)\b/,
+  dailyWhyNotWork: /\b(pourquoi\s*ca\s*ne\s*marche\s*pas|ca\s*marche\s*pas|ca\s*fonctionne\s*pas|bug)\b/,
+  dailyComplex: /\b(c\s*est\s*complique|trop\s*complique|pas\s*simple|difficile\s*(a\s*)?comprendre|dur)\b/,
+  dailyNotUnderstand: /\b(je\s*(ne\s*)?comprends?\s*pas|c\s*est\s*quoi|explique\s*moi)\b/,
+  dailyWhy: /\b(pourquoi\s*ca\s*(saute|coupe|explose|saut)|pourquoi\s*c\s*est)\b/,
+  dailyDangerous: /\b(c\s*est\s*dangereux|ca\s*craint|c\s*est\s*risque|risque\s*de\s*quoi|c\s*est\s*safe)\b/,
+};
+
+export function detectIntent(
+  q: string,
+  fuzzyContains: (query: string, keywords: string[], maxErrors?: number) => boolean
+): Record<string, boolean> {
+  const detected = Object.fromEntries(
+    Object.entries(INTENT_PATTERNS).map(([key, re]) => [key, re.test(q)])
+  ) as Record<string, boolean>;
+
+  detected.tech =
+    detected.tech ||
+    fuzzyContains(q, [
+      'compteur',
+      'disjoncteur',
+      'branchement',
+      'anomalie',
+      'senelec',
+      'conducteur',
+    ]);
+
+  return detected;
+}

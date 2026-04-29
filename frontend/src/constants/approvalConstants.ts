@@ -263,13 +263,24 @@ export function canOverrideApproval(userRole: string | undefined): boolean {
  * Calcule le statut global du workflow basé sur les étapes
  */
 export function calculateWorkflowStatus(steps: MissionApprovalStep[]): WorkflowStatus {
-  const hasRejected = steps.some((s) => s.status === 'rejected');
+  const hasRejected = steps.some((s) => {
+    const status = s.status?.toString().toUpperCase();
+    return status === 'REJETE' || status === 'REJECTED';
+  });
   if (hasRejected) return 'rejected';
 
-  const allApproved = steps.every((s) => s.status === 'approved');
+  const allApproved =
+    steps.length > 0 &&
+    steps.every((s) => {
+      const status = s.status?.toString().toUpperCase();
+      return status === 'APPROUVE' || status === 'APPROVED';
+    });
   if (allApproved) return 'approved';
 
-  const hasApproved = steps.some((s) => s.status === 'approved');
+  const hasApproved = steps.some((s) => {
+    const status = s.status?.toString().toUpperCase();
+    return status === 'APPROUVE' || status === 'APPROVED';
+  });
   if (hasApproved) return 'pending';
 
   return 'pending';
@@ -280,7 +291,10 @@ export function calculateWorkflowStatus(steps: MissionApprovalStep[]): WorkflowS
  */
 export function calculateApprovalProgress(steps: MissionApprovalStep[]): number {
   if (steps.length === 0) return 0;
-  const approved = steps.filter((s) => s.status === 'approved').length;
+  const approved = steps.filter((s) => {
+    const status = s.status?.toString().toUpperCase();
+    return status === 'APPROUVE' || status === 'APPROVED';
+  }).length;
   return (approved / steps.length) * 100;
 }
 
@@ -288,7 +302,12 @@ export function calculateApprovalProgress(steps: MissionApprovalStep[]): number 
  * Obtient l'étape suivante à approuver
  */
 export function getNextPendingStep(steps: MissionApprovalStep[]): MissionApprovalStep | null {
-  return steps.find((s) => s.status === 'pending') ?? null;
+  return (
+    steps.find((s) => {
+      const status = s.status?.toString().toUpperCase();
+      return status === 'EN_ATTENTE' || status === 'PENDING';
+    }) ?? null
+  );
 }
 
 /**

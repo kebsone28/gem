@@ -7,6 +7,7 @@
     "dev": "node --max-old-space-size=4096 ./node_modules/vite/bin/vite.js",
     "start": "vite preview --host 0.0.0.0 --port $PORT",
     "build": "tsc -b && vite build",
+    "test:unit": "vitest run tests --reporter dot",
     "lint": "eslint src/ --ext .ts,.tsx --max-warnings 9999",
     "lint:fix": "eslint src/ --ext .ts,.tsx --fix",
     "lint:report": "eslint src/ --ext .ts,.tsx --format stylish",

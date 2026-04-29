@@ -1,5 +1,5 @@
 ﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   CheckCircle2,
   ShieldCheck,
@@ -26,19 +26,39 @@ import { motion, AnimatePresence } from 'framer-motion';
 import SignatureModal from '../components/common/SignatureModal';
 import { fmtFCFA } from '../utils/format';
 import { syncEventBus } from '../utils/syncEventBus';
-import { generateMissionOrderPDF } from '../services/missionOrderGenerator';
 import StockMonitorWidget from '../components/logistique/StockMonitorWidget';
 import logger from '../utils/logger';
+
+const REJECTION_CATEGORIES = [
+  { value: 'DONNEES_INCOMPLETES', label: 'Données incomplètes' },
+  { value: 'BUDGET_INCOHERENT', label: 'Budget incohérent' },
+  { value: 'MISSION_HORS_PERIMETRE', label: 'Mission hors périmètre' },
+  { value: 'PLANNING_INCOHERENT', label: 'Planning incohérent' },
+  { value: 'JUSTIFICATIFS_MANQUANTS', label: 'Justificatifs manquants' },
+  { value: 'AUTRE', label: 'Autre motif' },
+];
 
 export default function Approbation() {
   const { user } = useAuth();
   const [pendingMissions, setPendingMissions] = useState<any[]>([]);
-  const [stats, setStats] = useState({ totalBudgetCertified: 0 });
+  const [stats, setStats] = useState({
+    totalBudgetCertified: 0,
+    sla: {
+      avgPendingHours: 0,
+      overOneHour: 0,
+      over24Hours: 0,
+      avgApprovalHours: 0,
+      measuredApproved: 0,
+    },
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [selectedMission, setSelectedMission] = useState<any | null>(null);
   const [isSignatureModalOpen, setIsSignatureModalOpen] = useState(false);
   const [decisionType, setDecisionType] = useState<'approve' | 'reject' | null>(null);
   const [comment, setComment] = useState('');
+  const [rejectionCategory, setRejectionCategory] = useState('DONNEES_INCOMPLETES');
+  const [search, setSearch] = useState('');
+  const [urgencyFilter, setUrgencyFilter] = useState<'all' | 'urgent'>('all');
   const [aiAnalysis, setAiAnalysis] = useState<any | null>(null);
   const [isAiLoading, setIsAiLoading] = useState(false);
 
@@ -88,7 +108,18 @@ export default function Approbation() {
       
       const missions = result.missions || [];
       setPendingMissions(missions);
-      setStats(result.stats || { totalBudgetCertified: 0 });
+      setStats(
+        result.stats || {
+          totalBudgetCertified: 0,
+          sla: {
+            avgPendingHours: 0,
+            overOneHour: 0,
+            over24Hours: 0,
+            avgApprovalHours: 0,
+            measuredApproved: 0,
+          },
+        }
+      );
       
       // Update metrics based on loaded data
       setCounts(prev => ({
@@ -115,6 +146,12 @@ export default function Approbation() {
   }, [isArchiveMode, isValidator]);
 
   useEffect(() => {
+    if (!isValidator) return;
+    const interval = window.setInterval(fetchPending, 30000);
+    return () => window.clearInterval(interval);
+  }, [isArchiveMode, isValidator]);
+
+  useEffect(() => {
     // 🔄 Auto-synchronisation intelligente du composant d'Approbation
     const handleSync = () => {
       fetchPending();
@@ -128,6 +165,29 @@ export default function Approbation() {
       unsubNotification();
     };
   }, [isArchiveMode, isValidator]); // On recommence pour garantir que le fetch lit bien `isArchiveMode` actuel
+
+  const filteredMissions = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return pendingMissions.filter((mission) => {
+      const missionText = [
+        mission.title,
+        mission.description,
+        mission.orderNumber,
+        mission.user?.name,
+        mission.data?.purpose,
+        mission.data?.region,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      const matchesSearch = !q || missionText.includes(q);
+      const startDays = mission.startDate
+        ? Math.ceil((new Date(mission.startDate).getTime() - Date.now()) / 86400000)
+        : 99;
+      const matchesUrgency = urgencyFilter === 'all' || startDays <= 3;
+      return matchesSearch && matchesUrgency;
+    });
+  }, [pendingMissions, search, urgencyFilter]);
 
   const handleDelete = async (e: React.MouseEvent, id: string, title: string) => {
     e.stopPropagation();
@@ -217,13 +277,11 @@ Ces missions n'ont pas encore été validées ni rejetées. Si vous videz la lis
             <button
               onClick={async () => {
                 try {
-                  await generateMissionOrderPDF({
-                    ...selectedMission.data,
-                    orderNumber: selectedMission.orderNumber,
-                    isCertified: true,
-                    integrityHash: workflow?.integrityHash
-                  });
-                  toast.success("Document exporté");
+                  await missionApprovalService.downloadCertifiedMissionDocument(
+                    selectedMission.id,
+                    `Ordre_Mission_${selectedMission.orderNumber || selectedMission.id}.pdf`
+                  );
+                  toast.success("Document certifié téléchargé");
                 } catch (e) {
                   toast.error("Erreur d'exportation");
                 }
@@ -244,11 +302,19 @@ Ces missions n'ont pas encore été validées ni rejetées. Si vous videz la lis
           
           <div className="space-y-4">
             {steps.map((step: any, i: number) => {
-              const isDone = step.status === 'APPROVED' || step.status === 'approuvee';
+              const normalizedStatus = step.status?.toString().toUpperCase();
+              const isDone = normalizedStatus === 'APPROVED' || normalizedStatus === 'APPROUVE';
+              const isRejected = normalizedStatus === 'REJECTED' || normalizedStatus === 'REJETE';
               return (
                 <div key={i} className="flex items-start gap-4 p-4 rounded-2xl bg-white/2 border border-white/5">
-                  <div className={`mt-1 p-2 rounded-xl ${isDone ? 'bg-emerald-500/10 text-emerald-500' : 'bg-slate-800 text-slate-500'}`}>
-                    {isDone ? <CheckCircle2 size={16} /> : <Clock size={16} />}
+                  <div className={`mt-1 p-2 rounded-xl ${
+                    isDone
+                      ? 'bg-emerald-500/10 text-emerald-500'
+                      : isRejected
+                        ? 'bg-rose-500/10 text-rose-500'
+                        : 'bg-slate-800 text-slate-500'
+                  }`}>
+                    {isDone ? <CheckCircle2 size={16} /> : isRejected ? <AlertTriangle size={16} /> : <Clock size={16} />}
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center justify-between mb-1">
@@ -320,10 +386,38 @@ Ces missions n'ont pas encore été validées ni rejetées. Si vous videz la lis
           <textarea
             value={comment}
             onChange={(e) => setComment(e.target.value)}
-            placeholder="Observations ou motifs (Requis pour un rejet)..."
+            placeholder="Observations de validation ou motif détaillé de rejet..."
             className="w-full bg-slate-950/50 border border-white/5 rounded-3xl p-6 text-white text-sm focus:ring-2 focus:ring-emerald-500/30 outline-none resize-none transition-all placeholder:text-slate-700"
             rows={3}
           />
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <label className="block">
+              <span className="text-[9px] font-black uppercase tracking-widest text-slate-500 block mb-2">
+                Catégorie si rejet
+              </span>
+              <select
+                value={rejectionCategory}
+                onChange={(e) => setRejectionCategory(e.target.value)}
+                className="w-full bg-slate-950/50 border border-white/5 rounded-2xl px-4 py-3 text-xs font-bold text-white outline-none focus:ring-2 focus:ring-rose-500/30"
+              >
+                {REJECTION_CATEGORIES.map((category) => (
+                  <option key={category.value} value={category.value}>
+                    {category.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="rounded-2xl border border-white/5 bg-slate-950/40 p-4">
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                Règle décision
+              </p>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                Le rejet exige un motif clair. La validation enregistre la signature, le rôle,
+                l’heure et l’empreinte d’intégrité côté serveur.
+              </p>
+            </div>
+          </div>
 
           <div className="flex flex-col md:flex-row gap-4 mt-6">
             <button
@@ -347,6 +441,10 @@ Ces missions n'ont pas encore été validées ni rejetées. Si vous videz la lis
 
             <button
               onClick={() => {
+                if (comment.trim().length < 8) {
+                  toast.error('Indiquez un motif de rejet plus précis.');
+                  return;
+                }
                 setDecisionType('reject');
                 setIsSignatureModalOpen(true);
               }}
@@ -409,7 +507,16 @@ Ces missions n'ont pas encore été validées ni rejetées. Si vous videz la lis
           signatureData
         );
       } else {
-        await missionApprovalService.rejectMission(selectedMission.id, workflowRole as any, comment);
+        if (comment.trim().length < 8) {
+          toast.error('Indiquez un motif de rejet plus précis.');
+          return;
+        }
+        await missionApprovalService.rejectMission(
+          selectedMission.id,
+          workflowRole as any,
+          comment.trim(),
+          rejectionCategory
+        );
       }
 
       // 1. Unify selectedMission update (Avoid double renders and inconsistencies)
@@ -427,23 +534,25 @@ Ces missions n'ont pas encore été validées ni rejetées. Si vous videz la lis
       // 2. Email automation with REAL latest ID (Phase 4 protection)
       if (decisionType === 'approve') {
         try {
-          await generateMissionOrderPDF({
-            ...selectedMission.data,
-            orderNumber: finalOrderNumber,
-            signatureImage: signatureData,
-            integrityHash: result?.integrityHash
-          });
-          // notify via logic or api
+          await missionApprovalService.downloadCertifiedMissionDocument(
+            selectedMission.id,
+            `Ordre_Mission_${finalOrderNumber || selectedMission.id}.pdf`
+          );
         } catch (pdfErr) {
-          logger.warn('[Approbation] PDF generation failed after approval', pdfErr);
+          logger.warn('[Approbation] Certified PDF download failed after approval', pdfErr);
         }
       }
 
       toast.success(decisionType === 'approve' ? 'Mission certifiée et enregistrée' : 'Mission rejetée');
       fetchPending();
       setIsSignatureModalOpen(false);
+      setComment('');
     } catch (error: any) {
-      toast.error('Une erreur est survenue lors de la décision');
+      const message =
+        error?.response?.data?.error ||
+        error?.message ||
+        'Une erreur est survenue lors de la décision';
+      toast.error(message);
     }
   };
 
@@ -514,17 +623,9 @@ Ces missions n'ont pas encore été validées ni rejetées. Si vous videz la lis
             color: 'rose',
           },
           {
-            label: 'Coût Moyen',
-            value:
-              pendingMissions.length > 0
-                ? fmtFCFA(
-                    Math.round(
-                      pendingMissions.reduce((s, m) => s + (m.budget || 0), 0) /
-                        pendingMissions.length
-                    )
-                  )
-                : '—',
-            sub: 'par mission',
+            label: 'SLA validation',
+            value: `${stats.sla?.avgPendingHours || 0}h`,
+            sub: `${stats.sla?.overOneHour || 0} relance(s) horaire`,
             icon: <TrendingUp size={18} />,
             color: 'emerald',
           },
@@ -622,8 +723,27 @@ Ces missions n'ont pas encore été validées ni rejetées. Si vous videz la lis
             </div>
           </div>
 
+          <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3">
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Rechercher mission, demandeur, région..."
+              className="w-full rounded-2xl border border-white/5 bg-slate-900/60 px-4 py-3 text-xs font-bold text-white outline-none placeholder:text-slate-600 focus:ring-2 focus:ring-blue-500/30"
+            />
+            <button
+              onClick={() => setUrgencyFilter((prev) => (prev === 'urgent' ? 'all' : 'urgent'))}
+              className={`rounded-2xl px-4 py-3 text-[10px] font-black uppercase tracking-widest border transition-all ${
+                urgencyFilter === 'urgent'
+                  ? 'bg-rose-600 text-white border-rose-500'
+                  : 'bg-slate-900/60 text-slate-400 border-white/5 hover:bg-white/5'
+              }`}
+            >
+              Urgentes
+            </button>
+          </div>
+
           <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
-            {pendingMissions.length === 0 ? (
+            {filteredMissions.length === 0 ? (
               <div className="py-20 text-center border-2 border-dashed border-white/5 rounded-[2.5rem] bg-white/2">
                 <CheckCircle2 size={48} className="mx-auto text-emerald-500/20 mb-4" />
                 <p className="text-slate-500 font-bold text-xs uppercase italic">
@@ -631,7 +751,7 @@ Ces missions n'ont pas encore été validées ni rejetées. Si vous videz la lis
                 </p>
               </div>
             ) : (
-              pendingMissions.map((mission) => {
+              filteredMissions.map((mission) => {
                     const budget = mission.budget || 0;
                     const days = mission.data?.members?.[0]?.days || 1;
                     const isUrgent = days <= 3;
@@ -645,6 +765,8 @@ Ces missions n'ont pas encore été validées ni rejetées. Si vous videz la lis
                         onClick={() => {
                           setSelectedMission(mission);
                           setAiAnalysis(null);
+                          setComment('');
+                          setRejectionCategory('DONNEES_INCOMPLETES');
                         }}
                         className={`group p-6 rounded-[2.5rem] border transition-all cursor-pointer relative overflow-hidden ${
                           selectedMission?.id === mission.id

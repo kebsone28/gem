@@ -294,7 +294,10 @@ export default function Login() {
                 {step === 'credentials' && (
                   <form onSubmit={handleCredentials} className="space-y-5">
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black text-blue-300/30 uppercase tracking-[0.2em] ml-1">
+                      <label
+                        htmlFor="username"
+                        className="text-[10px] font-black text-blue-300/30 uppercase tracking-[0.2em] ml-1"
+                      >
                         Identifiant
                       </label>
                       <div className="relative group">
@@ -320,7 +323,10 @@ export default function Login() {
 
                     <div className="space-y-2">
                       <div className="flex justify-between items-center ml-1">
-                        <label className="text-[10px] font-black text-blue-300/30 uppercase tracking-[0.2em]">
+                        <label
+                          htmlFor="password"
+                          className="text-[10px] font-black text-blue-300/30 uppercase tracking-[0.2em]"
+                        >
                           Mot de passe
                         </label>
                         <button

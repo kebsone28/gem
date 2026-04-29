@@ -46,6 +46,47 @@ export const getPendingApprovals = async (
   }
 };
 
+const downloadBlob = (blob: Blob, filename: string) => {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+};
+
+const getFilenameFromDisposition = (disposition?: string, fallback = 'Ordre_Mission.pdf') => {
+  if (!disposition) return fallback;
+  const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+  if (utf8Match?.[1]) return decodeURIComponent(utf8Match[1].replace(/"/g, ''));
+  const match = disposition.match(/filename="?([^"]+)"?/i);
+  return match?.[1] || fallback;
+};
+
+/**
+ * Télécharge le PDF certifié généré côté serveur.
+ * C'est la source unique pour le compte connecté et le lien public.
+ */
+export const downloadCertifiedMissionDocument = async (
+  missionId: string,
+  fallbackFileName = 'Ordre_Mission_certifie.pdf'
+): Promise<void> => {
+  const response = await api.get(`/missions/${missionId}/certified-document`, {
+    responseType: 'blob',
+  });
+  const contentType = response.headers?.['content-type'] || '';
+  if (!contentType.includes('application/pdf')) {
+    throw new Error('Le serveur n’a pas renvoyé un document PDF.');
+  }
+  const filename = getFilenameFromDisposition(
+    response.headers?.['content-disposition'],
+    fallbackFileName
+  );
+  downloadBlob(response.data, filename);
+};
+
 /**
  * Approuve une étape du workflow de mission
  */
@@ -93,9 +134,10 @@ export const approveMissionStep = async (
 export const rejectMission = async (
   missionId: string,
   role: ApprovalRole,
-  reason: string
+  reason: string,
+  category?: string
 ): Promise<MissionApprovalWorkflow | null> => {
-  return rejectMissionStep(missionId, role, reason);
+  return rejectMissionStep(missionId, role, reason, category);
 };
 
 /**
@@ -104,12 +146,14 @@ export const rejectMission = async (
 export const rejectMissionStep = async (
   missionId: string,
   role: ApprovalRole,
-  reason: string
+  reason: string,
+  category = 'AUTRE'
 ): Promise<MissionApprovalWorkflow | null> => {
   try {
     const response = await api.post(`/missions/${missionId}/reject`, {
       role,
       reason,
+      category,
       timestamp: new Date().toISOString(),
     });
 
@@ -167,7 +211,11 @@ export const overrideMissionOrderNumber = async (
  * Calcule le % de complétion du workflow
  */
 export const calculateMissionApprovalProgress = (workflow: MissionApprovalWorkflow): number => {
-  const approved = workflow.steps.filter((s) => s.status === 'approved').length;
+  if (!workflow.steps.length) return 0;
+  const approved = workflow.steps.filter((s) => {
+    const status = s.status?.toString().toUpperCase();
+    return status === 'APPROUVE' || status === 'APPROVED';
+  }).length;
   return (approved / workflow.steps.length) * 100;
 };
 
@@ -179,15 +227,17 @@ export const canApproveMissionStep = (
   step: MissionApprovalStep,
   isAdmin: boolean
 ): boolean => {
-  if (isAdmin && ['DIRECTEUR', 'ADMIN'].includes(step.role)) return true;
-
   const normalizedRole = userRole?.toUpperCase();
   const normalizedStepRole = step.role?.toUpperCase();
 
-  if (!normalizedRole || !normalizedStepRole) return false;
+  if (!normalizedStepRole) return false;
 
   const status = step.status?.toString().toUpperCase();
   if (status !== 'EN_ATTENTE' && status !== 'PENDING') return false;
+
+  if (isAdmin && ['DIRECTEUR', 'ADMIN'].includes(normalizedStepRole)) return true;
+
+  if (!normalizedRole) return false;
 
   if (
     (normalizedRole === 'DIRECTEUR' || normalizedRole === 'DG_PROQUELEC') &&

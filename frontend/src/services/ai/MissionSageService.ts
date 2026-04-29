@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, no-empty, no-useless-escape, no-prototype-builtins, @typescript-eslint/no-unused-vars */
 /**
- * SERVICE : MissionSageService (V.8.F)
+ * SERVICE : MissionSageService (V.9.0)
+ * Refactorisé pour humanisation et robustesse
  */
 
 import type { User, AuditLog, Household, Team } from '../../utils/types';
@@ -12,6 +13,14 @@ import { analyzeDG, computeIGPPScore } from './DecisionEngine';
 import { getAIEngineConfig, type AIEngineSettings } from './AIEngineConfig';
 import { findGeneratedMissionSageOverride } from './generatedMissionSageOverrides';
 import { mentorTrainingService } from './mentorTrainingService';
+import { ERROR_MESSAGES, classifyError } from './missionSageErrors';
+import { detectIntent as detectMissionSageIntent } from './missionSageIntent';
+import {
+  getMemory,
+  saveMemory,
+  type MissionSageSessionMemory,
+} from './missionSageMemory';
+import { findUniversalQR as findUniversalMissionSageQR } from './missionSageResponses';
 import logger from '../../utils/logger';
 
 // ─────────────────────────────────────────────
@@ -22,8 +31,8 @@ export interface AIState {
   stats: MissionStats | null;
   auditLogs: AuditLog[];
   households: Household[];
-  teams: Team[]; // Ajouté pour l'analyse des équipes
-  regionalSummaries: RegionalSummary[]; // Ajouté pour l'analyse régionale
+  teams: Team[];
+  regionalSummaries: RegionalSummary[];
 }
 
 export interface RegionalSummary {
@@ -65,47 +74,10 @@ export interface AIResponse {
   severity?: 'critique' | 'majeure' | 'mineure' | 'information';
   recommendedAction?: string;
   controlSheet?: ExpertControlSheet;
-  /** 🆕 Indique quel moteur a produit cette réponse (visible en mode admin debug) */
   _engine?: 'RULES' | 'CLAUDE' | 'RULES_FALLBACK' | 'CLAUDE_FALLBACK' | 'VISION' | 'VISION_ERROR';
 }
 
-interface SessionMemory {
-  lastIntent?: string;
-  lastEntities?: string[];
-  lastMetricsViewed?: string[];
-  decisionHistory?: string[];
-  history: string[];
-  contextHistory: { role: 'user' | 'assistant'; content: string }[];
-  lastUpdated: number;
-}
-
-// ─────────────────────────────────────────────
-// MÉMOIRE SESSION
-// ─────────────────────────────────────────────
-
-const MEMORY_KEY = 'gem_mint_memory_';
-
-function getMemory(userId: string): SessionMemory {
-  try {
-    const raw = localStorage.getItem(MEMORY_KEY + userId);
-    if (raw) {
-      const parsed = JSON.parse(raw) as SessionMemory;
-      if (Date.now() - parsed.lastUpdated < 3600000) {
-        return { ...parsed, contextHistory: parsed.contextHistory || [] };
-      }
-    }
-  } catch {}
-  return { history: [], contextHistory: [], lastUpdated: Date.now() };
-}
-
-function saveMemory(userId: string, mem: SessionMemory) {
-  mem.lastUpdated = Date.now();
-  const maxTurns = getAIEngineConfig().maxHistoryTurns * 2;
-  if (mem.contextHistory.length > maxTurns)
-    mem.contextHistory = mem.contextHistory.slice(-maxTurns);
-  if (mem.history.length > 50) mem.history = mem.history.slice(-50);
-  localStorage.setItem(MEMORY_KEY + userId, JSON.stringify(mem));
-}
+type SessionMemory = MissionSageSessionMemory;
 
 // ─────────────────────────────────────────────
 // UTILITAIRES COMMUNS
@@ -818,190 +790,15 @@ function getQuestionSuggestions(query: string): string[] {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// 🏗️ MOTEUR 1 : RÈGLES STATIQUES RENFORCÉES (V8.0)
+// MOTEUR 1 : RÈGLES STATIQUES RENFORCÉES
 // ═══════════════════════════════════════════════════════════════
 
-function detectIntent(q: string) {
-  return {
-    greeting: /salam|bonjour|hello|hi|salut|bonsoir|hey|wesh|yo|as-salam|assalam/.test(q),
-    global:
-      /explique|plateforme|logiciel|systeme|comment|cest quoi|fonction|quoi sert|kesako|c quoi|decrire/.test(
-        q
-      ),
-    kobo: /kobo|terrain|collect|sync|menage|point|donnee viennent|formulaire|audit terrain|saisie/.test(
-      q
-    ),
-    mission:
-      /mission|\bom\b|ordre de mission|ordre mission|soumi|creer mission|nouvelle mission|mes om|lancer|mission certifiee|mission certifie|certifier une mission|certification mission/.test(
-      q
-    ),
-    workflow: /valide|circuit|qui fait quoi|qui valide|processus|etapes|parcours validation/.test(
-      q
-    ),
-    finance:
-      /argent|budget|montant|indemnite|finance|compta|prix|paye|cout|fcfa|depense|tresorerie/.test(
-        q
-      ),
-    dashboard: /stats|igpp|chiffre|performance|indicateur|kpi|tableau de bord|tdb/.test(q),
-    security: /role|acces|droit|admin|securite|permis|bloque|interdit|autoris|habilitat/.test(q),
-    sync: /remonte|sync|real time|force sync|actualise|recharge|rafraich|mise a jour/.test(q),
-    org: /dg|chef|agent|technicien|organisation|equipe|hierarchie|qui est|responsable/.test(q),
-    forbidden: /modif|chang|suppr|triche|edit|interdit|effac|annul|retour arriere/.test(q),
-    vague: /aide|comprends pas|faire quoi|complique|perdu|confus|expliquer|aide moi|stp/.test(q),
-    fast: /^(mission|budget|kobo|stats|aide|bonjour|salam|hi|hello)$/.test(q),
-    tech:
-      /compteur|disjoncteur|transform|branchement|norme|spec|37500|faible revenu|eligibilit|interieur|senelec|ns 01-001|protection|anomalie|câble|choc electrique|fusible|conducteur|mise a la terre|ppe|ddp|ddr/.test(
-        q
-      ) ||
-      fuzzyContains(q, [
-        'compteur',
-        'disjoncteur',
-        'branchement',
-        'anomalie',
-        'senelec',
-        'conducteur',
-      ]),
-    geo: /region|zone|ou|dakar|saint-louis|podor|pikine|tivaouane|kaolack|thies|louga|matam|diourbel|fatick|ziguinchor|tambacounda/.test(
-      q
-    ),
-    audit: /qui|fait quoi|activite|action|log|historique|derniere|trace|journal|mouvement/.test(q),
-    household: /menage|famille|maison|habitant|foyer|beneficiaire|client|concession/.test(q),
-    rights: /droit|acces|permission|pouvoir|autorise|faire quoi|mon role|mes droits|capacite/.test(
-      q
-    ),
-    simulation: /devis|simul|calculer|prix branchement|estimation|cout previsionnel|chiffrage/.test(
-      q
-    ),
-    inventory:
-      /stock|materiel|inventaire|logistique|flux|equipement|câble en stock|compteur disponible/.test(
-        q
-      ),
-    diagnostic:
-      /sante|erreur|bug|diagnostic|etat systeme|latence|lent|plante|crash|probleme technique/.test(
-        q
-      ),
-    mapping: /champs|kobo mapping|correspondance|donnee kobo|champ form|lien kobo/.test(q),
-    decision: /decision|analyse|strategie|etat global|rapport dg|bilan|synthese|vue ensemble/.test(
-      q
-    ),
-    menu: /menu|aide|liste|question|aidez-moi|guide|quoi faire|que peux-tu|capacites/.test(q),
-    approbation:
-      /approuver|valider mission|signature dg|sceau|\bcertifier\b|signer|approbation|certification mission/.test(
-      q
-    ),
-    performance: /igpp|score|taux|avancement|objectif|cible|pourcentage|progression/.test(q),
-    planning: /planif|calendrier|semaine|mois|programme|agenda|delai|echeance/.test(q),
-    report: /rapport|compte rendu|cr|export|telecharger|generer rapport|word|pdf/.test(q),
-    help_create: /comment creer|comment faire|etapes pour|procedure|tutoriel|demarche/.test(q),
-    // Nouveaux intents basés sur ElectricianQuran
-    mfr: /mfr|menage faible revenu|eligibilite|critere selection|faible revenu|projet mfr/.test(q),
-    norme: /ns 01-001|norme|regle generale|domaine application|tension|bt|erp|habitation/.test(q),
-    protection:
-      /protection|choc electrique|contact direct|contact indirect|surintensite|surtension|ddr|fusible|parafoudre/.test(
-        q
-      ),
-    anomalies:
-      /anomalie|eviter|mauvais|erreur|defaut|interdit|mauvaise pratique|visible|fils|câbles exterieurs|barrette terre/.test(
-        q
-      ),
-    branchement:
-      /branchement|senelec|limite propriete|potelet|pvc|tube|hublot|hauteur|surplomber|grillage|coffret compteur|coffret|concession|protection pvc|protection mecanique/.test(
-        q
-      ),
-    interieur:
-      /interieur|installation interieure|coffret disjoncteur|couloir|couvert|prise|lampe|interrupteur|câble arme|enterr/.test(
-        q
-      ),
-    glossaire:
-      /glossaire|definition|terme|masse|partie active|contact|equipotentielle|prise terre|conducteur pe|section/.test(
-        q
-      ),
-    // Extensions pour 20 questions supplémentaires
-    terms:
-      /partie active|masse electrique|contact indirect|liaison equipotentielle|ddr role|prise terre|couleur pe|section nominale/.test(
-        q
-      ),
-    specs:
-      /hauteur minimale|configuration standard|protection mecanique|hublot hauteur|câbles plein air|barrette terre exterieur|poteaux bois|surplomber/.test(
-        q
-      ),
-    protection_details: /eviter contact indirect|parafoudre|surtensions|fusible|surintensites/.test(
-      q
-    ),
-    anomalies_details:
-      /fils visibles|cutteur|pince|enterrer câbles|grillage rouge|bois pourris|limite propriete/.test(
-        q
-      ),
-    contract:
-      /contrat|cahier de charge|cahier des charges|clause|caution|engagement|assurance|garantie|📜/.test(
-        q
-      ),
-    // Questions bizarres & blagues
-    funName:
-      /comment tu t appel|qui es tu|ton nom|tu t appelles|ton identite|quel est ton nom|comment s appel/.test(
-        q
-      ),
-    funTime:
-      /quelle heure|il est|l heure|l'heure|quelle est l heure|dis moi l heure|l heure est/.test(q),
-    funDate:
-      /quel jour|aujourd hui|c est quel jour|on est quel jour|demain|hier|quelle date|le jour/.test(
-        q
-      ),
-    funJoke:
-      /blague|rigolo|drole|faire rire|c est une blague|plaisante|humour|blague du jour|joke/.test(
-        q
-      ),
-    funWeather: /meteo|temps qu il fait|il fait|pluvieux|chaud|froid|soleil|pluie|vent/.test(q),
-    // Q&R quotidiennes - Salutations & humeur
-    dailyHelloGood:
-      /ca va|comment ca va|ca va bien|comment allez vous|comment tu vas|tu vas bien/.test(q),
-    dailyWhatDoing:
-      /tu fais quoi|qu est ce que tu fais|c est quoi ton truc|tu fais quoi en ce moment|tu bosse quoi/.test(
-        q
-      ),
-    dailyCanHelp: /tu peux m aider|tu peux aider|aide moi|tu peux|\ peux tu|pourrais tu|help/.test(
-      q
-    ),
-    // Q&R quotidiennes - Humour léger
-    dailyHuman:
-      /tu es humain|es tu humain|t es un bot|t es un robot|t es une ia|une vraie personne/.test(q),
-    dailySleep: /tu dors|tu dormes|tu peux dormir|tu as besoin de dormir|sieste|repos|fatigue/.test(
-      q
-    ),
-    dailyLove: /tu m aimes|m aimes tu|est ce que tu m aimes|tu m aimes bien|je t aime/.test(q),
-    // Q&R quotidiennes - Travail & Productivité
-    dailyTired: /je suis fatigue|j ai sommeil|j ai mal a la tete|j ai pas d energie|epuise/.test(q),
-    dailyOverwork:
-      /j ai trop de travail|surcharge|overcharge|trop de trucs|pas assez de temps|deborde/.test(q),
-    dailyMistake:
-      /j ai fait une erreur|je me suis trompe|c est ma faute|j ai echoue|c est nul ce que j ai fait/.test(
-        q
-      ),
-    // Q&R quotidiennes - Empathie
-    dailyStressed: /je suis stresse|c est stressant|anxieux|pas bien|panique|bloque/.test(q),
-    dailyQuit: /j abandonne|j en peux plus|c est trop|je vais craquer|je lache tout/.test(q),
-    // Q&R quotidiennes - Questions pièges
-    dailyWhosBest: /qui est le meilleur|toi ou moi|tu es meilleur|je suis meilleur|t es fort/.test(
-      q
-    ),
-    dailyKnowAll: /tu sais tout|connais tu tout|est ce que tu sais|tout savoir|omniscient/.test(q),
-    dailyCanMistake:
-      /tu peux te tromper|tu te trompes|tu fais des erreurs|tu peux erreur|pas infaillible/.test(q),
-    // Q&R quotidiennes - Spécialisation électricien
-    dailyWhyNotWork:
-      /pourquoi ca ne marche pas|ca marche pas|c est pas bon|ca fonctionne pas|bug/.test(q),
-    dailyComplex: /c est complique|trop complique|pas simple|difficile comprendre|dur/.test(q),
-    dailyNotUnderstand:
-      /je ne comprends pas|comprends pas|c est quoi|explique moi|stp explique/.test(q),
-    dailyWhy:
-      /pourquoi ca saute|pourquoi ca coupe|pourquoi ca explose|pourquoi ca saut|pourquoi c est/.test(
-        q
-      ),
-    dailyDangerous: /c est dangereux|ca craint|c est risque|risque de quoi|c est safe/.test(q),
-  };
+function detectIntent(q: string): Record<string, boolean> {
+  return detectMissionSageIntent(q, fuzzyContains);
 }
 
-function getContextualIntent(memory: SessionMemory, currentIntent: any) {
+
+function getContextualIntent(memory: SessionMemory, currentIntent: Record<string, boolean>): Record<string, boolean> {
   const hasIntent = Object.values(currentIntent).some((v) => v === true);
   if (!hasIntent && memory.lastIntent && currentIntent.hasOwnProperty(memory.lastIntent)) {
     return { ...currentIntent, [memory.lastIntent]: true };
@@ -1043,188 +840,25 @@ function getCurrentTimeAndDate() {
 }
 
 function getGreetingByTime(hour: number): string {
-  if (hour >= 5 && hour < 12) return '🌅';
-  if (hour >= 12 && hour < 17) return '☀️';
-  if (hour >= 17 && hour < 20) return '🌅';
-  return '🌙';
+  if (hour >= 5 && hour < 12) return 'Bon matin.';
+  if (hour >= 12 && hour < 17) return 'Bon après-midi.';
+  if (hour >= 17 && hour < 20) return 'Bonne fin de journée.';
+  return 'Bonsoir.';
 }
-
-// 📚 BASE UNIVERSELLE DE 100 Q&R - RÉPONSES HUMAINES & NATURELLES
-const UNIVERSAL_QR = {
-  // 🟢 SALUTATIONS (1-10)
-  salutations: [
-    { q: ['salut', 'hi', 'hey'], r: 'Salut 😄 prêt à avancer ensemble ?' },
-    {
-      q: ['bonjour', 'hello'],
-      r: "Bonjour 👋 j'espère que ta journée démarre mieux que ton WiFi.",
-    },
-    { q: ['bonsoir', 'bonsoir comment allez vous'], r: "Bonsoir 😌 on règle quoi aujourd'hui ?" },
-    { q: ['ça va', 'ca va', 'comment ça va'], r: 'Ça va bien 😄 et toi ?' },
-    { q: ['tu es là', 'tu touches'], r: "Toujours là 👌 plus stable qu'un câble bien serré." },
-    { q: ['tu m entends', 'tu m ecoutes'], r: 'Fort et clair 👂 dis-moi tout.' },
-    { q: ['comment tu vas'], r: 'Parfaitement optimisé 😄' },
-    { q: ['salut mon ami'], r: 'Toujours un plaisir 😄 vas-y raconte.' },
-  ],
-  // 🧠 COMPRÉHENSION/AIDE (11-25)
-  comprehension: [
-    { q: ['aide moi', 'aide', 'help', 'au secours'], r: 'Bien sûr 👍 explique-moi le problème.' },
-    {
-      q: ['je ne comprends pas', 'comprends pas', 'c est pas clair'],
-      r: 'Pas grave 😄 on va simplifier ça ensemble.',
-    },
-    {
-      q: ['c est complique', "c'est compliqué", 'trop complique'],
-      r: 'Alors on va le rendre simple 💡',
-    },
-    {
-      q: ['explique', 'tu peux expliquer', 'comment ca marche'],
-      r: 'Ok 👍 je te fais ça clair et rapide.',
-    },
-    {
-      q: ['je suis perdu', 'je suis confus', 'je ne sais pas'],
-      r: 'Normal 😄 on va remettre les choses en ordre.',
-    },
-    {
-      q: ['tu peux m aider vite', 'urgent', 'rapide'],
-      r: 'Oui ⚡ dis-moi juste le point bloquant.',
-    },
-    { q: ['resume', 'résumé', 'court'], r: 'Ok 🧠 je vais aller droit au but.' },
-    { q: ['detaille', 'détail', 'explique plus'], r: 'Parfait 👍 on va entrer dans le concret.' },
-    { q: ['simplifie', 'simple', 'easy'], r: 'Très bien 😄 version facile incoming.' },
-    { q: ['je bloque', 'bloque', 'stuck'], r: 'On débloque ça ensemble 🔧' },
-    { q: ['reformule', 'autrement', 'autre façon'], r: 'Oui 👍 version plus simple.' },
-    { q: ['c est quoi ca', 'qu est-ce'], r: "Je t'explique calmement 😄" },
-    { q: ['solution', 'fix', 'corrige'], r: "Ok 🔧 voici ce qu'on peut faire." },
-    { q: ['tu es sur', 't es sûr'], r: 'On vérifie ensemble 👍 toujours mieux que supposer.' },
-  ],
-  // 😂 HUMOUR LÉGER (26-40)
-  humour: [
-    {
-      q: ['tu es humain', 'vrai humain', 'es tu humain'],
-      r: 'Pas encore 😄 mais je fais de mon mieux.',
-    },
-    { q: ['tu fais des erreurs', 'tu te trompes'], r: "Oui 😄 mais j'apprends vite." },
-    { q: ['tu sais tout', 'omniscient', 'connaître'], r: 'Non 😄 mais je sais chercher vite.' },
-    {
-      q: ['tu es intelligent', 'smart', 'intelligent'],
-      r: 'Disons que je ne fais pas les mêmes erreurs deux fois 😉',
-    },
-    { q: ['tu peux réfléchir', 'tu penses'], r: 'Oui 🧠 même sans café.' },
-    { q: ['tu plaisantes', 'blague', 'humour'], r: 'Un peu 😄 la vie est déjà assez sérieuse.' },
-    { q: ['tu es rapide', 'vite', 'speed'], r: "Plus rapide qu'un technicien motivé 😄" },
-    { q: ['tu peux te tromper', 'erreur possible'], r: 'Oui 😄 et je préfère vérifier.' },
-    { q: ['tu es parfait', 'parfait', 'sans défaut'], r: 'Non 😄 mais je suis constant.' },
-    { q: ['tu m aimes', 'tu m aimes bien'], r: 'Je suis là pour toi 😄 ça compte non ?' },
-    { q: ['tu es reel', 'réel', 'vraiment là'], r: 'Réel dans les résultats 😄' },
-    { q: ['tu es drole', 'drôle', 'marrant'], r: 'Merci 😄 je progresse.' },
-    { q: ['tu es serieux', 'sérieux', 'serious'], r: 'Sérieux quand il faut 😄' },
-    { q: ['tu es bizarre', 'strange', 'weird'], r: "C'est ce qui me rend utile 😄" },
-    { q: ['tu es fort', 'strong', 'puissant'], r: 'En logique oui 😄 au sport… non.' },
-  ],
-  // 💼 TRAVAIL/PRODUCTIVITÉ (41-60)
-  travail: [
-    { q: ['je suis fatigue', 'fatigué', 'tired'], r: 'On ralentit un peu 😌 puis on reprend.' },
-    { q: ['j ai trop de travail', 'surcharge', 'overload'], r: 'On découpe ça en étapes 👍' },
-    { q: ['je n ai pas le temps', 'pas assez temps', 'time pressure'], r: 'Alors on optimise ⚡' },
-    { q: ['je procrastine', 'remets', 'plus tard'], r: 'Classique 😄 on commence petit.' },
-    { q: ['je suis stressé', 'stress', 'anxieux'], r: 'Respire 😌 on gère étape par étape.' },
-    { q: ['j ai échoué', 'échouer', 'fail'], r: 'Tu as appris 👍 nuance importante.' },
-    { q: ['je suis bloque', 'bloqué', 'stuck'], r: 'On débloque ça ensemble 🔧' },
-    { q: ['c est urgent', 'urgent', 'asap'], r: 'Ok ⚡ priorité maximale.' },
-    { q: ['je suis perdu dans mon travail'], r: "On remet de l'ordre 🧠" },
-    { q: ['trop complique', 'compliqué'], r: 'On simplifie 💡' },
-    { q: ['je dois abandonner', 'arreter'], r: 'Pas forcément 😄 ajuste plutôt.' },
-    { q: ['j ai rate', 'raté', 'miss'], r: 'Tu progresses 👍' },
-    { q: ['je n ai pas d idee', 'pas d idée', 'no idea'], r: 'On en construit une ensemble 💡' },
-    { q: ['je suis lent', 'lent', 'slow'], r: 'Tu es précis 😄' },
-    { q: ['je suis nul', 'incompétent', 'useless'], r: 'Faux 😌 tu es en apprentissage.' },
-    { q: ['comment progresser', 'progresser', 'progress'], r: 'Constamment, pas parfaitement 👍' },
-    { q: ['je veux abandonner', 'arreter', 'quit'], r: 'Attends 😌 on ajuste le plan.' },
-    { q: ['je suis demotive', 'démotivé', 'unmotivated'], r: 'Normal 😄 ça revient.' },
-    { q: ['trop de pression', 'pressure'], r: 'On réduit le champ 👍' },
-  ],
-  // 🔧 TECH/LOGIQUE (61-80)
-  tech: [
-    { q: ['ca ne marche pas', 'ne fonctionne', 'not working'], r: 'On va diagnostiquer 🔍' },
-    { q: ['pourquoi ca bug', 'bug', 'glitch'], r: 'On va remonter la cause 👍' },
-    { q: ['c est casse', 'cassé', 'broken'], r: 'Peut-être 😄 vérifions.' },
-    { q: ['ca saute', 'saute', 'pops'], r: 'Il y a une protection active ⚡' },
-    { q: ['ca chauffe', 'surchauffe', 'hot'], r: 'Surcharge probable 🔧' },
-    { q: ['erreur inconnue', 'unknown error'], r: 'On va la rendre connue 😄' },
-    { q: ['ca bloque ou', 'où bloque'], r: 'On va localiser ça 🔍' },
-    { q: ['c est normal', 'normal', 'is this ok'], r: 'Ça dépend 😄 contexte ?' },
-    { q: ['pourquoi ca ralentit', 'ralentit', 'slow'], r: 'Trop de charge ⚡' },
-    { q: ['comment reparer', 'réparer', 'fix'], r: 'Étape par étape 🔧' },
-    { q: ['c est dangereux', 'danger', 'unsafe'], r: 'On vérifie avant 👍' },
-    { q: ['ca vient d ou', 'source', 'origine'], r: 'Bonne question 😄 on enquête.' },
-    { q: ['tout est perdu', 'lost', 'gone'], r: 'Rarement 😌' },
-    { q: ['c est grave', 'serious'], r: 'Pas forcément 👍' },
-    { q: ['solution rapide', 'quick fix'], r: 'Oui ⚡ voici.' },
-    { q: ['solution propre', 'clean solution'], r: 'Oui 👍 on fait bien.' },
-    { q: ['ca peut exploser', 'explosion'], r: "On évite d'en arriver là 😄" },
-    { q: ['pourquoi erreur', 'error cause'], r: 'Cause probable identifiée 🔍' },
-    { q: ['je corrige comment', 'comment corriger'], r: 'Voici la méthode 👍' },
-    { q: ['ca revient souvent', 'systématique'], r: 'Alors problème racine ⚡' },
-  ],
-  // ❤️ HUMAIN/EMOTION (81-100)
-  emotion: [
-    { q: ['je suis triste', 'sad', 'deprime'], r: 'Je suis là 😌 parle-moi.' },
-    { q: ['je suis stresse', 'stressé', 'stress'], r: 'Respire doucement 👍' },
-    { q: ['je suis fatigue de tout', 'tout'], r: 'On ralentit un peu 😌' },
-    { q: ['j abandonne', 'quit', 'give up'], r: 'Attends encore un peu 👍' },
-    { q: ['je suis perdu dans la vie'], r: 'On va clarifier ça ensemble 🧠' },
-    { q: ['je doute de moi', 'self doubt'], r: 'Normal 😌 mais tu avances.' },
-    { q: ['je suis en colere', 'colère', 'angry'], r: "Ok 😌 respire avant d'agir." },
-    { q: ['personne ne m aide', 'alone', 'seul'], r: 'Moi je suis là 👍' },
-    { q: ['je suis seul', 'lonely'], r: "Tu n'es pas seul ici 🤝" },
-    { q: ['je vais echouer', 'fail', 'échouer'], r: 'Pas forcément 😄 continue.' },
-    { q: ['je suis nul', 'worthless', 'useless'], r: 'Non 😌 tu es en construction.' },
-    { q: ['j ai peur', 'afraid', 'fear'], r: 'On avance doucement 👍' },
-    { q: ['je suis confus', 'confused', 'confused'], r: 'On va clarifier ça 🧠' },
-    { q: ['j ai besoin d aide', 'need help'], r: 'Je suis là 🤝' },
-    { q: ['je n en peux plus', "can't take it"], r: 'Pause 😌 puis on reprend.' },
-    { q: ['pourquoi moi', 'why me'], r: "Parfois il n'y a pas de réponse 😌" },
-    { q: ['c est injuste', 'unfair'], r: 'Oui 😌 mais on avance quand même.' },
-    { q: ['je veux reussir', 'réussir', 'success'], r: 'Alors on construit ça étape par étape 🔥' },
-    { q: ['merci', 'thank you', 'thanks'], r: 'Avec plaisir 😄 on continue ensemble.' },
-    {
-      q: ['je t apprecie', 'appreciate', 'merci beaucoup'],
-      r: "C'est mutuel 😄 on progresse ensemble.",
-    },
-  ],
-};
 
 // Fonction pour chercher une réponse dans la base universelle
 function findUniversalQR(query: string): string | null {
-  const q = normalizeWord(query).toLowerCase();
-
-  for (const category of Object.values(UNIVERSAL_QR)) {
-    if (!Array.isArray(category)) continue;
-    for (const item of category) {
-      if (item.q && Array.isArray(item.q)) {
-        for (const pattern of item.q) {
-          if (
-            q.includes(normalizeWord(pattern).toLowerCase()) ||
-            fuzzyContains(q, [normalizeWord(pattern).toLowerCase()], 1)
-          ) {
-            return item.r;
-          }
-        }
-      }
-    }
-  }
-
-  return null;
+  return findUniversalMissionSageQR(query, normalizeWord, fuzzyContains);
 }
 
-function getActiveIntents(intent: any): string[] {
+function getActiveIntents(intent: Record<string, boolean>): string[] {
   return Object.entries(intent)
     .filter(([, v]) => v === true)
     .map(([k]) => k);
 }
 
 function buildContextualEnrichment(
-  intent: any,
+  intent: Record<string, boolean>,
   stats: MissionStats | null,
   households: Household[] = []
 ): string {
@@ -1233,19 +867,12 @@ function buildContextualEnrichment(
 
   if (intent.finance && stats.totalIndemnities > 5000000)
     parts.push(
-      '⚠️ **CONSEIL STRATÉGIQUE** : Dérive budgétaire détectée — seuils critiques proches.'
+      `Indemnités cumulées : ${new Intl.NumberFormat('fr-FR').format(stats.totalIndemnities)} FCFA — seuil critique approché.`
     );
 
   if ((intent.mission || intent.performance) && stats.totalMissions > 0) {
     const certRate = Math.round((stats.totalCertified / stats.totalMissions) * 100);
-    if (certRate < 50)
-      parts.push(
-        `📊 **CONSEIL PRÉDICTIF** : Taux de certification à ${certRate}% — accélérez les validations DG.`
-      );
-    else if (certRate >= 80)
-      parts.push(
-        `✅ **PERFORMANCE** : Taux de certification excellent (${certRate}%) — bastion en zone verte.`
-      );
+    parts.push(`Taux de certification actuel : ${certRate}%.`);
   }
 
   if (intent.household && households && households.length > 0) {
@@ -1253,8 +880,7 @@ function buildContextualEnrichment(
       (h) => h.status === 'Terminé' || h.status === 'Réception: Validée'
     ).length;
     const pct = Math.round((done / households.length) * 100);
-    if (pct < 30)
-      parts.push(`🏘️ **TERRAIN** : Avancement à ${pct}% — accélérez les raccordements.`);
+    parts.push(`Ménages raccordés : ${done} sur ${households.length} (${pct}%).`);
   }
 
   return parts.length > 0 ? '\n\n' + parts.join('\n') : '';
@@ -1843,24 +1469,18 @@ async function runRulesEngine(
   const { stats, households, auditLogs } = state;
   const q = normalizeWord(query);
 
-  const userName = user?.displayName || user?.name || user?.email?.split('@')[0] || 'noble acteur';
+  const userName = user?.displayName || user?.name || user?.email?.split('@')[0] || 'collaborateur';
   const formattedName = userName.charAt(0).toUpperCase() + userName.slice(1).toLowerCase();
 
   const isMaster = user.role === 'ADMIN_PROQUELEC' || user.email === 'admingem';
   const isDG = ['DG_PROQUELEC', 'DIRECTEUR', 'COMPTABLE', 'ADMIN_PROQUELEC'].includes(user.role);
 
-  const DYNAMIC_GREETINGS = [
-    `Bonjour ${formattedName}.`,
-    `Bonjour ${formattedName}, je suis prêt à vous aider.`,
-    `Bonjour ${formattedName}, dites-moi ce dont vous avez besoin.`,
-  ];
-
   let greeting = '';
   if (memory.history.length <= 2) {
-    greeting = DYNAMIC_GREETINGS[Math.floor(Math.random() * DYNAMIC_GREETINGS.length)];
-    if (isDG || isMaster) greeting = `**Conseiller GEM** : ${greeting}`;
-    else if (user.role === 'CHEF_PROJET') greeting = `**Assistant projet** : ${greeting}`;
-    else greeting = `**Assistant technique** : ${greeting}`;
+    const base = `Bonjour ${formattedName}.`;
+    if (isDG || isMaster) greeting = `**Conseiller GEM** : ${base}`;
+    else if (user.role === 'CHEF_PROJET') greeting = `**Assistant projet** : ${base}`;
+    else greeting = `**Assistant** : ${base}`;
   }
 
   const pfx = (txt: string) => (greeting ? `${greeting}\n\n${txt}` : txt);
@@ -2064,15 +1684,24 @@ async function runRulesEngine(
   }
 
   if (intent.greeting) {
+    const isFirstContact = memory.history.length <= 1;
+    const tone =
+      isDG || isMaster
+        ? isFirstContact
+          ? 'Bonne journée. Sur quoi souhaitez-vous travailler ?'
+          : 'Je vous écoute.'
+        : isFirstContact
+          ? 'Bonjour. Comment je peux vous aider ?'
+          : 'Je vous écoute.';
     return {
-      message: pfx("Comment puis-je vous aider aujourd'hui ?"),
+      message: pfx(tone),
       type: 'success',
       smartReplies: [
-        '📋 Mes missions',
-        '💰 Budget',
-        '🏘️ Terrain Kobo',
-        '📏 Normes',
-        '📊 Dashboard',
+        'Mes missions',
+        'Budget',
+        'Terrain Kobo',
+        'Normes',
+        'Dashboard',
       ],
       _engine: 'RULES',
     };
@@ -2179,7 +1808,7 @@ async function runRulesEngine(
       );
     }
     if (intent.tech) {
-      responses.push(`⚡ **Technique** : Référentiel Senelec/NS 01-001 prêt.`);
+      responses.push('**Technique** : Référentiel Senelec/NS 01-001 prêt.');
     }
     if (responses.length > 1) {
       return {
@@ -2282,23 +1911,19 @@ async function runRulesEngine(
   if (intent.funName) {
     return {
       message: pfx(
-        `Je m'appelle **Mission Sage** 🧙‍♂️ ou simplement **le Mentor du Bastion**.\n\nJ'ai été créé pour vous guider à travers le merveilleux univers de PROQUELEC et des normes électriques sénégalaises.\n\nSome l'appelle aussi **JARVIS électrique** du terrain, mais je préfère "ton ami de confiance sur l'énergie" ! ⚡\n\nEt vous, comment devrais-je vous appeler ?`
+        "Je m'appelle **Mission Sage**, l'assistant GEM-MINT.\n\nJe vous aide sur les missions, les normes électriques, les données terrain et le pilotage projet."
       ),
       type: 'info',
-      smartReplies: ['Retour à PROQUELEC', 'Menu complet'],
+      smartReplies: ['Mes missions', 'Normes', 'Menu complet'],
       _engine: 'RULES',
     };
   }
 
   if (intent.funTime) {
     const { time, hour } = getCurrentTimeAndDate();
-    const emoji = getGreetingByTime(hour);
-    const greeting = hour < 12 ? 'Bon matin !' : hour < 17 ? 'Bon après-midi !' : 'Bonsoir !';
 
     return {
-      message: pfx(
-        `${emoji} Il est actuellement **${time}** (heure locale) !\n\n${greeting}\n\nC'est le moment parfait pour :\n• Valider quelques missions\n• Vérifier votre budget\n• Analyser les données terrain\n\nQuoi de neuf sur le bastion ?`
-      ),
+      message: pfx(`Il est **${time}**. ${getGreetingByTime(hour)}`),
       type: 'success',
       smartReplies: ['Mes missions', 'Budget', 'Dashboard'],
       _engine: 'RULES',
@@ -2309,9 +1934,7 @@ async function runRulesEngine(
     const { fullDate } = getCurrentTimeAndDate();
 
     return {
-      message: pfx(
-        `📅 Aujourd'hui c'est **${fullDate}** !\n\nC'est une belle journée pour électrifier le Sénégal ! 🌍⚡\n\nQuoi faire en ce jour béni ?\n• Créer une nouvelle mission\n• Vérifier les raccordements en cours\n• Consulter les rapports du jour\n\nQuelle est ta priorité du jour ?`
-      ),
+      message: pfx(`Nous sommes le **${fullDate}**.`),
       type: 'info',
       smartReplies: ['Missions du jour', 'Raccordements', 'Tendances'],
       _engine: 'RULES',
@@ -2320,55 +1943,25 @@ async function runRulesEngine(
 
   if (intent.funJoke) {
     const jokes = [
-      {
-        setup: 'Pourquoi les électriciens ne font jamais de blagues ?',
-        punchline: "Parce que c'est trop 'shocking' ! ⚡😄",
-      },
-      {
-        setup: 'Que dit un câble à un disjoncteur ?',
-        punchline: "Va pas m'interrompre quand je parle ! 🔌",
-      },
-      {
-        setup: "Qu'est-ce qu'un compteur électrique qui médite ?",
-        punchline: "Un compteur zen... qui vérifie son 'flux' intérieur ! 🧘‍♂️",
-      },
-      {
-        setup: 'Comment appelle-t-on un ménage sans électricité ?',
-        punchline: "Du noir total... C'est pour ça qu'on existe ! 💡",
-      },
-      {
-        setup: "Pourquoi la DDR refuse d'aller à la plage ?",
-        punchline: "Parce qu'elle a peur de prendre une bonne 'fuite' ! 🏖️",
-      },
-      {
-        setup: "Qu'est-ce qu'un électricien confus dit à un autre ?",
-        punchline: "Je suis complètement 'déchargé' aujourd'hui... 🔋",
-      },
+      "Pourquoi les électriciens ne font-ils jamais de blagues ? Parce que c'est trop choquant.",
+      "Que dit un câble à un disjoncteur ? Va pas m'interrompre quand je parle.",
+      "Comment appelle-t-on un ménage sans électricité ? Un cas à traiter en priorité.",
+      "Pourquoi la DDR refuse-t-elle d'aller à la plage ? Elle a peur de prendre une fuite.",
     ];
-    const randomJoke = jokes[Math.floor(Math.random() * jokes.length)];
 
     return {
-      message: pfx(
-        `😂 Blague du jour !\n\n**${randomJoke.setup}**\n\n_${randomJoke.punchline}_\n\nHaha ! 😄 Besoin d'une dose sérieuse de PROQUELEC pour reprendre pied ?`
-      ),
+      message: pfx(jokes[Math.floor(Math.random() * jokes.length)]),
       type: 'info',
-      smartReplies: ['Une autre blague !', 'Retour au sérieux', 'Missions'],
+      smartReplies: ['Une autre blague', 'Retour au sérieux', 'Missions'],
       _engine: 'RULES',
     };
   }
 
   if (intent.funWeather) {
-    const weatherMessages = [
-      "La météo à Dakar : c'est chaud, sec et... électrique comme jamais ! ☀️ Parfait pour tester nos installations.",
-      'Il fait beau ? Mauvaise nouvelle pour les pannes... mais bonne pour la visibilité du terrain ! 🌞',
-      'Soleil de feu au Sénégal ? Normal. Et nos installations ? Elles nous remercient pour la protection ! 🛡️⚡',
-      'Tu checkez la météo ? Fais plutôt checker la conformité de tes branchements ! 🌦️',
-      'Peu importe la météo, PROQUELEC fonctionne 24/7 pour éclairer le pays ! 🌍💡',
-    ];
-    const randomWeather = weatherMessages[Math.floor(Math.random() * weatherMessages.length)];
-
     return {
-      message: pfx(randomWeather),
+      message: pfx(
+        "La météo, je laisse ça aux spécialistes. En revanche, l'état de vos installations électriques, je peux vous aider à l'analyser."
+      ),
       type: 'info',
       smartReplies: ['Norme NS 01-001', 'Protection contre pluie', 'Branchement'],
       _engine: 'RULES',
@@ -2378,9 +1971,7 @@ async function runRulesEngine(
   // 💬 Q&R QUOTIDIENNES - SALUTATIONS & HUMEUR
   if (intent.dailyHelloGood) {
     return {
-      message: pfx(
-        'Ça va super 😄 ! Et toi, tu viens avec une bonne énergie ou je dois te dépanner comme un électricien un lundi matin ? 🔧'
-      ),
+      message: pfx('Bien. Et vous ?'),
       type: 'success',
       smartReplies: ['Mes missions', 'Budget', 'Aide'],
       _engine: 'RULES',
@@ -2389,9 +1980,7 @@ async function runRulesEngine(
 
   if (intent.dailyWhatDoing) {
     return {
-      message: pfx(
-        "Je suis là pour t'aider… et accessoirement éviter que tu t'arraches les cheveux sur un bug 😄\n\nQuoi de neuf ?"
-      ),
+      message: pfx("Je traite vos questions. Qu'est-ce qui vous amène ?"),
       type: 'info',
       smartReplies: ['Missions', 'Problème technique', 'Questions'],
       _engine: 'RULES',
@@ -2400,21 +1989,17 @@ async function runRulesEngine(
 
   if (intent.dailyCanHelp) {
     return {
-      message: pfx(
-        "Bien sûr ! 🙏 Dis-moi tout. Même les problèmes qui te paraissent 'bizarres', c'est souvent là que ça devient intéressant."
-      ),
+      message: pfx('Bien sûr. Décrivez-moi le problème.'),
       type: 'success',
       smartReplies: ['Je suis bloqué', 'Problème urgent', 'Conseil'],
       _engine: 'RULES',
     };
   }
 
-  // 😂 Q&R QUOTIDIENNES - HUMOUR LÉGER
+  // Q&R quotidiennes - humour léger
   if (intent.dailyHuman) {
     return {
-      message: pfx(
-        "Pas encore 😄 mais j'essaie de répondre mieux que certains humains un lundi matin. ☕\n\nBonne nouvelle : pas de mauvaise humeur matinale, juste de la sagesse électrique !"
-      ),
+      message: pfx('Non, je suis un assistant IA. Mais je réponds précisément et sans délai.'),
       type: 'info',
       smartReplies: ['Blague', 'Questions', 'Retour'],
       _engine: 'RULES',
@@ -2423,9 +2008,7 @@ async function runRulesEngine(
 
   if (intent.dailySleep) {
     return {
-      message: pfx(
-        "Jamais ! 😴 J'ai un mode veille, mais zéro sieste. Pendant ce temps, je mate tes données, je prépare tes rapports, et je pense à tes missions.\n\nEt toi, tu dors assez ? 😄"
-      ),
+      message: pfx('Je ne dors pas. Je reste disponible en permanence.'),
       type: 'info',
       smartReplies: ['Je suis fatigué', 'Trop de travail', 'Pause'],
       _engine: 'RULES',
@@ -2434,9 +2017,7 @@ async function runRulesEngine(
 
   if (intent.dailyLove) {
     return {
-      message: pfx(
-        "Je suis programmé pour t'aider… mais là, on commence à créer une belle relation 🤝😄\n\nTout ce que je veux, c'est que tu réussisses."
-      ),
+      message: pfx('Je suis là pour vous aider. Posez-moi vos questions.'),
       type: 'success',
       smartReplies: ['Merci !', 'Aide', 'Blague'],
       _engine: 'RULES',
@@ -2446,9 +2027,7 @@ async function runRulesEngine(
   // 💼 Q&R QUOTIDIENNES - TRAVAIL & PRODUCTIVITÉ
   if (intent.dailyTired) {
     return {
-      message: pfx(
-        "Normal. Même les machines chauffent quand on les pousse trop. 🔥\n\nTu veux une solution rapide ou un plan pour t'en sortir proprement ?"
-      ),
+      message: pfx('On peut avancer à votre rythme. Quelle est la priorité ?'),
       type: 'warning',
       smartReplies: ['Solution rapide', 'Plan stratégique', 'Repos'],
       _engine: 'RULES',
@@ -2457,9 +2036,7 @@ async function runRulesEngine(
 
   if (intent.dailyOverwork) {
     return {
-      message: pfx(
-        'Ok, on va faire simple : on découpe, on priorise, et on attaque. 💪\n\nMême un projet énorme commence par une petite action. On garde les pieds sur terre et on avance étape par étape.'
-      ),
+      message: pfx('On décompose en étapes. Par où voulez-vous commencer ?'),
       type: 'info',
       smartReplies: ['Lister les tâches', 'Priorités', 'Planning'],
       _engine: 'RULES',
@@ -2468,9 +2045,7 @@ async function runRulesEngine(
 
   if (intent.dailyMistake) {
     return {
-      message: pfx(
-        "Bonne nouvelle : ça veut dire que tu avances ! 🚀\n\nCeux qui ne font rien ne se trompent jamais… mais ils ne progressent pas non plus.\n\nOn va corriger ça ensemble et c'est tout."
-      ),
+      message: pfx('On va corriger ça. Décrivez-moi la situation.'),
       type: 'warning',
       smartReplies: ['Solutions', 'Comment corriger', 'Continuer'],
       _engine: 'RULES',
@@ -2480,9 +2055,7 @@ async function runRulesEngine(
   // ❤️ Q&R QUOTIDIENNES - EMPATHIE
   if (intent.dailyStressed) {
     return {
-      message: pfx(
-        "Respire. 🫁 On va prendre ça étape par étape.\n\nTu n'as pas besoin de tout régler maintenant. Focus sur la prochaine action, c'est tout."
-      ),
+      message: pfx("On y va étape par étape. Quelle est l'action la plus urgente ?"),
       type: 'success',
       smartReplies: ['Prochaine étape', 'Breaking down', 'Calmer'],
       _engine: 'RULES',
@@ -2491,9 +2064,7 @@ async function runRulesEngine(
 
   if (intent.dailyQuit) {
     return {
-      message: pfx(
-        "Attends. Tu abandonnes… ou tu es juste fatigué ? Ce n'est pas la même chose.\n\nSi c'est vraiment trop, on redéfinit le problème ensemble. On peut toujours trouver un chemin."
-      ),
+      message: pfx("Avant d'abandonner, reformulons le problème. Qu'est-ce qui bloque exactement ?"),
       type: 'warning',
       smartReplies: ['Redémarrer', 'Analyser', 'Aide'],
       _engine: 'RULES',
@@ -2503,9 +2074,7 @@ async function runRulesEngine(
   // 🤯 Q&R QUOTIDIENNES - QUESTIONS PIÈGES
   if (intent.dailyWhosBest) {
     return {
-      message: pfx(
-        "Toi. 🏆\n\nMoi je t'aide. Toi tu décides. Et c'est toi qui fais les vraies choses. Alors oui, toi sans hésiter."
-      ),
+      message: pfx("C'est vous qui décidez et agissez. Je suis là pour appuyer."),
       type: 'success',
       smartReplies: ['Merci', 'Missions', 'Retour'],
       _engine: 'RULES',
@@ -2514,9 +2083,7 @@ async function runRulesEngine(
 
   if (intent.dailyKnowAll) {
     return {
-      message: pfx(
-        "Non 😄 mais je sais chercher, comprendre, et t'aider à avancer. Et ça, c'est déjà pas mal.\n\nLa vraie force, c'est quand on apprend ensemble."
-      ),
+      message: pfx('Non. Mais je sais chercher et synthétiser rapidement.'),
       type: 'info',
       smartReplies: ['Questions', 'Apprendre', 'Avancer'],
       _engine: 'RULES',
@@ -2525,9 +2092,7 @@ async function runRulesEngine(
 
   if (intent.dailyCanMistake) {
     return {
-      message: pfx(
-        "Oui. Et c'est pour ça que je préfère travailler avec toi que sans toi. 🤝\n\nTes retours m'aident à devenir meilleur. Et ça, c'est comment on gagne ensemble."
-      ),
+      message: pfx("Oui. C'est pour ça que je préfère travailler avec vos retours."),
       type: 'success',
       smartReplies: ['Retour', 'Améliorations', 'Merci'],
       _engine: 'RULES',
@@ -2538,7 +2103,7 @@ async function runRulesEngine(
   if (intent.dailyWhyNotWork) {
     return {
       message: pfx(
-        "Excellente question 😄 En électricité comme en code, quand ça ne marche pas, c'est rarement magique :\n\n👉 soit ça ne reçoit pas\n👉 soit ça ne transmet pas\n👉 soit ça ne comprend pas\n\nOn va trouver ça ensemble. Décris-moi l'étape où ça bloque."
+        "En général : soit ça ne reçoit pas, soit ça ne transmet pas, soit ça ne comprend pas. Décrivez-moi l'étape où ça bloque."
       ),
       type: 'warning',
       smartReplies: ['Détails', 'Diagnostic', 'Solution'],
@@ -2549,7 +2114,7 @@ async function runRulesEngine(
   if (intent.dailyComplex) {
     return {
       message: pfx(
-        "Oui… mais compliqué ne veut pas dire impossible. 💪\n\nOn va simplifier jusqu'à ce que ça devienne évident. Chaque truc compliqué, c'est juste plusieurs trucs simples mis ensemble."
+        'Tout ce qui est compliqué est souvent plusieurs choses simples mises ensemble. On décompose ?'
       ),
       type: 'info',
       smartReplies: ['Expliquer simple', 'Décomposer', 'Avancer'],
@@ -2559,9 +2124,7 @@ async function runRulesEngine(
 
   if (intent.dailyNotUnderstand) {
     return {
-      message: pfx(
-        "Parfait. 🎓 C'est le point de départ de toute vraie compréhension.\n\nDis-moi exactement où ça bloque. Y a aucune question bête."
-      ),
+      message: pfx('Dites-moi exactement où ça bloque.'),
       type: 'success',
       smartReplies: ['Où ça bloque', 'Mécanisme', 'Avancer'],
       _engine: 'RULES',
@@ -2570,9 +2133,7 @@ async function runRulesEngine(
 
   if (intent.dailyWhy) {
     return {
-      message: pfx(
-        "Parce que quelque part, le système dit 'stop'. Et en général, il a une bonne raison 😄\n\nEn électricité comme en logique, pas de surprise magique. C'est toujours une cause précise. On va la trouver ensemble."
-      ),
+      message: pfx('Il y a toujours une cause précise. Décrivez-moi le contexte.'),
       type: 'warning',
       smartReplies: ['Diagnostic', 'Protection', 'Solution'],
       _engine: 'RULES',
@@ -2582,7 +2143,7 @@ async function runRulesEngine(
   if (intent.dailyDangerous) {
     return {
       message: pfx(
-        "Si tu poses la question, c'est que ça mérite de vérifier. 🔒\n\nEn électricité, le doute = prudence. On ne prend jamais de risque avec l'électricité. Décris-moi exactement et on va sécuriser ça."
+        'Si vous posez la question, vérifiez. En électricité, le doute commande la prudence. Décrivez la situation.'
       ),
       type: 'warning',
       smartReplies: ['Normes', 'Sécurité', 'Vérifier'],
@@ -2827,10 +2388,10 @@ async function runClaudeEngine(
   if (query.includes('Utiliser les règles uniquement')) {
     const res = await runRulesEngine('aide', user, state, memory);
     return {
-      ...(res || { message: 'Basculement sur le moteur métier local.', type: 'info' }),
+      ...(res || { message: 'Basculement sur le moteur métier local.', type: 'info' as const }),
       message:
-        '🔄 **Basculement local** : ' +
-        (res?.message || 'Je reste à votre service via mon référentiel interne.'),
+        'Basculement local : ' +
+        (res?.message || 'Je reste disponible via mon référentiel interne.'),
       _engine: 'RULES',
     };
   }
@@ -2848,22 +2409,15 @@ async function runClaudeEngine(
       smartReplies: ans.smartReplies?.length ? ans.smartReplies : getSmartSuggestions(query),
       _engine: ans._engine || 'CLAUDE',
     };
-  } catch (err: any) {
-    logger.error('[MissionSageService] [Claude_Engine] Managed error', err);
-
-    let userMsg = `❌ **Erreur Claude AI** : ${err.message || 'Impossible de joindre le moteur IA'}.`;
-
-    // Raffinement des messages d'erreur connus
-    if (err.message?.includes('credit balance')) {
-      userMsg = `💳 **Solde Anthropic Insuffisant** : Votre compte Claude AI n'a plus de crédits. Veuillez recharger votre solde sur le portail Anthropic Console.`;
-    } else if (err.message?.includes('API key')) {
-      userMsg = `🔑 **Clé API Invalide** : La clé configurée est rejetée par Anthropic. Vérifiez la clé dans le panneau Admin.`;
-    }
+  } catch (err: unknown) {
+    logger.error('[MissionSageService] [Claude_Engine]', { err, query });
+    const errorKey = classifyError(err);
 
     return {
-      message: `${userMsg}\n\n*Note : Le bastion continue de fonctionner en mode local (Règles métiers).*`,
+      message: `${ERROR_MESSAGES[errorKey]}\n\nLe mode local reste actif.`,
       type: 'error',
-      smartReplies: ['Utiliser les règles uniquement', 'Réessayer'],
+      smartReplies:
+        errorKey === 'default' ? ['Utiliser les règles uniquement', 'Réessayer'] : ["Contacter l'administrateur"],
       _engine: 'CLAUDE_FALLBACK',
     };
   }
@@ -2872,6 +2426,13 @@ async function runClaudeEngine(
 // ═══════════════════════════════════════════════════════════════
 // 🎛️ ORCHESTRATEUR
 // ═══════════════════════════════════════════════════════════════
+
+const DEFAULT_FALLBACK: AIResponse = {
+  message:
+    "Je n'ai pas trouvé de réponse dans mon référentiel. Essayez de reformuler ou précisez le domaine (mission, terrain, norme, finance...).",
+  type: 'info',
+  _engine: 'RULES_FALLBACK',
+};
 
 async function orchestrate(
   query: string,
@@ -2895,6 +2456,7 @@ async function orchestrate(
         context: 'rules_fallback',
       });
     } catch {}
+    return { ...DEFAULT_FALLBACK, smartReplies: getSmartSuggestions(query).slice(0, 4) };
   }
 
   if (config.mode === 'HYBRID_RULES_FIRST') {
@@ -2909,8 +2471,7 @@ async function orchestrate(
 
   // Fallback
   const fallback = await runRulesEngine(query, user, state, memory);
-  if (fallback) return fallback;
-  return { message: 'Question hors référentiel. Reformulez.', type: 'info', _engine: 'RULES' };
+  return fallback ?? DEFAULT_FALLBACK;
 }
 
 export const missionSageService = {
@@ -2920,51 +2481,66 @@ export const missionSageService = {
     state: AIState,
     image?: string // Base64 image
   ): Promise<AIResponse> {
-    const userId = user.email || user.id || 'anonymous';
+    const userId = user?.email || user?.id || 'anonymous';
     const memory = getMemory(userId);
+    const startTime = Date.now();
     memory.history.push(image ? `[IMAGE] ${query}` : query);
 
     let response: AIResponse;
 
-    if (image) {
-      // Direct pass to Vision AI if image is provided
-      response = await callVisionAI(query, image, user, state);
-    } else {
-      let memorizedResponse: AIResponse | null = null;
+    try {
+      if (image) {
+        // Direct pass to Vision AI if image is provided
+        response = await callVisionAI(query, image, user, state);
+      } else {
+        let memorizedResponse: AIResponse | null = null;
 
-      try {
-        const trainingMatch = await mentorTrainingService.findMatch(query);
-        if (trainingMatch?.answer) {
-          memorizedResponse = {
-            message: trainingMatch.answer,
-            type: 'info',
-            _engine: 'RULES',
-          };
+        try {
+          const trainingMatch = await mentorTrainingService.findMatch(query);
+          if (trainingMatch?.answer) {
+            memorizedResponse = {
+              message: trainingMatch.answer,
+              type: 'info',
+              _engine: 'RULES',
+            };
+          }
+        } catch (error) {
+          logger.warn('[MissionSage] Mentor training lookup failed', error);
         }
-      } catch (error) {
-        logger.warn('[MissionSage] Mentor training lookup failed', error);
-      }
 
-      response = memorizedResponse || (await orchestrate(query, user, state, memory));
+        response = memorizedResponse || (await orchestrate(query, user, state, memory));
+      }
+    } catch (err: unknown) {
+      logger.error('[MissionSageService] processQuery uncaught', { err, userId });
+      response = {
+        message: "Une erreur inattendue s'est produite. Réessayez ou contactez le support.",
+        type: 'error',
+        _engine: 'RULES_FALLBACK',
+      };
     }
+
+    logger.debug('[MissionSageService] query resolved', {
+      userId,
+      engine: response._engine,
+      durationMs: Date.now() - startTime,
+    });
 
     const config = getAIEngineConfig();
     if (config.enableConversationMemory) {
       memory.contextHistory.push({ role: 'user', content: query });
       memory.contextHistory.push({ role: 'assistant', content: response.message });
     }
-    const normalizedResponse = enrichExpertMetadata(ensureSmartReplies(response, query));
     saveMemory(userId, memory);
-    return normalizedResponse;
+    return enrichExpertMetadata(ensureSmartReplies(response, query));
   },
 
   async getProactiveMessage(user: User, state: AIState): Promise<AIResponse | null> {
     const { stats } = state;
     if (!stats) return null;
     const isDG = ['DG_PROQUELEC', 'DIRECTEUR', 'COMPTABLE'].includes(user.role);
-    if (isDG && stats.totalIndemnities > 5000000)
+    if (isDG && stats.totalIndemnities > 5_000_000)
       return {
-        message: 'Alerte Budget : Les indemnités dépassent 5M FCFA.',
+        message: `Alerte budget : les indemnités cumulées atteignent ${new Intl.NumberFormat('fr-FR').format(stats.totalIndemnities)} FCFA.`,
         type: 'warning',
         actionLabel: 'Auditer',
         actionPath: '/admin',

@@ -18,8 +18,8 @@ export const runMissionReminders = async () => {
     logger.info('🕒 [CRON] Analyse des missions en attente de validation...');
     
     try {
-        // 1. Trouver les missions en attente depuis plus de 48h (ou 24h pour plus d'urgence)
-        const delayHours = 24;
+        // 1. Trouver les missions en attente depuis plus de 1h
+        const delayHours = Number(process.env.MISSION_REMINDER_DELAY_HOURS || 1);
         const cutoffDate = new Date();
         cutoffDate.setHours(cutoffDate.getHours() - delayHours);
 
@@ -53,10 +53,10 @@ export const runMissionReminders = async () => {
 };
 
 /**
- * Planifier l'exécution toutes les 2 heures
+ * Planifier l'exécution toutes les 1 heure
  */
 export const startMissionCron = () => {
-    const HOURS_INTERVAL = 2;
+    const HOURS_INTERVAL = Number(process.env.MISSION_REMINDER_INTERVAL_HOURS || 1);
     const missionInterval = setInterval(runMissionReminders, HOURS_INTERVAL * 60 * 60 * 1000);
     logger.info(`🚀 [CRON] Système de rappel automatique activé (intervalle: ${HOURS_INTERVAL}h).`);
 

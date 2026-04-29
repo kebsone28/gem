@@ -147,7 +147,7 @@ export const missionNotificationService = {
                 subject: `[CERTIFIÉ] Ordre de Mission : ${orderNumber}`,
                 title: 'Mission Validée par la DG',
                 body,
-                actionLink: `${process.env.FRONTEND_URL}/admin/mission?id=${mission.id}`,
+                actionLink: `${process.env.FRONTEND_URL}/api/missions/verify/${encodeURIComponent(orderNumber || mission.id)}/document`,
                 actionLabel: 'Télécharger l\'Ordre de Mission'
             });
         } catch (error) {
@@ -162,15 +162,28 @@ export const missionNotificationService = {
         try {
             const user = await prisma.user.findUnique({
                 where: { id: userId },
-                select: { email: true, organizationId: true }
+                select: { email: true, notificationEmail: true, organizationId: true }
             });
 
             if (!user) return;
 
-            const auditEmails = await this._getAuditEmails(user.organizationId);
-            const fullRecipients = auditEmails ? `${user.email},${auditEmails}` : user.email;
+            const stakeholders = await prisma.user.findMany({
+                where: {
+                    organizationId: user.organizationId,
+                    active: true,
+                    ...this._buildUserRoleFilter(['COMPTABLE', 'FINANCE']),
+                },
+                select: { email: true, notificationEmail: true }
+            });
 
-            if (!fullRecipients?.trim()) {
+            const auditEmails = await this._getAuditEmails(user.organizationId);
+            const recipients = [...new Set([
+                user.notificationEmail || user.email,
+                ...stakeholders.map(s => s.notificationEmail || s.email),
+                ...(auditEmails ? auditEmails.split(',') : [])
+            ])].filter(Boolean).join(',');
+
+            if (!recipients?.trim()) {
                 return;
             }
 
@@ -179,7 +192,7 @@ export const missionNotificationService = {
                          Veuillez corriger la mission et la soumettre à nouveau.`;
 
             await sendMail({
-                to: fullRecipients,
+                to: recipients,
                 subject: `🚨 Mission Rejetée: ${mission.title}`,
                 title: 'Correction de mission nécessaire',
                 body,
@@ -253,8 +266,8 @@ export const missionNotificationService = {
                 subject: `✅ Mission Certifiée DG : ${orderNumber}`,
                 title: '🎉 Ordre de Mission Validé !',
                 body,
-                actionLink: `${process.env.FRONTEND_URL}/admin/mission?id=${mission.id}`,
-                actionLabel: 'Imprimer l\'Ordre de Mission'
+                actionLink: `${process.env.FRONTEND_URL}/api/missions/verify/${encodeURIComponent(orderNumber || mission.id)}/document`,
+                actionLabel: 'Télécharger l\'Ordre de Mission'
             });
         } catch (error) {
             console.error('❌ Erreur notification certification:', error);

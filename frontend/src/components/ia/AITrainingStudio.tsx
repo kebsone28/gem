@@ -17,6 +17,10 @@ import {
   mentorTrainingService,
   type MentorTrainingEntry,
 } from '../../services/ai/mentorTrainingService';
+import {
+  missionSageLearningLogService,
+  type MissionSageLearningLog,
+} from '../../services/ai/missionSageLearningLogService';
 import type { MissionStats } from '../../services/missionStatsService';
 import type { AuditLog, Household, Team } from '../../utils/types';
 import AIPremiumMessage from './AIPremiumMessage';
@@ -100,6 +104,7 @@ export default function AITrainingStudio({
   const [currentResponse, setCurrentResponse] = useState<AIResponse | null>(null);
   const [referenceAnswer, setReferenceAnswer] = useState('');
   const [entries, setEntries] = useState<MentorTrainingEntry[]>([]);
+  const [unresolvedLogs, setUnresolvedLogs] = useState<MissionSageLearningLog[]>([]);
   const [search, setSearch] = useState('');
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
   const [editorLayout, setEditorLayout] = useState<EditorLayoutMode>('stacked');
@@ -168,8 +173,18 @@ export default function AITrainingStudio({
     }
   }
 
+  async function loadUnresolvedLogs() {
+    try {
+      const data = await missionSageLearningLogService.listUnresolved(12);
+      setUnresolvedLogs(data);
+    } catch {
+      setUnresolvedLogs([]);
+    }
+  }
+
   useEffect(() => {
     loadEntries();
+    loadUnresolvedLogs();
   }, []);
 
   useEffect(() => {
@@ -290,6 +305,7 @@ export default function AITrainingStudio({
       setFeedback(
         "Réponse mémorisée. Le mentor remplacera désormais sa réponse pour cette question exacte."
       );
+      await loadUnresolvedLogs();
       await handleTestReplacement(saved.question, saved.answer);
     } catch (err: any) {
       setError(err?.response?.data?.error || "Impossible d'enregistrer cette réponse de référence.");
@@ -362,6 +378,16 @@ export default function AITrainingStudio({
     void handleTestReplacement(entry.question, entry.answer);
   }
 
+  function handleSelectUnresolved(log: MissionSageLearningLog) {
+    setSelectedEntryId(null);
+    setQuestion(log.query);
+    setReferenceAnswer('');
+    setCurrentResponse(null);
+    setIsEntriesPanelOpen(false);
+    setFeedback('Question non résolue chargée. Rédigez la réponse de référence puis mémorisez-la.');
+    setError(null);
+  }
+
   const renderEntriesPanel = (mobile = false) => (
     <>
       <div className="border-b border-white/6 px-5 py-4 sm:px-6">
@@ -402,6 +428,31 @@ export default function AITrainingStudio({
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
+        {unresolvedLogs.length > 0 && (
+          <div className="mb-5 rounded-[1.5rem] border border-amber-400/15 bg-amber-400/10 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-amber-100">
+                Questions non résolues
+              </p>
+              <span className="rounded-full border border-amber-300/20 bg-amber-300/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.16em] text-amber-100">
+                {unresolvedLogs.length}
+              </span>
+            </div>
+            <div className="mt-3 space-y-2">
+              {unresolvedLogs.map((log) => (
+                <button
+                  key={`${log.id || log.query}-${String(log.timestamp)}`}
+                  onClick={() => handleSelectUnresolved(log)}
+                  className="block w-full rounded-2xl border border-amber-300/10 bg-slate-950/35 px-3 py-3 text-left text-xs font-semibold leading-5 text-amber-50 transition-colors hover:bg-slate-950/55"
+                  title="Charger cette question dans l'éditeur"
+                >
+                  {log.query}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {isLoadingEntries ? (
           <div className="flex items-center justify-center py-12 text-sm font-semibold text-slate-400">
             <Loader2 size={16} className="mr-2 animate-spin" />
