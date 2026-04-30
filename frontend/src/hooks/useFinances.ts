@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../store/db';
-import type { Team, Project, Household } from '../utils/types';
+import type { Team, Household } from '../utils/types';
 import * as safeStorage from '../utils/safeStorage';
 import { useProject } from '../contexts/ProjectContext';
 import logger from '../utils/logger';
@@ -100,12 +100,14 @@ export const DEVIS_ITEMS: DevisItem[] = [
 const DEVIS_PLAFOND = 300823750;
 
 export function useFinances() {
-  const activeProjectId = safeStorage.getItem('active_project_id');
-  const projects = useLiveQuery(() => db.projects.toArray()) as Project[] | undefined;
-  const { updateProject } = useProject();
+  const { project: activeProject, projects, activeProjectId, updateProject } = useProject();
 
-  // Find the actual active project object from the list
-  const project = projects?.find((p) => p.id === activeProjectId) || projects?.[0];
+  // Source unique : ProjectContext. Cela évite qu'un ancien active_project_id local
+  // produise des indicateurs financiers différents selon le compte ou le navigateur.
+  const project =
+    activeProject ||
+    projects.find((p) => p.id === activeProjectId) ||
+    projects[0];
 
   const teams = useLiveQuery(() => db.teams.toArray()) as Team[] | undefined;
   const allHouseholds = useLiveQuery(() => db.households.toArray()) as Household[] | undefined;
@@ -124,7 +126,7 @@ export function useFinances() {
   useEffect(() => {
     const fetchServerHouseholdCount = async () => {
       try {
-        const token = safeStorage.getItem('tk');
+        const token = safeStorage.getItem('access_token');
         if (!token) return;
         const res = await fetch(`${import.meta.env.VITE_API_URL}/households/count`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -422,6 +424,6 @@ export function useFinances() {
     deleteDevisItem,
     importDevisList,
     resetToDefault,
-    isLoading: !projects || !teams || !households,
+    isLoading: !teams || !households,
   };
 }
