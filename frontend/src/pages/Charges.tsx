@@ -21,7 +21,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { exportFinancialPDF } from '../services/exportService';
 import { Database } from 'lucide-react';
 
-import { PageContainer, PageHeader, Section, DESIGN_TOKENS, COMMON_CLASSES } from '../components';
+import { PageContainer, Section, DESIGN_TOKENS, COMMON_CLASSES } from '../components';
 
 export default function Charges() {
   const { isLoading, stats, devis, project, toggleClientProvidesMaterials } = useFinances();
@@ -43,59 +43,67 @@ export default function Charges() {
 
   return (
     <PageContainer>
-      <PageHeader
-        title="CHARGES & FINANCES"
-        subtitle="Bilan financier prévisionnel et suivi des marges réelles."
-        icon={DollarSign}
-        actions={
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+      <div className={`${COMMON_CLASSES.card} mb-6 overflow-hidden p-4 sm:p-5 lg:p-6`}>
+        <div className="flex min-w-0 flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
+          <div className="flex min-w-0 items-start gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-300">
+              <DollarSign size={22} />
+            </div>
+            <div className="min-w-0">
+              <h1 className="text-2xl font-black leading-tight tracking-tight text-white sm:text-3xl lg:text-4xl">
+                Charges
+              </h1>
+              <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-400">
+                Bilan financier prévisionnel et suivi des marges réelles.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center xl:justify-end">
             <button
               onClick={toggleClientProvidesMaterials}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl font-black text-xs uppercase tracking-widest transition-all border whitespace-nowrap ${isClientProvided ? 'bg-amber-500 border-amber-400 text-white shadow-lg shadow-amber-500/20' : COMMON_CLASSES.btnSecondary}`}
+              className={`flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-[11px] font-black uppercase tracking-[0.12em] transition-all sm:px-4 ${isClientProvided ? 'bg-amber-500 border-amber-400 text-white shadow-lg shadow-amber-500/20' : COMMON_CLASSES.btnSecondary}`}
             >
-              <Package size={13} />
-              <span className="hidden sm:inline">
+              <Package size={13} className="shrink-0" />
+              <span className="truncate">
                 {isClientProvided ? 'Matériaux Fournis par Client' : 'Fourniture Entrepreneur'}
-              </span>
-              <span className="sm:hidden">
-                {isClientProvided ? 'Client fournit' : 'Entrepreneur'}
               </span>
             </button>
 
             <div
-              className={`${COMMON_CLASSES.card} p-1 rounded-2xl flex overflow-x-auto scrollbar-none transition-all w-full sm:w-auto`}
+              className={`${COMMON_CLASSES.card} grid min-w-0 grid-cols-1 gap-1 rounded-xl p-1 transition-all sm:grid-cols-3 lg:w-auto`}
             >
               <button
                 onClick={() => setActiveTab('overview')}
-                className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-black text-xs transition-all ${activeTab === 'overview' ? COMMON_CLASSES.btnPrimary : 'text-slate-400 hover:text-slate-900 dark:text-slate-500 dark:hover:text-white'}`}
+                className={`flex min-h-10 items-center justify-center gap-2 rounded-lg px-3 py-2 text-[11px] font-black uppercase tracking-[0.08em] transition-all ${activeTab === 'overview' ? COMMON_CLASSES.btnPrimary : 'text-slate-400 hover:text-slate-900 dark:text-slate-500 dark:hover:text-white'}`}
               >
-                <PieIcon size={14} />
-                ANALYSE
+                <PieIcon size={14} className="shrink-0" />
+                <span className="truncate">Analyse</span>
               </button>
               <button
                 onClick={() => setActiveTab('comparison')}
-                className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-black text-xs transition-all ${activeTab === 'comparison' ? COMMON_CLASSES.btnPrimary : 'text-slate-400 hover:text-slate-900 dark:text-slate-500 dark:hover:text-white'}`}
+                className={`flex min-h-10 items-center justify-center gap-2 rounded-lg px-3 py-2 text-[11px] font-black uppercase tracking-[0.08em] transition-all ${activeTab === 'comparison' ? COMMON_CLASSES.btnPrimary : 'text-slate-400 hover:text-slate-900 dark:text-slate-500 dark:hover:text-white'}`}
               >
-                <TableIcon size={14} />
-                PRESTATION (DEVIS)
+                <TableIcon size={14} className="shrink-0" />
+                <span className="truncate">Prestation</span>
               </button>
               <button
                 onClick={() => setActiveTab('inventory')}
-                className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-black text-xs transition-all ${activeTab === 'inventory' ? COMMON_CLASSES.btnPrimary : 'text-slate-400 hover:text-slate-900 dark:text-slate-500 dark:hover:text-white'}`}
+                className={`flex min-h-10 items-center justify-center gap-2 rounded-lg px-3 py-2 text-[11px] font-black uppercase tracking-[0.08em] transition-all ${activeTab === 'inventory' ? COMMON_CLASSES.btnPrimary : 'text-slate-400 hover:text-slate-900 dark:text-slate-500 dark:hover:text-white'}`}
               >
-                <Database size={14} />
-                MATÉRIELS
+                <Database size={14} className="shrink-0" />
+                <span className="truncate">Matériels</span>
               </button>
             </div>
             <button
               aria-label="Actualiser les données"
-              className={`${COMMON_CLASSES.btnSecondary} p-2.5 shrink-0`}
+              className={`${COMMON_CLASSES.btnSecondary} flex h-11 w-full shrink-0 items-center justify-center rounded-xl p-2.5 lg:w-11`}
             >
               <RefreshCcw size={16} />
             </button>
           </div>
-        }
-      />
+        </div>
+      </div>
 
       <AnimatePresence mode="wait">
         {activeTab === 'overview' ? (
