@@ -13,6 +13,35 @@ import type { MissionState, AuditEntry } from '../core/missionTypes';
 import { generateIntegrityHash } from '../../../utils/crypto';
 import type { Mission } from '../../../services/missionService';
 
+const HIDDEN_MISSION_IDS_KEY = 'gem_hidden_mission_ids';
+
+function readHiddenMissionIds(): Set<string> {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(HIDDEN_MISSION_IDS_KEY) || '[]');
+    return new Set(Array.isArray(parsed) ? parsed : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function isEmptyDraftMission(mission: Mission): boolean {
+  const data = (mission.data || {}) as Record<string, any>;
+  const status = mission.status || data.status || 'draft';
+  if (status !== 'draft') return false;
+
+  const hasMeaningfulContent = Boolean(
+    data.purpose ||
+      data.region ||
+      data.destination ||
+      data.startDate ||
+      data.endDate ||
+      data.itineraryAller ||
+      (Array.isArray(data.members) && data.members.length > 0)
+  );
+
+  return !hasMeaningfulContent;
+}
+
 /**
  * HOOK : Synchronisation Mission Industrielle (Version Robuste)
  */
@@ -414,6 +443,7 @@ export const useMissionSync = (
 
     try {
       const missions = await missionService.getMissions(activeProjectId || undefined);
+      const hiddenMissionIds = readHiddenMissionIds();
       const serverIds = new Set(missions.map((mission: any) => mission.id).filter(Boolean));
 
       let merged = 0;
@@ -421,6 +451,16 @@ export const useMissionSync = (
       let repairedLocalOnly = 0;
 
       for (const m of missions) {
+        if (hiddenMissionIds.has((m as any).id) && ((m as any).status === 'draft' || (m as any).data?.status === 'draft' || !(m as any).status)) {
+          await db.missions.delete((m as any).id);
+          continue;
+        }
+
+        if (isEmptyDraftMission(m)) {
+          await db.missions.delete((m as any).id);
+          continue;
+        }
+
         const serverVersion = (m as any).version || (m as any).data?.version || 1;
         const local = await db.missions.get((m as any).id);
 

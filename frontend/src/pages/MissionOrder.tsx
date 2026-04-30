@@ -38,6 +38,20 @@ import {
   selectBudgetVariance,
 } from './mission/core/missionSelectors';
 
+const HIDDEN_MISSION_IDS_KEY = 'gem_hidden_mission_ids';
+
+function rememberHiddenMissionId(id: string) {
+  try {
+    const raw = localStorage.getItem(HIDDEN_MISSION_IDS_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    const ids = new Set<string>(Array.isArray(parsed) ? parsed : []);
+    ids.add(id);
+    localStorage.setItem(HIDDEN_MISSION_IDS_KEY, JSON.stringify(Array.from(ids)));
+  } catch {
+    // Best effort only; server deletion still remains the primary path.
+  }
+}
+
 // Components
 import { MissionOrderActionBar } from './mission/components/MissionOrderActionBar';
 import { MissionListSidebar } from './mission/components/MissionListSidebar';
@@ -425,11 +439,29 @@ export default function MissionOrder() {
       return;
 
     try {
+      const mission = await db.missions.get(id);
+      const missionData = ((mission as any)?.data || {}) as Record<string, any>;
+      const isServerMission = Boolean(id && !id.startsWith('temp'));
+      const isDraft =
+        (mission as any)?.status === 'draft' ||
+        (!(mission as any)?.status && !(mission as any)?.isSubmitted && !missionData.isSubmitted);
+
+      if (isServerMission) {
+        const serverDeleted = await missionService.deleteMission(id);
+        if (!serverDeleted && isDraft) {
+          rememberHiddenMissionId(id);
+        } else if (!serverDeleted && !isDraft) {
+          toast.error('Suppression serveur refusée. La mission officielle reste conservée.');
+          return;
+        }
+      }
+
       await db.missions.delete(id);
       if (state.currentMissionId === id) {
         missionState.resetMission('', '', []);
       }
       missionState.addAuditEntry(`Mission ${orderNumber} supprimée`, 'Utilisateur');
+      toast.success('Mission supprimée de la liste.');
     } catch (err) {
       logger.error('Erreur suppression:', err);
       alert('Erreur lors de la suppression.');
