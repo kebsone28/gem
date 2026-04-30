@@ -47,7 +47,7 @@ services:
   martin:
     image: maplibre/martin
     ports:
-      - "3000:3000"
+      - "3002:3000"
     environment:
       - WATCH_MODE=true
       - DATABASE_URL=postgresql://${DB_USER:-proquelec}:${DB_PASSWORD:-proquelec_secure_2024}@db:5432/${DB_NAME:-electrification}?schema=public
