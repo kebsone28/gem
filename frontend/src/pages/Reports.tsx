@@ -18,6 +18,7 @@ import {
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../store/db';
 import { useAuth } from '../contexts/AuthContext';
+import { usePermissions } from '../hooks/usePermissions';
 import { useFinances } from '../hooks/useFinances';
 import {
   generateRapportAvancement,
@@ -62,8 +63,11 @@ export default function Reports() {
   const households = useLiveQuery(() => db.households.toArray()) || [];
   const zones = useLiveQuery(() => db.zones.toArray()) || [];
   const { user } = useAuth();
+  const { peut, PERMISSIONS } = usePermissions();
   const { getLabel } = useLabels();
   const isLSE = user?.role === 'CLIENT_LSE';
+  const canViewFinances = peut(PERMISSIONS.VOIR_FINANCES);
+  const canManageFinances = peut(PERMISSIONS.GERER_FINANCES);
   const isAdmin = user?.role === 'ADMIN_PROQUELEC' || user?.role === 'DG_PROQUELEC';
   const finances = useFinances();
   const [exportFormat, setExportFormat] = useState('PDF');
@@ -121,10 +125,11 @@ export default function Reports() {
         icon: BarChart3,
         color: 'text-indigo-500',
         lseVisible: false,
+        financeOnly: true,
       },
     ];
-    return allStats.filter((s) => !isLSE || s.lseVisible);
-  }, [completionRate, households.length, zones.length, finances, isLSE, getLabel]);
+    return allStats.filter((s) => (!isLSE || s.lseVisible) && (!(s as any).financeOnly || canViewFinances));
+  }, [completionRate, households.length, zones.length, finances, isLSE, canViewFinances, getLabel]);
 
   const reportCards: ReportCard[] = [
     {
@@ -161,7 +166,7 @@ export default function Reports() {
       color: 'bg-emerald-500/10 border-emerald-500/30',
       textColor: 'text-emerald-400',
       lseVisible: false,
-      roles: ['ADMIN_PROQUELEC', 'DG_PROQUELEC'],
+      roles: ['ADMIN_PROQUELEC', 'DG_PROQUELEC', 'COMPTABLE', 'CHEF_PROJET'],
       preview: [
         'Marge globale (FCFA)',
         'Tableau Devis vs Réel',
@@ -169,7 +174,7 @@ export default function Reports() {
         'Coûts Équipes + Matériaux',
       ],
       handler: async () => {
-        if (!isAdmin) return;
+        if (!canViewFinances) return;
         generateRapportFinancier({
           devisReport: finances.devis?.report || [],
           totalPlanned: finances.devis?.totalPlanned || 0,
@@ -191,7 +196,7 @@ export default function Reports() {
       color: 'bg-amber-500/10 border-amber-500/30',
       textColor: 'text-amber-400',
       lseVisible: false,
-      roles: ['ADMIN_PROQUELEC', 'DG_PROQUELEC'],
+      roles: ['ADMIN_PROQUELEC', 'DG_PROQUELEC', 'COMPTABLE', 'CHEF_PROJET'],
       preview: [
         'Kits chargés / livrés / posés',
         'Conso. matériaux par région',
@@ -411,7 +416,7 @@ export default function Reports() {
                       Résumé Avancement Terrain
                     </span>
                   </label>
-                  {isAdmin && (
+                  {canViewFinances && (
                     <label
                       className="flex items-center gap-4 cursor-pointer group"
                       onClick={() => setIncludeFinancial((v) => !v)}
@@ -445,8 +450,10 @@ export default function Reports() {
                 <div>
                   <span className="uppercase text-xs font-black opacity-60">Permissions :</span>
                   <br />
-                  {isAdmin
-                    ? 'Contrôle Total — Accès expert au hub financier & Kobo.'
+                  {canViewFinances
+                    ? canManageFinances
+                      ? 'Accès financier — Devis, réel, marges et rapports économiques.'
+                      : 'Lecture financière — Consultation des indicateurs économiques autorisés.'
                     : isLSE
                       ? "Mode Client — Données d'avancement certifiées uniquement."
                       : 'Mode Opérationnel — Rapports terrain et logistique.'}
@@ -455,7 +462,7 @@ export default function Reports() {
 
               <button
                 onClick={() => {
-                  if (includeFinancial && isAdmin) {
+                  if (includeFinancial && canViewFinances) {
                     run('global', () =>
                       generateRapportFinancier({
                         devisReport: finances.devis?.report || [],
