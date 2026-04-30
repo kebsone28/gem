@@ -203,7 +203,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
         </div>
 
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1.18fr)_minmax(320px,0.82fr)] lg:gap-4">
-          <div className="grid grid-cols-1 gap-3 min-[560px]:grid-cols-2 2xl:grid-cols-4">
+          <div className="grid grid-cols-1 gap-3 min-[560px]:grid-cols-2">
             {quickActions.map(({ kicker, label, description, icon: Icon, onClick, disabled, variant }) => (
               <button
                 key={label}
