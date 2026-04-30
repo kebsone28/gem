@@ -31,6 +31,7 @@ class SyncEventBus {
 
   // Initialize WebSocket connection to listen for backend events
   initSocket(socketInstance: { on: (event: string, cb: (data: unknown) => void) => void }) {
+    if (this.socket === socketInstance) return;
     this.socket = socketInstance;
 
     // Listen for backend events
@@ -48,6 +49,21 @@ class SyncEventBus {
       this.socket.on('project:reset', (data: unknown) => {
         logger.debug('[SYNC-BUS] Received project:reset from backend');
         this.emit('project:reset', data);
+      });
+
+      this.socket.on('mission:submitted', (data: unknown) => {
+        logger.debug('[SYNC-BUS] Received mission:submitted from backend');
+        this.emit('mission:submitted', data);
+      });
+
+      this.socket.on('mission:update', (data: unknown) => {
+        logger.debug('[SYNC-BUS] Received mission:update from backend');
+        this.emit('mission:update', data);
+      });
+
+      this.socket.on('mission:certified', (data: unknown) => {
+        logger.debug('[SYNC-BUS] Received mission:certified from backend');
+        this.emit('mission:certified', data);
       });
     }
   }
@@ -99,5 +115,7 @@ export const SYNC_EVENTS = {
 
   // Mission Events (Phase 3 Decoupling)
   MISSION_SAVED: 'mission:saved',
+  MISSION_SUBMITTED: 'mission:submitted',
+  MISSION_UPDATED: 'mission:update',
   MISSION_CERTIFIED: 'mission:certified',
 } as const;

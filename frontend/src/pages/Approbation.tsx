@@ -25,7 +25,7 @@ import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import SignatureModal from '../components/common/SignatureModal';
 import { fmtFCFA } from '../utils/format';
-import { syncEventBus } from '../utils/syncEventBus';
+import { syncEventBus, SYNC_EVENTS } from '../utils/syncEventBus';
 import StockMonitorWidget from '../components/logistique/StockMonitorWidget';
 import logger from '../utils/logger';
 
@@ -94,14 +94,14 @@ export default function Approbation() {
   const [counts, setCounts] = useState({ pending: 0, archive: 0 });
   const isValidator = isAdmin || isDirector;
 
-  const fetchPending = async () => {
+  const fetchPending = async (silent = false) => {
     if (!isValidator) {
       setPendingMissions([]);
       setSelectedMission(null);
       setIsLoading(false);
       return;
     }
-    setIsLoading(true);
+    if (!silent) setIsLoading(true);
     try {
       // Optimized : Single fetch for current mode
       const result = await missionApprovalService.getPendingApprovals(isArchiveMode) as any;
@@ -147,22 +147,38 @@ export default function Approbation() {
 
   useEffect(() => {
     if (!isValidator) return;
-    const interval = window.setInterval(fetchPending, 30000);
+    const interval = window.setInterval(() => fetchPending(true), 10000);
     return () => window.clearInterval(interval);
   }, [isArchiveMode, isValidator]);
 
   useEffect(() => {
     // 🔄 Auto-synchronisation intelligente du composant d'Approbation
     const handleSync = () => {
-      fetchPending();
+      fetchPending(true);
     };
 
-    const unsubSaved = syncEventBus.subscribe('mission:saved', handleSync);
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') fetchPending(true);
+    };
+
+    const handleFocus = () => fetchPending(true);
+
+    const unsubSaved = syncEventBus.subscribe(SYNC_EVENTS.MISSION_SAVED, handleSync);
+    const unsubSubmitted = syncEventBus.subscribe(SYNC_EVENTS.MISSION_SUBMITTED, handleSync);
+    const unsubUpdated = syncEventBus.subscribe(SYNC_EVENTS.MISSION_UPDATED, handleSync);
+    const unsubCertified = syncEventBus.subscribe(SYNC_EVENTS.MISSION_CERTIFIED, handleSync);
     const unsubNotification = syncEventBus.subscribe('notification', handleSync);
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('focus', handleFocus);
 
     return () => {
       unsubSaved();
+      unsubSubmitted();
+      unsubUpdated();
+      unsubCertified();
       unsubNotification();
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('focus', handleFocus);
     };
   }, [isArchiveMode, isValidator]); // On recommence pour garantir que le fetch lit bien `isArchiveMode` actuel
 
@@ -715,7 +731,7 @@ Ces missions n'ont pas encore été validées ni rejetées. Si vous videz la lis
               )}
               <button
                 title="Actualiser la liste"
-                onClick={fetchPending}
+                onClick={() => fetchPending()}
                 className="p-2 text-blue-500 hover:bg-blue-500/10 rounded-xl transition-all"
               >
                 <ClipboardList size={18} />

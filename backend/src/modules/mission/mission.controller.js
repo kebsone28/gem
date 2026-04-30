@@ -10,6 +10,7 @@ import { missionMentorService } from '../assistant/missionMentorService.js';
 import { normalizeRole } from '../../core/utils/roles.js';
 import QRCode from 'qrcode';
 import { buildPublicUrl } from '../../utils/publicUrl.js';
+import { socketService } from '../../services/socket.service.js';
 
 const isDev = process.env.NODE_ENV !== 'production';
 const SUBMITTED_MISSION_STATUSES = ['soumise', 'en_attente_validation'];
@@ -860,6 +861,27 @@ const validateMissionBudget = (budget) => {
 const isSubmittedMissionStatus = (status) =>
     status === 'soumise' || status === 'en_attente_validation';
 
+const emitMissionRealtimeEvent = (event, mission, organizationId, extra = {}) => {
+    try {
+        if (!mission?.id || !organizationId) return;
+        socketService.emit(
+            event,
+            {
+                id: mission.id,
+                missionId: mission.id,
+                title: mission.title,
+                status: mission.status,
+                organizationId,
+                updatedAt: mission.updatedAt,
+                ...extra,
+            },
+            `org_${organizationId}`
+        );
+    } catch (error) {
+        logger.warn('[MISSION_SOCKET_EMIT_FAILED]', error?.message || error);
+    }
+};
+
 const buildMissionSubmissionData = (data, status) => {
     const safeMissionData = typeof data === 'object' && data !== null ? data : {};
     const shouldMarkSubmitted =
@@ -916,7 +938,7 @@ export const createMission = async (req, res) => {
                     : 'draft';
         const finalData = buildMissionSubmissionData(data, finalStatus);
 
-        const mission = await prisma.mission.create({
+        let mission = await prisma.mission.create({
             data: {
                 projectId: safeProjectId,
                 organizationId,
@@ -933,7 +955,7 @@ export const createMission = async (req, res) => {
 
         if (isSubmittedMissionStatus(finalStatus)) {
             try {
-                await createDefaultWorkflow(mission.id, organizationId);
+                await ensureMissionApprovalWorkflow(mission.id, organizationId);
             } catch (workflowError) {
                 logger.error('[MISSION_CREATE_WORKFLOW_ERROR]', workflowError);
             }
@@ -952,6 +974,23 @@ export const createMission = async (req, res) => {
                 .catch((notifError) =>
                     logger.error('[MISSION_CREATE] workflow notification failed:', notifError)
                 );
+
+            mission = await prisma.mission.findUnique({
+                where: { id: mission.id },
+                include: {
+                    approvalWorkflow: {
+                        include: {
+                            approvalSteps: {
+                                orderBy: { sequence: 'asc' }
+                            }
+                        }
+                    }
+                }
+            }) || mission;
+
+            emitMissionRealtimeEvent('mission:submitted', mission, organizationId, {
+                createdBy: userId,
+            });
         }
 
         res.json(mission);
@@ -1072,37 +1111,53 @@ export const updateMission = async (req, res) => {
             return { updatedMission, finalOrderNumber };
         });
 
-        const mission = missionResult.updatedMission;
+        let mission = missionResult.updatedMission;
         const finalOrderNumber = missionResult.finalOrderNumber;
 
         // WORKFLOW AUTO-GENERATION: Simplified DG logic
         if (status === 'soumise' || status === 'en_attente_validation') {
-            const existingWF = await prisma.missionApprovalWorkflow.findUnique({
-                where: { missionId: id }
-            });
-            if (!existingWF) {
-                logger.info(`✨ [WORKFLOW] Auto-creating workflow for submitted mission: ${id}`);
-                await createDefaultWorkflow(id, organizationId);
-            }
-            try {
-                await tracerAction(organizationId, userId, 'MISSION_SUBMITTED', 'Mission', id, { title, status });
-            } catch (e) { console.warn('[AUDIT] Mission submit log failed:', e.message); }
+            const isSubmissionTransition = !isSubmittedMissionStatus(missionBefore.status);
+            await ensureMissionApprovalWorkflow(id, organizationId);
 
-            // EMAIL NOTIFICATION: Alert full chain when a mission is submitted
-            try {
-                const emails = await findMissionStakeholderEmails(organizationId, [
-                    'DG_PROQUELEC',
-                    'DIRECTEUR',
-                    'ADMIN_PROQUELEC',
-                    'COMPTABLE',
-                ]);
-                for (const email of emails) {
-                    missionNotificationService.notifySubmission(mission, email)
-                        .catch(err => logger.error('[NOTIF] Stakeholder notification failed:', err));
+            if (isSubmissionTransition) {
+                try {
+                    await tracerAction(organizationId, userId, 'MISSION_SUBMITTED', 'Mission', id, { title, status });
+                } catch (e) { console.warn('[AUDIT] Mission submit log failed:', e.message); }
+
+                // EMAIL NOTIFICATION: Alert full chain when a mission is submitted
+                try {
+                    const emails = await findMissionStakeholderEmails(organizationId, [
+                        'DG_PROQUELEC',
+                        'DIRECTEUR',
+                        'ADMIN_PROQUELEC',
+                        'COMPTABLE',
+                    ]);
+                    for (const email of emails) {
+                        missionNotificationService.notifySubmission(mission, email)
+                            .catch(err => logger.error('[NOTIF] Stakeholder notification failed:', err));
+                    }
+                } catch (notifErr) {
+                    logger.error('[NOTIF] Stakeholder lookup failed (non-blocking):', notifErr);
                 }
-            } catch (notifErr) {
-                logger.error('[NOTIF] Stakeholder lookup failed (non-blocking):', notifErr);
             }
+
+            mission = await prisma.mission.findUnique({
+                where: { id },
+                include: {
+                    approvalWorkflow: {
+                        include: {
+                            approvalSteps: {
+                                orderBy: { sequence: 'asc' }
+                            }
+                        }
+                    }
+                }
+            }) || mission;
+
+            emitMissionRealtimeEvent('mission:submitted', mission, organizationId, {
+                previousStatus: missionBefore.status,
+                submittedBy: userId,
+            });
         } else if (status === 'approuvee' && missionBefore.status !== 'approuvee') {
             // THE CERTIFIABLE AUDIT LOG (PROQUELEC)
             try {
@@ -1121,6 +1176,11 @@ export const updateMission = async (req, res) => {
                 data: { overallStatus: 'approved', currentStep: 99, orderNumber: finalOrderNumber, orderNumberGeneratedAt: new Date() }
             });
 
+            emitMissionRealtimeEvent('mission:certified', mission, organizationId, {
+                orderNumber: finalOrderNumber,
+                certifiedBy: userId,
+            });
+
             // EMAIL: Notify initiator their mission is certified
             if (missionBefore.createdBy) {
                 prisma.user.findUnique({ where: { id: missionBefore.createdBy }, select: { email: true } })
@@ -1134,6 +1194,9 @@ export const updateMission = async (req, res) => {
             }
         } else {
             await tracerAction(organizationId, userId, 'MISSION_UPDATE', 'Mission', id, { title, status });
+            emitMissionRealtimeEvent('mission:update', mission, organizationId, {
+                updatedBy: userId,
+            });
         }
 
         res.json(mission);
@@ -1305,6 +1368,22 @@ async function createDefaultWorkflow(missionId, organizationId) {
             }
         }
     });
+}
+
+async function ensureMissionApprovalWorkflow(missionId, organizationId) {
+    const existingWorkflow = await prisma.missionApprovalWorkflow.findUnique({
+        where: { missionId },
+        include: {
+            approvalSteps: {
+                orderBy: { sequence: 'asc' }
+            }
+        }
+    });
+
+    if (existingWorkflow) return existingWorkflow;
+
+    logger.info(`✨ [WORKFLOW] Auto-creating workflow for submitted mission: ${missionId}`);
+    return await createDefaultWorkflow(missionId, organizationId);
 }
 
 async function findMissionStakeholderEmails(organizationId, roleNames) {
@@ -2002,6 +2081,26 @@ export const getPendingApprovals = async (req, res) => {
             },
             orderBy: { updatedAt: 'desc' }
         });
+
+        if (!isArchiveQuery) {
+            await Promise.all(
+                missions
+                    .filter(m => isSubmittedMissionStatus(m.status) && !m.approvalWorkflow)
+                    .map(async (mission) => {
+                        try {
+                            mission.approvalWorkflow = await ensureMissionApprovalWorkflow(mission.id, organizationId);
+                            emitMissionRealtimeEvent('mission:submitted', mission, organizationId, {
+                                repairedWorkflow: true,
+                            });
+                        } catch (workflowError) {
+                            logger.error('[MISSION_PENDING_WORKFLOW_REPAIR_ERROR]', {
+                                missionId: mission.id,
+                                error: workflowError?.message || workflowError,
+                            });
+                        }
+                    })
+            );
+        }
 
         // 🟢 FIX : Récupération MANUELLE des noms d'auteurs (évite de modifier le schéma Prisma Client en plein dev)
         const authorIds = [...new Set(missions.map(m => m.createdBy).filter(Boolean))];

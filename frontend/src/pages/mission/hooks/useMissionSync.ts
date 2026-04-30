@@ -52,6 +52,9 @@ export const useMissionSync = (
         id: mission.id || fallbackId,
         projectId: mission.projectId || activeProjectId,
         ...missionData,
+        status: mission.status || missionData.status,
+        orderNumber: mission.orderNumber || missionData.orderNumber,
+        approvalWorkflow: (mission as any).approvalWorkflow || missionData.approvalWorkflow,
         version: mission.version || missionData.version || 1,
         updatedAt: mission.updatedAt || fallbackUpdatedAt,
       };
@@ -106,8 +109,36 @@ export const useMissionSync = (
         createdBy: formData.createdBy || user?.id || '', 
       };
 
+      const rollbackWorkflowSubmission = async () => {
+        if (!strictWorkflowAction) return;
+
+        const rollbackData = {
+          ...missionData,
+          isCertified,
+          isSubmitted,
+          status: isCertified ? 'approuvee' : isSubmitted ? 'soumise' : 'draft',
+        };
+
+        await db.missions.put(rollbackData as any);
+        actions.loadMission(
+          finalId,
+          rollbackData as any,
+          members,
+          localVersion,
+          now,
+          auditTrail
+        );
+      };
+
       try {
         actions.setStatus('saving');
+
+        if (strictWorkflowAction && !navigator.onLine) {
+          actions.setStatus('error');
+          actions.setSyncStatus('failed');
+          toast.error('Connexion requise : la soumission doit être envoyée au serveur pour apparaître en approbation.');
+          return { assignedId: finalId, serverSuccess: false };
+        }
 
         if (strictWorkflowAction) {
           const validation = validateMission({ formData, members, version: localVersion });
@@ -303,6 +334,13 @@ export const useMissionSync = (
               version: localVersion,
             });
 
+            if (finalIsSubmitted) {
+              syncEventBus.emit(SYNC_EVENTS.MISSION_SUBMITTED, {
+                id: assignedId,
+                version: localVersion,
+              });
+            }
+
             if (finalIsCertified) {
               syncEventBus.emit(SYNC_EVENTS.MISSION_CERTIFIED, {
                 id: assignedId,
@@ -310,6 +348,16 @@ export const useMissionSync = (
             }
           } else {
             actions.setSyncStatus('failed');
+            await rollbackWorkflowSubmission();
+            if (strictWorkflowAction) {
+              toast.error(
+                finalIsSubmitted
+                  ? "La soumission n'a pas été enregistrée sur le serveur. Elle reste en brouillon local."
+                  : "La certification n'a pas été enregistrée sur le serveur."
+              );
+              actions.setStatus('error');
+              return { assignedId: finalId, serverSuccess: false };
+            }
             await syncQueue.enqueue(finalId, {
               type: 'RETRY_SYNC',
               payload: missionData as any,
