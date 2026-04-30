@@ -3,38 +3,11 @@ import { Users, MapPin, Layers, Zap, Trash2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useTeams } from '../../hooks/useTeams';
 import { useProject } from '../../contexts/ProjectContext';
-import { computeTheoreticalNeeds, getAvailablePlanningRegions } from '../../services/planningDomain';
+import { getAvailablePlanningRegions } from '../../services/planningDomain';
 import logger from '../../utils/logger';
+import apiClient from '../../api/client';
 
-// Helpers (Copied from Settings.tsx to avoid circular dependencies during refactoring)
-const makeId = (prefix = 'id') => `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
 const normalizeGeoKey = (value: unknown) => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
-
-const AUTO_TEAM_BLUEPRINTS = [
-  { needKey: 'livraison', tradeKey: 'livraison', role: 'LOGISTICS', label: 'Logistique' },
-  { needKey: 'macons', tradeKey: 'macons', role: 'INSTALLATION', label: 'Maçonnerie' },
-  { needKey: 'reseau', tradeKey: 'reseau', role: 'INSTALLATION', label: 'Réseau' },
-  { needKey: 'interieur', tradeKey: 'interieur_type1', role: 'INSTALLATION', label: 'Installations intérieures' },
-  { needKey: 'controle', tradeKey: 'controle', role: 'SUPERVISION', label: 'Contrôle' },
-] as const;
-
-// Helper from TeamsSection
-const buildLegacyTeamSnapshot = (parents: any[]) => {
-  return parents.map(p => ({
-    id: p.id,
-    name: p.name,
-    role: p.role,
-    regionId: p.regionId,
-    subTeams: (p.children || []).map((c: any) => ({
-      id: c.id,
-      name: c.name,
-      role: c.role,
-      tradeKey: c.tradeKey,
-      regionId: c.regionId,
-      capacity: c.capacity
-    }))
-  }));
-};
 
 export default function TeamsTab({
   project,
@@ -247,120 +220,50 @@ export default function TeamsTab({
       return;
     }
 
-    if (!detectedRegions.length) {
+    // Data Quality Check: Households without regions
+    const missingRegionCount = households.filter((h) => !h.region || h.region.trim() === '').length;
+    
+    if (missingRegionCount > 0) {
+      const proceed = window.confirm(
+        `🚨 ATTENTION - Qualité des Données 🚨\n\n${missingRegionCount} ménage(s) n'ont pas de région assignée.\nIls seront ignorés dans le calcul des effectifs.\n\nVoulez-vous quand même continuer la génération automatique ?`
+      );
+      if (!proceed) return;
+    } else if (!detectedRegions.length) {
       toast.error('Aucune région détectée dans les ménages du projet.');
       return;
     }
 
     const confirmMessage =
       teamTree.length > 0
-        ? `Cette action va supprimer ${teamTree.length} groupement(s) existant(s) puis recréer automatiquement les équipes par région. Continuer ?`
+        ? `Cette action va supprimer ${teamTree.length} groupement(s) existant(s) puis recréer automatiquement les équipes par région.\nTout sera traité en une seule transaction sécurisée.\n\nContinuer ?`
         : `Créer automatiquement les équipes pour ${detectedRegions.length} région(s) et ${households.length} ménage(s) ?`;
 
     if (!window.confirm(confirmMessage)) return;
 
     setIsAutoGenerating(true);
-    const toastId = toast.loading('Génération automatique des équipes...');
+    const toastId = toast.loading('Génération automatique des équipes sur le serveur...');
 
     try {
-      if (teamTree.length > 0) {
-        const existingIds: string[] = [];
-        teamTree.forEach((parent: any) => {
-          (parent.children || []).forEach((child: any) => existingIds.push(child.id));
-          existingIds.push(parent.id);
-        });
-        for (const id of existingIds) {
-          await deleteTeam(id);
-        }
-      }
-
-      const regionLookup = new Map(
-        (regions || []).map((region: any) => [normalizeGeoKey(region.name), region])
-      );
-      const generatedParents: any[] = [];
-      const nextRegionsConfig = { ...(project?.config?.regionsConfig || {}) };
-      let generatedSubTeams = 0;
-
-      for (const regionName of detectedRegions) {
-        const matchedRegion = regionLookup.get(normalizeGeoKey(regionName));
-        const regionalNeeds = computeTheoreticalNeeds({
-          households,
-          targetMonths: projectDurationMonths,
-          selectedRegion: regionName,
-          productionRates,
-        });
-
-        if (!regionalNeeds) continue;
-
-        const parentTeam = await createTeam({
-          name: `Cellule ${regionName}`,
-          role: 'INSTALLATION',
-          regionId: matchedRegion?.id,
-          capacity: 0,
-        });
-
-        const generatedChildren: any[] = [];
-
-        for (const blueprint of AUTO_TEAM_BLUEPRINTS) {
-          const requiredTeams = Math.max(
-            0,
-            Number(regionalNeeds[blueprint.needKey as keyof typeof regionalNeeds] || 0)
-          );
-          const teamCapacity =
-            Number(
-              blueprint.needKey === 'interieur'
-                ? regionalNeeds.effectiveRates.interieur
-                : regionalNeeds.effectiveRates[
-                    blueprint.needKey as keyof typeof regionalNeeds.effectiveRates
-                  ]
-            ) || Number(productionRates?.[blueprint.tradeKey]) || 1;
-
-          for (let index = 0; index < requiredTeams; index += 1) {
-            const child = await createTeam({
-              name: `${blueprint.label} ${index + 1} - ${regionName}`,
-              role: blueprint.role as any,
-              tradeKey: blueprint.tradeKey,
-              parentTeamId: parentTeam.id,
-              regionId: matchedRegion?.id,
-              capacity: Math.max(1, Math.round(teamCapacity)),
-            });
-
-            generatedChildren.push(child);
-            generatedSubTeams += 1;
-          }
-        }
-
-        generatedParents.push({
-          ...parentTeam,
-          regionId: matchedRegion?.id,
-          children: generatedChildren,
-        });
-
-        nextRegionsConfig[regionName] = {
-          ...(nextRegionsConfig[regionName] || {}),
-          autoGenerated: true,
-          planningWindowMonths: projectDurationMonths,
-          householdCount: households.filter((household) => household.region === regionName).length,
-          teamAllocations: generatedChildren.map((child: any, index: number) => ({
-            id: makeId('alloc'),
-            subTeamId: child.id,
-            priority: index + 1,
-          })),
-        };
-      }
-
-      await updateProject({
-        config: {
-          ...project.config,
-          teams: buildLegacyTeamSnapshot(generatedParents),
-          regionsConfig: nextRegionsConfig,
-        },
+      // Single backend transaction call
+      const response = await apiClient.post('/teams/auto-generate', {
+        projectId: project.id,
+        durationMonths: projectDurationMonths,
+        productionRates: productionRates
       });
 
-      await Promise.all([fetchTeamTree(), fetchRegions(), fetchGrappes()]);
+      // Refresh all dependent context data
+      await Promise.all([
+        fetchTeamTree(), 
+        fetchRegions(), 
+        fetchGrappes()
+      ]);
+      // Note: We also need to trigger project refresh so updated 'duration' and 'config' reflect in context.
+      // updateProject with empty object or fetching project again works if context handles it. 
+      // But we will let standard refetch or socket handle it, or just call updateProject with local merge to ensure UI is fast:
+      await updateProject({ duration: projectDurationMonths }); 
 
       toast.success(
-        `${generatedParents.length} cellule(s) régionale(s) et ${generatedSubTeams} équipe(s) terrain générées automatiquement.`,
+        response.data?.message || `${response.data?.totalTeamsCreated} équipes générées avec succès !`,
         { id: toastId, duration: 5000 }
       );
     } catch (err: any) {
@@ -413,10 +316,18 @@ export default function TeamsTab({
               {households.length} Ménages
             </span>
           </div>
-          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 rounded-xl border border-white/10">
+          <div className="flex items-center gap-1.5 px-3 py-1 bg-white/5 rounded-xl border border-white/10">
             <Zap size={12} className="text-amber-400" />
+            <input
+              type="number"
+              value={projectDurationMonths}
+              title="Durée cible du projet (Mois)"
+              onChange={(e) => updateProject({ duration: parseInt(e.target.value) || 1 })}
+              className="bg-transparent w-12 text-xs font-black text-amber-400 uppercase tracking-tight outline-none"
+              min={1}
+            />
             <span className="text-xs font-black text-slate-200 uppercase tracking-tight">
-              {projectDurationMonths} Mois Cible
+              Mois Cible
             </span>
           </div>
         </div>

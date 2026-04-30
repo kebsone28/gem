@@ -394,3 +394,210 @@ export const getTeamPositions = async (req, res) => {
     }
 };
 
+// @desc    Auto-generate teams based on regions and households
+// @route   POST /api/teams/auto-generate
+export const autoGenerateTeams = async (req, res) => {
+    try {
+        const { projectId, durationMonths, productionRates } = req.body;
+        const { organizationId } = req.user;
+
+        if (!projectId) return res.status(400).json({ error: 'projectId is required' });
+
+        const targetMonths = Math.max(1, Number(durationMonths) || 6);
+
+        const project = await prisma.project.findFirst({
+            where: { id: projectId, organizationId, deletedAt: null }
+        });
+
+        if (!project) {
+            return res.status(404).json({ error: 'Projet introuvable.' });
+        }
+
+        // 1. Fetch all households for the project to calculate needs
+        const households = await prisma.household.findMany({
+            where: {
+                organizationId,
+                deletedAt: null,
+                OR: [
+                    { zone: { is: { projectId } } },
+                    { zoneId: null }
+                ]
+            }
+        });
+
+        if (households.length === 0) {
+            return res.status(400).json({ error: 'Aucun ménage disponible pour ce projet.' });
+        }
+
+        // 2. Fetch regions
+        const regions = await prisma.region.findMany();
+
+        const workingDays = targetMonths * 22;
+        const rates = productionRates || { macons: 5, reseau: 8, interieur_type1: 6, controle: 15, livraison: 12 };
+
+        const AUTO_TEAM_BLUEPRINTS = [
+            { key: 'livraison', role: 'LOGISTICS', label: 'Logistique', tradeKey: 'livraison' },
+            { key: 'macons', role: 'INSTALLATION', label: 'Maçonnerie', tradeKey: 'macons' },
+            { key: 'reseau', role: 'INSTALLATION', label: 'Réseau', tradeKey: 'reseau' },
+            { key: 'interieur_type1', role: 'INSTALLATION', label: 'Installations intérieures', tradeKey: 'interieur_type1' },
+            { key: 'controle', role: 'SUPERVISION', label: 'Contrôle', tradeKey: 'controle' },
+        ];
+
+        // Prepare regions stats
+        const householdsByRegion = {};
+        households.forEach(h => {
+                    if (!h.region) return;
+                    const normalizedRegion = h.region.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+                    householdsByRegion[normalizedRegion] = (householdsByRegion[normalizedRegion] || 0) + 1;
+        });
+
+        const regionLookup = {};
+        regions.forEach(r => {
+            const normalizedRegion = r.name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+            regionLookup[normalizedRegion] = r.id;
+        });
+
+        let totalTeamsCreated = 0;
+
+        // 3. Prisma Transaction: Delete old teams and insert new ones
+        const transactionResult = await prisma.$transaction(async (tx) => {
+            // Delete old teams
+            await tx.team.deleteMany({
+                where: { projectId, organizationId }
+            });
+
+            const nextRegionsConfig = {};
+            const generatedTeamSnapshots = [];
+
+            // Generate teams per region
+            for (const [normalizedRegion, count] of Object.entries(householdsByRegion)) {
+                const regionId = regionLookup[normalizedRegion];
+                const originalRegionName = households.find(h => h.region?.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase() === normalizedRegion)?.region;
+
+                // Create Parent Team
+                const parentTeam = await tx.team.create({
+                    data: {
+                        name: `Cellule ${originalRegionName}`,
+                        role: 'INSTALLATION',
+                        projectId,
+                        organizationId,
+                        regionId: regionId || null,
+                        capacity: 0,
+                        level: 0,
+                        status: 'active'
+                    }
+                });
+
+                // Update Path
+                await tx.team.update({
+                    where: { id: parentTeam.id },
+                    data: { path: parentTeam.id }
+                });
+
+                const generatedChildren = [];
+
+                for (const blueprint of AUTO_TEAM_BLUEPRINTS) {
+                    const rate = rates[blueprint.tradeKey] || 1;
+                    const requiredTeams = Math.ceil(count / (workingDays * rate));
+
+                    for (let i = 0; i < requiredTeams; i++) {
+                        const child = await tx.team.create({
+                            data: {
+                                name: `${blueprint.label} ${i + 1} - ${originalRegionName}`,
+                                role: blueprint.role,
+                                tradeKey: blueprint.tradeKey,
+                                parentTeamId: parentTeam.id,
+                                projectId,
+                                organizationId,
+                                regionId: regionId || null,
+                                capacity: Math.max(1, Math.round(rate)),
+                                level: 1,
+                                status: 'active',
+                                path: `${parentTeam.id}/temp` // Placeholder, will update later if needed
+                            }
+                        });
+
+                        await tx.team.update({
+                            where: { id: child.id },
+                            data: { path: `${parentTeam.id}/${child.id}` }
+                        });
+
+                        generatedChildren.push(child);
+                        totalTeamsCreated++;
+                    }
+                }
+
+                generatedTeamSnapshots.push({
+                    id: parentTeam.id,
+                    name: parentTeam.name,
+                    role: parentTeam.role,
+                    regionId: parentTeam.regionId,
+                    subTeams: generatedChildren.map(c => ({
+                        id: c.id,
+                        name: c.name,
+                        role: c.role,
+                        tradeKey: c.tradeKey,
+                        regionId: c.regionId,
+                        capacity: c.capacity
+                    }))
+                });
+
+                nextRegionsConfig[originalRegionName] = {
+                    autoGenerated: true,
+                    planningWindowMonths: targetMonths,
+                    householdCount: count,
+                    teamAllocations: generatedChildren.map((child, index) => ({
+                        id: `alloc_${Date.now()}_${Math.random().toString(36).slice(2,6)}`,
+                        subTeamId: child.id,
+                        priority: index + 1
+                    }))
+                };
+            }
+
+            return { nextRegionsConfig, generatedTeamSnapshots };
+        }, { timeout: 30000 }); // Increase timeout for massive generation
+
+        const currentConfig = project.config || {};
+        
+        await prisma.project.update({
+            where: { id: projectId },
+            data: {
+                duration: targetMonths,
+                config: {
+                    ...currentConfig,
+                    teams: transactionResult.generatedTeamSnapshots,
+                    regionsConfig: {
+                        ...(currentConfig.regionsConfig || {}),
+                        ...transactionResult.nextRegionsConfig
+                    }
+                }
+            }
+        });
+
+        // 4. Audit Log
+        await tracerAction({
+            userId: req.user.id,
+            organizationId,
+            action: 'REGENERATION_AUTOMATIQUE_EQUIPES',
+            resource: 'Projet',
+            resourceId: projectId,
+            details: {
+                message: `${totalTeamsCreated} équipes générées automatiquement. Anciennes équipes écrasées.`,
+                durationMonths: targetMonths,
+                productionRates
+            },
+            req
+        });
+
+        res.status(200).json({ 
+            message: 'Équipes générées avec succès', 
+            totalTeamsCreated,
+            durationMonths: targetMonths
+        });
+
+    } catch (error) {
+        console.error('Auto Generate Teams error:', error);
+        res.status(500).json({ error: 'Erreur lors de la génération automatique des équipes', details: error.message });
+    }
+};
+
