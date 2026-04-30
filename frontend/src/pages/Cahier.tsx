@@ -1,6 +1,15 @@
 ﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
+  AlignmentType,
+  Document,
+  HeadingLevel,
+  Packer,
+  Paragraph,
+  TextRun,
+} from 'docx';
+import { saveAs } from 'file-saver';
+import {
   Download,
   CheckCircle2,
   AlertTriangle,
@@ -29,6 +38,11 @@ import { useTeams } from '../hooks/useTeams';
 import { exportCahiersToWord } from '@utils/word_engine';
 import * as safeStorage from '@utils/safeStorage';
 import type { CahierTask, TaskLibrary, CahierVersion } from '@utils/types';
+import {
+  DEFAULT_CONTRACT_TEMPLATES,
+  type ContractTemplate,
+  type ContractTemplateLibrary,
+} from '../data/contractTemplates';
 import './Cahier.css';
 import logger from '../utils/logger';
 import { isTeamAvailableForAllocation } from '../services/planningAllocation';
@@ -75,6 +89,28 @@ const COLOR_MAPS: Record<string, { bg: string; text: string; border: string; bgS
     bgSoft: 'bg-pink-500/20',
   },
 };
+
+type CahierDocumentMode = 'cahier' | 'contrat';
+
+function isContractHeading(line: string): boolean {
+  return (
+    /^Article\s+\d+/i.test(line) ||
+    /^\d+\.\d+/.test(line) ||
+    line === line.toUpperCase()
+  );
+}
+
+function buildContractTemplateFromText(template: ContractTemplate, rawContent: string): ContractTemplate {
+  const content = rawContent
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  return {
+    ...template,
+    content,
+  };
+}
 
 const GENERAL_CLAUSES = [
   'ART 0.1 - PIÈCES CONTRACTUELLES : Le présent cahier des charges, les plans types, les bordereaux quantitatifs et estimatifs (BQE), ainsi que les normes (NS 01-001, doctrine Senelec) constituent les pièces contractuelles opposables au Titulaire.',
@@ -391,7 +427,10 @@ export default function Cahier() {
   const { project, updateProject } = useProject();
   const { teams: allTeams } = useTeams(project?.id);
 
+  const [documentMode, setDocumentMode] = useState<CahierDocumentMode>('cahier');
   const [selectedRole, setSelectedRole] = useState('Électricien');
+  const [selectedContractLot, setSelectedContractLot] = useState('LOT A');
+  const [isContractEditing, setIsContractEditing] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   // Get automated rate for the current role from project settings
@@ -452,6 +491,19 @@ export default function Cahier() {
     return DEFAULT_TASK_LIBRARY;
   });
 
+  const [contractLibrary, setContractLibrary] = useState<ContractTemplateLibrary>(() => {
+    try {
+      const saved = safeStorage.getItem('gem_contract_library');
+      if (saved) {
+        const parsed = JSON.parse(saved) as ContractTemplateLibrary;
+        if (parsed['LOT A']) return parsed;
+      }
+    } catch (e) {
+      logger.warn('[Cahier] Contract initial load failed, fallback to defaults', e);
+    }
+    return DEFAULT_CONTRACT_TEMPLATES;
+  });
+
   const currentRoleKey = customLibrary[selectedRole as keyof typeof customLibrary]
     ? selectedRole
     : Object.keys(DEFAULT_TASK_LIBRARY)[0];
@@ -459,6 +511,9 @@ export default function Cahier() {
     customLibrary[currentRoleKey as keyof typeof customLibrary] ||
     DEFAULT_TASK_LIBRARY[Object.keys(DEFAULT_TASK_LIBRARY)[0]];
   const CurrentIcon = currentTask?.icon || Hammer;
+  const currentContract =
+    contractLibrary[selectedContractLot] || DEFAULT_CONTRACT_TEMPLATES[selectedContractLot];
+  const [contractDraft, setContractDraft] = useState(currentContract.content.join('\n'));
 
   const getCadence = (roleName: string) => {
     const tradeKey = ROLE_TO_TRADE_MAPPING[roleName];
@@ -535,6 +590,11 @@ export default function Cahier() {
     }
   }, [automatedRate, isEditing, editData.pricing.dailyRate]);
 
+  useEffect(() => {
+    setContractDraft(currentContract.content.join('\n'));
+    setIsContractEditing(false);
+  }, [currentContract, selectedContractLot]);
+
   // Reset editable fields when role changes
   /**
    * Gère le changement de rôle et réinitialise les champs d'édition
@@ -588,6 +648,81 @@ export default function Cahier() {
   const handleSaveToLocal = () => {
     safeStorage.setItem('gem_cahier_library', JSON.stringify(customLibrary));
     setIsEditing(false);
+  };
+
+  const handleSaveContract = () => {
+    const updated = {
+      ...contractLibrary,
+      [selectedContractLot]: buildContractTemplateFromText(currentContract, contractDraft),
+    };
+    setContractLibrary(updated);
+    safeStorage.setItem('gem_contract_library', JSON.stringify(updated));
+    setIsContractEditing(false);
+  };
+
+  const handleResetContract = () => {
+    if (!confirm(`Restaurer le modèle ${selectedContractLot} par défaut ?`)) return;
+    const updated = {
+      ...contractLibrary,
+      [selectedContractLot]: DEFAULT_CONTRACT_TEMPLATES[selectedContractLot],
+    };
+    setContractLibrary(updated);
+    safeStorage.setItem('gem_contract_library', JSON.stringify(updated));
+    setContractDraft(updated[selectedContractLot].content.join('\n'));
+    setIsContractEditing(false);
+  };
+
+  const handleExportContractWord = async () => {
+    const lines = (isContractEditing ? contractDraft : currentContract.content.join('\n'))
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean);
+
+    const doc = new Document({
+      sections: [
+        {
+          properties: {
+            page: {
+              margin: { top: 900, right: 900, bottom: 900, left: 900 },
+            },
+          },
+          children: [
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              spacing: { after: 180 },
+              children: [
+                new TextRun({
+                  text: 'PROQUELEC',
+                  bold: true,
+                  size: 28,
+                  color: '0f172a',
+                }),
+              ],
+            }),
+            ...lines.map((line, index) => {
+              const isTitle = index <= 2;
+              const isHeading = isTitle || isContractHeading(line);
+              return new Paragraph({
+                heading: isTitle ? HeadingLevel.HEADING_1 : undefined,
+                alignment: isTitle ? AlignmentType.CENTER : AlignmentType.LEFT,
+                spacing: { before: isHeading ? 220 : 60, after: isHeading ? 120 : 80 },
+                children: [
+                  new TextRun({
+                    text: line,
+                    bold: isHeading,
+                    size: isTitle ? 24 : isHeading ? 22 : 20,
+                    color: isHeading ? '0f172a' : '334155',
+                  }),
+                ],
+              });
+            }),
+          ],
+        },
+      ],
+    });
+
+    const blob = await Packer.toBlob(doc);
+    saveAs(blob, `Contrat_${selectedContractLot.replace(/\s+/g, '_')}.docx`);
   };
 
   const handleSaveProjectStandard = async () => {
@@ -829,6 +964,159 @@ export default function Cahier() {
       />
 
       <ContentArea className="p-0 border-none bg-transparent shadow-none overflow-visible">
+        <div className="max-w-7xl mx-auto px-3 pt-3 md:px-8 md:pt-8">
+          <div className="inline-flex rounded-2xl border border-white/10 bg-slate-950/60 p-1 shadow-xl">
+            {[
+              { key: 'cahier' as const, label: 'Cahier de charge', icon: HardHat },
+              { key: 'contrat' as const, label: 'Contrat', icon: FileText },
+            ].map((item) => {
+              const Icon = item.icon;
+              const active = documentMode === item.key;
+              return (
+                <button
+                  key={item.key}
+                  onClick={() => setDocumentMode(item.key)}
+                  className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-[0.16em] transition-all ${
+                    active
+                      ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20'
+                      : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                  }`}
+                >
+                  <Icon size={14} />
+                  {item.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {documentMode === 'contrat' ? (
+          <div className="max-w-7xl mx-auto grid grid-cols-1 xl:grid-cols-4 gap-4 md:gap-8 p-3 md:p-8">
+            <aside className="xl:col-span-1">
+              <div className="flex xl:flex-col overflow-x-auto xl:overflow-visible gap-2 pb-4 xl:pb-0 no-scrollbar">
+                {Object.values(contractLibrary).map((template) => {
+                  const active = selectedContractLot === template.lot;
+                  return (
+                    <button
+                      key={template.lot}
+                      onClick={() => setSelectedContractLot(template.lot)}
+                      className={`flex min-w-[13rem] flex-shrink-0 items-center gap-3 rounded-2xl border p-4 text-left transition-all ${
+                        active
+                          ? 'border-emerald-400 bg-emerald-500/15 text-white shadow-lg shadow-emerald-500/10'
+                          : 'border-white/5 bg-slate-900/40 text-slate-400 hover:bg-slate-800 hover:text-white'
+                      }`}
+                    >
+                      <div
+                        className={`flex h-11 w-11 items-center justify-center rounded-xl ${
+                          active ? 'bg-emerald-400/20' : 'bg-slate-800'
+                        }`}
+                      >
+                        <FileText size={18} className={active ? 'text-emerald-200' : 'text-slate-400'} />
+                      </div>
+                      <div>
+                        <span className="block text-sm font-black">{template.lot}</span>
+                        <span className="mt-1 line-clamp-2 block text-[10px] font-bold uppercase tracking-wider opacity-75">
+                          {template.subtitle}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </aside>
+
+            <main className="xl:col-span-3">
+              <div className="overflow-hidden rounded-2xl border border-white/10 bg-slate-950/50 shadow-[0_20px_50px_rgba(0,0,0,0.45)] md:rounded-[2rem]">
+                <div className="border-b border-white/10 bg-gradient-to-br from-emerald-500/10 to-transparent p-4 md:p-7">
+                  <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-[0.24em] text-emerald-300">
+                        Rubrique Contrat
+                      </p>
+                      <h3 className="mt-2 text-2xl font-black text-white md:text-3xl">
+                        {currentContract.lot}
+                      </h3>
+                      <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-slate-400">
+                        {currentContract.subtitle}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={handleExportContractWord}
+                        className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white transition-all hover:bg-white/10"
+                      >
+                        <Download size={14} className="text-emerald-300" />
+                        DOCX
+                      </button>
+                      {isAdmin && (
+                        <>
+                          {isContractEditing ? (
+                            <button
+                              onClick={handleSaveContract}
+                              className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white transition-all hover:bg-emerald-500"
+                            >
+                              <Save size={14} />
+                              Enregistrer
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => setIsContractEditing(true)}
+                              className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-slate-800 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white transition-all hover:bg-slate-700"
+                            >
+                              <Edit3 size={14} />
+                              Éditer
+                            </button>
+                          )}
+                          <button
+                            onClick={handleResetContract}
+                            className="inline-flex items-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-red-300 transition-all hover:bg-red-500/15"
+                          >
+                            <RefreshCw size={14} />
+                            Reset
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-6 p-4 md:p-8">
+                  {isContractEditing ? (
+                    <textarea
+                      value={contractDraft}
+                      onChange={(event) => setContractDraft(event.target.value)}
+                      className="min-h-[46rem] w-full resize-y rounded-2xl border border-emerald-500/20 bg-slate-950 p-5 font-serif text-sm leading-7 text-slate-100 outline-none focus:border-emerald-400"
+                      aria-label={`Modifier le contrat ${selectedContractLot}`}
+                    />
+                  ) : (
+                    <article className="rounded-2xl border border-white/8 bg-white/[0.02] px-4 py-6 md:px-10 md:py-10">
+                      <div className="mx-auto max-w-4xl rounded-xl bg-slate-50 px-5 py-8 text-slate-900 shadow-2xl md:px-12 md:py-12">
+                        {currentContract.content.map((line, index) => {
+                          const titleLine = index <= 2;
+                          const heading = titleLine || isContractHeading(line);
+                          return (
+                            <p
+                              key={`${line}-${index}`}
+                              className={`${
+                                titleLine
+                                  ? 'text-center text-xl font-black uppercase tracking-wide text-slate-950 md:text-2xl'
+                                  : heading
+                                    ? 'mt-6 text-base font-black text-slate-950'
+                                    : 'mt-3 text-sm leading-7 text-slate-700'
+                              }`}
+                            >
+                              {line}
+                            </p>
+                          );
+                        })}
+                      </div>
+                    </article>
+                  )}
+                </div>
+              </div>
+            </main>
+          </div>
+        ) : (
         <div className="max-w-7xl mx-auto grid grid-cols-1 xl:grid-cols-4 gap-4 md:gap-8 p-3 md:p-8">
           {/* Left Navigation: Role Selection with enhanced style */}
           {/* Navigation : Role Selection (Horizontal on mobile) */}
@@ -1561,6 +1849,7 @@ export default function Cahier() {
             </div>
           </main>
         </div>
+        )}
       </ContentArea>
     </PageContainer>
   );
