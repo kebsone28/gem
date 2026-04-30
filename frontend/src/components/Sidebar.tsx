@@ -63,6 +63,10 @@ export default function Sidebar() {
   // 1️⃣ Normalisation et bypass sécurisé via helpers
   const nRole = useMemo(() => normalizeRole(user?.role), [user?.role]);
   const isMaster = useMemo(() => isMasterAdmin(user), [user]);
+  const canAccessCharges = useMemo(
+    () => isMaster || nRole === ROLES.ADMIN || nRole === ROLES.DG || nRole === ROLES.COMPTABLE,
+    [isMaster, nRole]
+  );
   const missionLabel = getMissionLabel(user);
   const roleLabels = useMemo<Partial<Record<UserRole, string>>>(() => ({
     [ROLES.ADMIN]: 'Admin',
@@ -132,11 +136,12 @@ export default function Sidebar() {
         category: 'PILOTAGE',
       },
       {
-        to: '/finances',
+        to: '/charges',
         icon: BarChart3,
-        label: 'Finances',
+        label: 'Charge',
         title: 'Renseignez les budgets prévus, coûts réels et écarts financiers',
         permission: PERMISSIONS.VOIR_FINANCES,
+        visible: canAccessCharges,
         category: 'PILOTAGE',
       },
       {
@@ -275,7 +280,7 @@ export default function Sidebar() {
         category: 'SYSTÈME',
       },
     ],
-    [PERMISSIONS, hasKoboTerminal, isMaster, missionLabel]
+    [PERMISSIONS, canAccessCharges, hasKoboTerminal, isMaster, missionLabel]
   );
 
   // 🚀 [REACTIVITY] Re-calculate items when user or permissions change

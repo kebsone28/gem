@@ -13,7 +13,7 @@ import ImpersonationBanner from './components/ImpersonationBanner';
 import { CommandPalette } from './components/common/CommandPalette';
 import { LazyRouteErrorBoundary } from './components/LazyRouteErrorBoundary';
 import { Toaster } from 'react-hot-toast';
-import { PERMISSIONS, hasPermission } from './utils/permissions';
+import { PERMISSIONS, ROLES, hasPermission, normalizeRole } from './utils/permissions';
 
 function lazyWithRetry<T extends React.ComponentType<Record<string, never>>>(
   importer: () => Promise<{ default: T }>,
@@ -109,6 +109,22 @@ const PermissionRoute = ({
   return <>{children}</>;
 };
 
+const RoleRoute = ({
+  children,
+  allowedRoles,
+}: {
+  children: React.ReactNode;
+  allowedRoles: string[];
+}) => {
+  const { user } = useAuth();
+  if (!user) return <Navigate to="/login" replace />;
+  const role = normalizeRole(user.role);
+  if (!role || !allowedRoles.includes(role)) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  return <>{children}</>;
+};
+
 // ── App ────────────────────────────────────────────────────────────────────
 function App() {
   return (
@@ -167,22 +183,16 @@ function App() {
 
             <Route
               path="/finances"
-              element={
-                <ProtectedRoute>
-                  <PermissionRoute permission={PERMISSIONS.VOIR_FINANCES}>
-                    <Charges />
-                  </PermissionRoute>
-                </ProtectedRoute>
-              }
+              element={<Navigate to="/charges" replace />}
             />
 
             <Route
               path="/charges"
               element={
                 <ProtectedRoute>
-                  <PermissionRoute permission={PERMISSIONS.VOIR_FINANCES}>
+                  <RoleRoute allowedRoles={[ROLES.ADMIN, ROLES.DG, ROLES.COMPTABLE]}>
                     <Charges />
-                  </PermissionRoute>
+                  </RoleRoute>
                 </ProtectedRoute>
               }
             />
