@@ -144,13 +144,13 @@ const CahierSection: React.FC<{
   color: string;
   children: React.ReactNode;
 }> = ({ title, color, children }) => (
-  <div className="mb-10">
-    <div className="flex items-center space-x-2 mb-6">
+  <div className="mb-8">
+    <div className="flex items-center space-x-2 mb-4">
       <div
-        className="w-1.5 h-6 rounded-full shadow-lg bg-[var(--section-color)]"
+        className="w-1 h-5 rounded-full bg-[var(--section-color)]"
         style={{ '--section-color': color } as React.CSSProperties}
       />
-      <h4 className="font-black text-white uppercase tracking-[0.2em] text-xs md:text-sm">
+      <h4 className="font-bold text-slate-100 uppercase tracking-[0.14em] text-xs">
         {title}
       </h4>
     </div>
@@ -965,7 +965,7 @@ export default function Cahier() {
 
       <ContentArea className="p-0 border-none bg-transparent shadow-none overflow-visible">
         <div className="max-w-7xl mx-auto px-3 pt-3 md:px-8 md:pt-8">
-          <div className="inline-flex rounded-2xl border border-white/10 bg-slate-950/60 p-1 shadow-xl">
+          <div className="inline-flex rounded-xl border border-slate-800 bg-slate-950/70 p-1">
             {[
               { key: 'cahier' as const, label: 'Cahier de charge', icon: HardHat },
               { key: 'contrat' as const, label: 'Contrat', icon: FileText },
@@ -976,10 +976,10 @@ export default function Cahier() {
                 <button
                   key={item.key}
                   onClick={() => setDocumentMode(item.key)}
-                  className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-[0.16em] transition-all ${
+                  className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-[10px] font-bold uppercase tracking-[0.14em] transition-colors ${
                     active
-                      ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20'
-                      : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                      ? 'bg-slate-100 text-slate-950'
+                      : 'text-slate-400 hover:bg-slate-900 hover:text-white'
                   }`}
                 >
                   <Icon size={14} />
@@ -991,7 +991,7 @@ export default function Cahier() {
         </div>
 
         {documentMode === 'contrat' ? (
-          <div className="max-w-7xl mx-auto grid grid-cols-1 xl:grid-cols-4 gap-4 md:gap-8 p-3 md:p-8">
+          <div className="max-w-7xl mx-auto grid grid-cols-1 xl:grid-cols-4 gap-4 md:gap-6 p-3 md:p-8">
             <aside className="xl:col-span-1">
               <div className="flex xl:flex-col overflow-x-auto xl:overflow-visible gap-2 pb-4 xl:pb-0 no-scrollbar">
                 {Object.values(contractLibrary).map((template) => {
@@ -1000,15 +1000,15 @@ export default function Cahier() {
                     <button
                       key={template.lot}
                       onClick={() => setSelectedContractLot(template.lot)}
-                      className={`flex min-w-[13rem] flex-shrink-0 items-center gap-3 rounded-2xl border p-4 text-left transition-all ${
+                      className={`flex min-w-[13rem] flex-shrink-0 items-center gap-3 rounded-xl border p-4 text-left transition-colors ${
                         active
-                          ? 'border-emerald-400 bg-emerald-500/15 text-white shadow-lg shadow-emerald-500/10'
-                          : 'border-white/5 bg-slate-900/40 text-slate-400 hover:bg-slate-800 hover:text-white'
+                          ? 'border-emerald-500/70 bg-emerald-500/10 text-white'
+                          : 'border-slate-800 bg-slate-950/40 text-slate-400 hover:border-slate-700 hover:bg-slate-900 hover:text-white'
                       }`}
                     >
                       <div
-                        className={`flex h-11 w-11 items-center justify-center rounded-xl ${
-                          active ? 'bg-emerald-400/20' : 'bg-slate-800'
+                        className={`flex h-10 w-10 items-center justify-center rounded-lg ${
+                          active ? 'bg-emerald-500/15' : 'bg-slate-900'
                         }`}
                       >
                         <FileText size={18} className={active ? 'text-emerald-200' : 'text-slate-400'} />
@@ -1026,24 +1026,24 @@ export default function Cahier() {
             </aside>
 
             <main className="xl:col-span-3">
-              <div className="overflow-hidden rounded-2xl border border-white/10 bg-slate-950/50 shadow-[0_20px_50px_rgba(0,0,0,0.45)] md:rounded-[2rem]">
-                <div className="border-b border-white/10 bg-gradient-to-br from-emerald-500/10 to-transparent p-4 md:p-7">
+                <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-950/45">
+                <div className="border-b border-slate-800 bg-slate-950/60 p-4 md:p-7">
                   <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                     <div>
-                      <p className="text-[10px] font-black uppercase tracking-[0.24em] text-emerald-300">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-300">
                         Rubrique Contrat
                       </p>
-                      <h3 className="mt-2 text-2xl font-black text-white md:text-3xl">
+                      <h3 className="mt-2 text-2xl font-bold text-white md:text-3xl">
                         {currentContract.lot}
                       </h3>
-                      <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-slate-400">
+                      <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
                         {currentContract.subtitle}
                       </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       <button
                         onClick={handleExportContractWord}
-                        className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white transition-all hover:bg-white/10"
+                        className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-white transition-colors hover:bg-slate-800"
                       >
                         <Download size={14} className="text-emerald-300" />
                         DOCX
@@ -1053,7 +1053,7 @@ export default function Cahier() {
                           {isContractEditing ? (
                             <button
                               onClick={handleSaveContract}
-                              className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white transition-all hover:bg-emerald-500"
+                              className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-white transition-colors hover:bg-emerald-500"
                             >
                               <Save size={14} />
                               Enregistrer
@@ -1061,7 +1061,7 @@ export default function Cahier() {
                           ) : (
                             <button
                               onClick={() => setIsContractEditing(true)}
-                              className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-slate-800 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white transition-all hover:bg-slate-700"
+                              className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-white transition-colors hover:bg-slate-800"
                             >
                               <Edit3 size={14} />
                               Éditer
@@ -1069,7 +1069,7 @@ export default function Cahier() {
                           )}
                           <button
                             onClick={handleResetContract}
-                            className="inline-flex items-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-red-300 transition-all hover:bg-red-500/15"
+                            className="inline-flex items-center gap-2 rounded-lg border border-red-500/20 bg-transparent px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-red-300 transition-colors hover:bg-red-500/10"
                           >
                             <RefreshCw size={14} />
                             Reset
@@ -1080,17 +1080,17 @@ export default function Cahier() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 gap-6 p-4 md:p-8">
+                <div className="grid grid-cols-1 gap-6 p-4 md:p-6">
                   {isContractEditing ? (
                     <textarea
                       value={contractDraft}
                       onChange={(event) => setContractDraft(event.target.value)}
-                      className="min-h-[46rem] w-full resize-y rounded-2xl border border-emerald-500/20 bg-slate-950 p-5 font-serif text-sm leading-7 text-slate-100 outline-none focus:border-emerald-400"
+                      className="min-h-[46rem] w-full resize-y rounded-xl border border-slate-700 bg-slate-950 p-5 font-serif text-sm leading-7 text-slate-100 outline-none focus:border-emerald-400"
                       aria-label={`Modifier le contrat ${selectedContractLot}`}
                     />
                   ) : (
-                    <article className="rounded-2xl border border-white/8 bg-white/[0.02] px-4 py-6 md:px-10 md:py-10">
-                      <div className="mx-auto max-w-4xl rounded-xl bg-slate-50 px-5 py-8 text-slate-900 shadow-2xl md:px-12 md:py-12">
+                    <article className="rounded-xl border border-slate-800 bg-slate-900/20 px-3 py-5 md:px-8 md:py-8">
+                      <div className="mx-auto max-w-4xl rounded-lg bg-slate-50 px-5 py-8 text-slate-900 shadow-sm md:px-12 md:py-12">
                         {currentContract.content.map((line, index) => {
                           const titleLine = index <= 2;
                           const heading = titleLine || isContractHeading(line);
@@ -1117,7 +1117,7 @@ export default function Cahier() {
             </main>
           </div>
         ) : (
-        <div className="max-w-7xl mx-auto grid grid-cols-1 xl:grid-cols-4 gap-4 md:gap-8 p-3 md:p-8">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 xl:grid-cols-4 gap-4 md:gap-6 p-3 md:p-8">
           {/* Left Navigation: Role Selection with enhanced style */}
           {/* Navigation : Role Selection (Horizontal on mobile) */}
           <div className="xl:col-span-1 xl:space-y-3">
@@ -1130,17 +1130,17 @@ export default function Cahier() {
                     key={name}
                     onClick={() => handleRoleChange(name)}
                     className={`
-                      flex-shrink-0 flex items-center gap-3 p-3 md:p-4 rounded-xl md:rounded-2xl transition-all duration-300 border
+                      flex-shrink-0 flex items-center gap-3 p-3 md:p-4 rounded-xl transition-colors border
                       ${isSelected
-                        ? 'bg-orange-500 text-white border-orange-400 shadow-[0_8px_20px_rgba(249,115,22,0.2)]'
-                        : 'bg-slate-900/40 text-slate-400 border-white/5 hover:bg-slate-800 hover:text-white'
+                        ? 'bg-orange-500/10 text-white border-orange-500/70'
+                        : 'bg-slate-950/40 text-slate-400 border-slate-800 hover:bg-slate-900 hover:text-white'
                       }
                     `}
                   >
                     <div
                       className={`
-                        w-8 h-8 md:w-12 md:h-12 rounded-lg md:rounded-xl flex items-center justify-center transition-transform shrink-0
-                        ${isSelected ? 'bg-white/20' : 'bg-slate-800'}
+                        w-8 h-8 md:w-10 md:h-10 rounded-lg flex items-center justify-center shrink-0
+                        ${isSelected ? 'bg-orange-500/15' : 'bg-slate-900'}
                       `}
                     >
                       <Icon
@@ -1173,14 +1173,14 @@ export default function Cahier() {
 
           {/* Details Content */}
           <main className="xl:col-span-3 space-y-3 md:space-y-8">
-            <div className="bg-slate-950/40 backdrop-blur-xl border border-white/10 rounded-2xl md:rounded-[2.5rem] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
+            <div className="bg-slate-950/45 border border-slate-800 rounded-2xl overflow-hidden">
               <div
-                className={`p-4 md:p-8 bg-gradient-to-br from-${currentTask.color}-500/10 to-transparent border-b border-slate-800`}
+                className="p-4 md:p-7 bg-slate-950/60 border-b border-slate-800"
               >
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div className="flex items-center space-x-3 md:space-x-4">
                     <div
-                      className={`w-10 h-10 md:w-14 md:h-14 ${COLOR_MAPS[currentTask.color]?.bgSoft || 'bg-slate-800'} rounded-xl md:rounded-2xl flex items-center justify-center border ${COLOR_MAPS[currentTask.color]?.border || 'border-slate-700'} shrink-0`}
+                      className={`w-10 h-10 md:w-12 md:h-12 ${COLOR_MAPS[currentTask.color]?.bgSoft || 'bg-slate-800'} rounded-xl flex items-center justify-center border ${COLOR_MAPS[currentTask.color]?.border || 'border-slate-700'} shrink-0`}
                     >
                       <CurrentIcon
                         size={20}
@@ -1192,8 +1192,8 @@ export default function Cahier() {
                         <h3 className="text-lg md:text-2xl font-bold text-white leading-tight">
                           {selectedRole}
                         </h3>
-                        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-[10px] font-black text-emerald-300 shadow-lg shadow-emerald-500/10 uppercase tracking-tighter">
-                          <ShieldCheck size={12} className="animate-pulse" />
+                        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-bold text-emerald-300 uppercase tracking-wider">
+                          <ShieldCheck size={12} />
                           PROQUELEC
                         </div>
                       </div>
@@ -1206,7 +1206,7 @@ export default function Cahier() {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={handleExportWord}
-                      className="flex items-center gap-2 bg-white/5 hover:bg-white/10 text-white px-3 md:px-5 py-2 md:py-3 rounded-xl text-[10px] md:text-xs font-black uppercase tracking-widest transition-all border border-white/10 active:scale-95"
+                      className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-3 md:px-5 py-2 md:py-3 rounded-lg text-[10px] md:text-xs font-bold uppercase tracking-widest transition-colors border border-slate-700"
                     >
                       <Download size={14} className="text-orange-500" />
                       <span>PDF / DOCX</span>
@@ -1216,14 +1216,14 @@ export default function Cahier() {
                       (isEditing ? (
                         <button
                           onClick={handleSave}
-                          className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg font-bold transition-all shadow-lg shadow-emerald-500/20 active:scale-95"
+                          className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg font-bold transition-colors"
                         >
                           <Save size={16} /> Enregistrer
                         </button>
                       ) : (
                         <button
                           onClick={() => setIsEditing(true)}
-                          className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg font-bold transition-all border border-slate-700 active:scale-95"
+                          className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-lg font-bold transition-colors border border-slate-700"
                         >
                           <Edit3 size={16} /> Éditer
                         </button>
@@ -1232,12 +1232,11 @@ export default function Cahier() {
                 </div>
               </div>
 
-              <div className="p-4 md:p-8 grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10">
+              <div className="p-4 md:p-6 grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
                 <section className="md:col-span-1">
                   {/* African Style Visual Card */}
                   <div className="relative group mb-8">
-                    <div className="absolute -inset-1 bg-gradient-to-r from-orange-500 to-yellow-600 rounded-3xl blur opacity-20 group-hover:opacity-40 transition duration-1000" />
-                    <div className="relative aspect-[4/5] bg-slate-950 rounded-2xl overflow-hidden border border-white/5 shadow-2xl">
+                    <div className="relative aspect-[4/5] bg-slate-950 rounded-xl overflow-hidden border border-slate-800">
                       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-slate-950/90 z-10" />
                       <img
                         src={currentTask.image}
@@ -1248,7 +1247,7 @@ export default function Cahier() {
                       <div className="absolute inset-x-0 bottom-0 p-4 md:p-6 z-20">
                         <div className="backdrop-blur-md bg-white/5 border border-white/10 p-3 md:p-4 rounded-xl md:rounded-2xl">
                           <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 md:w-10 md:h-10 bg-orange-500 rounded-lg flex items-center justify-center text-white shadow-lg shadow-orange-500/30">
+                            <div className="w-8 h-8 md:w-10 md:h-10 bg-orange-500 rounded-lg flex items-center justify-center text-white">
                               <CurrentIcon size={18} />
                             </div>
                             <div>
