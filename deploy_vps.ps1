@@ -195,10 +195,15 @@ if (-not $SkipDeploy) {
 set -e
 
 install_node_dependencies() {
+  OMIT_DEV=''
+  if [ "${1:-}" = 'production' ]; then
+    OMIT_DEV='--omit=dev'
+  fi
+
   if [ -f package-lock.json ]; then
-    npm ci --ignore-scripts --legacy-peer-deps
+    npm ci --ignore-scripts --legacy-peer-deps $OMIT_DEV
   else
-    npm install --ignore-scripts --legacy-peer-deps
+    npm install --ignore-scripts --legacy-peer-deps $OMIT_DEV
   fi
 }
 
@@ -259,7 +264,7 @@ cd "__DEPLOY_PATH__"
 git fetch --all
 git reset --hard origin/__BRANCH__
 
-install_node_dependencies
+install_node_dependencies production
 
 cd frontend
 install_node_dependencies
