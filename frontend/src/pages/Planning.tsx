@@ -215,6 +215,60 @@ const getPlanningRowStatusClass = (row: Pick<PlanningRow, 'status' | 'atRisk' | 
   return 'text-emerald-400';
 };
 
+interface PlanningAiSection {
+  title: string;
+  items: string[];
+}
+
+function cleanMissionSageText(value: string): string {
+  return value
+    .replace(/\*\*/g, '')
+    .replace(/^"+|"+$/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function splitMissionSageItems(value: string): string[] {
+  return value
+    .split(/\s+(?=(?:\d+\.|-)\s+)/)
+    .map((item) => cleanMissionSageText(item).replace(/^[-\d.\s]+/, '').trim())
+    .filter(Boolean)
+    .slice(0, 3);
+}
+
+function formatPlanningAiRecommendation(message: string): { lead: string; sections: PlanningAiSection[] } {
+  const normalized = message.replace(/\r?\n/g, ' ').trim();
+  const headingPattern = /\*\*([^*]+)\*\*/g;
+  const matches = Array.from(normalized.matchAll(headingPattern));
+
+  if (matches.length === 0) {
+    const lead = cleanMissionSageText(normalized);
+    return {
+      lead: lead.length > 320 ? `${lead.slice(0, 320).trim()}...` : lead,
+      sections: [],
+    };
+  }
+
+  const firstHeadingIndex = matches[0].index ?? 0;
+  const lead = cleanMissionSageText(normalized.slice(0, firstHeadingIndex));
+  const sections = matches
+    .map((match, index) => {
+      const start = (match.index ?? 0) + match[0].length;
+      const end = index + 1 < matches.length ? matches[index + 1].index ?? normalized.length : normalized.length;
+      return {
+        title: cleanMissionSageText(match[1]),
+        items: splitMissionSageItems(normalized.slice(start, end)),
+      };
+    })
+    .filter((section) => section.title && section.items.length > 0)
+    .slice(0, 3);
+
+  return {
+    lead: lead || 'Synthèse MissionSage pour le planning opérationnel.',
+    sections,
+  };
+}
+
 export default function Planning() {
   const [viewMode, setViewMode] = useState<ViewMode>('timeline');
   const [phaseFilter, setPhaseFilter] = useState<PhaseFilter>('ALL');
@@ -238,6 +292,10 @@ export default function Planning() {
   const activeTeams = useMemo(() => teams.filter((team) => team.status === 'active'), [teams]);
   const { historyLogs, isLoadingHistory } = usePlanningAuditHistory(showAudit);
   const planningAccent = MODULE_ACCENTS.planning;
+  const formattedAiRecommendation = useMemo(
+    () => (aiRecommendation ? formatPlanningAiRecommendation(aiRecommendation.message) : null),
+    [aiRecommendation]
+  );
 
   // Export de l'historique vers Excel
   const handleExportHistoryToExcel = useCallback(() => {
@@ -1345,24 +1403,51 @@ export default function Planning() {
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="bg-blue-500/15 border border-blue-500/20 rounded-2xl p-4 flex items-start gap-3 sm:gap-4"
+              className="rounded-2xl border border-blue-500/20 bg-blue-500/10 p-4"
             >
-              <div className="p-2 bg-blue-500 rounded-xl text-white">
-                <Zap size={18} />
-              </div>
-              <div className="flex-1">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 mb-1">
-                  <h4 className="text-xs font-semibold text-blue-300">Conseil intelligent</h4>
-                  <span className="text-[11px] text-blue-400/60 font-mono">MissionSage v8.0</span>
+              <div className="flex items-start gap-3 sm:gap-4">
+                <div className="rounded-xl bg-blue-500 p-2 text-white">
+                  <Zap size={18} />
                 </div>
-                <p className="text-sm text-slate-200 leading-relaxed">
-                  "{aiRecommendation.message}"
-                </p>
-                {aiRecommendation.actionLabel && (
-                  <button className="mt-2 text-xs font-medium text-blue-300 hover:underline">
-                    {aiRecommendation.actionLabel} →
-                  </button>
-                )}
+                <div className="min-w-0 flex-1">
+                  <div className="mb-2 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                    <h4 className="text-xs font-semibold text-blue-300">Conseil intelligent</h4>
+                    <span className="text-[11px] font-mono text-blue-400/60">MissionSage v8.0</span>
+                  </div>
+
+                  <p className="max-w-5xl text-sm leading-relaxed text-slate-100">
+                    {formattedAiRecommendation?.lead}
+                  </p>
+
+                  {formattedAiRecommendation && formattedAiRecommendation.sections.length > 0 && (
+                    <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-3">
+                      {formattedAiRecommendation.sections.map((section) => (
+                        <div
+                          key={section.title}
+                          className="rounded-xl border border-blue-400/10 bg-slate-950/25 p-3"
+                        >
+                          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-blue-200">
+                            {section.title}
+                          </p>
+                          <ul className="mt-2 space-y-2">
+                            {section.items.map((item) => (
+                              <li key={item} className="flex gap-2 text-xs leading-relaxed text-slate-300">
+                                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-blue-300" />
+                                <span>{item}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {aiRecommendation.actionLabel && (
+                    <button className="mt-3 text-xs font-medium text-blue-300 hover:underline">
+                      {aiRecommendation.actionLabel} →
+                    </button>
+                  )}
+                </div>
               </div>
             </motion.div>
           )}
