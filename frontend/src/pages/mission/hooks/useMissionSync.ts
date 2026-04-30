@@ -409,16 +409,16 @@ export const useMissionSync = (
    * PULL ROBUSTE AVEC GESTION CONFLITS
    */
   const handleSyncFromServer = useCallback(async () => {
-    if (!activeProjectId) return;
-
     actions.setStatus('saving');
     const now = new Date().toISOString();
 
     try {
-      const missions = await missionService.getMissions(activeProjectId);
+      const missions = await missionService.getMissions(activeProjectId || undefined);
+      const serverIds = new Set(missions.map((mission: any) => mission.id).filter(Boolean));
 
       let merged = 0;
       let conflicts = 0;
+      let repairedLocalOnly = 0;
 
       for (const m of missions) {
         const serverVersion = (m as any).version || (m as any).data?.version || 1;
@@ -428,6 +428,9 @@ export const useMissionSync = (
           id: (m as any).id,
           projectId: (m as any).projectId,
           ...((m as any).data || {}),
+          status: (m as any).status || (m as any).data?.status,
+          orderNumber: (m as any).orderNumber || (m as any).data?.orderNumber,
+          approvalWorkflow: (m as any).approvalWorkflow || (m as any).data?.approvalWorkflow,
           version: serverVersion,
           updatedAt: (m as any).updatedAt || now,
         };
@@ -450,11 +453,34 @@ export const useMissionSync = (
         }
       }
 
+      const localSubmitted = await db.missions
+        .filter((mission: any) => {
+          const isLocalSubmitted = mission?.isSubmitted === true || mission?.data?.isSubmitted === true;
+          const isLocalCertified = mission?.isCertified === true || mission?.data?.isCertified === true;
+          return isLocalSubmitted && !isLocalCertified && !serverIds.has(mission.id);
+        })
+        .toArray();
+
+      for (const localMission of localSubmitted) {
+        await db.missions.put({
+          ...localMission,
+          isSubmitted: false,
+          status: 'draft',
+          syncStatus: 'failed',
+          data: {
+            ...((localMission as any).data || {}),
+            isSubmitted: false,
+          },
+          updatedAt: now,
+        } as any);
+        repairedLocalOnly++;
+      }
+
       actions.setStatus('success');
 
-      if (merged || conflicts) {
+      if (merged || conflicts || repairedLocalOnly) {
         actions.addAuditEntry(
-          `Sync: ${merged} MAJ, ${conflicts} conflits`,
+          `Sync: ${merged} MAJ, ${conflicts} conflits, ${repairedLocalOnly} soumissions locales corrigées`,
           'System'
         );
       }

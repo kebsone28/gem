@@ -255,10 +255,14 @@ export default function MissionOrder() {
 
     const unsubNotification = syncEventBus.subscribe('notification', handleRemoteUpdate);
     const unsubMissionUpdate = syncEventBus.subscribe('mission:update', handleRemoteUpdate);
+    const unsubMissionSubmitted = syncEventBus.subscribe('mission:submitted', handleRemoteUpdate);
+    const unsubMissionCertified = syncEventBus.subscribe('mission:certified', handleRemoteUpdate);
     
     return () => {
       unsubNotification();
       unsubMissionUpdate();
+      unsubMissionSubmitted();
+      unsubMissionCertified();
     };
   }, [handleSyncFromServer, state.currentMissionId, fetchWorkflow]);
 
