@@ -810,24 +810,60 @@ function hasIntentIn(intent: Record<string, boolean>, keys: Set<string>): boolea
   return Object.entries(intent).some(([key, value]) => value === true && keys.has(key));
 }
 
-function buildGemSaasScopeRedirect(): AIResponse {
+function getRoleAwareBusinessReplies(user?: any): string[] {
+  const role = String(user?.role || '').toUpperCase();
+
+  if (role.includes('DG') || role.includes('DIRECTEUR') || role.includes('ADMIN')) {
+    return ['Approbation DG', 'Rapport stratégique DG', 'Dashboard', 'Missions en attente'];
+  }
+
+  if (role.includes('COMPTABLE')) {
+    return ['Budget', 'Indemnités de mission', 'Rapport budgétaire', 'Dashboard'];
+  }
+
+  if (role.includes('CHEF')) {
+    return ['Missions en attente', 'Terrain Kobo', 'Approbation DG', 'Dashboard'];
+  }
+
+  return ['Mes missions', 'Nouvelle mission', 'Terrain Kobo', 'Normes'];
+}
+
+function buildGemSaasScopeRedirect(user?: any): AIResponse {
   return {
     message:
       'Je reste centré sur GEM-SaaS. Je peux vous aider sur les missions OM, l’approbation DG, Kobo, les normes électriques, les finances, le dashboard et les rapports.',
     type: 'info',
-    smartReplies: ['Mes missions', 'Approbation DG', 'Terrain Kobo', 'Normes'],
+    smartReplies: getRoleAwareBusinessReplies(user),
     _engine: 'RULES',
   };
 }
 
-function buildGemSaasWorkRedirect(): AIResponse {
+function buildGemSaasWorkRedirect(user?: any): AIResponse {
   return {
     message:
       'Je peux vous aider à prioriser le travail dans GEM-SaaS. Indiquez le module concerné : missions, approbation DG, terrain Kobo, finances, dashboard ou rapports.',
     type: 'info',
-    smartReplies: ['Missions en attente', 'Approbation DG', 'Rapport stratégique DG', 'Dashboard'],
+    smartReplies: getRoleAwareBusinessReplies(user),
     _engine: 'RULES',
   };
+}
+
+async function logMissionSageLearningEvent(
+  query: string,
+  user: any,
+  context: 'rules_fallback' | 'scope_redirect' | 'work_redirect'
+): Promise<void> {
+  try {
+    await db.ai_learning_logs.add({
+      query,
+      userId: user?.email || user?.id || 'anonymous',
+      role: user?.role || 'UNKNOWN',
+      timestamp: new Date(),
+      context,
+    });
+  } catch (err) {
+    logger.warn('[MissionSage] Learning log failed', { context, err });
+  }
 }
 
 const DIRECT_COMMANDS: Record<
@@ -849,6 +885,7 @@ const DIRECT_COMMANDS: Record<
   'norme ns 01001': { intent: 'norme', label: 'Norme NS 01-001' },
   contrat: { intent: 'contract', label: 'Contrat' },
   'cahier de charge modele': { intent: 'contract', label: 'Cahier de Charge (Modèle)' },
+  'approbation dg': { intent: 'decision', label: 'Approbation DG' },
   'rapport strategique dg': { intent: 'report', label: 'Rapport stratégique DG' },
   'risque de retard dg': { intent: 'decision', label: 'Risque de retard DG' },
   'recommandations igpp': { intent: 'decision', label: 'Recommandations IGPP' },
@@ -1706,12 +1743,14 @@ async function runRulesEngine(
 
   const hasBusinessIntent = hasIntentIn(intent, BUSINESS_INTENTS);
   if (!hasBusinessIntent && hasIntentIn(intent, OFF_TOPIC_INTENTS)) {
-    const scoped = buildGemSaasScopeRedirect();
+    await logMissionSageLearningEvent(query, user, 'scope_redirect');
+    const scoped = buildGemSaasScopeRedirect(user);
     return { ...scoped, message: pfx(scoped.message) };
   }
 
   if (!hasBusinessIntent && hasIntentIn(intent, WORK_SUPPORT_INTENTS)) {
-    const scoped = buildGemSaasWorkRedirect();
+    await logMissionSageLearningEvent(query, user, 'work_redirect');
+    const scoped = buildGemSaasWorkRedirect(user);
     return { ...scoped, message: pfx(scoped.message) };
   }
 
@@ -2666,21 +2705,12 @@ async function orchestrate(
   memory: SessionMemory
 ): Promise<AIResponse> {
   const config = getAIEngineConfig();
-  const userId = user.email || user.id || 'anonymous';
 
   if (config.mode === 'RULES_ONLY') {
     const res = await runRulesEngine(query, user, state, memory);
     if (res) return res;
     // Audit failure
-    try {
-      await db.ai_learning_logs.add({
-        query,
-        userId,
-        role: user.role,
-        timestamp: new Date(),
-        context: 'rules_fallback',
-      });
-    } catch {}
+    await logMissionSageLearningEvent(query, user, 'rules_fallback');
     return { ...DEFAULT_FALLBACK, smartReplies: getSmartSuggestions(query).slice(0, 4) };
   }
 

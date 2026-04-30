@@ -105,6 +105,7 @@ export default function AITrainingStudio({
   const [referenceAnswer, setReferenceAnswer] = useState('');
   const [entries, setEntries] = useState<MentorTrainingEntry[]>([]);
   const [unresolvedLogs, setUnresolvedLogs] = useState<MissionSageLearningLog[]>([]);
+  const [scopeRedirectLogs, setScopeRedirectLogs] = useState<MissionSageLearningLog[]>([]);
   const [search, setSearch] = useState('');
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
   const [editorLayout, setEditorLayout] = useState<EditorLayoutMode>('stacked');
@@ -182,9 +183,22 @@ export default function AITrainingStudio({
     }
   }
 
+  async function loadScopeRedirectLogs() {
+    try {
+      const data = await missionSageLearningLogService.listByContexts(
+        ['scope_redirect', 'work_redirect'],
+        12
+      );
+      setScopeRedirectLogs(data);
+    } catch {
+      setScopeRedirectLogs([]);
+    }
+  }
+
   useEffect(() => {
     loadEntries();
     loadUnresolvedLogs();
+    loadScopeRedirectLogs();
   }, []);
 
   useEffect(() => {
@@ -306,6 +320,7 @@ export default function AITrainingStudio({
         "Réponse mémorisée. Le mentor remplacera désormais sa réponse pour cette question exacte."
       );
       await loadUnresolvedLogs();
+      await loadScopeRedirectLogs();
       await handleTestReplacement(saved.question, saved.answer);
     } catch (err: any) {
       setError(err?.response?.data?.error || "Impossible d'enregistrer cette réponse de référence.");
@@ -446,6 +461,38 @@ export default function AITrainingStudio({
                   className="block w-full rounded-2xl border border-amber-300/10 bg-slate-950/35 px-3 py-3 text-left text-xs font-semibold leading-5 text-amber-50 transition-colors hover:bg-slate-950/55"
                   title="Charger cette question dans l'éditeur"
                 >
+                  {log.query}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {scopeRedirectLogs.length > 0 && (
+          <div className="mb-5 rounded-[1.5rem] border border-cyan-400/15 bg-cyan-400/10 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-100">
+                Questions recadrées
+              </p>
+              <span className="rounded-full border border-cyan-300/20 bg-cyan-300/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.16em] text-cyan-100">
+                {scopeRedirectLogs.length}
+              </span>
+            </div>
+            <p className="mt-2 text-[11px] font-semibold leading-5 text-cyan-50/80">
+              Ces questions étaient hors périmètre ou trop générales. Chargez-les seulement si une
+              vraie règle métier doit être ajoutée.
+            </p>
+            <div className="mt-3 space-y-2">
+              {scopeRedirectLogs.map((log) => (
+                <button
+                  key={`${log.id || log.query}-${String(log.timestamp)}`}
+                  onClick={() => handleSelectUnresolved(log)}
+                  className="block w-full rounded-2xl border border-cyan-300/10 bg-slate-950/35 px-3 py-3 text-left text-xs font-semibold leading-5 text-cyan-50 transition-colors hover:bg-slate-950/55"
+                  title="Charger cette question recadrée dans l'éditeur"
+                >
+                  <span className="mb-1 block text-[9px] font-black uppercase tracking-[0.16em] text-cyan-200/80">
+                    {log.context === 'work_redirect' ? 'Priorisation travail' : 'Hors périmètre'}
+                  </span>
                   {log.query}
                 </button>
               ))}

@@ -10,6 +10,19 @@ export interface MissionSageLearningLog {
 }
 
 export const missionSageLearningLogService = {
+  async listByContexts(contexts: string[], limit = 25): Promise<MissionSageLearningLog[]> {
+    try {
+      const items = await db.ai_learning_logs.toArray();
+      const allowed = new Set(contexts);
+      return items
+        .filter((item) => item.context && allowed.has(item.context))
+        .sort((a, b) => Number(new Date(b.timestamp)) - Number(new Date(a.timestamp)))
+        .slice(0, limit);
+    } catch {
+      return [];
+    }
+  },
+
   async listUnresolved(limit = 25): Promise<MissionSageLearningLog[]> {
     try {
       return await db.ai_learning_logs
