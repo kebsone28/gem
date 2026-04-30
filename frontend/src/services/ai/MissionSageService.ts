@@ -744,6 +744,92 @@ const CONVERSATIONAL_INTENTS = new Set([
   'dailyDangerous',
 ]);
 
+const BUSINESS_INTENTS = new Set([
+  'global',
+  'kobo',
+  'mission',
+  'workflow',
+  'finance',
+  'dashboard',
+  'security',
+  'sync',
+  'org',
+  'audit',
+  'household',
+  'rights',
+  'simulation',
+  'inventory',
+  'diagnostic',
+  'mapping',
+  'decision',
+  'menu',
+  'approbation',
+  'performance',
+  'planning',
+  'report',
+  'help_create',
+  'mfr',
+  'norme',
+  'protection',
+  'anomalies',
+  'branchement',
+  'interieur',
+  'glossaire',
+  'terms',
+  'specs',
+  'protection_details',
+  'anomalies_details',
+  'contract',
+  'tech',
+  'geo',
+]);
+
+const OFF_TOPIC_INTENTS = new Set([
+  'funTime',
+  'funDate',
+  'funJoke',
+  'funWeather',
+  'dailyHuman',
+  'dailySleep',
+  'dailyLove',
+  'dailyWhosBest',
+  'dailyKnowAll',
+  'dailyCanMistake',
+]);
+
+const WORK_SUPPORT_INTENTS = new Set([
+  'dailyTired',
+  'dailyOverwork',
+  'dailyMistake',
+  'dailyStressed',
+  'dailyQuit',
+  'dailyComplex',
+]);
+
+function hasIntentIn(intent: Record<string, boolean>, keys: Set<string>): boolean {
+  return Object.entries(intent).some(([key, value]) => value === true && keys.has(key));
+}
+
+function buildGemSaasScopeRedirect(): AIResponse {
+  return {
+    message:
+      'Je reste centré sur GEM-SaaS. Je peux vous aider sur les missions OM, l’approbation DG, Kobo, les normes électriques, les finances, le dashboard et les rapports.',
+    type: 'info',
+    smartReplies: ['Mes missions', 'Approbation DG', 'Terrain Kobo', 'Normes'],
+    _engine: 'RULES',
+  };
+}
+
+function buildGemSaasWorkRedirect(): AIResponse {
+  return {
+    message:
+      'Je peux vous aider à prioriser le travail dans GEM-SaaS. Indiquez le module concerné : missions, approbation DG, terrain Kobo, finances, dashboard ou rapports.',
+    type: 'info',
+    smartReplies: ['Missions en attente', 'Approbation DG', 'Rapport stratégique DG', 'Dashboard'],
+    _engine: 'RULES',
+  };
+}
+
 const DIRECT_COMMANDS: Record<
   string,
   {
@@ -1616,6 +1702,17 @@ async function runRulesEngine(
     } else if (directCommand.intent === 'decision') {
       intent = { ...intent, decision: true, performance: false };
     }
+  }
+
+  const hasBusinessIntent = hasIntentIn(intent, BUSINESS_INTENTS);
+  if (!hasBusinessIntent && hasIntentIn(intent, OFF_TOPIC_INTENTS)) {
+    const scoped = buildGemSaasScopeRedirect();
+    return { ...scoped, message: pfx(scoped.message) };
+  }
+
+  if (!hasBusinessIntent && hasIntentIn(intent, WORK_SUPPORT_INTENTS)) {
+    const scoped = buildGemSaasWorkRedirect();
+    return { ...scoped, message: pfx(scoped.message) };
   }
 
   const generatedOverride = findGeneratedMissionSageOverride(q);

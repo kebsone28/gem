@@ -17,6 +17,12 @@ describe('missionSageIntent detectIntent', () => {
     expect(result.finance).toBe(false);
   });
 
+  it('keeps work fatigue separate from sleep jokes', () => {
+    const result = detectIntent('je suis fatigue', noFuzzy);
+    expect(result.dailyTired).toBe(true);
+    expect(result.dailySleep).toBe(false);
+  });
+
   it('keeps fuzzy technical fallback injectable and testable', () => {
     const result = detectIntent('disjonctuer', (query, keywords) =>
       keywords.includes('disjoncteur') && query.includes('disjonctuer')

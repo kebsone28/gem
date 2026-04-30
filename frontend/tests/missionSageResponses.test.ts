@@ -17,12 +17,11 @@ describe('missionSageResponses findUniversalQR', () => {
     expect(findUniversalQR('bonjour', normalizeWord, noFuzzy)).toBe(
       'Bonjour. Dites-moi ce dont vous avez besoin.'
     );
-    expect(findUniversalQR('tu es humain', normalizeWord, noFuzzy)).toBe(
-      'Non, je suis un assistant IA.'
-    );
+    expect(findUniversalQR('merci', normalizeWord, noFuzzy)).toBe('Avec plaisir.');
   });
 
   it('returns null when no universal response matches', () => {
     expect(findUniversalQR('xylophone inconnu', normalizeWord, noFuzzy)).toBeNull();
+    expect(findUniversalQR('tu es humain', normalizeWord, noFuzzy)).toBeNull();
   });
 });

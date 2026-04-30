@@ -50,7 +50,7 @@ export const INTENT_PATTERNS: Record<string, RegExp> = {
   dailyWhatDoing: /\b(tu\s*fais\s*quoi|qu\s*est\s*ce\s*que\s*tu\s*fais|c\s*est\s*quoi\s*ton\s*truc|tu\s*bosse)\b/,
   dailyCanHelp: /\b(tu\s*peux\s*(m\s*)?aider|aide\s*moi|pourrais[\s-]tu|help)\b/,
   dailyHuman: /\b(tu\s*es\s*(humain|un\s*bot|un\s*robot|une\s*ia)|es\s*tu\s*humain|vraie\s*personne)\b/,
-  dailySleep: /\b(tu\s*(dors|dormes|peux\s*dormir)|sieste|repos|fatigue)\b/,
+  dailySleep: /\b(tu\s*(dors|dormes|peux\s*dormir)|sieste|repos)\b/,
   dailyLove: /\b(tu\s*m\s*aimes?|m\s*aimes\s*tu|je\s*t\s*aime)\b/,
   dailyTired: /\b(je\s*suis\s*(fatigue|epuise)|j\s*ai\s*(sommeil|mal\s*a\s*la\s*tete|pas\s*d\s*energie))\b/,
   dailyOverwork: /\b(j\s*ai\s*trop\s*de\s*travail|surcharge|overcharge|trop\s*de\s*trucs|pas\s*assez\s*de\s*temps|deborde)\b/,
