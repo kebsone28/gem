@@ -1,13 +1,9 @@
 {
   "name": "gestion-electrification-massive",
   "version": "0.1.0",
-  "description": "Application bureau pour pilotage d'électrification de masse",
-  "main": "electron/main.js",
+  "description": "Application SaaS pour pilotage d'électrification de masse",
   "scripts": {
     "start": "cd frontend && npm run dev",
-    "electron:dev": "node scripts/start-electron-dev.cjs",
-    "build:electron": "npm run build && electron-builder --win --x64",
-    "package-win": "npm run build:electron",
     "test:e2e": "npx playwright test -c frontend/playwright.config.ts",
     "test:e2e:headed": "npx playwright test -c frontend/playwright.config.ts --headed",
     "test:smoke": "playwright test tests/playwright/smoke.spec.js tests/playwright/rapports.spec.js",
@@ -20,7 +16,6 @@
     "dev": "cd frontend && npm run dev",
     "dev:backend": "cd backend && npm run dev",
     "dev:frontend": "cd frontend && npm run dev -- --host 0.0.0.0 --port 5173",
-    "dev:electron": "concurrently \"npm run dev:saas\" \"npm run electron:dev\"",
     "dev:saas": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
     "pmtiles:install": "cd backend\\pmtiles-server && npm install",
     "pmtiles:dev": "cd backend\\pmtiles-server && npm run dev",
@@ -29,15 +24,13 @@
     "build": "cd frontend && npm run build",
     "preview": "cd frontend && npm run preview",
     "mentor:audit": "node --experimental-strip-types ./scripts/mission_sage_auto_audit.ts",
-    "prepare": "husky || true"
+    "prepare": "husky || exit 0"
   },
   "devDependencies": {
     "@playwright/test": "^1.43.0",
     "@typescript-eslint/eslint-plugin": "^8.58.2",
     "@typescript-eslint/parser": "^8.58.2",
     "concurrently": "^9.2.1",
-    "electron": "^41.3.0",
-    "electron-builder": "^26.8.1",
     "eslint-plugin-jsx-a11y": "^6.10.2",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.0.1",
@@ -45,19 +38,7 @@
     "vite": "^8.0.10",
     "vitest": "^4.1.5"
   },
-  "build": {
-    "appId": "com.proquelec.electrification",
-    "files": [
-      "dist/**/*",
-      "electron/**/*",
-      "package.json"
-    ],
-    "directories": {
-      "buildResources": "build"
-    }
-  },
   "dependencies": {
-    "dompurify": "^3.4.1",
-    "keytar": "^7.9.0"
+    "dompurify": "^3.4.1"
   }
 }
