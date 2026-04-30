@@ -73,7 +73,11 @@ async function performTokenRefresh(): Promise<string> {
 
       logger.log('✅ [AUTH] Token refreshed successfully');
       safeStorage.setItem('access_token', data.accessToken);
-      window.dispatchEvent(new CustomEvent('auth:token-refreshed', { detail: data.accessToken }));
+      window.dispatchEvent(
+        new CustomEvent('auth:token-refreshed', {
+          detail: { accessToken: data.accessToken, user: data.user },
+        })
+      );
       logoutTriggered = false;
       return data.accessToken as string;
     } finally {

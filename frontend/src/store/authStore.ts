@@ -44,7 +44,8 @@ interface AuthState {
     name: string,
     organization?: string,
     id?: string,
-    accessToken?: string
+    accessToken?: string,
+    permissions?: string[]
   ) => void;
   logout: () => void;
   setUser: (user: User | null) => void;
@@ -71,13 +72,14 @@ export const useAuthStore = create<AuthState>()(
         })(),
         isAuthenticated: !!safeStorage.getItem('access_token'),
 
-        login: (email, role, name, organization, id, accessToken) => {
+        login: (email, role, name, organization, id, accessToken, permissions) => {
           const newUser: User = {
             id: id ?? `temp-${Date.now()}`,
             email,
             role: normalizeRole(role) as UserRole,
             name,
             organization,
+            permissions: Array.isArray(permissions) ? permissions : [],
           };
           if (accessToken) safeStorage.setItem('access_token', accessToken);
           safeStorage.setItem('user', JSON.stringify(newUser));

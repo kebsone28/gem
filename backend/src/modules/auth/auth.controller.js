@@ -4,6 +4,23 @@ import { generateTokens, verifyRefreshToken } from '../../core/utils/jwt.js';
 import { tracerAction } from '../../services/audit.service.js';
 import logger from '../../utils/logger.js';
 
+const resolveMergedPermissions = (user) => {
+    const rolePermissions = user.role?.permissions?.map(p => p.permission.key) || [];
+    const userOverrides = Array.isArray(user.permissions) ? user.permissions : [];
+    return userOverrides.length > 0 ? userOverrides : rolePermissions;
+};
+
+const buildSessionUser = (user) => ({
+    id: user.id,
+    email: user.email,
+    role: user.role?.name || user.roleLegacy,
+    name: user.name,
+    permissions: resolveMergedPermissions(user),
+    organization: user.organization ? user.organization.name : undefined,
+    organizationId: user.organizationId,
+    organizationConfig: user.organization?.config || {}
+});
+
 // @desc    Register a new organization and its first admin user
 // @route   POST /api/auth/register-org
 export const registerOrganization = async (req, res) => {
@@ -127,17 +144,7 @@ export const login = async (req, res) => {
                 return res.status(400).json({ error: 'Invalid user account - contact administrator' });
             }
 
-            // Gestion des permissions (Audit REINFORCEMENT: Override total)
-            const rolePermissions = user.role?.permissions?.map(p => p.permission.key) || [];
-            const userOverrides = Array.isArray(user.permissions) ? user.permissions : [];
-            
-            if (userOverrides.length > 0) {
-                // Si permissions custom, on ignore les permissions du rôle (Override Total)
-                user.mergedPermissions = userOverrides;
-            } else {
-                // Sinon, on prend les permissions standards du rôle
-                user.mergedPermissions = rolePermissions;
-            }
+            user.mergedPermissions = resolveMergedPermissions(user);
             
             console.log('✅ User found in DB. Role:', user.role?.name || user.roleLegacy);
             console.log('✅ passwordHash exists:', !!user.passwordHash);
@@ -213,15 +220,7 @@ export const login = async (req, res) => {
             });
 
             res.json({
-                user: {
-                    id: user.id,
-                    email: user.email,
-                    role: user.role?.name || user.roleLegacy,
-                    name: user.name,
-                    permissions: user.mergedPermissions,
-                    organization: user.organization ? user.organization.name : 'N/A',
-                    organizationConfig: user.organization?.config || {}
-                },
+                user: buildSessionUser(user),
                 accessToken
             });
             console.log('✅ Response sent successfully');
@@ -293,10 +292,7 @@ export const refreshToken = async (req, res) => {
 
         if (!user) return res.status(401).json({ error: 'User not found' });
 
-        // Permissions avec politique d'Override Total pour le refresh
-        const rolePermissions = user.role?.permissions.map(p => p.permission.key) || [];
-        const userOverrides = Array.isArray(user.permissions) ? user.permissions : [];
-        const mergedPermissions = userOverrides.length > 0 ? userOverrides : rolePermissions;
+        const mergedPermissions = resolveMergedPermissions(user);
 
         const tokenPayload = {
             id: user.id,
@@ -308,7 +304,10 @@ export const refreshToken = async (req, res) => {
 
         const tokens = generateTokens(tokenPayload);
 
-        res.json({ accessToken: tokens.accessToken });
+        res.json({
+            accessToken: tokens.accessToken,
+            user: buildSessionUser(user)
+        });
     } catch (error) {
         console.error('[AUTH-REFRESH] refresh failed:', error.message);
         res.status(401).json({ error: 'Invalid refresh token', details: error.message });
@@ -319,23 +318,25 @@ export const refreshToken = async (req, res) => {
 // @route   GET /api/auth/me
 export const getMe = async (req, res) => {
     try {
-        // En mode debug/diagnostic, on renvoie ce qui est dans req.user (injecté par authProtect)
-        // et on valide en base pour être sûr.
         const user = await prisma.user.findUnique({
             where: { id: req.user.id },
-            include: { organization: { select: { name: true, id: true } } }
+            include: {
+                organization: true,
+                role: {
+                    include: {
+                        permissions: {
+                            include: { permission: true }
+                        }
+                    }
+                }
+            }
         });
 
         if (!user) return res.status(404).json({ error: 'Session user not found in DB' });
 
         res.json({
-            id: user.id,
-            email: user.email,
-            name: user.name,
-            role: req.user.role,
-            organizationId: user.organizationId,
+            ...buildSessionUser(user),
             organizationName: user.organization?.name,
-            permissions: req.user.permissions,
             iat: req.user.iat,
             exp: req.user.exp,
             serverTime: new Date().toISOString()
@@ -543,10 +544,7 @@ export const verify2FA = async (req, res) => {
             req
         });
 
-        // Gestion des permissions (Audit REINFORCEMENT: Override total)
-        const rolePermissions = user.role?.permissions?.map(p => p.permission.key) || [];
-        const userOverrides = Array.isArray(user.permissions) ? user.permissions : [];
-        const mergedPermissions = userOverrides.length > 0 ? userOverrides : rolePermissions;
+        const mergedPermissions = resolveMergedPermissions(user);
 
         const tokenPayload = {
             id: user.id,
@@ -575,15 +573,7 @@ export const verify2FA = async (req, res) => {
         console.log('✅ [2FA] Cookie refresh configuré');
 
         res.json({
-            user: {
-                id: user.id,
-                email: user.email,
-                role: user.role?.name || user.roleLegacy,
-                name: user.name,
-                permissions: mergedPermissions,
-                organization: user.organization ? user.organization.name : 'N/A',
-                organizationConfig: user.organization?.config || {}
-            },
+            user: buildSessionUser(user),
             accessToken: tokens.accessToken
         });
         console.log('✅ [2FA] Réponse envoyée avec succès');

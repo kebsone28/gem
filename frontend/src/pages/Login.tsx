@@ -115,7 +115,16 @@ export default function Login() {
         return;
       }
 
-      login(emailResp, roleResp, nameResp, orgResp, idResp, accessToken, orgConfigResp);
+      login(
+        emailResp,
+        roleResp,
+        nameResp,
+        orgResp,
+        idResp,
+        accessToken,
+        orgConfigResp,
+        userPayload?.permissions
+      );
       navigate('/dashboard');
     } catch (err: any) {
       logger.error('🔴 Login error:', err);
@@ -147,7 +156,8 @@ export default function Login() {
         user.organization,
         user.id,
         accessToken,
-        user.organizationConfig
+        user.organizationConfig,
+        user.permissions
       );
       navigate('/dashboard');
     } catch (err: any) {

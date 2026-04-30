@@ -4,6 +4,7 @@ import type { User, UserRole } from '../utils/types';
 import logger from '../utils/logger';
 import * as safeStorage from '../utils/safeStorage';
 import { useAuthStore, normalizeRole } from '../store/authStore';
+import apiClient from '../api/client';
 
 interface AuthContextType {
   user: User | null;
@@ -14,7 +15,8 @@ interface AuthContextType {
     organization?: string,
     id?: string,
     accessToken?: string,
-    organizationConfig?: any
+    organizationConfig?: any,
+    permissions?: string[]
   ) => void;
   logout: () => void;
   impersonate: (targetUser: User) => void;
@@ -22,6 +24,16 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+const normalizeSessionUser = (rawUser: any): User => ({
+  id: rawUser.id || `temp-id-${Date.now()}`,
+  email: rawUser.email,
+  role: (normalizeRole(rawUser.role) as UserRole) || (rawUser.role as UserRole),
+  name: rawUser.name,
+  organization: rawUser.organization || rawUser.organizationName,
+  organizationConfig: rawUser.organizationConfig || {},
+  permissions: Array.isArray(rawUser.permissions) ? rawUser.permissions : [],
+});
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(() => {
@@ -47,6 +59,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return null;
   });
 
+  const applySessionUser = (nextUser: User) => {
+    setUser(nextUser);
+    useAuthStore.getState().setUser(nextUser);
+    safeStorage.setItem('user', JSON.stringify(nextUser));
+  };
+
+  const refreshSession = async () => {
+    if (!safeStorage.getItem('access_token')) return;
+    try {
+      const { data } = await apiClient.post('auth/refresh');
+      if (data?.accessToken) {
+        safeStorage.setItem('access_token', data.accessToken);
+      }
+      if (data?.user) {
+        applySessionUser(normalizeSessionUser(data.user));
+      }
+    } catch (err) {
+      logger.warn('[AUTH] Session refresh skipped/failed', err);
+    }
+  };
+
   // Listen for forced logout events dispatched by apiClient when token refresh fails.
   // This breaks the stale-auth sync loop without needing AuthContext inside interceptors.
   useEffect(() => {
@@ -58,9 +91,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       safeStorage.removeItem('last_sync_timestamp');
       setUser(null);
     };
+    const handleTokenRefreshed = (event: Event) => {
+      const detail = (event as CustomEvent<{ accessToken?: string; user?: User }>).detail;
+      if (detail?.user) {
+        applySessionUser(normalizeSessionUser(detail.user));
+      }
+    };
+
     window.addEventListener('auth:logout', handleForceLogout);
-    return () => window.removeEventListener('auth:logout', handleForceLogout);
+    window.addEventListener('auth:token-refreshed', handleTokenRefreshed as EventListener);
+    return () => {
+      window.removeEventListener('auth:logout', handleForceLogout);
+      window.removeEventListener('auth:token-refreshed', handleTokenRefreshed as EventListener);
+    };
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const handleFocus = () => {
+      void refreshSession();
+    };
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        void refreshSession();
+      }
+    };
+
+    const interval = window.setInterval(() => {
+      void refreshSession();
+    }, 60_000);
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [user?.id]);
 
   const login = (
     email: string,
@@ -69,7 +140,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     organization?: string,
     id?: string,
     accessToken?: string,
-    organizationConfig?: any
+    organizationConfig?: any,
+    permissions?: string[]
   ) => {
     logger.info(`[AUTH-CONTEXT] Login called for ${email}. AccessToken provided: ${accessToken ? 'YES' : 'NO'}`);
     
@@ -85,13 +157,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       name,
       organization,
       organizationConfig: organizationConfig || {},
+      permissions: Array.isArray(permissions) ? permissions : [],
     };
 
-    // Update LOCAL state
-    setUser(newUser);
+    applySessionUser(newUser);
     
     // Update GLOBAL store
-    useAuthStore.getState().login(email, role, name, organization, id, accessToken);
+    useAuthStore.getState().login(email, role, name, organization, id, accessToken, permissions);
 
     if (accessToken) {
       safeStorage.setItem('access_token', accessToken);
@@ -100,7 +172,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Clear stale project/session-specific pointers. ProjectContext will repopulate them from the server.
     safeStorage.removeItem('active_project_id');
     safeStorage.removeItem('last_sync_timestamp');
-    safeStorage.setItem('user', JSON.stringify(newUser));
   };
 
   const logout = () => {
