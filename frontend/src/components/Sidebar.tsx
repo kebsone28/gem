@@ -132,6 +132,14 @@ export default function Sidebar() {
         category: 'PILOTAGE',
       },
       {
+        to: '/finances',
+        icon: BarChart3,
+        label: 'Finances',
+        title: 'Renseignez les budgets prévus, coûts réels et écarts financiers',
+        permission: PERMISSIONS.VOIR_FINANCES,
+        category: 'PILOTAGE',
+      },
+      {
         to: '/bordereau',
         icon: Users,
         label: 'Bordereau',

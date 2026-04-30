@@ -177,6 +177,17 @@ function App() {
             />
 
             <Route
+              path="/charges"
+              element={
+                <ProtectedRoute>
+                  <PermissionRoute permission={PERMISSIONS.VOIR_FINANCES}>
+                    <Charges />
+                  </PermissionRoute>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
               path="/settings"
               element={
                 <ProtectedRoute>
