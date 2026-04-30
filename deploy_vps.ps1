@@ -212,9 +212,20 @@ run_prisma_migrate() {
 
   if [ $PRISMA_MIGRATE_EXIT -ne 0 ]; then
     if printf '%s' "$PRISMA_MIGRATE_OUTPUT" | grep -q 'P3005'; then
-      echo '[DEPLOY] Prisma migrate skipped: production database is not baselined yet (P3005).'
-      echo '[DEPLOY] Baseline Prisma on production before introducing schema migrations that must be applied automatically.'
-      return 0
+      echo '[DEPLOY] Prisma P3005 detected: existing production database will be baselined.'
+      echo '[DEPLOY] Marking existing migration directories as already applied.'
+
+      for migration_dir in prisma/migrations/[0-9]*; do
+        if [ -d "$migration_dir" ]; then
+          migration_name=$(basename "$migration_dir")
+          echo "[DEPLOY] Baseline migration: $migration_name"
+          npx prisma migrate resolve --applied "$migration_name" --schema=prisma/schema.prisma
+        fi
+      done
+
+      echo '[DEPLOY] Re-running Prisma migrate deploy after baseline.'
+      npx prisma migrate deploy --schema=prisma/schema.prisma
+      return $?
     fi
 
     return $PRISMA_MIGRATE_EXIT

@@ -193,6 +193,10 @@ export default defineConfig({
     // Raise the chunk size warning threshold (MapLibre is unavoidably large)
     chunkSizeWarningLimit: 2500,
     rollupOptions: {
+      onLog(level, log, handler) {
+        if (log.code === 'PLUGIN_TIMINGS') return;
+        handler(level, log);
+      },
       output: {
         manualChunks(id) {
           if (id.includes('node_modules')) {
@@ -204,7 +208,6 @@ export default defineConfig({
               id.includes('html2canvas')
             )
               return 'pdf';
-            if (id.includes('exceljs')) return 'excel';
             if (id.includes('framer-motion')) return 'animation';
             if (id.includes('dexie')) return 'dexie';
             return 'vendor';

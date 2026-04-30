@@ -1,4 +1,5 @@
-import ExcelJS from 'exceljs';
+import readExcelFile from 'read-excel-file/browser';
+import writeExcelFile from 'write-excel-file/browser';
 
 type CellValue = string | number | boolean | Date | null | undefined;
 type SheetRow = CellValue[];
@@ -13,19 +14,24 @@ interface SafeWorkbook {
   Sheets: Record<string, SafeWorksheet>;
 }
 
-function normalizeCellValue(value: ExcelJS.CellValue): CellValue {
+function normalizeCellValue(value: unknown): CellValue {
   if (value == null) return undefined;
   if (value instanceof Date) return value;
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    return value;
+  }
   if (typeof value === 'object') {
     if ('text' in value && typeof value.text === 'string') return value.text;
-    if ('result' in value) return normalizeCellValue(value.result as ExcelJS.CellValue);
+    if ('result' in value) return normalizeCellValue(value.result);
     if ('richText' in value && Array.isArray(value.richText)) {
-      return value.richText.map(part => part.text || '').join('');
+      return value.richText
+        .map(part => (typeof part === 'object' && part && 'text' in part ? part.text || '' : ''))
+        .join('');
     }
     if ('hyperlink' in value && 'text' in value) return String(value.text || value.hyperlink || '');
     return String(value);
   }
-  return value;
+  return undefined;
 }
 
 function binaryStringToArrayBuffer(binary: string): ArrayBuffer {
@@ -94,7 +100,6 @@ export async function read(
   input: ArrayBuffer | Uint8Array | string,
   options: { type?: 'array' | 'binary' } = {}
 ): Promise<SafeWorkbook> {
-  const workbook = new ExcelJS.Workbook();
   const buffer =
     typeof input === 'string'
       ? binaryStringToArrayBuffer(input)
@@ -102,16 +107,12 @@ export async function read(
         ? input.buffer.slice(input.byteOffset, input.byteOffset + input.byteLength)
         : input;
 
-  await workbook.xlsx.load(buffer as any);
+  const sheets = await readExcelFile(buffer as ArrayBuffer);
 
   const safeWorkbook: SafeWorkbook = { SheetNames: [], Sheets: {} };
-  workbook.worksheets.forEach(sheet => {
-    const rows: SheetRow[] = [];
-    sheet.eachRow({ includeEmpty: false }, row => {
-      const values = Array.isArray(row.values) ? row.values.slice(1) : [];
-      rows.push(values.map(value => normalizeCellValue(value as ExcelJS.CellValue)));
-    });
-    utils.book_append_sheet(safeWorkbook, { rows }, sheet.name);
+  sheets.forEach(sheet => {
+    const rows = (sheet.data || []).map(row => row.map(normalizeCellValue));
+    utils.book_append_sheet(safeWorkbook, { rows }, sheet.sheet);
   });
 
   void options;
@@ -119,22 +120,18 @@ export async function read(
 }
 
 export async function writeFile(workbook: SafeWorkbook, filename: string): Promise<void> {
-  const excelWorkbook = new ExcelJS.Workbook();
+  const sheets = workbook.SheetNames.map(name => ({
+    data: workbook.Sheets[name]?.rows || [],
+    sheet: name || 'Sheet1',
+  }));
 
-  workbook.SheetNames.forEach(name => {
-    const sourceSheet = workbook.Sheets[name];
-    const targetSheet = excelWorkbook.addWorksheet(name);
-    (sourceSheet?.rows || []).forEach(row => targetSheet.addRow(row));
-  });
+  if (sheets.length <= 1) {
+    const [sheet = { data: [], sheet: 'Sheet1' }] = sheets;
+    await writeExcelFile(sheet.data, { sheet: sheet.sheet, dateFormat: 'dd/mm/yyyy' }).toFile(
+      filename
+    );
+    return;
+  }
 
-  const buffer = await excelWorkbook.xlsx.writeBuffer();
-  const blob = new Blob([buffer], {
-    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = filename;
-  anchor.click();
-  URL.revokeObjectURL(url);
+  await writeExcelFile(sheets).toFile(filename);
 }
