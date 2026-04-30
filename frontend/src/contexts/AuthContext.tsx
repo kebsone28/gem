@@ -1,5 +1,5 @@
 ﻿/* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type { User, UserRole } from '../utils/types';
 import logger from '../utils/logger';
 import * as safeStorage from '../utils/safeStorage';
@@ -59,13 +59,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return null;
   });
 
-  const applySessionUser = (nextUser: User) => {
+  const applySessionUser = useCallback((nextUser: User) => {
     setUser(nextUser);
     useAuthStore.getState().setUser(nextUser);
     safeStorage.setItem('user', JSON.stringify(nextUser));
-  };
+  }, []);
 
-  const refreshSession = async () => {
+  const refreshSession = useCallback(async () => {
     if (!safeStorage.getItem('access_token')) return;
     try {
       const { data } = await apiClient.post('auth/refresh');
@@ -78,7 +78,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (err) {
       logger.warn('[AUTH] Session refresh skipped/failed', err);
     }
-  };
+  }, [applySessionUser]);
 
   // Listen for forced logout events dispatched by apiClient when token refresh fails.
   // This breaks the stale-auth sync loop without needing AuthContext inside interceptors.
@@ -104,7 +104,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       window.removeEventListener('auth:logout', handleForceLogout);
       window.removeEventListener('auth:token-refreshed', handleTokenRefreshed as EventListener);
     };
-  }, []);
+  }, [applySessionUser]);
 
   useEffect(() => {
     if (!user) return;
@@ -131,7 +131,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       window.removeEventListener('focus', handleFocus);
       document.removeEventListener('visibilitychange', handleVisibility);
     };
-  }, [user?.id]);
+  }, [refreshSession, user]);
 
   const login = (
     email: string,
