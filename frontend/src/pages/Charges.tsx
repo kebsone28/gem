@@ -50,7 +50,7 @@ export default function Charges() {
   return (
     <PageContainer>
       <div className={`${COMMON_CLASSES.card} mb-6 overflow-hidden p-4 sm:p-5 lg:p-6`}>
-        <div className="flex min-w-0 flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
+        <div className="grid min-w-0 gap-5 2xl:grid-cols-[minmax(260px,0.7fr)_minmax(0,1.3fr)] 2xl:items-center">
           <div className="flex min-w-0 items-start gap-3">
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-300">
               <DollarSign size={22} />
@@ -65,47 +65,48 @@ export default function Charges() {
             </div>
           </div>
 
-          <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center xl:justify-end">
+          <div className="grid min-w-0 gap-3 lg:grid-cols-[minmax(190px,0.9fr)_minmax(0,1.6fr)_52px] lg:items-center">
             <button
               onClick={toggleClientProvidesMaterials}
-              className={`flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-[11px] font-black uppercase tracking-[0.12em] transition-all sm:px-4 ${isClientProvided ? 'bg-amber-500 border-amber-400 text-white shadow-lg shadow-amber-500/20' : COMMON_CLASSES.btnSecondary}`}
+              className={`flex min-h-12 min-w-0 items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-[10px] font-black uppercase tracking-[0.08em] transition-all sm:px-4 ${isClientProvided ? 'bg-amber-500 border-amber-400 text-white shadow-lg shadow-amber-500/20' : COMMON_CLASSES.btnSecondary}`}
             >
               <Package size={13} className="shrink-0" />
-              <span className="truncate">
-                {isClientProvided ? 'Matériaux Fournis par Client' : 'Fourniture Entrepreneur'}
+              <span className="hidden leading-tight sm:inline">
+                {isClientProvided ? 'Matériaux fournis par client' : 'Fourniture entrepreneur'}
               </span>
+              <span className="leading-tight sm:hidden">{isClientProvided ? 'Client' : 'Entrepreneur'}</span>
             </button>
 
             <div
-              className={`${COMMON_CLASSES.card} grid min-w-0 grid-cols-1 gap-1 rounded-xl p-1 transition-all sm:grid-cols-4 lg:w-auto`}
+              className={`${COMMON_CLASSES.card} grid min-w-0 grid-cols-2 gap-1 rounded-xl p-1 transition-all md:grid-cols-4`}
             >
               <button
                 onClick={() => setActiveTab('overview')}
-                className={`flex min-h-10 items-center justify-center gap-2 rounded-lg px-3 py-2 text-[11px] font-black uppercase tracking-[0.08em] transition-all ${activeTab === 'overview' ? COMMON_CLASSES.btnPrimary : 'text-slate-400 hover:text-slate-900 dark:text-slate-500 dark:hover:text-white'}`}
+                className={`flex min-h-11 items-center justify-center gap-2 rounded-lg px-2 py-2 text-[10px] font-black uppercase tracking-[0.08em] transition-all sm:px-3 ${activeTab === 'overview' ? COMMON_CLASSES.btnPrimary : 'text-slate-400 hover:text-slate-900 dark:text-slate-500 dark:hover:text-white'}`}
               >
                 <PieIcon size={14} className="shrink-0" />
-                <span className="truncate">Analyse</span>
+                <span>Analyse</span>
               </button>
               <button
                 onClick={() => setActiveTab('devis')}
-                className={`flex min-h-10 items-center justify-center gap-2 rounded-lg px-3 py-2 text-[11px] font-black uppercase tracking-[0.08em] transition-all ${activeTab === 'devis' ? COMMON_CLASSES.btnPrimary : 'text-slate-400 hover:text-slate-900 dark:text-slate-500 dark:hover:text-white'}`}
+                className={`flex min-h-11 items-center justify-center gap-2 rounded-lg px-2 py-2 text-[10px] font-black uppercase tracking-[0.08em] transition-all sm:px-3 ${activeTab === 'devis' ? COMMON_CLASSES.btnPrimary : 'text-slate-400 hover:text-slate-900 dark:text-slate-500 dark:hover:text-white'}`}
               >
                 <TableIcon size={14} className="shrink-0" />
-                <span className="truncate">Devis</span>
+                <span>Devis</span>
               </button>
               <button
                 onClick={() => setActiveTab('dotations')}
-                className={`flex min-h-10 items-center justify-center gap-2 rounded-lg px-3 py-2 text-[11px] font-black uppercase tracking-[0.08em] transition-all ${activeTab === 'dotations' ? COMMON_CLASSES.btnPrimary : 'text-slate-400 hover:text-slate-900 dark:text-slate-500 dark:hover:text-white'}`}
+                className={`flex min-h-11 items-center justify-center gap-2 rounded-lg px-2 py-2 text-[10px] font-black uppercase tracking-[0.08em] transition-all sm:px-3 ${activeTab === 'dotations' ? COMMON_CLASSES.btnPrimary : 'text-slate-400 hover:text-slate-900 dark:text-slate-500 dark:hover:text-white'}`}
               >
                 <Wrench size={14} className="shrink-0" />
-                <span className="truncate">Dotations</span>
+                <span>Dotations</span>
               </button>
               <button
                 onClick={() => setActiveTab('inventory')}
-                className={`flex min-h-10 items-center justify-center gap-2 rounded-lg px-3 py-2 text-[11px] font-black uppercase tracking-[0.08em] transition-all ${activeTab === 'inventory' ? COMMON_CLASSES.btnPrimary : 'text-slate-400 hover:text-slate-900 dark:text-slate-500 dark:hover:text-white'}`}
+                className={`flex min-h-11 items-center justify-center gap-2 rounded-lg px-2 py-2 text-[10px] font-black uppercase tracking-[0.08em] transition-all sm:px-3 ${activeTab === 'inventory' ? COMMON_CLASSES.btnPrimary : 'text-slate-400 hover:text-slate-900 dark:text-slate-500 dark:hover:text-white'}`}
               >
                 <Database size={14} className="shrink-0" />
-                <span className="truncate">Matériels</span>
+                <span>Matériels</span>
               </button>
             </div>
             <button
@@ -113,7 +114,7 @@ export default function Charges() {
               onClick={() => {
                 void refreshProjects(project?.id);
               }}
-              className={`${COMMON_CLASSES.btnSecondary} flex h-11 w-full shrink-0 items-center justify-center rounded-xl p-2.5 lg:w-11`}
+              className={`${COMMON_CLASSES.btnSecondary} flex h-12 w-full shrink-0 items-center justify-center rounded-xl p-2.5 lg:w-12`}
             >
               <RefreshCcw size={16} />
             </button>

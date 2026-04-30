@@ -1113,25 +1113,50 @@ function TeamsSection({
             </div>
           ) : null}
         </div>
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.8fr)]">
-          <div className="rounded-[1.5rem] border border-blue-500/15 bg-[linear-gradient(135deg,rgba(37,99,235,0.16),rgba(15,23,42,0.8))] p-5 shadow-[0_18px_40px_rgba(15,23,42,0.28)]">
-            <div className="flex items-start justify-between gap-4">
-              <div className="space-y-2">
-                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-300">
-                  Auto-allocation projet
-                </p>
-                <h3 className="text-base font-black text-white sm:text-lg">
-                  Générer automatiquement les équipes et les affectations régionales
-                </h3>
-                <p className="max-w-3xl text-sm text-slate-300">
-                  Le calcul utilise le nombre de régions détectées, le volume de ménages dans
-                  chaque région et la durée cible du projet pour créer les unités terrain.
-                </p>
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
+          <div className="rounded-[1.5rem] border border-blue-500/15 bg-[linear-gradient(135deg,rgba(37,99,235,0.14),rgba(15,23,42,0.86))] p-5 shadow-[0_18px_40px_rgba(15,23,42,0.28)]">
+            <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+              <div className="min-w-0 space-y-4">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-300">
+                    Auto-allocation projet
+                  </p>
+                  <h3 className="mt-2 text-xl font-black leading-tight text-white sm:text-2xl">
+                    Création automatique des équipes terrain
+                  </h3>
+                  <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
+                    Le système répartit les ménages par région, applique les cadences de production,
+                    puis crée les cellules régionales et leurs équipes métier.
+                  </p>
+                </div>
+
+                <div className="grid gap-3 md:grid-cols-3">
+                  {[
+                    ['1', 'Lire les ménages', 'Régions et volumes terrain'],
+                    ['2', 'Calculer le besoin', 'Durée cible et cadences'],
+                    ['3', 'Créer les équipes', 'Affectation par région'],
+                  ].map(([step, title, desc]) => (
+                    <div key={step} className="rounded-2xl border border-white/10 bg-slate-950/45 p-3">
+                      <div className="flex items-center gap-3">
+                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-500 text-xs font-black text-white">
+                          {step}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="text-[11px] font-black uppercase tracking-[0.08em] text-white">
+                            {title}
+                          </p>
+                          <p className="mt-0.5 text-xs text-slate-400">{desc}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
+
               <button
                 onClick={handleAutoGenerateTeams}
                 disabled={isAutoGenerating || households.length === 0}
-                className="min-h-[48px] shrink-0 rounded-xl border border-blue-400/30 bg-blue-600 px-5 py-3 text-[10px] font-black uppercase tracking-[0.08em] text-white shadow-lg shadow-blue-600/20 transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+                className="min-h-[52px] w-full shrink-0 rounded-xl border border-blue-400/30 bg-blue-600 px-5 py-3 text-[11px] font-black uppercase tracking-[0.08em] text-white shadow-lg shadow-blue-600/20 transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60 lg:w-[220px]"
               >
                 {isAutoGenerating ? 'Génération...' : 'Auto-créer & affecter'}
               </button>
