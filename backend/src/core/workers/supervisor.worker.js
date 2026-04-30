@@ -1,6 +1,7 @@
 /* eslint-disable no-console */
 import prisma from '../utils/prisma.js';
 import { sendMail } from '../../services/mail.service.js';
+import { buildPublicUrl } from '../../utils/publicUrl.js';
 
 /**
  * Le Superviseur Silencieux
@@ -37,7 +38,7 @@ export const startSilentSupervisor = () => {
                     title: 'Alerte Système GEM',
                     body: `<p>${text.replace(/\n/g, '<br/>')}</p>`,
                     actionLabel: "Voir l'outil logistique",
-                    actionLink: `${process.env.FRONTEND_URL}/admin/logistique`
+                    actionLink: buildPublicUrl('/admin/logistique')
                 });
             }
         }

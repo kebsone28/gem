@@ -9,6 +9,7 @@ import { sendMail } from '../../services/mail.service.js';
 import { missionMentorService } from '../assistant/missionMentorService.js';
 import { normalizeRole } from '../../core/utils/roles.js';
 import QRCode from 'qrcode';
+import { buildPublicUrl } from '../../utils/publicUrl.js';
 
 const isDev = process.env.NODE_ENV !== 'production';
 const SUBMITTED_MISSION_STATUSES = ['soumise', 'en_attente_validation'];
@@ -29,7 +30,7 @@ const formatDateFr = (value) => {
 };
 
 const buildMissionPublicUrl = (identifier) =>
-    `${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify/mission/${encodeURIComponent(identifier)}`;
+    buildPublicUrl(`/verify/mission/${encodeURIComponent(identifier)}`);
 
 const findMissionLogoPath = () => {
     const candidates = [

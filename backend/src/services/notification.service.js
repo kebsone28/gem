@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { sendMail } from './mail.service.js';
+import { buildPublicUrl } from '../utils/publicUrl.js';
 
 const prisma = new PrismaClient();
 
@@ -79,7 +80,7 @@ export const missionNotificationService = {
                 subject: `Action Requise: Validation de Mission (${nextRole})`,
                 title: 'Nouvelle mission reçue',
                 body,
-                actionLink: `${process.env.FRONTEND_URL}/admin/approval`,
+                actionLink: buildPublicUrl('/admin/approval'),
                 actionLabel: 'Ouvrir la page d’approbation'
             });
         } catch (error) {
@@ -147,7 +148,7 @@ export const missionNotificationService = {
                 subject: `[CERTIFIÉ] Ordre de Mission : ${orderNumber}`,
                 title: 'Mission Validée par la DG',
                 body,
-                actionLink: `${process.env.FRONTEND_URL}/api/missions/verify/${encodeURIComponent(orderNumber || mission.id)}/document`,
+                actionLink: buildPublicUrl(`/api/missions/verify/${encodeURIComponent(orderNumber || mission.id)}/document`),
                 actionLabel: 'Télécharger l\'Ordre de Mission'
             });
         } catch (error) {
@@ -196,7 +197,7 @@ export const missionNotificationService = {
                 subject: `🚨 Mission Rejetée: ${mission.title}`,
                 title: 'Correction de mission nécessaire',
                 body,
-                actionLink: `${process.env.FRONTEND_URL}/admin/mission?id=${mission.id}`,
+                actionLink: buildPublicUrl(`/admin/mission?id=${mission.id}`),
                 actionLabel: 'Modifier la mission'
             });
         } catch (error) {
@@ -234,7 +235,7 @@ export const missionNotificationService = {
                 subject: `📋 Mission à Certifier : ${mission.title || 'Nouvelle mission'}`,
                 title: '⏳ Validation Direction Générale Requise',
                 body,
-                actionLink: `${process.env.FRONTEND_URL}/admin/approval`,
+                actionLink: buildPublicUrl('/admin/approval'),
                 actionLabel: 'Ouvrir le Cockpit DG'
             });
         } catch (error) {
@@ -266,7 +267,7 @@ export const missionNotificationService = {
                 subject: `✅ Mission Certifiée DG : ${orderNumber}`,
                 title: '🎉 Ordre de Mission Validé !',
                 body,
-                actionLink: `${process.env.FRONTEND_URL}/api/missions/verify/${encodeURIComponent(orderNumber || mission.id)}/document`,
+                actionLink: buildPublicUrl(`/api/missions/verify/${encodeURIComponent(orderNumber || mission.id)}/document`),
                 actionLabel: 'Télécharger l\'Ordre de Mission'
             });
         } catch (error) {
