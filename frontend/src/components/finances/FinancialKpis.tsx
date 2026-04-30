@@ -1,5 +1,5 @@
 ﻿/* eslint-disable @typescript-eslint/no-explicit-any */
-import { DollarSign, Users, Truck, Package, TrendingUp, Target, ArrowUpRight } from 'lucide-react';
+import { DollarSign, Users, Truck, Package, TrendingUp, Target, ArrowUpRight, Wrench } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { fmtFCFA } from '../../utils/format';
 import './FinancialKpis.css';
@@ -35,6 +35,14 @@ export default function FinancialKpis({ stats, devis }: { stats: any; devis: any
       trend: '-5.4%',
     },
     {
+      label: 'Dotations',
+      val: fmtFCFA(stats.dotations || 0),
+      icon: Wrench,
+      color: 'violet',
+      sub: 'Matériel affecté aux équipes',
+      trend: 'Serveur',
+    },
+    {
       label: 'Matériaux & Stock',
       val: !includeSupply ? 'FOURNI PAR MOQ' : fmtFCFA(stats.materials),
       icon: Package,
@@ -45,7 +53,7 @@ export default function FinancialKpis({ stats, devis }: { stats: any; devis: any
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 px-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-6 px-4">
       {items.map((item, i) => (
         <div
           key={i}
@@ -100,7 +108,7 @@ export default function FinancialKpis({ stats, devis }: { stats: any; devis: any
 
       {/* Global Margin Card */}
       <div
-        className={`md:col-span-2 lg:col-span-4 border rounded-[2.5rem] p-10 shadow-2xl relative overflow-hidden flex flex-col lg:flex-row items-center gap-10 transition-all ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100'}`}
+        className={`md:col-span-2 xl:col-span-5 border rounded-[2.5rem] p-10 shadow-2xl relative overflow-hidden flex flex-col lg:flex-row items-center gap-10 transition-all ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100'}`}
       >
         <div
           className={`absolute top-0 left-0 w-full h-full bg-gradient-to-br from-indigo-600/5 to-transparent pointer-events-none`}

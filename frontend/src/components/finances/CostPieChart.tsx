@@ -6,6 +6,7 @@ export default function CostPieChart({ stats }: { stats: any }) {
   const data = [
     { label: "Main d'Œuvre", val: stats.teams + stats.supervision, color: '#2e96db' },
     { label: 'Logistique', val: stats.logistics, color: '#f59e0b' },
+    { label: 'Dotations', val: stats.dotations || 0, color: '#8b5cf6' },
     { label: 'Matériaux', val: stats.materials, color: '#10b981' },
   ];
 

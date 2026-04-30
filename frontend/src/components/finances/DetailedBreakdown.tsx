@@ -91,6 +91,31 @@ export default function DetailedBreakdown({ stats }: { stats: any }) {
 
             {/* 3. Materials */}
             <SectionHeader
+              title="Dotations Matériel"
+              total={stats.dotations || 0}
+              isDarkMode={isDarkMode}
+            />
+            {(stats.dotationDetails || []).length === 0 ? (
+              <DataItem
+                label="Aucune dotation configurée"
+                base="Paramètres ou page Charge"
+                val={0}
+                isDarkMode={isDarkMode}
+              />
+            ) : (
+              (stats.dotationDetails || []).slice(0, 8).map((item: any) => (
+                <DataItem
+                  key={item.id}
+                  label={`${item.teamName} — ${item.itemName}`}
+                  base={`${item.quantity} x ${item.acquisitionType}`}
+                  val={item.total}
+                  isDarkMode={isDarkMode}
+                />
+              ))
+            )}
+
+            {/* 3. Materials */}
+            <SectionHeader
               title="Matériaux (BOM)"
               total={stats.materials}
               isDarkMode={isDarkMode}

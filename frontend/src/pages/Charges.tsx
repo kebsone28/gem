@@ -8,6 +8,7 @@ import {
   Table as TableIcon,
   ArrowUpRight,
   Package,
+  Wrench,
 } from 'lucide-react';
 import { useFinances } from '../hooks/useFinances';
 import FinancialKpis from '../components/finances/FinancialKpis';
@@ -15,9 +16,11 @@ import CostPieChart from '../components/finances/CostPieChart';
 import DetailedBreakdown from '../components/finances/DetailedBreakdown';
 import DevisVsReel from '../components/finances/DevisVsReel';
 import MaterialDatabase from '../components/finances/MaterialDatabase';
+import ChargeDotationsSection from '../components/finances/ChargeDotationsSection';
 import { motion, AnimatePresence } from 'framer-motion';
 import SparklineChart from '../components/finances/SparklineChart';
 import { useTheme } from '../contexts/ThemeContext';
+import { useProject } from '../contexts/ProjectContext';
 import { exportFinancialPDF } from '../services/exportService';
 import { Database } from 'lucide-react';
 
@@ -25,7 +28,10 @@ import { PageContainer, Section, DESIGN_TOKENS, COMMON_CLASSES } from '../compon
 
 export default function Charges() {
   const { isLoading, stats, devis, project, toggleClientProvidesMaterials } = useFinances();
-  const [activeTab, setActiveTab] = useState<'overview' | 'comparison' | 'inventory'>('overview');
+  const { refreshProjects } = useProject();
+  const [activeTab, setActiveTab] = useState<'overview' | 'devis' | 'dotations' | 'inventory'>(
+    'overview'
+  );
   const { isDarkMode } = useTheme();
 
   const isClientProvided = !!project?.config?.clientProvidesMaterials;
@@ -71,7 +77,7 @@ export default function Charges() {
             </button>
 
             <div
-              className={`${COMMON_CLASSES.card} grid min-w-0 grid-cols-1 gap-1 rounded-xl p-1 transition-all sm:grid-cols-3 lg:w-auto`}
+              className={`${COMMON_CLASSES.card} grid min-w-0 grid-cols-1 gap-1 rounded-xl p-1 transition-all sm:grid-cols-4 lg:w-auto`}
             >
               <button
                 onClick={() => setActiveTab('overview')}
@@ -81,11 +87,18 @@ export default function Charges() {
                 <span className="truncate">Analyse</span>
               </button>
               <button
-                onClick={() => setActiveTab('comparison')}
-                className={`flex min-h-10 items-center justify-center gap-2 rounded-lg px-3 py-2 text-[11px] font-black uppercase tracking-[0.08em] transition-all ${activeTab === 'comparison' ? COMMON_CLASSES.btnPrimary : 'text-slate-400 hover:text-slate-900 dark:text-slate-500 dark:hover:text-white'}`}
+                onClick={() => setActiveTab('devis')}
+                className={`flex min-h-10 items-center justify-center gap-2 rounded-lg px-3 py-2 text-[11px] font-black uppercase tracking-[0.08em] transition-all ${activeTab === 'devis' ? COMMON_CLASSES.btnPrimary : 'text-slate-400 hover:text-slate-900 dark:text-slate-500 dark:hover:text-white'}`}
               >
                 <TableIcon size={14} className="shrink-0" />
-                <span className="truncate">Prestation</span>
+                <span className="truncate">Devis</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('dotations')}
+                className={`flex min-h-10 items-center justify-center gap-2 rounded-lg px-3 py-2 text-[11px] font-black uppercase tracking-[0.08em] transition-all ${activeTab === 'dotations' ? COMMON_CLASSES.btnPrimary : 'text-slate-400 hover:text-slate-900 dark:text-slate-500 dark:hover:text-white'}`}
+              >
+                <Wrench size={14} className="shrink-0" />
+                <span className="truncate">Dotations</span>
               </button>
               <button
                 onClick={() => setActiveTab('inventory')}
@@ -97,6 +110,9 @@ export default function Charges() {
             </div>
             <button
               aria-label="Actualiser les données"
+              onClick={() => {
+                void refreshProjects(project?.id);
+              }}
               className={`${COMMON_CLASSES.btnSecondary} flex h-11 w-full shrink-0 items-center justify-center rounded-xl p-2.5 lg:w-11`}
             >
               <RefreshCcw size={16} />
@@ -132,16 +148,28 @@ export default function Charges() {
               </Section>
             </div>
           </motion.div>
-        ) : activeTab === 'comparison' ? (
+        ) : activeTab === 'devis' ? (
           <motion.div
             id="financial-analysis-content"
-            key="comparison"
+            key="devis"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
           >
-            <Section title="Devis vs Réel">
+            <Section title="Devis entreprise vs coûts réels">
               <DevisVsReel />
+            </Section>
+          </motion.div>
+        ) : activeTab === 'dotations' ? (
+          <motion.div
+            id="financial-analysis-content"
+            key="dotations"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+          >
+            <Section title="Dotations et charges associées">
+              <ChargeDotationsSection />
             </Section>
           </motion.div>
         ) : (

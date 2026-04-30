@@ -154,6 +154,8 @@ export function useFinances() {
   const duration = project?.duration || 180;
   const staffConfig = project?.config?.staffConfig || {};
   const legacyCosts = (project?.config as any)?.costs || {};
+  const materialCatalog = (project?.config?.materialCatalog || []) as any[];
+  const subTeamAllocations = (project?.config?.subTeamAllocations || {}) as Record<string, any[]>;
   const realCostsOverrides = project?.config?.financials?.realCosts || {};
   const plannedCostsOverrides = project?.config?.financials?.plannedCosts || {};
 
@@ -207,7 +209,36 @@ export function useFinances() {
     getStaffCost('perSupervisor', Math.ceil((teams?.length || 0) / 10), duration) +
     getStaffCost('perProjectManager', 1, duration);
 
-  const totalEstimated = teamsCost + logisticsCost + materialsCost + supervisionCost;
+  const dotationDetails = Object.entries(subTeamAllocations).flatMap(([subTeamId, allocations]) => {
+    const team = teams?.find((t) => t.id === subTeamId);
+    return (allocations || []).map((allocation: any) => {
+      const catalogItem = materialCatalog.find((item: any) => item.id === allocation.itemId);
+      const quantity = Number(allocation.quantity || 0);
+      const acquisitionType = allocation.acquisitionType === 'location' ? 'location' : 'achat';
+      const unitPrice =
+        acquisitionType === 'location'
+          ? Number(catalogItem?.rentalPrice || 0)
+          : Number(catalogItem?.purchasePrice || 0);
+      const total = quantity * unitPrice;
+
+      return {
+        id: allocation.id || `${subTeamId}_${allocation.itemId}`,
+        subTeamId,
+        teamName: team?.name || 'Equipe non rattachee',
+        itemId: allocation.itemId,
+        itemName: catalogItem?.name || 'Materiel supprime du catalogue',
+        acquisitionType,
+        quantity,
+        unitPrice,
+        total,
+      };
+    });
+  });
+
+  const dotationsCost = dotationDetails.reduce((sum, item) => sum + item.total, 0);
+
+  const totalEstimated =
+    teamsCost + logisticsCost + materialsCost + supervisionCost + dotationsCost;
 
   const currentDevisItems =
     ((project?.config?.financials as any)?.devisItems as DevisItem[]) ?? DEVIS_ITEMS;
@@ -399,6 +430,8 @@ export function useFinances() {
       teams: teamsCost,
       logistics: logisticsCost,
       materials: materialsCost,
+      dotations: dotationsCost,
+      dotationDetails,
       supervision: supervisionCost,
       total: totalEstimated,
       supplyCost,
