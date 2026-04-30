@@ -81,7 +81,6 @@ export const buildWanekooDeployCommand = (deployPath = DEFAULT_WANEKOO_DEPLOY_PA
     `cd ${deployPath}`,
     'git fetch --all',
     'git reset --hard origin/main',
-    'npm install --omit=dev --no-scripts --legacy-peer-deps',
     'cd frontend',
     'npm install --no-scripts --legacy-peer-deps',
     'NODE_OPTIONS="--max-old-space-size=4096" npx vite build',

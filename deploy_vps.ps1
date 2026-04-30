@@ -264,8 +264,6 @@ cd "__DEPLOY_PATH__"
 git fetch --all
 git reset --hard origin/__BRANCH__
 
-install_node_dependencies production
-
 cd frontend
 install_node_dependencies
 NODE_OPTIONS='--max-old-space-size=4096' npm run build
