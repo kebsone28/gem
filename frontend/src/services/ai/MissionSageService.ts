@@ -715,8 +715,75 @@ const CATEGORY_DISPLAY_NAME: Record<string, string> = {
   report: 'Rapports',
 };
 
+const CONVERSATIONAL_INTENTS = new Set([
+  'greeting',
+  'greeting_how',
+  'funName',
+  'funTime',
+  'funDate',
+  'funJoke',
+  'funWeather',
+  'dailyHelloGood',
+  'dailyWhatDoing',
+  'dailyCanHelp',
+  'dailyHuman',
+  'dailySleep',
+  'dailyLove',
+  'dailyTired',
+  'dailyOverwork',
+  'dailyMistake',
+  'dailyStressed',
+  'dailyQuit',
+  'dailyWhosBest',
+  'dailyKnowAll',
+  'dailyCanMistake',
+  'dailyWhyNotWork',
+  'dailyComplex',
+  'dailyNotUnderstand',
+  'dailyWhy',
+  'dailyDangerous',
+]);
+
+const DIRECT_COMMANDS: Record<
+  string,
+  {
+    intent: 'mission_list' | 'dashboard' | 'finance' | 'kobo' | 'norme' | 'contract' | 'decision' | 'report';
+    label: string;
+  }
+> = {
+  'mes missions': { intent: 'mission_list', label: 'Mes missions' },
+  'voir mes missions': { intent: 'mission_list', label: 'Voir mes missions' },
+  'missions en attente': { intent: 'mission_list', label: 'Missions en attente' },
+  dashboard: { intent: 'dashboard', label: 'Dashboard' },
+  budget: { intent: 'finance', label: 'Budget' },
+  finance: { intent: 'finance', label: 'Finance' },
+  'terrain kobo': { intent: 'kobo', label: 'Terrain Kobo' },
+  kobo: { intent: 'kobo', label: 'Kobo' },
+  normes: { intent: 'norme', label: 'Normes' },
+  'norme ns 01001': { intent: 'norme', label: 'Norme NS 01-001' },
+  contrat: { intent: 'contract', label: 'Contrat' },
+  'cahier de charge modele': { intent: 'contract', label: 'Cahier de Charge (Modèle)' },
+  'rapport strategique dg': { intent: 'report', label: 'Rapport stratégique DG' },
+  'risque de retard dg': { intent: 'decision', label: 'Risque de retard DG' },
+  'recommandations igpp': { intent: 'decision', label: 'Recommandations IGPP' },
+  'analyse strategique dg': { intent: 'decision', label: 'Analyse stratégique DG' },
+};
+
+function getDirectCommand(query: string) {
+  return DIRECT_COMMANDS[normalizeWord(query)];
+}
+
+function isCatalogQuestion(query: string): boolean {
+  const normalized = normalizeWord(query);
+  return Object.values(QUESTION_CATALOG)
+    .flat()
+    .some((question) => normalizeWord(question) === normalized);
+}
+
 function isKeywordSearch(query: string): boolean {
   const normalized = normalizeWord(query);
+  if (getDirectCommand(query) || isCatalogQuestion(query)) return false;
+
   const words = normalized.split(/\s+/).filter(Boolean);
   const hasQuestionWord =
     /\b(qui|quoi|ou|où|quand|comment|pourquoi|estce|cest|que|quel|quelle|quelles|quelques)\b/.test(
@@ -800,6 +867,14 @@ function detectIntent(q: string): Record<string, boolean> {
 
 function getContextualIntent(memory: SessionMemory, currentIntent: Record<string, boolean>): Record<string, boolean> {
   const hasIntent = Object.values(currentIntent).some((v) => v === true);
+  const hasConversationalIntent = Object.entries(currentIntent).some(
+    ([key, value]) => value === true && CONVERSATIONAL_INTENTS.has(key)
+  );
+
+  if (hasConversationalIntent) {
+    return currentIntent;
+  }
+
   if (!hasIntent && memory.lastIntent && currentIntent.hasOwnProperty(memory.lastIntent)) {
     return { ...currentIntent, [memory.lastIntent]: true };
   }
@@ -1476,7 +1551,7 @@ async function runRulesEngine(
   const isDG = ['DG_PROQUELEC', 'DIRECTEUR', 'COMPTABLE', 'ADMIN_PROQUELEC'].includes(user.role);
 
   let greeting = '';
-  if (memory.history.length <= 2) {
+  if (memory.history.length <= 1) {
     const base = `Bonjour ${formattedName}.`;
     if (isDG || isMaster) greeting = `**Conseiller GEM** : ${base}`;
     else if (user.role === 'CHEF_PROJET') greeting = `**Assistant projet** : ${base}`;
@@ -1485,10 +1560,63 @@ async function runRulesEngine(
 
   const pfx = (txt: string) => (greeting ? `${greeting}\n\n${txt}` : txt);
   const relatedQuestions = getQuestionSuggestions(query);
-  let intent = detectIntent(q);
+  const rawIntent = detectIntent(q);
+  const hasRawIntent = Object.values(rawIntent).some((value) => value === true);
+  const earlyUniversalResponse = !hasRawIntent ? findUniversalQR(query) : null;
+  if (earlyUniversalResponse) {
+    return {
+      message: pfx(earlyUniversalResponse),
+      type: 'info',
+      smartReplies: ['Aide', 'Missions', 'Retour'],
+      _engine: 'RULES',
+    };
+  }
+
+  let intent = rawIntent;
   intent = getContextualIntent(memory, intent);
   const activeIntents = getActiveIntents(intent);
   const semanticEntryKey = resolveSemanticEntryKey(intent);
+  const directCommand = getDirectCommand(query);
+
+  if (directCommand) {
+    if (directCommand.intent === 'mission_list') {
+      memory.lastIntent = 'mission';
+      return {
+        message: pfx('J’ouvre la liste des missions.'),
+        type: 'info',
+        actionLabel: directCommand.label,
+        actionPath: '/mission-order',
+        smartReplies: ['Créer une mission', 'Missions en attente', 'Qui valide les OM ?', 'Dashboard'],
+        _engine: 'RULES',
+      };
+    }
+
+    if (directCommand.intent === 'dashboard') {
+      memory.lastIntent = 'dashboard';
+      return {
+        message: pfx('J’ouvre le tableau de bord.'),
+        type: 'info',
+        actionLabel: 'Voir Dashboard',
+        actionPath: '/admin',
+        smartReplies: ['Score IGPP', 'Risque de retard DG', 'Budget', 'Terrain Kobo'],
+        _engine: 'RULES',
+      };
+    }
+
+    if (directCommand.intent === 'finance') {
+      intent = { ...intent, finance: true };
+    } else if (directCommand.intent === 'kobo') {
+      intent = { ...intent, kobo: true };
+    } else if (directCommand.intent === 'norme') {
+      intent = { ...intent, norme: true };
+    } else if (directCommand.intent === 'contract') {
+      intent = { ...intent, contract: true };
+    } else if (directCommand.intent === 'report') {
+      intent = { ...intent, report: true };
+    } else if (directCommand.intent === 'decision') {
+      intent = { ...intent, decision: true, performance: false };
+    }
+  }
 
   const generatedOverride = findGeneratedMissionSageOverride(q);
   if (generatedOverride) {
