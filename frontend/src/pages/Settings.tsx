@@ -1130,22 +1130,25 @@ function TeamsSection({
                   </p>
                 </div>
 
-                <div className="grid gap-3 md:grid-cols-3">
+                <div className="grid gap-3 2xl:grid-cols-3">
                   {[
                     ['1', 'Lire les ménages', 'Régions et volumes terrain'],
                     ['2', 'Calculer le besoin', 'Durée cible et cadences'],
                     ['3', 'Créer les équipes', 'Affectation par région'],
                   ].map(([step, title, desc]) => (
-                    <div key={step} className="rounded-2xl border border-white/10 bg-slate-950/45 p-3">
-                      <div className="flex items-center gap-3">
+                    <div
+                      key={step}
+                      className="min-w-0 rounded-2xl border border-white/10 bg-slate-950/45 p-3"
+                    >
+                      <div className="flex min-w-0 items-start gap-3">
                         <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-500 text-xs font-black text-white">
                           {step}
                         </span>
                         <div className="min-w-0">
-                          <p className="text-[11px] font-black uppercase tracking-[0.08em] text-white">
+                          <p className="break-normal text-[11px] font-black uppercase leading-snug tracking-[0.04em] text-white">
                             {title}
                           </p>
-                          <p className="mt-0.5 text-xs text-slate-400">{desc}</p>
+                          <p className="mt-1 text-xs leading-5 text-slate-400">{desc}</p>
                         </div>
                       </div>
                     </div>
