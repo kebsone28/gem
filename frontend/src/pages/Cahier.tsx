@@ -31,6 +31,7 @@ import {
   Scale,
   FileText,
   RefreshCw,
+  ClipboardList,
 } from 'lucide-react';
 import { useAuth } from '@contexts/AuthContext';
 import { useProject } from '@contexts/ProjectContext';
@@ -43,6 +44,10 @@ import {
   type ContractTemplate,
   type ContractTemplateLibrary,
 } from '../data/contractTemplates';
+import {
+  DEFAULT_OPERATIONAL_STRATEGY,
+  type OperationalStrategyTemplate,
+} from '../data/operationalStrategyTemplates';
 import './Cahier.css';
 import logger from '../utils/logger';
 import { isTeamAvailableForAllocation } from '../services/planningAllocation';
@@ -90,7 +95,7 @@ const COLOR_MAPS: Record<string, { bg: string; text: string; border: string; bgS
   },
 };
 
-type CahierDocumentMode = 'cahier' | 'contrat';
+type CahierDocumentMode = 'cahier' | 'contrat' | 'strategie';
 
 function isContractHeading(line: string): boolean {
   return (
@@ -110,6 +115,32 @@ function buildContractTemplateFromText(template: ContractTemplate, rawContent: s
     ...template,
     content,
   };
+}
+
+function buildStrategyTemplateFromText(
+  template: OperationalStrategyTemplate,
+  rawContent: string
+): OperationalStrategyTemplate {
+  const content = rawContent
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  return {
+    ...template,
+    content,
+  };
+}
+
+function isStrategyHeading(line: string): boolean {
+  return (
+    /^\d+\.\s+/.test(line) ||
+    /^ZONE\s+/i.test(line) ||
+    /^Grappe\s+/i.test(line) ||
+    /^LOT\s+[A-C]/i.test(line) ||
+    /^Étape\s+\d+/i.test(line) ||
+    /^[A-C]\.\s+/.test(line)
+  );
 }
 
 const GENERAL_CLAUSES = [
@@ -431,6 +462,7 @@ export default function Cahier() {
   const [selectedRole, setSelectedRole] = useState('Électricien');
   const [selectedContractLot, setSelectedContractLot] = useState('LOT A');
   const [isContractEditing, setIsContractEditing] = useState(false);
+  const [isStrategyEditing, setIsStrategyEditing] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   // Get automated rate for the current role from project settings
@@ -504,6 +536,19 @@ export default function Cahier() {
     return DEFAULT_CONTRACT_TEMPLATES;
   });
 
+  const [operationalStrategy, setOperationalStrategy] = useState<OperationalStrategyTemplate>(() => {
+    try {
+      const saved = safeStorage.getItem('gem_operational_strategy');
+      if (saved) {
+        const parsed = JSON.parse(saved) as OperationalStrategyTemplate;
+        if (Array.isArray(parsed.content) && parsed.content.length > 0) return parsed;
+      }
+    } catch (e) {
+      logger.warn('[Cahier] Operational strategy initial load failed, fallback to default', e);
+    }
+    return DEFAULT_OPERATIONAL_STRATEGY;
+  });
+
   const currentRoleKey = customLibrary[selectedRole as keyof typeof customLibrary]
     ? selectedRole
     : Object.keys(DEFAULT_TASK_LIBRARY)[0];
@@ -514,6 +559,7 @@ export default function Cahier() {
   const currentContract =
     contractLibrary[selectedContractLot] || DEFAULT_CONTRACT_TEMPLATES[selectedContractLot];
   const [contractDraft, setContractDraft] = useState(currentContract.content.join('\n'));
+  const [strategyDraft, setStrategyDraft] = useState(operationalStrategy.content.join('\n'));
 
   const getCadence = (roleName: string) => {
     const tradeKey = ROLE_TO_TRADE_MAPPING[roleName];
@@ -594,6 +640,11 @@ export default function Cahier() {
     setContractDraft(currentContract.content.join('\n'));
     setIsContractEditing(false);
   }, [currentContract, selectedContractLot]);
+
+  useEffect(() => {
+    setStrategyDraft(operationalStrategy.content.join('\n'));
+    setIsStrategyEditing(false);
+  }, [operationalStrategy]);
 
   // Reset editable fields when role changes
   /**
@@ -723,6 +774,86 @@ export default function Cahier() {
 
     const blob = await Packer.toBlob(doc);
     saveAs(blob, `Contrat_${selectedContractLot.replace(/\s+/g, '_')}.docx`);
+  };
+
+  const handleSaveStrategy = () => {
+    const updated = buildStrategyTemplateFromText(operationalStrategy, strategyDraft);
+    setOperationalStrategy(updated);
+    safeStorage.setItem('gem_operational_strategy', JSON.stringify(updated));
+    setIsStrategyEditing(false);
+  };
+
+  const handleResetStrategy = () => {
+    if (!confirm('Restaurer la stratégie opérationnelle par défaut ?')) return;
+    setOperationalStrategy(DEFAULT_OPERATIONAL_STRATEGY);
+    safeStorage.setItem('gem_operational_strategy', JSON.stringify(DEFAULT_OPERATIONAL_STRATEGY));
+    setStrategyDraft(DEFAULT_OPERATIONAL_STRATEGY.content.join('\n'));
+    setIsStrategyEditing(false);
+  };
+
+  const handleExportStrategyWord = async () => {
+    const lines = (isStrategyEditing ? strategyDraft : operationalStrategy.content.join('\n'))
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean);
+
+    const doc = new Document({
+      sections: [
+        {
+          properties: {
+            page: {
+              margin: { top: 900, right: 900, bottom: 900, left: 900 },
+            },
+          },
+          children: [
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              spacing: { after: 120 },
+              children: [
+                new TextRun({
+                  text: 'PROQUELEC',
+                  bold: true,
+                  size: 28,
+                  color: '0f172a',
+                }),
+              ],
+            }),
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              spacing: { after: 280 },
+              children: [
+                new TextRun({
+                  text: operationalStrategy.title,
+                  bold: true,
+                  size: 26,
+                  color: '0f172a',
+                }),
+              ],
+            }),
+            ...lines.map((line, index) => {
+              const isTitle = index === 0;
+              const isHeading = isTitle || isStrategyHeading(line);
+              return new Paragraph({
+                heading: isTitle ? HeadingLevel.HEADING_1 : undefined,
+                alignment: isTitle ? AlignmentType.CENTER : AlignmentType.LEFT,
+                spacing: { before: isHeading ? 220 : 60, after: isHeading ? 120 : 80 },
+                children: [
+                  new TextRun({
+                    text: line,
+                    bold: isHeading,
+                    size: isTitle ? 24 : isHeading ? 22 : 20,
+                    color: isHeading ? '0f172a' : '334155',
+                  }),
+                ],
+              });
+            }),
+          ],
+        },
+      ],
+    });
+
+    const blob = await Packer.toBlob(doc);
+    saveAs(blob, 'Strategie_operationnelle_projet_LSE.docx');
   };
 
   const handleSaveProjectStandard = async () => {
@@ -969,6 +1100,7 @@ export default function Cahier() {
             {[
               { key: 'cahier' as const, label: 'Cahier de charge', icon: HardHat },
               { key: 'contrat' as const, label: 'Contrat', icon: FileText },
+              { key: 'strategie' as const, label: 'Stratégie opérationnelle', icon: ClipboardList },
             ].map((item) => {
               const Icon = item.icon;
               const active = documentMode === item.key;
@@ -1115,6 +1247,97 @@ export default function Cahier() {
                 </div>
               </div>
             </main>
+          </div>
+        ) : documentMode === 'strategie' ? (
+          <div className="max-w-7xl mx-auto p-3 md:p-8">
+            <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-950/45">
+              <div className="border-b border-slate-800 bg-slate-950/60 p-4 md:p-7">
+                <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-300">
+                      Stratégie opérationnelle projet
+                    </p>
+                    <h3 className="mt-2 text-2xl font-bold text-white md:text-3xl">
+                      {operationalStrategy.title}
+                    </h3>
+                    <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
+                      {operationalStrategy.subtitle}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={handleExportStrategyWord}
+                      className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-white transition-colors hover:bg-slate-800"
+                    >
+                      <Download size={14} className="text-cyan-300" />
+                      DOCX
+                    </button>
+                    {isAdmin && (
+                      <>
+                        {isStrategyEditing ? (
+                          <button
+                            onClick={handleSaveStrategy}
+                            className="inline-flex items-center gap-2 rounded-lg bg-cyan-700 px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-white transition-colors hover:bg-cyan-600"
+                          >
+                            <Save size={14} />
+                            Enregistrer
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => setIsStrategyEditing(true)}
+                            className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-white transition-colors hover:bg-slate-800"
+                          >
+                            <Edit3 size={14} />
+                            Éditer
+                          </button>
+                        )}
+                        <button
+                          onClick={handleResetStrategy}
+                          className="inline-flex items-center gap-2 rounded-lg border border-red-500/20 bg-transparent px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-red-300 transition-colors hover:bg-red-500/10"
+                        >
+                          <RefreshCw size={14} />
+                          Reset
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-6 p-4 md:p-6">
+                {isStrategyEditing ? (
+                  <textarea
+                    value={strategyDraft}
+                    onChange={(event) => setStrategyDraft(event.target.value)}
+                    className="min-h-[46rem] w-full resize-y rounded-xl border border-slate-700 bg-slate-950 p-5 font-serif text-sm leading-7 text-slate-100 outline-none focus:border-cyan-400"
+                    aria-label="Modifier la stratégie opérationnelle projet"
+                  />
+                ) : (
+                  <article className="rounded-xl border border-slate-800 bg-slate-900/20 px-3 py-5 md:px-8 md:py-8">
+                    <div className="mx-auto max-w-4xl rounded-lg bg-slate-50 px-5 py-8 text-slate-900 shadow-sm md:px-12 md:py-12">
+                      {operationalStrategy.content.map((line, index) => {
+                        const titleLine = index === 0;
+                        const heading = titleLine || isStrategyHeading(line);
+                        return (
+                          <p
+                            key={`${line}-${index}`}
+                            className={`${
+                              titleLine
+                                ? 'text-center text-xl font-black uppercase tracking-wide text-slate-950 md:text-2xl'
+                                : heading
+                                  ? 'mt-6 text-base font-black text-slate-950'
+                                  : 'mt-3 text-sm leading-7 text-slate-700'
+                            }`}
+                          >
+                            {line}
+                          </p>
+                        );
+                      })}
+                    </div>
+                  </article>
+                )}
+              </div>
+            </div>
           </div>
         ) : (
         <div className="max-w-7xl mx-auto grid grid-cols-1 xl:grid-cols-4 gap-4 md:gap-6 p-3 md:p-8">
