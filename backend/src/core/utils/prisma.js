@@ -11,25 +11,7 @@ if (process.env.NODE_ENV !== 'production') {
 export const basePrisma = new PrismaClient();
 
 // Modèles sans colonne organizationId: ne jamais y injecter de filtre tenant.
-const EXCLUDED_MODELS = [
-  'Organization',
-  'SystemLog',
-  'AuditLog',
-  'Role',
-  'Permission',
-  'RolePermission',
-  'Region',
-  'MissionApprovalWorkflow',
-  'MissionApprovalStep',
-  'UserMemory',
-  'FormationModule',
-  'FormationSession',
-  'FormationSessionModule',
-  'FormationParticipant',
-  'FormationPlanningHistory',
-  'FormationPlannerState',
-  'spatial_ref_sys'
-];
+const EXCLUDED_MODELS = ['Organization', 'SystemLog', 'AuditLog', 'Role', 'Permission', 'RolePermission', 'Region', 'MissionApprovalWorkflow', 'MissionApprovalStep', 'UserMemory', 'FormationModule', 'FormationSession', 'FormationSessionModule', 'FormationParticipant', 'FormationPlanningHistory', 'FormationPlannerState', 'spatial_ref_sys'];
 
 // Liste des modèles filtrés par projectId si présent dans le contexte
 const PROJECT_LEVEL_MODELS = ['Zone', 'Team', 'Mission', 'PerformanceLog', 'Alert'];

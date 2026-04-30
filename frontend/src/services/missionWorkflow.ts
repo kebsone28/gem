@@ -1,4 +1,3 @@
-﻿ 
 import logger from '../utils/logger';
 
 export interface ApprovalStep {
@@ -15,7 +14,7 @@ export interface ApprovalStep {
 
 export interface MissionApprovalWorkflow {
   missionId: string;
-  currentStep: number; // 0 = draft, 1 = validation finale direction
+  currentStep: number;
   steps: ApprovalStep[];
   status: 'draft' | 'in_review' | 'approved' | 'rejected' | 'executed' | 'cancelled';
   submittedAt?: number;
@@ -31,163 +30,94 @@ export interface MissionApprovalWorkflow {
 
 const STORAGE_KEY_PREFIX = 'mission_approval_';
 
-export const initializeWorkflow = (missionId: string): MissionApprovalWorkflow => {
-  const workflow: MissionApprovalWorkflow = {
-    missionId,
-    currentStep: 0,
-    updatedAt: Date.now(),
-    history: [],
-    steps: [
-      {
-        id: 'directeur',
-        role: 'directeur',
-        roleName: 'Direction / Administration',
-        status: 'pending',
-      },
-    ],
-    status: 'draft',
-  };
+const createDraftWorkflow = (missionId: string): MissionApprovalWorkflow => ({
+  missionId,
+  currentStep: 0,
+  updatedAt: Date.now(),
+  history: [],
+  steps: [
+    {
+      id: 'directeur',
+      role: 'directeur',
+      roleName: 'Direction / Administration',
+      status: 'pending',
+    },
+  ],
+  status: 'draft',
+});
 
-  saveWorkflow(workflow);
-  return workflow;
+const warnServerOnly = (action: string) => {
+  logger.warn(
+    `[missionWorkflow] ${action} ignoré: le workflow mission officiel est désormais géré par le serveur.`
+  );
+};
+
+export const initializeWorkflow = (missionId: string): MissionApprovalWorkflow => {
+  warnServerOnly('initializeWorkflow');
+  clearWorkflow(missionId);
+  return createDraftWorkflow(missionId);
 };
 
 export const saveWorkflow = (workflow: MissionApprovalWorkflow): void => {
-  try {
-    workflow.updatedAt = Date.now();
-    localStorage.setItem(`${STORAGE_KEY_PREFIX}${workflow.missionId}`, JSON.stringify(workflow));
-  } catch (e) {
-    logger.warn('[missionWorkflow] Failed to save workflow', e);
-  }
+  warnServerOnly(`saveWorkflow(${workflow.missionId})`);
+  clearWorkflow(workflow.missionId);
 };
 
 export const getWorkflow = (missionId: string): MissionApprovalWorkflow | null => {
-  try {
-    const stored = localStorage.getItem(`${STORAGE_KEY_PREFIX}${missionId}`);
-    return stored ? JSON.parse(stored) : null;
-  } catch (e) {
-    logger.warn('[missionWorkflow] Failed to load workflow', e);
-    return null;
-  }
+  clearWorkflow(missionId);
+  return null;
 };
 
 export const submitForApproval = (
-  missionId: string,
-  submittedBy: string,
+  missionId?: string,
+  submittedBy?: string,
   comment?: string
 ): MissionApprovalWorkflow | null => {
-  let workflow = getWorkflow(missionId);
-  if (!workflow) {
-    workflow = initializeWorkflow(missionId);
-  }
-
-  workflow.status = 'in_review';
-  workflow.currentStep = 1;
-  workflow.submittedAt = Date.now();
-
-  workflow.history.push({
-    status: 'Soumission',
-    timestamp: Date.now(),
-    user: submittedBy,
-    comment: comment || 'Soumis pour validation finale',
-  });
-
-  saveWorkflow(workflow);
-  return workflow;
+  void missionId;
+  void submittedBy;
+  void comment;
+  warnServerOnly('submitForApproval');
+  return null;
 };
 
 export const approveStep = (
-  missionId: string,
-  stepRole: ApprovalStep['role'],
-  approverName: string,
+  missionId?: string,
+  stepRole?: ApprovalStep['role'],
+  approverName?: string,
   comment?: string
 ): MissionApprovalWorkflow | null => {
-  const workflow = getWorkflow(missionId);
-  if (!workflow) return null;
-
-  const stepIndex = workflow.steps.findIndex((s) => s.role === stepRole);
-  if (stepIndex === -1) return null;
-
-  const step = workflow.steps[stepIndex];
-  if (step.status === 'approved') return workflow; // Déjà fait
-
-  step.status = 'approved';
-  step.approvedBy = approverName;
-  step.approvedAt = Date.now();
-  step.updatedAt = Date.now();
-  if (comment) step.comment = comment;
-
-  workflow.history.push({
-    status: `Approbation ${step.roleName}`,
-    timestamp: Date.now(),
-    user: approverName,
-    comment,
-  });
-
-  // Avancer au prochain step
-  workflow.currentStep = stepIndex + 1;
-
-  // Vérifier si tous les steps sont approuvés
-  if (workflow.steps.every((s) => s.status === 'approved')) {
-    workflow.status = 'approved';
-    workflow.finalizedAt = Date.now();
-    workflow.history.push({
-      status: 'MISSION DÉFINITIVEMENT APPROUVÉE',
-      timestamp: Date.now(),
-      user: 'Système',
-    });
-  }
-
-  saveWorkflow(workflow);
-  return workflow;
+  void missionId;
+  void stepRole;
+  void approverName;
+  void comment;
+  warnServerOnly('approveStep');
+  return null;
 };
 
 export const rejectStep = (
-  missionId: string,
-  stepRole: ApprovalStep['role'],
-  rejectedBy: string,
-  reason: string
+  missionId?: string,
+  stepRole?: ApprovalStep['role'],
+  rejectedBy?: string,
+  reason?: string
 ): MissionApprovalWorkflow | null => {
-  const workflow = getWorkflow(missionId);
-  if (!workflow) return null;
-
-  const step = workflow.steps.find((s) => s.role === stepRole);
-  if (!step) return null;
-
-  step.status = 'rejected';
-  step.reasonIfRejected = reason;
-  step.updatedAt = Date.now();
-
-  workflow.status = 'rejected';
-  workflow.currentStep = 0; // Retourner à draft pour corrections
-
-  workflow.history.push({
-    status: `REJET par ${step.roleName}`,
-    timestamp: Date.now(),
-    user: rejectedBy,
-    comment: reason,
-  });
-
-  saveWorkflow(workflow);
-  return workflow;
+  void missionId;
+  void stepRole;
+  void rejectedBy;
+  void reason;
+  warnServerOnly('rejectStep');
+  return null;
 };
 
 export const addComment = (
-  missionId: string,
-  stepRole: ApprovalStep['role'],
-  comment: string
+  missionId?: string,
+  stepRole?: ApprovalStep['role'],
+  comment?: string
 ): MissionApprovalWorkflow | null => {
-  const workflow = getWorkflow(missionId);
-  if (!workflow) return null;
-
-  const step = workflow.steps.find((s) => s.role === stepRole);
-  if (!step) return null;
-
-  step.comment = comment;
-  step.status = 'commented';
-
-  saveWorkflow(workflow);
-  return workflow;
+  void missionId;
+  void stepRole;
+  void comment;
+  warnServerOnly('addComment');
+  return null;
 };
 
 export const getApprovalProgress = (
@@ -201,18 +131,10 @@ export const getApprovalProgress = (
     return { progress: 0, nextApprover: null, isApproved: false };
   }
 
-  const approvedCount = workflow.steps.filter((s) => s.status === 'approved').length;
-  const progress = (approvedCount / workflow.steps.length) * 100;
-
-  let nextApprover: string | null = null;
-  const pendingStep = workflow.steps.find((s) => s.status === 'pending');
-  if (pendingStep) {
-    nextApprover = pendingStep.roleName;
-  }
-
+  const approvedCount = workflow.steps.filter((step) => step.status === 'approved').length;
   return {
-    progress,
-    nextApprover,
+    progress: workflow.steps.length > 0 ? (approvedCount / workflow.steps.length) * 100 : 0,
+    nextApprover: workflow.steps.find((step) => step.status === 'pending')?.roleName || null,
     isApproved: workflow.status === 'approved',
   };
 };
@@ -225,25 +147,19 @@ export const getApprovalTimeline = (
   approvedBy?: string;
   approvedAt?: string;
   comment?: string;
-}[] => {
-  return workflow.steps.map((step) => ({
+}[] =>
+  workflow.steps.map((step) => ({
     role: step.roleName,
     status: step.status,
     approvedBy: step.approvedBy,
-    approvedAt: step.approvedAt ? formatTimestamp(step.approvedAt) : undefined,
+    approvedAt: step.approvedAt ? new Date(step.approvedAt).toLocaleString('fr-FR') : undefined,
     comment: step.comment,
   }));
-};
-
-const formatTimestamp = (timestamp: number): string => {
-  const date = new Date(timestamp);
-  return date.toLocaleString('fr-FR');
-};
 
 export const clearWorkflow = (missionId: string): void => {
   try {
     localStorage.removeItem(`${STORAGE_KEY_PREFIX}${missionId}`);
   } catch (e) {
-    logger.warn('[missionWorkflow] Failed to clear workflow', e);
+    logger.warn('[missionWorkflow] Failed to clear legacy workflow', e);
   }
 };

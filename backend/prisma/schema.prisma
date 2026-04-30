@@ -544,6 +544,26 @@ model Alert {
   @@index([householdId])
 }
 
+model PVRecord {
+  id             String    @id
+  organizationId String
+  projectId      String?
+  householdId    String
+  type           String
+  content        String?
+  createdBy      String?
+  metadata       Json?     @default("{}")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  @@index([organizationId])
+  @@index([projectId])
+  @@index([householdId])
+  @@index([type])
+  @@index([createdAt])
+}
+
 model AlertConfiguration {
   id              String   @id @default(cuid())
   organizationId  String   @unique

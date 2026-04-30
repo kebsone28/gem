@@ -259,9 +259,6 @@ export default function Simulation() {
             parentTeamsOfTrade.length > 0 ? parentTeamsOfTrade[0].id : null;
           let parentTeamPath: string | null =
             parentTeamsOfTrade.length > 0 ? parentTeamsOfTrade[0].path : null;
-          // Check if existing parent is online or offline
-          let parentIsOffline: boolean =
-            parentTeamsOfTrade.length > 0 ? parentTeamsOfTrade[0].syncStatus === 'pending' : false;
 
           if (!parentTeamId) {
             const parentPayload = {
@@ -276,25 +273,12 @@ export default function Simulation() {
               const res = await apiClient.post('/teams', parentPayload);
               parentTeamId = res.data.id;
               parentTeamPath = res.data.path;
-              parentIsOffline = false;
               await (db as any).teams.put(res.data);
               existingTeams.push(res.data);
               createdCount++;
             } catch (apiErr) {
-              parentTeamId = crypto.randomUUID();
-              parentTeamPath = parentTeamId;
-              parentIsOffline = true;
-              const newParent = {
-                ...parentPayload,
-                id: parentTeamId,
-                organizationId: project?.organizationId || 'org-offline',
-                level: 0,
-                syncStatus: 'pending',
-                path: parentTeamId,
-              };
-              await (db as any).teams.add(newParent);
-              existingTeams.push(newParent);
-              createdCount++;
+              logger.error('[Simulation] Création serveur du groupement impossible', apiErr);
+              throw new Error('La création serveur du groupement a échoué.');
             }
           }
 
@@ -309,54 +293,22 @@ export default function Simulation() {
               const currentT = existingChildren.length + i + 1;
               const paddedNum = currentT.toString().padStart(2, '0');
               const childName = `${roleLabel} - Équipe ${paddedNum}`;
-              const newId = crypto.randomUUID();
-
-              if (!parentIsOffline) {
-                // Parent is known by the server → call API directly
-                const payload = {
-                  name: childName,
-                  projectId: activeProjectId,
-                  parentTeamId: parentTeamId,
-                  role: teamRole,
-                  tradeKey,
-                  capacity: roleCapacities[role as RoleKey] || 0,
-                  status: 'active',
-                };
-                try {
-                  const res = await apiClient.post('/teams', payload);
-                  await (db as any).teams.put(res.data);
-                  existingTeams.push(res.data);
-                } catch (apiErr) {
-                  // Unexpected API error → save locally with offline flag
-                  const newTeam = {
-                    ...payload,
-                    id: newId,
-                    organizationId: project?.organizationId || 'org-offline',
-                    level: 1,
-                    syncStatus: 'pending',
-                    path: `${parentTeamPath}/${newId}`,
-                  };
-                  await (db as any).teams.add(newTeam);
-                  existingTeams.push(newTeam);
-                }
-              } else {
-                // Parent is offline-only → save child locally, no API call
-                const newTeam = {
-                  name: childName,
-                  projectId: activeProjectId,
-                  parentTeamId: parentTeamId,
-                  role: teamRole,
-                  tradeKey,
-                  capacity: roleCapacities[role as RoleKey] || 0,
-                  status: 'active',
-                  id: newId,
-                  organizationId: project?.organizationId || 'org-offline',
-                  level: 1,
-                  syncStatus: 'pending',
-                  path: `${parentTeamPath}/${newId}`,
-                };
-                await (db as any).teams.add(newTeam);
-                existingTeams.push(newTeam);
+              const payload = {
+                name: childName,
+                projectId: activeProjectId,
+                parentTeamId: parentTeamId,
+                role: teamRole,
+                tradeKey,
+                capacity: roleCapacities[role as RoleKey] || 0,
+                status: 'active',
+              };
+              try {
+                const res = await apiClient.post('/teams', payload);
+                await (db as any).teams.put(res.data);
+                existingTeams.push(res.data);
+              } catch (apiErr) {
+                logger.error('[Simulation] Création serveur de l’équipe impossible', apiErr);
+                throw new Error('La création serveur de l’équipe a échoué.');
               }
               createdCount++;
             }
@@ -364,7 +316,7 @@ export default function Simulation() {
         }
 
         if (createdCount > 0) {
-          toast.success(`${createdCount} équipe(s) générée(s) en base locale !`, { icon: '👷' });
+          toast.success(`${createdCount} équipe(s) générée(s) sur le serveur.`, { icon: '👷' });
         }
       }
     } catch (err) {

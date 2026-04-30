@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Calendar, Users, Home, CheckCircle2, AlertTriangle,
@@ -31,6 +31,7 @@ import { useProject } from '../contexts/ProjectContext';
 import { usePlanningData } from '../hooks/usePlanningData';
 import { usePlanningAuditHistory } from '../hooks/usePlanningAuditHistory';
 import { usePlanningDelayAlerts } from '../hooks/usePlanningDelayAlerts';
+import logger from '../utils/logger';
 import {
   PHASE_COLORS,
   PHASE_LABELS,
@@ -284,9 +285,20 @@ export default function Planning() {
   const [userFilter, setUserFilter] = useState('');
   const [aiRecommendation, setAiRecommendation] = useState<AIResponse | null>(null);
 
-  const { project } = useProject();
+  const { project, updateProject } = useProject();
   const currentProjectId = project?.id || null;
   const [manualPlanningOverrides, setManualPlanningOverrides] = useState<Record<string, ManualPlanningOverride>>({});
+  const lastSavedPlanningOverridesRef = useRef<string>('');
+  const projectConfig = useMemo(
+    () => (project?.config || {}) as Record<string, any>,
+    [project?.config]
+  );
+  const serverManualPlanningOverrides = useMemo(() => {
+    const overrides = projectConfig?.planning?.manualOverrides;
+    return overrides && typeof overrides === 'object'
+      ? (overrides as Record<string, ManualPlanningOverride>)
+      : {};
+  }, [projectConfig]);
   const { households, teams, isLoading, isRefreshing, dataSource, refresh: refreshPlanningData } =
     usePlanningData(currentProjectId);
   const activeTeams = useMemo(() => teams.filter((team) => team.status === 'active'), [teams]);
@@ -337,28 +349,36 @@ export default function Planning() {
   }, [project?.id, project?.duration]);
 
   useEffect(() => {
-    if (!currentProjectId || typeof window === 'undefined') {
-      setManualPlanningOverrides({});
-      return;
-    }
-
-    const raw = window.localStorage.getItem(`gem-planning-manual-${currentProjectId}`);
-    if (!raw) {
-      setManualPlanningOverrides({});
-      return;
-    }
-
-    try {
-      setManualPlanningOverrides(JSON.parse(raw) as Record<string, ManualPlanningOverride>);
-    } catch {
-      setManualPlanningOverrides({});
-    }
-  }, [currentProjectId]);
+    const serialized = JSON.stringify(serverManualPlanningOverrides);
+    lastSavedPlanningOverridesRef.current = serialized;
+    setManualPlanningOverrides(serverManualPlanningOverrides);
+  }, [currentProjectId, serverManualPlanningOverrides]);
 
   useEffect(() => {
-    if (!currentProjectId || typeof window === 'undefined') return;
-    window.localStorage.setItem(`gem-planning-manual-${currentProjectId}`, JSON.stringify(manualPlanningOverrides));
-  }, [currentProjectId, manualPlanningOverrides]);
+    if (!currentProjectId) return;
+
+    const serialized = JSON.stringify(manualPlanningOverrides);
+    if (serialized === lastSavedPlanningOverridesRef.current) return;
+
+    const timeoutId = window.setTimeout(async () => {
+      try {
+        const nextConfig = {
+          ...projectConfig,
+          planning: {
+            ...(projectConfig.planning || {}),
+            manualOverrides: manualPlanningOverrides,
+          },
+        };
+        await updateProject({ config: nextConfig } as any, currentProjectId);
+        lastSavedPlanningOverridesRef.current = serialized;
+      } catch (err) {
+        logger.error('[Planning] Failed to persist manual overrides on server', err);
+        toast.error('Réglage planning non sauvegardé sur le serveur');
+      }
+    }, 700);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [currentProjectId, manualPlanningOverrides, projectConfig, updateProject]);
   useEffect(() => {
     if (planningMode === 'automatic') {
       setShowManualPlanner(false);

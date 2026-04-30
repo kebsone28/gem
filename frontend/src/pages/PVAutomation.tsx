@@ -1,5 +1,5 @@
 ﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, prefer-const */
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -28,9 +28,11 @@ import { PVAIEngine, PV_TEMPLATES, PV_DESCRIPTIONS } from '../services/ai/PVAIEn
 import type { PVType } from '../services/ai/PVAIEngine';
 import { PVRulesEngine } from '../services/ai/PVRulesEngine';
 import { PVDocGenerator } from '../services/ai/PVDocGenerator';
+import pvService from '../services/pvService';
 import { audioService } from '../services/audioService';
 import { AnimatedCounter } from '../components/common/AnimatedCounter';
 import { useAuthStore } from '../store/authStore';
+import { useProject } from '../contexts/ProjectContext';
 import type { Household, Team } from '../utils/types';
 import logger from '../utils/logger';
 
@@ -74,6 +76,9 @@ export interface PVLogic {
   getRecommendedType: (s: Household) => PVType;
   handleCreatePV: (type: PVType, submission: Household) => Promise<void>;
   handleResetPVs: (householdId: string) => Promise<void>;
+  refreshArchivedPVs: () => Promise<void>;
+  handleDeletePV: (pvId: string) => Promise<void>;
+  handleClearArchive: () => Promise<void>;
   isLoadingDB: boolean;
   isBossSignatureOpen: boolean;
   setIsBossSignatureOpen: (o: boolean) => void;
@@ -119,6 +124,10 @@ function usePVAutomation(): PVLogic {
   const [signatureData, setSignatureData] = useState<string | null>(localStorage.getItem('gem_pv_sig') || null);
   const [bossSignatureData, setBossSignatureData] = useState<string | null>(localStorage.getItem('gem_pv_boss_sig') || null);
   const [isBossSignatureOpen, setIsBossSignatureOpen] = useState(false);
+  const [archivedPVs, setArchivedPVs] = useState<PVRecord[]>([]);
+  const [isLoadingPVs, setIsLoadingPVs] = useState(true);
+  const { activeProjectId } = useProject();
+  const hasMigratedLocalPVsRef = useRef(false);
 
   // 💾 Persistance automatique pour Robustesse
   useEffect(() => {
@@ -126,22 +135,69 @@ function usePVAutomation(): PVLogic {
     if (bossSignatureData) localStorage.setItem('gem_pv_boss_sig', bossSignatureData);
   }, [signatureData, bossSignatureData]);
 
-  const archivedPVsQuery = useLiveQuery(async () => {
-    const all = await db.pvs.orderBy('createdAt').reverse().toArray();
-    // Déduplication par [ménage + type] pour ne garder que le dernier état
-    const latestMap = new Map();
-    all.forEach(pv => {
-      const key = `${pv.householdId}_${pv.type}`;
-      if (!latestMap.has(key)) {
-        latestMap.set(key, pv);
-      }
-    });
-    return Array.from(latestMap.values());
-  });
   const submissionsQuery = useLiveQuery(() => db.households.filter(h => !!h.koboData || h.status === 'WAITING_AUDIT').toArray());
 
-  const isLoadingDB = archivedPVsQuery === undefined || submissionsQuery === undefined;
-  const archivedPVs = archivedPVsQuery || [];
+  const migrateLocalPVsToServer = useCallback(async () => {
+    if (hasMigratedLocalPVsRef.current) return;
+    hasMigratedLocalPVsRef.current = true;
+
+    try {
+      const localPVs = await db.pvs.toArray();
+      if (localPVs.length === 0) return;
+
+      let migratedCount = 0;
+      for (const pv of localPVs) {
+        await pvService.upsert({
+          id: pv.id,
+          householdId: pv.householdId,
+          projectId: pv.projectId,
+          type: pv.type as PVType,
+          content: pv.content,
+          createdBy: pv.createdBy,
+          metadata: pv.metadata,
+        });
+        migratedCount += 1;
+      }
+
+      await db.pvs.clear();
+      toast.success(`${migratedCount} ancien(s) PV migré(s) vers le serveur`);
+    } catch (err) {
+      logger.warn('[PVAutomation] Local PV migration skipped', err);
+    }
+  }, []);
+
+  const refreshArchivedPVs = useCallback(async () => {
+    setIsLoadingPVs(true);
+    try {
+      await migrateLocalPVsToServer();
+      const serverPVs = await pvService.list({ projectId: activeProjectId });
+      const latestMap = new Map<string, PVRecord>();
+      serverPVs.forEach((pv) => {
+        const key = `${pv.householdId}_${pv.type}`;
+        if (!latestMap.has(key)) {
+          latestMap.set(key, {
+            ...pv,
+            projectId: pv.projectId || 'N/A',
+            content: pv.content || '',
+            createdBy: pv.createdBy || 'Système GEM',
+          } as PVRecord);
+        }
+      });
+      setArchivedPVs(Array.from(latestMap.values()));
+    } catch (err) {
+      logger.error('[PVAutomation] Server PV loading failed', err);
+      toast.error("Impossible de charger l'archive PV serveur");
+      setArchivedPVs([]);
+    } finally {
+      setIsLoadingPVs(false);
+    }
+  }, [activeProjectId, migrateLocalPVsToServer]);
+
+  useEffect(() => {
+    void refreshArchivedPVs();
+  }, [refreshArchivedPVs]);
+
+  const isLoadingDB = isLoadingPVs || submissionsQuery === undefined;
   const submissions = submissionsQuery || [];
 
   const getRecommendedType = useCallback((s: Household): PVType => {
@@ -176,7 +232,7 @@ function usePVAutomation(): PVLogic {
 
       const currentHseTeamName = teams.find(t => t.id === hseTeam)?.name || 'N/A';
       
-      await db.pvs.put({
+      await pvService.upsert({
         id: stableId,
         householdId: submission.id,
         projectId: submission.projectId || 'N/A',
@@ -191,6 +247,7 @@ function usePVAutomation(): PVLogic {
           manualDescription: type === 'PVHSE' ? hseDescription : undefined
         }
       });
+      await refreshArchivedPVs();
 
       await dispatchPVAlerts({
         pvId: stableId, householdId: submission.id, projectId: submission.projectId || 'N/A',
@@ -224,7 +281,7 @@ function usePVAutomation(): PVLogic {
     } finally {
       setIsGenerating(false);
     }
-  }, [getRecommendedType]);
+  }, [getRecommendedType, hseDescription, hseTeam, refreshArchivedPVs, teams]);
 
   const handleExportGlobalDoc = async (type: string, pvs: PVRecord[]) => {
     if (pvs.length === 0) {
@@ -432,8 +489,8 @@ function usePVAutomation(): PVLogic {
   const handleResetPVs = useCallback(async (householdId: string) => {
     if (!window.confirm("Voulez-vous vraiment supprimer tout l'historique de ce ménage (remise à zéro) ?")) return;
     try {
-      const pvs = await db.pvs.where('householdId').equals(householdId).toArray();
-      await db.pvs.bulkDelete(pvs.map(p => p.id));
+      await pvService.resetHousehold(householdId);
+      await refreshArchivedPVs();
       toast.success("Historique remis à zéro");
       if (selectedSubmission?.id === householdId) {
         setSelectedSubmission({ ...selectedSubmission, activePVType: undefined, generatedPvId: undefined });
@@ -441,7 +498,17 @@ function usePVAutomation(): PVLogic {
     } catch (err) {
       toast.error("Erreur lors de la remise à zéro");
     }
-  }, [selectedSubmission]);
+  }, [refreshArchivedPVs, selectedSubmission]);
+
+  const handleDeletePV = useCallback(async (pvId: string) => {
+    await pvService.delete(pvId);
+    await refreshArchivedPVs();
+  }, [refreshArchivedPVs]);
+
+  const handleClearArchive = useCallback(async () => {
+    await pvService.clear(activeProjectId);
+    await refreshArchivedPVs();
+  }, [activeProjectId, refreshArchivedPVs]);
 
   const handleExportAnomalies = useCallback(async () => {
     const anomalyHouseholds = submissions.filter(h => (h.alerts || []).length > 0);
@@ -476,6 +543,7 @@ function usePVAutomation(): PVLogic {
     selectedSubmission, setSelectedSubmission, isGenerating,
     isSignatureOpen, setIsSignatureOpen, signatureData, setSignatureData,
     archivedPVs, filteredSubmissions, getRecommendedType, handleCreatePV, handleResetPVs, isLoadingDB,
+    refreshArchivedPVs, handleDeletePV, handleClearArchive,
     isBossSignatureOpen, setIsBossSignatureOpen, bossSignatureData, setBossSignatureData,
     handleExportGlobalDoc, handleExportAnomalies,
     hseTeam, setHseTeam, hseDescription, setHseDescription, teams
@@ -1043,7 +1111,7 @@ function PVArchivePanel({ logic, archivedPVs }: { logic: PVLogic, archivedPVs: P
                 if (!pass) return;
 
                 if (window.confirm("ÊTES-VOUS CERTAIN ? Cette action va supprimer TOUS les rapports archivés du projet.")) {
-                  await db.pvs.clear();
+                  await logic.handleClearArchive();
                   toast.success("L'archive a été entièrement vidée");
                 }
               }}
@@ -1175,7 +1243,7 @@ function PVArchivePanel({ logic, archivedPVs }: { logic: PVLogic, archivedPVs: P
                           if (!pass) return;
                           
                           if (window.confirm("Êtes-vous ABSOLUMENT certain ? Cette suppression est définitive pour l'audit.")) {
-                            await db.pvs.delete(pv.id);
+                            await logic.handleDeletePV(pv.id);
                             toast.success("Rapport supprimé par l'autorité compétente");
                           }
                         }}

@@ -5,6 +5,9 @@ import type { Team } from '../utils/types';
 import logger from '../utils/logger';
 import { db } from '../store/db';
 
+const serverOnlyTeamError =
+  'Modification équipe non enregistrée : les équipes officielles doivent être créées, modifiées ou supprimées sur le serveur.';
+
 export function useTeams(projectId?: string) {
   const [teams, setTeams] = useState<Team[]>([]);
   const [teamTree, setTeamTree] = useState<Team[]>([]);
@@ -97,23 +100,7 @@ export function useTeams(projectId?: string) {
     try {
       const response = await apiClient.post('/teams', { ...data, projectId });
       if (response.data?._offline) {
-        const newLocalId = crypto.randomUUID();
-        const newLocalTeam = {
-          ...data,
-          projectId,
-          id: newLocalId,
-          organizationId: 'org-offline',
-          level: data.parentTeamId ? 1 : 0,
-          status: 'active',
-          syncStatus: 'pending',
-          path: data.parentTeamId ? `${data.parentTeamId}/${newLocalId}` : newLocalId,
-        };
-        await (db as unknown as { teams: { add: (item: unknown) => Promise<void> } }).teams.add(
-          newLocalTeam
-        );
-        setTeams((prev) => [...prev, newLocalTeam as any]);
-        await fetchTeamTree();
-        return newLocalTeam;
+        throw new Error(serverOnlyTeamError);
       }
 
       const newTeam = response.data;
@@ -130,13 +117,7 @@ export function useTeams(projectId?: string) {
     try {
       const response = await apiClient.patch(`/teams/${id}`, data);
       if (response.data?._offline) {
-        logger.warn('Update offline: patching Dexie locally', id);
-        await (
-          db as unknown as { teams: { update: (id: unknown, item: unknown) => Promise<void> } }
-        ).teams.update(id, { ...data, syncStatus: 'pending' });
-        setTeams((prev) => prev.map((t) => (t.id === id ? { ...t, ...data } as any : t)));
-        await fetchTeamTree();
-        return { id, ...data };
+        throw new Error(serverOnlyTeamError);
       }
 
       const updated = response.data;
@@ -144,17 +125,7 @@ export function useTeams(projectId?: string) {
       return updated;
     } catch (err: any) {
       if (err.response?.status === 404) {
-        logger.warn('Update offline: patching Dexie locally', id);
-        try {
-          await (
-            db as unknown as { teams: { update: (id: unknown, item: unknown) => Promise<void> } }
-          ).teams.update(id, { ...data, syncStatus: 'pending' });
-          setTeams((prev) => prev.map((t) => (t.id === id ? { ...t, ...data } as any : t)));
-          await fetchTeamTree();
-          return { id, ...data };
-        } catch (dbErr) {
-          logger.error('Update team local error', dbErr);
-        }
+        throw new Error(serverOnlyTeamError);
       }
       logger.error('Update team error', err);
       throw err;
@@ -165,28 +136,13 @@ export function useTeams(projectId?: string) {
     try {
       const response = await apiClient.delete(`/teams/${id}`);
       if (response.data?._offline) {
-        await (
-          db as unknown as { teams: { delete: (id: unknown) => Promise<void> } }
-        ).teams.delete(id);
-        setTeams((prev) => prev.filter((t) => t.id !== id));
-        await fetchTeamTree();
-        return;
+        throw new Error(serverOnlyTeamError);
       }
 
       await refreshLocalState();
     } catch (err: any) {
       if (err.response?.status === 404 || err.response?.status === 401) {
-        logger.warn('Delete offline: removing from Dexie only', id);
-        try {
-          await (
-            db as unknown as { teams: { delete: (id: unknown) => Promise<void> } }
-          ).teams.delete(id);
-          setTeams((prev) => prev.filter((t) => t.id !== id));
-          await fetchTeamTree();
-          return;
-        } catch (dbErr) {
-          logger.error('Delete team local error', dbErr);
-        }
+        throw new Error(serverOnlyTeamError);
       }
       logger.error('Delete team error', err);
       throw err;
