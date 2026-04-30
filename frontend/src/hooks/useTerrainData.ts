@@ -106,46 +106,6 @@ const updateProjectCache = (
   householdsCache.set(projectId, { data: next, timestamp: Date.now() });
 };
 
-const setNestedPatchValue = (target: Record<string, unknown>, path: string, value: unknown) => {
-  const keys = path.split('.');
-  let current = target;
-
-  for (let i = 0; i < keys.length - 1; i++) {
-    const key = keys[i];
-    const existing = current[key];
-    if (!existing || typeof existing !== 'object' || Array.isArray(existing)) {
-      current[key] = {};
-    }
-    current = current[key] as Record<string, unknown>;
-  }
-
-  current[keys[keys.length - 1]] = value;
-};
-
-const normalizeHouseholdPatch = (current: Household | undefined, patch: Partial<Household> & Record<string, unknown>) => {
-  const { unlockFields, ...rawPatch } = patch;
-  const normalizedPatch: Record<string, unknown> = {};
-
-  for (const [key, value] of Object.entries(rawPatch)) {
-    if (key.includes('.')) {
-      setNestedPatchValue(normalizedPatch, key, value);
-    } else {
-      normalizedPatch[key] = value;
-    }
-  }
-
-  const currentOverrides = Array.isArray(current?.manualOverrides) ? current.manualOverrides : [];
-  const nextOverrides = Array.isArray(normalizedPatch.manualOverrides)
-    ? (normalizedPatch.manualOverrides as string[])
-    : currentOverrides;
-
-  normalizedPatch.manualOverrides = Array.isArray(unlockFields)
-    ? nextOverrides.filter((field) => !unlockFields.includes(field))
-    : nextOverrides;
-
-  return normalizedPatch as Partial<Household>;
-};
-
 const persistHouseholdsLocally = async (projectId: string, households: Household[]) => {
   const normalized = households.map((household) => normalizeHousehold({ ...household }));
   const existingIds = new Set(
@@ -354,21 +314,15 @@ export function useTerrainData(options: UseTerrainDataOptions = {}) {
   const updateHouseholdStatus = useCallback(async (id: string, newStatus: string) => {
     try {
       const response = await apiClient.patch(`households/${id}`, { status: newStatus });
+      const serverHousehold = normalizeHousehold(response.data as Household);
       // Optimistic state update
       setHouseholdsRaw((prev) => {
-        const next = prev.map((h) => (h.id === id ? { ...h, status: newStatus } : h));
+        const next = prev.map((h) => (h.id === id ? serverHousehold : h));
         updateProjectCache(currentProjectId, () => next);
         return next;
       });
 
-      const current = await db.households.get(id);
-      if (current) {
-        await db.households.put({
-          ...current,
-          status: newStatus,
-          syncStatus: response?.data?._offline ? 'pending' : 'synced',
-        });
-      }
+      await db.households.put({ ...serverHousehold, syncStatus: 'synced' });
     } catch (error: any) {
       logger.error('Failed to update status on server:', error);
       throw error;
@@ -383,28 +337,14 @@ export function useTerrainData(options: UseTerrainDataOptions = {}) {
         latitude: lat,
         longitude: lng,
       });
-      setHouseholdsRaw((prev) =>
-        {
-          const next = prev.map((h) =>
-          h.id === id
-            ? ({ ...h, location: loc, latitude: lat, longitude: lng } as any)
-            : h
-          );
-          updateProjectCache(currentProjectId, () => next);
-          return next;
-        }
-      );
+      const serverHousehold = normalizeHousehold(response.data as Household);
+      setHouseholdsRaw((prev) => {
+        const next = prev.map((h) => (h.id === id ? serverHousehold : h));
+        updateProjectCache(currentProjectId, () => next);
+        return next;
+      });
 
-      const current = await db.households.get(id);
-      if (current) {
-        await db.households.put({
-          ...current,
-          location: loc as Household['location'],
-          latitude: lat,
-          longitude: lng,
-          syncStatus: response?.data?._offline ? 'pending' : 'synced',
-        });
-      }
+      await db.households.put({ ...serverHousehold, syncStatus: 'synced' });
     } catch (err) {
       logger.error('Failed to update location on server:', err);
       throw err;
@@ -413,27 +353,15 @@ export function useTerrainData(options: UseTerrainDataOptions = {}) {
 
   const updateHousehold = useCallback(async (id: string, patch: Partial<Household>) => {
     try {
-      const currentLocal = await db.households.get(id);
-      const normalizedPatch = normalizeHouseholdPatch(
-        currentLocal,
-        patch as Partial<Household> & Record<string, unknown>
-      );
       const response = await apiClient.patch(`households/${id}`, patch);
-      const updated = normalizeHousehold(
-        response.data?._offline
-          ? ({ ...currentLocal, ...normalizedPatch, id, syncStatus: 'pending' } as Household)
-          : response.data
-      );
+      const updated = normalizeHousehold(response.data as Household);
       setHouseholdsRaw((prev) => {
         const next = prev.map((h) => (h.id === id ? updated : h));
         updateProjectCache(currentProjectId, () => next);
         return next;
       });
 
-      await db.households.put({
-        ...updated,
-        syncStatus: response.data?._offline ? 'pending' : 'synced',
-      });
+      await db.households.put({ ...updated, syncStatus: 'synced' });
     } catch (err) {
       logger.error('Failed to update household on server:', err);
       throw err;
@@ -470,16 +398,20 @@ export function useTerrainData(options: UseTerrainDataOptions = {}) {
     updateHousehold,
     uploadHouseholdPhoto,
     reloadHouseholds,
-    // Methods removed as they are Dexie-specific and no longer needed for Server-First
     importHouseholds: async (data: Household[]) => {
-      if (currentProjectId) {
-        await persistHouseholdsLocally(currentProjectId, data);
-      } else {
-        await db.households.bulkPut(data);
+      if (!currentProjectId) throw new Error('Aucun projet actif pour importer les ménages.');
+      const savedHouseholds: Household[] = [];
+
+      for (const item of data) {
+        const payload = mapToApiPayload({ ...item, projectId: item.projectId || currentProjectId });
+        const response = await apiClient.post('households', payload);
+        savedHouseholds.push(normalizeHousehold(response.data as Household));
       }
+
+      await persistHouseholdsLocally(currentProjectId, savedHouseholds);
       setHouseholdsRaw((prev) => {
         const next = [...prev];
-        data.forEach((newItem) => {
+        savedHouseholds.forEach((newItem) => {
           const idx = next.findIndex((h) => h.id === newItem.id);
           if (idx > -1) next[idx] = newItem;
           else next.push(newItem);
@@ -489,39 +421,12 @@ export function useTerrainData(options: UseTerrainDataOptions = {}) {
       });
     },
     repairSyncQueue: async () => {
-      const failedItems = await db.syncOutbox.where({ status: 'failed' }).toArray();
-      const pendingItems = await db.syncOutbox.where({ status: 'pending' }).toArray();
-      const latestPendingByKey = new Map<string, number>();
-      const duplicatePendingIds: number[] = [];
-
-      for (const item of [...pendingItems].sort((a, b) => b.timestamp - a.timestamp)) {
-        const payloadId = String(item.payload?.id || '');
-        const key = `${item.method}:${item.endpoint}:${payloadId}`;
-        if (latestPendingByKey.has(key)) {
-          duplicatePendingIds.push(item.id as number);
-          continue;
-        }
-        latestPendingByKey.set(key, item.id as number);
+      const legacyItems = await db.syncOutbox.toArray();
+      if (legacyItems.length > 0) {
+        await db.syncOutbox.clear();
       }
-
-      if (duplicatePendingIds.length > 0) {
-        await db.syncOutbox.bulkDelete(duplicatePendingIds);
-      }
-
-      if (failedItems.length > 0) {
-        await db.syncOutbox.bulkUpdate(
-          failedItems.map((item) => ({
-            key: item.id as number,
-            changes: { status: 'pending' as const, lastError: undefined },
-          }))
-        );
-      }
-
-      const repaired = failedItems.length + duplicatePendingIds.length;
-      logger.debug(
-        `[TerrainData] Repair sync queue: ${failedItems.length} failed relancés, ${duplicatePendingIds.length} doublons purgés`
-      );
-      return repaired;
+      logger.debug(`[TerrainData] Legacy local sync queue cleared: ${legacyItems.length}`);
+      return legacyItems.length;
     },
     clearHouseholds: async () => {
       setHouseholdsRaw([]);

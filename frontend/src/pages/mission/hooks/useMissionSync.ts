@@ -6,7 +6,6 @@ import { useAuth } from '../../../contexts/AuthContext';
 import { getMissionValidationMessages, validateMission } from '../core/missionValidation';
 import { calculateMissionTotals } from '../../../utils/missionBudget';
 import { syncEventBus, SYNC_EVENTS } from '../../../utils/syncEventBus';
-import { syncQueue } from '../core/missionSyncQueue';
 import logger from '../../../utils/logger';
 import toast from 'react-hot-toast';
 import type { MissionState, AuditEntry } from '../core/missionTypes';
@@ -148,7 +147,6 @@ export const useMissionSync = (
           status: isCertified ? 'approuvee' : isSubmitted ? 'soumise' : 'draft',
         };
 
-        await db.missions.put(rollbackData as any);
         actions.loadMission(
           finalId,
           rollbackData as any,
@@ -162,10 +160,10 @@ export const useMissionSync = (
       try {
         actions.setStatus('saving');
 
-        if (strictWorkflowAction && !navigator.onLine) {
+        if (!navigator.onLine) {
           actions.setStatus('error');
           actions.setSyncStatus('failed');
-          toast.error('Connexion requise : la soumission doit être envoyée au serveur pour apparaître en approbation.');
+          toast.error('Connexion requise : les missions officielles sont enregistrées uniquement sur le serveur.');
           return { assignedId: finalId, serverSuccess: false };
         }
 
@@ -183,18 +181,9 @@ export const useMissionSync = (
           }
         }
 
-        /**
-         * 1. SAUVEGARDE LOCALE (TOUJOURS)
-         */
-        await db.missions.put(missionData as any);
-
         let assignedId = finalId;
         let serverSuccess: boolean | null = null;
 
-        /**
-         * 3. ONLINE SYNC
-         */
-        if (navigator.onLine) {
           actions.setSyncStatus('pending');
 
           const totals = calculateMissionTotals(members);
@@ -329,19 +318,10 @@ export const useMissionSync = (
            * ALIGNEMENT ID (temp → réel)
            */
           if (assignedId !== finalId) {
-            // 🔥 REMAPPING OFFLINE ACTIONS
-            if (isNewMission) {
-              await syncQueue.remapTempId(finalId, assignedId);
-            }
-
             await db.missions.delete(finalId);
             const persistedMission = await db.missions.get(assignedId);
-            if (!persistedMission) {
-              (missionData as any).id = assignedId;
-              await db.missions.put(missionData as any);
-            }
 
-            const missionForUi = persistedMission || { ...missionData, id: assignedId };
+            const missionForUi = persistedMission || { ...missionData, id: assignedId, updatedAt: now };
             actions.loadMission(
               assignedId,
               missionForUi as any,
@@ -378,33 +358,14 @@ export const useMissionSync = (
           } else {
             actions.setSyncStatus('failed');
             await rollbackWorkflowSubmission();
-            if (strictWorkflowAction) {
-              toast.error(
-                finalIsSubmitted
-                  ? "La soumission n'a pas été enregistrée sur le serveur. Elle reste en brouillon local."
-                  : "La certification n'a pas été enregistrée sur le serveur."
-              );
-              actions.setStatus('error');
-              return { assignedId: finalId, serverSuccess: false };
-            }
-            await syncQueue.enqueue(finalId, {
-              type: 'RETRY_SYNC',
-              payload: missionData as any,
-            });
+            toast.error(
+              finalIsSubmitted
+                ? "La soumission n'a pas été enregistrée sur le serveur."
+                : "La mission n'a pas été enregistrée sur le serveur."
+            );
+            actions.setStatus('error');
+            return { assignedId: finalId, serverSuccess: false };
           }
-        } else {
-          /**
-           * OFFLINE MODE
-           */
-          actions.setSyncStatus('pending');
-
-          await syncQueue.enqueue(finalId, {
-            type: 'OFFLINE_SAVE',
-            payload: missionData as any,
-          });
-
-          actions.addAuditEntry('Mode offline - synchronisation différée', 'System');
-        }
 
         actions.clearDirty();
         actions.setStatus('success');
@@ -448,7 +409,7 @@ export const useMissionSync = (
 
       let merged = 0;
       let conflicts = 0;
-      let repairedLocalOnly = 0;
+      let removedLocalOnlySubmissions = 0;
 
       for (const m of missions) {
         if (hiddenMissionIds.has((m as any).id) && ((m as any).status === 'draft' || (m as any).data?.status === 'draft' || !(m as any).status)) {
@@ -482,13 +443,7 @@ export const useMissionSync = (
           await db.missions.put(normalized as any);
           merged++;
         } else if ((local.version || 0) > serverVersion) {
-          /**
-           * 🔥 CONFLIT LOCAL PRIORITAIRE
-           */
-          await syncQueue.enqueue((local as any).id, {
-            type: 'FORCE_PUSH',
-            payload: local as any,
-          });
+          await db.missions.put(normalized as any);
           conflicts++;
         }
       }
@@ -502,25 +457,15 @@ export const useMissionSync = (
         .toArray();
 
       for (const localMission of localSubmitted) {
-        await db.missions.put({
-          ...localMission,
-          isSubmitted: false,
-          status: 'draft',
-          syncStatus: 'failed',
-          data: {
-            ...((localMission as any).data || {}),
-            isSubmitted: false,
-          },
-          updatedAt: now,
-        } as any);
-        repairedLocalOnly++;
+        await db.missions.delete((localMission as any).id);
+        removedLocalOnlySubmissions++;
       }
 
       actions.setStatus('success');
 
-      if (merged || conflicts || repairedLocalOnly) {
+      if (merged || conflicts || removedLocalOnlySubmissions) {
         actions.addAuditEntry(
-          `Sync: ${merged} MAJ, ${conflicts} conflits, ${repairedLocalOnly} soumissions locales corrigées`,
+          `Sync: ${merged} MAJ, ${conflicts} conflits, ${removedLocalOnlySubmissions} soumissions locales supprimées`,
           'System'
         );
       }

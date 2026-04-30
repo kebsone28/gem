@@ -1,12 +1,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { db } from '../../../store/db';
-import api from '../../../api/client';
 import type { MissionAction } from './missionTypes';
 import logger from '../../../utils/logger';
 
 /**
- * SERVICE : Sync Queue (Gestion Hors-ligne)
- * Gère la file d'attente des actions à synchroniser avec le serveur.
+ * SERVICE : Sync Queue legacy
+ *
+ * Les actions mission officielles sont server-first. Cette classe ne crée plus
+ * d'action locale : elle purge seulement les anciennes entrées Dexie produites
+ * par les versions offline-first.
  */
 export class MissionSyncQueue {
   private static instance: MissionSyncQueue;
@@ -22,62 +24,35 @@ export class MissionSyncQueue {
   }
 
   /**
-   * Enregistre une action dans l'outbox locale (Dexie)
+   * Les actions mission ne sont plus acceptées en outbox locale.
    */
   public async enqueue(missionId: string, action: MissionAction) {
-    await db.syncOutbox.add({
-      action: action.type,
-      endpoint: `/api/missions/${missionId}/action`,
-      method: 'POST',
-      payload: { ...action, missionId },
-      timestamp: Date.now(),
-      status: 'pending',
-      retryCount: 0,
-    });
-
-    // Déclencher le traitement si on est en ligne
-    if (navigator.onLine) {
-      this.processQueue();
-    }
+    logger.warn(
+      `[MissionSyncQueue] Action locale ignorée (${action.type}) pour ${missionId}. Les missions doivent être enregistrées sur le serveur.`
+    );
+    throw new Error('La synchronisation locale des missions est désactivée.');
   }
 
   /**
-   * Traite la file d'attente des actions en attente
+   * Supprime les anciennes actions mission locales.
    */
   public async processQueue() {
-    if (this.isProcessing || !navigator.onLine) return;
+    if (this.isProcessing) return;
     this.isProcessing = true;
 
     try {
-      const pendingItems = await db.syncOutbox.where('status').equals('pending').toArray();
+      const items = await db.syncOutbox.toArray();
+      const legacyMissionItems = items.filter((item) =>
+        String(item.endpoint || '').includes('/missions/')
+      );
 
-      for (const item of pendingItems) {
-        // ⚠️ Skip items with temp IDs until the mission itself is created and assigned a real ID
-        if (item.endpoint.includes('/temp-')) {
-          // Instead of deleting, we keep them until their parent mission gets a real ID
-          continue; 
-        }
-
-        try {
-          const method = item.method.toLowerCase() as 'get' | 'post' | 'put' | 'patch' | 'delete';
-          const response = await api[method](item.endpoint.replace('/api', ''), item.payload);
-
-          if (response.data) {
-            await db.syncOutbox.delete(item.id!);
-          }
-        } catch (err: any) {
-          const status = err?.response?.status;
-          const retryCount = (item.retryCount || 0) + 1;
-          const isFatal = status === 401 || status === 403 || status === 404 || retryCount > 5;
-
-          await db.syncOutbox.update(item.id!, {
-            retryCount,
-            lastError: `Error ${status || 'network'}`,
-            status: isFatal ? 'failed' : 'pending',
-          });
-
-          if (!navigator.onLine) break;
-        }
+      if (legacyMissionItems.length > 0) {
+        await db.syncOutbox.bulkDelete(
+          legacyMissionItems.map((item) => item.id!).filter((id): id is number => typeof id === 'number')
+        );
+        logger.info(
+          `[MissionSyncQueue] ${legacyMissionItems.length} ancienne(s) action(s) mission locale(s) supprimée(s).`
+        );
       }
     } finally {
       this.isProcessing = false;
@@ -85,19 +60,10 @@ export class MissionSyncQueue {
   }
 
   /**
-   * RE-MAP : Met à jour toutes les actions d'un ID temporaire vers un ID réel
+   * RE-MAP legacy : plus nécessaire en server-first.
    */
   public async remapTempId(tempId: string, realId: string) {
-    const pendingItems = await db.syncOutbox.toArray();
-    for (const item of pendingItems) {
-      if (item.endpoint.includes(tempId)) {
-        await db.syncOutbox.update(item.id!, {
-          endpoint: item.endpoint.replace(tempId, realId),
-          payload: { ...item.payload, missionId: realId }
-        });
-      }
-    }
-    logger.debug(`🔄 [SYNC] Remapping OK : ${tempId} -> ${realId}`);
+    logger.debug(`[MissionSyncQueue] Remap ignoré en server-first : ${tempId} -> ${realId}`);
   }
 }
 

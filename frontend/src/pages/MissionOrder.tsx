@@ -356,15 +356,9 @@ export default function MissionOrder() {
       isSubmitted: false,
     };
 
-    try {
-      await db.missions.put(draftMission as any);
-      missionState.loadMission(missionId, draftMission, [], 1, updatedAt, [auditEntry]);
-      safeStorage.setItem('last_viewed_mission_id', missionId);
-      toast.success('Brouillon créé');
-    } catch (error) {
-      logger.error('[MissionOrder] Failed to create local draft', error);
-      toast.error('Impossible de créer le brouillon local');
-    }
+    missionState.loadMission(missionId, draftMission, [], 1, updatedAt, [auditEntry]);
+    safeStorage.setItem('last_viewed_mission_id', missionId);
+    toast.success('Brouillon prêt. Cliquez sur sauvegarder pour l’enregistrer sur le serveur.');
   };
 
   const handleLoadMission = (m: any) => {

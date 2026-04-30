@@ -1,6 +1,5 @@
 ﻿/* eslint-disable @typescript-eslint/no-unused-vars */
 import axios from 'axios';
-import { db } from '../store/db';
 import logger from '../utils/logger';
 import * as safeStorage from '../utils/safeStorage';
 
@@ -117,7 +116,8 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response Interceptor: Handle Token Refresh & Offline Queue
+// Response Interceptor: Handle Token Refresh. Mutations are server-only:
+// no fake offline success and no local workflow queue for official data.
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -150,38 +150,14 @@ apiClient.interceptors.response.use(
       }
     }
 
-    // 2. Handle Offline Support (Network Error & Mutation Methods)
+    // 2. Server-first mutations: reject network errors instead of creating local official state.
     const isMutation = ['POST', 'PUT', 'DELETE', 'PATCH'].includes(
       originalRequest.method?.toUpperCase() || ''
     );
     const isNetworkError = !error.response;
 
     if (isNetworkError && isMutation && !originalRequest.url?.includes('/auth/')) {
-      logger.warn(
-        "📡 [OFFLINE] Erreur réseau détectée sur une mutation. Mise en file d'attente..."
-      );
-
-      try {
-        await db.syncOutbox.add({
-          action: `Mutation: ${originalRequest.url}`,
-          endpoint: originalRequest.url || '',
-          method:
-            (originalRequest.method?.toUpperCase() as 'POST' | 'PUT' | 'DELETE' | 'PATCH') ||
-            'POST',
-          payload: JSON.parse(originalRequest.data || '{}'),
-          timestamp: Date.now(),
-          status: 'pending',
-          retryCount: 0,
-        });
-
-        // On renvoie une réponse "fictive" de succès pour ne pas bloquer l'UI
-        return Promise.resolve({
-          data: { _offline: true, message: 'Action mémorisée hors-ligne' },
-          status: 202,
-        });
-      } catch (dbError) {
-        logger.error("❌ Impossible de mettre en file d'attente :", dbError);
-      }
+      logger.warn(`📡 [SERVER-FIRST] Mutation refusée hors-ligne: ${originalRequest.url}`);
     }
 
     return Promise.reject(error);

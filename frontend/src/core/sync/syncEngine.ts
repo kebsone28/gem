@@ -7,12 +7,12 @@
  *  - File d'attente contrôlée (FIFO + priorité)
  *  - Anti-doublon (même source < 2s ignorée)
  *  - Retry unique et sécurisé en cas d'échec
- *  - Persistance queue en localStorage (restart-safe)
+ *  - Queue volatile en mémoire uniquement
  */
 
 import { logger } from '../../services/logger';
 
-const QUEUE_BACKUP_KEY = 'sync_engine_queue_backup';
+const QUEUE_BACKUP_KEY = 'sync_engine_queue_backup'; // clé legacy à purger
 const DEDUP_WINDOW_MS = 2000; // 2 secondes
 const RETRY_DELAY_MS = 3000; // délai avant retry
 
@@ -68,8 +68,6 @@ class SyncEngine {
 
     this.queue.push(job);
     this._sortQueue();
-    this._persistQueue();
-
     logger.debug(
       'SYNC',
       `Enqueued: ${job.source} (priority=${job.priority ?? 'normal'}, queueLen=${this.queue.length})`
@@ -107,7 +105,6 @@ class SyncEngine {
 
     while (this.queue.length > 0) {
       const job = this.queue.shift()!;
-      this._persistQueue();
 
       logger.debug('SYNC', `Executing: ${job.source}`);
       this.lastSourceRunAt.set(job.source, Date.now());
@@ -140,16 +137,10 @@ class SyncEngine {
     this.running = false;
   }
 
-  // ─── PERSISTENCE ───────────────────────────────────────────────────────────
+  // ─── LEGACY LOCAL QUEUE CLEANUP ────────────────────────────────────────────
 
   private _persistQueue(): void {
-    try {
-      // Sérialisation : on ne garde que les métadonnées (pas 'execute')
-      const toSave: PersistedJob[] = this.queue.map(({ execute: _fn, ...meta }) => meta);
-      localStorage.setItem(QUEUE_BACKUP_KEY, JSON.stringify(toSave));
-    } catch {
-      // localStorage indisponible (SSR, mode privé)
-    }
+    // Server-first: no workflow queue is persisted in localStorage.
   }
 
   private _restoreQueue(): void {
@@ -158,12 +149,10 @@ class SyncEngine {
       if (!raw) return;
 
       const saved: PersistedJob[] = JSON.parse(raw);
-      // On ne peut pas restaurer `execute` — on vide juste le backup
-      // Le démarrage naturel des services re-émettra les jobs si nécessaire
       if (saved.length > 0) {
-        logger.debug('SYNC', `Cleared ${saved.length} stale job(s) from previous session backup`);
-        localStorage.removeItem(QUEUE_BACKUP_KEY);
+        logger.debug('SYNC', `Cleared ${saved.length} legacy local sync job(s)`);
       }
+      localStorage.removeItem(QUEUE_BACKUP_KEY);
     } catch {
       localStorage.removeItem(QUEUE_BACKUP_KEY);
     }

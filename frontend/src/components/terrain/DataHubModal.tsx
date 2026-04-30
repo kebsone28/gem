@@ -351,20 +351,17 @@ export const DataHubModal: React.FC<DataHubModalProps> = ({ isOpen, onClose }) =
       const currentProjectId = project?.id || activeProjectId;
 
       if (useServerImport) {
-        // 🚀 DIRECT SERVER IMPORT (FAST)
+        // Import officiel côté serveur.
         toast.loading(`Envoi de ${finalData.length} ménages au serveur...`, { id: 'bulk-import' });
         const response = await apiClient.post('sync/import-bulk', { households: finalData });
         toast.success(response.data.message || 'Import serveur réussi !', { id: 'bulk-import' });
-
-        // On met quand même à jour localement pour l'affichage immédiat
-        await db.households.bulkPut(finalData);
         await forceSync();
       } else {
-        // 📱 LOCAL PWA IMPORT (OFFLINE-FIRST)
+        // Import unitaire côté serveur, puis cache de lecture local.
         await importHouseholds(finalData);
         setImportResult({
           type: 'success',
-          message: `✅ Import local réussi (${finalData.length} ménages).`,
+          message: `Import serveur réussi (${finalData.length} ménages).`,
         });
         await forceSync();
       }
@@ -421,9 +418,9 @@ export const DataHubModal: React.FC<DataHubModalProps> = ({ isOpen, onClose }) =
       const count = await repairSyncQueue();
       if (count > 0) {
         await forceSync();
-        toast.success(`${count} ménages synchronisés.`);
+        toast.success(`${count} ancienne(s) entrée(s) locale(s) nettoyée(s).`);
       } else {
-        toast.success('Aucun ménage orphelin détecté.');
+        toast.success('Aucune ancienne file locale détectée.');
       }
     } catch (e) {
       toast.error('Erreur réparation.');
@@ -506,13 +503,13 @@ export const DataHubModal: React.FC<DataHubModalProps> = ({ isOpen, onClose }) =
   };
 
   const handleRestoreBackup = async (id: string) => {
-    if (!(await showConfirm('Restauration', 'Écraser les données ?'))) return;
+    if (!(await showConfirm('Restauration', 'Réimporter cette sauvegarde sur le serveur ?'))) return;
     setIsProcessing(true);
     try {
       const data = JSON.parse(localStorage.getItem(`gem_backup_data_${id}`) || '[]');
-      await db.households.clear();
-      await db.households.bulkPut(data);
-      toast.success('Restauration terminée.');
+      await importHouseholds(data);
+      await forceSync();
+      toast.success('Sauvegarde réimportée sur le serveur.');
     } catch (e) {
       toast.error('Erreur restauration.');
     } finally {

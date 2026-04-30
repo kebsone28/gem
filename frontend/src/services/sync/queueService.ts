@@ -1,8 +1,11 @@
 ﻿ 
 /**
  * Queue Service
- * Manages the Dexie syncOutbox: read, write, mark as failed/succeeded.
- * Pure module — no React.
+ * Legacy Dexie outbox reader/cleaner.
+ *
+ * Official workflows are server-first. This module is kept only to purge old
+ * local queue entries created by previous app versions and to expose a pending
+ * count for diagnostics.
  */
 
 import { db } from '../../store/db';
@@ -51,12 +54,11 @@ export async function countPending(): Promise<number> {
 export async function enqueue(
   item: Omit<SyncQueueItem, 'id' | 'retryCount' | 'status' | 'timestamp'>
 ): Promise<number> {
-  return db.syncOutbox.add({
-    ...item,
-    status: 'pending',
-    retryCount: 0,
-    timestamp: Date.now(),
-  });
+  logger.warn(
+    'QUEUE',
+    `Local outbox disabled. Mutation must be retried against the server: ${item.method} ${item.endpoint}`
+  );
+  throw new Error('La file locale de synchronisation est désactivée pour les données officielles.');
 }
 
 /** Mark items as synced (delete them from outbox) */
@@ -79,7 +81,8 @@ export async function markFailed(ids: number[], error?: string): Promise<void> {
 export async function incrementRetry(id: number): Promise<void> {
   const item = await db.syncOutbox.get(id);
   if (!item) return;
-  await db.syncOutbox.update(id, { retryCount: (item.retryCount ?? 0) + 1, status: 'pending' });
+  await db.syncOutbox.delete(id);
+  logger.warn('QUEUE', `Deleted legacy local retry item ${id}; official retries must hit the server.`);
 }
 
 /** Purge all failed items */

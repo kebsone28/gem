@@ -3,7 +3,6 @@ import { useState, useCallback } from 'react';
 import apiClient from '../api/client';
 import type { Team } from '../utils/types';
 import logger from '../utils/logger';
-import { db } from '../store/db';
 
 const serverOnlyTeamError =
   'Modification équipe non enregistrée : les équipes officielles doivent être créées, modifiées ou supprimées sur le serveur.';
@@ -36,35 +35,7 @@ export function useTeams(projectId?: string) {
     try {
       const response = await apiClient.get(`/teams/tree?projectId=${projectId}`);
       const serverTree = response.data.tree || [];
-
-      try {
-        const allLocalTeams = await (
-          db as any
-        ).teams.toArray();
-        const localOfflineTeams = allLocalTeams.filter(
-          (t: any) => t.syncStatus === 'pending' && t.projectId === projectId
-        );
-
-        if (localOfflineTeams.length > 0) {
-          // Build proper tree structure for offline teams
-          const offlineParents = localOfflineTeams.filter(
-            (t: Record<string, unknown>) => !t.parentTeamId
-          );
-          const offlineChildren = localOfflineTeams.filter(
-            (t: Record<string, unknown>) => !!t.parentTeamId
-          );
-          offlineParents.forEach((parent: Record<string, unknown>) => {
-            (parent as Record<string, any>).children = offlineChildren.filter(
-              (c: Record<string, unknown>) => c.parentTeamId === parent.id
-            );
-          });
-          setTeamTree([...serverTree, ...offlineParents]);
-        } else {
-          setTeamTree(serverTree);
-        }
-      } catch (dbErr) {
-        setTeamTree(serverTree);
-      }
+      setTeamTree(serverTree);
       setError(null);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to fetch team tree');
@@ -99,10 +70,6 @@ export function useTeams(projectId?: string) {
   const createTeam = async (data: Partial<Team>) => {
     try {
       const response = await apiClient.post('/teams', { ...data, projectId });
-      if (response.data?._offline) {
-        throw new Error(serverOnlyTeamError);
-      }
-
       const newTeam = response.data;
 
       await refreshLocalState();
@@ -116,10 +83,6 @@ export function useTeams(projectId?: string) {
   const updateTeam = async (id: string, data: Partial<Team>) => {
     try {
       const response = await apiClient.patch(`/teams/${id}`, data);
-      if (response.data?._offline) {
-        throw new Error(serverOnlyTeamError);
-      }
-
       const updated = response.data;
       await refreshLocalState();
       return updated;
@@ -134,11 +97,7 @@ export function useTeams(projectId?: string) {
 
   const deleteTeam = async (id: string) => {
     try {
-      const response = await apiClient.delete(`/teams/${id}`);
-      if (response.data?._offline) {
-        throw new Error(serverOnlyTeamError);
-      }
-
+      await apiClient.delete(`/teams/${id}`);
       await refreshLocalState();
     } catch (err: any) {
       if (err.response?.status === 404 || err.response?.status === 401) {
