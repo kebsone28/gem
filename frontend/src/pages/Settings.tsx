@@ -15,7 +15,6 @@ import {
   Zap,
   ChevronRight,
   CloudDownload,
-  FileSpreadsheet,
   Database,
   Download,
   Upload,
@@ -31,7 +30,6 @@ import { StatusBadge } from '../components/dashboards/DashboardComponents';
 import { useTerrainData } from '../hooks/useTerrainData';
 import { useAuth } from '../contexts/AuthContext';
 
-import { FinancesSection } from '../components/finances/FinancesSection';
 import { KoboSettingsSection } from '../components/KoboSettingsSection';
 import { DataSection } from '../components/DataSection';
 import apiClient from '../api/client';
@@ -89,10 +87,8 @@ type TabType =
   | 'teams'
   | 'costs'
   | 'regions'
-  | 'logistics'
   | 'kobo'
   | 'data'
-  | 'finances'
   | 'system';
 
 export default function Settings() {
@@ -277,8 +273,6 @@ export default function Settings() {
     { id: 'teams', label: 'Équipes', icon: Users },
     { id: 'costs', label: 'Tarifs', icon: DollarSign },
     { id: 'regions', label: 'Régions & Affectations', icon: Layers },
-    { id: 'logistics', label: 'Dotations Standard', icon: Wrench },
-    { id: 'finances', label: 'Devis & Finances', icon: FileSpreadsheet },
     ...(canAccessAdminOnlyTabs
       ? [
           { id: 'kobo', label: 'KoBo', icon: CloudDownload },
@@ -523,12 +517,6 @@ export default function Settings() {
                       households={households || []}
                       onUpdate={updateProject}
                     />
-                  )}
-                  {activeTab === 'logistics' && (
-                    <LogisticsSection project={project} onUpdate={updateProject} />
-                  )}
-                  {activeTab === 'finances' && (
-                    <FinancesSection project={project} onUpdate={updateProject} />
                   )}
                   {canAccessAdminOnlyTabs && activeTab === 'kobo' && (
                     <KoboSettingsSection project={project} onUpdate={updateProject} />
