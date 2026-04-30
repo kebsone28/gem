@@ -116,8 +116,6 @@ export default function Sidebar() {
     category: 'PILOTAGE' | 'OPÉRATIONS' | 'SYSTÈME';
   }
 
-  const hasKoboTerminal = (user?.organizationConfig as any)?.features?.koboTerminal === true;
-
   const navItems: NavItem[] = useMemo(
     () => [
       { 
@@ -245,7 +243,6 @@ export default function Sidebar() {
         label: 'Terminal Kobo',
         title: 'Interface de commande directe pour la sync KoboToolbox',
         permission: PERMISSIONS.ACCES_TERMINAL_KOBO,
-        visible: hasKoboTerminal,
         category: 'SYSTÈME',
       },
       {
@@ -280,7 +277,7 @@ export default function Sidebar() {
         category: 'SYSTÈME',
       },
     ],
-    [PERMISSIONS, canAccessCharges, hasKoboTerminal, isMaster, missionLabel]
+    [PERMISSIONS, canAccessCharges, isMaster, missionLabel]
   );
 
   // 🚀 [REACTIVITY] Re-calculate items when user or permissions change
