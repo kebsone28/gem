@@ -13,7 +13,7 @@
     "lint:report": "eslint src/ --ext .ts,.tsx --format stylish",
     "format": "prettier --write 'src/**/*.{ts,tsx,css,js,json,md}'",
     "preview": "vite preview --host 0.0.0.0 --port $PORT",
-    "dev:3000": "node --max-old-space-size=4096 ./node_modules/vite/bin/vite.js --port 3000",
+    "dev:5173": "node --max-old-space-size=4096 ./node_modules/vite/bin/vite.js --port 5173",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build"
   },

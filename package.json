@@ -5,8 +5,8 @@
   "main": "electron/main.js",
   "scripts": {
     "start": "cd frontend && npm run dev",
-    "electron:dev": "electron .",
-    "build:electron": "vite build && electron-builder --win --x64",
+    "electron:dev": "node scripts/start-electron-dev.cjs",
+    "build:electron": "npm run build && electron-builder --win --x64",
     "package-win": "npm run build:electron",
     "test:e2e": "npx playwright test -c frontend/playwright.config.ts",
     "test:e2e:headed": "npx playwright test -c frontend/playwright.config.ts --headed",
@@ -20,6 +20,7 @@
     "dev": "cd frontend && npm run dev",
     "dev:backend": "cd backend && npm run dev",
     "dev:frontend": "cd frontend && npm run dev -- --host 0.0.0.0 --port 5173",
+    "dev:electron": "concurrently \"npm run dev:saas\" \"npm run electron:dev\"",
     "dev:saas": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
     "pmtiles:install": "cd backend\\pmtiles-server && npm install",
     "pmtiles:dev": "cd backend\\pmtiles-server && npm run dev",
