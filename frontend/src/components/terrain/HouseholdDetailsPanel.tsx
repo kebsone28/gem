@@ -983,11 +983,11 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
                   DERNIÈRE SYNCHRONISATION (UTC)
                 </p>
                 <p className="font-bold text-blue-400/80 text-xs">
-                  {household.updatedAt
+                  {household.updatedAt && !isNaN(new Date(household.updatedAt).getTime())
                     ? new Date(household.updatedAt).toLocaleString('fr-FR', {
                       timeZoneName: 'short',
                     })
-                    : '—'}
+                    : 'En attente'}
                 </p>
               </div>
             </div>

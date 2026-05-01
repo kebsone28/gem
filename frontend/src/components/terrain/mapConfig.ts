@@ -142,10 +142,10 @@ const createOsmRasterStyle = (
 // ── Styles principaux exportés ──
 
 /**
- * Style sombre "Yango / Uber" — CARTO Dark Matter
- * Fond très sombre (#121212), routes blanches, labels minimalistes
+ * Style sombre "Yango / Uber" — Utilise désormais OpenFreeMap (Vector) par défaut
+ * Plus robuste face aux blocages de CDNs et plus performant.
  */
-export const MAP_STYLE_DARK: StyleSpecification = createCartoStyle('dark_all', '#121212');
+export const MAP_STYLE_DARK: any = OPENFREEMAP_DARK;
 
 /**
  * Style clair premium — CARTO Voyager (proche Google Maps)
