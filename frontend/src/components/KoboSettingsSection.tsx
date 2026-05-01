@@ -1,8 +1,9 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps */
 import { useState, useEffect } from 'react';
 import { CloudDownload, Save, RefreshCw, Zap, Database, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import apiClient from '../api/client';
+import { KoboDecisionRulesSection } from './KoboDecisionRulesSection';
 
 export function KoboSettingsSection({ project, onUpdate }: { project: any; onUpdate: any }) {
   const defaultKoboConfig = {
@@ -189,6 +190,8 @@ export function KoboSettingsSection({ project, onUpdate }: { project: any; onUpd
           </div>
         </div>
       </div>
+
+      <KoboDecisionRulesSection project={project} onUpdate={onUpdate} />
     </div>
   );
 }

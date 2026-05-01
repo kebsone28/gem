@@ -392,6 +392,41 @@ export async function syncKoboToDatabase(organizationId, fallbackZoneId, since =
                 skipped++;
                 continue;
             }
+
+            // 🎯 DECISION ENGINE: Appliquer les règles de conclusion automatique configurées au niveau projet
+            // Format des règles attendu: { field: string, operator: 'equals'|'contains', value: string, action: 'SET_STATUS', status?: string, alert?: string, severity?: string }
+            const decisionRules = project?.config?.kobo_decision_rules || [];
+            if (decisionRules.length > 0) {
+                for (const rule of decisionRules) {
+                    const fieldValue = String(submission[rule.field] || '');
+                    let isMatch = false;
+
+                    if (rule.operator === 'equals') {
+                        isMatch = (fieldValue === rule.value);
+                    } else if (rule.operator === 'contains') {
+                        isMatch = fieldValue.includes(rule.value);
+                    }
+
+                    if (isMatch) {
+                        if (rule.action === 'SET_STATUS' && rule.status) {
+                            console.log(`[KOBO-DECISION] 🤖 Auto-setting status to [${rule.status}] for household ${numeroDemande} due to rule on [${rule.field}]`);
+                            household.status = rule.status;
+                        }
+                        if (rule.alert) {
+                            household.alerts = household.alerts || [];
+                            // Éviter les doublons d'alertes identiques
+                            if (!household.alerts.some(a => a.message === rule.alert)) {
+                                household.alerts.push({
+                                    type: 'DECISION_AUTO',
+                                    message: rule.alert,
+                                    severity: rule.severity || 'MEDIUM',
+                                    timestamp: new Date().toISOString()
+                                });
+                            }
+                        }
+                    }
+                }
+            }
             
             // DÉTECTION DE CONFLIT / DOUBLONS
             if (matchType === 'NUMERO_ORDRE' && existingHousehold.koboSubmissionId && existingHousehold.koboSubmissionId !== koboSubmissionId) {
