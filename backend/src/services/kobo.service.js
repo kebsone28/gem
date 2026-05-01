@@ -319,15 +319,27 @@ export async function syncKoboToDatabase(organizationId, fallbackZoneId, since =
                 }
             }
 
-            // 🔑 RECHERCHE PRÉALABLE: Chercher le ménage existant par numeroordre (clé métier unique)
+            // 🔑 UPSERT STRATEGY: Match by koboSubmissionId FIRST, then by N° Demande
+            const koboSubmissionId = BigInt(submission['_id']);
             const { extractNumeroOrdre } = await import('./kobo.mapping.js');
             const numeroDemandeRaw = extractNumeroOrdre(submission, mappingConfig);
             const numeroDemande = numeroDemandeRaw ? String(numeroDemandeRaw).trim().toUpperCase() : null;
+            
             let existingHousehold = null;
+            let matchType = 'NONE'; // 'KOBO_ID' or 'NUMERO_ORDRE'
 
-            if (numeroDemande) {
+            // 1. First attempt: Match by koboSubmissionId (Strongest link)
+            existingHousehold = await prisma.household.findUnique({
+                where: { koboSubmissionId: koboSubmissionId },
+                select: EXISTING_HOUSEHOLD_LOOKUP_SELECT
+            });
+
+            if (existingHousehold) {
+                matchType = 'KOBO_ID';
+            } 
+            // 2. Second attempt: Match by numeroordre (Business identifier)
+            else if (numeroDemande) {
                 try {
-                    // 1. First attempt: Exact match
                     existingHousehold = await prisma.household.findFirst({
                         where: {
                             organizationId: organizationId,
@@ -340,7 +352,7 @@ export async function syncKoboToDatabase(organizationId, fallbackZoneId, since =
                         select: EXISTING_HOUSEHOLD_LOOKUP_SELECT
                     });
 
-                    // 2. Fallback: If no match and it ends with a '0', it's likely a Kobo artifact
+                    // Fuzzy match fallback
                     if (!existingHousehold && numeroDemande.endsWith('0')) {
                         const fallbackNumero = numeroDemande.substring(0, numeroDemande.length - 1);
                         existingHousehold = await prisma.household.findFirst({
@@ -351,35 +363,34 @@ export async function syncKoboToDatabase(organizationId, fallbackZoneId, since =
                             },
                             select: EXISTING_HOUSEHOLD_LOOKUP_SELECT
                         });
-                        
                         if (existingHousehold) {
                             console.log(`[KOBO-SYNC] 💡 Fuzzy match successful: ${numeroDemande} -> ${fallbackNumero}`);
                         }
+                    }
+
+                    if (existingHousehold) {
+                        matchType = 'NUMERO_ORDRE';
                     }
                 } catch (e) {
                      console.warn(`[KOBO-SYNC] Could not search for existing household by numeroordre [${numeroDemande}]:`, e.message);
                 }
             }
 
-            // Map Kobo submission to unified Household format (Passing existingHousehold for intelligent merge)
-            // 🎯 Now uses Kobo Engine Master v2.0 for dynamic mapping
+            // Map Kobo submission to unified Household format
             const household = await mapSubmissionToHousehold(submission, organizationId, zoneId, targetProjectId, syncConfig, existingHousehold);
 
-            // Skip if mapping failed (happens when numeroOrdre is missing)
+            // Skip if mapping failed (e.g. missing numeroOrdre and not found)
             if (!household) {
                 skipped++;
                 continue;
             }
-
-            // 🔑 UPSERT STRATEGY: Match by koboSubmissionId OR by existing N° Demande
-            const koboSubmissionId = BigInt(submission['_id']);
             
-            // DÉTECTION DE DOUBLONS DE N° ORDRE (Si ID Kobo différent)
-            if (existingHousehold && existingHousehold.koboSubmissionId && existingHousehold.koboSubmissionId !== koboSubmissionId) {
+            // DÉTECTION DE CONFLIT / DOUBLONS
+            if (matchType === 'NUMERO_ORDRE' && existingHousehold.koboSubmissionId && existingHousehold.koboSubmissionId !== koboSubmissionId) {
                 household.alerts = household.alerts || [];
                 household.alerts.push({
                    type: 'DOUBLON_DETECTE',
-                   message: `⚠️ Un autre formulaire Kobo (ID: ${existingHousehold.koboSubmissionId}) utilise déjà ce N° Ordre ${numeroDemande}.`,
+                   message: `⚠️ Un autre formulaire Kobo (ID: ${existingHousehold.koboSubmissionId}) pointait déjà sur ce N° Ordre ${numeroDemande}. Le lien a été mis à jour vers le nouveau formulaire.`,
                    severity: 'HIGH'
                 });
             }
@@ -388,22 +399,22 @@ export async function syncKoboToDatabase(organizationId, fallbackZoneId, since =
             const newHouseholdId = uuidv4();
 
             // 🔑 PROTECTION DES DONNÉES LOCALES (Anti-Overwriting Admin)
-            existingHousehold = existingHousehold ? normalizeLegacyHousehold(existingHousehold) : null;
-            const overrides = existingHousehold?.manualOverrides || [];
+            const normalizedExisting = existingHousehold ? normalizeLegacyHousehold(existingHousehold) : null;
+            const overrides = normalizedExisting?.manualOverrides || [];
             
             // Préparation des données de mise à jour
             const updateData = {
                 status: household.status,
                 koboData: household.koboData,
                 zoneId: household.zoneId,
-                // On n'écrase que si le champ n'est pas verrouillé par l'Admin
+                
                 ...(!overrides.includes('region') ? { region: household.region || undefined } : {}),
                 ...(!overrides.includes('name') ? { name: household.name || undefined } : {}),
                 ...(!overrides.includes('phone') ? { phone: household.phone || undefined } : {}),
                 ...(!overrides.includes('numeroordre') ? { numeroordre: numeroDemande } : {}),
                 ...(!overrides.includes('departement') ? { departement: household.departement || undefined } : {}),
                 
-                // CRITICAL: On ne remplace pas le village s'il est vide dans Kobo (car Kobo n'a pas la colonne village dans les données préchargées)
+                // CRITICAL: On ne remplace pas le village s'il est vide dans Kobo
                 ...(!overrides.includes('village') && household.village ? { village: household.village } : {}),
                 
                 // GPS: On respecte le verrouillage Admin
@@ -411,31 +422,27 @@ export async function syncKoboToDatabase(organizationId, fallbackZoneId, since =
                 ...(!overrides.includes('longitude') && household.longitude ? { longitude: household.longitude } : {}),
                 
                 source: 'KOBO',
-                assignedTeams: {
-                    set: household.assignedTeams
-                },
+                assignedTeams: { set: household.assignedTeams },
                 
-                // PROGRESSION "STICKY" (L'admin ou Kobo peut mettre à OK, mais la synchro ne peut pas désélectionner)
+                // PROGRESSION "STICKY"
                 koboSync: {
-                    maconOk: (existingHousehold?.koboSync)?.maconOk || household.koboSync.maconOk,
-                    reseauOk: (existingHousehold?.koboSync)?.reseauOk || household.koboSync.reseauOk,
-                    interieurOk: (existingHousehold?.koboSync)?.interieurOk || household.koboSync.interieurOk,
-                    controleOk: (existingHousehold?.koboSync)?.controleOk || household.koboSync.controleOk,
-                    livreurDate: household.koboSync.livreurDate || (existingHousehold?.koboSync)?.livreurDate || null
+                    maconOk: (normalizedExisting?.koboSync)?.maconOk || household.koboSync.maconOk,
+                    reseauOk: (normalizedExisting?.koboSync)?.reseauOk || household.koboSync.reseauOk,
+                    interieurOk: (normalizedExisting?.koboSync)?.interieurOk || household.koboSync.interieurOk,
+                    controleOk: (normalizedExisting?.koboSync)?.controleOk || household.koboSync.controleOk,
+                    livreurDate: household.koboSync.livreurDate || (normalizedExisting?.koboSync)?.livreurDate || null
                 },
                 
-                // Deep merge indirect pour constructionData (on garde les specs Admin comme meterNumber)
                 ...(!overrides.includes('constructionData') ? { 
                     constructionData: {
-                        ...(typeof existingHousehold?.constructionData === 'object' ? existingHousehold.constructionData : {}),
+                        ...(typeof normalizedExisting?.constructionData === 'object' ? normalizedExisting.constructionData : {}),
                         ...household.constructionData 
                     }
                 } : {}),
                 
-                // Fusion des alertes (Système + Existant)
                 alerts: {
                     set: [
-                        ...(Array.isArray(existingHousehold?.alerts) ? existingHousehold.alerts : []),
+                        ...(Array.isArray(normalizedExisting?.alerts) ? normalizedExisting.alerts : []),
                         ...(Array.isArray(household.alerts) ? household.alerts : [])
                     ].filter((v, i, a) => a.findIndex(t => (t.message === v.message && t.type === v.type)) === i) // Unique
                 },
@@ -445,19 +452,17 @@ export async function syncKoboToDatabase(organizationId, fallbackZoneId, since =
             };
 
             if (existingHousehold) {
-                // ✅ MISE À JOUR: Ménage existant trouvé par N° Demande
-                console.log(`[KOBO-SYNC] 🔄 UPDATE existing household: ${existingHousehold.id} with N° ${numeroDemande}`);
+                // ✅ MISE À JOUR: Ménage existant trouvé par ID Kobo ou N° Demande
+                console.log(`[KOBO-SYNC] 🔄 UPDATE existing household: ${existingHousehold.id} (Match Type: ${matchType})`);
                 await prisma.household.update({
                     where: { id: existingHousehold.id },
                     data: updateData,
                     select: { id: true }
                 });
             } else {
-                // 🆕 CRÉATION ou UPSERT par ID Kobo (si n° demande n'a pas matché)
-                await prisma.household.upsert({
-                    where: { koboSubmissionId: koboSubmissionId },
-                    update: updateData,
-                    create: {
+                // 🆕 CRÉATION pure
+                await prisma.household.create({
+                    data: {
                         id: newHouseholdId,
                         organizationId: household.organizationId,
                         zoneId: household.zoneId,
