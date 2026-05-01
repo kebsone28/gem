@@ -1,4 +1,4 @@
-﻿ 
+ 
 import React from 'react';
 import { HouseholdStatusLabel } from './HouseholdStatusLabel';
 
@@ -74,7 +74,7 @@ export const HouseholdStatusTimeline: React.FC<HouseholdStatusTimelineProps> = R
         )}
       </div>
 
-      <div className="mt-8 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="mt-8 flex flex-col gap-4">
         {effectiveStages.map((stage, index) => {
           const isCompleted = currentIndex >= 0 && index < currentIndex;
           const isCurrent = index === currentIndex;
@@ -83,60 +83,63 @@ export const HouseholdStatusTimeline: React.FC<HouseholdStatusTimelineProps> = R
           return (
             <div
               key={stage.value}
-              className={`rounded-[1.6rem] border p-4 transition-all ${
+              className={`relative rounded-[1.6rem] border p-5 transition-all duration-300 ${
                 isCurrent
-                  ? 'border-emerald-400/30 bg-emerald-500/10 shadow-[0_0_0_1px_rgba(16,185,129,0.08)]'
+                  ? 'border-emerald-400/40 bg-emerald-500/10 shadow-[0_10px_30px_rgba(16,185,129,0.12)] ring-1 ring-emerald-400/20'
                   : isCompleted
                     ? 'border-sky-400/20 bg-sky-500/10'
-                    : 'border-white/8 bg-white/[0.03]'
+                    : 'border-white/5 bg-white/[0.02] opacity-60'
               }`}
             >
-              <div className="flex items-start gap-3">
+              {/* Ligne de connexion verticale entre les étapes */}
+              {index < effectiveStages.length - 1 && (
+                <div className="absolute left-[34px] top-[60px] bottom-[-20px] w-px bg-gradient-to-b from-white/10 to-transparent z-0" />
+              )}
+
+              <div className="flex items-start gap-5 relative z-10">
                 <div
-                  className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-2xl border text-[11px] font-black ${
+                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border text-[14px] font-black transition-all ${
                     isCurrent
-                      ? 'border-emerald-400/30 bg-emerald-500/15 text-emerald-200'
+                      ? 'border-emerald-400/50 bg-emerald-500/25 text-emerald-200 shadow-[0_0_20px_rgba(52,211,153,0.3)]'
                       : isCompleted
-                        ? 'border-sky-400/20 bg-sky-500/15 text-sky-200'
-                        : isPending
-                          ? 'border-white/8 bg-white/[0.03] text-slate-500'
-                          : 'border-amber-400/20 bg-amber-500/10 text-amber-200'
+                        ? 'border-sky-400/30 bg-sky-500/20 text-sky-200'
+                        : 'border-white/10 bg-white/[0.05] text-slate-500'
                   }`}
                 >
                   {stage.icon || index + 1}
                 </div>
 
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                     <p
-                      className={`text-[11px] font-black uppercase tracking-[0.18em] ${
+                      className={`text-[12px] font-black uppercase tracking-[0.12em] leading-none ${
                         isCurrent
-                          ? 'text-emerald-200'
+                          ? 'text-emerald-300'
                           : isCompleted
                             ? 'text-sky-200'
-                            : 'text-slate-300/72'
+                            : 'text-slate-400'
                       }`}
                     >
                       {stage.label}
                     </p>
                     <span
-                      className={`rounded-full px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.16em] ${
+                      className={`rounded-full px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.16em] border ${
                         isCurrent
-                          ? 'bg-emerald-500/15 text-emerald-200'
+                          ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
                           : isCompleted
-                            ? 'bg-sky-500/15 text-sky-200'
-                            : 'bg-white/[0.04] text-slate-500'
+                            ? 'bg-sky-500/20 text-sky-300 border-sky-500/30'
+                            : 'bg-white/5 text-slate-500 border-white/10'
                       }`}
                     >
-                      {isCurrent ? 'Actuel' : isCompleted ? 'Validé' : 'En attente'}
+                      {isCurrent ? 'Étape Actuelle' : isCompleted ? 'Validé' : 'En attente'}
                     </span>
                   </div>
 
-                  {stage.description ? (
-                    <p className="mt-2 text-[11px] leading-relaxed text-slate-400">
+                  {stage.description && (
+                    <p className={`text-[11px] leading-relaxed transition-colors ${isCurrent ? 'text-slate-200' : 'text-slate-500'}`}>
                       {stage.description}
                     </p>
-                  ) : null}
+                  )}
                 </div>
               </div>
             </div>
