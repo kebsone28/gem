@@ -577,11 +577,21 @@ export const pushChanges = async (req, res) => {
     }
 };
 
+const activeKoboSyncs = new Set();
+
 // @desc    Trigger specialized Kobo synchronization (background sync)
 // @route   POST /api/sync/kobo
 export const syncKobo = async (req, res) => {
     try {
         const { organizationId } = req.user;
+
+        if (activeKoboSyncs.has(organizationId)) {
+            console.warn(`[SYNC-KOBO] ⚠️ Sync already in progress for Org: ${organizationId}`);
+            return res.status(429).json({ error: 'Une synchronisation Kobo est déjà en cours. Veuillez patienter.' });
+        }
+        activeKoboSyncs.add(organizationId);
+
+        try {
         console.log(`[SYNC-KOBO] 🚀 Triggered by User: ${req.user.id} for Org: ${organizationId}`);
 
         // --- RESOLVE TARGET PROJECT & ZONE ---
@@ -659,6 +669,9 @@ export const syncKobo = async (req, res) => {
             result: results,
             lastResult: { applied: results.applied, skipped: results.skipped, errors: results.errors }
         });
+        } finally {
+            activeKoboSyncs.delete(organizationId);
+        }
     } catch (error) {
         console.error('[SYNC-KOBO-ERROR]:', error.message);
         res.status(500).json({ error: 'Kobo synchronization failed', message: error.message });
@@ -932,3 +945,6 @@ export const bulkImportHouseholds = async (req, res) => {
         res.status(500).json({ error: 'Bulk import failed', details: error.message });
     }
 };
+
+
+

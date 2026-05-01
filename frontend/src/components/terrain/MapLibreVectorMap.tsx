@@ -798,9 +798,17 @@ const MapLibreVectorMap: React.FC<any> = ({
   }, [mapStyle, isDarkMode, isMapReady]);
 
   // ✅ Commands handler
+  const lastCommandRef = useRef<string | null>(null);
+
   useEffect(() => {
     const currentMap = mapInstanceRef.current;
     if (!currentMap || !mapCommand || !styleIsReady) return;
+
+    // Serialize command to prevent infinite loops if parent passes a new object reference every render
+    const cmdStr = JSON.stringify(mapCommand);
+    if (lastCommandRef.current === cmdStr) return;
+    lastCommandRef.current = cmdStr;
+
     const { center, zoom, bounds } = mapCommand;
     if (bounds) {
       currentMap.fitBounds(bounds, { padding: 50, maxZoom: 18 });
@@ -840,8 +848,8 @@ const MapLibreVectorMap: React.FC<any> = ({
     const currentMap = mapInstanceRef.current;
     if (!currentMap || !styleIsReady || !iconsReady || !currentMap.isStyleLoaded()) return;
 
-    // Token for double-init prevention (style + features + projectId)
-    const initToken = `${lastTargetSourceRef.current}-${householdGeoJSON?.features?.length || 0}-${projectId}`;
+    // Token for double-init prevention (style + projectId)
+    const initToken = `${lastTargetSourceRef.current}-${projectId}`;
     if (initializedToolsRef.current === initToken) return;
     initializedToolsRef.current = initToken;
 
@@ -861,13 +869,12 @@ const MapLibreVectorMap: React.FC<any> = ({
   }, [
     isMapReady,
     styleIsReady,
-    iconsReady, // Added explicit dependencies
+    iconsReady, 
     setupInteractions,
     setupClusteringEvents,
     setupUserMarker,
     userLocation,
-    projectId,
-    householdGeoJSON?.features?.length
+    projectId
   ]);
 
   // ✅ REACTIVE TOOL: RULER (Mesure)
