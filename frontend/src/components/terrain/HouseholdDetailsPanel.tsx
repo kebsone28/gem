@@ -578,8 +578,11 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
                 Titulaire Du Compte
               </p>
 
-              <p className="mt-2.5 text-white font-black text-[1.02rem] sm:text-[1.12rem] uppercase tracking-[-0.025em] leading-[1.06] max-w-[240px]">
+              <p className="mt-2.5 text-white font-black text-[1.02rem] sm:text-[1.12rem] uppercase tracking-[-0.025em] leading-[1.06] max-w-[240px] flex items-center justify-center gap-2">
                 {(typeof household.owner === 'string' ? household.owner : null) || (household.owner as any)?.name || household.name || 'Sans Nom'}
+                {(manualOverrideFields.includes('owner') || manualOverrideFields.includes('name')) && (
+                  <Lock size={12} className="text-amber-400 shrink-0" />
+                )}
               </p>
             </div>
           </div>
@@ -835,10 +838,45 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
           )}
 
 
+          {/* Kobo Data Explorer */}
+          {household.koboData && Object.keys(household.koboData).length > 0 && (
+            <div className="p-6 sm:p-8 rounded-[2.5rem] bg-white/5 border border-white/10 space-y-6">
+               <h4 className="text-[9px] font-black uppercase tracking-[0.3em] flex items-center gap-2 text-blue-400/60">
+                <Database size={14} /> DÉTAILS FORMULAIRE KOBO
+              </h4>
+              
+              <div className="grid grid-cols-1 gap-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                {Object.entries(household.koboData)
+                  .filter(([key, val]) => 
+                    !key.startsWith('_') && 
+                    val !== null && 
+                    typeof val !== 'object' &&
+                    key !== 'photo' &&
+                    key !== 'photoUrl'
+                  )
+                  .map(([key, val]) => (
+                    <div key={key} className="flex flex-col gap-1 p-3 rounded-xl bg-black/20 border border-white/5">
+                      <span className="text-[8px] font-black uppercase tracking-widest text-slate-500">
+                        {key.replace(/_/g, ' ')}
+                      </span>
+                      <span className="text-xs font-bold text-slate-200">
+                        {String(val)}
+                      </span>
+                    </div>
+                  ))
+                }
+              </div>
+              
+              <p className="text-[8px] font-bold text-slate-600 uppercase tracking-widest text-center">
+                Données synchronisées via API KoboToolbox
+              </p>
+            </div>
+          )}
+
           {/* Kobo Metadata */}
           <div className="p-5 sm:p-8 rounded-[2rem] border-dashed border-2 border-slate-800 bg-slate-900/30 space-y-6">
             <h4 className="text-[9px] font-black uppercase tracking-[0.3em] flex items-center gap-2 text-slate-500">
-              <Database size={14} /> DONNÉES TECHNIQUES & SYNC
+              <Database size={14} /> MÉTADONNÉES SYNC & SYSTÈME
             </h4>
 
             <div className={`rounded-2xl border p-4 ${syncBadge.classes}`}>

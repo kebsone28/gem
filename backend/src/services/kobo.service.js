@@ -171,7 +171,11 @@ async function mapSubmissionToHousehold(submission, organizationId, defaultZoneI
     // Store complete submission for audit trail
     household.koboData = submission;
     household.source = 'KOBO';
-    household.updatedAt = new Date(submission['_submission_time'] || Date.now());
+    
+    // 🔥 ROBUST DATE PARSING: Ensure updatedAt is NEVER an 'Invalid Date'
+    const rawTime = submission['_submission_time'];
+    const parsedTime = rawTime ? new Date(rawTime) : new Date();
+    household.updatedAt = isNaN(parsedTime.getTime()) ? new Date() : parsedTime;
 
     // Validate GPS coordinates match region
     if (household.latitude && household.longitude && household.region) {
