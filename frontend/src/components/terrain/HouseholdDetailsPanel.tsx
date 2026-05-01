@@ -386,81 +386,23 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
             </div>
           )}
 
+
+          {/* GLOBAL STATUS TRACKING (REPOSITIONNÉ ICI POUR ÉVITER LE DOUBLON) */}
+          <HouseholdStatusTimeline
+            currentStatus={currentStatus}
+            updatedAt={household.updatedAt}
+            isAdmin={isAdmin}
+            onEdit={(newStatus) => setShowStatusModal(true)}
+            stages={timelineStages.map((stage) => ({
+              label: stage,
+              value: stage,
+              description: stageVisuals[stage]?.description,
+              icon: stageVisuals[stage]?.icon,
+            }))}
+          />
+
           {/* PROGRESS BAR TIMELINE OR INELIGIBILITY CARD */}
-          {!isTerminalStatus ? (
-            <div className="p-5 sm:p-6 rounded-[2.15rem] bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.14),transparent_38%),linear-gradient(180deg,rgba(255,255,255,0.12),rgba(255,255,255,0.04))] border border-white/10 shadow-2xl relative overflow-hidden">
-              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent" />
-              <div className="flex items-start justify-between gap-4 mb-4">
-                <div>
-                  <h4 className="text-[10px] font-black uppercase tracking-[0.3em] flex items-center gap-2 text-emerald-300 opacity-90">
-                  <Clock size={14} /> PROGRESSION DU CHANTIER
-                  </h4>
-                  <p className="mt-1.5 text-[10px] leading-relaxed text-slate-300 max-w-[250px]">
-                    {activeStageMeta.description}
-                  </p>
-                </div>
-                <div className="min-w-[78px] rounded-2xl border border-emerald-400/15 bg-emerald-400/10 px-3 py-2 text-right shadow-inner">
-                  <div className="text-[9px] font-black uppercase tracking-[0.24em] text-emerald-200/70">Avancement</div>
-                  <span className="mt-1 block text-xl sm:text-2xl font-black text-emerald-300 drop-shadow-md">
-                    {progressPercent}%
-                  </span>
-                </div>
-              </div>
-
-              <div className="relative rounded-[1.7rem] border border-white/8 bg-slate-950/20 px-3.5 py-3.5 sm:px-4">
-                <div className="absolute left-7 top-6 bottom-6 w-px bg-white/10 rounded-full" />
-                <div
-                  className="absolute left-7 top-6 w-px bg-gradient-to-b from-emerald-300 via-cyan-400 to-blue-500 rounded-full transition-all duration-1000 household-progress-bar"
-                  style={{ '--progress-percent': `${progressPercent}%` } as React.CSSProperties}
-                />
-
-                <div className="space-y-2">
-                  {timelineStages.map((stage, idx) => {
-                    const isCompleted = currentStageIndex >= idx;
-                    const isCurrent = currentStageIndex === idx;
-                    const stageMeta = stageVisuals[stage] || stageVisuals['Non encore installée'];
-                    return (
-                      <div
-                        key={stage}
-                        className={`relative pl-10 pr-3 py-2.5 rounded-[1.1rem] flex items-center justify-between transition-all duration-500 border ${
-                          isCurrent
-                            ? `bg-gradient-to-r ${stageMeta.accent}`
-                            : isCompleted
-                              ? 'bg-white/[0.04] border-white/10'
-                              : 'bg-transparent border-transparent opacity-45'
-                        }`}
-                      >
-                        <div
-                          className={`absolute left-[10px] w-4.5 h-4.5 rounded-full border transition-all flex items-center justify-center ${
-                            isCurrent
-                              ? 'bg-emerald-400 border-emerald-300 text-slate-950 shadow-[0_0_18px_rgba(52,211,153,0.45)]'
-                              : isCompleted
-                                ? 'bg-white/10 border-white/20 text-white'
-                                : 'bg-slate-900 border-white/10 text-slate-500'
-                          }`}
-                        />
-                        <div className="absolute left-[13px] z-[1] scale-90">
-                          {stageMeta.icon}
-                        </div>
-                        <span className={`text-[9px] sm:text-[10px] font-black uppercase tracking-[0.14em] ${isCurrent ? 'text-white' : isCompleted ? 'text-slate-100' : 'text-slate-500'}`}>
-                          {stage}
-                        </span>
-                        {isCurrent ? (
-                          <span className="rounded-full border border-white/15 bg-white/10 px-2 py-1 text-[7px] font-black uppercase tracking-[0.18em] text-white">
-                            En cours
-                          </span>
-                        ) : isCompleted ? (
-                          <span className="text-[7px] font-black uppercase tracking-[0.18em] text-emerald-200/80">
-                            Fait
-                          </span>
-                        ) : null}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          ) : (
+          {isTerminalStatus && (
             <div className="p-8 rounded-[2.5rem] bg-rose-500/10 border-2 border-rose-500/20 shadow-2xl relative overflow-hidden group">
                <div className="absolute -right-10 -top-10 w-40 h-40 bg-rose-500/5 blur-[80px] rounded-full" />
                <div className="flex items-center gap-4 mb-6">
@@ -479,7 +421,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
                     {justification || 'Aucun motif renseigné dans le formulaire Kobo' }
                   </p>
                </div>
-
+ 
                <div className="mt-6 flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.15em] text-rose-500/60">
                  <AlertTriangle size={12} /> Dossier classé sans suite
                </div>
@@ -801,19 +743,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
           {/* Assigned Teams */}
           <TeamAllocationsBadge teams={memoizedTeams} />
 
-          {/* Final Status Section */}
-          <HouseholdStatusTimeline
-            currentStatus={currentStatus}
-            updatedAt={household.updatedAt}
-            isAdmin={isAdmin}
-            onEdit={(newStatus) => setShowStatusModal(true)}
-            stages={timelineStages.map((stage) => ({
-              label: stage,
-              value: stage,
-              description: stageVisuals[stage]?.description,
-              icon: stageVisuals[stage]?.icon,
-            }))}
-          />
+
 
           {/* Grappe */}
           {grappeInfo && (
