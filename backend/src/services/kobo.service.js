@@ -172,8 +172,12 @@ async function mapSubmissionToHousehold(submission, organizationId, defaultZoneI
     household.koboData = submission;
     household.source = 'KOBO';
     
-    // 🔥 ROBUST DATE PARSING: Ensure updatedAt is NEVER an 'Invalid Date'
-    const rawTime = submission['_submission_time'];
+    // 🔥 ROBUST DATE PARSING: Try to repair Kobo ISO string if 'Z' is missing
+    let rawTime = submission['_submission_time'];
+    if (rawTime && typeof rawTime === 'string' && !rawTime.endsWith('Z') && !rawTime.includes('+')) {
+        rawTime += 'Z'; // Force UTC parsing
+    }
+    
     const parsedTime = rawTime ? new Date(rawTime) : new Date();
     household.updatedAt = isNaN(parsedTime.getTime()) ? new Date() : parsedTime;
 
