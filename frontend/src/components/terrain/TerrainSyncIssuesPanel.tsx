@@ -62,11 +62,11 @@ export const TerrainSyncIssuesPanel: React.FC<TerrainSyncIssuesPanelProps> = ({
           initial={{ opacity: 0, y: 24, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 24, scale: 0.98 }}
-          className="w-full max-w-2xl max-h-[88vh] overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950 text-white shadow-2xl"
+          className="w-full max-w-2xl max-h-[92dvh] overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950 text-white shadow-2xl md:max-h-[88vh]"
         >
           <div className="flex items-start justify-between gap-4 border-b border-white/5 bg-white/5 p-5 md:p-6">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.28em] text-amber-400">
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] sm:tracking-[0.28em] text-amber-400">
                 Santé Sync Terrain
               </p>
               <h3 className="mt-2 text-xl font-black uppercase tracking-tight">
@@ -82,7 +82,7 @@ export const TerrainSyncIssuesPanel: React.FC<TerrainSyncIssuesPanelProps> = ({
             </button>
           </div>
 
-          <div className="max-h-[calc(88vh-164px)] space-y-6 overflow-y-auto p-5 md:p-6">
+          <div className="max-h-[calc(92dvh-164px)] space-y-6 overflow-y-auto p-4 sm:p-5 md:max-h-[calc(88vh-164px)] md:p-6">
             <div className="rounded-2xl border border-blue-500/20 bg-blue-500/10 p-4">
               <p className="text-[10px] font-black uppercase tracking-[0.22em] text-blue-300">
                 Règle métier sync
@@ -290,7 +290,7 @@ export const TerrainSyncIssuesPanel: React.FC<TerrainSyncIssuesPanelProps> = ({
             ) : null}
           </div>
 
-          <div className="flex flex-col gap-3 border-t border-white/5 bg-black/20 p-5 md:flex-row md:justify-end md:p-6">
+          <div className="flex flex-col gap-3 border-t border-white/5 bg-black/20 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:p-5 md:flex-row md:justify-end md:p-6">
             <button
               onClick={() => void onRepair()}
               className="rounded-2xl border border-amber-500/20 bg-amber-500/10 px-5 py-3 text-xs font-black uppercase tracking-[0.2em] text-amber-300 transition-colors hover:bg-amber-500/20"

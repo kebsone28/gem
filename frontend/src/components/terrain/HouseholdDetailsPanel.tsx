@@ -27,6 +27,16 @@ import {
 import { AdminControlCenterModal } from './AdminControlCenterModal';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
+import { 
+  FileDown, 
+  FileText, 
+  ShieldCheck, 
+  Truck as TruckIcon, 
+  Hammer as HammerIcon, 
+  Zap as ZapIcon,
+  Download
+} from 'lucide-react';
+import * as ReportGen from '../../services/householdReportGenerator';
 import { getHouseholdDerivedStatus, getStatusTailwindClasses } from '../../utils/statusUtils';
 import type { Household } from '../../utils/types';
 import { useTerrainUIStore } from '../../store/terrainUIStore';
@@ -269,7 +279,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
       animate={{ x: 0 }}
       exit={{ x: '100%' }}
       transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-      className="fixed bottom-0 md:top-0 md:right-0 h-[84vh] sm:h-[88vh] md:h-screen w-full md:w-[430px] lg:w-[446px] z-[2000] shadow-[-20px_0_90px_rgba(0,0,0,0.56)] border-t md:border-l rounded-t-[1.75rem] sm:rounded-t-[2.4rem] md:rounded-none overflow-y-auto custom-scrollbar bg-slate-950/78 backdrop-blur-3xl border-white/10 text-white flex flex-col pb-[env(safe-area-inset-bottom)]"
+      className="fixed bottom-0 left-0 right-0 z-[2000] flex h-[86dvh] w-full flex-col overflow-y-auto rounded-t-[1.75rem] border-t border-white/10 bg-slate-950/92 pb-[env(safe-area-inset-bottom)] text-white shadow-[-20px_0_90px_rgba(0,0,0,0.56)] backdrop-blur-3xl custom-scrollbar sm:h-[88dvh] sm:rounded-t-[2.4rem] md:left-auto md:right-0 md:top-0 md:h-screen md:w-[430px] md:rounded-none md:border-l lg:w-[446px]"
     >
       {/* Drag Handle for Mobile */}
       <div className="md:hidden w-10 h-1.5 bg-white/10 rounded-full mx-auto my-3 shrink-0" />
@@ -772,7 +782,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
           {/* Kobo Data Explorer */}
           {household.koboData && Object.keys(household.koboData).length > 0 && (
             <div className="p-6 sm:p-8 rounded-[2.5rem] bg-white/5 border border-white/10 space-y-6">
-               <h4 className="text-[9px] font-black uppercase tracking-[0.3em] flex items-center gap-2 text-blue-400/60">
+               <h4 className="text-[9px] font-black uppercase tracking-[0.18em] sm:tracking-[0.3em] flex items-center gap-2 text-blue-400/60">
                 <Database size={14} /> DÉTAILS FORMULAIRE KOBO
               </h4>
               
@@ -806,7 +816,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
 
           {/* Kobo Metadata */}
           <div className="p-5 sm:p-8 rounded-[2rem] border-dashed border-2 border-slate-800 bg-slate-900/30 space-y-6">
-            <h4 className="text-[9px] font-black uppercase tracking-[0.3em] flex items-center gap-2 text-slate-500">
+            <h4 className="text-[9px] font-black uppercase tracking-[0.18em] sm:tracking-[0.3em] flex items-center gap-2 text-slate-500">
               <Database size={14} /> MÉTADONNÉES SYNC & SYSTÈME
             </h4>
 
@@ -923,6 +933,120 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
               </div>
             </div>
           </div>
+
+          {/* EXPORTS MÉTIFERS SECTION */}
+          <div className="p-5 sm:p-8 space-y-6">
+            <h4 className="text-[9px] font-black uppercase tracking-[0.18em] sm:tracking-[0.3em] flex items-center gap-2 text-blue-400">
+              <FileDown size={14} /> EXPORTS & RAPPORTS MÉTIERS
+            </h4>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* ÉTAPE 1 : LIVRAISON (Toujours disponible ou Inéligibilité) */}
+              <button 
+                onClick={() => ReportGen.generateLivraisonPDF(household)}
+                className="flex items-center gap-3 p-4 bg-white/5 border border-white/5 rounded-2xl hover:bg-white/10 hover:border-blue-500/30 transition-all group"
+              >
+                <div className="p-2 bg-blue-500/10 rounded-lg group-hover:scale-110 transition-transform">
+                  <TruckIcon size={16} className="text-blue-400" />
+                </div>
+                <div className="text-left">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-white">
+                    {isTerminalStatus ? 'Attestation' : 'Bon Livraison'}
+                  </p>
+                  <p className="text-[7px] font-bold text-slate-500 uppercase">Étape 1 - Logistique</p>
+                </div>
+              </button>
+
+              {/* ÉTAPE 2 : MAÇONNERIE (Si données dispo) */}
+              {(household.koboSync?.maconOk || (household.constructionData as any)?.macon) ? (
+                <button 
+                  onClick={() => ReportGen.generateMaconneriePDF(household)}
+                  className="flex items-center gap-3 p-4 bg-white/5 border border-white/5 rounded-2xl hover:bg-white/10 hover:border-amber-500/30 transition-all group animate-in fade-in zoom-in-95"
+                >
+                  <div className="p-2 bg-amber-500/10 rounded-lg group-hover:scale-110 transition-transform">
+                    <HammerIcon size={16} className="text-amber-400" />
+                  </div>
+                  <div className="text-left">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-white">PV Maçonnerie</p>
+                    <p className="text-[7px] font-bold text-slate-500 uppercase">Étape 2 - Support</p>
+                  </div>
+                </button>
+              ) : (
+                <div className="flex items-center gap-3 p-4 bg-white/[0.02] border border-white/5 rounded-2xl opacity-30 grayscale cursor-not-allowed">
+                  <HammerIcon size={16} className="text-slate-600" />
+                  <div className="text-left">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 italic">En attente...</p>
+                  </div>
+                </div>
+              )}
+
+              {/* ÉTAPE 3 : RÉSEAU */}
+              {(household.koboSync?.reseauOk || (household.constructionData as any)?.reseau) ? (
+                <button 
+                  onClick={() => ReportGen.generateBranchementPDF(household)}
+                  className="flex items-center gap-3 p-4 bg-white/5 border border-white/5 rounded-2xl hover:bg-white/10 hover:border-sky-500/30 transition-all group animate-in fade-in zoom-in-95"
+                >
+                  <div className="p-2 bg-sky-500/10 rounded-lg group-hover:scale-110 transition-transform">
+                    <ZapIcon size={16} className="text-sky-400" />
+                  </div>
+                  <div className="text-left">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-white">Fiche Réseau</p>
+                    <p className="text-[7px] font-bold text-slate-500 uppercase">Étape 3 - Branchement</p>
+                  </div>
+                </button>
+              ) : (
+                <div className="flex items-center gap-3 p-4 bg-white/[0.02] border border-white/5 rounded-2xl opacity-30 grayscale cursor-not-allowed">
+                  <ZapIcon size={16} className="text-slate-600" />
+                  <div className="text-left">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 italic">En attente...</p>
+                  </div>
+                </div>
+              )}
+
+              {/* ÉTAPE 4 : INSTALLATION */}
+              {(household.koboSync?.interieurOk || (household.constructionData as any)?.interieur) ? (
+                <button 
+                  onClick={() => ReportGen.generateInstallationPDF(household)}
+                  className="flex items-center gap-3 p-4 bg-white/5 border border-white/5 rounded-2xl hover:bg-white/10 hover:border-violet-500/30 transition-all group animate-in fade-in zoom-in-95"
+                >
+                  <div className="p-2 bg-violet-500/10 rounded-lg group-hover:scale-110 transition-transform">
+                    <FileText size={16} className="text-violet-400" />
+                  </div>
+                  <div className="text-left">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-white">PV Installation</p>
+                    <p className="text-[7px] font-bold text-slate-500 uppercase">Étape 4 - Intérieur</p>
+                  </div>
+                </button>
+              ) : (
+                <div className="flex items-center gap-3 p-4 bg-white/[0.02] border border-white/5 rounded-2xl opacity-30 grayscale cursor-not-allowed">
+                  <FileText size={16} className="text-slate-600" />
+                  <div className="text-left">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 italic">En attente...</p>
+                  </div>
+                </div>
+              )}
+
+              {/* ÉTAPE 5 : CERTIFICAT FINAL */}
+              {(household.koboSync?.controleOk || (household.constructionData as any)?.audit) ? (
+                <button 
+                  onClick={() => ReportGen.generateConformiteFinalPDF(household)}
+                  className="col-span-1 sm:col-span-2 flex items-center justify-center gap-4 p-5 bg-emerald-500/10 border border-emerald-500/20 rounded-[1.5rem] hover:bg-emerald-500/20 hover:border-emerald-500/40 transition-all group shadow-lg shadow-emerald-500/5 animate-in fade-in slide-in-from-bottom-4"
+                >
+                  <ShieldCheck size={24} className="text-emerald-400 group-hover:scale-110 transition-transform" />
+                  <div className="text-left">
+                    <p className="text-[11px] font-black uppercase tracking-[0.1em] text-white">Certificat de Conformité Final</p>
+                    <p className="text-[8px] font-bold text-emerald-500/60 uppercase">Rapport complet d'Audit NS 01 001 & NF C14-100</p>
+                  </div>
+                  <Download size={18} className="ml-auto text-emerald-400 opacity-40 group-hover:opacity-100 transition-opacity" />
+                </button>
+              ) : (
+                <div className="col-span-1 sm:col-span-2 flex items-center justify-center gap-4 p-5 bg-white/[0.02] border border-white/5 rounded-[1.5rem] opacity-20 grayscale cursor-not-allowed">
+                   <ShieldCheck size={24} className="text-slate-600" />
+                   <p className="text-[10px] font-black uppercase tracking-widest text-slate-700 italic">Audit final non encore effectué</p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -971,7 +1095,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
             <h3 className="text-2xl font-black uppercase tracking-tighter mb-2 text-white leading-none">
               Status Audit
             </h3>
-            <p className="text-[10px] font-black uppercase tracking-[0.3em] mb-10 text-blue-500/50 leading-none">
+            <p className="text-[10px] font-black uppercase tracking-[0.18em] sm:tracking-[0.3em] mb-10 text-blue-500/50 leading-none">
               Évolution du cycle de vie terrain
             </p>
 

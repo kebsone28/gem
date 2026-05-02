@@ -131,6 +131,10 @@ interface TerrainUIState {
   // Toolbar Visibility
   showToolbar: boolean;
   toggleToolbar: () => void;
+
+  // --- NEW: Highlight Location (Temporary marker) ---
+  highlightedLocation: [number, number] | null;
+  setHighlightedLocation: (loc: [number, number] | null) => void;
 }
 
 export const useTerrainUIStore = create<TerrainUIState>((set) => ({
@@ -276,5 +280,9 @@ export const useTerrainUIStore = create<TerrainUIState>((set) => ({
 
   // Toolbar Visibility
   showToolbar: true,
-  toggleToolbar: () => set((state) => ({ showToolbar: !state.showToolbar })),
+  toggleToolbar: () => void set((state) => ({ showToolbar: !state.showToolbar })),
+
+  // Highlight Location
+  highlightedLocation: null,
+  setHighlightedLocation: (loc) => set({ highlightedLocation: loc }),
 }));

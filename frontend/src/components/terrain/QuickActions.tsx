@@ -120,14 +120,14 @@ export const QuickActions: React.FC<QuickActionsProps> = ({
   if (actions.length === 0) return null;
 
   return (
-    <div className="fixed bottom-24 right-4 z-50 md:hidden">
+    <div className="fixed bottom-[calc(6.75rem+env(safe-area-inset-bottom))] right-3 z-[1200] md:hidden">
       <AnimatePresence>
         {isOpen && (
           <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.8 }}
-            className="absolute bottom-16 right-0 flex flex-col-reverse gap-2"
+            className="absolute bottom-14 right-0 flex max-w-[calc(100vw-1rem)] flex-col-reverse gap-2"
           >
             {actions.map((action, index) => (
               <motion.button
@@ -149,7 +149,7 @@ export const QuickActions: React.FC<QuickActionsProps> = ({
       <motion.button
         whileTap={{ scale: 0.9 }}
         onClick={() => setIsOpen(!isOpen)}
-        className={`${isOpen ? 'bg-slate-600' : 'bg-blue-600'} text-white p-4 rounded-full shadow-xl border border-white/10`}
+        className={`${isOpen ? 'bg-slate-600' : 'bg-blue-600'} text-white p-3.5 rounded-full shadow-xl border border-white/10`}
       >
         {isOpen ? <X className="w-6 h-6" /> : <Plus className="w-6 h-6" />}
       </motion.button>
@@ -168,12 +168,12 @@ export const OfflineIndicator: React.FC<{ isOffline: boolean; pendingCount?: num
   if (!isOffline && pendingCount === 0) return null;
 
   return (
-    <div className="fixed top-[132px] left-1/2 -translate-x-1/2 z-50 md:hidden">
+    <div className="fixed top-[calc(9rem+env(safe-area-inset-top))] left-1/2 z-[1200] w-[calc(100%-1rem)] -translate-x-1/2 md:hidden">
       <motion.div
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         onClick={onClick}
-        className={`px-4 py-2 rounded-full flex items-center gap-2 shadow-lg ${
+        className={`mx-auto max-w-full px-4 py-2 rounded-full flex items-center justify-center gap-2 shadow-lg ${
           isOffline ? 'bg-yellow-500' : 'bg-blue-500'
         } text-white text-sm font-medium ${onClick ? 'cursor-pointer' : ''}`}
       >
@@ -228,14 +228,14 @@ export const FloatingPhotoButton: React.FC<{
   const [showOptions, setShowOptions] = useState(false);
 
   return (
-    <div className="fixed bottom-40 right-4 z-50 md:hidden">
+    <div className="fixed bottom-[calc(10.75rem+env(safe-area-inset-bottom))] right-3 z-[1200] md:hidden">
       <AnimatePresence>
         {showOptions && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
-            className="absolute bottom-14 right-0 flex flex-col gap-2"
+            className="absolute bottom-14 right-0 flex max-w-[calc(100vw-1rem)] flex-col gap-2"
           >
             <button
               onClick={() => { onCapture(); setShowOptions(false); }}
@@ -261,7 +261,7 @@ export const FloatingPhotoButton: React.FC<{
         whileTap={{ scale: 0.9 }}
         onClick={() => setShowOptions(!showOptions)}
         disabled={disabled}
-        className="bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-full shadow-xl border border-white/10"
+        className="bg-blue-600 hover:bg-blue-700 text-white p-3.5 rounded-full shadow-xl border border-white/10"
       >
         <Camera className="w-6 h-6" />
       </motion.button>

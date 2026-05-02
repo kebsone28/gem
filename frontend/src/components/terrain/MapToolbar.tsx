@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
@@ -365,33 +365,12 @@ export const MapToolbar: React.FC<MapToolbarProps> = ({ onRecenter, features }) 
                 active={activePanel === 'layers'}
               />
             )}
-            {features?.regionDownload && (
-              <ToolbarButton
-                icon={<Cloud />}
-                title="Cartes offline"
-                onClick={() => setPanel('region')}
-                active={activePanel === 'region'}
-              />
-            )}
           </div>
           <div className="toolbar-divider" />
         </>
       )}
       
       {/* DATA & CLOUD */}
-      {features?.dataHub && (
-        <>
-          <div className="toolbar-group">
-            <ToolbarButton
-              icon={<Cloud />}
-              title="Data Hub (Kobo)"
-              onClick={() => setPanel('datahub')}
-              active={activePanel === 'datahub'}
-            />
-          </div>
-          <div className="toolbar-divider" />
-        </>
-      )}
       </div>
 
       {typeof document !== 'undefined' &&

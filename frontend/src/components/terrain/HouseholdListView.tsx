@@ -1,27 +1,70 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
+import { List } from 'react-window';
+import type { RowComponentProps } from 'react-window';
+import { AutoSizer } from 'react-virtualized-auto-sizer';
 import { motion } from 'framer-motion';
-import { FileDown, MapPin, Home } from 'lucide-react';
+import { 
+  FileDown, 
+  MapPin, 
+  Eye, 
+  ArrowUpDown, 
+  Zap,
+  FileText,
+  ShieldCheck,
+  Download,
+  CheckCircle2,
+  Clock,
+  AlertCircle
+} from 'lucide-react';
 import type { Household } from '../../utils/types';
 import { getHouseholdDerivedStatus, getStatusTailwindClasses } from '../../utils/statusUtils';
+import { useTerrainUIStore } from '../../store/terrainUIStore';
 
 interface HouseholdListViewProps {
   households: Household[];
   isDarkMode: boolean;
-  onSelectHousehold: (household: Household) => void;
+  onSelectHousehold: (h: Household) => void;
 }
 
-// Individual row — memoized to avoid re-renders on parent updates
-const HouseholdRow = React.memo(
-  ({
-    h,
-    isDarkMode,
-    onSelectHousehold,
-  }: {
-    h: Household;
+const ReportIndicator = React.memo(({ icon, active, title, onClick, color }: any) => {
+    const colors: any = {
+        blue: active ? 'bg-blue-500/20 text-blue-400 border-blue-500/20' : 'bg-slate-800/50 text-slate-600 border-white/5',
+        amber: active ? 'bg-amber-500/20 text-amber-400 border-amber-500/20' : 'bg-slate-800/50 text-slate-600 border-white/5',
+        sky: active ? 'bg-sky-500/20 text-sky-400 border-sky-500/20' : 'bg-slate-800/50 text-slate-600 border-white/5',
+        violet: active ? 'bg-violet-500/20 text-violet-400 border-violet-500/20' : 'bg-slate-800/50 text-slate-600 border-white/5',
+        emerald: active ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/20' : 'bg-slate-800/50 text-slate-600 border-white/5',
+    };
+
+    return (
+        <button 
+            onClick={(e) => { e.stopPropagation(); if (active) onClick(); }}
+            title={active ? `Télécharger ${title}` : `${title} non disponible`}
+            className={`w-6 h-6 rounded-lg border flex items-center justify-center transition-all ${colors[color]} ${active ? 'hover:scale-110 active:scale-95 shadow-sm' : 'opacity-40 grayscale cursor-not-allowed'}`}
+        >
+            {icon}
+        </button>
+    );
+});
+ReportIndicator.displayName = 'ReportIndicator';
+
+// Extra props for Row
+interface RowExtraProps {
+    households: Household[];
     isDarkMode: boolean;
     onSelectHousehold: (h: Household) => void;
-  }) => {
+    setHighlightedLocation: (loc: [number, number] | null) => void;
+}
+
+const HouseholdRow = ({
+    index,
+    style,
+    households,
+    isDarkMode,
+    onSelectHousehold,
+    setHighlightedLocation
+}: RowComponentProps<RowExtraProps>) => {
+    const h = households[index];
     const status = getHouseholdDerivedStatus(h);
     const statusClasses = getStatusTailwindClasses(status);
     const ownerName = 
@@ -29,80 +72,95 @@ const HouseholdRow = React.memo(
       (h as any).owner?.name || 
       (h as any).name || 
       'Propriétaire inconnu';
-    const location =
-      (h as any).region || (h as any).departement || (h as any).village || 'Localisation inconnue';
-
+      
     return (
       <div
-        className={`flex items-center px-6 py-4 transition-colors border-b ${
+        // eslint-disable-next-line react/forbid-dom-props
+        style={style}
+        className={`group flex items-center px-4 sm:px-6 py-2 border-b transition-all ${
           isDarkMode
-            ? 'hover:bg-slate-800/50 border-slate-800/50'
-            : 'hover:bg-slate-50 border-slate-100'
+            ? 'border-slate-800/40 hover:bg-blue-600/5 bg-[#050F1F]'
+            : 'border-slate-100 hover:bg-blue-50/50 bg-white'
         }`}
       >
-        {/* Icon */}
-        <div
-          className={`w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center border mr-4 ${
-            isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-slate-100 border-slate-200'
-          }`}
-        >
-          <Home size={14} className={isDarkMode ? 'text-blue-400' : 'text-blue-500'} />
+        {/* Status Indicator */}
+        <div className="w-10 flex-shrink-0 mr-4 flex justify-center">
+            {status.includes('Conforme') ? (
+                <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+                    <CheckCircle2 size={14} />
+                </div>
+            ) : status.includes('En attente') || status.includes('Non encore') ? (
+                <div className="w-8 h-8 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-500">
+                    <Clock size={14} />
+                </div>
+            ) : (
+                <div className="w-8 h-8 rounded-full bg-rose-500/10 flex items-center justify-center text-rose-500">
+                    <AlertCircle size={14} />
+                </div>
+            )}
         </div>
 
-        {/* ID + Owner */}
-        <div className="flex-1 min-w-0">
-          <p
-            className={`text-sm font-semibold truncate ${isDarkMode ? 'text-white' : 'text-slate-900'}`}
-          >
-            {(h as any).numeroordre || h.id}
-          </p>
-          <p className={`text-xs truncate ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+        <div className="flex-1 min-w-0 pr-4">
+          <p className={`text-[11px] sm:text-[12px] font-black tracking-tight truncate ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
             {ownerName}
           </p>
-        </div>
-
-        {/* Location */}
-        <div className="flex-1 min-w-0 px-4 hidden sm:block">
-          <p
-            className={`text-sm truncate flex items-center gap-1 ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}
-          >
-            <MapPin size={10} className="flex-shrink-0 opacity-60" />
-            {location}
+          <p className={`text-[9px] font-bold uppercase tracking-widest opacity-50 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+            ID: {String((h as any).numeroordre || h.id || 'N/A')}
           </p>
         </div>
 
-        {/* Status badge */}
-        <div className="flex-shrink-0 px-3">
-          <span
-            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusClasses}`}
-          >
-            {status}
+        <div className="hidden lg:flex flex-1 px-4 flex-col gap-0.5">
+           <p className={`text-[9px] font-black uppercase tracking-wider truncate ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`}>
+             {h.region || 'Sénégal'}
+           </p>
+           <p className={`text-[9px] font-bold truncate opacity-40 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+             {h.village || h.departement || 'Zone rurale'}
+           </p>
+        </div>
+
+        <div className="w-32 flex-shrink-0 flex justify-center">
+          <span className={`px-2.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest shadow-sm ${statusClasses}`}>
+            {status.replace('Non encore installée', 'En attente')}
           </span>
         </div>
 
-        {/* CTA */}
-        <button
-          onClick={() => onSelectHousehold(h)}
-          className={`flex-shrink-0 ml-3 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-            isDarkMode
-              ? 'bg-blue-500/10 text-blue-400 hover:bg-blue-500/20'
-              : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
-          }`}
-        >
-          Voir
-        </button>
+        <div className="hidden xl:flex items-center justify-center gap-2 px-6 flex-shrink-0 w-[160px]">
+            <ReportIndicator color="blue" title="Installation" active={!!(h as any).installationDate} icon={<Zap size={10} />} onClick={() => {}} />
+            <ReportIndicator color="amber" title="Conformité" active={status.includes('Conforme')} icon={<ShieldCheck size={10} />} onClick={() => {}} />
+            <ReportIndicator color="sky" title="Audit" active={status.includes('Audit')} icon={<FileText size={10} />} onClick={() => {}} />
+            <ReportIndicator color="emerald" title="Fiche" active={true} icon={<Download size={10} />} onClick={() => {}} />
+        </div>
+
+        <div className="ml-auto pl-4">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setHighlightedLocation(h.location?.coordinates as [number, number]);
+              onSelectHousehold(h);
+            }}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all shadow-md active:scale-95 ${
+              isDarkMode
+                ? 'bg-blue-600 text-white hover:bg-blue-500 shadow-blue-500/20'
+                : 'bg-slate-900 text-white hover:bg-slate-800'
+            }`}
+          >
+            <Eye size={12} /> 
+            <span className="hidden sm:inline">Voir</span>
+          </button>
+        </div>
       </div>
     );
-  }
-);
-
-HouseholdRow.displayName = 'HouseholdRow';
+};
 
 export const HouseholdListView: React.FC<HouseholdListViewProps> = ({
   households,
   isDarkMode,
   onSelectHousehold,
 }) => {
+  const [sortField, setSortField] = React.useState<'id' | 'name' | 'status' | 'region'>('id');
+  const [sortOrder, setSortOrder] = React.useState<'asc' | 'desc'>('asc');
+  const setHighlightedLocation = useTerrainUIStore((s: any) => s.setHighlightedLocation);
+
   const handleExportCSV = useCallback(() => {
     const headers = ['N° Ordre', 'Propriétaire', 'Région', 'Statut', 'Lat', 'Lng'];
     const rows = households.map((h) => [
@@ -113,7 +171,7 @@ export const HouseholdListView: React.FC<HouseholdListViewProps> = ({
       h.location?.coordinates?.[1] ?? '',
       h.location?.coordinates?.[0] ?? '',
     ]);
-    const csv = [headers, ...rows].map((r) => r.join(';')).join('\n');
+    const csv = [headers, ...rows].map((r: any) => r.join(';')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -123,92 +181,106 @@ export const HouseholdListView: React.FC<HouseholdListViewProps> = ({
     URL.revokeObjectURL(url);
   }, [households]);
 
+  const toggleSort = (field: typeof sortField) => {
+    if (sortField === field) {
+        setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+        setSortField(field);
+        setSortOrder('asc');
+    }
+  };
+
+  const sortedHouseholds = useMemo(() => {
+    return [...households].sort((a, b) => {
+        let valA: any = '';
+        let valB: any = '';
+
+        switch (sortField) {
+            case 'id':
+                valA = parseInt((a as any).numeroordre) || 0;
+                valB = parseInt((b as any).numeroordre) || 0;
+                break;
+            case 'name': {
+                const ownerA = (a as any).owner;
+                const ownerB = (b as any).owner;
+                valA = (typeof ownerA === 'object' ? ownerA?.name : ownerA || (a as any).name || '').toLowerCase();
+                valB = (typeof ownerB === 'object' ? ownerB?.name : ownerB || (b as any).name || '').toLowerCase();
+                break;
+            }
+            case 'status':
+                valA = getHouseholdDerivedStatus(a).toLowerCase();
+                valB = getHouseholdDerivedStatus(b).toLowerCase();
+                break;
+            case 'region':
+                valA = (a.region || '').toLowerCase();
+                valB = (b.region || '').toLowerCase();
+                break;
+        }
+
+        if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
+        if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
+        return 0;
+    });
+  }, [households, sortField, sortOrder]);
+
   return (
     <motion.div
       key="list"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
       className={`h-full w-full overflow-hidden flex flex-col rounded-3xl border shadow-lg ${
         isDarkMode ? 'bg-transparent border-none' : 'bg-white border-slate-200'
       }`}
     >
-      {/* Region Summary */}
-      {households.length > 0 && (
-        <div className={`px-4 pt-4 pb-2 border-b overflow-x-auto ${isDarkMode ? 'border-slate-800 bg-slate-900/40' : 'border-slate-100 bg-slate-50'}`}>
-          <div className="flex gap-4 min-w-max pb-2">
-            {Object.entries(
-              households.reduce((acc, h) => {
-                const region = h.region || h.koboSync?.region || 'Inconnue';
-                if (!acc[region]) acc[region] = { count: 0, villages: new Set<string>() };
-                acc[region].count++;
-                const village = h.village || h.koboSync?.village || h.grappeName || 'Sans village';
-                acc[region].villages.add(village);
-                return acc;
-              }, {} as Record<string, { count: number; villages: Set<string> }>)
-            ).map(([region, stats]) => (
-              <div 
-                key={region} 
-                className={`p-4 rounded-[1.5rem] border shadow-sm flex flex-col gap-2 min-w-[220px] ${
-                  isDarkMode ? 'bg-slate-800/80 border-white/5' : 'bg-white border-slate-200'
-                }`}
-              >
-                <div className="flex justify-between items-start">
-                  <span className={`text-[10px] font-black uppercase tracking-widest ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`}>
-                    Région
-                  </span>
-                  <span className={`px-2 py-0.5 rounded-lg text-[9px] font-bold ${isDarkMode ? 'bg-slate-950 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
-                    {stats.count} ménages
-                  </span>
-                </div>
-                <p className={`text-sm font-black uppercase truncate ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                  {region}
-                </p>
-                <div className="mt-1 pt-2 border-t border-white/5 space-y-1">
-                  <p className={`text-[9px] font-bold uppercase tracking-wide ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
-                    {stats.villages.size} Villages (Grappes) :
-                  </p>
-                  <p className={`text-[10px] font-medium leading-relaxed ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-                    {Array.from(stats.villages).slice(0, 5).join(', ')}
-                    {stats.villages.size > 5 && ` + ${stats.villages.size - 5} autres`}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Header */}
       <div
-        className={`p-4 flex-shrink-0 border-b flex items-center justify-between ${
-          isDarkMode ? 'border-slate-800' : 'border-slate-100'
+        className={`px-6 py-5 flex-shrink-0 border-b flex flex-wrap items-center justify-between gap-4 ${
+          isDarkMode ? 'border-slate-800 bg-slate-900/40' : 'border-slate-100 bg-white'
         }`}
       >
-        <div className="flex items-center gap-3">
-          <h3 className="text-sm font-black uppercase tracking-widest text-indigo-500">
-            Détails des Ménages
+        <div className="flex items-center gap-4">
+          <h3 className="text-lg sm:text-xl font-black uppercase tracking-tighter text-white">
+            Ménages
           </h3>
-          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isDarkMode ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-500'}`}>
-            {households.length.toLocaleString()} total
+          <span className={`text-[10px] font-black px-2.5 py-1 rounded-lg border ${
+            isDarkMode 
+              ? 'bg-blue-500/10 border-blue-500/20 text-blue-400' 
+              : 'bg-slate-100 border-slate-200 text-slate-500'
+          }`}>
+            {households.length.toLocaleString()} AU TOTAL
           </span>
         </div>
         <button
           onClick={handleExportCSV}
-          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+          className={`flex items-center gap-2.5 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all shadow-lg active:scale-95 ${
             isDarkMode
-              ? 'bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20'
-              : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100'
+              ? 'bg-indigo-600 text-white hover:bg-indigo-500'
+              : 'bg-slate-900 text-white hover:bg-slate-800'
           }`}
         >
           <FileDown size={14} /> Exporter CSV
         </button>
       </div>
 
+      {/* Column Headers */}
+      <div className={`hidden sm:flex px-6 py-3 border-b items-center text-[10px] font-black uppercase tracking-[0.2em] ${isDarkMode ? 'bg-slate-900/20 border-slate-800 text-slate-500' : 'bg-slate-50 border-slate-100 text-slate-400'}`}>
+         <div className="w-10 flex-shrink-0 mr-4"></div>
+         <button onClick={() => toggleSort('name')} className="flex-1 flex-shrink-0 flex items-center gap-2 hover:text-blue-500 transition-colors">
+            CLIENT <ArrowUpDown size={12} className={sortField === 'name' ? 'text-blue-500' : 'opacity-20'} />
+         </button>
+         <button onClick={() => toggleSort('region')} className="flex-1 px-4 flex items-center gap-2 hover:text-blue-500 transition-colors hidden lg:flex">
+            ZONE <ArrowUpDown size={12} className={sortField === 'region' ? 'text-blue-500' : 'opacity-20'} />
+         </button>
+         <button onClick={() => toggleSort('status')} className="w-32 flex-shrink-0 flex items-center justify-center gap-2 hover:text-blue-500 transition-colors">
+            STATUT <ArrowUpDown size={12} className={sortField === 'status' ? 'text-blue-500' : 'opacity-20'} />
+         </button>
+         <div className="hidden xl:block px-6 flex-shrink-0 w-[160px] text-center tracking-[0.3em] opacity-40">RAPPORTS</div>
+         <div className="ml-auto px-6">DÉTAILS</div>
+      </div>
 
-      {/* List body — native CSS scroll, no external lib */}
-      <div className="flex-1 overflow-y-auto">
-        {households.length === 0 ? (
+      {/* List body — Virtualized with react-window */}
+      <div className="flex-1 overflow-hidden">
+        {sortedHouseholds.length === 0 ? (
           <div
             className={`flex items-center justify-center h-full ${
               isDarkMode ? 'text-slate-400' : 'text-slate-500'
@@ -217,18 +289,29 @@ export const HouseholdListView: React.FC<HouseholdListViewProps> = ({
             <div className="text-center py-16">
               <MapPin size={48} className="mx-auto mb-4 opacity-30" />
               <p className="text-lg font-semibold">Aucun ménage trouvé</p>
-              <p className="text-sm mt-1">Modifiez vos filtres pour voir des résultats</p>
             </div>
           </div>
         ) : (
-          households.map((h) => (
-            <HouseholdRow
-              key={h.id}
-              h={h}
-              isDarkMode={isDarkMode}
-              onSelectHousehold={onSelectHousehold}
-            />
-          ))
+          <AutoSizer
+            renderProp={({ height, width }: any) => (
+              <List
+                rowCount={sortedHouseholds.length}
+                rowHeight={72}
+                rowComponent={HouseholdRow}
+                rowProps={{
+                  households: sortedHouseholds,
+                  isDarkMode,
+                  onSelectHousehold,
+                  setHighlightedLocation
+                }}
+                className="custom-scrollbar"
+                style={{ 
+                    height: height || '100%', 
+                    width: width || '100%' 
+                }}
+              />
+            )}
+          />
         )}
       </div>
     </motion.div>

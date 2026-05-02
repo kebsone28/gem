@@ -141,7 +141,7 @@ export const MapRoutingPanel: React.FC<MapRoutingPanelProps> = ({
 
   return (
     <div
-      className={`w-full md:w-80 rounded-2xl border shadow-2xl backdrop-blur-xl overflow-hidden transition-all ${base}`}
+      className={`w-full max-h-[calc(100dvh-10rem)] overflow-hidden rounded-2xl border shadow-2xl backdrop-blur-xl transition-all md:w-80 md:max-h-[calc(100dvh-7rem)] ${base}`}
     >
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-inherit">

@@ -541,21 +541,21 @@ export const DataHubModal: React.FC<DataHubModalProps> = ({ isOpen, onClose }) =
         {isOpen && (
           <div
             key="data-hub-overlay"
-            className="fixed inset-0 z-[3000] flex items-center justify-center p-2 md:p-4 bg-slate-950/80 backdrop-blur-sm"
+            className="fixed inset-0 z-[3000] flex items-end justify-center bg-slate-950/80 p-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] backdrop-blur-sm md:items-center md:p-4"
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className={`relative w-full max-w-4xl h-[90vh] md:h-auto md:max-h-[90vh] flex flex-col rounded-2xl md:rounded-3xl overflow-hidden shadow-2xl border ${isDarkMode ? 'bg-[#0A101D] border-slate-800/50' : 'bg-white border-slate-200'}`}
+              className={`relative flex h-[94dvh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border shadow-2xl md:h-auto md:max-h-[90vh] md:rounded-3xl ${isDarkMode ? 'bg-[#0A101D] border-slate-800/50' : 'bg-white border-slate-200'}`}
             >
-              <div className="flex items-center justify-between p-4 md:p-6 border-b border-slate-800/50 shrink-0 bg-white/5">
-                <div className="flex items-center gap-3 md:gap-4">
+              <div className="flex items-center justify-between gap-3 p-4 md:p-6 border-b border-slate-800/50 shrink-0 bg-white/5">
+                <div className="flex min-w-0 items-center gap-3 md:gap-4">
                   <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl md:rounded-2xl bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-600/20">
                     <Database size={20} className="w-4 h-4 md:w-5 md:h-5" />
                   </div>
                   <h2
-                    className={`text-base md:text-xl font-black uppercase tracking-widest italic ${isDarkMode ? 'text-white' : 'text-slate-900'}`}
+                    className={`truncate text-base md:text-xl font-black uppercase tracking-[0.14em] md:tracking-widest italic ${isDarkMode ? 'text-white' : 'text-slate-900'}`}
                   >
                     Data Hub
                   </h2>
@@ -563,14 +563,14 @@ export const DataHubModal: React.FC<DataHubModalProps> = ({ isOpen, onClose }) =
                 <button
                   onClick={onClose}
                   aria-label="Fermer"
-                  className="p-2 md:p-2.5 bg-white/5 rounded-xl text-slate-400 hover:text-white hover:bg-rose-500/20 hover:text-rose-400 transition-colors"
+                  className="shrink-0 p-2 md:p-2.5 bg-white/5 rounded-xl text-slate-400 hover:text-white hover:bg-rose-500/20 hover:text-rose-400 transition-colors"
                 >
                   <X size={20} className="w-5 h-5" />
                 </button>
               </div>
 
               <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
-                <div className="flex flex-row md:flex-col w-full md:w-64 p-2 md:p-4 border-b md:border-b-0 md:border-r border-slate-800/50 shrink-0 gap-2 overflow-x-auto md:overflow-y-auto bg-black/20 scrollbar-hide">
+                <div className="flex w-full shrink-0 flex-row gap-2 overflow-x-auto border-b border-slate-800/50 bg-black/20 p-2 scrollbar-hide md:w-64 md:flex-col md:overflow-y-auto md:border-b-0 md:border-r md:p-4">
                   {[
                     { id: 'import', label: 'Import', icon: <Upload size={16} /> },
                     { id: 'kobo', label: 'Kobo Sync', icon: <RefreshCcw size={16} /> },
@@ -586,14 +586,14 @@ export const DataHubModal: React.FC<DataHubModalProps> = ({ isOpen, onClose }) =
                     <button
                       key={tab.id}
                       onClick={() => setActiveTab(tab.id as any)}
-                      className={`shrink-0 flex items-center gap-2 md:gap-3 px-4 py-2.5 md:py-3 rounded-xl text-[10px] md:text-sm font-bold uppercase tracking-widest transition-all ${activeTab === tab.id ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/25' : tab.color || 'text-slate-400 hover:text-indigo-300 hover:bg-indigo-500/10'}`}
+                      className={`shrink-0 flex items-center gap-2 md:gap-3 px-4 py-2.5 md:py-3 rounded-xl text-[10px] md:text-sm font-bold uppercase tracking-[0.14em] md:tracking-widest transition-all ${activeTab === tab.id ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/25' : tab.color || 'text-slate-400 hover:text-indigo-300 hover:bg-indigo-500/10'}`}
                     >
                       {tab.icon} <span className="whitespace-nowrap">{tab.label}</span>
                     </button>
                   ))}
                 </div>
 
-                <div className="flex-1 p-4 md:p-8 overflow-y-auto bg-[#0A101D]">
+                <div className="flex-1 overflow-y-auto bg-[#0A101D] p-3 sm:p-4 md:p-8">
                   {activeTab === 'import' && (
                     <div className="space-y-4 md:space-y-6">
                       <div
@@ -626,7 +626,7 @@ export const DataHubModal: React.FC<DataHubModalProps> = ({ isOpen, onClose }) =
                           Sélectionner Fichier
                         </button>
 
-                        <div className="mt-8 flex items-center gap-4 p-4 bg-white/5 rounded-2xl border border-white/10">
+                        <div className="mt-8 flex w-full flex-col gap-4 rounded-2xl border border-white/10 bg-white/5 p-4 sm:flex-row sm:items-center sm:justify-between">
                           <div className="flex flex-col">
                             <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">
                               Mode d'importation

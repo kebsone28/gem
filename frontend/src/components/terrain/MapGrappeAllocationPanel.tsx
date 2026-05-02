@@ -212,7 +212,7 @@ export const MapGrappeAllocationPanel: React.FC<MapGrappeAllocationPanelProps> =
       initial={{ opacity: 0, x: 300 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: 300 }}
-      className="absolute left-3 right-3 top-[144px] bottom-4 md:left-auto md:right-4 md:top-24 md:bottom-24 md:w-96 bg-slate-950/95 backdrop-blur-3xl border border-slate-800/60 rounded-3xl overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5)] flex flex-col z-[80] pointer-events-auto"
+      className="absolute left-3 right-3 top-auto bottom-[132px] z-[80] flex max-h-[calc(100dvh-11rem)] flex-col overflow-hidden rounded-3xl border border-slate-800/60 bg-slate-950/95 shadow-[0_0_50px_rgba(0,0,0,0.5)] backdrop-blur-3xl pointer-events-auto md:bottom-24 md:left-auto md:right-4 md:top-24 md:w-96 md:max-h-none"
     >
       <div className="p-4 sm:p-6 border-b border-slate-800/60 bg-gradient-to-b from-indigo-500/10 to-transparent flex justify-between items-start gap-3">
         <div>

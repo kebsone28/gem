@@ -82,7 +82,7 @@ const createCartoStyle = (
       ],
       tileSize: 256,
       attribution: '&copy; <a href="https://carto.com">CARTO</a> &copy; OpenStreetMap contributors',
-      maxzoom: 20,
+      maxzoom: 19,
     },
   },
   layers: [
@@ -96,7 +96,7 @@ const createCartoStyle = (
       type: 'raster',
       source: 'carto',
       minzoom: 0,
-      maxzoom: 20,
+      maxzoom: 24, // Layer can go high, source will overscale from 19
       paint: {
         'raster-opacity': 1,
         'raster-fade-duration': 200,
@@ -120,6 +120,7 @@ const createOsmRasterStyle = (
       tiles: OSM_TILES,
       tileSize: 256,
       attribution: '&copy; OpenStreetMap contributors',
+      maxzoom: 19,
     },
   },
   layers: [
@@ -133,7 +134,7 @@ const createOsmRasterStyle = (
       type: 'raster',
       source: 'osm',
       minzoom: 0,
-      maxzoom: 20,
+      maxzoom: 24,
       paint: { 'raster-opacity': 0.96, ...rasterPaint } as any,
     },
   ],
@@ -142,15 +143,21 @@ const createOsmRasterStyle = (
 // ── Styles principaux exportés ──
 
 /**
- * Style sombre "Yango / Uber" — Utilise désormais OpenFreeMap (Vector) par défaut
- * Plus robuste face aux blocages de CDNs et plus performant.
+ * Style sombre "Yango / Uber" — Utilise CARTO Dark Matter (Raster)
+ * Plus robuste pour le sur-zoom à haut niveau.
  */
-export const MAP_STYLE_DARK: any = OPENFREEMAP_DARK;
+export const MAP_STYLE_DARK: StyleSpecification = createCartoStyle('dark_all', '#050f1f');
 
 /**
  * Style clair premium — CARTO Voyager (proche Google Maps)
  */
 export const MAP_STYLE_LIGHT: StyleSpecification = createCartoStyle('rastertiles/voyager', '#f4f7fb');
+
+/**
+ * Style clair vectoriel (Ultra-net) — OpenFreeMap
+ * Idéal pour zoomer sans flou.
+ */
+export const MAP_STYLE_LIGHT_VECTOR: any = OPENFREEMAP_BRIGHT;
 
 /**
  * Style de secours OSM si CARTO indisponible
@@ -175,25 +182,35 @@ export const MAP_STYLE_SATELLITE: StyleSpecification = {
     esri: {
       type: 'raster',
       tiles: [
-        'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        'https://clarity.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
       ],
       tileSize: 256,
       attribution: '&copy; Esri, Earthstar Geographics',
+      maxzoom: 15, // Important : s'arrêter à 15 pour forcer l'overscaling (étirement) au-delà
     },
   },
   layers: [
+    {
+      id: 'satellite-background',
+      type: 'background',
+      paint: { 'background-color': '#000000' },
+    },
     {
       id: 'satellite',
       type: 'raster',
       source: 'esri',
       minzoom: 0,
-      maxzoom: 20,
+      maxzoom: 24, // Autoriser l'étirement jusqu'à 24
+      paint: {
+        'raster-opacity': 1,
+        'raster-fade-duration': 0,
+      } as any,
     },
   ],
 };
 
 // Alias backward compatibility
-export const MAP_STYLE_LIGHT_VECTOR = MAP_STYLE_LIGHT;
+export const MAP_STYLE_SATELLITE_ALIAS = MAP_STYLE_SATELLITE;
 
 export const getIconId = (status: string) => {
   const key = resolveStatusConfigKey(status);

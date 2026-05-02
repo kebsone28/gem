@@ -32,6 +32,7 @@ import HouseholdLayer from './layers/HouseholdLayer';
 import ZoneLayer from './layers/ZoneLayer';
 import LogisticsLayer from './layers/LogisticsLayer';
 import InteractionLayer from './layers/InteractionLayer';
+import HighlightLayer from './layers/HighlightLayer';
 import MapTooltip from './MapTooltip';
 import { useSuperclusterWorker } from '../../hooks/useSuperclusterWorker';
 import { householdsToGeoJSON } from '../../utils/clusteringUtils';
@@ -156,6 +157,8 @@ const MapLibreVectorMap: React.FC<any> = ({
     sourceFeatures: number;
     renderedFeatures: number;
     zoom: number;
+    activeStyle: string;
+    activeSource: string;
   }>({
     hostWidth: 0,
     hostHeight: 0,
@@ -171,6 +174,8 @@ const MapLibreVectorMap: React.FC<any> = ({
     sourceFeatures: 0,
     renderedFeatures: 0,
     zoom: 0,
+    activeStyle: 'none',
+    activeSource: 'none',
   });
 
   // ── Interactive State (Tooltips) ──
@@ -373,6 +378,8 @@ const MapLibreVectorMap: React.FC<any> = ({
         sourceFeatures,
         renderedFeatures,
         zoom,
+        activeStyle: mapStyleRef.current,
+        activeSource: getCurrentStyleSource(map) || 'unknown',
       });
     };
 
@@ -474,6 +481,7 @@ const MapLibreVectorMap: React.FC<any> = ({
         style: resolveMapStyle(mapStyle, isDarkMode) as any,
         center: initialCenter,
         zoom: initialZoom,
+        maxZoom: 24,
         pitch: 0,
         maxPitch: 85,
         bearing: 0,
@@ -511,6 +519,9 @@ const MapLibreVectorMap: React.FC<any> = ({
         'top-right'
       );
       map.addControl(new maplibregl.ScaleControl({ unit: 'metric' }), 'bottom-right');
+      
+      // ✅ Force Max Zoom explicitly on instance
+      map.setMaxZoom(24);
 
       lastTargetSourceRef.current = getCurrentStyleSource(map) || mapStyle;
 
@@ -575,6 +586,7 @@ const MapLibreVectorMap: React.FC<any> = ({
         setIsMapReady(true);
         lastTargetSourceRef.current = getCurrentStyleSource(map) || mapStyleRef.current;
         setMapInitError(null);
+        map.setMaxZoom(24); // Re-force after style load
         syncMapViewport();
       };
 
@@ -767,6 +779,7 @@ const MapLibreVectorMap: React.FC<any> = ({
       try {
         (currentMap as unknown as { _placement?: unknown })._placement = undefined;
         currentMap.setStyle(resolveMapStyle(targetSource, isDarkMode), { diff: false });
+        currentMap.setMaxZoom(24); // Force again on style switch
       } catch (error) {
         logger.error('[Terrain] ❌ Failed to switch map style:', error);
         const fallbackTimer = setTimeout(() => {
@@ -811,7 +824,7 @@ const MapLibreVectorMap: React.FC<any> = ({
 
     const { center, zoom, bounds } = mapCommand;
     if (bounds) {
-      currentMap.fitBounds(bounds, { padding: 50, maxZoom: 18 });
+      currentMap.fitBounds(bounds, { padding: 50, maxZoom: 21 });
     } else if (center) {
       currentMap.flyTo({
         center,
@@ -989,8 +1002,11 @@ const MapLibreVectorMap: React.FC<any> = ({
         <div>{`map ${mapDiagnostics.mapCreated ? 'ok' : 'ko'} | style ${mapDiagnostics.styleLoaded ? 'ok' : 'ko'} | icons ${mapDiagnostics.iconsReady ? 'ok' : 'ko'}`}</div>
         <div>{`src households ${mapDiagnostics.sourceHouseholds ? 'ok' : 'ko'} | supercluster ${mapDiagnostics.sourceSupercluster ? 'ok' : 'ko'}`}</div>
         <div>{`layers point ${mapDiagnostics.layerHouseholds ? 'ok' : 'ko'} | glow ${mapDiagnostics.layerGlow ? 'ok' : 'ko'} | cluster ${mapDiagnostics.layerCluster ? 'ok' : 'ko'}`}</div>
-        <div>{`geojson ${mapDiagnostics.geoJsonFeatures} | source ${mapDiagnostics.sourceFeatures} | rendered ${mapDiagnostics.renderedFeatures}`}</div>
-        <div>{`zoom ${mapDiagnostics.zoom}`}</div>
+        <div>{`geojson ${mapDiagnostics.geoJsonFeatures} | src ${mapDiagnostics.sourceFeatures} | rend ${mapDiagnostics.renderedFeatures}`}</div>
+        <div className="flex justify-between gap-4 font-black uppercase text-[8px] mt-1 border-t border-white/10 pt-1">
+          <span>{`Zoom ${mapDiagnostics.zoom}`}</span>
+          <span>{`${mapDiagnostics.activeStyle} / ${mapDiagnostics.activeSource}`}</span>
+        </div>
       </div>
 
       {/* Modular Layers */}
@@ -1023,6 +1039,8 @@ const MapLibreVectorMap: React.FC<any> = ({
         drawnZones={drawnZones}
         pendingPoints={pendingPoints}
       />
+
+      <HighlightLayer map={mapForChildren} />
 
       {/* PREMIUN HOVER TOOLTIP */}
       {hoverData && hoverPos && <MapTooltip data={hoverData} x={hoverPos.x} y={hoverPos.y} />}

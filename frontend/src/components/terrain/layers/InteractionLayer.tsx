@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useEffect } from 'react';
 import maplibregl from 'maplibre-gl';
 import logger from '../../../utils/logger';
@@ -23,10 +23,10 @@ const InteractionLayer: React.FC<InteractionLayerProps> = ({
 }) => {
   // 🏷️ SOURCES
   useEffect(() => {
-    if (!map || !styleIsReady || !map.isStyleLoaded() || (map as any)._removed) return;
+    if (!map || !styleIsReady || (map as any)._removed || !map.getStyle() || !map.isStyleLoaded()) return;
 
     const ensureSources = () => {
-      if ((map as any)._removed || !map.isStyleLoaded()) return;
+      if ((map as any)._removed || !map.getStyle() || !map.isStyleLoaded()) return;
 
       try {
         if (!map.getSource('route-source')) {
@@ -105,11 +105,12 @@ const InteractionLayer: React.FC<InteractionLayerProps> = ({
 
   // 🏷️ LAYERS
   useEffect(() => {
-    if (!map || !styleIsReady || !map.isStyleLoaded() || (map as any)._removed) return;
+    if (!map || !styleIsReady || (map as any)._removed || !map.getStyle() || !map.isStyleLoaded()) return;
 
     const setupLayers = () => {
       if (
         (map as any)._removed ||
+        !map.getStyle() ||
         !map.isStyleLoaded() ||
         !map.getSource('route-source') ||
         !map.getSource('pending-zone') ||

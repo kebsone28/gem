@@ -21,7 +21,7 @@ export const MapStatsWidget: React.FC<MapStatsWidgetProps> = ({ stats }) => {
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: 20 }}
-      className={`absolute top-[144px] left-3 right-3 md:top-24 md:right-6 md:left-auto z-[1000] md:w-64 p-4 md:p-6 rounded-[1.5rem] md:rounded-[2rem] border shadow-2xl backdrop-blur-xl transition-all ${
+      className={`absolute bottom-[132px] left-3 right-3 top-auto z-[1000] max-h-[calc(100dvh-11rem)] overflow-y-auto p-4 rounded-[1.5rem] border shadow-2xl backdrop-blur-xl transition-all md:bottom-auto md:left-auto md:right-6 md:top-24 md:w-64 md:overflow-visible md:p-6 md:rounded-[2rem] ${
         isDarkMode ? 'bg-slate-900/90 border-white/10' : 'bg-white/90 border-slate-200'
       }`}
     >

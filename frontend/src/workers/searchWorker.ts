@@ -1,4 +1,4 @@
-﻿ 
+ 
 /**
  * searchWorker.ts
  *
@@ -15,18 +15,18 @@ interface HouseholdDocument {
   id: string;
   owner?: { name: string };
   name?: string;
-  village?: string;
+  numeroordre?: string;
   phone?: string;
   [key: string]: unknown;
 }
 
 const miniSearch = new MiniSearch({
-  fields: ['id', 'name', 'village', 'phone'], // fields to index for full-text search
-  storeFields: ['id', 'name', 'village', 'phone', 'data'], // fields to return with search results
+  fields: ['id', 'name', 'phone', 'numeroordre'], // fields to index for full-text search
+  storeFields: ['id', 'name', 'phone', 'numeroordre', 'data'], // fields to return with search results
   searchOptions: {
     prefix: true,
-    fuzzy: 0.2, // allow small typos
-    boost: { id: 2, name: 1.5 }, // prioritize ID and Name matches
+    fuzzy: 0.1, // more strict typos
+    boost: { id: 2, numeroordre: 2, name: 1.5 }, // prioritize ID and Order Number matches
   },
 });
 
@@ -37,10 +37,10 @@ self.onmessage = (event) => {
     case 'INDEX': {
       // Build index for households
       const documents = (payload.households || []).map((h: HouseholdDocument) => ({
-        id: h.id,
-        name: h.owner?.name || h.name || 'N/A',
-        village: h.village || '',
-        phone: h.phone || '',
+        id: String(h.id),
+        name: String(h.owner?.name || h.name || 'N/A'),
+        numeroordre: String(h.numeroordre || ''),
+        phone: String(h.phone || ''),
         data: h, // Store the full object for quick mapping if needed
       }));
 
@@ -52,14 +52,22 @@ self.onmessage = (event) => {
     }
 
     case 'SEARCH': {
-      const results = miniSearch.search(payload.query);
+      const isNumeric = /^\d+$/.test(payload.query);
+      const results = miniSearch.search(payload.query, {
+        prefix: !isNumeric, // Désactiver le préfixe pour les nombres (ex: 404 ne trouve plus 4047)
+        fuzzy: isNumeric ? false : 0.1, // Désactiver le flou pour les nombres
+        boost: { numeroordre: 5, id: 2, name: 1.5 }, // Gros boost sur le numéro d'ordre
+      });
       // Limit to 10 best matches
-      const topResults = results.slice(0, 10).map((r) => ({
-        type: 'household',
-        id: r.id,
-        label: `${r.id} — ${r.name}`,
-        data: r.data,
-      }));
+      const topResults = results.slice(0, 10).map((r) => {
+        const order = r.numeroordre ? ` [ORDRE: ${r.numeroordre}]` : '';
+        return {
+          type: 'household',
+          id: r.id,
+          label: `${r.name}${order}`,
+          data: r.data,
+        };
+      });
 
       self.postMessage({ type: 'SEARCH_RESULTS', results: topResults, query: payload.query });
       break;

@@ -111,6 +111,7 @@ export function KoboDecisionRulesSection({ project, onUpdate }: { project: any; 
                       Si la question :
                     </label>
                     <select
+                      title="Sélectionner une question Kobo"
                       value={rule.field}
                       onChange={(e) => {
                         const qId = e.target.value;
@@ -131,6 +132,7 @@ export function KoboDecisionRulesSection({ project, onUpdate }: { project: any; 
                       Contient la réponse :
                     </label>
                     <select
+                      title="Valeur de la réponse attendue"
                       value={rule.value}
                       onChange={(e) => handleUpdateRule(rule.id, { value: e.target.value })}
                       className="w-full bg-slate-950 border border-white/10 rounded-2xl px-5 py-4 text-[11px] font-bold text-amber-400 focus:border-amber-500/50 outline-none"
@@ -148,6 +150,7 @@ export function KoboDecisionRulesSection({ project, onUpdate }: { project: any; 
                     </label>
                     <div className="flex gap-2">
                         <select
+                        title="Statut de conclusion final"
                         value={rule.status}
                         onChange={(e) => handleUpdateRule(rule.id, { status: e.target.value })}
                         className="flex-1 bg-amber-500/10 border border-amber-500/20 rounded-2xl px-5 py-4 text-[11px] font-black text-amber-300 uppercase outline-none"
@@ -170,6 +173,7 @@ export function KoboDecisionRulesSection({ project, onUpdate }: { project: any; 
                   {/* Delete */}
                   <div className="xl:col-span-1 pb-1">
                     <button
+                      title="Supprimer cette règle"
                       onClick={() => handleRemoveRule(rule.id)}
                       className="w-14 h-14 bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-2xl flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all shadow-lg active:scale-90"
                     >

@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useEffect, useMemo } from 'react';
 import maplibregl from 'maplibre-gl';
 import logger from '../../../utils/logger';
@@ -50,7 +50,7 @@ const LogisticsLayer: React.FC<LogisticsLayerProps> = ({ map, styleIsReady, ware
     let isCancelled = false;
 
     const isMapUsable = () =>
-      !isCancelled && !!map && !(map as any)._removed && map.isStyleLoaded();
+      !isCancelled && !!map && !(map as any)._removed && !!map.getStyle() && map.isStyleLoaded();
 
     const ensureSource = () => {
       if (!isMapUsable()) return false;
@@ -166,7 +166,7 @@ const LogisticsLayer: React.FC<LogisticsLayerProps> = ({ map, styleIsReady, ware
 
   // 🏷️ DATA SYNC
   useEffect(() => {
-    if (!map || !styleIsReady || !map.isStyleLoaded() || (map as any)._removed) return;
+    if (!map || !styleIsReady || (map as any)._removed || !map.getStyle() || !map.isStyleLoaded()) return;
 
     try {
       const source = map.getSource('warehouses-source') as maplibregl.GeoJSONSource | undefined;

@@ -3,8 +3,7 @@ import React, { useCallback, useEffect, useRef } from 'react';
 import maplibregl from 'maplibre-gl';
 import { useTerrainUIStore } from '../../../store/terrainUIStore';
 import logger from '../../../utils/logger';
-import { generatePopupHTML } from '../mapUtils';
-
+import { generatePopupHTML, registerIcons } from '../mapUtils';
 import { getIconId } from '../mapConfig';
 
 interface HouseholdLayerProps {
@@ -19,6 +18,9 @@ interface HouseholdLayerProps {
 }
 
 const SAFE_FONT = ['Open Sans Regular', 'Arial Unicode MS Regular'];
+
+const isMapAlive = (map: maplibregl.Map | null) =>
+  Boolean(map && !(map as any)._removed && !!map.getStyle());
 
 // ─── Source IDs ───────────────────────────────────────────────
 const SRC_HOUSEHOLDS = 'households';
@@ -84,6 +86,7 @@ function ensureZoneBadgeImages(map: maplibregl.Map) {
 
 // ─── Create all GeoJSON sources on the map ────────────────────
 function ensureSources(map: maplibregl.Map) {
+  if (!isMapAlive(map)) return;
   if (!map.getSource(SRC_HOUSEHOLDS)) {
     map.addSource(SRC_HOUSEHOLDS, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
     logger.debug('✅ [HouseholdLayer] source: households created');
@@ -722,7 +725,7 @@ const HouseholdLayer: React.FC<HouseholdLayerProps> = ({
           [Number(bbox[0]), Number(bbox[1])],
           [Number(bbox[2]), Number(bbox[3])],
         ],
-        { padding: 72, duration: 700, maxZoom: 14 }
+        { padding: 72, duration: 700, maxZoom: 24 }
       );
     };
 
@@ -774,12 +777,13 @@ const HouseholdLayer: React.FC<HouseholdLayerProps> = ({
       }
     };
 
-    const setup = (): boolean => {
-      if (!map || (map as any)._removed) return true;
+    const setup = async (): Promise<boolean> => {
+      if (!isMapAlive(map)) return true;
       if (!styleIsReady) return false;
       if (!map.isStyleLoaded()) return false;
 
       try {
+        await registerIcons(map);
         ensureSources(map);
         ensureLayers(map);
         pushData(map, dataRef.current.householdGeoJSON, dataRef.current.households);
@@ -797,25 +801,26 @@ const HouseholdLayer: React.FC<HouseholdLayerProps> = ({
     };
 
     // Try immediately
-    const ok = setup();
-
-    if (!ok) {
-      retryRef.current = setInterval(() => {
-        if (setup()) stopRetry();
-      }, 300);
-    }
+    setup().then((ok) => {
+      if (!ok) {
+        retryRef.current = setInterval(async () => {
+          if (await setup()) stopRetry();
+        }, 300);
+      }
+    });
 
     // Re-run after style reloads (wipes everything)
     const handleStyleLoad = () => {
       stopRetry();
       clickCleanup?.();
       clickCleanup = null;
-      const ok2 = setup();
-      if (!ok2) {
-        retryRef.current = setInterval(() => {
-          if (setup()) stopRetry();
-        }, 300);
-      }
+      setup().then((ok2) => {
+        if (!ok2) {
+          retryRef.current = setInterval(async () => {
+            if (await setup()) stopRetry();
+          }, 300);
+        }
+      });
     };
 
     map.on('style.load', handleStyleLoad);
@@ -832,7 +837,7 @@ const HouseholdLayer: React.FC<HouseholdLayerProps> = ({
 
   // ── DATA UPDATE: re-push when GeoJSON changes ──
   useEffect(() => {
-    if (!map || !styleIsReady || (map as any)._removed || !map.isStyleLoaded()) return;
+    if (!map || !styleIsReady || (map as any)._removed || !map.getStyle() || !map.isStyleLoaded()) return;
     if (!map.getSource(SRC_HOUSEHOLDS)) return; // Not ready yet
 
     pushData(map, householdGeoJSON, households);
@@ -840,7 +845,7 @@ const HouseholdLayer: React.FC<HouseholdLayerProps> = ({
 
   // ── SELECTED HOUSEHOLD HIGHLIGHT ──
   useEffect(() => {
-    if (!map || (map as any)._removed || !map.isStyleLoaded()) return;
+    if (!map || (map as any)._removed || !map.getStyle() || !map.isStyleLoaded()) return;
     const source = map.getSource(SRC_SELECTED) as maplibregl.GeoJSONSource | undefined;
     if (!source) return;
     source.setData({
@@ -853,7 +858,7 @@ const HouseholdLayer: React.FC<HouseholdLayerProps> = ({
 
   // ── HEATMAP TOGGLE ──
   useEffect(() => {
-    if (!map || !map.isStyleLoaded()) return;
+    if (!map || !map.getStyle() || !map.isStyleLoaded()) return;
     if (map.getLayer('heatmap')) {
       map.setLayoutProperty('heatmap', 'visibility', showHeatmap ? 'visible' : 'none');
     }
@@ -868,8 +873,8 @@ const HouseholdLayer: React.FC<HouseholdLayerProps> = ({
       const zoom = map.getZoom();
       const showZoneFill = !showZones;
       const showZoneOutline = !showZones;
-      const showZoneHalo = zoom < 16.5 && !showZones;
-      const showZoneLabels = zoom < 17.25 && !showZones;
+      const showZoneHalo = zoom < 19.5 && !showZones;
+      const showZoneLabels = zoom < 20.25 && !showZones;
       const showClusters = zoom >= 14 && zoom < 15.25 && !showZones;
       const showHouseholdPoints = zoom >= 11.5 || showZones;
 

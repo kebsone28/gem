@@ -140,7 +140,7 @@ export const MapRegionDownload: React.FC<MapRegionDownloadProps> = ({ onClose })
   };
 
   return (
-    <div className="absolute top-[144px] left-3 right-3 md:top-20 md:left-auto md:right-4 max-w-[calc(100vw-1.5rem)] md:w-80 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-white/10 overflow-hidden z-[1000] animate-in slide-in-from-right-4 duration-300 max-h-[calc(100vh-220px)] md:max-h-[unset] flex flex-col">
+    <div className="absolute bottom-[132px] left-3 right-3 top-auto z-[1000] flex max-h-[calc(100dvh-11rem)] max-w-[calc(100vw-1.5rem)] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl duration-300 animate-in slide-in-from-right-4 dark:border-white/10 dark:bg-slate-900 md:bottom-auto md:left-auto md:right-4 md:top-20 md:w-80 md:max-h-[calc(100dvh-7rem)]">
       <div className="p-4 border-b border-slate-100 dark:border-white/5 flex items-center justify-between bg-slate-50 dark:bg-white/5">
         <div className="flex items-center gap-2">
           <Download size={18} className="text-blue-600" />

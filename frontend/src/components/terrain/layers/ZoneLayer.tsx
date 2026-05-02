@@ -36,7 +36,7 @@ const EMPTY_FEATURE_COLLECTION = {
 };
 
 const isMapAlive = (map: maplibregl.Map | null) =>
-  Boolean(map && !(map as any)._removed && typeof map.getStyle === 'function');
+  Boolean(map && !(map as any)._removed && !!map.getStyle());
 
 const haversineKm = (lat1: number, lon1: number, lat2: number, lon2: number) => {
   const R = 6371;
@@ -247,7 +247,7 @@ const ZoneLayer: React.FC<ZoneLayerProps> = ({
 
   const setupLayers = useCallback(
     (m: maplibregl.Map) => {
-      if ((m as any)._removed || !m.isStyleLoaded()) return;
+      if (!isMapAlive(m) || !m.isStyleLoaded()) return;
 
       try {
         const zonesSrc = m.getSource('village-zones') as maplibregl.GeoJSONSource | undefined;
@@ -332,12 +332,27 @@ const ZoneLayer: React.FC<ZoneLayerProps> = ({
             paint: {
               'circle-color': ['coalesce', ['get', 'pointColor'], '#6366F1'],
               'circle-radius': [
-                'case',
-                ['==', ['coalesce', ['get', 'zoneLevel'], ''], 'grappe'],
-                ['interpolate', ['linear'], ['zoom'], 6, 8, 12, 14],
-                ['==', ['coalesce', ['get', 'zoneLevel'], ''], 'sous_grappe'],
-                ['interpolate', ['linear'], ['zoom'], 6, 6, 12, 10],
-                ['interpolate', ['linear'], ['zoom'], 6, 5, 12, 8],
+                'interpolate',
+                ['linear'],
+                ['zoom'],
+                6,
+                [
+                  'case',
+                  ['==', ['coalesce', ['get', 'zoneLevel'], ''], 'grappe'],
+                  8,
+                  ['==', ['coalesce', ['get', 'zoneLevel'], ''], 'sous_grappe'],
+                  6,
+                  5,
+                ],
+                12,
+                [
+                  'case',
+                  ['==', ['coalesce', ['get', 'zoneLevel'], ''], 'grappe'],
+                  14,
+                  ['==', ['coalesce', ['get', 'zoneLevel'], ''], 'sous_grappe'],
+                  10,
+                  8,
+                ],
               ],
               'circle-opacity': ['case', ['==', ['coalesce', ['get', 'sourceType'], ''], 'official'], 0.95, 0.8],
               'circle-stroke-width': [
@@ -390,11 +405,12 @@ const ZoneLayer: React.FC<ZoneLayerProps> = ({
     if (!map || !styleIsReady) return;
 
     const queueSetup = () => {
-      if (!isMapAlive(map) || !map.isStyleLoaded()) return;
+      if (!isMapAlive(map)) return;
+      if (!map.isStyleLoaded()) return;
       setTimeout(() => setupLayers(map), 0);
     };
 
-    if (map.isStyleLoaded()) {
+    if (isMapAlive(map) && map.isStyleLoaded()) {
       queueSetup();
     }
 

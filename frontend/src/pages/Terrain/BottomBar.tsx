@@ -30,8 +30,8 @@ const BottomBar: React.FC<BottomBarProps> = ({
   const isViewportFiltered = totalCount !== undefined && filteredCount < totalCount;
 
   return (
-    <div className="absolute bottom-4 left-1/2 z-10 flex w-[calc(100%-1.5rem)] max-w-[calc(100%-1.5rem)] -translate-x-1/2 items-center justify-center gap-3 pointer-events-none px-0 md:bottom-6 md:w-auto md:max-w-[calc(100%-2rem)] md:gap-4">
-      <div className="pointer-events-auto">
+    <div className="absolute bottom-[calc(0.75rem+env(safe-area-inset-bottom))] left-1/2 z-10 flex w-[calc(100%-1rem)] max-w-[calc(100%-1rem)] -translate-x-1/2 items-center justify-center gap-2 pointer-events-none px-0 md:bottom-6 md:w-auto md:max-w-[calc(100%-2rem)] md:gap-4">
+      <div className="hidden pointer-events-auto md:block">
         <div className="flex items-center gap-4 bg-[#050F1F] border border-white/10 p-2 rounded-2xl shadow-2xl">
           <GisHealthWidget result={auditResult} isDarkMode onFlyTo={onFlyTo} />
         </div>
@@ -83,13 +83,13 @@ const BottomBar: React.FC<BottomBarProps> = ({
       </div>
 
       <div className="md:hidden pointer-events-auto w-full">
-        <div className="flex flex-wrap items-center justify-center gap-2 p-2 rounded-2xl bg-[#050F1F] border border-white/10 shadow-xl">
-          <span className="text-[10px] font-black px-3 py-1 text-blue-100 bg-blue-500/20 rounded-full tracking-widest uppercase">
+        <div className="flex items-center gap-2 overflow-x-auto rounded-2xl border border-white/10 bg-[#050F1F]/95 p-2 shadow-xl scrollbar-hide">
+          <span className="shrink-0 text-[10px] font-black px-3 py-1 text-blue-100 bg-blue-500/20 rounded-full tracking-[0.12em] uppercase">
             {filteredCount.toLocaleString()} {isViewportFiltered ? 'viewport' : 'visibles'}
           </span>
 
           <div
-            className={`flex items-center gap-2 px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded-full ${
+            className={`flex shrink-0 items-center gap-2 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] rounded-full ${
               isOfflineMode ? 'text-red-400 bg-red-400/10' : 'text-emerald-400 bg-emerald-400/10'
             }`}
           >
@@ -99,7 +99,7 @@ const BottomBar: React.FC<BottomBarProps> = ({
 
           {(pendingSyncCount > 0 || pendingHouseholdsCount > 0 || errorHouseholdsCount > 0) && (
             <span
-              className={`text-[10px] font-black px-3 py-1 rounded-full tracking-widest uppercase ${
+              className={`shrink-0 text-[10px] font-black px-3 py-1 rounded-full tracking-[0.12em] uppercase ${
                 hasSyncError || errorHouseholdsCount > 0
                   ? 'text-rose-300 bg-rose-500/10'
                   : 'text-amber-300 bg-amber-500/10'

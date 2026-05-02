@@ -454,6 +454,55 @@ export async function syncKoboToDatabase(organizationId, fallbackZoneId, since =
                 }
             }
             
+            // 🧠 MOTEUR DE JUSTIFICATION : Couplage automatique Défaut -> Commentaire
+            const ncPairing = {
+                'etape_controleur/group_hx7ae46/DISJONCTEUR_GENERAL_EN_TETE_D_': 'etape_controleur/group_hx7ae46/OBSERVATIONS_',
+                'etape_controleur/group_hx7ae46/ENSEMBLE_DE_L_INSTALLATION_PRO': 'etape_controleur/group_hx7ae46/OBSERVATIONS__001',
+                'etape_controleur/group_hx7ae46/PROTECTION_L_ORIGINE_DE_CHAQ': 'etape_controleur/group_hx7ae46/OBSERVATIONS_002',
+                'etape_controleur/group_hx7ae46/S_PARATION_DES_CIRCUITS_Lumi_': 'etape_controleur/group_hx7ae46/OBSERVATIONS__002',
+                'etape_controleur/group_hx7ae46/PROTECTION_CONTRE_LES_CONTACTS': 'etape_controleur/group_hx7ae46/OBSERVATIONS__003',
+                'etape_controleur/group_hx7ae46/MISE_EN_OEUVRE_MAT_RIEL_ET_APP': 'etape_controleur/group_hx7ae46/OBSERVATIONS__004',
+                'etape_controleur/group_hx7ae46/CONTINUITE_DE_LA_PROTECTION_ME': 'etape_controleur/group_hx7ae46/OBSERVATIONS__005',
+                'etape_controleur/group_hx7ae46/MISE_EN_UVRE_DU_R_SEAU_DE_TER': 'etape_controleur/group_hx7ae46/OBSERVATIONS__006',
+                'etape_controleur/group_hx7ae46/VALEUR_DE_LA_RESISTANCE_DE_TER': 'etape_controleur/group_hx7ae46/OBSERVATIONS__007',
+                'etape_controleur/group_wr05k35/Position_du_branchement': 'etape_controleur/group_wr05k35/Observations_sur_la_ition_du_branchement',
+                'etape_controleur/group_wr05k35/Hauteur_branchement': 'etape_controleur/group_wr05k35/Observations',
+                'etape_controleur/group_wr05k35/Hauteur_coffret': 'etape_controleur/group_wr05k35/Observations_001',
+                'etape_controleur/group_wr05k35/Etat_du_coupe_circuit': 'etape_controleur/group_wr05k35/OBSERVATION_001',
+                'etape_controleur/group_wr05k35/Continuit_PVC': 'etape_controleur/group_wr05k35/OBSERVATION_002',
+                'etape_controleur/group_wr05k35/Mise_en_oeuvre': 'etape_controleur/group_wr05k35/OBSERVATION_003'
+            };
+
+            for (const [qField, oField] of Object.entries(ncPairing)) {
+                const qValue = String(submission[qField] || '').toLowerCase();
+                if (qValue === 'non_conforme' || qValue === 'nc') {
+                    const rawObservation = submission[oField];
+                    if (rawObservation && rawObservation !== '0' && rawObservation !== 0) {
+                        // ✂️ GESTION MULTI-MOTIFS : Découper si plusieurs cases sont cochées
+                        const motifs = String(rawObservation).split(' ');
+                        
+                        for (const motifId of motifs) {
+                            if (!motifId || motifId === '0') continue;
+                            
+                            // Nettoyer l'ID technique pour le rendre lisible (ex: pas_de_piquet -> Pas de piquet)
+                            const humanLabel = motifId.replace(/_/g, ' ').replace(/^\w/, (c) => c.toUpperCase());
+                            const alertMsg = `❌ DÉFAUT : ${humanLabel}`;
+                            
+                            household.alerts = household.alerts || [];
+                            if (!household.alerts.some(a => a.message === alertMsg)) {
+                                household.alerts.push({
+                                    type: 'DEFAUT_TECHNIQUE',
+                                    message: alertMsg,
+                                    severity: 'HIGH',
+                                    timestamp: new Date().toISOString()
+                                });
+                            }
+                        }
+                        household.status = 'Non conforme';
+                    }
+                }
+            }
+
             // DÉTECTION DE CONFLIT / DOUBLONS
             if (matchType === 'NUMERO_ORDRE' && existingHousehold.koboSubmissionId && existingHousehold.koboSubmissionId !== koboSubmissionId) {
                 household.alerts = household.alerts || [];

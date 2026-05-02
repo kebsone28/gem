@@ -21,7 +21,7 @@ const BackgroundLayer: React.FC<BackgroundLayerProps> = ({ map }) => {
     let isCancelled = false;
 
     const isMapUsable = () =>
-      !isCancelled && !(map as any)._removed && map.isStyleLoaded();
+      !isCancelled && !(map as any)._removed && !!map.getStyle() && map.isStyleLoaded();
 
     const setupBackground = () => {
       if (!isMapUsable()) return;

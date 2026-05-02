@@ -150,7 +150,7 @@ export function GeoJsonOverlayPanel({ isDarkMode = true }: { isDarkMode?: boolea
     <motion.div
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
-      className={`absolute top-[144px] left-3 right-3 md:top-20 md:left-auto md:right-4 z-30 md:w-72 rounded-2xl border shadow-2xl backdrop-blur-sm overflow-hidden max-h-[calc(100vh-220px)] md:max-h-[unset] flex flex-col ${bg}`}
+      className={`absolute bottom-[132px] left-3 right-3 top-auto z-30 flex max-h-[calc(100dvh-11rem)] flex-col overflow-hidden rounded-2xl border shadow-2xl backdrop-blur-sm md:bottom-auto md:left-auto md:right-4 md:top-20 md:w-72 md:max-h-[calc(100dvh-7rem)] ${bg}`}
     >
       {/* Header */}
       <div className="p-4 border-b border-slate-700/30 flex items-center gap-3">

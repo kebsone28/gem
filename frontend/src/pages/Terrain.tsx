@@ -359,26 +359,27 @@ const Terrain: React.FC = () => {
 
   const handleSelectResult = useCallback(
     (result: SearchResult) => {
+      const setHighlightedLocation = useTerrainUIStore.getState().setHighlightedLocation;
+      
       if (result.type === 'household') {
         setSelectedHouseholdId(result.data.id);
         const lng = Number(result.data.location?.coordinates?.[0] || result.data.longitude);
         const lat = Number(result.data.location?.coordinates?.[1] || result.data.latitude);
 
         if (isValidCoordinate(lng, lat)) {
+          // Activer le pulse temporaire (1 min)
+          setHighlightedLocation([lng, lat]);
+          
           setMapCommand({
             center: [lng, lat],
-            zoom: 18,
+            zoom: 20,
             timestamp: Date.now(),
           });
-        } else {
-          logger.warn('Invalid coordinates received for household:', result.data.id);
         }
       } else {
         if (isValidCoordinate(result.lon, result.lat)) {
           const center: [number, number] = [result.lon, result.lat];
-          setMapCommand({ center, zoom: 16, timestamp: Date.now() });
-        } else {
-          logger.warn('Invalid result coordinates:', { lon: result.lon, lat: result.lat });
+          setMapCommand({ center, zoom: 20, timestamp: Date.now() });
         }
       }
       setSearchQuery('');
@@ -711,10 +712,10 @@ const Terrain: React.FC = () => {
 
   return (
     <div
-      className={`relative isolate flex h-full min-h-0 w-full flex-col overflow-hidden bg-[radial-gradient(circle_at_top,#0b1f1a_0%,#07131a_38%,#030712_100%)] ${terrainAccent.surface}`}
+      className={`relative isolate flex h-full min-h-[100dvh] w-full flex-col overflow-hidden bg-[radial-gradient(circle_at_top,#0b1f1a_0%,#07131a_38%,#030712_100%)] ${terrainAccent.surface}`}
     >
       {/* 🗺️ MAP / LIST LAYER */}
-      <div className="absolute inset-0 z-0 pt-[250px] pb-[96px] md:pt-0 md:pb-0">
+      <div className="absolute inset-0 z-0 pt-[214px] pb-[132px] sm:pt-[232px] md:pt-0 md:pb-0">
         <ContentArea
           padding="none"
           className="h-full w-full border-none rounded-none bg-transparent"
@@ -789,7 +790,7 @@ const Terrain: React.FC = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 20 }}
-                className="relative z-[60] h-full w-full overflow-hidden bg-[#0D1E35]"
+                className="relative z-[60] h-full w-full overflow-hidden bg-[#0D1E35] pt-0"
               >
                 <HouseholdListView
                   households={filteredHouseholds}
@@ -799,7 +800,7 @@ const Terrain: React.FC = () => {
                       setSelectedHouseholdId(h.id);
                       setMapCommand({
                         center: [h.location.coordinates[0], h.location.coordinates[1]],
-                        zoom: 18,
+                        zoom: 20,
                         timestamp: Date.now(),
                       });
                       setViewMode('map');
@@ -900,7 +901,7 @@ const Terrain: React.FC = () => {
 
       {/* 🛠️ PANELS & MODALS */}
       {terrainFeatures.routing && activePanel === 'routing' && (
-        <div className="z-[70] absolute top-[144px] left-3 right-3 md:top-16 md:left-auto md:right-4">
+        <div className="z-[70] absolute inset-x-3 bottom-[132px] top-auto md:inset-x-auto md:bottom-auto md:top-16 md:right-4">
           <MapRoutingPanel
             onClose={closePanel}
             households={households || []}
@@ -917,7 +918,7 @@ const Terrain: React.FC = () => {
       )}
 
       {terrainFeatures.drawZones && activePanel === 'draw' && (
-        <div className="z-[70]">
+        <div className="z-[70] pointer-events-auto">
           <MapDrawZonesPanel
             onStartDraw={() => setIsDrawing(true)}
             onConfirmZone={(name, team, color) => {
@@ -942,12 +943,12 @@ const Terrain: React.FC = () => {
       )}
 
       {terrainFeatures.geoJsonLayers && activePanel === 'layers' && (
-        <div className="z-[60]">
+        <div className="z-[60] pointer-events-auto">
           <GeoJsonOverlayPanel />
         </div>
       )}
       {terrainFeatures.grappeTools && activePanel === 'grappe' && (
-        <div className="z-[60]">
+        <div className="z-[60] pointer-events-auto">
           <GrappeSelectorPanel
             onClose={closePanel}
             clusters={grappeClusters}
@@ -960,7 +961,7 @@ const Terrain: React.FC = () => {
         </div>
       )}
       {terrainFeatures.grappeTools && activePanel === 'grappe_allocation' && (
-        <div className="z-[60]">
+        <div className="z-[60] pointer-events-auto">
           <MapGrappeAllocationPanel
             onClose={closePanel}
             activeGrappeId={activeGrappeId || ''}
@@ -969,7 +970,7 @@ const Terrain: React.FC = () => {
         </div>
       )}
       {terrainFeatures.regionDownload && activePanel === 'region' && (
-        <div className="z-[60]">
+        <div className="z-[60] pointer-events-auto">
           <MapRegionDownload onClose={closePanel} />
         </div>
       )}

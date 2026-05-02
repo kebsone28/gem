@@ -63,7 +63,7 @@ export function GrappeSelectorPanel({
       initial={{ opacity: 0, x: -20 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -20 }}
-      className={`absolute top-[144px] left-3 right-3 md:top-16 md:right-4 md:left-auto z-[40] max-w-[calc(100vw-1.5rem)] md:w-80 rounded-[2rem] border shadow-2xl backdrop-blur-xl flex flex-col overflow-hidden max-h-[calc(100vh-220px)] md:max-h-[calc(100vh-120px)] ${bg}`}
+      className={`absolute bottom-[132px] left-3 right-3 top-auto z-[40] flex max-h-[calc(100dvh-11rem)] max-w-[calc(100vw-1.5rem)] flex-col overflow-hidden rounded-[2rem] border shadow-2xl backdrop-blur-xl md:bottom-auto md:left-auto md:right-4 md:top-16 md:w-80 md:max-h-[calc(100dvh-120px)] ${bg}`}
     >
       <div
         className={`p-5 border-b flex items-center justify-between ${isDarkMode ? 'border-slate-800' : 'border-slate-100'}`}
