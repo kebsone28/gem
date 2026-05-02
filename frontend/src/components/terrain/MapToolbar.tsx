@@ -2,7 +2,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  Maximize2,
   Crosshair,
   Flame,
   Layers,
@@ -15,8 +14,6 @@ import {
   Satellite,
   Info,
   BarChart3,
-  BarChart3,
-  Cloud,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -142,12 +139,6 @@ export const MapToolbar: React.FC<MapToolbarProps> = ({ onRecenter, features }) 
   const toggleDatabaseStats = useTerrainUIStore((s) => s.toggleDatabaseStats);
   const showLegend = useTerrainUIStore((s) => s.showLegend);
   const toggleLegend = useTerrainUIStore((s) => s.toggleLegend);
-  const isMeasuring = useTerrainUIStore((s) => s.isMeasuring);
-  const toggleMeasuring = useTerrainUIStore((s) => s.toggleMeasuring);
-  const isSelecting = useTerrainUIStore((s) => s.isSelecting);
-  const toggleSelecting = useTerrainUIStore((s) => s.toggleSelecting);
-  const isDrawing = useTerrainUIStore((s) => s.isDrawing);
-  const setIsDrawing = useTerrainUIStore((s) => s.setIsDrawing);
 
   const mapStyle = useTerrainUIStore((s) => s.mapStyle);
   const zoneOverlayReady = features?.zoneOverlayReady !== false;

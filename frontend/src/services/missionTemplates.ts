@@ -1,5 +1,6 @@
-﻿ 
+
 import type { MissionOrderData, MissionMember } from '../pages/mission/core/missionTypes';
+import { KAFFRINE_TEMPLATE } from '../pages/mission/core/missionTypes';
 
 export const MISSION_TEMPLATES = {
   electrification: {
@@ -73,6 +74,22 @@ export const MISSION_TEMPLATES = {
         'Jour 5 : Dépannage & Cas Pratiques\n• Diagnostic pannes courantes\n• Résolution cas problématiques\n• Réglage protections\n• Utilisation outils diagnostic',
         'Jour 6 : Certification & Retour\n• Examen pratique et théorique\n• Remise certification.\n• Distribution matériels sensibilisation\n• Trajet retour',
       ],
+    } as Partial<MissionOrderData>,
+  },
+  kaffrine: {
+    name: 'Rapport Premium Kaffrine',
+    description: 'Template narratif haute-fidélité (Projet LSE)',
+    template: {
+      purpose: 'Projet de Raccordement Électrique LSE – Région de Kaffrine',
+      region: 'Kaffrine',
+      startDate: '08/04/2026',
+      endDate: '13/04/2026',
+      itineraryAller: 'Dakar -> Kaffrine',
+      itineraryRetour: 'Kaffrine -> Dakar',
+      transport: 'Véhicule de mission',
+      reportingMode: 'narrative',
+      narrativeReport: KAFFRINE_TEMPLATE,
+      features: { map: true, expenses: true, inventory: false, ai: true },
     } as Partial<MissionOrderData>,
   },
 };

@@ -420,7 +420,7 @@ const MapLibreVectorMap: React.FC<any> = ({
     householdGeoJSON?.features || []
   );
   const { setupUserMarker, cleanup: cleanupMarkers } = useMapMarkers(userLocation);
-  
+
   // ✅ INITIALIZATION (DOM + Basic Listeners)
   useEffect(() => {
     if (
@@ -516,7 +516,7 @@ const MapLibreVectorMap: React.FC<any> = ({
         'top-right'
       );
       map.addControl(new maplibregl.ScaleControl({ unit: 'metric' }), 'bottom-right');
-      
+
       // ✅ Force Max Zoom explicitly on instance
       map.setMaxZoom(24);
 
@@ -576,14 +576,26 @@ const MapLibreVectorMap: React.FC<any> = ({
       };
 
       const handleStyleLoad = async () => {
+        if (!map || (map as any)._removed) return;
+
+        logger.debug('[Terrain] 🎨 Style load detected, re-initializing layers...');
+
+        // Immediate state reset to trigger clean re-render of modular layers
         setStyleIsReady(true);
-        setIconsReady(false); // Reset while loading new icons
+        setIconsReady(false);
+
+        // Re-force zoom constraints (cleared by setStyle)
+        map.setMaxZoom(24);
+
+        // Re-register icons as fast as possible
         await registerIcons(map);
+
+        if (!isMounted || (map as any)._removed) return;
+
         setIconsReady(true);
         setIsMapReady(true);
         lastTargetSourceRef.current = getCurrentStyleSource(map) || mapStyleRef.current;
         setMapInitError(null);
-        map.setMaxZoom(24); // Re-force after style load
         syncMapViewport();
       };
 
@@ -678,7 +690,7 @@ const MapLibreVectorMap: React.FC<any> = ({
       map.on('style.load', handleStyleLoad);
       map.on('error', handleMapError);
       map.on('styledata', syncMapViewport);
-      
+
       if (typeof ResizeObserver !== 'undefined' && mapContainerRef.current) {
         resizeObserver = new ResizeObserver(() => {
           syncMapViewport();
@@ -754,7 +766,6 @@ const MapLibreVectorMap: React.FC<any> = ({
     const applyStyle = () => {
       if (
         !mapInstanceRef.current ||
-        mapInstanceRef.current !== currentMap ||
         (currentMap as any)._removed ||
         isDestroyingRef.current
       ) {
@@ -769,32 +780,24 @@ const MapLibreVectorMap: React.FC<any> = ({
       logger.debug(`[Terrain] 🚀 Switching style to: ${targetSource}`);
       lastTargetSourceRef.current = targetSource;
 
-      const t1 = setTimeout(() => setStyleIsReady(false), 0);
-      const t2 = setTimeout(() => setIconsReady(false), 0);
-      const t3 = setTimeout(() => setIsMapReady(false), 0);
+      // Reset states immediately to let children know they need to re-add sources/layers
+      setStyleIsReady(false);
+      setIconsReady(false);
+      setIsMapReady(false);
 
       try {
-        (currentMap as unknown as { _placement?: unknown })._placement = undefined;
+        // Clear placement engine to avoid collisions on style swap
+        (currentMap as any)._placement = undefined;
+
+        // Use setStyle with diff: false for complete replacement as we handle modular re-init
         currentMap.setStyle(resolveMapStyle(targetSource, isDarkMode), { diff: false });
-        currentMap.setMaxZoom(24); // Force again on style switch
+        currentMap.setMaxZoom(24);
       } catch (error) {
         logger.error('[Terrain] ❌ Failed to switch map style:', error);
-        const fallbackTimer = setTimeout(() => {
-          if (!isDestroyingRef.current) {
-            setStyleIsReady(true);
-            setIconsReady(true);
-            setIsMapReady(true);
-          }
-        }, 0);
-
-        return () => clearTimeout(fallbackTimer);
+        setStyleIsReady(true);
+        setIconsReady(true);
+        setIsMapReady(true);
       }
-
-      return () => {
-        clearTimeout(t1);
-        clearTimeout(t2);
-        clearTimeout(t3);
-      };
     };
 
     if (!currentMap.isStyleLoaded()) {
@@ -879,7 +882,7 @@ const MapLibreVectorMap: React.FC<any> = ({
   }, [
     isMapReady,
     styleIsReady,
-    iconsReady, 
+    iconsReady,
     setupInteractions,
     setupClusteringEvents,
     setupUserMarker,
@@ -938,8 +941,8 @@ const MapLibreVectorMap: React.FC<any> = ({
     if (!currentMap || !styleIsReady) return;
 
     const pointLayers = [
-      'households-local-layer', 
-      'households-glow-layer', 
+      'households-local-layer',
+      'households-glow-layer',
       'households-symbol-layer',
       'households-labels-simple',
       'households-photo-badge'
@@ -1003,7 +1006,8 @@ const MapLibreVectorMap: React.FC<any> = ({
         projectId={projectId}
         selectedHouseholdCoords={selectedHouseholdCoords}
         showHeatmap={showHeatmap}
-        styleIsReady={styleIsReady && iconsReady}
+        styleIsReady={styleIsReady}
+        iconsReady={iconsReady}
         showZones={zonesModeActive}
       />
       <ZoneLayer

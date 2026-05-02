@@ -12,6 +12,7 @@ import {
   ImageRun,
   WidthType,
   Footer,
+  Header,
   PageNumber,
   HeadingLevel,
   BorderStyle,
@@ -29,6 +30,7 @@ const COLORS = {
   ACCENT: 'f97316', // Orange 500
   SUCCESS: '059669', // Emerald 600
   DANGER: 'dc2626', // Red 600
+  DARK: '0f172a', // Slate 900
   SLATE: '475569', // Slate 600
   BORDER: 'cbd5e1', // Slate 300
   WHITE: 'FFFFFF',
@@ -47,7 +49,16 @@ const getMissionReference = (data: MissionOrderData) =>
 const getMissionTitleReference = (data: MissionOrderData) =>
   hasOfficialOrderNumber(data.orderNumber) ? data.orderNumber : 'BROUILLON';
 
- 
+/**
+ * Génère une image de QR Code sous forme de buffer pour insertion dans Word
+ */
+const _generateQRCodeBuffer = async (url: string): Promise<Buffer> => {
+  const dataUrl = await QRCode.toDataURL(url, { margin: 1, width: 200 });
+  const base64Data = dataUrl.split(',')[1];
+  return Buffer.from(base64Data, 'base64');
+};
+
+
 const _fetchImageAsArrayBuffer = async (url: string): Promise<ArrayBuffer | null> => {
   try {
     const response = await fetch(url);
@@ -564,7 +575,7 @@ export const generateMissionOrderWord = async (data: MissionOrderData) => {
   return await Packer.toBlob(doc);
 };
 
- 
+
 export const generateMissionReportWord = async (data: any): Promise<Blob | null> => {
   try {
     const sections: any[] = [];
@@ -583,7 +594,9 @@ export const generateMissionReportWord = async (data: any): Promise<Blob | null>
         if (trimmed.startsWith('#')) {
           const level = (trimmed.match(/#/g) || []).length;
           const text = trimmed.replace(/#/g, '').replace(/\*\*/g, '').trim();
-          headings.push({ text, level });
+          if (level > 1 && level <= 3) {
+            headings.push({ text, level });
+          }
         }
       });
 
@@ -591,35 +604,34 @@ export const generateMissionReportWord = async (data: any): Promise<Blob | null>
         narrativeChildren.push(
           new Paragraph({
             children: [
-              new TextRun({ text: 'SOMMAIRE', bold: true, size: 28, color: COLORS.SECONDARY }),
+              new TextRun({ text: 'SOMMAIRE DU RAPPORT', bold: true, size: 28, color: COLORS.PRIMARY, font: 'Inter' }),
             ],
-            spacing: { before: 200, after: 200 },
+            spacing: { before: 400, after: 300 },
           })
         );
 
         headings.forEach((heading) => {
-          if (heading.level > 1 && heading.level <= 3) {
-            narrativeChildren.push(
-              new Paragraph({
-                children: [
-                  new TextRun({ 
-                    text: heading.text, 
-                    size: 20, 
-                    bold: heading.level === 2 
-                  }),
-                ],
-                indent: { left: heading.level === 3 ? 720 : 360 },
-                spacing: { after: 100 },
-              })
-            );
-          }
+          narrativeChildren.push(
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: heading.text.toUpperCase(),
+                  size: heading.level === 2 ? 22 : 20,
+                  bold: heading.level === 2,
+                  color: heading.level === 2 ? COLORS.DARK : COLORS.SLATE
+                }),
+              ],
+              indent: { left: heading.level === 3 ? 720 : 360 },
+              spacing: { after: 120 },
+            })
+          );
         });
-        
-        // Ligne de séparation sous le sommaire
+
         narrativeChildren.push(
           new Paragraph({
-            text: '',
-            border: { bottom: { color: COLORS.BORDER, space: 1, style: BorderStyle.SINGLE, size: 12 } },
+            children: [
+              new TextRun({ text: '__________________________________________________________________________', color: COLORS.SLATE }),
+            ],
             spacing: { after: 400 },
           })
         );
@@ -628,7 +640,7 @@ export const generateMissionReportWord = async (data: any): Promise<Blob | null>
       // 2. Rendu du contenu narratif global (sans saut de page artificiel)
       lines.forEach((line: string) => {
         const trimmed = line.trim();
-        
+
         const parseInlineBold = (text: string, defaultSize: number = 20): TextRun[] => {
           const parts = text.split('**');
           const results: TextRun[] = [];
@@ -693,8 +705,54 @@ export const generateMissionReportWord = async (data: any): Promise<Blob | null>
         );
       }
 
+      // 4. QR Code de Vérification (Premium Security)
+      try {
+        const integrityToken = data.integrityHash ? `&h=${data.integrityHash.substring(0, 8)}` : '';
+        const verifyUrl = `${window.location.origin}/verify/mission/${getMissionReference(data)}${integrityToken}`;
+        const qrBuffer = await _generateQRCodeBuffer(verifyUrl);
+
+        narrativeChildren.push(
+          new Paragraph({ text: '', spacing: { before: 400 } }),
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            children: [
+              new ImageRun({
+                type: 'png',
+                data: qrBuffer,
+                transformation: { width: 80, height: 80 },
+              }),
+            ],
+          }),
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            children: [
+              new TextRun({ text: 'SCANNEZ POUR VÉRIFIER L\'INTÉGRITÉ DU DOCUMENT', size: 14, color: COLORS.SLATE, italics: true }),
+            ],
+          })
+        );
+      } catch (err) {
+        logger.error('Word QR Generation failed', err);
+      }
+
       sections.push({
         properties: {},
+        headers: !data.isCertified ? {
+          default: new Header({
+            children: [
+              new Paragraph({
+                children: [
+                  new TextRun({
+                    text: "BROUILLON - DOCUMENT NON CERTIFIÉ",
+                    color: "FF0000",
+                    bold: true,
+                    size: 24,
+                  }),
+                ],
+                alignment: AlignmentType.CENTER,
+              })
+            ],
+          }),
+        } : undefined,
         children: narrativeChildren,
       });
 
@@ -702,7 +760,7 @@ export const generateMissionReportWord = async (data: any): Promise<Blob | null>
       // ==========================================
       // MODE CLASSIC DAILY (Page de garde + Tableau)
       // ==========================================
-      
+
       // Page de garde
       sections.push({
         properties: {},
@@ -940,7 +998,7 @@ export const generateMissionReportWord = async (data: any): Promise<Blob | null>
             // 📸 Ajout de l'image si elle existe (Base64 ou URL via fetch)
             try {
               let imageData: ArrayBuffer | null = null;
-              
+
               if (photo.data?.startsWith('data:')) {
                 const base64Data = photo.data.includes(',') ? photo.data.split(',')[1] : photo.data;
                 imageData = Uint8Array.from(atob(base64Data), (c) => c.charCodeAt(0)).buffer;

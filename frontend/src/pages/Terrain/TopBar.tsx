@@ -235,14 +235,15 @@ const TopBar: React.FC<TopBarProps> = ({
 
       {/* RECENTERING BUTTON WHEN TOOLBAR HIDDEN */}
       {!showToolbar && showAdvancedTools && (
-        <div className="absolute left-3 right-3 top-[calc(0.75rem+env(safe-area-inset-top))] z-[1400] md:left-4 md:right-auto md:top-4">
+        <div className="fixed md:absolute left-1/2 -translate-x-1/2 top-6 z-[1400]">
           <button
             onClick={toggleToolbar}
             title="Afficher l'en-tête"
-            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-[#0D1E35]/95 px-4 py-3 shadow-2xl text-white hover:bg-white/10 transition-colors active:scale-95 md:w-auto md:justify-start"
+            className="flex items-center gap-3 rounded-full border border-white/30 bg-[#050F1F]/60 backdrop-blur-xl px-7 py-4 shadow-[0_15px_40px_rgba(0,0,0,0.5)] text-white hover:bg-[#0D1E35]/80 transition-all hover:scale-105 active:scale-95 group overflow-hidden relative"
           >
-            <ChevronRight size={18} className="-rotate-180" />
-            <span className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-200">
+            <div className="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent pointer-events-none" />
+            <ChevronRight size={22} className="-rotate-180 group-hover:-translate-x-1 transition-transform text-blue-400 drop-shadow-[0_0_8px_rgba(96,165,250,0.5)]" />
+            <span className="text-[12px] font-black uppercase tracking-[0.25em] text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
               Retour outils
             </span>
           </button>

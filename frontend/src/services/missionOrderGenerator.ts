@@ -10,6 +10,7 @@ const DARK = [15, 23, 42] as [number, number, number];
 const GRAY = [100, 116, 139] as [number, number, number];
 const SUCCESS = [22, 163, 74] as [number, number, number];
 const DANGER = [225, 29, 72] as [number, number, number];
+const BORDER = [203, 213, 225] as [number, number, number];
 
 const formatCurrency = (n: number): string => {
   return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' FCFA';
@@ -46,6 +47,59 @@ const cleanMangledText = (text: string | null | undefined): string => {
     .replace(/→/g, '->'); // flèche si passée telle quelle
 
   return cleaned;
+};
+
+/**
+ * Rendu de texte riche (gras/italique) pour jsPDF.
+ * Gère les balises **gras** et *italique*.
+ */
+const renderRichTextPDF = (
+  doc: jsPDF,
+  text: string,
+  x: number,
+  y: number,
+  maxWidth: number,
+  baseSize: number = 10,
+  baseFont: string = 'helvetica'
+): number => {
+  const words = text.split(/(\s+)/);
+  let curX = x;
+  let curY = y;
+  const lineHeight = baseSize * 0.5;
+
+  doc.setFontSize(baseSize);
+  doc.setFont(baseFont, 'normal');
+
+  words.forEach((word) => {
+    if (!word) return;
+
+    // Gérer les retours à la ligne manuels ou les mots trop longs
+    const testWidth = doc.getTextWidth(word.replace(/\*\*/g, '').replace(/\*/g, ''));
+    if (curX + testWidth > x + maxWidth) {
+      curX = x;
+      curY += lineHeight;
+    }
+
+    // Split par gras (**)
+    const parts = word.split(/(\*\*|\*)/);
+    let isBold = false;
+    let isItalic = false;
+
+    parts.forEach((part) => {
+      if (part === '**') {
+        isBold = !isBold;
+        doc.setFont(baseFont, isBold ? 'bold' : 'normal');
+      } else if (part === '*') {
+        isItalic = !isItalic;
+        doc.setFont(baseFont, isItalic ? 'italic' : 'normal');
+      } else {
+        doc.text(part, curX, curY);
+        curX += doc.getTextWidth(part);
+      }
+    });
+  });
+
+  return curY + lineHeight;
 };
 
 export const generateMissionOrderPDF = async (data: MissionOrderData) => {
@@ -385,25 +439,62 @@ export const generateMissionOrderPDF = async (data: MissionOrderData) => {
   return doc.output('blob');
 };
 
+/**
+ * Dessine un filigrane (Watermark) sur le document
+ */
+const drawWatermark = (doc: jsPDF, text: string) => {
+  const w = doc.internal.pageSize.getWidth();
+  const h = doc.internal.pageSize.getHeight();
+  doc.saveGraphicsState();
+  doc.setTextColor(200, 200, 200);
+  doc.setFontSize(60);
+  doc.setFont('helvetica', 'bold');
+  doc.setGState(new (doc as any).GState({ opacity: 0.15 }));
+  doc.text(text, w / 2, h / 2, { align: 'center', angle: 45 });
+  doc.restoreGraphicsState();
+};
+
 export const generateMissionReportPDF = async (data: MissionOrderData) => {
   const doc = new jsPDF({ orientation: 'portrait', format: 'a4' });
   const w = doc.internal.pageSize.getWidth();
   const h = doc.internal.pageSize.getHeight();
   let currentY = 15;
 
-  // Header logic (similar to order)
-  doc.addImage('/logo-proquelec.png', 'PNG', 14, 14, 45, 12);
-  doc.setTextColor(...DARK);
-  doc.setFontSize(9);
-  doc.text(`Dakar, le ${new Date().toLocaleDateString('fr-FR')}`, w - 14, 15, { align: 'right' });
+  // Header logic
+  try {
+     doc.addImage('/logo-proquelec.png', 'PNG', 14, 14, 40, 10);
+  } catch { /* ignore */ }
 
-  doc.setFontSize(18);
+  doc.setTextColor(...GRAY);
+  doc.setFontSize(8);
+  doc.text(`Généré le ${new Date().toLocaleDateString('fr-FR')}`, w - 14, 15, { align: 'right' });
+  doc.text(`Réf: ${getMissionReference(data)}`, w - 14, 20, { align: 'right' });
+
+  // Filigrane si non certifié
+  if (!data.isCertified) {
+    drawWatermark(doc, 'BROUILLON');
+  }
 
   if (data.reportingMode === 'narrative' && data.narrativeReport) {
+    // ======================================================
+    // MODE NARRATIF PREMIUM
+    // ======================================================
     currentY = 35;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(22);
+    doc.setTextColor(...DARK);
+    doc.text('RAPPORT DE MISSION', w / 2, currentY, { align: 'center' });
+    currentY += 12;
+
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...GRAY);
+    doc.text(cleanMangledText(data.purpose).toUpperCase(), w / 2, currentY, { align: 'center' });
+    currentY += 15;
+
     const narrativeLines = data.narrativeReport.split('\n');
 
-    // --- Extraction pour le Sommaire ---
+    // --- Sommaire Premium ---
     const headings: { text: string; level: number }[] = [];
     narrativeLines.forEach((line) => {
       const trimmed = line.trim();
@@ -415,99 +506,112 @@ export const generateMissionReportPDF = async (data: MissionOrderData) => {
     });
 
     if (headings.length > 0) {
+      doc.setFillColor(248, 250, 252);
+      doc.roundedRect(14, currentY, w - 28, (headings.length * 7) + 15, 3, 3, 'F');
+
+      currentY += 10;
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(14);
+      doc.setFontSize(10);
       doc.setTextColor(...INDIGO);
-      doc.text('SOMMAIRE', 14, currentY);
+      doc.text('SOMMAIRE DU RAPPORT', 20, currentY);
       currentY += 8;
-      doc.setTextColor(...DARK);
 
       headings.forEach((heading) => {
-        // Optionnel : ne lister que les H2 et H3 pour ne pas surcharger
         if (heading.level > 1 && heading.level <= 3) {
           doc.setFont('helvetica', heading.level === 2 ? 'bold' : 'normal');
-          doc.setFontSize(10);
-          const indent = heading.level === 3 ? 20 : 14;
+          doc.setFontSize(9);
+          doc.setTextColor(...DARK);
+          const indent = heading.level === 3 ? 28 : 22;
           doc.text(heading.text, indent, currentY);
-          currentY += 6;
+
+          // Ligne pointillée
+          const textW = doc.getTextWidth(heading.text);
+          doc.setDrawColor(...BORDER);
+          doc.setLineDashPattern([1, 1], 0);
+          doc.line(indent + textW + 2, currentY - 1, w - 25, currentY - 1);
+          doc.setLineDashPattern([], 0);
+
+          currentY += 7;
         }
       });
       currentY += 10;
-      doc.setDrawColor(200, 200, 200);
-      doc.line(14, currentY - 5, w - 14, currentY - 5);
     }
 
+    // --- Contenu Narratif ---
     doc.setTextColor(...DARK);
-
-    const contentLines = data.narrativeReport.split('\n');
-    contentLines.forEach((line) => {
-      if (currentY > h - 20) {
+    narrativeLines.forEach((line) => {
+      if (currentY > h - 25) {
         doc.addPage();
-        currentY = 20;
+        if (!data.isCertified) drawWatermark(doc, 'BROUILLON');
+        currentY = 25;
       }
 
       const trimmed = line.trim();
-      if (trimmed.startsWith('#')) {
-        // Heading
+      if (trimmed.startsWith('---')) {
+        doc.setDrawColor(...BORDER);
+        doc.line(14, currentY, w - 14, currentY);
+        currentY += 10;
+      } else if (trimmed.startsWith('#')) {
         const level = (trimmed.match(/#/g) || []).length;
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(level === 1 ? 14 : level === 2 ? 12 : 10);
         const text = trimmed.replace(/#/g, '').trim();
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(level === 1 ? 16 : level === 2 ? 13 : 11);
+        doc.setTextColor(level === 1 ? INDIGO[0] : DARK[0], level === 1 ? INDIGO[1] : DARK[1], level === 1 ? INDIGO[2] : DARK[2]);
         doc.text(text, 14, currentY);
-        currentY += 8;
+        currentY += level === 1 ? 12 : 10;
       } else if (trimmed.startsWith('*') || trimmed.startsWith('-')) {
+        const text = trimmed.substring(1).trim();
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(10);
-        const text = '• ' + trimmed.substring(1).trim().replace(/\*\*/g, '');
-        const splitText = doc.splitTextToSize(text, w - 28);
-        doc.text(splitText, 18, currentY);
-        currentY += splitText.length * 5 + 2;
+        doc.setTextColor(...DARK);
+        doc.text('•', 16, currentY);
+        currentY = renderRichTextPDF(doc, text, 22, currentY, w - 36, 10);
+        currentY += 3;
       } else if (trimmed) {
-        // Paragraph
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(10);
-        const cleanText = trimmed.replace(/\*\*/g, '');
-        const splitText = doc.splitTextToSize(cleanText, w - 28);
-        doc.text(splitText, 14, currentY);
-        currentY += splitText.length * 5 + 4;
+        currentY = renderRichTextPDF(doc, trimmed, 14, currentY, w - 28, 10);
+        currentY += 4;
       } else {
-        currentY += 4; // Empty line
+        currentY += 4;
       }
     });
 
-    currentY += 10;
-
-    // --- Signatures et observations pour narratif (sans saut de page systématique) ---
+    // --- Footer Section (Observations & Signatures) ---
     if (data.reportObservations) {
-      if (currentY > h - 40) {
+      if (currentY > h - 50) {
         doc.addPage();
-        currentY = 20;
+        if (!data.isCertified) drawWatermark(doc, 'BROUILLON');
+        currentY = 25;
       }
+      doc.setDrawColor(...INDIGO);
+      doc.setLineWidth(1);
+      doc.line(14, currentY, 40, currentY);
+      currentY += 8;
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(11);
-      doc.text('OBSERVATIONS GÉNÉRALES ET RECOMMANDATIONS', 14, currentY);
+      doc.setFontSize(10);
+      doc.text('OBSERVATIONS ET RECOMMANDATIONS', 14, currentY);
       currentY += 8;
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(9);
-      const splitObs = doc.splitTextToSize(data.reportObservations, w - 28);
-      doc.text(splitObs, 14, currentY);
-      currentY += splitObs.length * 5 + 15;
+      currentY = renderRichTextPDF(doc, data.reportObservations, 14, currentY, w - 28, 9);
+      currentY += 20;
     }
 
-    if (currentY > h - 50) {
+    if (currentY > h - 60) {
       doc.addPage();
-      currentY = 30;
+      if (!data.isCertified) drawWatermark(doc, 'BROUILLON');
+      currentY = 40;
     }
 
     doc.setFont('helvetica', 'bold');
-    doc.text('Le Chef de Mission', 40, currentY, { align: 'center' });
+    doc.setFontSize(10);
+    doc.text('Le Chef de Mission', 50, currentY, { align: 'center' });
     doc.text('Direction Technique (Visa)', w - 60, currentY, { align: 'center' });
 
     if (data.signatureImage) {
       try {
-        doc.addImage(data.signatureImage, 'PNG', 20, currentY + 2, 40, 20);
+        const sig = data.signatureImage.startsWith('data:') ? data.signatureImage : `data:image/png;base64,${data.signatureImage}`;
+        doc.addImage(sig, 'PNG', 30, currentY + 5, 40, 20);
       } catch (e) {
-        logger.error("Erreur lors de l'ajout de la signature au PDF", e);
+        logger.error("Signature PDF failed", e);
       }
     }
   } else {

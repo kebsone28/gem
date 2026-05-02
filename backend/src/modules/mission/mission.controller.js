@@ -205,10 +205,10 @@ const buildMissionDocumentBuffer = async (mission) => {
     const publicUrl = buildMissionPublicUrl(orderNumber);
     const logoPath = findMissionLogoPath();
     const qrBuffer = await QRCode.toBuffer(publicUrl, {
-        width: 140,
-        margin: 1,
         color: { dark: '#0f172a', light: '#ffffff' }
     });
+
+    const isCertified = mission.status === 'approuvee';
 
     return await new Promise((resolve, reject) => {
         const doc = new PDFDocument({
@@ -223,6 +223,21 @@ const buildMissionDocumentBuffer = async (mission) => {
         doc.on('data', chunk => chunks.push(chunk));
         doc.on('end', () => resolve(Buffer.concat(chunks)));
         doc.on('error', reject);
+
+        // 🎨 WATERMARK FOR DRAFTS
+        if (!isCertified) {
+            doc.save()
+               .fillColor('#e2e8f0')
+               .fontSize(60)
+               .font('Helvetica-Bold')
+               .opacity(0.15)
+               .rotate(-45, { origin: [doc.page.width / 2, doc.page.height / 2] })
+               .text('SPÉCIMEN / BROUILLON', 0, doc.page.height / 2, {
+                   width: doc.page.width,
+                   align: 'center'
+               })
+               .restore();
+        }
 
         drawPdfLogo(doc, logoPath);
 
@@ -439,12 +454,22 @@ export const verifyMissionPublic = async (req, res) => {
             include: {
                 organization: {
                     select: { name: true, config: true }
-                }
+                },
+                approvalWorkflow: true
             }
         });
 
         if (!mission) {
             return res.status(404).json({ valid: false, message: 'Ordre de Mission introuvable.' });
+        }
+
+        // 🔒 INTEGRITY CHECK
+        const { h } = req.query;
+        const missionIntegrity = mission.approvalWorkflow?.integrityHash || mission.id;
+        const shortHash = missionIntegrity.substring(0, 8);
+
+        if (h && h !== shortHash) {
+             logger.warn(`[MISSION_SECURITY] Hash mismatch for mission ${mission.id}. Provided: ${h}, Expected: ${shortHash}`);
         }
 
         const missionData = typeof mission.data === 'object' ? mission.data : {};
@@ -474,7 +499,7 @@ export const verifyMissionPublic = async (req, res) => {
         });
     } catch (error) {
         logger.error('[MISSION_VERIFY_ERROR]', error);
-        res.status(500).json({ 
+        res.status(500).json({
             error: 'Internal server error during verification',
             ...(isDev && { details: error.message, stack: error.stack })
         });
@@ -616,7 +641,7 @@ export const sendMissionDocumentEmail = async (req, res) => {
         res.json({ success: true, message: 'Email envoyé avec succès' });
     } catch (error) {
         logger.error('[MISSION_EMAIL_ERROR]', error);
-        res.status(500).json({ 
+        res.status(500).json({
             error: 'Erreur lors de l\'envoi de l\'email',
             ...(isDev && { details: error.message, stack: error.stack })
         });
@@ -722,7 +747,7 @@ export const getMissions = async (req, res) => {
             prisma.mission.count({ where: whereClause })
         ]);
 
-        res.json({ 
+        res.json({
             missions,
             pagination: {
                 total,
@@ -815,7 +840,7 @@ export const getMissionStats = async (req, res) => {
         res.json(stats);
     } catch (error) {
         logger.error('[MISSION_STATS_ERROR]', error);
-        res.status(500).json({ 
+        res.status(500).json({
             error: 'Erreur serveur lors de la récupération des statistiques missions',
             ...(isDev && { details: error.message, stack: error.stack })
         });
@@ -1202,7 +1227,7 @@ export const updateMission = async (req, res) => {
         res.json(mission);
     } catch (error) {
         logger.error('[MISSION_UPDATE_ERROR]', error);
-        res.status(500).json({ 
+        res.status(500).json({
             error: 'Erreur serveur lors de la mise à jour de la mission',
             code: 'MISSION_UPDATE_FAILED',
             ...(isDev && { details: error.message, stack: error.stack })
@@ -1237,7 +1262,7 @@ export const deleteMission = async (req, res) => {
         res.json({ message: 'Mission supprimée avec succès' });
     } catch (error) {
         logger.error('[MISSION_DELETE_ERROR]', error);
-        res.status(500).json({ 
+        res.status(500).json({
             error: 'Erreur serveur lors de la suppression de la mission',
             ...(isDev && { details: error.message, stack: error.stack })
         });
@@ -1280,7 +1305,7 @@ export const duplicateMission = async (req, res) => {
         res.json(copy);
     } catch (error) {
         logger.error('[MISSION_DUPLICATE_ERROR]', error);
-        res.status(500).json({ 
+        res.status(500).json({
             error: 'Erreur serveur lors de la duplication de la mission',
             ...(isDev && { details: error.message, stack: error.stack })
         });
@@ -1485,7 +1510,7 @@ export const getMissionApprovalHistory = async (req, res) => {
 
     } catch (error) {
         logger.error('[MISSION_HISTORY_ERROR]', error);
-        res.status(500).json({ 
+        res.status(500).json({
             error: 'Erreur serveur lors de la récupération de l\'historique',
             ...(isDev && { details: error.message, stack: error.stack })
         });
@@ -1497,7 +1522,7 @@ export const getMissionApprovalHistory = async (req, res) => {
  * Workflow: submission by requester → final approval by DIRECTEUR or ADMIN
  * After final approval → auto-generate orderNumber
  * ADMIN can approve immediately (super-power)
- * 
+ *
  * @route POST /api/missions/:missionId/approve
  */
 export const approveMissionStep = async (req, res) => {
@@ -1699,7 +1724,7 @@ export const approveMissionStep = async (req, res) => {
                         data: { status: 'en_attente_validation' }
                     });
                 }
-                
+
                 // NOTIFICATION: Inform next role in chain
                 missionNotificationService.notifyNextStep(mission, nextStep.role, organizationId)
                     .catch(err => logger.error('[WF-NOTIF] Could not notify next step:', err));
@@ -1798,7 +1823,7 @@ export const approveMissionStep = async (req, res) => {
             return res.status(409).json({ error: 'This approval step has already been processed' });
         }
         logger.error('[MISSION_APPROVE_ERROR]', error);
-        res.status(500).json({ 
+        res.status(500).json({
             error: 'Erreur serveur lors de l\'approbation de la mission',
             ...(isDev && { details: error.message, stack: error.stack })
         });
@@ -1943,7 +1968,7 @@ export const rejectMissionStep = async (req, res) => {
             return res.status(409).json({ error: 'This approval step has already been processed' });
         }
         logger.error('[MISSION_REJECT_ERROR]', error);
-        res.status(500).json({ 
+        res.status(500).json({
             error: 'Erreur serveur lors du rejet de la mission',
             ...(isDev && { details: error.message, stack: error.stack })
         });
@@ -2011,7 +2036,7 @@ export const overrideOrderNumber = async (req, res) => {
 
     } catch (error) {
         logger.error('[MISSION_OVERRIDE_ERROR]', error);
-        res.status(500).json({ 
+        res.status(500).json({
             error: 'Erreur serveur lors du changement de numéro',
             ...(isDev && { details: error.message, stack: error.stack })
         });
@@ -2176,7 +2201,7 @@ export const getPendingApprovals = async (req, res) => {
                 ? Math.round((approvalDurations.reduce((sum, h) => sum + h, 0) / approvalDurations.length) * 10) / 10
                 : 0;
 
-        res.json({ 
+        res.json({
             missions: filtered,
             stats: {
                 totalBudgetCertified,
@@ -2191,7 +2216,7 @@ export const getPendingApprovals = async (req, res) => {
         });
     } catch (error) {
         logger.error('[MISSION_PENDING_ERROR]', error);
-        res.status(500).json({ 
+        res.status(500).json({
             error: 'Erreur serveur lors de la récupération des approbations en attente',
             ...(isDev && { details: error.message, stack: error.stack })
         });

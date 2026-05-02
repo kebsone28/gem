@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useRef } from 'react';
 import maplibregl from 'maplibre-gl';
 import { useTerrainUIStore } from '../../../store/terrainUIStore';
 import logger from '../../../utils/logger';
-import { generatePopupHTML, registerIcons } from '../mapUtils';
+import { generatePopupHTML } from '../mapUtils';
 import { getIconId } from '../mapConfig';
 import { getHouseholdDisplayName } from '../../../utils/householdDisplay';
 
@@ -15,6 +15,7 @@ interface HouseholdLayerProps {
   selectedHouseholdCoords?: [number, number] | null;
   showHeatmap?: boolean;
   styleIsReady: boolean;
+  iconsReady: boolean;
   showZones?: boolean;
 }
 
@@ -110,7 +111,7 @@ function ensureSources(map: maplibregl.Map) {
 }
 
 // ─── Create all layers ────────────────────────────────────────
-function ensureLayers(map: maplibregl.Map) {
+function ensureLayers(map: maplibregl.Map, iconsReady: boolean) {
   // Guard: need sources
   if (!map.getSource(SRC_HOUSEHOLDS) || !map.getSource(SRC_CLUSTERS)) return;
   ensureZoneBadgeImages(map);
@@ -448,9 +449,9 @@ function ensureLayers(map: maplibregl.Map) {
         'text-justify': 'center',
         'text-anchor': 'center',
       },
-      paint: { 
-        'text-color': '#ffffff', 
-        'text-halo-color': 'rgba(2,6,23,0.92)', 
+      paint: {
+        'text-color': '#ffffff',
+        'text-halo-color': 'rgba(2,6,23,0.92)',
         'text-halo-width': 3,
         'text-halo-blur': 0.5,
       },
@@ -489,7 +490,7 @@ function ensureLayers(map: maplibregl.Map) {
   }
 
   // Icon symbols
-  if (!map.getLayer('households-local-layer')) {
+  if (iconsReady && !map.getLayer('households-local-layer')) {
     map.addLayer({
       id: 'households-local-layer',
       type: 'symbol',
@@ -651,6 +652,7 @@ const HouseholdLayer: React.FC<HouseholdLayerProps> = ({
   selectedHouseholdCoords = null,
   showHeatmap = false,
   styleIsReady,
+  iconsReady,
   showZones = false,
 }) => {
   const setSelectedHouseholdId = useTerrainUIStore((s) => s.setSelectedHouseholdId);
@@ -791,10 +793,16 @@ const HouseholdLayer: React.FC<HouseholdLayerProps> = ({
       if (!map.isStyleLoaded()) return false;
 
       try {
-        await registerIcons(map);
+        // Step 1: Baseline data structures (Immediate)
         ensureSources(map);
-        ensureLayers(map);
         pushData(map, dataRef.current.householdGeoJSON, dataRef.current.households);
+
+        // Step 2: Visual Layers (Base ones will be added, icon-ones will wait for iconsReady)
+        ensureLayers(map, iconsReady);
+
+        // Step 3: Icons (Potentially slightly delayed but we try to be fast)
+        // We only proceed to full symbol rendering if icons are confirmed
+        // Note: ensureLayers already checks for existence, so this is safe
 
         // Attach click handlers once layers exist
         if (!clickCleanup) {
@@ -840,7 +848,7 @@ const HouseholdLayer: React.FC<HouseholdLayerProps> = ({
         map.off('style.load', handleStyleLoad);
       }
     };
-  }, [map, setupClickHandlers, styleIsReady]);
+  }, [iconsReady, map, setupClickHandlers, styleIsReady]);
 
 
   // ── DATA UPDATE: re-push when GeoJSON changes ──

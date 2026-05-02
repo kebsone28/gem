@@ -3,11 +3,9 @@ import React, { useState, useMemo, Suspense, useRef, useEffect, useCallback } fr
 import logger from '../utils/logger';
 import toast from 'react-hot-toast';
 
-import { useTerrainPhoto } from '../hooks/useTerrainPhoto';
 import { useTerrainData } from '../hooks/useTerrainData';
 import { TerrainMissionEditor } from '../components/terrain/TerrainMissionEditor';
 import { createMission } from '../services/missionService';
-import { uploadFile as uploadToServer } from '../services/uploadService';
 import { useAuth } from '../contexts/AuthContext';
 const MapComponent = React.lazy(() => import('../components/terrain/MapComponent'));
 import type { Household } from '../utils/types';
@@ -102,11 +100,7 @@ const Terrain: React.FC = () => {
   const lightboxPhotos = useTerrainUIStore((s) => s.lightboxPhotos);
   const openLightbox = useTerrainUIStore((s) => s.openLightbox);
   const showWarehouses = useTerrainUIStore((s) => s.showWarehouses);
-  const addPendingPoint = useTerrainUIStore((s) => s.addPendingPoint);
   const showLegend = useTerrainUIStore((s) => s.showLegend);
-  const setPendingPoints = useTerrainUIStore((s) => s.setPendingPoints);
-  const pendingPoints = useTerrainUIStore((s) => s.pendingPoints);
-  const addZone = useTerrainUIStore((s) => s.addZone);
   const activeGrappeId = useTerrainUIStore((s) => s.activeGrappeId);
 
   // 4. Custom Hooks (Logic Orchestration)
@@ -236,6 +230,13 @@ const Terrain: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    const blockedPanel =
+      (activePanel === 'routing' && !terrainFeatures.routing) ||
+      (activePanel === 'grappe' && !terrainFeatures.grappeTools) ||
+      (activePanel === 'grappe_allocation' && !terrainFeatures.grappeTools) ||
+      (activePanel === 'region' && !terrainFeatures.regionDownload) ||
+      (activePanel === 'datahub' && !terrainFeatures.dataHub);
+
     if (blockedPanel) {
       closePanel();
     }
@@ -394,6 +395,7 @@ const Terrain: React.FC = () => {
     selectedHouseholdId,
     userLocation,
     setRoutingDest,
+    setRoutingStart,
     setRouteStats,
     setPanel,
   ]);
@@ -729,10 +731,6 @@ const Terrain: React.FC = () => {
                       onBoundsChange={setMapBounds}
                       warehouses={showWarehouses ? warehouseStats : []}
                       projectId={project?.id}
-                      onBoundsChange={setMapBounds}
-                      warehouses={showWarehouses ? warehouseStats : []}
-                      projectId={project?.id}
-                      onAddPoint={addPendingPoint}
                       grappeZonesData={grappeZonesData}
                       grappeCentroidsData={grappeCentroidsData}
                     />

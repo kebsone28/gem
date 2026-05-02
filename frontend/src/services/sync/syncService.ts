@@ -22,9 +22,9 @@ import {
 let _isSyncRunning = false;
 
 // ── CIRCUIT BREAKER ─────────────────────────────────────────────────────────
-const RTT_THRESHOLD_MS = 2000;       // Above this = degraded connection
-const CB_FAILURE_LIMIT = 3;          // Open circuit after N consecutive failures
-const CB_RESET_TIMEOUT_MS = 5 * 60 * 1000; // Reset after 5 minutes
+const RTT_THRESHOLD_MS = 4000;       // Tolérance accrue pour les zones à faible couverture (4s)
+const CB_FAILURE_LIMIT = 3;          // Déclenchement après 3 échecs consécutifs
+const CB_RESET_TIMEOUT_MS = 2 * 60 * 1000; // Tentative de reconnexion après 2 minutes (au lieu de 5)
 
 let _cbFailures = 0;
 let _cbOpenAt: number | null = null;

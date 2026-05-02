@@ -1,5 +1,5 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/exhaustive-deps */
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useDeferredValue, useRef, useCallback, memo } from 'react';
+import type { CSSProperties } from 'react';
 import {
   Printer,
   FileSpreadsheet,
@@ -15,6 +15,7 @@ import {
   TrendingUp,
   Eye,
   X,
+  Activity,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
@@ -29,6 +30,8 @@ import logger from '../utils/logger';
 import type { Household } from '../utils/types';
 import { HouseholdListView } from '../components/terrain/HouseholdListView';
 import { useTerrainUIStore } from '../store/terrainUIStore';
+import { List } from 'react-window';
+import { AutoSizer } from 'react-virtualized-auto-sizer';
 
 // Import centralized design system
 import { PageContainer, PageHeader, ContentArea, ActionBar } from '../components';
@@ -45,17 +48,73 @@ const Bordereau = () => {
   const { project } = useProject();
   const setSelectedHouseholdId = useTerrainUIStore((s) => s.setSelectedHouseholdId);
   const projectId = project?.id || null;
+
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [data, setData] = useState({ grappes: [] });
   const [searchQuery, setSearchQuery] = useState('');
+  const deferredSearchQuery = useDeferredValue(searchQuery);
+
   const [expandedRegions, setExpandedRegions] = useState<Record<string, boolean>>({});
   const [detailGrappe, setDetailGrappe] = useState<any | null>(null);
   const [detailHouseholds, setDetailHouseholds] = useState<Household[]>([]);
   const [detailSearchQuery, setDetailSearchQuery] = useState('');
+  const deferredDetailSearchQuery = useDeferredValue(detailSearchQuery);
+
   const [detailLoading, setDetailLoading] = useState(false);
 
-  const fetchData = async (forceRefresh = false) => {
+  // Worker States
+  const [workerData, setWorkerData] = useState<{
+    groupedData: Record<string, any[]>;
+    filteredRegions: string[];
+    stats: any;
+  }>({
+    groupedData: {},
+    filteredRegions: [],
+    stats: { total: 0, delivered: 0, pending: 0, pct: 0, critical: 0 }
+  });
+  const [filteredDetailHouseholds, setFilteredDetailHouseholds] = useState<Household[]>([]);
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  // Worker Instance
+  const workerRef = useRef<Worker | null>(null);
+
+  useEffect(() => {
+    // Initialize Worker
+    workerRef.current = new Worker(new URL('../services/bordereauWorker.ts', import.meta.url), {
+      type: 'module'
+    });
+
+    workerRef.current.onmessage = (e) => {
+      const { action, result } = e.data;
+
+      switch (action) {
+        case 'GROUP_AND_FILTER_GRAPPES_RESULT':
+          setWorkerData(prev => ({
+            ...prev,
+            groupedData: result.groupedData,
+            filteredRegions: result.filteredRegions
+          }));
+          setIsProcessing(false);
+          break;
+
+        case 'CALCULATE_STATS_RESULT':
+          setWorkerData(prev => ({ ...prev, stats: result }));
+          break;
+
+        case 'FILTER_HOUSEHOLDS_RESULT':
+          setFilteredDetailHouseholds(result);
+          setIsProcessing(false);
+          break;
+      }
+    };
+
+    return () => {
+      workerRef.current?.terminate();
+    };
+  }, []);
+
+  const fetchData = useCallback(async (forceRefresh = false) => {
     if (!projectId) {
       setData({ grappes: [] });
       setLoading(false);
@@ -77,15 +136,22 @@ const Bordereau = () => {
         } catch (err) {
           logger.warn('[BORDEREAU] Could not clear cache:', err);
         }
-      } else if (forceRefresh && !db) {
-        logger.warn('[BORDEREAU] Dexie DB not available for cache clear');
       }
 
       const response = await api.get(`/projects/${projectId}/bordereau?_t=${Date.now()}`);
+      const grappes = response.data.grappes || [];
       setData(response.data);
 
+      // Trigger Worker for Stats and Initial Grouping
+      workerRef.current?.postMessage({ action: 'CALCULATE_STATS', data: grappes });
+      workerRef.current?.postMessage({
+        action: 'GROUP_AND_FILTER_GRAPPES',
+        data: grappes,
+        params: { query: '' }
+      });
+
       const regions = Array.from(
-        new Set(response.data.grappes.map((g: any) => g.region || 'Sans Région'))
+        new Set(grappes.map((g: any) => g.region || 'Sans Région'))
       );
       const initialExpanded: any = {};
       regions.forEach((r: any) => {
@@ -98,13 +164,39 @@ const Bordereau = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [projectId]);
 
   useEffect(() => {
     if (projectId) {
       fetchData();
     }
-  }, [projectId]);
+  }, [projectId, fetchData]);
+
+  // Offload heavy filtering to worker when query changes
+  useEffect(() => {
+    if (data.grappes.length > 0) {
+      setIsProcessing(true);
+      workerRef.current?.postMessage({
+        action: 'GROUP_AND_FILTER_GRAPPES',
+        data: data.grappes,
+        params: { query: deferredSearchQuery }
+      });
+    }
+  }, [deferredSearchQuery, data.grappes]);
+
+  // Offload detail filtering to worker
+  useEffect(() => {
+    if (detailHouseholds.length > 0) {
+      setIsProcessing(true);
+      workerRef.current?.postMessage({
+        action: 'FILTER_HOUSEHOLDS',
+        data: detailHouseholds,
+        params: { query: deferredDetailSearchQuery }
+      });
+    } else {
+      setFilteredDetailHouseholds([]);
+    }
+  }, [deferredDetailSearchQuery, detailHouseholds]);
 
   useEffect(() => {
     if (!detailGrappe) return undefined;
@@ -122,11 +214,10 @@ const Bordereau = () => {
   useSyncListener((source) => {
     logger.debug(`[BORDEREAU] Data changed by ${source} - refreshing...`);
     if (source === 'kobo' || source === 'import') {
-      // Data is fully downloaded already, just re-fetch from cache
       fetchData(false);
       return;
     }
-    fetchData(true); // Complete reset and refresh
+    fetchData(true);
   });
 
   const handleRecalculate = async () => {
@@ -154,33 +245,6 @@ const Bordereau = () => {
       [region]: !prev[region],
     }));
   };
-
-  const groupedData = useMemo(() => {
-    return (data?.grappes || []).reduce((acc: any, grappe: any) => {
-      const region = grappe.region || 'Sans Région';
-      if (!acc[region]) acc[region] = [];
-      acc[region].push(grappe);
-      return acc;
-    }, {});
-  }, [data]);
-
-  const [debouncedQuery, setDebouncedQuery] = useState(searchQuery);
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedQuery(searchQuery);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
-
-  const filteredRegions = useMemo(() => {
-    return Object.keys(groupedData).filter((region) => {
-      const matchesRegion = region.toLowerCase().includes(debouncedQuery.toLowerCase());
-      const matchesGrappe = groupedData[region].some((g: any) =>
-        (g.name || '').toLowerCase().includes(debouncedQuery.toLowerCase())
-      );
-      return matchesRegion || matchesGrappe;
-    });
-  }, [groupedData, debouncedQuery]);
 
   const buildFallbackTeams = (households: any[]) => {
     const labels = new Set<string>();
@@ -233,6 +297,7 @@ const Bordereau = () => {
         setDetailGrappe(grappe);
         const households = await fetchHouseholdsForGrappe(grappe);
         setDetailHouseholds(households);
+        // Worker will pick up detailHouseholds change
       } catch (err) {
         logger.error('Detail load error:', err);
         toast.error('Erreur lors du chargement des ménages');
@@ -293,35 +358,91 @@ const Bordereau = () => {
     void runExport();
   };
 
-  const stats = useMemo(() => {
-    const allGrappes = data?.grappes || [];
-    const total = allGrappes.reduce((acc: number, g: any) => acc + (g.householdCount || 0), 0);
-    const delivered = allGrappes.reduce((acc: number, g: any) => acc + (g.electrified || 0), 0);
-    const pending = total - delivered;
-    const pct = total > 0 ? Math.round((delivered / total) * 100) : 0;
-    const critical = allGrappes.filter(
-      (g: any) => g.electrified === 0 && g.householdCount > 0
-    ).length;
+  const GrappeCard = memo(({
+    grappe,
+    onOpenDetails,
+    onExport,
+    getSafeProgress,
+    getGrappeStatus
+  }: {
+    grappe: any;
+    onOpenDetails: (g: any) => void;
+    onExport: (g: any, fmt: string) => void;
+    getSafeProgress: (g: any) => number;
+    getGrappeStatus: (g: any) => any;
+  }) => {
+    const progress = getSafeProgress(grappe);
+    const status = getGrappeStatus(grappe);
 
-    return { total, delivered, pending, pct, critical };
-  }, [data]);
+    return (
+      <div className="group flex flex-col justify-between rounded-2xl border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.02))] p-6 transition-all hover:border-primary/40 hover:bg-white/[0.05] h-[210px]">
+        <div className="mb-6">
+          <div className="flex items-start justify-between mb-4">
+            <div className="min-w-0">
+              <h3 className="text-sm font-black text-white truncate uppercase tracking-tight flex items-center gap-3">
+                {grappe.name}
+                {String(grappe.id).startsWith('unclassified') && (
+                  <span className="text-[8px] font-black bg-amber-500 text-white px-2 py-0.5 rounded-full animate-pulse">
+                    À CLASSER
+                  </span>
+                )}
+              </h3>
+              <div className="flex items-center gap-3 mt-2">
+                <span className={`text-[9px] font-black px-2 py-0.5 rounded border tracking-widest uppercase ${status.color}`}>
+                  {status.label}
+                </span>
+                <span className="text-[10px] font-bold text-blue-300/30 flex items-center gap-1.5 uppercase">
+                  <Zap size={12} className="text-primary" /> {grappe.householdCount} ménages
+                </span>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-xl font-black text-white italic">{progress}%</div>
+              <div className="text-[8px] font-black text-blue-300/20 uppercase tracking-widest mt-1">Avancement</div>
+            </div>
+          </div>
+          <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${progress}%` }}
+              className={`h-full rounded-full ${progress >= 70 ? 'bg-emerald-500' : 'bg-primary'}`}
+            />
+          </div>
+        </div>
 
-  const filteredDetailHouseholds = useMemo(() => {
-    const query = detailSearchQuery.trim().toLowerCase();
-    if (!query) return detailHouseholds;
+        <div className="flex items-center justify-between pt-4 border-t border-white/5">
+          <div className="flex gap-2">
+            <button
+              title="Voir la liste des ménages"
+              onClick={() => onOpenDetails(grappe)}
+              className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 hover:text-emerald-200 border border-emerald-500/20 transition-all"
+            >
+              <Eye size={16} />
+            </button>
+            <button
+              title="Exporter en PDF"
+              onClick={() => onExport(grappe, 'pdf')}
+              className="p-2.5 rounded-xl bg-white/5 text-white/50 hover:bg-white/10 hover:text-white border border-white/5 transition-all"
+            >
+              <Printer size={16} />
+            </button>
+            <button
+              title="Exporter en Excel"
+              onClick={() => onExport(grappe, 'excel')}
+              className="p-2.5 rounded-xl bg-white/5 text-white/50 hover:bg-white/10 hover:text-white border border-white/5 transition-all"
+            >
+              <FileSpreadsheet size={16} />
+            </button>
+          </div>
+          <div className="text-[9px] font-black text-blue-300/20 uppercase tracking-widest">
+            {grappe.electrified} / {grappe.householdCount} terminés
+          </div>
+        </div>
+      </div>
+    );
+  });
 
-    return detailHouseholds.filter((household: any) => {
-      const ownerName =
-        (typeof household.owner === 'string' ? household.owner : household.owner?.name) ||
-        household.name ||
-        '';
-      const idParts = [household.numeroordre, household.id, household.grappeName];
-      const locationParts = [household.region, household.departement, household.village];
-      return [...idParts, ownerName, ...locationParts]
-        .filter(Boolean)
-        .some((value) => String(value).toLowerCase().includes(query));
-    });
-  }, [detailHouseholds, detailSearchQuery]);
+  GrappeCard.displayName = 'GrappeCard';
 
   const getGrappeStatus = (g: any) => {
     if (!g.householdCount || g.householdCount === 0)
@@ -381,7 +502,12 @@ const Bordereau = () => {
               disabled={syncing}
               className={`${DASHBOARD_PRIMARY_BUTTON} h-auto px-4 py-2.5 text-[10px] tracking-[0.14em]`}
             >
-              <RefreshCw size={14} className={syncing ? 'animate-spin' : ''} /> Recalculer
+              {syncing || isProcessing ? (
+                <Activity size={14} className="animate-pulse text-blue-400" />
+              ) : (
+                <RefreshCw size={14} />
+              )}
+              {syncing ? 'Calcul...' : 'Recalculer'}
             </button>
           </ActionBar>
         }
@@ -392,21 +518,21 @@ const Bordereau = () => {
           {/* Summary Cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {[
-              { label: 'Total Ménages', value: fmtNum(stats.total), icon: Users, sub: 'éligibles' },
-              { label: 'En Cours', value: fmtNum(stats.pending), icon: Package, sub: 'à livrer' },
-              {
-                label: 'Livrés',
-                value: fmtNum(stats.delivered),
-                icon: CheckCircle2,
-                sub: 'confirmés',
-              },
-              {
-                label: 'Taux Livraison',
-                value: `${stats.pct}%`,
-                icon: TrendingUp,
-                sub: 'objectif',
-              },
-            ].map((kpi, i) => (
+                { label: 'Total Ménages', value: fmtNum(workerData.stats.total), icon: Users, sub: 'éligibles' },
+                { label: 'En Cours', value: fmtNum(workerData.stats.pending), icon: Package, sub: 'à livrer' },
+                {
+                  label: 'Livrés',
+                  value: fmtNum(workerData.stats.delivered),
+                  icon: CheckCircle2,
+                  sub: 'confirmés',
+                },
+                {
+                  label: 'Taux Livraison',
+                  value: `${workerData.stats.pct}%`,
+                  icon: TrendingUp,
+                  sub: 'objectif',
+                },
+              ].map((kpi, i) => (
               <div
                 key={i}
                 className={`${DASHBOARD_MINI_STAT_CARD} group p-8 hover:bg-white/[0.06] ${
@@ -468,155 +594,113 @@ const Bordereau = () => {
             />
           </div>
 
-          {/* Main Content */}
-          <div className="space-y-4">
-            {filteredRegions.length === 0 ? (
-              <div className={`${DASHBOARD_SECTION_SURFACE} flex flex-col items-center justify-center space-y-4 py-24 text-center opacity-40`}>
-                <MapPin size={48} className="text-blue-300" />
+          {/* Main Content - Virtualized for performance */}
+          <div className="h-[calc(100vh-420px)] min-h-[500px]">
+            {workerData.filteredRegions.length === 0 ? (
+              <div className={`${DASHBOARD_SECTION_SURFACE} flex flex-col items-center justify-center space-y-4 py-24 text-center opacity-40 h-full`}>
+                {isProcessing ? (
+                   <Activity size={48} className="text-blue-500 animate-spin" />
+                ) : (
+                   <MapPin size={48} className="text-blue-300" />
+                )}
                 <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-blue-300">
-                  Aucune donnée correspondante
+                  {isProcessing ? 'Calcul en cours...' : 'Aucune donnée correspondante'}
                 </h3>
               </div>
             ) : (
-              filteredRegions.map((region: string) => (
-                <div key={region} className={`${DASHBOARD_SECTION_SURFACE} overflow-hidden`}>
-                  <button
-                    onClick={() => toggleRegion(region)}
-                    className="group flex w-full items-center justify-between px-8 py-6 transition-colors hover:bg-white/[0.04]"
-                  >
-                    <div className="flex items-center gap-6">
-                      <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-blue-800 group-hover:text-primary transition-colors">
-                        <MapPin size={22} />
-                      </div>
-                      <div className="text-left">
-                        <h2 className="text-xl font-black text-white italic tracking-tight">
-                          {region}
-                        </h2>
-                        <div className="flex items-center gap-4 mt-1.5">
-                          <span className="text-[9px] font-black text-blue-300/30 uppercase tracking-[0.2em]">
-                            {groupedData[region].length} GRAPPES
-                          </span>
-                          <span className="text-[9px] font-black text-primary uppercase tracking-[0.2em] bg-primary/10 px-2 py-0.5 rounded">
-                            {groupedData[region].reduce(
-                              (acc: number, g: any) => acc + (g.householdCount || 0),
-                              0
-                            )}{' '}
-                            MÉNAGES
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                    {expandedRegions[region] ? (
-                      <ChevronDown size={22} className="text-white/20" />
-                    ) : (
-                      <ChevronRight size={22} className="text-white/20" />
-                    )}
-                  </button>
+              <AutoSizer
+                renderProp={({ height = 500, width = 800 }) => {
+                  // Build flat list for virtualization
+                  const items: any[] = [];
+                  workerData.filteredRegions.forEach(region => {
+                    items.push({ type: 'region', region });
+                    if (expandedRegions[region]) {
+                      const grappes = workerData.groupedData[region];
+                      // Group grappes in pairs for the grid layout
+                      for (let i = 0; i < grappes.length; i += 2) {
+                        items.push({
+                          type: 'grappe-row',
+                          grappes: [grappes[i], grappes[i+1]].filter(Boolean)
+                        });
+                      }
+                    }
+                  });
 
-                  <AnimatePresence>
-                    {expandedRegions[region] && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        className="border-t border-white/5 bg-black/20 px-8 pb-8 pt-2"
-                      >
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-                          {groupedData[region]
-                            .filter((g: any) => {
-                              const query = debouncedQuery.toLowerCase();
-                              if (!query) return true;
-                              return (
-                                (g.name || '').toLowerCase().includes(query) ||
-                                region.toLowerCase().includes(query)
-                              );
-                            })
-                            .map((grappe: any) => {
-                              const progress = getSafeProgress(grappe);
-                              const status = getGrappeStatus(grappe);
-                              return (
-                                <div
-                                  key={grappe.id}
-                                  className="group flex flex-col justify-between rounded-2xl border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.02))] p-6 transition-all hover:border-primary/40 hover:bg-white/[0.05]"
+                  return (
+                    <List<{ items: any[] }>
+                      style={{ height, width }}
+                      rowCount={items.length}
+                      rowHeight={(index: number) => {
+                        const item = items[index];
+                        if (item.type === 'region') return 100;
+                        return 240; // Grappe row height + gap
+                      }}
+                      rowProps={{ items }}
+                      className="custom-scrollbar"
+                      rowComponent={({ index, style }: { index: number; style: CSSProperties; items: any[] }) => {
+                        const item = items[index];
+                        if (item.type === 'region') {
+                          const region = item.region;
+                          const regionGrappes = workerData.groupedData[region];
+                          const totalMénages = regionGrappes.reduce((acc: number, g: any) => acc + (g.householdCount || 0), 0);
+
+                          return (
+                            <div style={style} className="px-1">
+                              <div className={`${DASHBOARD_SECTION_SURFACE} overflow-hidden mb-4`}>
+                                <button
+                                  onClick={() => toggleRegion(region)}
+                                  className="group flex w-full items-center justify-between px-8 py-6 transition-colors hover:bg-white/[0.04]"
                                 >
-                                  <div className="mb-6">
-                                    <div className="flex items-start justify-between mb-4">
-                                      <div className="min-w-0">
-                                        <h3 className="text-sm font-black text-white truncate uppercase tracking-tight flex items-center gap-3">
-                                          {grappe.name}
-                                          {String(grappe.id).startsWith('unclassified') && (
-                                            <span className="text-[8px] font-black bg-amber-500 text-white px-2 py-0.5 rounded-full animate-pulse">
-                                              À CLASSER
-                                            </span>
-                                          )}
-                                        </h3>
-                                        <div className="flex items-center gap-3 mt-2">
-                                          <span
-                                            className={`text-[9px] font-black px-2 py-0.5 rounded border tracking-widest uppercase ${status.color}`}
-                                          >
-                                            {status.label}
-                                          </span>
-                                          <span className="text-[10px] font-bold text-blue-300/30 flex items-center gap-1.5 uppercase">
-                                            <Zap size={12} className="text-primary" />{' '}
-                                            {grappe.householdCount} ménages
-                                          </span>
-                                        </div>
-                                      </div>
-                                      <div className="text-right">
-                                        <div className="text-xl font-black text-white italic">
-                                          {progress}%
-                                        </div>
-                                        <div className="text-[8px] font-black text-blue-300/20 uppercase tracking-widest mt-1">
-                                          Avancement
-                                        </div>
-                                      </div>
+                                  <div className="flex items-center gap-6">
+                                    <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-blue-800 group-hover:text-primary transition-colors">
+                                      <MapPin size={22} />
                                     </div>
-                                    <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
-                                      <motion.div
-                                        initial={{ width: 0 }}
-                                        animate={{ width: `${progress}%` }}
-                                        className={`h-full rounded-full ${progress >= 70 ? 'bg-emerald-500' : 'bg-primary'}`}
-                                      />
+                                    <div className="text-left">
+                                      <h2 className="text-xl font-black text-white italic tracking-tight">
+                                        {region}
+                                      </h2>
+                                      <div className="flex items-center gap-4 mt-1.5">
+                                        <span className="text-[9px] font-black text-blue-300/30 uppercase tracking-[0.2em]">
+                                          {regionGrappes.length} GRAPPES
+                                        </span>
+                                        <span className="text-[9px] font-black text-primary uppercase tracking-[0.2em] bg-primary/10 px-2 py-0.5 rounded">
+                                          {totalMénages} MÉNAGES
+                                        </span>
+                                      </div>
                                     </div>
                                   </div>
+                                  {expandedRegions[region] ? (
+                                    <ChevronDown size={22} className="text-white/20" />
+                                  ) : (
+                                    <ChevronRight size={22} className="text-white/20" />
+                                  )}
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        }
 
-                                  <div className="flex items-center justify-between pt-4 border-t border-white/5">
-                                    <div className="flex gap-2">
-                                      <button
-                                        title="Voir la liste des ménages"
-                                        onClick={() => handleOpenGrappeDetails(grappe)}
-                                        className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 hover:text-emerald-200 border border-emerald-500/20 transition-all"
-                                      >
-                                        <Eye size={16} />
-                                      </button>
-                                      <button
-                                        title="Exporter en PDF"
-                                        onClick={() => handleExportGrappe(grappe, 'pdf')}
-                                        className="p-2.5 rounded-xl bg-white/5 text-white/50 hover:bg-white/10 hover:text-white border border-white/5 transition-all"
-                                      >
-                                        <Printer size={16} />
-                                      </button>
-                                      <button
-                                        title="Exporter en Excel"
-                                        onClick={() => handleExportGrappe(grappe, 'excel')}
-                                        className="p-2.5 rounded-xl bg-white/5 text-white/50 hover:bg-white/10 hover:text-white border border-white/5 transition-all"
-                                      >
-                                        <FileSpreadsheet size={16} />
-                                      </button>
-                                    </div>
-                                    <div className="text-[9px] font-black text-blue-300/20 uppercase tracking-widest">
-                                      {grappe.electrified} / {grappe.householdCount} terminés
-                                    </div>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-              ))
+                        return (
+                          <div style={style} className="px-1">
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                              {item.grappes.map((grappe: any) => (
+                                <GrappeCard
+                                  key={grappe.id}
+                                  grappe={grappe}
+                                  onOpenDetails={handleOpenGrappeDetails}
+                                  onExport={handleExportGrappe}
+                                  getSafeProgress={getSafeProgress}
+                                  getGrappeStatus={getGrappeStatus}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      }}
+                    />
+                  );
+                }}
+              />
             )}
           </div>
         </div>
