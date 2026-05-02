@@ -223,32 +223,29 @@ const resolveStatusFromImageId = (imageId: string): { iconId: string; variant: '
 };
 
 const resolveStatusKeyFromImageSegment = (segment: string): string => {
+  // 1. Essai direct via l'ID d'icône (ex: 'non-eligible' -> 'Non éligible')
   const fromIconId = getStatusKeyByIconId(segment);
   if (fromIconId && fromIconId !== 'default') return fromIconId;
 
+  // 2. Essai direct via la clé de config
   if (STATUS_CONFIG[segment]) return segment;
 
-  const fromDerivedStatus = resolveStatusConfigKey(segment);
-  if (fromDerivedStatus && fromDerivedStatus !== 'default') return fromDerivedStatus;
+  // 3. Normalisation agressive (retrait accents, tirets, espaces)
+  const normalize = (s: string) => 
+    s.normalize('NFD')
+     .replace(/[\u0300-\u036f]/g, '')
+     .replace(/[-_]/g, ' ')
+     .trim()
+     .toLowerCase();
 
-  const normalizedSegment = segment
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .trim()
-    .toLowerCase();
+  const normalizedSegment = normalize(segment);
 
-  const normalizedStatus = Object.keys(STATUS_CONFIG).find((status) => {
+  const foundKey = Object.keys(STATUS_CONFIG).find((status) => {
     if (status === 'default') return false;
-    return (
-      status
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .trim()
-        .toLowerCase() === normalizedSegment
-    );
+    return normalize(status) === normalizedSegment;
   });
 
-  return normalizedStatus || 'default';
+  return foundKey || 'default';
 };
 
 export async function ensureMapImage(map: maplibregl.Map, imageId: string): Promise<boolean> {

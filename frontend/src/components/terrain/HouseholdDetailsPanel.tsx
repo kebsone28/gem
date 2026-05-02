@@ -207,10 +207,11 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
   const currentStageIndex = timelineStages.findIndex(
     (s) => s.toLowerCase() === normalizedStatus.toLowerCase()
   );
-  const progressPercent =
+  const progressPercentRaw =
     currentStageIndex >= 0
       ? Math.round((currentStageIndex / (timelineStages.length - 1)) * 100)
       : 0;
+  const progressPercent = isNaN(progressPercentRaw) ? 0 : progressPercentRaw;
 
   const isTerminalStatus = ['Non éligible', 'Désistement', 'Refusé'].includes(currentStatus);
   const justification = (household.constructionData as any)?.livreur?.justificatif || 
@@ -821,7 +822,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
                   <p className="text-[8px] font-black uppercase tracking-[0.2em] opacity-70">
                     File globale
                   </p>
-                  <p className="mt-1 text-sm font-black">{pendingSyncCount}</p>
+                  <p className="mt-1 text-sm font-black">{isNaN(Number(pendingSyncCount)) ? 0 : pendingSyncCount}</p>
                 </div>
               </div>
               <p className="mt-3 text-[10px] font-semibold leading-relaxed opacity-90">
