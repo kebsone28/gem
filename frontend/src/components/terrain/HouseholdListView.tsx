@@ -42,7 +42,7 @@ const ReportIndicator = React.memo(({ icon, active, title, onClick, color }: any
 
     return (
         <button 
-            onClick={(e) => { e.stopPropagation(); if (active) onClick(); }}
+            onClick={(_e) => { _e.stopPropagation(); if (active) onClick(); }}
             title={active ? `Télécharger ${title}` : `${title} non disponible`}
             className={`w-6 h-6 rounded-lg border flex items-center justify-center transition-all ${colors[color]} ${active ? 'hover:scale-110 active:scale-95 shadow-sm' : 'opacity-40 grayscale cursor-not-allowed'}`}
         >
@@ -305,8 +305,8 @@ export const HouseholdListView: React.FC<HouseholdListViewProps> = ({
             case 'name': {
                 const ownerA = (a as any).owner;
                 const ownerB = (b as any).owner;
-                valA = (typeof ownerA === 'object' ? ownerA?.name : ownerA || (a as any).name || '').toLowerCase();
-                valB = (typeof ownerB === 'object' ? ownerB?.name : ownerB || (b as any).name || '').toLowerCase();
+                valA = (typeof ownerA === 'object' ? (ownerA?.name ?? '') : (ownerA || (a as any).name || '')).toLowerCase();
+                valB = (typeof ownerB === 'object' ? (ownerB?.name ?? '') : (ownerB || (b as any).name || '')).toLowerCase();
                 break;
             }
             case 'status':
