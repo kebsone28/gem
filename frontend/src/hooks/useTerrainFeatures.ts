@@ -36,9 +36,6 @@ export const useTerrainFeatures = () => {
       resolved.bulkConformingLocks = false;
       resolved.analytics = !!configured.analytics;
       resolved.heatmap = !!configured.heatmap;
-      resolved.lasso = !!configured.lasso;
-      resolved.measure = !!configured.measure;
-      resolved.drawZones = !!configured.drawZones;
       resolved.grappeTools = !!configured.grappeTools;
       resolved.regionDownload = !!configured.regionDownload;
       resolved.dataHub = !!configured.dataHub;

@@ -16,9 +16,6 @@ export type TerrainFeatureKey =
   | 'bulkConformingLocks'
   | 'analytics'
   | 'heatmap'
-  | 'lasso'
-  | 'measure'
-  | 'drawZones'
   | 'grappeTools'
   | 'regionDownload'
   | 'dataHub';
@@ -43,9 +40,6 @@ export const DEFAULT_TERRAIN_FEATURES: Record<TerrainFeatureKey, boolean> = {
   bulkConformingLocks: false,
   analytics: false,
   heatmap: false,
-  lasso: false,
-  measure: false,
-  drawZones: false,
   grappeTools: false,
   regionDownload: false,
   dataHub: false,
@@ -56,9 +50,6 @@ export const ADMIN_ONLY_TERRAIN_FEATURES: TerrainFeatureKey[] = [
   'bulkConformingLocks',
   'analytics',
   'heatmap',
-  'lasso',
-  'measure',
-  'drawZones',
   'grappeTools',
   'regionDownload',
   'dataHub',
@@ -87,9 +78,6 @@ export const TERRAIN_FEATURE_DEFS: Array<{
   { key: 'bulkConformingLocks', title: 'Bulk verrous conformes', desc: 'Verrouille ou déverrouille les ménages déjà conformes.', adminOnly: true },
   { key: 'analytics', title: 'Stats analytiques', desc: 'Widget analytique avancé sur la carte.', adminOnly: true },
   { key: 'heatmap', title: 'Heatmap', desc: 'Vue densité purement analytique.', adminOnly: true },
-  { key: 'lasso', title: 'Lasso de sélection', desc: 'Sélection multiple cartographique.', adminOnly: true },
-  { key: 'measure', title: 'Mesure', desc: 'Mesure de distance sur carte.', adminOnly: true },
-  { key: 'drawZones', title: 'Dessin de zones', desc: 'Création et dessin de zones métier.', adminOnly: true },
   { key: 'grappeTools', title: 'Outils grappes', desc: 'Panneaux grappes et allocation avancée.', adminOnly: true },
   { key: 'regionDownload', title: 'Cartes offline', desc: 'Téléchargement des régions pour travail hors connexion.', adminOnly: true },
   { key: 'dataHub', title: 'DataHub Kobo', desc: 'Outils bruts d’import, purge et sync avancée.', adminOnly: true },

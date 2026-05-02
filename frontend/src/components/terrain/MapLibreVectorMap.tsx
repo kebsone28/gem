@@ -11,8 +11,6 @@ maplibregl.setWorkerCount(2);
 import { useMapInteractions } from './useMapInteractions';
 import { useMapClustering } from './useMapClustering';
 import { useMapMarkers } from './useMapMarkers';
-import { useMapMeasure } from './useMapMeasure';
-import { useMapLasso } from './useMapLasso';
 import { useTerrainUIStore } from '../../store/terrainUIStore';
 import { useTheme } from '../../contexts/ThemeContext';
 import { registerTileCacheProtocol } from '../../services/map/tileCacheService';
@@ -122,9 +120,6 @@ const MapLibreVectorMap: React.FC<any> = ({
   onBoundsChange,
   projectId,
   warehouses = [],
-  onLassoSelection,
-  drawnZones = [],
-  pendingPoints = [],
 }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapHostRef = useRef<HTMLDivElement>(null);
@@ -135,8 +130,6 @@ const MapLibreVectorMap: React.FC<any> = ({
   const [iconsReady, setIconsReady] = useState(false);
   const showHeatmap = useTerrainUIStore((s) => s.showHeatmap);
   const showZones = useTerrainUIStore((s) => s.showZones);
-  const isSelecting = useTerrainUIStore((s) => s.isSelecting);
-  const isMeasuring = useTerrainUIStore((s) => s.isMeasuring);
   const mapStyle = useTerrainUIStore((s) => s.mapStyle);
   const { isDarkMode } = useTheme();
   const [isMapReady, setIsMapReady] = useState(false);
@@ -427,8 +420,6 @@ const MapLibreVectorMap: React.FC<any> = ({
     householdGeoJSON?.features || []
   );
   const { setupUserMarker, cleanup: cleanupMarkers } = useMapMarkers(userLocation);
-  const { setupMeasureTool } = useMapMeasure();
-  const { setupLasso } = useMapLasso(isSelecting, householdsRef, onLassoSelection);
   
   // ✅ INITIALIZATION (DOM + Basic Listeners)
   useEffect(() => {
@@ -896,21 +887,6 @@ const MapLibreVectorMap: React.FC<any> = ({
     projectId
   ]);
 
-  // ✅ REACTIVE TOOL: RULER (Mesure)
-  useEffect(() => {
-    const currentMap = mapInstanceRef.current;
-    if (!currentMap || !styleIsReady || !iconsReady) return;
-    const cleanup = setupMeasureTool(currentMap, isMeasuring);
-    return () => cleanup && cleanup();
-  }, [isMapReady, styleIsReady, iconsReady, isMeasuring, setupMeasureTool]);
-
-  // ✅ REACTIVE TOOL: LASSO (Sélection)
-  useEffect(() => {
-    const currentMap = mapInstanceRef.current;
-    if (!currentMap || !styleIsReady || !iconsReady) return;
-    const cleanup = setupLasso(currentMap);
-    return () => cleanup && cleanup();
-  }, [isMapReady, styleIsReady, iconsReady, isSelecting, setupLasso]);
 
 
   useEffect(() => {
@@ -1044,8 +1020,6 @@ const MapLibreVectorMap: React.FC<any> = ({
       <InteractionLayer
         map={mapForChildren}
         styleIsReady={styleIsReady}
-        drawnZones={drawnZones}
-        pendingPoints={pendingPoints}
       />
 
       <HighlightLayer map={mapForChildren} />

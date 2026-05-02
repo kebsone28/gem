@@ -6,8 +6,6 @@ import logger from '../../../utils/logger';
 interface InteractionLayerProps {
   map: maplibregl.Map | null;
   styleIsReady: boolean;
-  drawnZones: any[];
-  pendingPoints: any[];
 }
 
 const EMPTY_COLLECTION = {
@@ -18,8 +16,6 @@ const EMPTY_COLLECTION = {
 const InteractionLayer: React.FC<InteractionLayerProps> = ({
   map,
   styleIsReady,
-  drawnZones = [],
-  pendingPoints = [],
 }) => {
   // 🏷️ SOURCES
   useEffect(() => {
@@ -35,14 +31,8 @@ const InteractionLayer: React.FC<InteractionLayerProps> = ({
             data: EMPTY_COLLECTION,
           });
         }
-        if (!map.getSource('pending-zone')) {
-          map.addSource('pending-zone', {
-            type: 'geojson',
-            data: EMPTY_COLLECTION,
-          });
-        }
-        if (!map.getSource('drawn-zones')) {
-          map.addSource('drawn-zones', {
+        if (!map.getSource('route-source')) {
+          map.addSource('route-source', {
             type: 'geojson',
             data: EMPTY_COLLECTION,
           });
@@ -63,45 +53,6 @@ const InteractionLayer: React.FC<InteractionLayerProps> = ({
     };
   }, [map, styleIsReady]);
 
-  // 🏷️ DATA SYNC (Pending Drawing)
-  useEffect(() => {
-    if (!map || !styleIsReady || (map as any)._removed) return;
-    const source = map.getSource('pending-zone') as maplibregl.GeoJSONSource | undefined;
-    if (source) {
-      source.setData({
-        type: 'FeatureCollection',
-        features:
-          pendingPoints.length > 0
-            ? [
-                {
-                  type: 'Feature',
-                  geometry: {
-                    type: 'Polygon',
-                    coordinates: [[...pendingPoints, pendingPoints[0]]],
-                  },
-                  properties: {},
-                } as any,
-              ]
-            : [],
-      });
-    }
-  }, [map, styleIsReady, pendingPoints]);
-
-  // 🏷️ DATA SYNC (Drawn Zones)
-  useEffect(() => {
-    if (!map || !styleIsReady || (map as any)._removed) return;
-    const source = map.getSource('drawn-zones') as maplibregl.GeoJSONSource | undefined;
-    if (source) {
-      source.setData({
-        type: 'FeatureCollection',
-        features: (drawnZones || []).map((z) => ({
-          type: 'Feature',
-          geometry: { type: 'Polygon', coordinates: [z.coordinates] },
-          properties: { name: z.name, color: z.color || '#3b82f6' },
-        })),
-      });
-    }
-  }, [map, styleIsReady, drawnZones]);
 
   // 🏷️ LAYERS
   useEffect(() => {
@@ -112,9 +63,7 @@ const InteractionLayer: React.FC<InteractionLayerProps> = ({
         (map as any)._removed ||
         !map.getStyle() ||
         !map.isStyleLoaded() ||
-        !map.getSource('route-source') ||
-        !map.getSource('pending-zone') ||
-        !map.getSource('drawn-zones')
+        !map.getSource('route-source')
       ) {
         return;
       }
@@ -131,34 +80,6 @@ const InteractionLayer: React.FC<InteractionLayerProps> = ({
           });
         }
 
-        // Pending Zone fill
-        if (!map.getLayer('pending-zone-fill')) {
-          map.addLayer({
-            id: 'pending-zone-fill',
-            type: 'fill',
-            source: 'pending-zone',
-            paint: { 'fill-color': '#3b82f6', 'fill-opacity': 0.2 },
-          });
-        }
-
-        // Drawn Zones fill
-        if (!map.getLayer('drawn-zones-fill')) {
-          map.addLayer({
-            id: 'drawn-zones-fill',
-            type: 'fill',
-            source: 'drawn-zones',
-            paint: { 'fill-color': ['get', 'color'], 'fill-opacity': 0.15 },
-          });
-        }
-
-        if (!map.getLayer('drawn-zones-outline')) {
-          map.addLayer({
-            id: 'drawn-zones-outline',
-            type: 'line',
-            source: 'drawn-zones',
-            paint: { 'line-color': ['get', 'color'], 'line-width': 2 },
-          });
-        }
       } catch (err) {
         logger.debug('⚠️ Failed to add layers - style may not be ready:', err);
       }

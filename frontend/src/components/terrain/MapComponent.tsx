@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 /**
  * MapComponent.tsx
  *
@@ -34,10 +34,7 @@ interface MapComponentProps {
   onMove?: (center: [number, number], zoom: number) => void;
   onBoundsChange?: (bounds: [number, number, number, number]) => void;
   warehouses?: any[];
-  onLassoSelection?: (ids: string[]) => void;
-  onAddPoint?: (point: [number, number]) => void;
   selectedHouseholdId?: string | null;
-  drawnZones?: any[];
 }
 
 const MapComponent: React.FC<MapComponentProps> = ({
@@ -58,9 +55,6 @@ const MapComponent: React.FC<MapComponentProps> = ({
   onMove,
   onBoundsChange,
   warehouses = [],
-  onLassoSelection,
-  onAddPoint,
-  drawnZones = [],
 }) => {
   // Zustand Selectors
   const mapCommand = useTerrainUIStore((s) => s.mapCommand);
@@ -70,8 +64,6 @@ const MapComponent: React.FC<MapComponentProps> = ({
   const showDatabaseStats = useTerrainUIStore((s) => s.showDatabaseStats);
   const routingStart = useTerrainUIStore((s) => s.routingStart);
   const routingDest = useTerrainUIStore((s) => s.routingDest);
-  const isDrawing = useTerrainUIStore((s) => s.isDrawing);
-  const pendingPoints = useTerrainUIStore((s) => s.pendingPoints);
   const activeGrappeId = useTerrainUIStore((s) => s.activeGrappeId);
   const mapMode = useTerrainUIStore((s) => s.mapMode);
 
@@ -139,11 +131,6 @@ const MapComponent: React.FC<MapComponentProps> = ({
         onMove={onMove}
         onBoundsChange={onBoundsChange}
         warehouses={warehouses}
-        onLassoSelection={onLassoSelection}
-        isDrawing={isDrawing}
-        pendingPoints={pendingPoints}
-        onAddPoint={onAddPoint}
-        drawnZones={drawnZones}
       />
 
       {showDatabaseStats && (

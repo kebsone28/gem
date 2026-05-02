@@ -15,9 +15,7 @@ import {
   Satellite,
   Info,
   BarChart3,
-  Ruler,
-  MousePointer2,
-  PenTool,
+  BarChart3,
   Cloud,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -365,41 +363,6 @@ export const MapToolbar: React.FC<MapToolbarProps> = ({ onRecenter, features }) 
         </>
       )}
       
-      {/* GIS TOOLS GROUP */}
-      {(features?.measure || features?.lasso || features?.drawZones || features?.regionDownload) && (
-        <>
-          <div className="toolbar-group">
-            {features?.measure && (
-              <ToolbarButton
-                icon={<Ruler />}
-                title="Mesurer Distance"
-                onClick={toggleMeasuring}
-                active={isMeasuring}
-                danger={isMeasuring}
-              />
-            )}
-            {features?.lasso && (
-              <ToolbarButton
-                icon={<MousePointer2 />}
-                title="Lasso de Sélection"
-                onClick={toggleSelecting}
-                active={isSelecting}
-                danger={isSelecting}
-              />
-            )}
-            {features?.drawZones && (
-              <ToolbarButton
-                icon={<PenTool />}
-                title="Dessiner Zone"
-                onClick={() => setPanel('draw')}
-                active={activePanel === 'draw'}
-                danger={activePanel === 'draw'}
-              />
-            )}
-          </div>
-          <div className="toolbar-divider" />
-        </>
-      )}
       
       {/* DATA & CLOUD */}
       </div>

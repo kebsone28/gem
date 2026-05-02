@@ -5,7 +5,6 @@ import toast from 'react-hot-toast';
 
 import { useTerrainPhoto } from '../hooks/useTerrainPhoto';
 import { useTerrainData } from '../hooks/useTerrainData';
-import { QuickActions, OfflineIndicator, FloatingPhotoButton } from '../components/terrain/QuickActions';
 import { TerrainMissionEditor } from '../components/terrain/TerrainMissionEditor';
 import { createMission } from '../services/missionService';
 import { uploadFile as uploadToServer } from '../services/uploadService';
@@ -23,7 +22,6 @@ import { useTerrainFeatures } from '../hooks/useTerrainFeatures';
 import { MapRoutingPanel } from '../components/terrain/MapRoutingPanel';
 import { GeofencingAlerts } from '../components/terrain/GeofencingAlerts';
 import { PhotoLightbox } from '../components/terrain/PhotoLightbox';
-import { MapDrawZonesPanel } from '../components/terrain/MapDrawZones';
 import { GrappeSelectorPanel } from '../components/terrain/GrappeSelectorPanel';
 import { MapGrappeAllocationPanel } from '../components/terrain/MapGrappeAllocationPanel';
 import { MapRegionDownload } from '../components/terrain/MapRegionDownload';
@@ -105,9 +103,7 @@ const Terrain: React.FC = () => {
   const openLightbox = useTerrainUIStore((s) => s.openLightbox);
   const showWarehouses = useTerrainUIStore((s) => s.showWarehouses);
   const addPendingPoint = useTerrainUIStore((s) => s.addPendingPoint);
-  const drawnZones = useTerrainUIStore((s) => s.drawnZones);
   const showLegend = useTerrainUIStore((s) => s.showLegend);
-  const setIsDrawing = useTerrainUIStore((s) => s.setIsDrawing);
   const setPendingPoints = useTerrainUIStore((s) => s.setPendingPoints);
   const pendingPoints = useTerrainUIStore((s) => s.pendingPoints);
   const addZone = useTerrainUIStore((s) => s.addZone);
@@ -143,7 +139,6 @@ const Terrain: React.FC = () => {
   } = useGrappeClustering(households);
   const { auditResult } = useAuditData(households);
   const {
-    setRoutingStart,
     setRoutingDest,
     setRouteStats,
     routeStats,
@@ -262,14 +257,6 @@ const Terrain: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    const blockedPanel =
-      (activePanel === 'routing' && !terrainFeatures.routing) ||
-      (activePanel === 'draw' && !terrainFeatures.drawZones) ||
-      (activePanel === 'grappe' && !terrainFeatures.grappeTools) ||
-      (activePanel === 'grappe_allocation' && !terrainFeatures.grappeTools) ||
-      (activePanel === 'region' && !terrainFeatures.regionDownload) ||
-      (activePanel === 'datahub' && !terrainFeatures.dataHub);
-
     if (blockedPanel) {
       closePanel();
     }
@@ -764,7 +751,9 @@ const Terrain: React.FC = () => {
                       onBoundsChange={setMapBounds}
                       warehouses={showWarehouses ? warehouseStats : []}
                       projectId={project?.id}
-                      drawnZones={drawnZones}
+                      onBoundsChange={setMapBounds}
+                      warehouses={showWarehouses ? warehouseStats : []}
+                      projectId={project?.id}
                       onAddPoint={addPendingPoint}
                       grappeZonesData={grappeZonesData}
                       grappeCentroidsData={grappeCentroidsData}
@@ -849,9 +838,8 @@ const Terrain: React.FC = () => {
           terrainFeatures.grappeTools ||
           terrainFeatures.analytics ||
           terrainFeatures.heatmap ||
-          terrainFeatures.measure ||
-          terrainFeatures.lasso ||
-          terrainFeatures.drawZones ||
+          terrainFeatures.analytics ||
+          terrainFeatures.heatmap ||
           terrainFeatures.dataHub
           || terrainFeatures.regionDownload
         }
@@ -865,9 +853,6 @@ const Terrain: React.FC = () => {
           grappeTools: terrainFeatures.grappeTools,
           analytics: terrainFeatures.analytics,
           heatmap: terrainFeatures.heatmap,
-          measure: terrainFeatures.measure,
-          lasso: terrainFeatures.lasso,
-          drawZones: terrainFeatures.drawZones,
           regionDownload: terrainFeatures.regionDownload,
           dataHub: terrainFeatures.dataHub,
         }}
@@ -907,30 +892,6 @@ const Terrain: React.FC = () => {
         <GeofencingAlerts households={filteredHouseholds} grappesConfig={grappesConfig} isDarkMode />
       )}
 
-      {terrainFeatures.drawZones && activePanel === 'draw' && (
-        <div className="z-[70] pointer-events-auto">
-          <MapDrawZonesPanel
-            onStartDraw={() => setIsDrawing(true)}
-            onConfirmZone={(name, team, color) => {
-              const newZone = {
-                id: `zone-${Date.now()}`,
-                name,
-                team,
-                color,
-                coordinates: [...pendingPoints],
-                createdAt: new Date().toISOString(),
-              };
-              addZone(newZone);
-              setIsDrawing(false);
-              setPendingPoints([]);
-            }}
-            onCancelDraw={() => {
-              setIsDrawing(false);
-              setPendingPoints([]);
-            }}
-          />
-        </div>
-      )}
 
       {terrainFeatures.grappeTools && activePanel === 'grappe' && (
         <div className="z-[60] pointer-events-auto">
@@ -989,27 +950,7 @@ const Terrain: React.FC = () => {
 
       <AnimatePresence>{lightboxPhotos.length > 0 && <PhotoLightbox />}</AnimatePresence>
 
-      {/* 🆕 Terrain Mode Enhancements */}
-      <OfflineIndicator
-        isOffline={isOfflineMode}
-        pendingCount={pendingSyncCount}
-        onClick={terrainFeatures.syncIssues ? () => setShowSyncIssues(true) : undefined}
-      />
-      
-      {viewMode === 'map' && (
-        <QuickActions
-          onPhoto={terrainFeatures.photoCapture ? () => capturePhoto() : undefined}
-          onNavigate={terrainFeatures.recenter ? handleRecenterOnUser : undefined}
-        />
-      )}
 
-      {terrainFeatures.photoCapture && viewMode === 'map' && (
-        <FloatingPhotoButton
-          onCapture={capturePhoto}
-          onSelect={selectFromGallery}
-          disabled={isCapturing}
-        />
-      )}
 
       {terrainFeatures.syncIssues && (
         <TerrainSyncIssuesPanel

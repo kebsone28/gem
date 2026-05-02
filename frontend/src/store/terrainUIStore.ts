@@ -22,7 +22,6 @@ export const ALL_STATUSES = [
 export type PanelType =
   | 'none'
   | 'routing'
-  | 'draw'
   | 'grappe'
   | 'region'
   | 'datahub'
@@ -44,8 +43,6 @@ interface TerrainUIState {
   showHeatmap: boolean;
   showZones: boolean;
   showWarehouses: boolean;
-  isMeasuring: boolean;
-  isSelecting: boolean;
   showDatabaseStats: boolean;
   showLegend: boolean;
   mapStyle: 'dark' | 'light' | 'satellite';
@@ -53,8 +50,6 @@ interface TerrainUIState {
   toggleHeatmap: () => void;
   toggleZones: () => void;
   toggleWarehouses: () => void;
-  toggleMeasuring: () => void;
-  toggleSelecting: () => void;
   toggleDatabaseStats: () => void;
   toggleLegend: () => void;
   toggleMapStyle: () => void;
@@ -92,13 +87,6 @@ interface TerrainUIState {
   setIsRoutingLoading: (loading: boolean) => void;
   clearRouting: () => void;
 
-  // --- NEW: Drawing State ---
-  isDrawing: boolean;
-  pendingPoints: [number, number][];
-  setIsDrawing: (drawing: boolean) => void;
-  setPendingPoints: (points: [number, number][]) => void;
-  addPendingPoint: (point: [number, number]) => void;
-  clearDrawing: () => void;
 
   // --- NEW: Map Commands (Programmatic moves) ---
   mapCommand: { center: [number, number]; zoom: number; timestamp: number } | null;
@@ -113,11 +101,6 @@ interface TerrainUIState {
   isDownloadingOffline: boolean;
   setIsDownloadingOffline: (loading: boolean) => void;
 
-  // Zones
-  drawnZones: any[];
-  setDrawnZones: (zones: any[]) => void;
-  addZone: (zone: any) => void;
-  deleteZone: (id: string) => void;
 
   // Lightbox
   lightboxPhotos: { url: string; label: string }[];
@@ -153,8 +136,6 @@ export const useTerrainUIStore = create<TerrainUIState>((set) => ({
   showHeatmap: false,
   showZones: false,
   showWarehouses: true,
-  isMeasuring: false,
-  isSelecting: false,
   showDatabaseStats: false,
   showLegend: true,
   mapStyle: ((safeStorage.getItem('gem-map-theme') as any) || 'light') as 'light' | 'dark' | 'satellite',
@@ -162,8 +143,6 @@ export const useTerrainUIStore = create<TerrainUIState>((set) => ({
   toggleHeatmap: () => set((state) => ({ showHeatmap: !state.showHeatmap })),
   toggleZones: () => set((state) => ({ showZones: !state.showZones })),
   toggleWarehouses: () => set((state) => ({ showWarehouses: !state.showWarehouses })),
-  toggleMeasuring: () => set((state) => ({ isMeasuring: !state.isMeasuring })),
-  toggleSelecting: () => set((state) => ({ isSelecting: !state.isSelecting })),
   toggleDatabaseStats: () => set((state) => ({ showDatabaseStats: !state.showDatabaseStats })),
   toggleLegend: () => set((state) => ({ showLegend: !state.showLegend })),
   toggleMapStyle: () =>
@@ -224,13 +203,6 @@ export const useTerrainUIStore = create<TerrainUIState>((set) => ({
       turnByTurnInstructions: [],
     }),
 
-  // Drawing
-  isDrawing: false,
-  pendingPoints: [],
-  setIsDrawing: (isDrawing) => set({ isDrawing }),
-  setPendingPoints: (pendingPoints) => set({ pendingPoints }),
-  addPendingPoint: (point) => set((state) => ({ pendingPoints: [...state.pendingPoints, point] })),
-  clearDrawing: () => set({ isDrawing: false, pendingPoints: [] }),
 
   // Map Commands
   mapCommand: null,
@@ -242,30 +214,6 @@ export const useTerrainUIStore = create<TerrainUIState>((set) => ({
   isDownloadingOffline: false,
   setIsDownloadingOffline: (isDownloadingOffline) => set({ isDownloadingOffline }),
 
-  // Zones
-  drawnZones: (() => {
-    try {
-      return JSON.parse(safeStorage.getItem('gem_drawn_zones') || '[]');
-    } catch {
-      return [];
-    }
-  })(),
-  setDrawnZones: (drawnZones) => {
-    set({ drawnZones });
-    safeStorage.setItem('gem_drawn_zones', JSON.stringify(drawnZones));
-  },
-  addZone: (zone) =>
-    set((state) => {
-      const next = [...state.drawnZones, zone];
-      safeStorage.setItem('gem_drawn_zones', JSON.stringify(next));
-      return { drawnZones: next };
-    }),
-  deleteZone: (id) =>
-    set((state) => {
-      const next = state.drawnZones.filter((z) => z.id !== id);
-      safeStorage.setItem('gem_drawn_zones', JSON.stringify(next));
-      return { drawnZones: next };
-    }),
 
   // Lightbox
   lightboxPhotos: [],
