@@ -31,7 +31,19 @@ interface RoleSectionData {
   legal?: string[];
   responsible?: string;
   imagePath?: string;
-  technicalImages?: any[];
+  technicalImages?: Array<{
+    url: string;
+    label: string;
+    notes?: Array<{ title: string; lines: string[] }>;
+    legend?: string[];
+  }>;
+  koboGuide?: Array<{
+    title: string;
+    intro?: string;
+    checks: string[];
+    blockers?: string[];
+    completion?: string[];
+  }>;
   startDate?: string;
   endDate?: string;
   pricing?: { dailyRate: number; personnelCount: number; durationDays: number; currency: string; };
@@ -50,6 +62,7 @@ export const createRoleSection = async (data: RoleSectionData, qrBuffer?: ArrayB
     responsible,
     imagePath,
     technicalImages,
+    koboGuide,
     startDate,
     endDate,
     pricing,
@@ -130,57 +143,123 @@ export const createRoleSection = async (data: RoleSectionData, qrBuffer?: ArrayB
 
   // 3. Technical Gallery
   if (technicalImages && technicalImages.length > 0) {
-    children.push(createSectionHeader('Standards & Schémas Techniques', COLORS.SUCCESS));
-    const imageBuffers = await Promise.all(
-      technicalImages.map((img: any) => fetchImageCached(img.url))
-    );
-    const rows: TableRow[] = [];
-    for (let i = 0; i < technicalImages.length; i += 2) {
-      const cells: TableCell[] = [];
-      [i, i + 1].forEach((idx) => {
-        const img = technicalImages[idx];
-        const buf = imageBuffers[idx];
-        if (img) {
-          cells.push(
-            new TableCell({
-              borders: noBorder,
-              children: [
-                ...(buf
-                  ? [
-                      new Paragraph({
-                        alignment: AlignmentType.CENTER,
-                        children: [
-                          new ImageRun({
-                            data: buf,
-                            transformation: { width: 230, height: 160 },
-                          } as any),
-                        ],
+    const galleryImages = technicalImages.filter((img) => !img.notes || img.notes.length === 0);
+    const annotatedImages = technicalImages.filter((img) => img.notes && img.notes.length > 0);
+
+    if (galleryImages.length > 0) {
+      children.push(createSectionHeader('Standards & Schémas Techniques', COLORS.SUCCESS));
+      const imageBuffers = await Promise.all(galleryImages.map((img) => fetchImageCached(img.url)));
+      const rows: TableRow[] = [];
+      for (let i = 0; i < galleryImages.length; i += 2) {
+        const cells: TableCell[] = [];
+        [i, i + 1].forEach((idx) => {
+          const img = galleryImages[idx];
+          const buf = imageBuffers[idx];
+          if (img) {
+            cells.push(
+              new TableCell({
+                borders: noBorder,
+                children: [
+                  ...(buf
+                    ? [
+                        new Paragraph({
+                          alignment: AlignmentType.CENTER,
+                          children: [
+                            new ImageRun({
+                              data: buf,
+                              transformation: { width: 230, height: 160 },
+                            } as any),
+                          ],
+                        }),
+                      ]
+                    : []),
+                  new Paragraph({
+                    alignment: AlignmentType.CENTER,
+                    children: [
+                      createText(img.label.toUpperCase(), {
+                        bold: true,
+                        size: 14,
+                        color: COLORS.SUCCESS,
                       }),
-                    ]
-                  : []),
-                new Paragraph({
-                  alignment: AlignmentType.CENTER,
-                  children: [
-                    createText(img.label.toUpperCase(), {
-                      bold: true,
-                      size: 14,
-                      color: COLORS.SUCCESS,
-                    }),
-                  ],
-                  spacing: { before: 100, after: 200 },
-                }),
-              ],
+                    ],
+                    spacing: { before: 100, after: 200 },
+                  }),
+                ],
+              })
+            );
+          } else {
+            cells.push(new TableCell({ children: [], borders: noBorder }));
+          }
+        });
+        rows.push(new TableRow({ children: cells }));
+      }
+      children.push(
+        new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, borders: noBorder, rows })
+      );
+    }
+
+    for (const img of annotatedImages) {
+      children.push(createSectionHeader(img.label, COLORS.SUCCESS));
+      const buffer = await fetchImageCached(img.url);
+      if (buffer) {
+        children.push(
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { before: 120, after: 220 },
+            children: [
+              new ImageRun({
+                data: buffer,
+                transformation: { width: 430, height: 320 },
+              } as any),
+            ],
+          })
+        );
+      }
+
+      img.notes?.forEach((noteBlock) => {
+        children.push(
+          new Paragraph({
+            children: [
+              createText(noteBlock.title.toUpperCase(), {
+                bold: true,
+                size: 20,
+                color: COLORS.SECONDARY,
+              }),
+            ],
+            spacing: { before: 120, after: 80 },
+          })
+        );
+
+        noteBlock.lines.forEach((line) => {
+          children.push(
+            new Paragraph({
+              children: [createText(`• ${line}`, { size: 19 })],
+              spacing: { before: 40, after: 40 },
+              indent: { left: 240 },
             })
           );
-        } else {
-          cells.push(new TableCell({ children: [], borders: noBorder }));
-        }
+        });
       });
-      rows.push(new TableRow({ children: cells }));
+
+      if (img.legend && img.legend.length > 0) {
+        children.push(
+          new Paragraph({
+            children: [createText('LÉGENDE NORMALISÉE', { bold: true, size: 20, color: COLORS.SUCCESS })],
+            spacing: { before: 160, after: 80 },
+          })
+        );
+
+        img.legend.forEach((legendItem) => {
+          children.push(
+            new Paragraph({
+              children: [createText(`• ${legendItem}`, { size: 18 })],
+              spacing: { before: 20, after: 20 },
+              indent: { left: 240 },
+            })
+          );
+        });
+      }
     }
-    children.push(
-      new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, borders: noBorder, rows })
-    );
   }
 
   // 4. Content Sections
@@ -198,6 +277,103 @@ export const createRoleSection = async (data: RoleSectionData, qrBuffer?: ArrayB
     });
   };
 
+  const addKoboGuideSection = (
+    title: string,
+    guideBlocks: Array<{
+      title: string;
+      intro?: string;
+      checks: string[];
+      blockers?: string[];
+      completion?: string[];
+    }>,
+    color: string
+  ) => {
+    if (!guideBlocks || guideBlocks.length === 0) return;
+    children.push(createSectionHeader(title, color));
+
+    guideBlocks.forEach((block) => {
+      children.push(
+        new Paragraph({
+          children: [createText(block.title.toUpperCase(), { bold: true, size: 20, color })],
+          spacing: { before: 160, after: 80 },
+        })
+      );
+
+      if (block.intro) {
+        children.push(
+          new Paragraph({
+            children: [createText(block.intro, { size: 18, italics: true })],
+            spacing: { before: 40, after: 100 },
+          })
+        );
+      }
+
+      children.push(
+        new Paragraph({
+          children: [createText('POINTS À RENSEIGNER', { bold: true, size: 18, color: COLORS.PRIMARY })],
+          spacing: { before: 40, after: 40 },
+        })
+      );
+      block.checks.forEach((item) => {
+        children.push(
+          new Paragraph({
+            children: [createText(`• ${item}`, { size: 18 })],
+            spacing: { before: 20, after: 20 },
+            indent: { left: 240 },
+          })
+        );
+      });
+
+      if (block.blockers && block.blockers.length > 0) {
+        children.push(
+          new Paragraph({
+            children: [
+              createText('NON-CONFORMITÉS BLOQUANTES', {
+                bold: true,
+                size: 18,
+                color: COLORS.DANGER,
+              }),
+            ],
+            spacing: { before: 80, after: 40 },
+          })
+        );
+        block.blockers.forEach((item) => {
+          children.push(
+            new Paragraph({
+              children: [createText(`• ${item}`, { size: 18 })],
+              spacing: { before: 20, after: 20 },
+              indent: { left: 240 },
+            })
+          );
+        });
+      }
+
+      if (block.completion && block.completion.length > 0) {
+        children.push(
+          new Paragraph({
+            children: [
+              createText('CONDITION DE VALIDATION', {
+                bold: true,
+                size: 18,
+                color: COLORS.SUCCESS,
+              }),
+            ],
+            spacing: { before: 80, after: 40 },
+          })
+        );
+        block.completion.forEach((item) => {
+          children.push(
+            new Paragraph({
+              children: [createText(`• ${item}`, { size: 18 })],
+              spacing: { before: 20, after: 20 },
+              indent: { left: 240 },
+            })
+          );
+        });
+      }
+    });
+  };
+
   children.push(createSectionHeader('1. Objet et Obligations', COLORS.SECONDARY));
   children.push(
     new Paragraph({
@@ -207,6 +383,7 @@ export const createRoleSection = async (data: RoleSectionData, qrBuffer?: ArrayB
   );
 
   addListSection('2. Missions et Tâches', missions || [], COLORS.PRIMARY);
+  addKoboGuideSection('Guide Kobo Terrain', koboGuide || [], COLORS.SUCCESS);
   addListSection('3. Matériels et Logistique', materials || [], COLORS.ACCENT);
   addListSection('4. Hygiène, Sécurité et Environnement (HSE)', hse || [], COLORS.DANGER);
   addListSection('5. Sous-traitance', subcontracting || [], COLORS.SLATE);

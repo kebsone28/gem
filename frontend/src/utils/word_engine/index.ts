@@ -34,7 +34,19 @@ export interface ExportData {
   responsible: string;
   contact: string;
   imagePath?: string;
-  technicalImages?: { url: string; label: string }[];
+  technicalImages?: {
+    url: string;
+    label: string;
+    notes?: Array<{ title: string; lines: string[] }>;
+    legend?: string[];
+  }[];
+  koboGuide?: Array<{
+    title: string;
+    intro?: string;
+    checks: string[];
+    blockers?: string[];
+    completion?: string[];
+  }>;
   pricing?: {
     dailyRate: number;
     personnelCount: number;

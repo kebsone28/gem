@@ -215,6 +215,14 @@ export interface CahierTaskPricing {
   currency: string;
 }
 
+export interface CahierTaskGuideBlock {
+  title: string;
+  intro?: string;
+  checks: string[];
+  blockers?: string[];
+  completion?: string[];
+}
+
 export interface CahierTask {
   color: string;
   icon: any;
@@ -228,7 +236,13 @@ export interface CahierTask {
   finances?: string[];
   legal?: string[];
   pricing?: CahierTaskPricing;
-  technicalImages?: { url: string; label: string }[];
+  technicalImages?: {
+    url: string;
+    label: string;
+    notes?: Array<{ title: string; lines: string[] }>;
+    legend?: string[];
+  }[];
+  koboGuide?: CahierTaskGuideBlock[];
 }
 
 export interface TaskLibrary {

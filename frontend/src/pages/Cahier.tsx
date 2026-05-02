@@ -1,5 +1,5 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
-import { useState, useEffect, useMemo, useCallback } from 'react';
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   AlignmentType,
   Document,
@@ -96,6 +96,7 @@ const COLOR_MAPS: Record<string, { bg: string; text: string; border: string; bgS
 };
 
 type CahierDocumentMode = 'cahier' | 'contrat' | 'strategie';
+type CahierGuideBlock = NonNullable<CahierTask['koboGuide']>[number];
 
 function isContractHeading(line: string): boolean {
   return (
@@ -115,6 +116,141 @@ function buildContractTemplateFromText(template: ContractTemplate, rawContent: s
     ...template,
     content,
   };
+}
+
+function mergeContractLibraryWithDefaults(saved: ContractTemplateLibrary): ContractTemplateLibrary {
+  const merged: ContractTemplateLibrary = { ...DEFAULT_CONTRACT_TEMPLATES, ...saved };
+
+  Object.keys(DEFAULT_CONTRACT_TEMPLATES).forEach((lot) => {
+    const savedTemplate = saved[lot];
+    const hasPlaceholder =
+      !savedTemplate ||
+      savedTemplate.content.length <= 3 ||
+      savedTemplate.content.some((line) => /MOD[EÈ]LE\s+[ÀA]\s+COMPL[EÉ]TER/i.test(line));
+    const hasOutdatedLotSplit =
+      (lot === 'LOT B' &&
+        savedTemplate?.content?.some((line) =>
+          /pose de potelets, supports ext[eé]rieurs/i.test(line)
+        )) ||
+      (lot === 'LOT C' &&
+        savedTemplate?.content?.some((line) =>
+          /pose ou v[eé]rification des supports, potelets/i.test(line)
+        ));
+
+    if (hasPlaceholder || hasOutdatedLotSplit) {
+      merged[lot] = DEFAULT_CONTRACT_TEMPLATES[lot];
+    }
+  });
+
+  return merged;
+}
+
+function restoreTaskLibraryIcons(library: TaskLibrary): TaskLibrary {
+  const restored = { ...library };
+  Object.keys(restored).forEach((key) => {
+    if (DEFAULT_TASK_LIBRARY[key]) {
+      restored[key] = {
+        ...DEFAULT_TASK_LIBRARY[key],
+        ...restored[key],
+        icon: DEFAULT_TASK_LIBRARY[key].icon,
+      };
+    }
+  });
+  return sanitizeTaskLibraryForCahier(restored);
+}
+
+function serializeTaskLibrary(library: TaskLibrary): TaskLibrary {
+  const sanitizedLibrary = sanitizeTaskLibraryForCahier(library);
+  return Object.fromEntries(
+    Object.entries(sanitizedLibrary).map(([key, task]) => {
+      const { icon: _icon, ...serializableTask } = task as any;
+      return [key, serializableTask];
+    })
+  ) as TaskLibrary;
+}
+
+const CONTRACTUAL_TEXT_PATTERN =
+  /p[eé]nalit|paiement|caution|factur|r[eé]siliation|juridiction|contract|sous-trait|honoraire|montant du lot|retenue|faute grave|responsabilit[eé] civile|poursuite|blocage des paiements|exclusion du march[eé]/i;
+
+function removeContractualSentences(text: string): string {
+  return text
+    .split(/(?<=[.!?])\s+/)
+    .filter((sentence) => !CONTRACTUAL_TEXT_PATTERN.test(sentence))
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function cleanTechnicalLine(line: string): string {
+  const cleaned = removeContractualSentences(line)
+    .replace(/\s*Le non-respect.*$/i, '')
+    .replace(/\s*Leur absence.*$/i, '')
+    .replace(/\s*L'absence.*$/i, '')
+    .replace(/\s*Les infractions.*$/i, '')
+    .replace(/\s*Tout dommage.*$/i, '')
+    .replace(/\s*Toute omission.*$/i, '')
+    .replace(/\s*Tout défaut.*$/i, '')
+    .replace(/\s*Les fouilles non sécurisées.*$/i, '')
+    .replace(/\s*Ces données constituent.*$/i, '')
+    .replace(/\s*Ce PV est une condition.*$/i, '')
+    .replace(/\s*Il doit souscrire.*$/i, '')
+    .trim();
+
+  if (!cleaned) return '';
+  return cleaned.endsWith('.') || cleaned.endsWith(':') ? cleaned : `${cleaned}.`;
+}
+
+function buildTechnicalIntroduction(roleName: string, fallback: string): string {
+  const introByRole: Record<string, string> = {
+    Électricien:
+      'Référentiel technique pour l’installation intérieure des ménages : tableau, protections, circuits, mise à la terre, essais et traçabilité terrain selon NS 01-001, NF C 15-100 et prescriptions PROQUELEC.',
+    Maçonnerie:
+      'Référentiel technique pour les ouvrages du Lot B : mur support, scellements, potelet, coffret de comptage, tranchées et finitions nécessaires à une pose stable, contrôlable et durable.',
+    'Réseau Extérieur':
+      'Référentiel technique pour le branchement extérieur : reconnaissance réseau, tirage du câble préassemblé, protections mécaniques liées au câble, entrée coffret et contrôles avant mise sous tension.',
+    Logistique:
+      'Référentiel opérationnel pour les flux de matériel : préparation, traçabilité, transport sécurisé, bordereaux, livraison terrain et gestion des rebuts.',
+    'Audit & Contrôle Qualité (PROQUELEC)':
+      'Référentiel de contrôle PROQUELEC : vérifications terrain, essais, photos géolocalisées, constats de conformité et réserves techniques avant validation.',
+  };
+
+  return roleName in introByRole ? introByRole[roleName] : cleanTechnicalLine(fallback);
+}
+
+function sanitizeKoboGuideBlock(block: CahierGuideBlock): CahierGuideBlock {
+  return {
+    ...block,
+    intro: block.intro ? cleanTechnicalLine(block.intro) : undefined,
+    checks: block.checks.map(cleanTechnicalLine).filter(Boolean),
+    blockers: (block.blockers || []).map(cleanTechnicalLine).filter(Boolean),
+    completion: (block.completion || []).map(cleanTechnicalLine).filter(Boolean),
+  };
+}
+
+function sanitizeTaskForCahier(roleName: string, task: CahierTask): CahierTask {
+  return {
+    ...task,
+    introduction: buildTechnicalIntroduction(roleName, task.introduction),
+    missions: task.missions.map(cleanTechnicalLine).filter(Boolean),
+    koboGuide: (task.koboGuide || []).map(sanitizeKoboGuideBlock).filter((block) => {
+      return (
+        block.checks.length > 0 ||
+        (block.blockers || []).length > 0 ||
+        (block.completion || []).length > 0
+      );
+    }),
+    hse: task.hse.map(cleanTechnicalLine).filter(Boolean),
+    subcontracting: [],
+    finances: [],
+    legal: [],
+    pricing: undefined,
+  };
+}
+
+function sanitizeTaskLibraryForCahier(library: TaskLibrary): TaskLibrary {
+  return Object.fromEntries(
+    Object.entries(library).map(([roleName, task]) => [roleName, sanitizeTaskForCahier(roleName, task)])
+  ) as TaskLibrary;
 }
 
 function buildStrategyTemplateFromText(
@@ -143,28 +279,12 @@ function isStrategyHeading(line: string): boolean {
   );
 }
 
-const GENERAL_CLAUSES = [
-  'ART 0.1 - PIÈCES CONTRACTUELLES : Le présent cahier des charges, les plans types, les bordereaux quantitatifs et estimatifs (BQE), ainsi que les normes (NS 01-001, doctrine Senelec) constituent les pièces contractuelles opposables au Titulaire.',
-  "ART 0.2 - ORDRE DE PRIORITÉ : En cas de contradiction entre les pièces, l'ordre de priorité décroissant est le suivant : 1. Le présent Cahier des Charges ; 2. Les plans techniques validés ; 3. Les normes techniques nationales et internationales.",
-  'ART 0.3 - TRAÇABILITÉ NUMÉRIQUE & PREUVE : Toutes les opérations techniques et administratives sont impérativement tracées dans le système GEM-PROQUELEC. Les horodatages et données numériques issus du système font foi entre les parties en cas de litige.',
-  "ART 0.4 - OBLIGATION DE RÉSULTAT GLOBALE : Le Titulaire est tenu à une obligation de résultat. Il assume la pleine responsabilité de la conformité finale des ouvrages aux règles de l'art.",
-  'ART 6.1 - OBLIGATION DE RÉSULTAT : Le Titulaire est tenu de livrer un ouvrage entièrement fonctionnel, conforme aux normes en vigueur et exempt de défaut.',
-  'ART 6.3 - TRAÇABILITÉ NUMÉRIQUE : Toutes les opérations sont enregistrées dans le système GEM-PROQUELEC et constituent une preuve contractuelle opposable.',
-  'ART 6.4 - NON-CONFORMITÉ : Toute non-conformité détectée entraîne une obligation de reprise immédiate sans compensation.',
-  'ART 6.8 - AUDIT DE CONFORMITÉ : Toute installation est soumise à un audit rigoureux par le contrôleur interne PROQUELEC. Les relevés numériques et photos géolocalisées saisis dans GEM font foi pour la validation finale.',
-  'ART 6.9 - LIQUIDATION DES PAIEMENTS : Le règlement est strictement subordonné à l’obtention d’un score de conformité de 100% (zéro défaut) validé dans le système GEM-PROQUELEC.',
-  'ART 7.1 - MODÈLE PROQUELEC INCLUSIF : Le Maître d’œuvre privilégie un mécanisme de paiement basé sur la performance et la validation des ouvrages via le système GEM-PROQUELEC, en substitution partielle des exigences de cautionnement classiques.',
-  "ART 7.2 - TRÉSORERIE AGILE : Afin de soutenir la rotation de cash des PME, les paiements sont déclenchés de manière hebdomadaire sur la base des ménages validés 'Conformes' dans le système.",
-  'ART 7.3 - CAUTIONNEMENT FLEXIBLE : Les taux de retenue sont limités à 5% et les cautions d’assurance (SONAM/ASKIA) sont acceptées en lieu et place des cautions bancaires.',
-  "ART 7.4 - GARANTIE PAR PERFORMANCE : La rigueur du contrôle digital (Photos, GPS, Audit) constitue la garantie technique première de l'ouvrage.",
-];
-
-const LEGAL_COMMON = [
-  'ART 6.1 - OBLIGATION DE RÉSULTAT : Le Titulaire est tenu de livrer un ouvrage fonctionnel et conforme.',
-  'ART 6.3 - TRAÇABILITÉ NUMÉRIQUE : Preuve contractuelle basée sur les enregistrements GEM-PROQUELEC.',
-  'ART 6.4 - NON-CONFORMITÉ : Obligation de reprise immédiate sans compensation.',
-  'ART 6.8 - AUDIT DE CONFORMITÉ : Validation basée sur les relevés terrain du contrôleur interne PROQUELEC.',
-  'ART 6.9 - LIQUIDATION DES PAIEMENTS : Tout règlement est strictement conditionné à l’obtention d’un score de conformité (zéro défaut) validé dans le système GEM-PROQUELEC.',
+const CAHIER_TECHNICAL_PRINCIPLES = [
+  'Références techniques : appliquer les normes NS 01-001, NF C 15-100 et les prescriptions Senelec selon le périmètre de chaque ouvrage.',
+  'Traçabilité terrain : chaque intervention doit être documentée dans GEM-MINT/Kobo avec numéro d’ordre, photos, GPS, statut et observations.',
+  'Contrôle qualité : aucun ouvrage ne doit être transmis au lot suivant sans vérification visuelle, contrôle des points critiques et levée des réserves techniques.',
+  'Sécurité : les EPI, la consignation, la signalisation et la protection mécanique des ouvrages restent obligatoires pendant toute intervention.',
+  'Passage de témoin : le Lot B remet au Lot C un mur, un potelet, un coffret comptage et une installation intérieure contrôlables; le Lot C limite son action au câble préassemblé et au raccordement.',
 ];
 
 /**
@@ -189,7 +309,7 @@ const CahierSection: React.FC<{
   </div>
 );
 
-const DEFAULT_TASK_LIBRARY: TaskLibrary = {
+const DEFAULT_TASK_LIBRARY: TaskLibrary = sanitizeTaskLibraryForCahier({
   Électricien: {
     color: 'blue',
     icon: Zap,
@@ -218,6 +338,114 @@ const DEFAULT_TASK_LIBRARY: TaskLibrary = {
       "**HSE 1.4 - SIGNALISATION DES ZONES DE TRAVAUX** : Balisage clair des zones d'intervention en milieu habité (cônes, rubans, panneaux \"Danger Électricité\"). L'absence de signalisation est passible d'une pénalité de 3% du montant journalier du lot.",
       "**HSE 1.5 - PREMIERS SECOURS** : Chaque équipe doit disposer d'une trousse de secours conforme à la norme NF EN 12870 et d'un défibrillateur automatisé externe (DAE) sur les chantiers de plus de 5 personnes. Leur absence est sanctionnée par une pénalité de 7% du montant journalier du lot.",
     ],
+    technicalImages: [
+      {
+        url: '/assets/images/schema-principe-installation-monophasee.png',
+        label: 'Synoptique séquentiel - installation monophasée',
+        notes: [
+          {
+            title: '1. Arrivée et comptage',
+            lines: [
+              'Réseau monophasé 230 V ~ 50 Hz.',
+              'Câble préassemblé 2x16 mm2 vers le coffret de comptage extérieur.',
+              'Coffret de comptage avec compteur monophasé DTM96 et coupe-circuit monophasé.',
+              'Sortie du coupe-circuit vers le coffret principal par câble armé 2x4 mm2.',
+            ],
+          },
+          {
+            title: '2. Coffret principal',
+            lines: [
+              'Disjoncteur général 63/15 A type Baco.',
+              'Interrupteur différentiel 30 mA type AC.',
+              'Deux disjoncteurs modulaires : C10 A pour lumières, C16 A pour prises et secondaire.',
+              'Bornier triplet : rouge phase, bleu neutre, vert/jaune terre.',
+            ],
+          },
+          {
+            title: '3. Circuits terminaux',
+            lines: [
+              'Circuit lumières : C10 A, câble armé 3x1,5 mm2 vers lampes et interrupteurs.',
+              'Circuit prises : C16 A, câble armé 3x2,5 mm2 vers prises murales.',
+              'Circuit secondaire : C16 A, câble armé 3x2,5 mm2 vers boîte secondaire.',
+              'Chaque départ est identifié sur le bornier phase, neutre et terre.',
+            ],
+          },
+          {
+            title: '4. Mise à la terre',
+            lines: [
+              'Bornier de terre interne vers conducteur vert/jaune 6 mm2.',
+              'Conducteur vers barrette de terre extérieure.',
+              'Barrette de terre vers piquet par fil cuivre nu 25 mm2.',
+              'Tous les conducteurs PE des circuits terminaux sont reliés au bornier de terre.',
+            ],
+          },
+        ],
+        legend: ['Rouge = Phase (L)', 'Bleu = Neutre (N)', 'Vert/Jaune = Terre (PE)'],
+      },
+    ],
+    koboGuide: [
+      {
+        title: 'Étape intérieure dans Kobo',
+        intro:
+          "Le formulaire Kobo n'ouvre la validation intérieure qu'après confirmation du branchement conforme.",
+        checks: [
+          "Confirmer que le branchement est réalisé et conforme avant de commencer l'installation intérieure.",
+          "Renseigner l'état de l'installation intérieure et compléter les observations libres si un écart n'entre pas dans les choix prédéfinis.",
+          "Valider la fin d'étape uniquement lorsque l'installation intérieure est terminée et contrôlable.",
+        ],
+        blockers: [
+          'Branchement non réalisé.',
+          'Branchement non conforme.',
+          "Installation intérieure encore incomplète au moment de la validation Kobo.",
+        ],
+      },
+      {
+        title: 'Tableau, protections et séparation des circuits',
+        checks: [
+          "Présence d'un disjoncteur général en tête d'installation.",
+          "Type de disjoncteur général correctement identifié et installation protégée par DDR 30 mA.",
+          "Protection à l'origine de chaque circuit avec séparation claire entre lumière et prise.",
+        ],
+        blockers: [
+          'Absence de disjoncteur général.',
+          'Différentiel 30 mA absent, détérioré ou mal positionné.',
+          'Absence de modulaire lumière ou prise, ou calibre non adapté.',
+        ],
+      },
+      {
+        title: 'Appareillage, câblage et finition de pose',
+        checks: [
+          'Coffret, prises, interrupteurs, boîtes et câbles correctement posés, fixés et protégés.',
+          'Code couleur des conducteurs respecté et aucun point nu sous tension accessible.',
+          "Câble d'alimentation enterré, adapté au sol et section minimale respectée.",
+        ],
+        blockers: [
+          'Boîte de dérivation sans couvercle ou absente.',
+          'Prise, interrupteur ou douille détérioré, mal fixé ou mal câblé.',
+          'Câble 1,5 mm2 ou 2,5 mm2 jonctionné par épissure.',
+          "Câblage intérieur passé en aérien, mal fixé ou section d'alimentation inférieure au minimum requis.",
+          'Coffret disjoncteur mal fixé ou placé hors zone couverte.',
+        ],
+      },
+      {
+        title: 'Protection mécanique et réseau de terre',
+        checks: [
+          'Aucun conducteur visible sur les câbles 1,5 mm2, 2,5 mm2 et 4 mm2.',
+          'Conducteur principal vert/jaune protégé mécaniquement sur tout son parcours.',
+          'Piquet, barrette, dominos et continuité du réseau de terre contrôlés.',
+          'Valeur de résistance de terre ou de boucle renseignée dans Kobo.',
+        ],
+        blockers: [
+          'Absence de piquet de terre ou de barrette de terre.',
+          'Terre non raccordée au coffret ou à la boîte de dérivation.',
+          'Piquet déconnecté ou réseau de terre non raccordé.',
+          'Absence de continuité du conducteur de protection.',
+        ],
+        completion: [
+          "La validation finale intérieure suppose une terre complète, continue et mesurée dans le formulaire.",
+        ],
+      },
+    ],
     subcontracting: [
       "ART 4.1 - RESPONSABILITÉ : Le Titulaire reste pleinement responsable de la conformité des installations, même en cas de sous-traitance. Il doit obtenir l'accord écrit du Maître d'Ouvrage pour toute sous-traitance et vérifier que le sous-traitant dispose des certifications requises (qualification Senelec, assurance RC Pro).",
     ],
@@ -227,7 +455,7 @@ const DEFAULT_TASK_LIBRARY: TaskLibrary = {
       "ART 5.3 - CAUTIONNEMENT FLEXIBLE : La retenue de garantie est limitée à 5-10% du montant des prestations. Le Titulaire peut la substituer par une caution d'assurance délivrée par une compagnie agréée (SONAM, ASKIA), sous réserve de transmission de l’attestation correspondante.",
     ],
     legal: [
-      ...LEGAL_COMMON,
+
       'ART E.1 - RESPONSABILITÉ TECHNIQUE : L’électricien est responsable de la conformité totale de l’installation intérieure aux normes NFC 15-100 et NS 01-001. Toute non-conformité engage sa responsabilité civile et pénale.',
       'ART E.2 - RISQUE ÉLECTRIQUE : Toute installation non sécurisée engage sa responsabilité en cas d’incendie, d’électrocution ou de dommage matériel, conformément au Code pénal sénégalais.',
       'ART E.3 - MISE À LA TERRE : L’absence ou la défaillance du systeme de terre (résistance > 1500 Ohms, conducteur section insuffisante) constitue une faute grave, entraînant le rejet de l’ouvrage et l’application de pénalités de 15% du montant du lot par jour de retard dans la correction.',
@@ -271,7 +499,7 @@ const DEFAULT_TASK_LIBRARY: TaskLibrary = {
       "**HSE 2.5 - PREMIERS SECOURS** : Présence obligatoire d'une trousse de secours (norme NF EN 12870) et d'un point d'eau potable sur chaque chantier. Leur absence est passible d'une pénalité de 5% du montant journalier du lot.",
     ],
     legal: [
-      ...LEGAL_COMMON,
+
       'ART M.1 - STABILITÉ MÉCANIQUE : Le maçon est responsable de la stabilité des ouvrages réalisés. Toute fissuration (> 0,2 mm) ou tout affaissement détecté dans les 30 jours suivant la réception entraîne une reprise intégrale aux frais du Titulaire.',
       'ART M.2 - SUPPORT DES COFFRETS : Tout défaut du support (muret, socle) affectant la fixation ou l’étanchéité du coffret de comptage engage la responsabilité décennale du Titulaire.',
       'ART M.3 - DOSAGE DU BÉTON : Le non-respect des dosages prescrits (350 kg/m3 pour les fondations, 1:2:4 pour les enduits) constitue une non-conformité majeure, entraînant le rejet de l’ouvrage et des pénalités de 10% par jour de retard dans la correction.',
@@ -319,8 +547,65 @@ const DEFAULT_TASK_LIBRARY: TaskLibrary = {
       '**HSE 3.4 - ÉQUIPEMENTS DE PROTECTION** : Port obligatoire des EPI suivants : casque avec jugulaire, gants isolants (norme EN 60903), chaussures de sécurité (norme EN ISO 20345), et vêtements haute visibilité (norme EN ISO 20471). Leur absence est sanctionné par une pénalité de 5% du montant journalier du lot.',
       '**HSE 3.5 - SÉCURITÉ ROUTIÈRE** : Respect des limites de vitesse (40 km/h en zone habitée) et interdiction du téléphone au volant. Les infractions sont sanctionnées par une pénalité de 5% du montant journalier du lot, cumulable en cas de récidive.',
     ],
+    koboGuide: [
+      {
+        title: 'Prérequis avant branchement',
+        intro:
+          "Le groupe Kobo réseau commence par la conformité du mur et l'état global du branchement avant tout contrôle détaillé.",
+        checks: [
+          'Vérifier et déclarer la conformité du mur avant toute pose réseau.',
+          "Renseigner l'état du branchement puis joindre une photo d'anomalie si un écart existe.",
+          "Escalader le dossier dès qu'une extension réseau est nécessaire.",
+        ],
+        blockers: [
+          'Mur non réalisé ou non conforme.',
+          'Coffret compteur non encore posé.',
+          'Potelet non encore posé.',
+          'Câble préassemblé non encore tiré.',
+        ],
+      },
+      {
+        title: 'Position, longueur et hauteur du branchement',
+        checks: [
+          'Contrôler la position et la longueur du branchement selon le contexte urbain ou rural.',
+          'Contrôler la hauteur du branchement et la hauteur du coffret.',
+          'Maintenir le hublot du coffret dans la plage 1,20 m à 1,60 m.',
+        ],
+        blockers: [
+          'Branchement au-delà de la position 2 en zone urbaine.',
+          'Branchement au-delà de la position 3 en zone rurale.',
+          'Longueur supérieure à 40 m en zone urbaine ou 50 m en zone rurale.',
+          'Hauteur du coffret inférieure à 1,20 m ou supérieure à 1,60 m.',
+        ],
+      },
+      {
+        title: 'Coupe-circuit, protection PVC et mode de pose',
+        checks: [
+          "Présence d'un coupe-circuit en bon état avec calibre maîtrisé.",
+          'Protection mécanique de la descente par tube PVC sur toute la longueur.',
+          'Mode de pose propre : coffret en limite de propriété, câble non jonctionné, potelet stable.',
+        ],
+        blockers: [
+          "Absence ou détérioration du coupe-circuit, ou calibre fusible supérieur à 25 A.",
+          'Pas de tube PVC ou protection mécanique incomplète sur la descente.',
+          'Coffret percé ou posé à l’intérieur de la propriété.',
+          'Câble préassemblé jonctionné.',
+          "Potelet trop incliné, absence de pince d'ancrage ou de queue de cochon.",
+        ],
+      },
+      {
+        title: 'Validation Kobo de fin d’étape',
+        checks: [
+          'Ne cocher la validation finale que si le branchement est terminé, conforme et transmissible au lot intérieur.',
+          'Renseigner toutes les observations libres quand le défaut constaté dépasse les choix proposés.',
+        ],
+        completion: [
+          'Une validation finale réseau correspond à un mur conforme, un coffret correctement posé et un branchement extérieur sans réserve bloquante.',
+        ],
+      },
+    ],
     legal: [
-      ...LEGAL_COMMON,
+
       'ART R.1 - INTÉGRITÉ DU RÉSEAU SENELEC : Toute dégradation du réseau Senelec (poteaux, câbles, hublots) imputable au Titulaire sera réparée à ses frais, sous 48h après notification, sous peine de pénalités de 20% du montant du lot par jour de retard.',
       'ART R.2 - DISTANCES DE SÉCURITÉ : Le non-respect des distances minimales (3 m au-dessus des voies, 1 m en propriété privée) ou des règles de tension mécanique des câbles constitue une faute grave, entraînant le rejet du branchement et une pénalité de 15% du montant du lot.',
       'ART R.3 - BRANCHEMENT ILLICITE : Tout branchement non conforme aux plans validés ou réalisé sans autorisation est strictement interdit. En cas de fraude avérée, le Titulaire sera exclu du marché et poursuivi conformément au Code pénal sénégalais.',
@@ -367,7 +652,7 @@ const DEFAULT_TASK_LIBRARY: TaskLibrary = {
       '**HSE 4.5 - GESTION DES DÉCHETS** : Tri et élimination des rebuts (câbles, emballages) conformément à la réglementation environnementale sénégalaise. Le non-respect expose à une pénalité de 5% du montant du lot et à des poursuites administratives.',
     ],
     legal: [
-      ...LEGAL_COMMON,
+
       "ART L.1 - RESPONSABILITÉ DU TRANSPORT : Le Titulaire est responsable des équipements et matériaux du départ du dépôt jusqu'à leur réception sur site. Toute perte, vol ou détérioration sera facturée au prix du marché majoré de 20%.",
       "ART L.2 - TRACABILITÉ OBLIGATOIRE : Toute sortie de matériel doit être enregistrée dans GEM-PROQUELEC avant le départ du dépôt. L'absence de tracabilité bloque les paiements jusqu'à régularisation.",
       "ART L.3 - GESTION DES DÉCHETS : Le non-respect des procédures de tri et d'élimination des rebuts (câbles, emballages) entraîne une pénalité de 5% du montant du lot et peut donner lieu à une exclusion du marché pour non-respect des normes environnementales.",
@@ -415,7 +700,7 @@ const DEFAULT_TASK_LIBRARY: TaskLibrary = {
       "**HSE 5.5 - FORMATION ET HABILITATION** : Le contrôleur doit être titulaire d'une habilitation électrique (BR ou BC) en cours de validité. Son absence est passible d'une exclusion du marché et de poursuites pour exercice illégal.",
     ],
     legal: [
-      ...LEGAL_COMMON,
+
       'ART C.1 - INDÉPENDANCE DU CONTRÔLEUR : Le contrôleur PROQUELEC agit de manière autonome et indépendante des équipes de réalisation. Ses décisions sont souveraines et ne peuvent faire l’objet de pression ou d’influence.',
       'ART C.2 - POUVOIR DE REFUS : Tout ouvrage non conforme aux normes ou présentant un risque pour la sécurité est rejeté jusqu’à reprise complète et validation par PROQUELEC. Le Titulaire ne peut contester ce rejet sans preuve écrite de conformité.',
       'ART C.3 - CERTIFICATION FINALE : La validation dans GEM-PROQUELEC par le contrôleur PROQUELEC constitue le seul acte déclenchant le processus de paiement. Aucune réception verbale ou partielle n’est opposable au Maître d’Ouvrage.',
@@ -434,7 +719,7 @@ const DEFAULT_TASK_LIBRARY: TaskLibrary = {
       currency: 'FCFA',
     },
   },
-};
+});
 
 const ROLE_TO_TRADE_MAPPING: Record<string, string> = {
   Maçonnerie: 'macons',
@@ -457,6 +742,7 @@ export default function Cahier() {
 
   const { project, updateProject } = useProject();
   const { teams: allTeams } = useTeams(project?.id);
+  const migratedProjectRef = useRef<string | null>(null);
 
   const [documentMode, setDocumentMode] = useState<CahierDocumentMode>('cahier');
   const [selectedRole, setSelectedRole] = useState('Électricien');
@@ -492,43 +778,43 @@ export default function Cahier() {
     return null;
   }, [project, allTeams, selectedRole]);
 
-  // Load local overrides or fallback to Project Standard, then Default
+  // Server-first: project.config is the source of truth. localStorage is only a migration fallback.
   const [customLibrary, setCustomLibrary] = useState<TaskLibrary>(() => {
     try {
-      // 1. Try Local Storage (User's working draft)
+      const serverLibrary = (project?.config as any)?.cahierLibrary;
+      if (serverLibrary?.['Électricien']) {
+        return restoreTaskLibraryIcons(serverLibrary);
+      }
+
+      const projectHistory = (project?.config as any)?.cahierHistory;
+      if (projectHistory && projectHistory.length > 0) {
+        return restoreTaskLibraryIcons(projectHistory[0].library);
+      }
+
       const localSaved = safeStorage.getItem('gem_cahier_library');
       if (localSaved) {
         const parsed = JSON.parse(localSaved);
         if (parsed['Électricien']) {
-          // Restore Icons
-          Object.keys(parsed).forEach((k) => {
-            if (DEFAULT_TASK_LIBRARY[k]) parsed[k].icon = DEFAULT_TASK_LIBRARY[k].icon;
-          });
-          return parsed;
+          return restoreTaskLibraryIcons(parsed);
         }
-      }
-
-      // 2. Try Project Config (Team's standard)
-      const projectHistory = (project?.config as any)?.cahierHistory;
-      if (projectHistory && projectHistory.length > 0) {
-        const dbLibrary = { ...projectHistory[0].library };
-        Object.keys(dbLibrary).forEach((k) => {
-          if (DEFAULT_TASK_LIBRARY[k]) dbLibrary[k].icon = DEFAULT_TASK_LIBRARY[k].icon;
-        });
-        return dbLibrary;
       }
     } catch (e) {
       logger.warn('[Cahier] Initial load failed, fallback to defaults', e);
     }
-    return DEFAULT_TASK_LIBRARY;
+    return sanitizeTaskLibraryForCahier(DEFAULT_TASK_LIBRARY);
   });
 
   const [contractLibrary, setContractLibrary] = useState<ContractTemplateLibrary>(() => {
     try {
+      const serverLibrary = (project?.config as any)?.contractLibrary as ContractTemplateLibrary;
+      if (serverLibrary?.['LOT A']) {
+        return mergeContractLibraryWithDefaults(serverLibrary);
+      }
+
       const saved = safeStorage.getItem('gem_contract_library');
       if (saved) {
         const parsed = JSON.parse(saved) as ContractTemplateLibrary;
-        if (parsed['LOT A']) return parsed;
+        if (parsed['LOT A']) return mergeContractLibraryWithDefaults(parsed);
       }
     } catch (e) {
       logger.warn('[Cahier] Contract initial load failed, fallback to defaults', e);
@@ -538,6 +824,11 @@ export default function Cahier() {
 
   const [operationalStrategy, setOperationalStrategy] = useState<OperationalStrategyTemplate>(() => {
     try {
+      const serverStrategy = (project?.config as any)?.operationalStrategy as OperationalStrategyTemplate;
+      if (Array.isArray(serverStrategy?.content) && serverStrategy.content.length > 0) {
+        return serverStrategy;
+      }
+
       const saved = safeStorage.getItem('gem_operational_strategy');
       if (saved) {
         const parsed = JSON.parse(saved) as OperationalStrategyTemplate;
@@ -554,12 +845,61 @@ export default function Cahier() {
     : Object.keys(DEFAULT_TASK_LIBRARY)[0];
   const currentTask =
     customLibrary[currentRoleKey as keyof typeof customLibrary] ||
-    DEFAULT_TASK_LIBRARY[Object.keys(DEFAULT_TASK_LIBRARY)[0]];
+    sanitizeTaskForCahier(
+      Object.keys(DEFAULT_TASK_LIBRARY)[0],
+      DEFAULT_TASK_LIBRARY[Object.keys(DEFAULT_TASK_LIBRARY)[0]]
+    );
   const CurrentIcon = currentTask?.icon || Hammer;
   const currentContract =
     contractLibrary[selectedContractLot] || DEFAULT_CONTRACT_TEMPLATES[selectedContractLot];
+  const synopticSchema = (currentTask.technicalImages || []).find(
+    (image: any) => Array.isArray(image.notes) && image.notes.length > 0
+  ) as
+    | {
+        url: string;
+        label: string;
+        notes: Array<{ title: string; lines: string[] }>;
+        legend?: string[];
+      }
+    | undefined;
+  const synopticLeftNotes = synopticSchema
+    ? synopticSchema.notes.slice(0, Math.ceil(synopticSchema.notes.length / 2))
+    : [];
+  const synopticRightNotes = synopticSchema
+    ? synopticSchema.notes.slice(Math.ceil(synopticSchema.notes.length / 2))
+    : [];
   const [contractDraft, setContractDraft] = useState(currentContract.content.join('\n'));
   const [strategyDraft, setStrategyDraft] = useState(operationalStrategy.content.join('\n'));
+
+  const persistCahierConfig = useCallback(async (
+    updates: Record<string, unknown>,
+    successMessage?: string
+  ): Promise<boolean> => {
+    if (!project || !isAdmin) return false;
+
+    try {
+      setIsSaving(true);
+      await updateProject({
+        config: {
+          ...(project.config as any),
+          ...updates,
+          cahierServerSyncedAt: new Date().toISOString(),
+          cahierServerSyncedBy: user?.email || user?.name || user?.role || 'admin',
+        } as any,
+      });
+
+      if (successMessage) {
+        alert(successMessage);
+      }
+      return true;
+    } catch (error) {
+      logger.error('[Cahier] Server save failed', error);
+      alert('Erreur pendant la sauvegarde serveur.');
+      return false;
+    } finally {
+      setIsSaving(false);
+    }
+  }, [isAdmin, project, updateProject, user?.email, user?.name, user?.role]);
 
   const getCadence = (roleName: string) => {
     const tradeKey = ROLE_TO_TRADE_MAPPING[roleName];
@@ -624,6 +964,103 @@ export default function Cahier() {
     },
   });
 
+  useEffect(() => {
+    if (!project?.id) return;
+
+    const serverLibrary = (project.config as any)?.cahierLibrary;
+    const projectHistory = (project.config as any)?.cahierHistory;
+    if (serverLibrary?.['Électricien']) {
+      setCustomLibrary(restoreTaskLibraryIcons(serverLibrary));
+    } else if (projectHistory && projectHistory.length > 0) {
+      setCustomLibrary(restoreTaskLibraryIcons(projectHistory[0].library));
+    }
+
+    const serverContracts = (project.config as any)?.contractLibrary as ContractTemplateLibrary;
+    if (serverContracts?.['LOT A']) {
+      setContractLibrary(mergeContractLibraryWithDefaults(serverContracts));
+    }
+
+    const serverStrategy = (project.config as any)?.operationalStrategy as OperationalStrategyTemplate;
+    if (Array.isArray(serverStrategy?.content) && serverStrategy.content.length > 0) {
+      setOperationalStrategy(serverStrategy);
+    }
+  }, [project?.id, project?.config]);
+
+  useEffect(() => {
+    if (!project?.id || !isAdmin) return;
+    if (migratedProjectRef.current === project.id) return;
+
+    const config = project.config as any;
+    const hasServerCahier = Boolean(config?.cahierLibrary?.['Électricien']);
+    const hasServerContracts = Boolean(config?.contractLibrary?.['LOT A']);
+    const hasServerStrategy = Boolean(config?.operationalStrategy?.content?.length);
+
+    if (hasServerCahier && hasServerContracts && hasServerStrategy) {
+      migratedProjectRef.current = project.id;
+      return;
+    }
+
+    const updates: Record<string, unknown> = {};
+
+    try {
+      if (!hasServerCahier) {
+        const localCahier = safeStorage.getItem('gem_cahier_library');
+        if (localCahier) {
+          const parsed = JSON.parse(localCahier);
+          if (parsed?.['Électricien']) {
+            const hydrated = restoreTaskLibraryIcons(parsed);
+            setCustomLibrary(hydrated);
+            updates.cahierLibrary = serializeTaskLibrary(hydrated);
+          }
+        } else {
+          updates.cahierLibrary = serializeTaskLibrary(DEFAULT_TASK_LIBRARY);
+        }
+      }
+
+      if (!hasServerContracts) {
+        const localContracts = safeStorage.getItem('gem_contract_library');
+        if (localContracts) {
+          const parsed = JSON.parse(localContracts) as ContractTemplateLibrary;
+          if (parsed?.['LOT A']) {
+            const merged = mergeContractLibraryWithDefaults(parsed);
+            setContractLibrary(merged);
+            updates.contractLibrary = merged;
+          }
+        } else {
+          updates.contractLibrary = DEFAULT_CONTRACT_TEMPLATES;
+        }
+      }
+
+      if (!hasServerStrategy) {
+        const localStrategy = safeStorage.getItem('gem_operational_strategy');
+        if (localStrategy) {
+          const parsed = JSON.parse(localStrategy) as OperationalStrategyTemplate;
+          if (Array.isArray(parsed?.content) && parsed.content.length > 0) {
+            setOperationalStrategy(parsed);
+            updates.operationalStrategy = parsed;
+          }
+        } else {
+          updates.operationalStrategy = DEFAULT_OPERATIONAL_STRATEGY;
+        }
+      }
+    } catch (error) {
+      logger.warn('[Cahier] Local-to-server migration skipped', error);
+    }
+
+    if (Object.keys(updates).length > 0) {
+      migratedProjectRef.current = project.id;
+      void persistCahierConfig(updates).then((saved) => {
+        if (saved) {
+          safeStorage.removeItem('gem_cahier_library');
+          safeStorage.removeItem('gem_contract_library');
+          safeStorage.removeItem('gem_operational_strategy');
+        } else {
+          migratedProjectRef.current = null;
+        }
+      });
+    }
+  }, [isAdmin, persistCahierConfig, project?.id, project?.config]);
+
   /**
    * Synchronise le taux automatique avec l'état d'édition si disponible
    */
@@ -655,7 +1092,10 @@ export default function Cahier() {
       setSelectedRole(role);
       setIsEditing(false);
       const task = (customLibrary[role as keyof typeof customLibrary] ||
-        DEFAULT_TASK_LIBRARY[Object.keys(DEFAULT_TASK_LIBRARY)[0]]) as CahierTask;
+        sanitizeTaskForCahier(
+          Object.keys(DEFAULT_TASK_LIBRARY)[0],
+          DEFAULT_TASK_LIBRARY[Object.keys(DEFAULT_TASK_LIBRARY)[0]]
+        )) as CahierTask;
 
       setEditData({
         introduction: task.introduction || '',
@@ -675,7 +1115,7 @@ export default function Cahier() {
     [customLibrary]
   );
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const updatedLibrary = { ...customLibrary };
     updatedLibrary[selectedRole as keyof typeof customLibrary] = {
       ...currentTask,
@@ -683,44 +1123,39 @@ export default function Cahier() {
       missions: editData.missions.split('\n').filter(Boolean),
       materials: editData.materials.split('\n').filter(Boolean),
       hse: editData.hse.split('\n').filter(Boolean),
-      subcontracting: editData.subcontracting.split('\n').filter(Boolean),
-      finances: editData.finances.split('\n').filter(Boolean),
-      pricing: {
-        ...currentTask.pricing,
-        ...editData.pricing,
-      },
+      subcontracting: [],
+      finances: [],
+      legal: [],
+      pricing: undefined,
     } as CahierTask;
 
     setCustomLibrary(updatedLibrary);
-    safeStorage.setItem('gem_cahier_library', JSON.stringify(updatedLibrary));
-    setIsEditing(false);
+    const saved = await persistCahierConfig({
+      cahierLibrary: serializeTaskLibrary(updatedLibrary),
+    });
+    if (saved) setIsEditing(false);
   };
 
-  const handleSaveToLocal = () => {
-    safeStorage.setItem('gem_cahier_library', JSON.stringify(customLibrary));
-    setIsEditing(false);
-  };
-
-  const handleSaveContract = () => {
+  const handleSaveContract = async () => {
     const updated = {
       ...contractLibrary,
       [selectedContractLot]: buildContractTemplateFromText(currentContract, contractDraft),
     };
     setContractLibrary(updated);
-    safeStorage.setItem('gem_contract_library', JSON.stringify(updated));
-    setIsContractEditing(false);
+    const saved = await persistCahierConfig({ contractLibrary: updated });
+    if (saved) setIsContractEditing(false);
   };
 
-  const handleResetContract = () => {
+  const handleResetContract = async () => {
     if (!confirm(`Restaurer le modèle ${selectedContractLot} par défaut ?`)) return;
     const updated = {
       ...contractLibrary,
       [selectedContractLot]: DEFAULT_CONTRACT_TEMPLATES[selectedContractLot],
     };
     setContractLibrary(updated);
-    safeStorage.setItem('gem_contract_library', JSON.stringify(updated));
     setContractDraft(updated[selectedContractLot].content.join('\n'));
-    setIsContractEditing(false);
+    const saved = await persistCahierConfig({ contractLibrary: updated });
+    if (saved) setIsContractEditing(false);
   };
 
   const handleExportContractWord = async () => {
@@ -776,19 +1211,19 @@ export default function Cahier() {
     saveAs(blob, `Contrat_${selectedContractLot.replace(/\s+/g, '_')}.docx`);
   };
 
-  const handleSaveStrategy = () => {
+  const handleSaveStrategy = async () => {
     const updated = buildStrategyTemplateFromText(operationalStrategy, strategyDraft);
     setOperationalStrategy(updated);
-    safeStorage.setItem('gem_operational_strategy', JSON.stringify(updated));
-    setIsStrategyEditing(false);
+    const saved = await persistCahierConfig({ operationalStrategy: updated });
+    if (saved) setIsStrategyEditing(false);
   };
 
-  const handleResetStrategy = () => {
+  const handleResetStrategy = async () => {
     if (!confirm('Restaurer la stratégie opérationnelle par défaut ?')) return;
     setOperationalStrategy(DEFAULT_OPERATIONAL_STRATEGY);
-    safeStorage.setItem('gem_operational_strategy', JSON.stringify(DEFAULT_OPERATIONAL_STRATEGY));
     setStrategyDraft(DEFAULT_OPERATIONAL_STRATEGY.content.join('\n'));
-    setIsStrategyEditing(false);
+    const saved = await persistCahierConfig({ operationalStrategy: DEFAULT_OPERATIONAL_STRATEGY });
+    if (saved) setIsStrategyEditing(false);
   };
 
   const handleExportStrategyWord = async () => {
@@ -865,16 +1300,21 @@ export default function Cahier() {
         id: crypto.randomUUID(),
         date: new Date().toISOString(),
         author: user?.role || 'Admin',
-        library: { ...customLibrary } as TaskLibrary,
+        library: serializeTaskLibrary(customLibrary),
       };
 
       const newHistory = [newVersion, ...currentHistory].slice(0, 3);
 
       await updateProject({
         config: {
-          ...project.config,
+          ...(project.config as any),
+          cahierLibrary: serializeTaskLibrary(customLibrary),
+          contractLibrary,
+          operationalStrategy,
           cahierHistory: newHistory,
-        },
+          cahierServerSyncedAt: new Date().toISOString(),
+          cahierServerSyncedBy: user?.email || user?.name || user?.role || 'admin',
+        } as any,
       });
       alert('Norme projet enregistrée avec succès (Historique mis à jour).');
     } catch (error) {
@@ -884,14 +1324,18 @@ export default function Cahier() {
     }
   };
 
-  const handleRestoreVersion = (version: CahierVersion) => {
+  const handleRestoreVersion = async (version: CahierVersion) => {
     if (
       !confirm(`Voulez-vous restaurer la version du ${new Date(version.date).toLocaleString()} ?`)
     )
       return;
-    setCustomLibrary(version.library);
-    safeStorage.setItem('gem_cahier_library', JSON.stringify(version.library));
-    alert('Version restaurée !');
+    const restored = restoreTaskLibraryIcons(version.library);
+    setCustomLibrary(restored);
+    const saved = await persistCahierConfig(
+      { cahierLibrary: serializeTaskLibrary(restored) },
+      'Version restaurée sur le serveur.'
+    );
+    if (!saved) setCustomLibrary(customLibrary);
   };
 
   const handleExportWord = async () => {
@@ -904,19 +1348,20 @@ export default function Cahier() {
           materials: currentTask.materials,
           hse: currentTask.hse,
           subcontracting: currentTask.subcontracting || [],
-          finances: currentTask.finances || [],
-          legal: (currentTask as any).legal || [],
+          finances: [],
+          legal: [],
           startDate: new Date().toISOString().slice(0, 10),
           endDate: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
           responsible: user?.name || '',
           contact: '',
           imagePath: currentTask.image,
           technicalImages: (currentTask as any).technicalImages,
-          pricing: currentTask.pricing,
+          koboGuide: currentTask.koboGuide || [],
+          pricing: undefined,
         },
       ],
       false,
-      GENERAL_CLAUSES
+      []
     );
   };
 
@@ -930,18 +1375,19 @@ export default function Cahier() {
         materials: t.materials,
         hse: t.hse,
         subcontracting: t.subcontracting || [],
-        finances: t.finances || [],
-        legal: t.legal || [],
+        finances: [],
+        legal: [],
         startDate: new Date().toISOString().slice(0, 10),
         endDate: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
         responsible: '',
         contact: '',
         imagePath: t.image,
         technicalImages: t.technicalImages,
-        pricing: t.pricing,
+        koboGuide: t.koboGuide || [],
+        pricing: undefined,
       };
     });
-    await exportCahiersToWord(allData, true, GENERAL_CLAUSES);
+    await exportCahiersToWord(allData, true, []);
   };
 
   const finalRolesToDisplay = useMemo(() => {
@@ -1065,16 +1511,20 @@ export default function Cahier() {
                 </button>
 
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     if (
                       confirm(
                         'Voulez-vous réinitialiser TOUS les cahiers aux normes en vigueur par défaut ?'
                       )
                     ) {
-                      safeStorage.removeItem('gem_cahier_library');
-                      window.location.reload();
+                      setCustomLibrary(sanitizeTaskLibraryForCahier(DEFAULT_TASK_LIBRARY));
+                      await persistCahierConfig(
+                        { cahierLibrary: serializeTaskLibrary(DEFAULT_TASK_LIBRARY) },
+                        'Cahiers réinitialisés sur le serveur.'
+                      );
                     }
                   }}
+                  disabled={isSaving}
                   className="flex items-center gap-2 px-3 py-2 bg-red-500/10 border border-red-500/20 text-red-500 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-red-500/20 transition-all active:scale-95"
                   title="Réinitialiser aux normes par défaut"
                 >
@@ -1340,11 +1790,23 @@ export default function Cahier() {
             </div>
           </div>
         ) : (
-        <div className="max-w-7xl mx-auto grid grid-cols-1 xl:grid-cols-4 gap-4 md:gap-6 p-3 md:p-8">
-          {/* Left Navigation: Role Selection with enhanced style */}
-          {/* Navigation : Role Selection (Horizontal on mobile) */}
-          <div className="xl:col-span-1 xl:space-y-3">
-            <div className="flex xl:flex-col overflow-x-auto xl:overflow-x-visible gap-2 pb-4 xl:pb-0 no-scrollbar">
+        <div className="mx-auto max-w-[96rem] space-y-4 md:space-y-6 p-3 md:p-8">
+          <section className="rounded-3xl border border-slate-800 bg-slate-950/40 p-3 md:p-4">
+            <div className="mb-3 flex items-center justify-between gap-3 px-1 md:px-2">
+              <div>
+                <h3 className="text-sm font-semibold uppercase tracking-[0.14em] text-slate-100">
+                  Lots disponibles
+                </h3>
+                <p className="mt-1 text-xs text-slate-500">
+                  Sélection du guide métier à afficher.
+                </p>
+              </div>
+              <span className="rounded-full border border-slate-700 bg-slate-900 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-300">
+                {finalRolesToDisplay.length} rubriques
+              </span>
+            </div>
+
+            <div className="flex overflow-x-auto gap-3 pb-1 no-scrollbar md:grid md:grid-cols-2 md:auto-rows-fr md:items-stretch xl:grid-cols-5 md:overflow-visible">
               {finalRolesToDisplay.map(([name, data]: [string, any]) => {
                 const Icon = data.icon;
                 const isSelected = selectedRole === name;
@@ -1353,21 +1815,21 @@ export default function Cahier() {
                     key={name}
                     onClick={() => handleRoleChange(name)}
                     className={`
-                      flex-shrink-0 flex items-center gap-3 p-3 md:p-4 rounded-xl transition-colors border
+                      min-w-[16rem] md:min-w-0 h-full min-h-[14rem] flex flex-col items-start gap-4 p-4 md:p-5 rounded-2xl transition-colors border text-left
                       ${isSelected
-                        ? 'bg-orange-500/10 text-white border-orange-500/70'
-                        : 'bg-slate-950/40 text-slate-400 border-slate-800 hover:bg-slate-900 hover:text-white'
+                        ? 'bg-orange-500/[0.08] text-white border-orange-500/60 shadow-[0_0_0_1px_rgba(249,115,22,0.08)]'
+                        : 'bg-slate-950/30 text-slate-400 border-slate-800 hover:bg-slate-900/70 hover:text-white'
                       }
                     `}
                   >
                     <div
                       className={`
-                        w-8 h-8 md:w-10 md:h-10 rounded-lg flex items-center justify-center shrink-0
-                        ${isSelected ? 'bg-orange-500/15' : 'bg-slate-900'}
+                        w-11 h-11 md:w-12 md:h-12 rounded-2xl flex items-center justify-center shrink-0
+                        ${isSelected ? 'bg-orange-500/12' : 'bg-slate-900'}
                       `}
                     >
                       <Icon
-                        size={16}
+                        size={18}
                         className={
                           isSelected
                             ? 'text-white'
@@ -1375,16 +1837,16 @@ export default function Cahier() {
                         }
                       />
                     </div>
-                    <div className="text-left min-w-0 flex-1">
-                      <span className="block font-bold text-xs md:text-sm leading-tight">
+                    <div className="min-w-0 flex flex-1 flex-col">
+                      <span className="block min-h-[3.5rem] text-base font-semibold leading-tight text-white">
                         {name}
                       </span>
                       {getCadence(name) && (
                         <span
-                          className={`block text-[10px] font-medium opacity-80 mt-0.5 ${isSelected ? 'text-white/90' : 'text-orange-400'
+                          className={`mt-2 block text-xs leading-6 ${isSelected ? 'text-orange-100/90' : 'text-orange-300'
                             }`}
                         >
-                          ({getCadence(name)})
+                          {getCadence(name)}
                         </span>
                       )}
                     </div>
@@ -1392,10 +1854,9 @@ export default function Cahier() {
                 );
               })}
             </div>
-          </div>
+          </section>
 
-          {/* Details Content */}
-          <main className="xl:col-span-3 space-y-3 md:space-y-8">
+          <main className="space-y-3 md:space-y-8">
             <div className="bg-slate-950/45 border border-slate-800 rounded-2xl overflow-hidden">
               <div
                 className="p-4 md:p-7 bg-slate-950/60 border-b border-slate-800"
@@ -1488,7 +1949,7 @@ export default function Cahier() {
                   </div>
 
                   {/* Technical Gallery for Standards */}
-                  {currentTask.technicalImages && (
+                  {currentTask.technicalImages?.some((image: any) => !image.notes) && (
                     <div className="mt-8">
                       <div className="flex items-center space-x-2 mb-6">
                         <div className="w-1 h-6 bg-emerald-500 rounded-full" />
@@ -1497,7 +1958,7 @@ export default function Cahier() {
                         </h4>
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {currentTask.technicalImages.map((img: any, idx: number) => (
+                        {currentTask.technicalImages.filter((image: any) => !image.notes).map((img: any, idx: number) => (
                           <div
                             key={idx}
                             className="group relative overflow-hidden rounded-2xl border border-white/10 bg-slate-900/50"
@@ -1518,21 +1979,125 @@ export default function Cahier() {
                     </div>
                   )}
                   <div className="flex items-center space-x-2 mb-6">
-                    <div className="w-1 h-6 bg-red-500 rounded-full" />
+                    <div className="w-1 h-6 bg-cyan-500 rounded-full" />
                     <h4 className="font-bold text-white uppercase tracking-wider text-sm">
-                      Dispositions Générales du Marché
+                      Principes techniques communs
                     </h4>
                   </div>
-                  <div className="bg-red-500/5 border border-red-500/20 rounded-xl p-4 md:p-6 mb-8">
+                  <div className="bg-cyan-500/5 border border-cyan-500/20 rounded-xl p-4 md:p-6 mb-8">
                     <ul className="space-y-3">
-                      {GENERAL_CLAUSES.map((clause, idx) => (
+                      {CAHIER_TECHNICAL_PRINCIPLES.map((clause, idx) => (
                         <li key={idx} className="flex items-start gap-3">
-                          <Shield size={14} className="text-red-500 mt-1 shrink-0" />
+                          <Shield size={14} className="text-cyan-400 mt-1 shrink-0" />
                           <span className="text-slate-400 text-xs leading-relaxed">{clause}</span>
                         </li>
                       ))}
                     </ul>
                   </div>
+
+                  {currentTask.koboGuide && currentTask.koboGuide.length > 0 && (
+                    <CahierSection title="Guide Kobo terrain" color="#22c55e">
+                      <div className="space-y-5">
+                        <div className="rounded-2xl border border-emerald-500/15 bg-emerald-500/[0.04] p-5 md:p-6">
+                          <div className="flex items-start gap-3">
+                            <div className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400">
+                              <ClipboardList size={16} />
+                            </div>
+                            <p className="text-xs md:text-sm leading-relaxed text-slate-300">
+                              Guide dérivé des groupes `survey` et `choices` Kobo pour fiabiliser
+                              la saisie, le contrôle terrain et le passage au lot suivant.
+                            </p>
+                          </div>
+                        </div>
+
+                        {currentTask.koboGuide.map((block: CahierGuideBlock, idx: number) => (
+                          <div
+                            key={`${block.title}-${idx}`}
+                            className="rounded-3xl border border-white/8 bg-slate-950/45 p-5 md:p-6"
+                          >
+                            <div className="flex items-start justify-between gap-4">
+                              <div>
+                                <h5 className="text-base md:text-lg font-semibold uppercase tracking-[0.08em] text-white">
+                                  {block.title}
+                                </h5>
+                                {block.intro && (
+                                  <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-400">
+                                    {block.intro}
+                                  </p>
+                                )}
+                              </div>
+                              <span className="shrink-0 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-300">
+                                Kobo
+                              </span>
+                            </div>
+
+                            <div className="mt-5 space-y-4">
+                              <div className="rounded-2xl border border-blue-500/15 bg-blue-500/[0.04] p-4 md:p-5">
+                                <h6 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-blue-300">
+                                  Points à renseigner
+                                </h6>
+                                <ul className="mt-4 space-y-3">
+                                  {block.checks.map((item: string, itemIdx: number) => (
+                                    <li key={itemIdx} className="flex items-start gap-2">
+                                      <CheckCircle2
+                                        size={14}
+                                        className="mt-1 shrink-0 text-blue-400"
+                                      />
+                                      <span className="text-sm leading-7 text-slate-300">
+                                        {item}
+                                      </span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+
+                              {(block.blockers || []).length > 0 && (
+                                <div className="rounded-2xl border border-amber-500/15 bg-amber-500/[0.04] p-4 md:p-5">
+                                  <h6 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-amber-300">
+                                    Non-conformités bloquantes
+                                  </h6>
+                                  <ul className="mt-4 space-y-3">
+                                    {(block.blockers || []).map((item: string, itemIdx: number) => (
+                                      <li key={itemIdx} className="flex items-start gap-2">
+                                        <AlertTriangle
+                                          size={14}
+                                          className="mt-1 shrink-0 text-amber-400"
+                                        />
+                                        <span className="text-sm leading-7 text-slate-300">
+                                          {item}
+                                        </span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+
+                              {(block.completion || []).length > 0 && (
+                                <div className="rounded-2xl border border-emerald-500/15 bg-emerald-500/[0.04] p-4 md:p-5">
+                                  <h6 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
+                                    Condition de validation
+                                  </h6>
+                                  <ul className="mt-4 space-y-3">
+                                    {(block.completion || []).map((item: string, itemIdx: number) => (
+                                      <li key={itemIdx} className="flex items-start gap-2">
+                                        <ShieldCheck
+                                          size={14}
+                                          className="mt-1 shrink-0 text-emerald-400"
+                                        />
+                                        <span className="text-sm leading-7 text-slate-300">
+                                          {item}
+                                        </span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CahierSection>
+                  )}
 
                   <CahierSection title="Objet & Obligations Techniques" color="#3b82f6">
                     {isEditing ? (
@@ -1568,7 +2133,7 @@ export default function Cahier() {
                 </section>
 
                 <section>
-                  <CahierSection title="Dispositions Contractuelles" color="#6366f1">
+                  <CahierSection title="Cadre technique du modèle" color="#6366f1">
                     <div className="bg-indigo-500/5 border border-indigo-500/20 rounded-xl p-4 mb-4">
                       {isEditing ? (
                         <textarea
@@ -1587,7 +2152,7 @@ export default function Cahier() {
                     </div>
                   </CahierSection>
                   <CahierSection title="Matériel & Moyens Logistiques" color="#f97316">
-                    <div className="bg-slate-800/50 rounded-2xl p-4 md:p-6 border border-slate-800 mb-6 font-display">
+                    <div className="rounded-3xl border border-white/8 bg-slate-950/45 p-5 md:p-6 mb-6">
                       {isEditing ? (
                         <textarea
                           title="Modifier le matériel"
@@ -1598,32 +2163,36 @@ export default function Cahier() {
                           className="w-full h-24 bg-slate-950 border border-slate-700 rounded-xl p-4 text-slate-300 text-sm focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none resize-none"
                         />
                       ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-3">
                           {currentTask.materials.map((m: string, i: number) => (
                             <div
                               key={i}
-                              className={`flex items-center space-x-3 bg-slate-900/40 text-slate-300 p-3 rounded-xl border border-white/5 text-xs font-bold transition-all hover:border-orange-500/30 ${m.startsWith('Materiel') || m.includes('Réalisation')
-                                ? 'sm:col-span-2 bg-orange-500/10 border-orange-500/20 text-orange-400 mt-2'
-                                : ''
-                                }`}
+                              className={`rounded-2xl border p-4 md:p-5 transition-colors ${
+                                m.startsWith('Materiel') || m.includes('Réalisation')
+                                  ? 'border-orange-500/15 bg-orange-500/[0.05]'
+                                  : 'border-white/8 bg-slate-900/35 hover:border-orange-500/20'
+                              }`}
                             >
-                              <Package
-                                size={14}
-                                className={
-                                  m.startsWith('Materiel') || m.includes('Réalisation')
-                                    ? 'text-orange-500'
-                                    : 'text-slate-500'
-                                }
-                              />
-                              <span
-                                className={
-                                  m.startsWith('Materiel') || m.includes('Réalisation')
-                                    ? 'uppercase tracking-wider'
-                                    : ''
-                                }
-                              >
-                                {m}
-                              </span>
+                              <div className="flex items-start gap-3">
+                                <div
+                                  className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
+                                    m.startsWith('Materiel') || m.includes('Réalisation')
+                                      ? 'bg-orange-500/10 text-orange-400'
+                                      : 'bg-slate-800 text-slate-400'
+                                  }`}
+                                >
+                                  <Package size={16} />
+                                </div>
+                                <span
+                                  className={`text-sm leading-7 ${
+                                    m.startsWith('Materiel') || m.includes('Réalisation')
+                                      ? 'font-semibold uppercase tracking-[0.08em] text-orange-200'
+                                      : 'text-slate-300'
+                                  }`}
+                                >
+                                  {m}
+                                </span>
+                              </div>
                             </div>
                           ))}
                         </div>
@@ -1632,7 +2201,7 @@ export default function Cahier() {
                   </CahierSection>
 
                   <CahierSection title="Cadre Hygiène & Sécurité (HSE)" color="#f43f5e">
-                    <div className="bg-rose-500/5 backdrop-blur-sm border border-rose-500/20 rounded-2xl p-4 md:p-5">
+                    <div className="rounded-3xl border border-rose-500/12 bg-rose-500/[0.04] p-5 md:p-6">
                       {isEditing ? (
                         <textarea
                           title="Modifier les règles HSE"
@@ -1643,13 +2212,35 @@ export default function Cahier() {
                           className="w-full h-24 bg-slate-950 border border-rose-500/30 rounded-xl p-3 text-rose-300 text-sm focus:border-rose-500 outline-none resize-none"
                         />
                       ) : (
-                        <div className="space-y-3">
+                        <div className="space-y-4">
                           {currentTask.hse.map((h: string, i: number) => (
-                            <div key={i} className="flex items-start space-x-3">
-                              <AlertTriangle size={14} className="text-rose-400 shrink-0 mt-1" />
-                              <p className="text-[11px] md:text-xs text-rose-200/70 leading-relaxed font-bold">
-                                {h}
-                              </p>
+                            <div
+                              key={i}
+                              className="rounded-2xl border border-rose-500/10 bg-slate-950/35 p-4 md:p-5"
+                            >
+                              <div className="flex items-start gap-3">
+                                <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-rose-500/10 text-rose-400">
+                                  <AlertTriangle size={16} />
+                                </div>
+                                <div className="min-w-0">
+                                  {(() => {
+                                    const [title, ...rest] = h.split(' : ');
+                                    const detail = rest.join(' : ');
+                                    return detail ? (
+                                      <>
+                                        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-rose-300">
+                                          {title}
+                                        </p>
+                                        <p className="mt-2 text-sm leading-7 text-slate-300">
+                                          {detail}
+                                        </p>
+                                      </>
+                                    ) : (
+                                      <p className="text-sm leading-7 text-slate-300">{h}</p>
+                                    );
+                                  })()}
+                                </div>
+                              </div>
                             </div>
                           ))}
                         </div>
@@ -1657,6 +2248,7 @@ export default function Cahier() {
                     </div>
                   </CahierSection>
 
+                  <div className="hidden">
                   <CahierSection title="Dispositions Relatives à la Sous-traitance" color="#eab308">
                     <div className="bg-yellow-500/5 border border-yellow-500/20 rounded-xl p-4">
                       {isEditing ? (
@@ -1682,7 +2274,9 @@ export default function Cahier() {
                       )}
                     </div>
                   </CahierSection>
+                  </div>
 
+                  <div className="hidden">
                   <CahierSection
                     title="Dispositions Financières, Cautions & Garanties"
                     color="#f59e0b"
@@ -1719,7 +2313,9 @@ export default function Cahier() {
                       )}
                     </div>
                   </CahierSection>
+                  </div>
 
+                  <div className="hidden">
                   <CahierSection title="Configurations & Barèmes Contractuels" color="#10b981">
                     <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-6">
                       {isEditing ? (
@@ -1908,7 +2504,9 @@ export default function Cahier() {
                       )}
                     </div>
                   </CahierSection>
+                  </div>
 
+                  <div className="hidden">
                   <CahierSection title="Juridique & Responsabilité" color="#a855f7">
                     <div className="bg-purple-500/5 border border-purple-500/20 rounded-xl p-4 mb-8">
                       <ul className="space-y-3">
@@ -1928,11 +2526,100 @@ export default function Cahier() {
                       </ul>
                     </div>
                   </CahierSection>
+                  </div>
                 </section>
               </div>
 
+              {synopticSchema && (
+                <section className="mx-4 mb-8 rounded-2xl border border-cyan-500/20 bg-slate-950/55 p-4 md:mx-6 md:mb-10 md:p-6">
+                  <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-300">
+                        Synoptique séquentiel
+                      </p>
+                      <h4 className="mt-2 text-xl font-black text-white md:text-2xl">
+                        Installation monophasée
+                      </h4>
+                    </div>
+                    <span className="w-fit rounded-full border border-cyan-500/20 bg-cyan-500/10 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-cyan-200">
+                      230 V ~ 50 Hz
+                    </span>
+                  </div>
+
+                  <div className="overflow-hidden rounded-xl border border-slate-800 bg-white p-2 md:p-3 shadow-2xl shadow-cyan-950/30">
+                    <img
+                      src={synopticSchema.url}
+                      alt={synopticSchema.label}
+                      className="h-auto w-full rounded-lg object-contain"
+                    />
+                  </div>
+
+                  <div className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-2 xl:items-start">
+                    <div className="space-y-4">
+                      {synopticLeftNotes.map((block) => (
+                        <div
+                          key={block.title}
+                          className="rounded-xl border border-slate-800 bg-slate-900/55 p-4 md:p-5"
+                        >
+                          <h5 className="mb-3 text-xs font-black uppercase tracking-[0.14em] text-cyan-200">
+                            {block.title}
+                          </h5>
+                          <ul className="space-y-2">
+                            {block.lines.map((line) => (
+                              <li key={line} className="flex gap-2 text-sm leading-7 text-slate-300">
+                                <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-cyan-400" />
+                                <span>{line}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="space-y-4">
+                      {synopticRightNotes.map((block) => (
+                        <div
+                          key={block.title}
+                          className="rounded-xl border border-slate-800 bg-slate-900/55 p-4 md:p-5"
+                        >
+                          <h5 className="mb-3 text-xs font-black uppercase tracking-[0.14em] text-cyan-200">
+                            {block.title}
+                          </h5>
+                          <ul className="space-y-2">
+                            {block.lines.map((line) => (
+                              <li key={line} className="flex gap-2 text-sm leading-7 text-slate-300">
+                                <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-cyan-400" />
+                                <span>{line}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {synopticSchema.legend && (
+                    <div className="mt-5 rounded-xl border border-slate-800 bg-slate-950/70 p-4 md:p-5">
+                      <h5 className="mb-3 text-xs font-black uppercase tracking-[0.14em] text-slate-400">
+                        Légende normalisée
+                      </h5>
+                      <div className="flex flex-wrap gap-2">
+                        {synopticSchema.legend.map((item) => (
+                          <span
+                            key={item}
+                            className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] font-bold text-slate-200"
+                          >
+                            {item}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </section>
+              )}
+
               {/* SECTION INNOVATION FULL WIDTH */}
-              <div className="mt-12 pt-12 border-t border-slate-800">
+              <div className="hidden mt-12 pt-12 border-t border-slate-800">
                 <div className="flex items-center space-x-2 md:space-x-3 mb-8">
                   <div className="w-10 h-10 rounded-xl bg-indigo-500/20 flex items-center justify-center border border-indigo-500/30">
                     <ShieldCheck size={24} className="text-indigo-400" />
