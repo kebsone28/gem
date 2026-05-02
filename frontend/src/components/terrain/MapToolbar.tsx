@@ -72,7 +72,6 @@ interface MapToolbarProps {
     measure?: boolean;
     lasso?: boolean;
     drawZones?: boolean;
-    geoJsonLayers?: boolean;
     regionDownload?: boolean;
     dataHub?: boolean;
   };

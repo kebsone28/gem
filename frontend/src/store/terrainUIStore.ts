@@ -23,7 +23,6 @@ export type PanelType =
   | 'none'
   | 'routing'
   | 'draw'
-  | 'layers'
   | 'grappe'
   | 'region'
   | 'datahub'
@@ -107,9 +106,7 @@ interface TerrainUIState {
     cmd: { center: [number, number]; zoom: number; timestamp: number } | null
   ) => void;
 
-  // --- NEW: Layers & High-Level UI ---
-  externalLayers: any[];
-  setExternalLayers: (layers: any[]) => void;
+  // --- NEW: High-Level UI ---
   activeGrappeId: string | null;
   setActiveGrappeId: (id: string | null) => void;
 
@@ -239,9 +236,7 @@ export const useTerrainUIStore = create<TerrainUIState>((set) => ({
   mapCommand: null,
   setMapCommand: (mapCommand) => set({ mapCommand }),
 
-  // Layers & Grappes
-  externalLayers: [],
-  setExternalLayers: (externalLayers) => set({ externalLayers }),
+  // Grappes
   activeGrappeId: null,
   setActiveGrappeId: (id) => set({ activeGrappeId: id }),
   isDownloadingOffline: false,

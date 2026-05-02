@@ -20,7 +20,6 @@ export type TerrainFeatureKey =
   | 'measure'
   | 'drawZones'
   | 'grappeTools'
-  | 'geoJsonLayers'
   | 'regionDownload'
   | 'dataHub';
 
@@ -48,7 +47,6 @@ export const DEFAULT_TERRAIN_FEATURES: Record<TerrainFeatureKey, boolean> = {
   measure: false,
   drawZones: false,
   grappeTools: false,
-  geoJsonLayers: false,
   regionDownload: false,
   dataHub: false,
 };
@@ -62,7 +60,6 @@ export const ADMIN_ONLY_TERRAIN_FEATURES: TerrainFeatureKey[] = [
   'measure',
   'drawZones',
   'grappeTools',
-  'geoJsonLayers',
   'regionDownload',
   'dataHub',
 ];
@@ -94,7 +91,6 @@ export const TERRAIN_FEATURE_DEFS: Array<{
   { key: 'measure', title: 'Mesure', desc: 'Mesure de distance sur carte.', adminOnly: true },
   { key: 'drawZones', title: 'Dessin de zones', desc: 'Création et dessin de zones métier.', adminOnly: true },
   { key: 'grappeTools', title: 'Outils grappes', desc: 'Panneaux grappes et allocation avancée.', adminOnly: true },
-  { key: 'geoJsonLayers', title: 'Couches externes', desc: 'Import GeoJSON/KML et couches cartographiques externes.', adminOnly: true },
   { key: 'regionDownload', title: 'Cartes offline', desc: 'Téléchargement des régions pour travail hors connexion.', adminOnly: true },
   { key: 'dataHub', title: 'DataHub Kobo', desc: 'Outils bruts d’import, purge et sync avancée.', adminOnly: true },
 ];

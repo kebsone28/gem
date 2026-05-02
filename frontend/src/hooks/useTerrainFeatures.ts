@@ -40,7 +40,6 @@ export const useTerrainFeatures = () => {
       resolved.measure = !!configured.measure;
       resolved.drawZones = !!configured.drawZones;
       resolved.grappeTools = !!configured.grappeTools;
-      resolved.geoJsonLayers = !!configured.geoJsonLayers;
       resolved.regionDownload = !!configured.regionDownload;
       resolved.dataHub = !!configured.dataHub;
     }

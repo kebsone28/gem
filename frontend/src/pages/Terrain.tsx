@@ -24,7 +24,6 @@ import { MapRoutingPanel } from '../components/terrain/MapRoutingPanel';
 import { GeofencingAlerts } from '../components/terrain/GeofencingAlerts';
 import { PhotoLightbox } from '../components/terrain/PhotoLightbox';
 import { MapDrawZonesPanel } from '../components/terrain/MapDrawZones';
-import { GeoJsonOverlayPanel } from '../components/terrain/GeoJsonOverlay';
 import { GrappeSelectorPanel } from '../components/terrain/GrappeSelectorPanel';
 import { MapGrappeAllocationPanel } from '../components/terrain/MapGrappeAllocationPanel';
 import { MapRegionDownload } from '../components/terrain/MapRegionDownload';
@@ -265,7 +264,6 @@ const Terrain: React.FC = () => {
     const blockedPanel =
       (activePanel === 'routing' && !terrainFeatures.routing) ||
       (activePanel === 'draw' && !terrainFeatures.drawZones) ||
-      (activePanel === 'layers' && !terrainFeatures.geoJsonLayers) ||
       (activePanel === 'grappe' && !terrainFeatures.grappeTools) ||
       (activePanel === 'grappe_allocation' && !terrainFeatures.grappeTools) ||
       (activePanel === 'region' && !terrainFeatures.regionDownload) ||
@@ -872,7 +870,6 @@ const Terrain: React.FC = () => {
           terrainFeatures.lasso ||
           terrainFeatures.drawZones ||
           terrainFeatures.dataHub
-          || terrainFeatures.geoJsonLayers
           || terrainFeatures.regionDownload
         }
         mapToolbarFeatures={{
@@ -888,7 +885,6 @@ const Terrain: React.FC = () => {
           measure: terrainFeatures.measure,
           lasso: terrainFeatures.lasso,
           drawZones: terrainFeatures.drawZones,
-          geoJsonLayers: terrainFeatures.geoJsonLayers,
           regionDownload: terrainFeatures.regionDownload,
           dataHub: terrainFeatures.dataHub,
         }}
@@ -953,11 +949,6 @@ const Terrain: React.FC = () => {
         </div>
       )}
 
-      {terrainFeatures.geoJsonLayers && activePanel === 'layers' && (
-        <div className="z-[60] pointer-events-auto">
-          <GeoJsonOverlayPanel />
-        </div>
-      )}
       {terrainFeatures.grappeTools && activePanel === 'grappe' && (
         <div className="z-[60] pointer-events-auto">
           <GrappeSelectorPanel

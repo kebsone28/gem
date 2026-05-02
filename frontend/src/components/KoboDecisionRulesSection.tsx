@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { Plus, Trash2, AlertTriangle, Settings2, Info } from 'lucide-react';
+import { Plus, Trash2, Settings2, Info } from 'lucide-react';
 import { KOBO_TECHNICAL_QUESTIONS } from '../utils/koboFormCatalog';
 import toast from 'react-hot-toast';
 
@@ -40,7 +40,7 @@ export function KoboDecisionRulesSection({ project, onUpdate }: { project: any; 
         }
       });
       toast.success('Règles de conclusion enregistrées !');
-    } catch (error) {
+    } catch (_error) {
       toast.error('Erreur lors de la sauvegarde.');
     } finally {
       setIsSaving(false);

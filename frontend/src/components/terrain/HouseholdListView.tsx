@@ -138,7 +138,6 @@ const HouseholdRow = ({
       
     return (
       <div
-        // eslint-disable-next-line react/forbid-dom-props
         style={style}
         className={`group flex items-center px-4 sm:px-6 py-2 border-b transition-all ${
           isDarkMode
