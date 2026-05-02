@@ -139,6 +139,7 @@ const Terrain: React.FC = () => {
   } = useGrappeClustering(households);
   const { auditResult } = useAuditData(households);
   const {
+    setRoutingStart,
     setRoutingDest,
     setRouteStats,
     routeStats,
@@ -202,30 +203,8 @@ const Terrain: React.FC = () => {
     [conformingHouseholds]
   );
 
-  // Terrain photo hook
-  const { capturePhoto, selectFromGallery, isCapturing } = useTerrainPhoto({
-    onUpload: async (file: File): Promise<string> => {
-      if (!file) return "";
-      logger.debug('📸 Photo capturée, début upload...', file.name);
-      
-      const toastId = toast.loading('Upload de la photo...');
-      try {
-        const result = await uploadToServer(file);
-        if (result) {
-          toast.success('Photo enregistrée au serveur', { id: toastId });
-          // If editor is open, we could push it to a global state or store
-          // For now, let's just log it. The editor has its own upload button now.
-        } else {
-          toast.error('Échec de l\'upload', { id: toastId });
-        }
-        return "ok";
-      } catch (e) {
-          logger.error(e);
-          toast.error('Erreur upload', { id: toastId });
-          return "";
-        }
-    },
-  });
+  // useTerrainPhoto removed as floating tools are gone. 
+  // HouseholdDetailsPanel now handles its own uploads.
 
   // ✅ GUARD: Prevent double-initialization from StrictMode
   const autoCenterInitializedRef = useRef(false);
@@ -416,7 +395,6 @@ const Terrain: React.FC = () => {
     userLocation,
     setRoutingDest,
     setRouteStats,
-    setRoutingStart,
     setPanel,
   ]);
 
