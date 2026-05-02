@@ -78,7 +78,6 @@ export const HouseholdStatusTimeline: React.FC<HouseholdStatusTimelineProps> = R
         {effectiveStages.map((stage, index) => {
           const isCompleted = currentIndex >= 0 && index < currentIndex;
           const isCurrent = index === currentIndex;
-          const isPending = currentIndex >= 0 ? index > currentIndex : true;
 
           return (
             <div

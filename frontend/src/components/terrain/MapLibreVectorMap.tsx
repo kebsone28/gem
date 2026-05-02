@@ -529,29 +529,6 @@ const MapLibreVectorMap: React.FC<any> = ({
       // ✅ Force Max Zoom explicitly on instance
       map.setMaxZoom(24);
 
-      // ── AUTO-FALLBACK LOGIC ──
-      map.on('error', (e) => {
-        const errorMsg = e.error?.message || '';
-        // Detect tile or style loading failures
-        if (
-          errorMsg.includes('failed to fetch') || 
-          errorMsg.includes('404') || 
-          errorMsg.includes('403') ||
-          errorMsg.includes('Failed to load')
-        ) {
-          const currentStyle = mapStyleRef.current;
-          // If we are NOT already on the fallback, try to switch to it
-          if (currentStyle !== 'light' && currentStyle !== 'auto') {
-             logger.warn(`[Terrain] 🔄 Map error detected on '${currentStyle}', switching to fallback OSM:`, errorMsg);
-             // Use a timeout to avoid infinite loops if fallback also fails
-             setTimeout(() => {
-                setMapMode('raster'); // Force raster mode (OSM)
-                // We don't change the style toggle yet, just the mode
-             }, 1000);
-          }
-        }
-      });
-
       lastTargetSourceRef.current = getCurrentStyleSource(map) || mapStyle;
 
       const syncMapViewport = () => {

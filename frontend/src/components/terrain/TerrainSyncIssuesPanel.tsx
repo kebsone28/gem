@@ -15,6 +15,7 @@ interface TerrainSyncIssuesPanelProps {
   errorHouseholds: Household[];
   conflicts: ConflictRecord[];
   lastSyncError: string | null;
+  lastSyncAt?: number | null;
   isSyncing: boolean;
   onRepair: () => Promise<void>;
   onSync: () => Promise<void>;
@@ -41,6 +42,7 @@ export const TerrainSyncIssuesPanel: React.FC<TerrainSyncIssuesPanelProps> = ({
   errorHouseholds,
   conflicts,
   lastSyncError,
+  lastSyncAt = null,
   isSyncing,
   onRepair,
   onSync,
@@ -54,6 +56,14 @@ export const TerrainSyncIssuesPanel: React.FC<TerrainSyncIssuesPanelProps> = ({
   const visiblePending = pendingHouseholds.slice(0, 6);
   const visibleErrors = errorHouseholds.slice(0, 6);
   const visibleConflicts = conflicts.slice(-5).reverse();
+  const lastSyncLabel = lastSyncAt
+    ? new Date(lastSyncAt).toLocaleString('fr-FR', {
+        day: '2-digit',
+        month: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    : 'Jamais synchronisé';
 
   return (
     <AnimatePresence>
@@ -91,6 +101,33 @@ export const TerrainSyncIssuesPanel: React.FC<TerrainSyncIssuesPanelProps> = ({
                 Kobo met à jour les ménages préchargés par défaut. Seuls les champs verrouillés
                 dans le formulaire admin restent prioritaires côté local.
               </p>
+            </div>
+
+            <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/10 p-4">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div>
+                  <p className="text-[9px] font-black uppercase tracking-[0.16em] text-cyan-300">
+                    Dernière sync
+                  </p>
+                  <p className="mt-1 text-sm font-black text-cyan-50">{lastSyncLabel}</p>
+                </div>
+                <div>
+                  <p className="text-[9px] font-black uppercase tracking-[0.16em] text-cyan-300">
+                    Source active
+                  </p>
+                  <p className="mt-1 text-sm font-black text-cyan-50">
+                    {lastSyncError ? 'Cache + reprise' : 'Serveur + cache'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[9px] font-black uppercase tracking-[0.16em] text-cyan-300">
+                    État
+                  </p>
+                  <p className="mt-1 text-sm font-black text-cyan-50">
+                    {isSyncing ? 'Synchronisation...' : lastSyncError ? 'À corriger' : 'Stable'}
+                  </p>
+                </div>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">

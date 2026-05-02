@@ -12,6 +12,7 @@ interface BottomBarProps {
   pendingHouseholdsCount?: number;
   errorHouseholdsCount?: number;
   hasSyncError?: boolean;
+  lastSyncAt?: number | null;
   onFlyTo: (lng: number, lat: number) => void;
 }
 
@@ -24,10 +25,14 @@ const BottomBar: React.FC<BottomBarProps> = ({
   pendingHouseholdsCount = 0,
   errorHouseholdsCount = 0,
   hasSyncError = false,
+  lastSyncAt = null,
   onFlyTo,
 }) => {
   // If viewport loading is active, filteredCount < totalCount
   const isViewportFiltered = totalCount !== undefined && filteredCount < totalCount;
+  const lastSyncLabel = lastSyncAt
+    ? new Date(lastSyncAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+    : 'Jamais';
 
   return (
     <div className="absolute bottom-[calc(0.75rem+env(safe-area-inset-bottom))] left-1/2 z-10 flex w-[calc(100%-1rem)] max-w-[calc(100%-1rem)] -translate-x-1/2 items-center justify-center gap-2 pointer-events-none px-0 md:bottom-6 md:w-auto md:max-w-[calc(100%-2rem)] md:gap-4">
@@ -75,6 +80,10 @@ const BottomBar: React.FC<BottomBarProps> = ({
             </span>
           )}
 
+          <span className="text-[10px] font-black px-3 py-1 text-cyan-200 bg-cyan-500/10 rounded-full tracking-widest uppercase border border-cyan-500/10">
+            Sync {lastSyncLabel}
+          </span>
+
           {/* 🏷️ Deployment Marker (to verify update success on VPS) */}
           <span className="hidden sm:block text-[8px] font-black text-white/20 tracking-tighter pr-1">
             v2.1
@@ -110,6 +119,10 @@ const BottomBar: React.FC<BottomBarProps> = ({
                 : `${pendingSyncCount || pendingHouseholdsCount} attente`}
             </span>
           )}
+
+          <span className="shrink-0 text-[10px] font-black px-3 py-1 text-cyan-200 bg-cyan-500/10 rounded-full tracking-[0.12em] uppercase border border-cyan-500/10">
+            Sync {lastSyncLabel}
+          </span>
         </div>
       </div>
     </div>

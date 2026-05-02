@@ -1,6 +1,7 @@
 import React from 'react';
-import { MapPin, RefreshCw, X } from 'lucide-react';
+import { MapPin, RefreshCw, X, Wifi, WifiOff } from 'lucide-react';
 import type { Project } from '../../../utils/types';
+import { useOfflineStore } from '../../../store/offlineStore';
 
 interface ProjectHeaderProps {
   project: Project | null;
@@ -10,6 +11,15 @@ interface ProjectHeaderProps {
   toggleToolbar: () => void;
 }
 
+/** Returns color class based on latency */
+function getRttColor(rtt: number | null, isOnline: boolean): string {
+  if (!isOnline) return 'text-slate-500';
+  if (rtt === null) return 'text-red-400';
+  if (rtt < 300) return 'text-emerald-400';
+  if (rtt < 800) return 'text-amber-400';
+  return 'text-red-400';
+}
+
 const ProjectHeader: React.FC<ProjectHeaderProps> = ({
   project,
   onSync,
@@ -17,6 +27,11 @@ const ProjectHeader: React.FC<ProjectHeaderProps> = ({
   showSync,
   toggleToolbar,
 }) => {
+  const isOnline = useOfflineStore((s) => s.isOnline);
+  const rtt = useOfflineStore((s) => s.rtt);
+  const isQualityDegraded = useOfflineStore((s) => s.isQualityDegraded);
+  const rttColor = getRttColor(rtt, isOnline);
+
   return (
     <div className="flex items-center justify-between mb-2 px-1 gap-2">
       <div className="flex min-w-0 items-center gap-2 md:gap-3">
@@ -32,6 +47,32 @@ const ProjectHeader: React.FC<ProjectHeaderProps> = ({
             {project?.name || 'Sans Projet'}
           </p>
         </div>
+      </div>
+
+      {/* ── Network Quality Badge ── */}
+      <div
+        title={
+          !isOnline
+            ? 'Hors ligne'
+            : isQualityDegraded
+              ? `Connexion dégradée — Circuit Breaker actif (RTT: ${rtt ?? '?'}ms)`
+              : `Connexion OK (RTT: ${rtt ?? '?'}ms)`
+        }
+        className={`hidden sm:flex items-center gap-1 px-2 py-1 rounded-lg border text-[8px] font-black uppercase tracking-widest transition-all ${
+          !isOnline
+            ? 'border-slate-700 bg-slate-800/50 text-slate-500'
+            : isQualityDegraded
+              ? 'border-red-500/40 bg-red-500/10 text-red-400 animate-pulse'
+              : 'border-emerald-500/20 bg-emerald-500/5 text-emerald-400'
+        }`}
+      >
+        {!isOnline ? (
+          <><WifiOff size={9} /> Offline</>
+        ) : isQualityDegraded ? (
+          <><Wifi size={9} /> CB ⚡</>
+        ) : (
+          <><Wifi size={9} className={rttColor} />{rtt !== null ? `${rtt}ms` : '...'}</>
+        )}
       </div>
 
       <div className="md:hidden flex shrink-0 items-center gap-1.5">

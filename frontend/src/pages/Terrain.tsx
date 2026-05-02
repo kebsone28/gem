@@ -85,6 +85,7 @@ const Terrain: React.FC = () => {
   const pendingSyncCount = useSyncStore((s) => s.pendingCount);
   const isSyncing = useSyncStore((s) => s.isSyncing);
   const lastSyncError = useSyncStore((s) => s.lastSyncError);
+  const lastSyncAt = useSyncStore((s) => s.lastSyncAt);
   const conflicts = useSyncStore((s) => s.conflicts);
 
   // Modals state (Removed unused ProjectModals)
@@ -171,6 +172,12 @@ const Terrain: React.FC = () => {
     () => (households || []).filter((household) => household.syncStatus === 'error'),
     [households]
   );
+
+  const hasActiveListFilters =
+    selectedTeam !== 'all' ||
+    selectedPhases.length !== ALL_STATUSES.length ||
+    Boolean(searchQuery.trim()) ||
+    Boolean(mapBounds);
 
   const conformingHouseholds = useMemo(
     () =>
@@ -795,6 +802,9 @@ const Terrain: React.FC = () => {
                 <HouseholdListView
                   households={filteredHouseholds}
                   isDarkMode
+                  totalCount={households?.length || 0}
+                  hasActiveFilters={hasActiveListFilters}
+                  searchQuery={searchQuery}
                   onSelectHousehold={(h: Household) => {
                     if (hasValidCoordinates(h)) {
                       setSelectedHouseholdId(h.id);
@@ -894,6 +904,7 @@ const Terrain: React.FC = () => {
         pendingHouseholdsCount={householdSyncStats.pending}
         errorHouseholdsCount={householdSyncStats.error}
         hasSyncError={!!lastSyncError}
+        lastSyncAt={lastSyncAt}
         onFlyTo={(lng, lat) =>
           setMapCommand({ center: [lng, lat], zoom: 16, timestamp: Date.now() })
         }
@@ -1032,6 +1043,7 @@ const Terrain: React.FC = () => {
           errorHouseholds={errorHouseholds}
           conflicts={conflicts}
           lastSyncError={lastSyncError}
+          lastSyncAt={lastSyncAt}
           isSyncing={isSyncing}
           onRepair={handleRepairSyncIssues}
           onSync={handleManualSync}

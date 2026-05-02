@@ -512,12 +512,15 @@ function ensureLayers(map: maplibregl.Map) {
       id: 'households-labels-simple',
       type: 'symbol',
       source: SRC_HOUSEHOLDS,
+      minzoom: 15,
       layout: {
         'text-field': ['coalesce', ['get', 'numeroordre'], ''],
         'text-font': SAFE_FONT,
         'text-size': 13,
         'text-variable-anchor': ['top'],
         'text-radial-offset': 1.8,
+        'text-allow-overlap': false,
+        'text-ignore-placement': false,
         visibility: 'visible',
       },
       paint: {

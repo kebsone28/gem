@@ -26,6 +26,9 @@ interface HouseholdListViewProps {
   households: Household[];
   isDarkMode: boolean;
   onSelectHousehold: (h: Household) => void;
+  totalCount?: number;
+  hasActiveFilters?: boolean;
+  searchQuery?: string;
 }
 
 const ReportIndicator = React.memo(({ icon, active, title, onClick, color }: any) => {
@@ -212,11 +215,44 @@ export const HouseholdListView: React.FC<HouseholdListViewProps> = ({
   households,
   isDarkMode,
   onSelectHousehold,
+  totalCount,
+  hasActiveFilters = false,
+  searchQuery = '',
 }) => {
   const [sortField, setSortField] = React.useState<'id' | 'name' | 'status' | 'region'>('id');
   const [sortOrder, setSortOrder] = React.useState<'asc' | 'desc'>('asc');
   const [showInlineReports, setShowInlineReports] = React.useState(false);
   const setHighlightedLocation = useTerrainUIStore((s: any) => s.setHighlightedLocation);
+  const emptyState = useMemo(() => {
+    const total = totalCount ?? households.length;
+    if (total === 0) {
+      return {
+        title: 'Aucun ménage chargé',
+        message:
+          'Sélectionnez un projet actif, lancez la synchronisation Kobo ou importez les ménages depuis le Data Hub.',
+      };
+    }
+
+    if (searchQuery.trim()) {
+      return {
+        title: 'Aucun résultat',
+        message: `Aucun ménage ne correspond à "${searchQuery.trim()}". Effacez la recherche ou élargissez les filtres.`,
+      };
+    }
+
+    if (hasActiveFilters) {
+      return {
+        title: 'Aucun ménage dans ce filtre',
+        message:
+          'Les ménages existent, mais le filtre équipe/statut ou la zone visible de la carte les masque.',
+      };
+    }
+
+    return {
+      title: 'Aucun ménage trouvé',
+      message: 'Aucune donnée exploitable avec les paramètres actuels.',
+    };
+  }, [hasActiveFilters, households.length, searchQuery, totalCount]);
 
   React.useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -354,7 +390,10 @@ export const HouseholdListView: React.FC<HouseholdListViewProps> = ({
           >
             <div className="text-center py-16">
               <MapPin size={48} className="mx-auto mb-4 opacity-30" />
-              <p className="text-lg font-semibold">Aucun ménage trouvé</p>
+              <p className="text-lg font-semibold">{emptyState.title}</p>
+              <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed opacity-70">
+                {emptyState.message}
+              </p>
             </div>
           </div>
         ) : (

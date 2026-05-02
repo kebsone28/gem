@@ -13,6 +13,7 @@ import { useOfflineStore } from '../../store/offlineStore';
 import { useAuthStore } from '../../store/authStore';
 import * as safeStorage from '../../utils/safeStorage';
 import { logger } from '../logger';
+import toast from 'react-hot-toast';
 import {
   countPending,
 } from './queueService';
@@ -70,6 +71,17 @@ async function canSync(): Promise<boolean> {
     if (_cbFailures >= CB_FAILURE_LIMIT) {
       _cbOpenAt = Date.now();
       logger.error('SYNC', '⚡ Circuit Breaker TRIPPED — sync suspended for 5 minutes');
+      toast.error('⚡ Connexion trop instable — sync suspendue 5 min', {
+        id: 'cb-tripped',
+        duration: 8000,
+        icon: '📵',
+      });
+    } else {
+      toast(`📶 Connexion dégradée (${rtt ?? '?'}ms) — tentative ${_cbFailures}/${CB_FAILURE_LIMIT}`, {
+        id: 'cb-degraded',
+        duration: 4000,
+        style: { background: '#78350f', color: '#fde68a' },
+      });
     }
     return false;
   }
@@ -77,6 +89,7 @@ async function canSync(): Promise<boolean> {
   // Connection is healthy
   if (_cbFailures > 0) {
     logger.info('SYNC', `✅ Circuit Breaker: connection restored (RTT=${rtt}ms)`);
+    toast.success(`✅ Connexion rétablie (${rtt}ms)`, { id: 'cb-restored', duration: 3000 });
   }
   _cbFailures = 0;
   offlineStore.setQualityDegraded(false, rtt);
