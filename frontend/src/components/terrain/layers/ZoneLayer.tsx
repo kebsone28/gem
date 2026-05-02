@@ -373,6 +373,7 @@ const ZoneLayer: React.FC<ZoneLayerProps> = ({
             id: 'village-labels',
             type: 'symbol',
             source: 'village-centroids',
+            minzoom: 10.5,
             layout: {
               visibility: showZones ? 'visible' : 'none',
               'text-field': ['coalesce', ['get', 'label'], ['get', 'village'], 'Village'],
@@ -381,6 +382,8 @@ const ZoneLayer: React.FC<ZoneLayerProps> = ({
               'text-anchor': 'center',
               'text-max-width': 12,
               'text-line-height': 1.1,
+              'text-allow-overlap': false,
+              'text-ignore-placement': false,
             },
             paint: {
               'text-color': '#ffffff',

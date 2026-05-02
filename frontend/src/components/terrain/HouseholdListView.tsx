@@ -20,6 +20,7 @@ import {
 import type { Household } from '../../utils/types';
 import { getHouseholdDerivedStatus, getStatusTailwindClasses } from '../../utils/statusUtils';
 import { useTerrainUIStore } from '../../store/terrainUIStore';
+import * as ReportGen from '../../services/householdReportGenerator';
 
 interface HouseholdListViewProps {
   households: Household[];
@@ -47,6 +48,65 @@ const ReportIndicator = React.memo(({ icon, active, title, onClick, color }: any
     );
 });
 ReportIndicator.displayName = 'ReportIndicator';
+
+const getReportState = (h: Household, status: string) => {
+    const constructionData = (h as any).constructionData || {};
+    const koboSync = (h as any).koboSync || {};
+
+    return [
+        {
+            color: 'blue',
+            title: 'Bon livraison',
+            active: true,
+            icon: <Download size={10} />,
+            onClick: () => ReportGen.generateLivraisonPDF(h),
+        },
+        {
+            color: 'amber',
+            title: 'PV maçonnerie',
+            active: Boolean(koboSync.maconOk || constructionData.macon),
+            icon: <FileText size={10} />,
+            onClick: () => ReportGen.generateMaconneriePDF(h),
+        },
+        {
+            color: 'sky',
+            title: 'Fiche réseau',
+            active: Boolean(koboSync.reseauOk || constructionData.reseau),
+            icon: <Zap size={10} />,
+            onClick: () => ReportGen.generateBranchementPDF(h),
+        },
+        {
+            color: 'violet',
+            title: 'PV installation',
+            active: Boolean(koboSync.interieurOk || constructionData.interieur),
+            icon: <FileText size={10} />,
+            onClick: () => ReportGen.generateInstallationPDF(h),
+        },
+        {
+            color: 'emerald',
+            title: 'Certificat conformité',
+            active: Boolean(koboSync.controleOk || constructionData.audit || status.includes('Conforme')),
+            icon: <ShieldCheck size={10} />,
+            onClick: () => ReportGen.generateConformiteFinalPDF(h),
+        },
+    ];
+};
+
+const ReportStrip = React.memo(({ household, status, className = '' }: { household: Household; status: string; className?: string }) => (
+    <div className={`items-center gap-1.5 ${className}`}>
+        {getReportState(household, status).map((report) => (
+            <ReportIndicator
+                key={report.title}
+                color={report.color}
+                title={report.title}
+                active={report.active}
+                icon={report.icon}
+                onClick={report.onClick}
+            />
+        ))}
+    </div>
+));
+ReportStrip.displayName = 'ReportStrip';
 
 // Extra props for Row
 interface RowExtraProps {
@@ -107,6 +167,7 @@ const HouseholdRow = ({
           <p className={`text-[9px] font-bold uppercase tracking-widest opacity-50 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
             ID: {String((h as any).numeroordre || h.id || 'N/A')}
           </p>
+          <ReportStrip household={h} status={status} className="mt-2 flex xl:hidden" />
         </div>
 
         <div className="hidden lg:flex flex-1 px-4 flex-col gap-0.5">
@@ -124,12 +185,7 @@ const HouseholdRow = ({
           </span>
         </div>
 
-        <div className="hidden xl:flex items-center justify-center gap-2 px-6 flex-shrink-0 w-[160px]">
-            <ReportIndicator color="blue" title="Installation" active={!!(h as any).installationDate} icon={<Zap size={10} />} onClick={() => {}} />
-            <ReportIndicator color="amber" title="Conformité" active={status.includes('Conforme')} icon={<ShieldCheck size={10} />} onClick={() => {}} />
-            <ReportIndicator color="sky" title="Audit" active={status.includes('Audit')} icon={<FileText size={10} />} onClick={() => {}} />
-            <ReportIndicator color="emerald" title="Fiche" active={true} icon={<Download size={10} />} onClick={() => {}} />
-        </div>
+        <ReportStrip household={h} status={status} className="hidden xl:flex px-6 flex-shrink-0 w-[180px] justify-center" />
 
         <div className="ml-auto pl-4">
           <button
@@ -159,7 +215,17 @@ export const HouseholdListView: React.FC<HouseholdListViewProps> = ({
 }) => {
   const [sortField, setSortField] = React.useState<'id' | 'name' | 'status' | 'region'>('id');
   const [sortOrder, setSortOrder] = React.useState<'asc' | 'desc'>('asc');
+  const [showInlineReports, setShowInlineReports] = React.useState(false);
   const setHighlightedLocation = useTerrainUIStore((s: any) => s.setHighlightedLocation);
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const media = window.matchMedia('(max-width: 1279px)');
+    const sync = () => setShowInlineReports(media.matches);
+    sync();
+    media.addEventListener('change', sync);
+    return () => media.removeEventListener('change', sync);
+  }, []);
 
   const handleExportCSV = useCallback(() => {
     const headers = ['N° Ordre', 'Propriétaire', 'Région', 'Statut', 'Lat', 'Lng'];
@@ -234,12 +300,12 @@ export const HouseholdListView: React.FC<HouseholdListViewProps> = ({
     >
       {/* Header */}
       <div
-        className={`px-6 py-5 flex-shrink-0 border-b flex flex-wrap items-center justify-between gap-4 ${
+        className={`px-4 py-4 sm:px-6 sm:py-5 flex-shrink-0 border-b flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 ${
           isDarkMode ? 'border-slate-800 bg-slate-900/40' : 'border-slate-100 bg-white'
         }`}
       >
-        <div className="flex items-center gap-4">
-          <h3 className="text-lg sm:text-xl font-black uppercase tracking-tighter text-white">
+        <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-4">
+          <h3 className="min-w-0 text-[1.35rem] sm:text-xl font-black uppercase tracking-tight sm:tracking-tighter leading-none text-white">
             Ménages
           </h3>
           <span className={`text-[10px] font-black px-2.5 py-1 rounded-lg border ${
@@ -252,7 +318,7 @@ export const HouseholdListView: React.FC<HouseholdListViewProps> = ({
         </div>
         <button
           onClick={handleExportCSV}
-          className={`flex items-center gap-2.5 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all shadow-lg active:scale-95 ${
+          className={`flex w-full items-center justify-center gap-2.5 rounded-xl px-4 py-2 text-[11px] font-black uppercase tracking-[0.14em] transition-all shadow-lg active:scale-95 sm:w-auto sm:tracking-widest ${
             isDarkMode
               ? 'bg-indigo-600 text-white hover:bg-indigo-500'
               : 'bg-slate-900 text-white hover:bg-slate-800'
@@ -274,7 +340,7 @@ export const HouseholdListView: React.FC<HouseholdListViewProps> = ({
          <button onClick={() => toggleSort('status')} className="w-32 flex-shrink-0 flex items-center justify-center gap-2 hover:text-blue-500 transition-colors">
             STATUT <ArrowUpDown size={12} className={sortField === 'status' ? 'text-blue-500' : 'opacity-20'} />
          </button>
-         <div className="hidden xl:block px-6 flex-shrink-0 w-[160px] text-center tracking-[0.3em] opacity-40">RAPPORTS</div>
+         <div className="hidden xl:block px-6 flex-shrink-0 w-[180px] text-center tracking-[0.3em] opacity-40">RAPPORTS</div>
          <div className="ml-auto px-6">DÉTAILS</div>
       </div>
 
@@ -296,7 +362,7 @@ export const HouseholdListView: React.FC<HouseholdListViewProps> = ({
             renderProp={({ height, width }: any) => (
               <List
                 rowCount={sortedHouseholds.length}
-                rowHeight={72}
+                rowHeight={showInlineReports ? 96 : 72}
                 rowComponent={HouseholdRow}
                 rowProps={{
                   households: sortedHouseholds,

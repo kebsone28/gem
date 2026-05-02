@@ -1,4 +1,4 @@
-﻿ 
+ 
 /**
  * Offline Store (Zustand + persist + subscribeWithSelector)
  * Advanced offline-first state with connection type tracking.
@@ -13,6 +13,8 @@ export type ConnectionType = 'wifi' | 'cellular' | 'unknown';
 export interface OfflineState {
   // Network status
   isOnline: boolean;
+  isQualityDegraded: boolean; // True if latency is very high
+  rtt: number | null; // Round Trip Time in ms
   lastOnlineAt: number | null; // Unix timestamp ms
   connectionType: ConnectionType;
 
@@ -24,6 +26,7 @@ export interface OfflineState {
 
   // Actions (called by offlineService & syncService)
   setOnlineStatus: (online: boolean) => void;
+  setQualityDegraded: (degraded: boolean, rtt: number | null) => void;
   setLastOnlineAt: (timestamp: number) => void;
   setConnectionType: (type: ConnectionType) => void;
   setShowReconnected: (show: boolean) => void;
@@ -35,6 +38,8 @@ export const useOfflineStore = create<OfflineState>()(
     persist(
       (set) => ({
         isOnline: navigator.onLine,
+        isQualityDegraded: false,
+        rtt: null,
         lastOnlineAt: navigator.onLine ? Date.now() : null,
         connectionType: 'unknown',
 
@@ -42,6 +47,7 @@ export const useOfflineStore = create<OfflineState>()(
         syncInProgress: false,
 
         setOnlineStatus: (online) => set({ isOnline: online }),
+        setQualityDegraded: (degraded, rtt) => set({ isQualityDegraded: degraded, rtt }),
         setLastOnlineAt: (timestamp) => set({ lastOnlineAt: timestamp }),
         setConnectionType: (type) => set({ connectionType: type }),
         setShowReconnected: (show) => set({ showReconnected: show }),

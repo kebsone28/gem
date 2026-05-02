@@ -20,6 +20,70 @@ import {
 // Module-level guard — prevents concurrent sync across the entire app lifetime
 let _isSyncRunning = false;
 
+// ── CIRCUIT BREAKER ─────────────────────────────────────────────────────────
+const RTT_THRESHOLD_MS = 2000;       // Above this = degraded connection
+const CB_FAILURE_LIMIT = 3;          // Open circuit after N consecutive failures
+const CB_RESET_TIMEOUT_MS = 5 * 60 * 1000; // Reset after 5 minutes
+
+let _cbFailures = 0;
+let _cbOpenAt: number | null = null;
+
+function isCircuitOpen(): boolean {
+  if (_cbOpenAt === null) return false;
+  if (Date.now() - _cbOpenAt > CB_RESET_TIMEOUT_MS) {
+    // Auto-reset after timeout — try again (half-open)
+    _cbFailures = 0;
+    _cbOpenAt = null;
+    logger.info('SYNC', '🔌 Circuit Breaker: reset — attempting reconnection');
+    return false;
+  }
+  return true;
+}
+
+/** Measure RTT to the backend health endpoint */
+async function measureRTT(): Promise<number | null> {
+  try {
+    const start = Date.now();
+    await apiClient.get('health', { timeout: 3000 });
+    return Date.now() - start;
+  } catch {
+    return null; // null = unreachable
+  }
+}
+
+/** Run the circuit breaker check before any sync. Returns true if sync is allowed. */
+async function canSync(): Promise<boolean> {
+  if (isCircuitOpen()) {
+    const remaining = Math.round((CB_RESET_TIMEOUT_MS - (Date.now() - (_cbOpenAt ?? 0))) / 1000);
+    logger.warn('SYNC', `⚡ Circuit Breaker OPEN — sync suspended (${remaining}s remaining)`);
+    return false;
+  }
+
+  const rtt = await measureRTT();
+  const offlineStore = useOfflineStore.getState();
+
+  if (rtt === null || rtt > RTT_THRESHOLD_MS) {
+    _cbFailures++;
+    offlineStore.setQualityDegraded(true, rtt);
+    logger.warn('SYNC', `📶 Degraded network detected (RTT=${rtt}ms, failures=${_cbFailures}/${CB_FAILURE_LIMIT})`);
+
+    if (_cbFailures >= CB_FAILURE_LIMIT) {
+      _cbOpenAt = Date.now();
+      logger.error('SYNC', '⚡ Circuit Breaker TRIPPED — sync suspended for 5 minutes');
+    }
+    return false;
+  }
+
+  // Connection is healthy
+  if (_cbFailures > 0) {
+    logger.info('SYNC', `✅ Circuit Breaker: connection restored (RTT=${rtt}ms)`);
+  }
+  _cbFailures = 0;
+  offlineStore.setQualityDegraded(false, rtt);
+  return true;
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 export function hasSyncAuthContext(): boolean {
   const { user, isAuthenticated } = useAuthStore.getState();
   const token = safeStorage.getItem('access_token');
@@ -120,6 +184,11 @@ export async function performSync(): Promise<void> {
     if (_isSyncRunning) logger.debug('SYNC', 'Sync already in progress — skipping');
     return;
   }
+
+  // ── Circuit Breaker gate ────────────────────────────────────────────────
+  const allowed = await canSync();
+  if (!allowed) return;
+  // ───────────────────────────────────────────────────────────────────────
 
   _isSyncRunning = true;
 

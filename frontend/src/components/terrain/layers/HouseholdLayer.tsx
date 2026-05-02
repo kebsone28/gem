@@ -297,6 +297,7 @@ function ensureLayers(map: maplibregl.Map) {
       id: 'cluster-zone-name-labels',
       type: 'symbol',
       source: SRC_HULL_LABELS,
+      minzoom: 9.5,
       layout: {
         'text-field': ['coalesce', ['get', 'labelName'], ''],
         'text-font': SAFE_FONT,
@@ -306,7 +307,8 @@ function ensureLayers(map: maplibregl.Map) {
         'text-justify': 'center',
         'text-anchor': 'bottom',
         'text-offset': [0, -0.65],
-        'text-allow-overlap': true,
+        'text-allow-overlap': false,
+        'text-ignore-placement': false,
         'text-max-width': 10,
       },
       paint: {
@@ -323,6 +325,7 @@ function ensureLayers(map: maplibregl.Map) {
       id: 'cluster-zone-labels',
       type: 'symbol',
       source: SRC_HULL_LABELS,
+      minzoom: 9.5,
       layout: {
         'text-field': [
           'step',
@@ -337,7 +340,8 @@ function ensureLayers(map: maplibregl.Map) {
         'text-letter-spacing': 0.008,
         'text-justify': 'center',
         'text-anchor': 'center',
-        'text-allow-overlap': true,
+        'text-allow-overlap': false,
+        'text-ignore-placement': false,
         'text-max-width': 7,
       },
       paint: {

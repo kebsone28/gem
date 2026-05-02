@@ -198,3 +198,23 @@
 .map-pointer-auto {
   pointer-events: auto;
 }
+
+@media (max-width: 767px) {
+  .maplibregl-ctrl-top-right {
+    top: auto;
+    right: 10px;
+    bottom: 152px;
+  }
+
+  .maplibregl-ctrl-bottom-right {
+    right: 10px;
+    bottom: 86px;
+  }
+
+  .maplibregl-ctrl-attrib {
+    max-width: calc(100vw - 110px);
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+}

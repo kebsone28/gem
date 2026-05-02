@@ -177,6 +177,12 @@ const MapLibreVectorMap: React.FC<any> = ({
     activeStyle: 'none',
     activeSource: 'none',
   });
+  const showDiagnostics = useMemo(
+    () =>
+      typeof window !== 'undefined' &&
+      window.localStorage.getItem('gem_terrain_debug') === 'true',
+    []
+  );
 
   // ── Interactive State (Tooltips) ──
   const [hoverData, setHoverData] = useState<any>(null);
@@ -522,6 +528,29 @@ const MapLibreVectorMap: React.FC<any> = ({
       
       // ✅ Force Max Zoom explicitly on instance
       map.setMaxZoom(24);
+
+      // ── AUTO-FALLBACK LOGIC ──
+      map.on('error', (e) => {
+        const errorMsg = e.error?.message || '';
+        // Detect tile or style loading failures
+        if (
+          errorMsg.includes('failed to fetch') || 
+          errorMsg.includes('404') || 
+          errorMsg.includes('403') ||
+          errorMsg.includes('Failed to load')
+        ) {
+          const currentStyle = mapStyleRef.current;
+          // If we are NOT already on the fallback, try to switch to it
+          if (currentStyle !== 'light' && currentStyle !== 'auto') {
+             logger.warn(`[Terrain] 🔄 Map error detected on '${currentStyle}', switching to fallback OSM:`, errorMsg);
+             // Use a timeout to avoid infinite loops if fallback also fails
+             setTimeout(() => {
+                setMapMode('raster'); // Force raster mode (OSM)
+                // We don't change the style toggle yet, just the mode
+             }, 1000);
+          }
+        }
+      });
 
       lastTargetSourceRef.current = getCurrentStyleSource(map) || mapStyle;
 
@@ -994,20 +1023,22 @@ const MapLibreVectorMap: React.FC<any> = ({
       )}
       <div ref={mapHostRef} className="absolute inset-0 z-0 h-full" />
 
-      <div className="pointer-events-none absolute right-3 top-3 z-[1200] max-w-[280px] rounded-2xl border border-white/10 bg-slate-950/88 px-3 py-2 font-mono text-[10px] text-cyan-100 shadow-2xl backdrop-blur">
-        <div className="mb-1 text-[9px] font-black uppercase tracking-[0.18em] text-cyan-300">
-          Terrain Debug
+      {showDiagnostics && (
+        <div className="pointer-events-none absolute right-3 top-3 z-[1200] hidden max-w-[280px] rounded-2xl border border-white/10 bg-slate-950/88 px-3 py-2 font-mono text-[10px] text-cyan-100 shadow-2xl backdrop-blur md:block">
+          <div className="mb-1 text-[9px] font-black uppercase tracking-[0.18em] text-cyan-300">
+            Terrain Debug
+          </div>
+          <div>{`host ${mapDiagnostics.hostWidth}x${mapDiagnostics.hostHeight}`}</div>
+          <div>{`map ${mapDiagnostics.mapCreated ? 'ok' : 'ko'} | style ${mapDiagnostics.styleLoaded ? 'ok' : 'ko'} | icons ${mapDiagnostics.iconsReady ? 'ok' : 'ko'}`}</div>
+          <div>{`src households ${mapDiagnostics.sourceHouseholds ? 'ok' : 'ko'} | supercluster ${mapDiagnostics.sourceSupercluster ? 'ok' : 'ko'}`}</div>
+          <div>{`layers point ${mapDiagnostics.layerHouseholds ? 'ok' : 'ko'} | glow ${mapDiagnostics.layerGlow ? 'ok' : 'ko'} | cluster ${mapDiagnostics.layerCluster ? 'ok' : 'ko'}`}</div>
+          <div>{`geojson ${mapDiagnostics.geoJsonFeatures} | src ${mapDiagnostics.sourceFeatures} | rend ${mapDiagnostics.renderedFeatures}`}</div>
+          <div className="flex justify-between gap-4 font-black uppercase text-[8px] mt-1 border-t border-white/10 pt-1">
+            <span>{`Zoom ${mapDiagnostics.zoom}`}</span>
+            <span>{`${mapDiagnostics.activeStyle} / ${mapDiagnostics.activeSource}`}</span>
+          </div>
         </div>
-        <div>{`host ${mapDiagnostics.hostWidth}x${mapDiagnostics.hostHeight}`}</div>
-        <div>{`map ${mapDiagnostics.mapCreated ? 'ok' : 'ko'} | style ${mapDiagnostics.styleLoaded ? 'ok' : 'ko'} | icons ${mapDiagnostics.iconsReady ? 'ok' : 'ko'}`}</div>
-        <div>{`src households ${mapDiagnostics.sourceHouseholds ? 'ok' : 'ko'} | supercluster ${mapDiagnostics.sourceSupercluster ? 'ok' : 'ko'}`}</div>
-        <div>{`layers point ${mapDiagnostics.layerHouseholds ? 'ok' : 'ko'} | glow ${mapDiagnostics.layerGlow ? 'ok' : 'ko'} | cluster ${mapDiagnostics.layerCluster ? 'ok' : 'ko'}`}</div>
-        <div>{`geojson ${mapDiagnostics.geoJsonFeatures} | src ${mapDiagnostics.sourceFeatures} | rend ${mapDiagnostics.renderedFeatures}`}</div>
-        <div className="flex justify-between gap-4 font-black uppercase text-[8px] mt-1 border-t border-white/10 pt-1">
-          <span>{`Zoom ${mapDiagnostics.zoom}`}</span>
-          <span>{`${mapDiagnostics.activeStyle} / ${mapDiagnostics.activeSource}`}</span>
-        </div>
-      </div>
+      )}
 
       {/* Modular Layers */}
       <BackgroundLayer map={mapForChildren} />
