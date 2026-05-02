@@ -11,6 +11,7 @@ import {
 import type { Household } from '../../utils/types';
 import { db } from '../../store/db';
 import logger from '../../utils/logger';
+import { getHouseholdDisplayName, stringifyHouseholdValue } from '../../utils/householdDisplay';
 
 interface AdminControlCenterModalProps {
   isOpen: boolean;
@@ -225,7 +226,7 @@ export const AdminControlCenterModal: React.FC<AdminControlCenterModalProps> = (
               </div>
               <div className="flex items-center gap-3">
                 <p className="text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 italic truncate">
-                  {household.name || 'Ménage anonyme'}
+                  {getHouseholdDisplayName(household)}
                 </p>
                 <div className="w-1 h-1 rounded-full bg-slate-800" />
                 <p className="text-[7px] font-bold uppercase text-slate-600 tracking-widest italic">
@@ -370,7 +371,7 @@ export const AdminControlCenterModal: React.FC<AdminControlCenterModalProps> = (
                   </div>
                   <input 
                     id="identity-name"
-                    value={formData.name || ''} 
+                    value={stringifyHouseholdValue(formData.name)}
                     onChange={e => setFormData({...formData, name: e.target.value})}
                     className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white font-medium focus:border-blue-500/50 transition-all outline-none"
                     placeholder="Ex: Jean Dupont"

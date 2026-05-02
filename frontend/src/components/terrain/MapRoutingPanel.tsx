@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import type { Household } from '../../utils/types';
 import { TurnByTurnInstructions, type TurnInstruction } from './TurnByTurnInstructions';
+import { getHouseholdDisplayName } from '../../utils/householdDisplay';
 
 interface MapRoutingPanelProps {
   households: Household[];
@@ -91,7 +92,7 @@ export const MapRoutingPanel: React.FC<MapRoutingPanelProps> = ({
     ? pendingHouseholds.filter(
         (h) =>
           h.id.toLowerCase().includes(searchQ.toLowerCase()) ||
-          (h.owner || '').toLowerCase().includes(searchQ.toLowerCase())
+          getHouseholdDisplayName(h).toLowerCase().includes(searchQ.toLowerCase())
       )
     : pendingHouseholds.slice(0, 20);
 
@@ -260,7 +261,7 @@ export const MapRoutingPanel: React.FC<MapRoutingPanelProps> = ({
                   >
                     <MapPin size={10} className={isSelected ? 'text-cyan-500' : sub} />
                     <span className="flex-1 font-medium truncate">{h.id}</span>
-                    {h.owner && <span className={`text-xs ${sub} truncate`}>{h.owner}</span>}
+                    <span className={`text-xs ${sub} truncate`}>{getHouseholdDisplayName(h)}</span>
                     {isSelected && (
                       <span className="w-4 h-4 rounded-full bg-cyan-500 text-white text-xs flex items-center justify-center flex-shrink-0">
                         {selectedIds.indexOf(h.id) + 1}

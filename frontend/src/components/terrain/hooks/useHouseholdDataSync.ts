@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useRef, useMemo } from 'react';
 import maplibregl from 'maplibre-gl';
 import logger from '../../../utils/logger';
+import { getHouseholdDisplayName } from '../../../utils/householdDisplay';
 
 /**
  * Hook: Household Data Sync
@@ -65,7 +66,7 @@ export const useHouseholdDataSync = (
               id: h.id,
               status: h.status || 'Non encore installée',
               numeroordre: h.numeroordre || '',
-              name: h.owner?.name || h.name || 'N/A',
+              name: getHouseholdDisplayName(h),
             },
           };
         })

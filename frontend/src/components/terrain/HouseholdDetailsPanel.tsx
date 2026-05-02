@@ -27,12 +27,13 @@ import {
 import { AdminControlCenterModal } from './AdminControlCenterModal';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
-import { 
-  FileDown, 
-  FileText, 
-  ShieldCheck, 
-  Truck as TruckIcon, 
-  Hammer as HammerIcon, 
+import { getHouseholdDisplayName, stringifyHouseholdValue } from '../../utils/householdDisplay';
+import {
+  FileDown,
+  FileText,
+  ShieldCheck,
+  Truck as TruckIcon,
+  Hammer as HammerIcon,
   Zap as ZapIcon,
   Download
 } from 'lucide-react';
@@ -95,6 +96,8 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
     () => Array.from(new Set(household.manualOverrides || [])),
     [household.manualOverrides]
   );
+  const phoneText =
+    stringifyHouseholdValue(household.phone) || stringifyHouseholdValue(household.ownerPhone);
 
   const formatOverrideLabel = (path: string) => {
     const directLabels: Record<string, string> = {
@@ -224,9 +227,9 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
   const progressPercent = isNaN(progressPercentRaw) ? 0 : progressPercentRaw;
 
   const isTerminalStatus = ['Non éligible', 'Désistement', 'Refusé'].includes(currentStatus);
-  const justification = (household.constructionData as any)?.livreur?.justificatif || 
-                       (household.constructionData as any)?.livreur?.kit_problems || 
-                       household.koboData?.justificatif;
+  const justification = (household.constructionData as any)?.livreur?.justificatif ||
+    (household.constructionData as any)?.livreur?.kit_problems ||
+    household.koboData?.justificatif;
   const activeStageMeta =
     stageVisuals[timelineStages[currentStageIndex] || 'Non encore installée'] ||
     stageVisuals['Non encore installée'];
@@ -286,25 +289,25 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
 
       {/* Header Sticky */}
       <div className="sticky top-0 z-10 px-4 py-3.5 sm:px-5 sm:py-4 md:px-7 md:py-5 bg-gradient-to-b from-slate-950/97 via-slate-950/86 to-slate-950/62 backdrop-blur-xl border-b border-white/5 flex justify-between items-start gap-3 shrink-0">
-          <div className="flex flex-col min-w-0 flex-1">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-[1.05rem] sm:text-[1.15rem] md:text-[1.5rem] font-black uppercase tracking-[-0.05em] leading-none text-white drop-shadow-sm truncate max-w-[210px] sm:max-w-[260px] md:max-w-none">
-                MÉNAGE {household.numeroordre || household.id.slice(-6)}
-              </h2>
-              {hasConflict && (
-                <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-500 border border-rose-500/20 shrink-0 animate-pulse">
-                  <AlertTriangle size={8} />
-                  <span className="text-[7px] sm:text-[9px] font-black uppercase tracking-[0.1em]">CONFLIT</span>
-                </div>
-              )}
-              {isTerminalStatus && (
-                <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-500 border border-rose-500/20 shrink-0 shadow-[0_0_15px_rgba(244,63,94,0.1)]">
-                  <AlertTriangle size={8} />
-                  <span className="text-[7px] sm:text-[9px] font-black uppercase tracking-[0.1em]">
-                    {currentStatus}
-                  </span>
-                </div>
-              )}
+        <div className="flex flex-col min-w-0 flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h2 className="text-[1.05rem] sm:text-[1.15rem] md:text-[1.5rem] font-black uppercase tracking-[-0.05em] leading-none text-white drop-shadow-sm truncate max-w-[210px] sm:max-w-[260px] md:max-w-none">
+              MÉNAGE {household.numeroordre || household.id.slice(-6)}
+            </h2>
+            {hasConflict && (
+              <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-500 border border-rose-500/20 shrink-0 animate-pulse">
+                <AlertTriangle size={8} />
+                <span className="text-[7px] sm:text-[9px] font-black uppercase tracking-[0.1em]">CONFLIT</span>
+              </div>
+            )}
+            {isTerminalStatus && (
+              <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-500 border border-rose-500/20 shrink-0 shadow-[0_0_15px_rgba(244,63,94,0.1)]">
+                <AlertTriangle size={8} />
+                <span className="text-[7px] sm:text-[9px] font-black uppercase tracking-[0.1em]">
+                  {currentStatus}
+                </span>
+              </div>
+            )}
             {!isTerminalStatus && (
               <div className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full border shrink-0 shadow-inner ${syncBadge.classes}`}>
                 {syncState === 'pending' ? (
@@ -325,27 +328,27 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
           </p>
         </div>
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-            {/* Admin Edit Button */}
-            {isAdmin && onUpdate && (
-              <button
-                onClick={() => setShowAdminModal(true)}
-                className="w-10 h-10 sm:w-11 sm:h-11 bg-white/5 hover:bg-white/10 text-blue-400 rounded-[1.1rem] transition-all border border-white/5 shadow-inner active:scale-95 group flex items-center justify-center"
-                title="Admin : Modifier tout le profil"
-              >
-                <Settings2 className="w-[18px] h-[18px] sm:w-5 sm:h-5 group-hover:rotate-45 transition-transform duration-500" />
-              </button>
-            )}
-
+          {/* Admin Edit Button */}
+          {isAdmin && onUpdate && (
             <button
-              onClick={() => {
-                setSelectedHouseholdId(null);
-                closePanel();
-              }}
-              title="Fermer le panneau"
-              className="w-10 h-10 sm:w-11 sm:h-11 rounded-[1.1rem] flex items-center justify-center transition-all bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 border border-white/5 shadow-inner group"
+              onClick={() => setShowAdminModal(true)}
+              className="w-10 h-10 sm:w-11 sm:h-11 bg-white/5 hover:bg-white/10 text-blue-400 rounded-[1.1rem] transition-all border border-white/5 shadow-inner active:scale-95 group flex items-center justify-center"
+              title="Admin : Modifier tout le profil"
             >
-              <X size={16} className="group-hover:rotate-90 transition-transform duration-300" />
+              <Settings2 className="w-[18px] h-[18px] sm:w-5 sm:h-5 group-hover:rotate-45 transition-transform duration-500" />
             </button>
+          )}
+
+          <button
+            onClick={() => {
+              setSelectedHouseholdId(null);
+              closePanel();
+            }}
+            title="Fermer le panneau"
+            className="w-10 h-10 sm:w-11 sm:h-11 rounded-[1.1rem] flex items-center justify-center transition-all bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 border border-white/5 shadow-inner group"
+          >
+            <X size={16} className="group-hover:rotate-90 transition-transform duration-300" />
+          </button>
         </div>
       </div>
 
@@ -355,45 +358,45 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
           {/* ALERTES BLOQUANTES & SYSTÈME */}
           {alerts.length > 0 && (
             <div className="space-y-4">
-               {/* Alertes Critiques (High Severity) */}
-               {alerts.some((a: any) => a.severity === 'HIGH') && (
-                 <div className="p-6 rounded-[2rem] bg-rose-500/10 border-2 border-rose-500/20 shadow-inner flex flex-col gap-4 animate-pulse-slow">
-                    <h4 className="text-[10px] font-black uppercase tracking-[0.25em] flex items-center gap-2 text-rose-500">
-                      <AlertTriangle size={16} /> ALERTES CRITIQUES
-                    </h4>
-                    <div className="space-y-3">
-                      {alerts.filter((a: any) => a.severity === 'HIGH').map((alert: any, i: number) => (
-                        <div
-                          key={i}
-                          className="flex items-start gap-3 p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs font-bold text-rose-400 uppercase tracking-widest shadow-inner"
-                        >
-                          <div className="w-2 h-2 mt-1 rounded-full bg-rose-500 shrink-0 shadow-[0_0_15px_rgba(244,63,94,0.8)]" />
-                          <span>{alert.message || alert}</span>
-                        </div>
-                      ))}
-                    </div>
-                 </div>
-               )}
+              {/* Alertes Critiques (High Severity) */}
+              {alerts.some((a: any) => a.severity === 'HIGH') && (
+                <div className="p-6 rounded-[2rem] bg-rose-500/10 border-2 border-rose-500/20 shadow-inner flex flex-col gap-4 animate-pulse-slow">
+                  <h4 className="text-[10px] font-black uppercase tracking-[0.25em] flex items-center gap-2 text-rose-500">
+                    <AlertTriangle size={16} /> ALERTES CRITIQUES
+                  </h4>
+                  <div className="space-y-3">
+                    {alerts.filter((a: any) => a.severity === 'HIGH').map((alert: any, i: number) => (
+                      <div
+                        key={i}
+                        className="flex items-start gap-3 p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs font-bold text-rose-400 uppercase tracking-widest shadow-inner"
+                      >
+                        <div className="w-2 h-2 mt-1 rounded-full bg-rose-500 shrink-0 shadow-[0_0_15px_rgba(244,63,94,0.8)]" />
+                        <span>{alert.message || alert}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
-               {/* Alertes Moyennes (GPS, Anomalies mineures) */}
-               {alerts.some((a: any) => a.severity === 'MEDIUM' || !a.severity) && (
-                 <div className="p-6 rounded-[2rem] bg-amber-500/5 border-2 border-amber-500/10 shadow-inner flex flex-col gap-4">
-                    <h4 className="text-[10px] font-black uppercase tracking-[0.25em] flex items-center gap-2 text-amber-500/70">
-                      <Zap size={14} /> ALERTES SYSTÈME
-                    </h4>
-                    <div className="space-y-3">
-                      {alerts.filter((a: any) => a.severity !== 'HIGH').map((alert: any, i: number) => (
-                        <div
-                          key={i}
-                          className="flex items-start gap-3 p-3 rounded-xl bg-white/5 border border-white/5 text-[10px] font-bold text-amber-400/80 uppercase tracking-widest"
-                        >
-                          <div className="w-1.5 h-1.5 mt-1 rounded-full bg-amber-500 shrink-0" />
-                          <span>{alert.message || alert}</span>
-                        </div>
-                      ))}
-                    </div>
-                 </div>
-               )}
+              {/* Alertes Moyennes (GPS, Anomalies mineures) */}
+              {alerts.some((a: any) => a.severity === 'MEDIUM' || !a.severity) && (
+                <div className="p-6 rounded-[2rem] bg-amber-500/5 border-2 border-amber-500/10 shadow-inner flex flex-col gap-4">
+                  <h4 className="text-[10px] font-black uppercase tracking-[0.25em] flex items-center gap-2 text-amber-500/70">
+                    <Zap size={14} /> ALERTES SYSTÈME
+                  </h4>
+                  <div className="space-y-3">
+                    {alerts.filter((a: any) => a.severity !== 'HIGH').map((alert: any, i: number) => (
+                      <div
+                        key={i}
+                        className="flex items-start gap-3 p-3 rounded-xl bg-white/5 border border-white/5 text-[10px] font-bold text-amber-400/80 uppercase tracking-widest"
+                      >
+                        <div className="w-1.5 h-1.5 mt-1 rounded-full bg-amber-500 shrink-0" />
+                        <span>{alert.message || alert}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -415,36 +418,36 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
           {/* PROGRESS BAR TIMELINE OR INELIGIBILITY CARD */}
           {isTerminalStatus && (
             <div className="p-8 rounded-[2.5rem] bg-rose-500/10 border-2 border-rose-500/20 shadow-2xl relative overflow-hidden group">
-               <div className="absolute -right-10 -top-10 w-40 h-40 bg-rose-500/5 blur-[80px] rounded-full" />
-               <div className="flex items-center gap-4 mb-6">
-                  <div className="w-12 h-12 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center border border-rose-500/30">
-                    <CloudOff size={24} />
-                  </div>
-                  <div>
-                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-rose-500">Ménage Non Éligible</h4>
-                    <p className="text-white font-black text-xl uppercase tracking-tighter">Construction annulée</p>
-                  </div>
-               </div>
-               
-               <div className="p-5 rounded-2xl bg-black/20 border border-white/5 space-y-3">
-                  <p className="text-[8px] font-black uppercase tracking-widest text-slate-500">Motif du rejet :</p>
-                  <p className="text-xs font-bold text-slate-300 tracking-wide leading-relaxed">
-                    {justification || 'Aucun motif renseigné dans le formulaire Kobo' }
-                  </p>
-               </div>
- 
-               <div className="mt-6 flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.15em] text-rose-500/60">
-                 <AlertTriangle size={12} /> Dossier classé sans suite
-               </div>
+              <div className="absolute -right-10 -top-10 w-40 h-40 bg-rose-500/5 blur-[80px] rounded-full" />
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-12 h-12 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center border border-rose-500/30">
+                  <CloudOff size={24} />
+                </div>
+                <div>
+                  <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-rose-500">Ménage Non Éligible</h4>
+                  <p className="text-white font-black text-xl uppercase tracking-tighter">Construction annulée</p>
+                </div>
+              </div>
+
+              <div className="p-5 rounded-2xl bg-black/20 border border-white/5 space-y-3">
+                <p className="text-[8px] font-black uppercase tracking-widest text-slate-500">Motif du rejet :</p>
+                <p className="text-xs font-bold text-slate-300 tracking-wide leading-relaxed">
+                  {justification || 'Aucun motif renseigné dans le formulaire Kobo'}
+                </p>
+              </div>
+
+              <div className="mt-6 flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.15em] text-rose-500/60">
+                <AlertTriangle size={12} /> Dossier classé sans suite
+              </div>
             </div>
           )}
 
           {/* Gallery Section */}
-            <div className="space-y-2.5">
-              <h4 className="text-[10px] font-black uppercase tracking-[0.25em] flex items-center gap-2 text-blue-300/80">
-                <div className="w-1.5 h-1.5 rounded-full bg-blue-500/50 shadow-[0_0_10px_rgba(59,130,246,0.5)]" />
-                GALERIE TERRAIN
-              </h4>
+          <div className="space-y-2.5">
+            <h4 className="text-[10px] font-black uppercase tracking-[0.25em] flex items-center gap-2 text-blue-300/80">
+              <div className="w-1.5 h-1.5 rounded-full bg-blue-500/50 shadow-[0_0_10px_rgba(59,130,246,0.5)]" />
+              GALERIE TERRAIN
+            </h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               {photoSrc ? (
                 <button
@@ -532,7 +535,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
               </p>
 
               <p className="mt-2.5 text-white font-black text-[1.02rem] sm:text-[1.12rem] uppercase tracking-[-0.025em] leading-[1.06] max-w-[240px] flex items-center justify-center gap-2">
-                {(typeof household.owner === 'string' ? household.owner : null) || (household.owner as any)?.name || household.name || 'Sans Nom'}
+                {getHouseholdDisplayName(household)}
                 {(manualOverrideFields.includes('owner') || manualOverrideFields.includes('name')) && (
                   <Lock size={12} className="text-amber-400 shrink-0" />
                 )}
@@ -554,23 +557,23 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
                       Contact Direct
                     </p>
                     <p className="text-[1rem] sm:text-[1.08rem] font-black text-white tracking-[0.04em] truncate">
-                      {household.phone || household.ownerPhone || '—'}
+                      {phoneText || '—'}
                     </p>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
                   <a
-                    href={`tel:${household.phone || household.ownerPhone}`}
+                    href={`tel:${phoneText}`}
                     title="Appeler localement"
                     className="h-10 px-3.5 rounded-full border border-emerald-400/20 bg-[linear-gradient(180deg,rgba(16,185,129,0.2),rgba(5,150,105,0.14))] text-emerald-100 text-[9px] font-black uppercase tracking-[0.14em] shadow-[0_8px_18px_rgba(16,185,129,0.12)] hover:border-emerald-300/35 hover:bg-[linear-gradient(180deg,rgba(16,185,129,0.28),rgba(5,150,105,0.18))] transition-all active:scale-95 flex items-center justify-center gap-1.5"
                   >
                     <Phone size={12} />
                     Appel
                   </a>
-                  {(household.phone || household.ownerPhone) && (
+                  {phoneText && (
                     <a
-                      href={`https://wa.me/${(household.phone || household.ownerPhone || '').toString().replace(/\D/g, '')}`}
+                      href={`https://wa.me/${phoneText.replace(/\D/g, '')}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       title="Ouvrir WhatsApp"
@@ -588,13 +591,13 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
               <div className="absolute top-0 right-0 p-4 opacity-[0.035]">
                 <Database size={88} />
               </div>
-              
+
               {alerts.some((a: any) => a.type === 'MISMATCH_GPS') && (
                 <div className="p-3 bg-amber-500/20 border border-amber-500/30 rounded-xl mb-4 flex items-center gap-3">
-                   <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center text-amber-500">
-                      <AlertTriangle size={18} />
-                   </div>
-                   <p className="text-[10px] font-black uppercase text-amber-400">Position Suspecte !</p>
+                  <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center text-amber-500">
+                    <AlertTriangle size={18} />
+                  </div>
+                  <p className="text-[10px] font-black uppercase text-amber-400">Position Suspecte !</p>
                 </div>
               )}
 
@@ -692,24 +695,24 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
 
               {/* Anomaly Tags for Stages 1-4 */}
               <div className="space-y-4">
-                 {[
-                   { label: 'Livraison', data: (household.constructionData as any)?.livreur?.justificatif },
-                   { label: 'Réseau', data: (household.constructionData as any)?.reseau?.problemes_branchement },
-                   { label: 'Intérieur', data: (household.constructionData as any)?.interieur?.problemes_installation },
-                 ].filter(s => !!s.data && s.data.trim() !== '').map((s, i) => (
-                   <div key={i} className="space-y-1">
-                      <p className="text-[7px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
-                        <AlertTriangle size={8} className="text-amber-500" /> Observation {s.label}
-                      </p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {s.data.split(' ').filter(Boolean).map((tag: string, j: number) => (
-                          <span key={j} className="px-2 py-0.5 rounded-lg bg-amber-500/5 border border-amber-500/10 text-[8px] font-bold text-amber-500 uppercase">
-                            {tag.replace(/_/g, ' ')}
-                          </span>
-                        ))}
-                      </div>
-                   </div>
-                 ))}
+                {[
+                  { label: 'Livraison', data: (household.constructionData as any)?.livreur?.justificatif },
+                  { label: 'Réseau', data: (household.constructionData as any)?.reseau?.problemes_branchement },
+                  { label: 'Intérieur', data: (household.constructionData as any)?.interieur?.problemes_installation },
+                ].filter(s => !!s.data && s.data.trim() !== '').map((s, i) => (
+                  <div key={i} className="space-y-1">
+                    <p className="text-[7px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
+                      <AlertTriangle size={8} className="text-amber-500" /> Observation {s.label}
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {s.data.split(' ').filter(Boolean).map((tag: string, j: number) => (
+                        <span key={j} className="px-2 py-0.5 rounded-lg bg-amber-500/5 border border-amber-500/10 text-[8px] font-bold text-amber-500 uppercase">
+                          {tag.replace(/_/g, ' ')}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
               </div>
 
               {/* Job Toggles / Statuses */}
@@ -726,10 +729,10 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
                   >
                     <div
                       className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 border shadow-inner ${task.ok === true
-                          ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400'
-                          : task.ok === false
-                            ? 'bg-rose-500/20 border-rose-500/30 text-rose-400'
-                            : 'bg-slate-800 border-slate-700 text-slate-600'
+                        ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400'
+                        : task.ok === false
+                          ? 'bg-rose-500/20 border-rose-500/30 text-rose-400'
+                          : 'bg-slate-800 border-slate-700 text-slate-600'
                         }`}
                     >
                       {task.ok === true ? (
@@ -761,7 +764,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
             <div className="p-6 sm:p-8 rounded-[2.25rem] border border-blue-400/20 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.16),transparent_35%),linear-gradient(180deg,rgba(59,130,246,0.08),rgba(15,23,42,0.34))] shadow-lg shadow-blue-500/10">
               <div className="flex items-center justify-between gap-4 mb-4">
                 <h4 className="text-[10px] font-black uppercase tracking-[0.24em] text-blue-200/75">
-                UNITÉ / GRAPPE
+                  UNITÉ / GRAPPE
                 </h4>
                 <div className="rounded-full border border-blue-400/20 bg-blue-500/10 px-3 py-1 text-[9px] font-black uppercase tracking-[0.18em] text-blue-200">
                   {grappeInfo.count ?? 0} ménages
@@ -782,15 +785,15 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
           {/* Kobo Data Explorer */}
           {household.koboData && Object.keys(household.koboData).length > 0 && (
             <div className="p-6 sm:p-8 rounded-[2.5rem] bg-white/5 border border-white/10 space-y-6">
-               <h4 className="text-[9px] font-black uppercase tracking-[0.18em] sm:tracking-[0.3em] flex items-center gap-2 text-blue-400/60">
+              <h4 className="text-[9px] font-black uppercase tracking-[0.18em] sm:tracking-[0.3em] flex items-center gap-2 text-blue-400/60">
                 <Database size={14} /> DÉTAILS FORMULAIRE KOBO
               </h4>
-              
+
               <div className="grid grid-cols-1 gap-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
                 {Object.entries(household.koboData)
-                  .filter(([key, val]) => 
-                    !key.startsWith('_') && 
-                    val !== null && 
+                  .filter(([key, val]) =>
+                    !key.startsWith('_') &&
+                    val !== null &&
                     typeof val !== 'object' &&
                     key !== 'photo' &&
                     key !== 'photoUrl'
@@ -807,7 +810,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
                   ))
                 }
               </div>
-              
+
               <p className="text-[8px] font-bold text-slate-600 uppercase tracking-widest text-center">
                 Données synchronisées via API KoboToolbox
               </p>
@@ -939,10 +942,10 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
             <h4 className="text-[9px] font-black uppercase tracking-[0.18em] sm:tracking-[0.3em] flex items-center gap-2 text-blue-400">
               <FileDown size={14} /> EXPORTS & RAPPORTS MÉTIERS
             </h4>
-            
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {/* ÉTAPE 1 : LIVRAISON (Toujours disponible ou Inéligibilité) */}
-              <button 
+              <button
                 onClick={() => ReportGen.generateLivraisonPDF(household)}
                 className="flex items-center gap-3 p-4 bg-white/5 border border-white/5 rounded-2xl hover:bg-white/10 hover:border-blue-500/30 transition-all group"
               >
@@ -959,7 +962,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
 
               {/* ÉTAPE 2 : MAÇONNERIE (Si données dispo) */}
               {(household.koboSync?.maconOk || (household.constructionData as any)?.macon) ? (
-                <button 
+                <button
                   onClick={() => ReportGen.generateMaconneriePDF(household)}
                   className="flex items-center gap-3 p-4 bg-white/5 border border-white/5 rounded-2xl hover:bg-white/10 hover:border-amber-500/30 transition-all group animate-in fade-in zoom-in-95"
                 >
@@ -982,7 +985,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
 
               {/* ÉTAPE 3 : RÉSEAU */}
               {(household.koboSync?.reseauOk || (household.constructionData as any)?.reseau) ? (
-                <button 
+                <button
                   onClick={() => ReportGen.generateBranchementPDF(household)}
                   className="flex items-center gap-3 p-4 bg-white/5 border border-white/5 rounded-2xl hover:bg-white/10 hover:border-sky-500/30 transition-all group animate-in fade-in zoom-in-95"
                 >
@@ -1005,7 +1008,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
 
               {/* ÉTAPE 4 : INSTALLATION */}
               {(household.koboSync?.interieurOk || (household.constructionData as any)?.interieur) ? (
-                <button 
+                <button
                   onClick={() => ReportGen.generateInstallationPDF(household)}
                   className="flex items-center gap-3 p-4 bg-white/5 border border-white/5 rounded-2xl hover:bg-white/10 hover:border-violet-500/30 transition-all group animate-in fade-in zoom-in-95"
                 >
@@ -1028,7 +1031,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
 
               {/* ÉTAPE 5 : CERTIFICAT FINAL */}
               {(household.koboSync?.controleOk || (household.constructionData as any)?.audit) ? (
-                <button 
+                <button
                   onClick={() => ReportGen.generateConformiteFinalPDF(household)}
                   className="col-span-1 sm:col-span-2 flex items-center justify-center gap-4 p-5 bg-emerald-500/10 border border-emerald-500/20 rounded-[1.5rem] hover:bg-emerald-500/20 hover:border-emerald-500/40 transition-all group shadow-lg shadow-emerald-500/5 animate-in fade-in slide-in-from-bottom-4"
                 >
@@ -1041,8 +1044,8 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
                 </button>
               ) : (
                 <div className="col-span-1 sm:col-span-2 flex items-center justify-center gap-4 p-5 bg-white/[0.02] border border-white/5 rounded-[1.5rem] opacity-20 grayscale cursor-not-allowed">
-                   <ShieldCheck size={24} className="text-slate-600" />
-                   <p className="text-[10px] font-black uppercase tracking-widest text-slate-700 italic">Audit final non encore effectué</p>
+                  <ShieldCheck size={24} className="text-slate-600" />
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-700 italic">Audit final non encore effectué</p>
                 </div>
               )}
             </div>
@@ -1105,8 +1108,8 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
                   key={status}
                   onClick={() => setSelectedNewStatus(status)}
                   className={`w-full p-5 rounded-2xl border-2 transition-all text-left font-black text-[9px] uppercase tracking-[0.2em] ${selectedNewStatus === status
-                      ? 'bg-blue-600 border-blue-600 text-white shadow-xl shadow-blue-600/30 scale-[1.02]'
-                      : 'bg-white/5 border-white/10 hover:border-blue-500/40 text-slate-400'
+                    ? 'bg-blue-600 border-blue-600 text-white shadow-xl shadow-blue-600/30 scale-[1.02]'
+                    : 'bg-white/5 border-white/10 hover:border-blue-500/40 text-slate-400'
                     }`}
                 >
                   {status}
@@ -1139,7 +1142,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
       )}
       {/* Admin Control Center Modal */}
       {isAdmin && onUpdate && (
-        <AdminControlCenterModal 
+        <AdminControlCenterModal
           isOpen={showAdminModal}
           onClose={() => setShowAdminModal(false)}
           household={household}

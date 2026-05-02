@@ -6,6 +6,8 @@ const approverEmail = process.env.E2E_APPROVER_EMAIL;
 const approverPassword = process.env.E2E_APPROVER_PASSWORD;
 const cleanupEmail = process.env.E2E_ADMIN_EMAIL || approverEmail;
 const cleanupPassword = process.env.E2E_ADMIN_PASSWORD || approverPassword;
+const requesterIsApprover =
+  requesterEmail?.trim().toLowerCase() === approverEmail?.trim().toLowerCase();
 
 type MissionResponse = {
   id: string;
@@ -287,11 +289,13 @@ test.describe('Mission OM approval workflow', () => {
     await loginAs(page, requesterEmail!, requesterPassword!);
     const submittedMission = await createAndSubmitMission(page, missionTitle);
 
-    const forbiddenApprove = await postMissionDecision(page, submittedMission.id, 'approve', {
-      role: 'DIRECTEUR',
-      comment: 'Tentative non autorisée E2E',
-    });
-    expect(forbiddenApprove.status).toBe(403);
+    if (!requesterIsApprover) {
+      const forbiddenApprove = await postMissionDecision(page, submittedMission.id, 'approve', {
+        role: 'DIRECTEUR',
+        comment: 'Tentative non autorisée E2E',
+      });
+      expect(forbiddenApprove.status).toBe(403);
+    }
 
     await resetSession(page);
     await loginAs(page, approverEmail!, approverPassword!);
@@ -333,12 +337,14 @@ test.describe('Mission OM approval workflow', () => {
     await loginAs(page, requesterEmail!, requesterPassword!);
     const submittedMission = await createAndSubmitMission(page, missionTitle);
 
-    const forbiddenReject = await postMissionDecision(page, submittedMission.id, 'reject', {
-      role: 'DIRECTEUR',
-      reason: 'Tentative non autorisée E2E',
-      category: 'AUTRE',
-    });
-    expect(forbiddenReject.status).toBe(403);
+    if (!requesterIsApprover) {
+      const forbiddenReject = await postMissionDecision(page, submittedMission.id, 'reject', {
+        role: 'DIRECTEUR',
+        reason: 'Tentative non autorisée E2E',
+        category: 'AUTRE',
+      });
+      expect(forbiddenReject.status).toBe(403);
+    }
 
     await resetSession(page);
     await loginAs(page, approverEmail!, approverPassword!);

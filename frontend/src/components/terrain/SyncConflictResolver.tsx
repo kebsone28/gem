@@ -3,6 +3,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, ArrowRight, Save, X } from 'lucide-react';
 import type { Household } from '../../utils/types';
+import { getHouseholdDisplayName, stringifyHouseholdValue } from '../../utils/householdDisplay';
 
 interface Conflict {
   local: Household;
@@ -122,7 +123,7 @@ export const SyncConflictResolver: React.FC<SyncConflictResolverProps> = ({
                     Base de Données Locale
                   </div>
                   <h4 className="text-white font-black uppercase text-sm mb-4 truncate">
-                    {conflict.local.owner || 'Sans Nom'}
+                    {getHouseholdDisplayName(conflict.local)}
                   </h4>
 
                   <div className="space-y-2">
@@ -157,7 +158,7 @@ export const SyncConflictResolver: React.FC<SyncConflictResolverProps> = ({
                     Donnée Kobo / Import
                   </div>
                   <h4 className="text-white font-black uppercase text-sm mb-4 truncate">
-                    {conflict.remote.owner || 'Sans Nom'}
+                    {getHouseholdDisplayName(conflict.remote)}
                   </h4>
 
                   <div className="space-y-2">
@@ -172,7 +173,7 @@ export const SyncConflictResolver: React.FC<SyncConflictResolverProps> = ({
                         <span className="text-white font-black italic">
                           {field === 'gps'
                             ? `${conflict.remote.location?.coordinates?.[1].toFixed(5)}, ${conflict.remote.location?.coordinates?.[0].toFixed(5)}`
-                            : (conflict.remote as any)[field]}
+                            : stringifyHouseholdValue((conflict.remote as any)[field]) || '—'}
                         </span>
                       </div>
                     ))}

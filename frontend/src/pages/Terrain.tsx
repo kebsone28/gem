@@ -55,7 +55,8 @@ import { useRouting } from '../hooks/useRouting';
 
 import TopBar from './Terrain/TopBar';
 import BottomBar from './Terrain/BottomBar';
-import { ErrorBoundary } from '../components/ErrorBoundary';
+import { TerrainErrorBoundary } from '../components/terrain/TerrainErrorBoundary';
+import { compressImage } from '../utils/imageUtils';
 
 import '../components/terrain/MapWidgets.css';
 
@@ -734,25 +735,7 @@ const Terrain: React.FC = () => {
                 exit={{ opacity: 0 }}
                 className="h-full w-full relative"
               >
-                <ErrorBoundary
-                  fallback={
-                    <div className="h-full w-full flex items-center justify-center bg-red-50/10 border border-red-500/20 rounded-lg">
-                      <div className="text-center">
-                        <div className="text-4xl mb-4">❌</div>
-                        <h3 className="text-red-600 font-semibold mb-2">Erreur loading carte</h3>
-                        <p className="text-red-500/70 text-sm mb-4">
-                          Un problème est survenu en chargeant la carte
-                        </p>
-                        <button
-                          onClick={() => window.location.reload()}
-                          className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded font-medium text-sm transition-colors"
-                        >
-                          Recharger
-                        </button>
-                      </div>
-                    </div>
-                  }
-                >
+                <TerrainErrorBoundary sectionName="Carte MapLibre">
                   <Suspense
                     fallback={
                       <div className="h-full w-full flex flex-col items-center justify-center bg-slate-950">
@@ -787,7 +770,7 @@ const Terrain: React.FC = () => {
                       grappeCentroidsData={grappeCentroidsData}
                     />
                   </Suspense>
-                </ErrorBoundary>
+                </TerrainErrorBoundary>
               </motion.div>
             ) : (
               <motion.div
@@ -981,21 +964,27 @@ const Terrain: React.FC = () => {
       )}
 
       {selectedHousehold && (
-        <HouseholdDetailsPanel
-          household={selectedHousehold}
-          onPhotoOpen={openLightbox}
-          onStatusUpdate={(status) => updateHouseholdStatus(selectedHousehold.id, status)}
-          onPhotoUpload={(file) => uploadHouseholdPhoto(selectedHousehold.id, file)}
-          onUpdate={(id, patch) => updateHousehold(id, patch)}
-          isFavorite={isFavorite(selectedHousehold.id)}
-          toggleFavorite={() => toggleFavorite(selectedHousehold.id)}
-          onTraceItinerary={handleTraceItinerary}
-          onCancelItinerary={handleCancelItinerary}
-          routeStats={routeStats || null}
-          grappeInfo={selectedHouseholdGrappeInfo}
-          isAdmin={terrainFeatures.householdAdminEdit}
-          pendingSyncCount={pendingSyncCount}
-        />
+        <TerrainErrorBoundary sectionName="Fiche Ménage" compact>
+          <HouseholdDetailsPanel
+            household={selectedHousehold}
+            onPhotoOpen={openLightbox}
+            onStatusUpdate={(status) => updateHouseholdStatus(selectedHousehold.id, status)}
+            onPhotoUpload={async (file) => {
+              // Compress photo before upload (saves ~80% mobile data)
+              const compressed = await compressImage(file);
+              return uploadHouseholdPhoto(selectedHousehold.id, compressed);
+            }}
+            onUpdate={(id, patch) => updateHousehold(id, patch)}
+            isFavorite={isFavorite(selectedHousehold.id)}
+            toggleFavorite={() => toggleFavorite(selectedHousehold.id)}
+            onTraceItinerary={handleTraceItinerary}
+            onCancelItinerary={handleCancelItinerary}
+            routeStats={routeStats || null}
+            grappeInfo={selectedHouseholdGrappeInfo}
+            isAdmin={terrainFeatures.householdAdminEdit}
+            pendingSyncCount={pendingSyncCount}
+          />
+        </TerrainErrorBoundary>
       )}
 
       <AnimatePresence>{lightboxPhotos.length > 0 && <PhotoLightbox />}</AnimatePresence>

@@ -7,8 +7,10 @@ import apiClient from '../api/client';
 import logger from '../utils/logger';
 import { cacheHouseholdsForOffline, getOfflineHouseholds } from '../services/offlineStorage';
 import * as safeStorage from '../utils/safeStorage';
+import { compressImage } from '../utils/imageUtils';
 
 const HOUSEHOLDS_CACHE_TTL_MS = 5000;
+const HOUSEHOLDS_PAGE_SIZE = 2000; // Progressive loading: 2000 per page
 const householdsCache = new Map<string, { data: Household[]; timestamp: number }>();
 const householdsInflight = new Map<string, Promise<Household[]>>();
 
@@ -214,20 +216,43 @@ export function useTerrainData(options: UseTerrainDataOptions = {}) {
     }
 
     const request = (async () => {
-      logger.log(`📡 [Server-First] Fetching households for Project: ${currentProjectId}`);
+      logger.log(`📡 [Server-First] Fetching households for Project: ${currentProjectId} (paginated, ${HOUSEHOLDS_PAGE_SIZE}/page)`);
       try {
-        const response = await apiClient.get('/households', {
-          params: { projectId: currentProjectId, limit: 10000 },
-        });
+        let allHouseholds: Household[] = [];
+        let currentPage = 1;
+        let hasMore = true;
 
-        const data = response.data.households || [];
-        const normalized = data.map((h: Household) => normalizeHousehold(h));
+        while (hasMore) {
+          const response = await apiClient.get('/households', {
+            params: {
+              projectId: currentProjectId,
+              limit: HOUSEHOLDS_PAGE_SIZE,
+              page: currentPage,
+            },
+          });
 
-        logger.log(`✅ [Server-First] Retrieved ${normalized.length} unique households from backend`);
-        householdsCache.set(currentProjectId, { data: normalized, timestamp: Date.now() });
-        await persistHouseholdsLocally(currentProjectId, normalized);
+          const pageData: Household[] = (response.data.households || []).map(
+            (h: Household) => normalizeHousehold(h)
+          );
+          allHouseholds = [...allHouseholds, ...pageData];
+          hasMore = response.data.hasMore === true;
 
-        return normalized;
+          // Progressive UI update: show results as they arrive
+          if (currentPage === 1 || pageData.length > 0) {
+            setHouseholdsRaw([...allHouseholds]);
+          }
+
+          logger.log(
+            `📦 [Server-First] Page ${currentPage}: ${pageData.length} households (total: ${allHouseholds.length}, hasMore: ${hasMore})`
+          );
+          currentPage++;
+        }
+
+        logger.log(`✅ [Server-First] Retrieved ${allHouseholds.length} unique households from backend`);
+        householdsCache.set(currentProjectId, { data: allHouseholds, timestamp: Date.now() });
+        await persistHouseholdsLocally(currentProjectId, allHouseholds);
+
+        return allHouseholds;
       } catch (err: any) {
         const fallback = await loadHouseholdsFromLocalFallback(currentProjectId);
         if (fallback.length > 0) {
@@ -370,8 +395,10 @@ export function useTerrainData(options: UseTerrainDataOptions = {}) {
 
   const uploadHouseholdPhoto = useCallback(
     async (id: string, file: File) => {
+      // Compress before upload — saves ~80% bandwidth on mobile networks
+      const compressedFile = await compressImage(file);
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('file', compressedFile);
       const resp = await apiClient.post('/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });

@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { AlertTriangle, CheckCircle2, CloudOff, Lock, RefreshCcw, X } from 'lucide-react';
 import type { ConflictRecord } from '../../services/sync/conflictResolver';
 import type { Household } from '../../utils/types';
+import { getHouseholdDisplayName } from '../../utils/householdDisplay';
 
 interface TerrainSyncIssuesPanelProps {
   isOpen: boolean;
@@ -26,7 +27,7 @@ interface TerrainSyncIssuesPanelProps {
 }
 
 const getHouseholdLabel = (household: Household) =>
-  household.numeroordre || household.name || household.owner || household.id.slice(-6);
+  household.numeroordre || getHouseholdDisplayName(household) || household.id.slice(-6);
 
 const getOverrideCount = (household: Household) =>
   Array.isArray(household.manualOverrides) ? household.manualOverrides.length : 0;

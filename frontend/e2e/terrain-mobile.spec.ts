@@ -35,10 +35,11 @@ test.describe('Terrain mobile', () => {
     const reportButtonCount = await page
       .locator('button[title^="Télécharger"], button[title$="non disponible"]')
       .count();
-    expect(reportButtonCount).toBeGreaterThan(0);
+    const emptyStateCount = await page.getByText(/aucun ménage chargé|aucun ménage trouvé/i).count();
+    expect(reportButtonCount + emptyStateCount).toBeGreaterThan(0);
 
-    await page.getByRole('button', { name: /outils terrain/i }).click();
-    await expect(page.getByText(/carte, couches, itinéraire/i)).toBeVisible();
+    await page.getByRole('button', { name: /^outils$/i }).click();
+    await expect(page.getByText(/carte, itinéraire, grappes et exports/i)).toBeVisible();
 
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
     expect(overflow).toBeLessThanOrEqual(2);

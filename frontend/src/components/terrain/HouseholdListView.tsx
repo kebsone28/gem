@@ -21,6 +21,7 @@ import type { Household } from '../../utils/types';
 import { getHouseholdDerivedStatus, getStatusTailwindClasses } from '../../utils/statusUtils';
 import { useTerrainUIStore } from '../../store/terrainUIStore';
 import * as ReportGen from '../../services/householdReportGenerator';
+import { getHouseholdDisplayName } from '../../utils/householdDisplay';
 
 interface HouseholdListViewProps {
   households: Household[];
@@ -130,11 +131,7 @@ const HouseholdRow = ({
     const h = households[index];
     const status = getHouseholdDerivedStatus(h);
     const statusClasses = getStatusTailwindClasses(status);
-    const ownerName = 
-      (typeof (h as any).owner === 'string' ? (h as any).owner : null) ||
-      (h as any).owner?.name || 
-      (h as any).name || 
-      'Propriétaire inconnu';
+    const ownerName = getHouseholdDisplayName(h);
       
     return (
       <div
@@ -266,7 +263,7 @@ export const HouseholdListView: React.FC<HouseholdListViewProps> = ({
     const headers = ['N° Ordre', 'Propriétaire', 'Région', 'Statut', 'Lat', 'Lng'];
     const rows = households.map((h) => [
       (h as any).numeroordre || h.id,
-      (h as any).owner?.name || (h as any).name || '',
+      getHouseholdDisplayName(h),
       (h as any).region || (h as any).departement || '',
       getHouseholdDerivedStatus(h),
       h.location?.coordinates?.[1] ?? '',
@@ -304,8 +301,8 @@ export const HouseholdListView: React.FC<HouseholdListViewProps> = ({
             case 'name': {
                 const ownerA = (a as any).owner;
                 const ownerB = (b as any).owner;
-                valA = (typeof ownerA === 'object' ? (ownerA?.name ?? '') : (ownerA || (a as any).name || '')).toLowerCase();
-                valB = (typeof ownerB === 'object' ? (ownerB?.name ?? '') : (ownerB || (b as any).name || '')).toLowerCase();
+                valA = getHouseholdDisplayName(a).toLowerCase();
+                valB = getHouseholdDisplayName(b).toLowerCase();
                 break;
             }
             case 'status':

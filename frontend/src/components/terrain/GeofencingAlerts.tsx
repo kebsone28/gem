@@ -10,6 +10,7 @@
 import React, { useMemo, useState } from 'react';
 import { AlertTriangle, X, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 import type { Household } from '../../utils/types';
+import { getHouseholdDisplayName } from '../../utils/householdDisplay';
 
 interface GeofencingAlertsProps {
   households: Household[];
@@ -123,7 +124,7 @@ export const GeofencingAlerts: React.FC<GeofencingAlertsProps> = ({
                   <p className="text-xs font-bold text-rose-700 dark:text-rose-300 truncate">
                     {h.id}
                   </p>
-                  {h.owner && <p className="text-xs text-rose-500/70 truncate">{h.owner}</p>}
+                  <p className="text-xs text-rose-500/70 truncate">{getHouseholdDisplayName(h)}</p>
                 </div>
                 <a
                   href={gmapsUrl}

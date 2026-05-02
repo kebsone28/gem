@@ -76,7 +76,7 @@ const MobileActions: React.FC<MobileActionsProps> = ({
                       Outils terrain
                     </p>
                     <p className="mt-1 text-xs font-semibold text-slate-400">
-                      Carte, couches, itinéraire, grappes et exports.
+                      Carte, itinéraire, grappes et exports.
                     </p>
                   </div>
                   <button

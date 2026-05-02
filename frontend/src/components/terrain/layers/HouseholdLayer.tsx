@@ -5,6 +5,7 @@ import { useTerrainUIStore } from '../../../store/terrainUIStore';
 import logger from '../../../utils/logger';
 import { generatePopupHTML, registerIcons } from '../mapUtils';
 import { getIconId } from '../mapConfig';
+import { getHouseholdDisplayName } from '../../../utils/householdDisplay';
 
 interface HouseholdLayerProps {
   map: maplibregl.Map | null;
@@ -627,7 +628,7 @@ function pushData(map: maplibregl.Map, geoJSON: any, households: any[]) {
             status: h.status || 'Non encore installée',
             iconId: getIconId(h.status || 'Non encore installée'),
             numeroordre: h.numeroordre || '',
-            name: h.owner?.name || h.name || 'N/A',
+            name: getHouseholdDisplayName(h),
           },
         };
       })
