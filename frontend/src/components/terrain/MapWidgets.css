@@ -152,19 +152,45 @@
 
 @media (max-width: 767px) {
   .map-toolbar-horizontal {
-    max-width: max-content;
+    max-width: calc(100vw - 180px);
     padding: 5px 6px;
     border-radius: 18px;
     gap: 2px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    /* Fade edges to hint scrollability */
+    mask-image: linear-gradient(
+      to right,
+      transparent 0px,
+      black 12px,
+      black calc(100% - 12px),
+      transparent 100%
+    );
+    -webkit-mask-image: linear-gradient(
+      to right,
+      transparent 0px,
+      black 12px,
+      black calc(100% - 12px),
+      transparent 100%
+    );
+  }
+
+  .map-toolbar-horizontal::-webkit-scrollbar {
+    display: none;
   }
 
   .toolbar-group {
     gap: 2px;
+    flex-shrink: 0;
   }
 
   .toolbar-divider {
     height: 18px;
     margin: 0 3px;
+    flex-shrink: 0;
   }
 
   .toolbar-btn-lg {
@@ -173,6 +199,7 @@
     min-width: 34px;
     min-height: 34px;
     border-radius: 13px;
+    flex-shrink: 0;
   }
 
   .toolbar-btn-lg:hover {

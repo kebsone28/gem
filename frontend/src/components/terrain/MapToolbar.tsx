@@ -39,21 +39,61 @@ const ToolbarButton: React.FC<ToolbarButtonProps> = ({
   active,
   danger,
 }) => {
+  const [hovered, setHovered] = useState(false);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const [tooltipStyle, setTooltipStyle] = useState<React.CSSProperties>({});
+
+  useEffect(() => {
+    if (!hovered || !btnRef.current) return;
+    const rect = btnRef.current.getBoundingClientRect();
+    const tooltipW = title.length * 6 + 32; // rough estimate
+    const viewW = window.innerWidth;
+    let left = rect.left + rect.width / 2 - tooltipW / 2;
+
+    // Keep within viewport
+    if (left < 8) left = 8;
+    if (left + tooltipW > viewW - 8) left = viewW - tooltipW - 8;
+
+    setTooltipStyle({
+      position: 'fixed',
+      top: rect.bottom + 10,
+      left,
+      zIndex: 9999,
+    });
+  }, [hovered, title]);
+
   return (
-    <button
-      onClick={onClick}
-      title={title}
-      aria-label={title}
-      className={`toolbar-btn-lg group pointer-events-auto relative z-20 ${active ? 'active' : ''} ${danger && !active ? 'hover:bg-rose-500/10 hover:text-rose-400' : ''}`}
-    >
-      {React.cloneElement(icon as React.ReactElement<any>, {
-        size: 14,
-        strokeWidth: active ? 2.2 : 1.5,
-      })}
-      <div className="absolute top-full mt-3 left-1/2 -translate-x-1/2 px-3 py-1.5 text-[9px] font-black rounded-lg opacity-0 group-hover:opacity-100 whitespace-nowrap pointer-events-none transition-all z-[3000] uppercase tracking-widest translate-y-2 group-hover:translate-y-0 shadow-2xl bg-slate-900 text-white border border-white/5">
-        {title}
-      </div>
-    </button>
+    <>
+      <button
+        ref={btnRef}
+        onClick={onClick}
+        title=""
+        aria-label={title}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        onFocus={() => setHovered(true)}
+        onBlur={() => setHovered(false)}
+        className={`toolbar-btn-lg group pointer-events-auto relative z-20 ${active ? 'active' : ''} ${danger && !active ? 'hover:bg-rose-500/10 hover:text-rose-400' : ''}`}
+      >
+        {React.cloneElement(icon as React.ReactElement<any>, {
+          size: 14,
+          strokeWidth: active ? 2.2 : 1.5,
+        })}
+      </button>
+
+      {/* Portal tooltip — avoids overflow clipping */}
+      {hovered &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            style={tooltipStyle}
+            className="px-3 py-1.5 text-[9px] font-black rounded-xl whitespace-nowrap pointer-events-none uppercase tracking-[0.12em] shadow-2xl bg-slate-900/95 text-white border border-white/10 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150"
+          >
+            {title}
+          </div>,
+          document.body
+        )}
+    </>
   );
 };
 
