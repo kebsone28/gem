@@ -25,21 +25,21 @@ const MobileActions: React.FC<MobileActionsProps> = ({
     <div className="md:hidden flex flex-col gap-2 mt-2">
       {/* View Mode Switchers */}
       {(showListToggle || showAdvancedTools) && (
-        <div className="flex items-center gap-1 p-1 rounded-2xl bg-[#050F1F] border border-white/10 shadow-xl w-full">
+        <div className="grid w-full grid-cols-3 overflow-hidden rounded-2xl border border-white/10 bg-[#050F1F] p-1 shadow-xl">
           {showListToggle && (
             <>
           <button
             onClick={() => onViewModeChange('map')}
-            className={`flex-1 rounded-xl px-3 py-2 text-[10px] font-black uppercase tracking-[0.1em] transition ${
-              viewMode === 'map' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:bg-white/5'
+            className={`min-h-9 rounded-xl px-2 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] transition ${
+              viewMode === 'map' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'text-slate-400 hover:bg-white/5'
             }`}
           >
             Carte
           </button>
           <button
             onClick={() => onViewModeChange('list')}
-            className={`flex-1 rounded-xl px-3 py-2 text-[10px] font-black uppercase tracking-[0.1em] transition ${
-              viewMode === 'list' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:bg-white/5'
+            className={`min-h-9 rounded-xl border-l border-white/10 px-2 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] transition ${
+              viewMode === 'list' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'text-slate-400 hover:bg-white/5'
             }`}
           >
             Liste
@@ -50,7 +50,7 @@ const MobileActions: React.FC<MobileActionsProps> = ({
             <button
               type="button"
               onClick={() => setIsToolsOpen(true)}
-              className="flex-1 rounded-xl px-3 py-2 text-[10px] font-black uppercase tracking-[0.1em] text-slate-400 transition hover:bg-white/5 hover:text-blue-200"
+              className="min-h-9 rounded-xl border-l border-white/10 px-2 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-slate-400 transition hover:bg-white/5 hover:text-blue-200"
             >
               Outils
             </button>

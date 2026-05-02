@@ -9,9 +9,6 @@ interface HighlightLayerProps {
 const HighlightLayer: React.FC<HighlightLayerProps> = ({ map }) => {
   const highlightedLocation = useTerrainUIStore((s) => s.highlightedLocation);
   const setHighlightedLocation = useTerrainUIStore((s) => s.setHighlightedLocation);
-  const sourceId = 'highlight-source';
-  const layerId = 'highlight-layer-pulse';
-  const outerLayerId = 'highlight-layer-outer';
   const markerRef = useRef<maplibregl.Marker | null>(null);
 
   useEffect(() => {
@@ -92,7 +89,7 @@ const HighlightLayer: React.FC<HighlightLayerProps> = ({ map }) => {
         clearTimeout(timeout);
         if (marker) marker.remove();
     };
-  }, [map, highlightedLocation]);
+  }, [map, highlightedLocation, setHighlightedLocation]);
 
   return null;
 };

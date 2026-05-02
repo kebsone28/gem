@@ -327,7 +327,7 @@ export const MapToolbar: React.FC<MapToolbarProps> = ({ onRecenter, features }) 
       )}
       
       {/* GIS TOOLS GROUP */}
-      {(features?.measure || features?.lasso || features?.drawZones || features?.geoJsonLayers || features?.regionDownload) && (
+      {(features?.measure || features?.lasso || features?.drawZones || features?.regionDownload) && (
         <>
           <div className="toolbar-group">
             {features?.measure && (
@@ -355,14 +355,6 @@ export const MapToolbar: React.FC<MapToolbarProps> = ({ onRecenter, features }) 
                 onClick={() => setPanel('draw')}
                 active={activePanel === 'draw'}
                 danger={activePanel === 'draw'}
-              />
-            )}
-            {features?.geoJsonLayers && (
-              <ToolbarButton
-                icon={<Layers />}
-                title="Couches externes"
-                onClick={() => setPanel('layers')}
-                active={activePanel === 'layers'}
               />
             )}
           </div>
