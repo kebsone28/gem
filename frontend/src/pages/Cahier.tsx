@@ -2099,6 +2099,9 @@ export default function Cahier() {
                     </CahierSection>
                   )}
 
+                </section>
+
+                <section>
                   <CahierSection title="Objet & Obligations Techniques" color="#3b82f6">
                     {isEditing ? (
                       <textarea
@@ -2130,9 +2133,7 @@ export default function Cahier() {
                       </ul>
                     )}
                   </CahierSection>
-                </section>
 
-                <section>
                   <CahierSection title="Cadre technique du modèle" color="#6366f1">
                     <div className="bg-indigo-500/5 border border-indigo-500/20 rounded-xl p-4 mb-4">
                       {isEditing ? (
