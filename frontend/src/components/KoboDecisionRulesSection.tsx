@@ -40,7 +40,7 @@ export function KoboDecisionRulesSection({ project, onUpdate }: { project: any; 
         }
       });
       toast.success('Règles de conclusion enregistrées !');
-    } catch (_error) {
+    } catch {
       toast.error('Erreur lors de la sauvegarde.');
     } finally {
       setIsSaving(false);
