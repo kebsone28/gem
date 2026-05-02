@@ -299,8 +299,6 @@ export const HouseholdListView: React.FC<HouseholdListViewProps> = ({
                 valB = parseInt((b as any).numeroordre) || 0;
                 break;
             case 'name': {
-                const ownerA = (a as any).owner;
-                const ownerB = (b as any).owner;
                 valA = getHouseholdDisplayName(a).toLowerCase();
                 valB = getHouseholdDisplayName(b).toLowerCase();
                 break;
