@@ -428,6 +428,31 @@ export async function syncKoboToDatabase(organizationId, fallbackZoneId, since =
                     }
                 }
             }
+
+            // 🛡️ SÉCURITÉ TOTALE : Balayage intégral de tous les champs pour détecter toute anomalie non listée dans les règles
+            const anomalyKeywords = ['non_conforme', 'nc', 'nok', 'defaut', 'mauvais', 'anomalie'];
+            for (const [key, value] of Object.entries(submission)) {
+                if (typeof value === 'string') {
+                    const normalizedValue = value.toLowerCase().trim();
+                    if (anomalyKeywords.some(kw => normalizedValue === kw || normalizedValue === kw + '_')) {
+                        const fieldLabel = key.split('/').pop();
+                        const alertMsg = `⚠️ Anomalie détectée sur [${fieldLabel}] : ${value}`;
+                        
+                        household.alerts = household.alerts || [];
+                        if (!household.alerts.some(a => a.message === alertMsg)) {
+                            household.alerts.push({
+                                type: 'ANOMALIE_DETECTEE',
+                                message: alertMsg,
+                                severity: 'MEDIUM',
+                                timestamp: new Date().toISOString()
+                            });
+                            if (household.status === 'Contrôle conforme' || household.status === 'Eligible') {
+                                household.status = 'Non conforme';
+                            }
+                        }
+                    }
+                }
+            }
             
             // DÉTECTION DE CONFLIT / DOUBLONS
             if (matchType === 'NUMERO_ORDRE' && existingHousehold.koboSubmissionId && existingHousehold.koboSubmissionId !== koboSubmissionId) {
