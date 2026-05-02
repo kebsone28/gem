@@ -248,13 +248,14 @@ export async function syncKoboToDatabase(organizationId, fallbackZoneId, since =
         }
     }
 
+    let targetProject = null;
     if (targetProjectId) {
-        const project = await prisma.project.findUnique({ where: { id: targetProjectId } });
-        if (project?.config) {
-            koboToken = project.config.kobo?.token;
-            koboAssetUid = project.config.kobo?.assetUid;
-            mappingConfig = project.config.kobo_field_mapping;
-            console.log(`[KOBO-SYNC] Using project-specific config for project: ${project.name}`);
+        targetProject = await prisma.project.findUnique({ where: { id: targetProjectId } });
+        if (targetProject?.config) {
+            koboToken = targetProject.config.kobo?.token;
+            koboAssetUid = targetProject.config.kobo?.assetUid;
+            mappingConfig = targetProject.config.kobo_field_mapping;
+            console.log(`[KOBO-SYNC] Using project-specific config for project: ${targetProject.name}`);
         }
     }
 
@@ -395,7 +396,7 @@ export async function syncKoboToDatabase(organizationId, fallbackZoneId, since =
 
             // 🎯 DECISION ENGINE: Appliquer les règles de conclusion automatique configurées au niveau projet
             // Format des règles attendu: { field: string, operator: 'equals'|'contains', value: string, action: 'SET_STATUS', status?: string, alert?: string, severity?: string }
-            const decisionRules = project?.config?.kobo_decision_rules || [];
+            const decisionRules = targetProject?.config?.kobo_decision_rules || [];
             if (decisionRules.length > 0) {
                 for (const rule of decisionRules) {
                     const fieldValue = String(submission[rule.field] || '');
