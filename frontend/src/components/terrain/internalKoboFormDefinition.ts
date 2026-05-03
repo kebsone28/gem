@@ -327,6 +327,7 @@ export const INTERNAL_KOBO_SECTIONS: InternalKoboSection[] = [
       { name: 'Presence_de_Mur', type: 'select_one', listName: 'pg7bi79', label: 'Presence de mur', relevant: "${role} = 'livreur' and ${Situation_du_M_nage} = 'menage_eligible'" },
       { name: 'Je_confirme_le_marqu_coffrets_lectriques', type: 'acknowledge', label: "Je confirme le marquage de l'emplacement des coffrets electriques", required: true, relevant: "${role} = 'livreur' and ${Situation_du_M_nage} = 'menage_eligible'" },
       { name: 'Photo', type: 'image', label: 'Photo', relevant: "${role} = 'livreur' and ${Situation_du_M_nage} = 'menage_eligible'", parameters: 'max-pixels=1024' },
+      { name: 'notes_generales', type: 'text', label: 'Notes generales', required: true, relevant: "${role} = 'livreur' or ${role} = '__pr_parateur'", appearance: 'multiline' },
     ],
   },
   {
@@ -341,6 +342,7 @@ export const INTERNAL_KOBO_SECTIONS: InternalKoboSection[] = [
       { name: 'type_mur_realise_macon', type: 'select_one', listName: 'type_mur', label: 'Type de mur', required: true, relevant: "${role} = 'macon' and ${kit_disponible_macon} = 'oui'" },
       { name: 'problemes_travail_macon', type: 'select_multiple', listName: 'problemes_travail_macon', label: 'Probleme', relevant: "${role} = 'macon' and ${kit_disponible_macon} = 'oui'" },
       { name: 'validation_macon_final', type: 'acknowledge', label: 'Je valide que le mur est termine et conforme', required: true, relevant: "${role} = 'macon' and ${kit_disponible_macon} = 'oui' and ${type_mur_realise_macon} != ''" },
+      { name: 'notes_generales', type: 'text', label: 'Notes generales', required: true, relevant: "${role} = 'macon'", appearance: 'multiline' },
     ],
   },
   {
@@ -355,6 +357,7 @@ export const INTERNAL_KOBO_SECTIONS: InternalKoboSection[] = [
       { name: 'etat_branchement_reseau', type: 'select_one', listName: 'etat_branchement', label: 'Etat du branchement', required: true, relevant: "${role} = 'reseau' and ${verification_mur_reseau} = 'oui'" },
       { name: 'problemes_branchement_reseau', type: 'select_multiple', listName: 'problemes_branchement_reseau', label: 'Problemes lors du branchement', relevant: "${role} = 'reseau' and ${etat_branchement_reseau} = 'probleme'" },
       { name: 'validation_reseau_final', type: 'acknowledge', label: 'Je valide que le branchement est termine et conforme', required: true, relevant: "${role} = 'reseau' and ${verification_mur_reseau} = 'oui' and ${etat_branchement_reseau} = 'termine'" },
+      { name: 'notes_generales', type: 'text', label: 'Notes generales', required: true, relevant: "${role} = 'reseau'", appearance: 'multiline' },
     ],
   },
   {
@@ -369,6 +372,7 @@ export const INTERNAL_KOBO_SECTIONS: InternalKoboSection[] = [
       { name: 'etat_installation_interieur', type: 'select_one', listName: 'etat_installation', label: "Etat de l'installation interieure realisee", required: true, relevant: "${role} = 'interieur' and ${verification_branchement_interieur} = 'oui'" },
       { name: 'problemes_installation_interieur', type: 'select_multiple', listName: 'problemes_installation_interieur', label: "Problemes lors de l'installation interieure", relevant: "${role} = 'interieur' and ${etat_installation_interieur} = 'probleme'" },
       { name: 'validation_interieur_final', type: 'acknowledge', label: "Je valide que l'installation interieure est terminee et conforme", required: true, relevant: "${role} = 'interieur' and ${verification_branchement_interieur} = 'oui' and ${etat_installation_interieur} = 'termine'" },
+      { name: 'notes_generales', type: 'text', label: 'Notes generales', required: true, relevant: "${role} = 'interieur'", appearance: 'multiline' },
     ],
   },
   {
@@ -395,6 +399,7 @@ export const INTERNAL_KOBO_SECTIONS: InternalKoboSection[] = [
       { name: 'Mise_en_oeuvre', type: 'select_one', listName: 'nk1mo89', label: 'Mise en oeuvre du branchement', required: true, relevant: "${role} = 'controleur' and ${ETAT_DE_L_INSTALLATION} = 'terminee' and ${ETAT_BRANCHEMENT} = 'realise'" },
       { name: 'OBSERVATION_003', type: 'select_multiple', listName: 'ey6uw71', label: 'Observation', required: true, relevant: "${role} = 'controleur' and ${ETAT_DE_L_INSTALLATION} = 'terminee' and ${ETAT_BRANCHEMENT} = 'realise' and ${Mise_en_oeuvre} = 'non_conforme'" },
       { name: '_1_photo_anomalie_si_possible', type: 'image', label: '1 photo anomalie si possible', relevant: "${role} = 'controleur' and ${ETAT_DE_L_INSTALLATION} = 'terminee' and ${ETAT_BRANCHEMENT} = 'realise'", parameters: 'max-pixels=1024' },
+      { name: 'notes_generales', type: 'text', label: 'Notes generales', required: true, relevant: "${role} = 'controleur'", appearance: 'multiline' },
     ],
   },
   {
@@ -426,20 +431,13 @@ export const INTERNAL_KOBO_SECTIONS: InternalKoboSection[] = [
       { name: 'VALEUR_DE_LA_RESISTANCE_DE_TER', type: 'select_one', listName: 'nm4md59', label: 'Valeur de la resistance de terre ou de boucle', required: true, relevant: "${role} = 'controleur' and ${ETAT_DE_L_INSTALLATION} = 'terminee'", appearance: 'quick', parameters: 'randomize=false' },
       { name: 'OBSERVATIONS__007', type: 'integer', label: 'Valeur mesuree / observation', required: true, relevant: "${role} = 'controleur' and ${ETAT_DE_L_INSTALLATION} = 'terminee' and ${VALEUR_DE_LA_RESISTANCE_DE_TER} != ''" },
       { name: 'validation_controleur_final', type: 'acknowledge', label: 'Je confirme avoir tout controle', required: true, relevant: "${role} = 'controleur' and ${ETAT_DE_L_INSTALLATION} = 'terminee' and ${OBSERVATIONS__007} != ''" },
-    ],
-  },
-  {
-    id: 'notes',
-    title: 'Notes generales',
-    subtitle: 'Commentaire obligatoire de fin de visite',
-    fields: [
-      { name: 'notes_generales', type: 'text', label: 'Notes generales', required: true, relevant: "${role} != ''", appearance: 'multiline' },
+      { name: 'notes_generales', type: 'text', label: 'Notes generales', required: true, relevant: "${role} = 'controleur'", appearance: 'multiline' },
     ],
   },
 ];
 
-export const INTERNAL_KOBO_FIELD_NAMES = INTERNAL_KOBO_SECTIONS.flatMap((section) =>
-  section.fields.map((field) => field.name)
+export const INTERNAL_KOBO_FIELD_NAMES = Array.from(
+  new Set(INTERNAL_KOBO_SECTIONS.flatMap((section) => section.fields.map((field) => field.name)))
 );
 
 export const INTERNAL_KOBO_CONTROL_FIELD_NAMES = [
@@ -518,9 +516,20 @@ export const isInternalKoboFieldVisible = (
     );
 };
 
+const dedupeFieldsByName = (fields: InternalKoboField[]) => {
+  const seen = new Set<string>();
+  return fields.filter((field) => {
+    if (seen.has(field.name)) return false;
+    seen.add(field.name);
+    return true;
+  });
+};
+
 export const getVisibleInternalKoboFields = (values: Record<string, unknown>) =>
-  INTERNAL_KOBO_SECTIONS.flatMap((section) =>
-    section.fields.filter((field) => isInternalKoboFieldVisible(field, values))
+  dedupeFieldsByName(
+    INTERNAL_KOBO_SECTIONS.flatMap((section) =>
+      section.fields.filter((field) => isInternalKoboFieldVisible(field, values))
+    )
   );
 
 export const validateInternalKoboRequiredFields = (values: Record<string, unknown>) =>
