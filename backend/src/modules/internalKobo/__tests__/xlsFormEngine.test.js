@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
     applyXlsFormCalculations,
     buildXlsFormDefinition,
+    compareXlsFormDefinitions,
     getFilteredXlsFormChoices,
     getVisibleXlsFormFields,
     validateXlsFormValues
@@ -85,5 +86,38 @@ describe('universal XLSForm engine', () => {
         const definition = buildSampleDefinition();
 
         expect(applyXlsFormCalculations(definition, { numero: 26, role: 'macon' }).values.resume).toBe('26-macon');
+    });
+
+    it('compares form versions with field and choice deltas', () => {
+        const previous = buildSampleDefinition();
+        const current = buildXlsFormDefinition({
+            settings: {
+                form_id: 'sample_audit',
+                version: '2026-05-04',
+                form_title: 'Audit universel'
+            },
+            survey: [
+                { type: 'integer', name: 'numero', label: 'Numero menage', required: 'yes', constraint: '. > 0' },
+                { type: 'select_one roles', name: 'role', label: 'Role', required: 'yes' },
+                { type: 'text', name: 'nouveau_champ', label: 'Nouveau champ' }
+            ],
+            choices: [
+                { list_name: 'roles', name: 'macon', label: 'Macon terrain' },
+                { list_name: 'roles', name: 'livreur', label: 'Livreur' }
+            ]
+        });
+
+        const comparison = compareXlsFormDefinitions(previous, current);
+
+        expect(comparison.summary).toMatchObject({
+            fieldsAdded: 1,
+            fieldsRemoved: 5,
+            fieldsChanged: 2,
+            choicesAdded: 1,
+            choicesRemoved: 3,
+            choicesChanged: 1
+        });
+        expect(comparison.fields.added[0]).toMatchObject({ name: 'nouveau_champ' });
+        expect(comparison.choices.changed[0]).toMatchObject({ name: 'macon' });
     });
 });

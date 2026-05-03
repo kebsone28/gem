@@ -41,6 +41,37 @@ export interface InternalKoboSubmissionResponse {
   message?: string;
 }
 
+export interface InternalKoboImportedFormSummary {
+  id: string;
+  formKey: string;
+  formVersion: string;
+  title?: string;
+  engine?: string;
+  engineVersion?: string;
+  active?: boolean;
+  status?: string;
+  importedAt?: string | null;
+  importedById?: string | null;
+  storageKey?: string | null;
+  historyCount?: number;
+  latestImport?: Record<string, unknown> | null;
+  previousDefinitionSummary?: Record<string, unknown> | null;
+  previousComparisonSummary?: Record<string, unknown> | null;
+  capabilities?: string[];
+  diagnostics?: Record<string, unknown>;
+  lastValidated?: string;
+  updatedAt?: string;
+}
+
+export interface InternalKoboFormComparison {
+  previous?: Record<string, unknown>;
+  current?: Record<string, unknown>;
+  summary?: Record<string, number>;
+  fields?: Record<string, unknown[]>;
+  choices?: Record<string, unknown[]>;
+  diagnosticsDelta?: Record<string, unknown>;
+}
+
 export interface InternalKoboFormDefinitionInfo {
   formKey: string;
   formVersion: string;
@@ -52,18 +83,7 @@ export interface InternalKoboFormDefinitionInfo {
     engine: string;
     engineVersion: string;
     capabilities: string[];
-    importedForms: Array<{
-      id: string;
-      formKey: string;
-      formVersion: string;
-      title?: string;
-      engine?: string;
-      engineVersion?: string;
-      capabilities?: string[];
-      diagnostics?: Record<string, unknown>;
-      lastValidated?: string;
-      updatedAt?: string;
-    }>;
+    importedForms: InternalKoboImportedFormSummary[];
   };
 }
 
@@ -287,6 +307,32 @@ export async function fetchInternalKoboImportedFormDefinition(formKey: string): 
   return response.data.form || null;
 }
 
+export async function updateInternalKoboFormDefinitionStatus(
+  formKey: string,
+  active: boolean
+): Promise<InternalKoboImportedFormSummary | null> {
+  const response = await apiClient.patch<{
+    success: boolean;
+    form?: InternalKoboImportedFormSummary;
+  }>(`${INTERNAL_KOBO_FORM_DEFINITIONS_ENDPOINT}/${encodeURIComponent(formKey)}/status`, { active });
+
+  return response.data.form || null;
+}
+
+export async function compareInternalKoboFormDefinitions(
+  formKey: string,
+  targetFormKey: string
+): Promise<InternalKoboFormComparison | null> {
+  const response = await apiClient.get<{
+    success: boolean;
+    comparison?: InternalKoboFormComparison;
+  }>(
+    `${INTERNAL_KOBO_FORM_DEFINITIONS_ENDPOINT}/${encodeURIComponent(formKey)}/compare/${encodeURIComponent(targetFormKey)}`
+  );
+
+  return response.data.comparison || null;
+}
+
 export async function fetchInternalKoboSubmissionsReport(
   params: InternalKoboSubmissionFilters = {}
 ): Promise<InternalKoboSubmissionsReport> {
@@ -354,15 +400,8 @@ export async function importInternalKoboXlsForm(file: File): Promise<{
   success: boolean;
   importId?: string;
   storageKey?: string;
-  form?: {
-    formKey: string;
-    formVersion: string;
-    title?: string;
-    engine?: string;
-    engineVersion?: string;
-    capabilities?: string[];
-    diagnostics?: Record<string, unknown>;
-  };
+  comparison?: InternalKoboFormComparison;
+  form?: InternalKoboImportedFormSummary;
   message?: string;
 }> {
   const formData = new FormData();

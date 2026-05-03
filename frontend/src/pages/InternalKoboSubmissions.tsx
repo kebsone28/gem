@@ -20,12 +20,15 @@ import {
 } from 'lucide-react';
 import { PageContainer, PageHeader, ContentArea } from '../components';
 import {
+  fetchInternalKoboFormDefinitions,
   fetchInternalKoboDiagnostics,
   fetchInternalKoboSubmissionsReport,
   downloadInternalKoboSubmissionsExport,
   importInternalKoboXlsForm,
   reviewInternalKoboSubmission,
+  updateInternalKoboFormDefinitionStatus,
   type InternalKoboAttachment,
+  type InternalKoboImportedFormSummary,
   type InternalKoboSubmissionDiagnostics,
   type InternalKoboSubmissionRecord,
   type InternalKoboSubmissionStatus,
@@ -112,11 +115,27 @@ export default function InternalKoboSubmissions() {
   const [isExporting, setIsExporting] = useState('');
   const [isImporting, setIsImporting] = useState(false);
   const [importMessage, setImportMessage] = useState('');
+  const [importedForms, setImportedForms] = useState<InternalKoboImportedFormSummary[]>([]);
+  const [isLoadingForms, setIsLoadingForms] = useState(false);
+  const [formManagerMessage, setFormManagerMessage] = useState('');
+  const [formStatusUpdating, setFormStatusUpdating] = useState('');
 
   const selectedSubmission = useMemo(
     () => submissions.find((submission) => submission.id === selectedId) || submissions[0] || null,
     [selectedId, submissions]
   );
+
+  const loadFormDefinitions = useCallback(async () => {
+    setIsLoadingForms(true);
+    try {
+      const forms = await fetchInternalKoboFormDefinitions();
+      setImportedForms(forms);
+    } catch {
+      setFormManagerMessage('Gestionnaire XLSForm indisponible pour le moment');
+    } finally {
+      setIsLoadingForms(false);
+    }
+  }, []);
 
   const loadSubmissions = useCallback(async () => {
     setIsLoading(true);
@@ -151,6 +170,10 @@ export default function InternalKoboSubmissions() {
   useEffect(() => {
     loadSubmissions();
   }, [loadSubmissions]);
+
+  useEffect(() => {
+    loadFormDefinitions();
+  }, [loadFormDefinitions]);
 
   useEffect(() => {
     setReviewNote('');
@@ -214,11 +237,33 @@ export default function InternalKoboSubmissions() {
       setImportMessage(
         `XLSForm universel importe: ${result.form?.title || result.form?.formKey || 'formulaire'} v${result.form?.formVersion || 'inconnue'} - ${diagnostics?.fieldCount || 0} champs, ${diagnostics?.choiceCount || 0} choix, ${diagnostics?.repeatCount || 0} repeat(s)`
       );
+      await loadFormDefinitions();
       await loadSubmissions();
     } catch (importError) {
       setError(importError instanceof Error ? importError.message : 'Import XLSForm impossible');
     } finally {
       setIsImporting(false);
+    }
+  };
+
+  const handleToggleFormStatus = async (form: InternalKoboImportedFormSummary) => {
+    setFormStatusUpdating(form.formKey);
+    setFormManagerMessage('');
+    setError('');
+    try {
+      const updated = await updateInternalKoboFormDefinitionStatus(form.formKey, form.active === false);
+      if (updated) {
+        setImportedForms((current) =>
+          current.map((entry) => (entry.formKey === updated.formKey ? updated : entry))
+        );
+        setFormManagerMessage(
+          `${updated.title || updated.formKey} est maintenant ${updated.active === false ? 'inactif' : 'actif'}`
+        );
+      }
+    } catch (statusError) {
+      setError(statusError instanceof Error ? statusError.message : 'Mise a jour du formulaire impossible');
+    } finally {
+      setFormStatusUpdating('');
     }
   };
 
@@ -267,6 +312,8 @@ export default function InternalKoboSubmissions() {
     return Array.isArray(issues) ? issues : [];
   }, [selectedSubmission]);
   const selectedAttachments = useMemo(() => getSubmissionAttachments(selectedSubmission), [selectedSubmission]);
+  const activeFormCount = importedForms.filter((form) => form.active !== false).length;
+  const inactiveFormCount = Math.max(importedForms.length - activeFormCount, 0);
 
   const health = globalDiagnostics?.health || 'ok';
   const healthClass =
@@ -405,6 +452,111 @@ export default function InternalKoboSubmissions() {
               {importMessage}
             </div>
           ) : null}
+          {formManagerMessage ? (
+            <div className="flex items-center gap-3 rounded-2xl border border-blue-300/20 bg-blue-500/10 p-4 text-sm font-bold text-blue-100">
+              <ShieldCheck size={18} />
+              {formManagerMessage}
+            </div>
+          ) : null}
+
+          <section className="rounded-3xl border border-blue-300/15 bg-slate-900/55 p-4 shadow-xl shadow-blue-950/15">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-[11px] font-black uppercase tracking-[0.16em] text-blue-100">Gestionnaire XLSForm</p>
+                <p className="mt-1 text-xs font-semibold text-slate-400">
+                  {importedForms.length} formulaire(s) importe(s), {activeFormCount} actif(s), {inactiveFormCount} bloque(s)
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={loadFormDefinitions}
+                disabled={isLoadingForms}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-slate-100 hover:bg-white/[0.08] disabled:opacity-50"
+              >
+                <RefreshCw size={13} className={isLoadingForms ? 'animate-spin' : ''} />
+                Recharger
+              </button>
+            </div>
+
+            <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2 2xl:grid-cols-3">
+              {importedForms.length === 0 && !isLoadingForms ? (
+                <div className="rounded-2xl border border-dashed border-white/12 bg-slate-950/30 p-4 text-sm font-semibold text-slate-400">
+                  Aucun XLSForm importe. Utilisez le bouton Import XLSForm pour charger une version depuis le fichier Kobo.
+                </div>
+              ) : null}
+              {importedForms.map((form) => {
+                const diagnostics = form.diagnostics || {};
+                const active = form.active !== false;
+                return (
+                  <article
+                    key={form.formKey}
+                    className={`rounded-2xl border p-4 transition-colors ${
+                      active
+                        ? 'border-emerald-300/20 bg-emerald-500/[0.06]'
+                        : 'border-white/10 bg-slate-950/45 opacity-75'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-black text-white">{form.title || form.formKey}</p>
+                        <p className="mt-1 truncate text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">
+                          {form.formKey} - v{form.formVersion || 'non versionne'}
+                        </p>
+                      </div>
+                      <span
+                        className={`shrink-0 rounded-full border px-3 py-1 text-[9px] font-black uppercase tracking-[0.12em] ${
+                          active
+                            ? 'border-emerald-300/25 bg-emerald-400/10 text-emerald-100'
+                            : 'border-slate-300/15 bg-slate-500/10 text-slate-300'
+                        }`}
+                      >
+                        {active ? 'Actif' : 'Inactif'}
+                      </span>
+                    </div>
+                    <div className="mt-4 grid grid-cols-3 gap-2">
+                      {([
+                        ['Champs', diagnostics.fieldCount],
+                        ['Requis', diagnostics.requiredCount],
+                        ['Historique', form.historyCount || 0],
+                      ] as Array<[string, unknown]>).map(([label, value]) => (
+                        <div key={String(label)} className="rounded-xl border border-white/8 bg-slate-950/30 p-2">
+                          <p className="text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">{label}</p>
+                          <p className="mt-1 text-sm font-black text-white">{Number(value ?? 0)}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="mt-3 text-[10px] font-semibold text-slate-500">
+                      Dernier import: {formatDateTime(form.importedAt || form.updatedAt || null)}
+                    </p>
+                    {form.previousComparisonSummary ? (
+                      <p className="mt-2 rounded-xl border border-amber-200/10 bg-amber-400/[0.06] px-3 py-2 text-[10px] font-bold text-amber-50">
+                        Delta precedent: {Number((form.previousComparisonSummary as any).fieldsAdded || 0)} ajout(s),{' '}
+                        {Number((form.previousComparisonSummary as any).fieldsChanged || 0)} changement(s),{' '}
+                        {Number((form.previousComparisonSummary as any).fieldsRemoved || 0)} retrait(s).
+                      </p>
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={() => handleToggleFormStatus(form)}
+                      disabled={formStatusUpdating === form.formKey}
+                      className={`mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl border px-4 py-2 text-[10px] font-black uppercase tracking-[0.12em] transition-colors disabled:opacity-50 ${
+                        active
+                          ? 'border-rose-300/20 bg-rose-500/10 text-rose-100 hover:bg-rose-500/18'
+                          : 'border-emerald-300/20 bg-emerald-500/10 text-emerald-100 hover:bg-emerald-500/18'
+                      }`}
+                    >
+                      <ShieldCheck size={13} />
+                      {formStatusUpdating === form.formKey
+                        ? 'Mise a jour...'
+                        : active
+                          ? 'Desactiver les soumissions'
+                          : 'Activer pour collecte'}
+                    </button>
+                  </article>
+                );
+              })}
+            </div>
+          </section>
 
           <div className="grid grid-cols-2 gap-3 xl:grid-cols-7">
             {[

@@ -2,6 +2,7 @@ import express from 'express';
 import multer from 'multer';
 import { authProtect } from '../../api/middlewares/auth.js';
 import {
+    compareInternalKoboFormDefinitions,
     exportInternalKoboSubmissions,
     getInternalKoboDiagnostics,
     getInternalKoboFormDefinition,
@@ -11,7 +12,8 @@ import {
     listInternalKoboFormDefinitions,
     listInternalKoboSubmissions,
     reviewInternalKoboSubmission,
-    submitInternalKoboSubmission
+    submitInternalKoboSubmission,
+    updateInternalKoboFormDefinitionStatus
 } from './internalKobo.controller.js';
 
 const router = express.Router();
@@ -24,8 +26,10 @@ router.use(authProtect);
 
 router.get('/form-definition', getInternalKoboFormDefinition);
 router.get('/form-definitions', listInternalKoboFormDefinitions);
-router.get('/form-definitions/:formKey', getInternalKoboImportedFormDefinition);
+router.get('/form-definitions/:formKey/compare/:targetFormKey', compareInternalKoboFormDefinitions);
+router.patch('/form-definitions/:formKey/status', updateInternalKoboFormDefinitionStatus);
 router.post('/form-definition/import', upload.single('file'), importInternalKoboXlsForm);
+router.get('/form-definitions/:formKey', getInternalKoboImportedFormDefinition);
 router.get('/diagnostics', getInternalKoboDiagnostics);
 router.get('/submissions', listInternalKoboSubmissions);
 router.get('/submissions/export', exportInternalKoboSubmissions);

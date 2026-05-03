@@ -690,3 +690,169 @@ export async function parseXlsFormBuffer(buffer, source = {}) {
         source
     });
 }
+
+function buildFieldSignature(field = {}) {
+    return [
+        field.type || '',
+        field.rawType || '',
+        field.label || '',
+        field.listName || '',
+        field.relevant || '',
+        field.requiredExpression || '',
+        field.required === true ? 'required' : '',
+        field.constraint || '',
+        field.choiceFilter || '',
+        field.calculation || '',
+        field.groupPath || '',
+        field.repeatPath || ''
+    ].join('|');
+}
+
+function buildChoiceSignature(choice = {}) {
+    return JSON.stringify({
+        label: choice.label || '',
+        mediaImage: choice.mediaImage || '',
+        attributes: Object.fromEntries(
+            Object.entries(choice)
+                .filter(([key]) => !['index', 'name', 'label', 'labels', 'mediaImage', 'mediaImages'].includes(key))
+                .sort(([left], [right]) => left.localeCompare(right))
+        )
+    });
+}
+
+function indexFields(definition = {}) {
+    return new Map((definition.fields || []).map((field) => [field.name, field]));
+}
+
+function indexChoices(definition = {}) {
+    const indexed = new Map();
+    Object.entries(definition.choices || {}).forEach(([listName, choices]) => {
+        (choices || []).forEach((choice) => {
+            indexed.set(`${listName}:${choice.name}`, { ...choice, listName });
+        });
+    });
+    return indexed;
+}
+
+function summarizeDiagnosticsDelta(previous = {}, current = {}) {
+    const keys = Array.from(new Set([...Object.keys(previous), ...Object.keys(current)]));
+    return Object.fromEntries(
+        keys
+            .filter((key) => typeof previous[key] === 'number' || typeof current[key] === 'number')
+            .map((key) => [
+                key,
+                {
+                    previous: Number(previous[key] || 0),
+                    current: Number(current[key] || 0),
+                    delta: Number(current[key] || 0) - Number(previous[key] || 0)
+                }
+            ])
+    );
+}
+
+export function compareXlsFormDefinitions(previousDefinition = {}, currentDefinition = {}) {
+    const previousFields = indexFields(previousDefinition);
+    const currentFields = indexFields(currentDefinition);
+    const previousChoices = indexChoices(previousDefinition);
+    const currentChoices = indexChoices(currentDefinition);
+
+    const addedFields = [];
+    const removedFields = [];
+    const changedFields = [];
+    currentFields.forEach((field, name) => {
+        if (!previousFields.has(name)) {
+            addedFields.push({ name, type: field.type, label: field.label || name });
+            return;
+        }
+        const previous = previousFields.get(name);
+        if (buildFieldSignature(previous) !== buildFieldSignature(field)) {
+            changedFields.push({
+                name,
+                label: field.label || name,
+                previous: {
+                    type: previous.type,
+                    label: previous.label,
+                    relevant: previous.relevant,
+                    required: previous.required,
+                    requiredExpression: previous.requiredExpression,
+                    constraint: previous.constraint,
+                    listName: previous.listName,
+                    choiceFilter: previous.choiceFilter,
+                    calculation: previous.calculation
+                },
+                current: {
+                    type: field.type,
+                    label: field.label,
+                    relevant: field.relevant,
+                    required: field.required,
+                    requiredExpression: field.requiredExpression,
+                    constraint: field.constraint,
+                    listName: field.listName,
+                    choiceFilter: field.choiceFilter,
+                    calculation: field.calculation
+                }
+            });
+        }
+    });
+    previousFields.forEach((field, name) => {
+        if (!currentFields.has(name)) removedFields.push({ name, type: field.type, label: field.label || name });
+    });
+
+    const addedChoices = [];
+    const removedChoices = [];
+    const changedChoices = [];
+    currentChoices.forEach((choice, key) => {
+        if (!previousChoices.has(key)) {
+            addedChoices.push({ listName: choice.listName, name: choice.name, label: choice.label || choice.name });
+            return;
+        }
+        const previous = previousChoices.get(key);
+        if (buildChoiceSignature(previous) !== buildChoiceSignature(choice)) {
+            changedChoices.push({
+                listName: choice.listName,
+                name: choice.name,
+                previousLabel: previous.label || previous.name,
+                currentLabel: choice.label || choice.name
+            });
+        }
+    });
+    previousChoices.forEach((choice, key) => {
+        if (!currentChoices.has(key)) {
+            removedChoices.push({ listName: choice.listName, name: choice.name, label: choice.label || choice.name });
+        }
+    });
+
+    return {
+        previous: {
+            formKey: previousDefinition.formKey,
+            formVersion: previousDefinition.formVersion,
+            title: previousDefinition.title,
+            diagnostics: previousDefinition.diagnostics || {}
+        },
+        current: {
+            formKey: currentDefinition.formKey,
+            formVersion: currentDefinition.formVersion,
+            title: currentDefinition.title,
+            diagnostics: currentDefinition.diagnostics || {}
+        },
+        summary: {
+            fieldsAdded: addedFields.length,
+            fieldsRemoved: removedFields.length,
+            fieldsChanged: changedFields.length,
+            choicesAdded: addedChoices.length,
+            choicesRemoved: removedChoices.length,
+            choicesChanged: changedChoices.length
+        },
+        fields: {
+            added: addedFields,
+            removed: removedFields,
+            changed: changedFields
+        },
+        choices: {
+            added: addedChoices,
+            removed: removedChoices,
+            changed: changedChoices
+        },
+        diagnosticsDelta: summarizeDiagnosticsDelta(previousDefinition.diagnostics || {}, currentDefinition.diagnostics || {})
+    };
+}
