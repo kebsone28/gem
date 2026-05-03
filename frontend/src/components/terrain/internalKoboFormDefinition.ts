@@ -36,6 +36,25 @@ export type InternalKoboSection = {
   fields: InternalKoboField[];
 };
 
+export const INTERNAL_KOBO_FORM_SETTINGS = {
+  style: 'pages',
+  version: '8 (2021-07-24 19:48:35)',
+  defaultLanguage: 'Francais (fr)',
+} as const;
+
+export const INTERNAL_KOBO_SYSTEM_FIELD_NAMES = [
+  'start',
+  'end',
+  'today',
+  'username',
+  'phonenumber',
+  'C1',
+  'C2',
+  'C3',
+  'C4',
+  'C5',
+];
+
 export const INTERNAL_KOBO_CHOICES: Record<string, InternalKoboChoice[]> = {
   roles: [
     { name: 'livreur', label: 'Livreur' },

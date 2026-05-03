@@ -51,6 +51,7 @@ import { InternalKoboForm } from './InternalKoboForm';
 import {
   INTERNAL_KOBO_CONTROL_FIELD_NAMES,
   INTERNAL_KOBO_FIELD_NAMES,
+  INTERNAL_KOBO_FORM_SETTINGS,
   getInternalKoboSubmissionValues,
   isTruthyKoboValue,
   validateInternalKoboRequiredFields,
@@ -651,8 +652,35 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
       const targetHouseholdId = String(submissionHousehold.id || household.id);
       const internalSubmissionId = `gem-vps-${targetHouseholdId}-${Date.now()}`;
       const submissionValues = getInternalKoboSubmissionValues(nativeKoboAuditForm);
+      const today = now.slice(0, 10);
+      const xlsFormMetadata = {
+        start: nativeKoboAuditForm.start || (submissionHousehold.koboData as any)?.start || now,
+        end: now,
+        today: nativeKoboAuditForm.today || (submissionHousehold.koboData as any)?.today || today,
+        username:
+          nativeKoboAuditForm.username ||
+          (submissionHousehold.koboData as any)?.username ||
+          (submissionHousehold as any).assignedTo ||
+          (submissionHousehold as any).agentName ||
+          'gem-vps',
+        phonenumber:
+          nativeKoboAuditForm.phonenumber ||
+          (submissionHousehold.koboData as any)?.phonenumber ||
+          nativeKoboAuditForm.telephone_key ||
+          submissionHousehold.phone ||
+          submissionHousehold.ownerPhone ||
+          '',
+        C1: nativeKoboAuditForm.nom_key || '',
+        C2: nativeKoboAuditForm.latitude_key || '',
+        C3: nativeKoboAuditForm.telephone_key || '',
+        C4: nativeKoboAuditForm.longitude_key || '',
+        C5: nativeKoboAuditForm.region_key || '',
+        _xform_style: INTERNAL_KOBO_FORM_SETTINGS.style,
+        _xform_version: INTERNAL_KOBO_FORM_SETTINGS.version,
+        _xform_default_language: INTERNAL_KOBO_FORM_SETTINGS.defaultLanguage,
+      };
       const cleanValues = Object.fromEntries(
-        Object.entries({ ...nativeKoboAuditForm, ...submissionValues }).filter(([, value]) => {
+        Object.entries({ ...xlsFormMetadata, ...nativeKoboAuditForm, ...submissionValues }).filter(([, value]) => {
           if (Array.isArray(value)) return value.length > 0;
           return value !== undefined && value !== null && String(value).trim() !== '';
         })
@@ -687,6 +715,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
         source: 'native-gem-kobo-form',
         submissionTarget: 'gem-vps',
         internalSubmissionId,
+        xlsForm: INTERNAL_KOBO_FORM_SETTINGS,
         updatedAt: now,
       };
 
@@ -701,6 +730,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
         _gem_submission_id: internalSubmissionId,
         _gem_submission_status: allRequiredComplete ? 'submitted' : 'draft',
         _gem_submitted_at: allRequiredComplete ? now : undefined,
+        _gem_xlsform_version: INTERNAL_KOBO_FORM_SETTINGS.version,
       };
 
       await onUpdate(targetHouseholdId, {
@@ -728,6 +758,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
           internalKoboSubmission: {
             id: internalSubmissionId,
             target: 'gem-vps',
+            xlsForm: INTERNAL_KOBO_FORM_SETTINGS,
             status: allRequiredComplete ? 'submitted' : 'draft',
             requiredMissing: missingRequiredFields.map((field) => field.name),
             submittedAt: allRequiredComplete ? now : undefined,
