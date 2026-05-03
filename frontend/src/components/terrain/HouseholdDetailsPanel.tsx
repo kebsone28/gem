@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import {
   X,
@@ -58,6 +58,7 @@ import {
 } from './internalKoboFormDefinition';
 import {
   flushInternalKoboSubmissionQueue,
+  getInternalKoboQueueCount,
   queueInternalKoboSubmission,
   submitInternalKoboSubmission,
   type InternalKoboSubmissionPayload,
@@ -174,29 +175,6 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
   const lastSyncError = useSyncStore((s) => s.lastSyncError);
   const isOnline = useOfflineStore((s) => s.isOnline);
 
-  useEffect(() => {
-    if (!isOnline) return;
-
-    let cancelled = false;
-    flushInternalKoboSubmissionQueue()
-      .then((result) => {
-        if (cancelled || result.flushed === 0) return;
-        toast.success(`${result.flushed} soumission(s) terrain envoyee(s) au VPS`);
-      })
-      .catch(() => {
-        // La file locale reste intacte; la prochaine reconnexion relancera l'envoi.
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isOnline]);
-
-  // Optimisation rendering via memoization (bloque les references inutiles du state parent)
-  const memoizedTeams = useMemo(() => {
-    return Array.isArray(household.assignedTeams) ? household.assignedTeams : [];
-  }, [household.assignedTeams]);
-
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [showInternalReportModal, setShowInternalReportModal] = useState(false);
@@ -204,9 +182,45 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
   const [nativeKoboAuditForm, setNativeKoboAuditForm] = useState<Record<string, unknown>>({});
   const [nativeKoboTargetHousehold, setNativeKoboTargetHousehold] = useState<Record<string, any> | null>(null);
   const [nativeKoboValidated, setNativeKoboValidated] = useState(false);
+  const [internalKoboQueueCount, setInternalKoboQueueCount] = useState(0);
+
+  const refreshInternalKoboQueueCount = useCallback(async () => {
+    const count = await getInternalKoboQueueCount();
+    setInternalKoboQueueCount(count);
+    return count;
+  }, []);
+
+  useEffect(() => {
+    refreshInternalKoboQueueCount();
+    if (!isOnline) return;
+
+    let cancelled = false;
+    flushInternalKoboSubmissionQueue()
+      .then((result) => {
+        if (cancelled) return;
+        setInternalKoboQueueCount(result.pending);
+        if (result.flushed > 0) {
+          toast.success(`${result.flushed} soumission(s) terrain envoyee(s) au VPS`);
+        }
+      })
+      .catch(() => {
+        // La file locale reste intacte; la prochaine reconnexion relancera l'envoi.
+        refreshInternalKoboQueueCount();
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isOnline, refreshInternalKoboQueueCount]);
+
+  // Optimisation rendering via memoization (bloque les references inutiles du state parent)
+  const memoizedTeams = useMemo(() => {
+    return Array.isArray(household.assignedTeams) ? household.assignedTeams : [];
+  }, [household.assignedTeams]);
 
   useEffect(() => {
     if (!showInternalReportModal) return;
+    refreshInternalKoboQueueCount();
 
     const audit = ((household.constructionData as any)?.audit || {}) as Record<string, any>;
     const koboData = (household.koboData || {}) as Record<string, any>;
@@ -230,7 +244,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
     setNativeKoboAuditForm(nextForm);
     setNativeKoboTargetHousehold(household as unknown as Record<string, any>);
     setNativeKoboValidated(Boolean(audit.conforme || household.koboSync?.controleOk));
-  }, [household.constructionData, household.koboData, household.koboSync?.controleOk, showInternalReportModal]);
+  }, [household, refreshInternalKoboQueueCount, showInternalReportModal]);
 
   const [selectedNewStatus, setSelectedNewStatus] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -826,6 +840,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
             submissionTracePayload,
             submissionError instanceof Error ? submissionError.message : 'Trace VPS indisponible'
           );
+          await refreshInternalKoboQueueCount();
         }
       } else {
         await submitInternalKoboSubmission(fallbackSubmissionPayload);
@@ -845,6 +860,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
           fallbackSubmissionPayload,
           error instanceof Error ? error.message : 'VPS indisponible'
         );
+        await refreshInternalKoboQueueCount();
         toast.success('VPS indisponible: saisie securisee en file locale');
         setShowInternalReportModal(false);
       } else {
@@ -1749,12 +1765,20 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
 
           {/* Formulaire interne GEM — soumission VPS */}
           <button
-            onClick={() => setShowInternalReportModal(true)}
-            className="flex h-[52px] w-14 items-center justify-center rounded-[1.15rem] border border-white/[0.08] bg-slate-900/85 text-slate-300 transition-all hover:bg-slate-800 hover:text-white active:scale-95"
+            onClick={() => {
+              refreshInternalKoboQueueCount();
+              setShowInternalReportModal(true);
+            }}
+            className="relative flex h-[52px] w-14 items-center justify-center rounded-[1.15rem] border border-white/[0.08] bg-slate-900/85 text-slate-300 transition-all hover:bg-slate-800 hover:text-white active:scale-95"
             title="Ouvrir le formulaire interne VPS"
             aria-label="Ouvrir le formulaire interne VPS"
           >
             <Database size={20} />
+            {internalKoboQueueCount > 0 ? (
+              <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full border border-sky-200/60 bg-sky-400 px-1 text-[9px] font-black text-slate-950 shadow-lg shadow-sky-500/30">
+                {internalKoboQueueCount > 9 ? '9+' : internalKoboQueueCount}
+              </span>
+            ) : null}
           </button>
         </div>
 
@@ -1830,13 +1854,15 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
         <InternalKoboForm
           values={nativeKoboAuditForm}
           onChange={updateNativeKoboAuditField}
-        onSave={handleSaveNativeKoboAudit}
-        onClose={() => setShowInternalReportModal(false)}
-        isSaving={isUpdating}
-        onPhotoUpload={onPhotoUpload}
-        onResolvedHousehold={handleInternalKoboResolvedHousehold}
-        resolveHouseholdByNumero={resolveHouseholdByNumero}
-      />,
+          onSave={handleSaveNativeKoboAudit}
+          onClose={() => setShowInternalReportModal(false)}
+          isSaving={isUpdating}
+          onPhotoUpload={onPhotoUpload}
+          onResolvedHousehold={handleInternalKoboResolvedHousehold}
+          resolveHouseholdByNumero={resolveHouseholdByNumero}
+          queueCount={internalKoboQueueCount}
+          isOnline={isOnline}
+        />,
         document.body
       )}
 

@@ -275,19 +275,44 @@ export const submitInternalKoboSubmission = async (req, res) => {
 export const listInternalKoboSubmissions = async (req, res) => {
     try {
         const { organizationId } = req.user;
-        const { householdId, numeroOrdre, status, formKey, limit = '100' } = req.query;
+        const { householdId, numeroOrdre, status, formKey, clientSubmissionId, limit = '100' } = req.query;
         const take = Math.min(Math.max(parseInt(limit, 10) || 100, 1), 500);
+        const numeroVariants = normalizeNumeroVariants(numeroOrdre);
 
         const where = {
             organizationId,
             ...(householdId ? { householdId: String(householdId) } : {}),
-            ...(numeroOrdre ? { numeroOrdre: String(numeroOrdre) } : {}),
+            ...(numeroVariants.length > 0
+                ? { OR: numeroVariants.map((value) => ({ numeroOrdre: { equals: value, mode: 'insensitive' } })) }
+                : {}),
             ...(status ? { status: String(status) } : {}),
-            ...(formKey ? { formKey: String(formKey) } : {})
+            ...(formKey ? { formKey: String(formKey) } : {}),
+            ...(clientSubmissionId ? { clientSubmissionId: String(clientSubmissionId) } : {})
         };
 
         const submissions = await prisma.internalKoboSubmission.findMany({
             where,
+            include: {
+                household: {
+                    select: {
+                        id: true,
+                        numeroordre: true,
+                        name: true,
+                        phone: true,
+                        status: true,
+                        region: true,
+                        village: true,
+                        updatedAt: true
+                    }
+                },
+                submittedBy: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true
+                    }
+                }
+            },
             orderBy: { savedAt: 'desc' },
             take
         });
@@ -312,7 +337,28 @@ export const getInternalKoboSubmission = async (req, res) => {
         const { id } = req.params;
 
         const submission = await prisma.internalKoboSubmission.findFirst({
-            where: { id, organizationId }
+            where: { id, organizationId },
+            include: {
+                household: {
+                    select: {
+                        id: true,
+                        numeroordre: true,
+                        name: true,
+                        phone: true,
+                        status: true,
+                        region: true,
+                        village: true,
+                        updatedAt: true
+                    }
+                },
+                submittedBy: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true
+                    }
+                }
+            }
         });
 
         if (!submission) {

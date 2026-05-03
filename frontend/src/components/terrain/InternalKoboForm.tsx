@@ -36,6 +36,8 @@ type InternalKoboFormProps = {
   onPhotoUpload?: (file: File) => Promise<string>;
   onResolvedHousehold?: (household: Record<string, any> | null) => void;
   resolveHouseholdByNumero?: (numeroOrdre: string) => Record<string, any> | null;
+  queueCount?: number;
+  isOnline?: boolean;
 };
 
 const asArray = (value: unknown): string[] => {
@@ -88,6 +90,8 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
   onPhotoUpload,
   onResolvedHousehold,
   resolveHouseholdByNumero,
+  queueCount = 0,
+  isOnline = true,
 }) => {
   const [activeSectionId, setActiveSectionId] = useState(INTERNAL_KOBO_SECTIONS[0]?.id || '');
   const [query, setQuery] = useState('');
@@ -572,6 +576,11 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
                   <span className={`inline-flex shrink-0 rounded-full border px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.1em] sm:hidden ${requiredStatusClass}`}>
                     {requiredStatusText}
                   </span>
+                  {queueCount > 0 ? (
+                    <span className="inline-flex shrink-0 rounded-full border border-sky-300/30 bg-sky-400/12 px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.1em] text-sky-100">
+                      {queueCount} local
+                    </span>
+                  ) : null}
                 </div>
               </div>
               <button
@@ -584,7 +593,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
               </button>
             </div>
 
-            <div className="mt-3 hidden grid-cols-1 gap-3 sm:mt-4 sm:grid sm:grid-cols-[1fr_auto]">
+            <div className="mt-3 hidden grid-cols-1 gap-3 sm:mt-4 sm:grid sm:grid-cols-[1fr_auto_auto]">
               <div className="hidden h-12 items-center gap-2 rounded-2xl border border-white/10 bg-slate-950/45 px-3 sm:flex">
                 <Search size={15} className="text-slate-500" />
                 <input
@@ -597,7 +606,18 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
               <div className={`rounded-2xl border px-4 py-3 text-center text-[10px] font-black uppercase tracking-[0.13em] sm:flex sm:items-center ${requiredStatusClass}`}>
                 {missingRequired.length ? `${missingRequired.length} obligatoire(s)` : 'Pret a soumettre'}
               </div>
+              {queueCount > 0 ? (
+                <div className="rounded-2xl border border-sky-300/25 bg-sky-400/10 px-4 py-3 text-center text-[10px] font-black uppercase tracking-[0.13em] text-sky-100 sm:flex sm:items-center">
+                  {queueCount} en attente locale
+                </div>
+              ) : null}
             </div>
+
+            {queueCount > 0 && !isOnline ? (
+              <div className="mt-3 rounded-2xl border border-sky-300/25 bg-sky-400/10 px-4 py-3 text-[11px] font-bold text-sky-100">
+                Mode hors-ligne: les saisies sont gardees sur cet appareil et seront envoyees au retour du reseau.
+              </div>
+            ) : null}
 
             {householdLookup.message ? (
               <div className={`mt-3 rounded-2xl border px-4 py-3 text-[11px] font-bold ${

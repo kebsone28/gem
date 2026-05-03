@@ -24,6 +24,27 @@ export interface InternalKoboSubmissionResponse {
   message?: string;
 }
 
+export interface InternalKoboSubmissionRecord {
+  id: string;
+  householdId?: string | null;
+  numeroOrdre?: string | null;
+  formKey: string;
+  formVersion: string;
+  clientSubmissionId: string;
+  role?: string | null;
+  status: InternalKoboSubmissionStatus;
+  syncStatus: string;
+  values: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
+  requiredMissing: string[];
+  submittedAt?: string | null;
+  savedAt: string;
+  createdAt: string;
+  updatedAt: string;
+  household?: Record<string, unknown> | null;
+  submittedBy?: Record<string, unknown> | null;
+}
+
 const INTERNAL_KOBO_OUTBOX_ACTION = 'internal-kobo-submit';
 const INTERNAL_KOBO_SUBMISSION_ENDPOINT = '/internal-kobo/submissions';
 
@@ -48,6 +69,21 @@ export async function submitInternalKoboSubmission(
     payload
   );
   return response.data;
+}
+
+export async function fetchInternalKoboSubmissions(params: {
+  householdId?: string;
+  numeroOrdre?: string;
+  status?: InternalKoboSubmissionStatus;
+  formKey?: string;
+  limit?: number;
+} = {}): Promise<InternalKoboSubmissionRecord[]> {
+  const response = await apiClient.get<{
+    success: boolean;
+    submissions?: InternalKoboSubmissionRecord[];
+  }>(INTERNAL_KOBO_SUBMISSION_ENDPOINT, { params });
+
+  return response.data.submissions || [];
 }
 
 export async function queueInternalKoboSubmission(
