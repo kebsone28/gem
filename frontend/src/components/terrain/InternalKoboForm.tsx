@@ -162,6 +162,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
   const [query, setQuery] = useState('');
   const [uploadingField, setUploadingField] = useState<string | null>(null);
   const [isSubmitReviewOpen, setIsSubmitReviewOpen] = useState(false);
+  const [receiptSubmission, setReceiptSubmission] = useState<InternalKoboSubmissionRecord | null>(null);
   const [householdLookup, setHouseholdLookup] = useState<{
     status: 'idle' | 'loading' | 'found' | 'missing' | 'error';
     message: string;
@@ -177,6 +178,12 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
   const selectedRole = String(values.role || '').trim();
   const selectedRoleSectionId = ROLE_SECTION_BY_VALUE[selectedRole] || '';
   const lastAutoActivatedRoleRef = useRef('');
+  const fieldLabelByName = useMemo(() => {
+    const entries = INTERNAL_KOBO_SECTIONS.flatMap((section) =>
+      section.fields.map((field) => [field.name, field.label] as const)
+    );
+    return new Map(entries);
+  }, []);
 
   useEffect(() => {
     onChangeRef.current = onChange;
@@ -651,6 +658,13 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
                     {String(submission.submittedBy.name || submission.submittedBy.email)}
                   </span>
                 ) : null}
+                <button
+                  type="button"
+                  onClick={() => setReceiptSubmission(submission)}
+                  className="rounded-full border border-blue-200/20 bg-blue-300/10 px-2 py-1 text-[9px] font-black uppercase tracking-[0.1em] text-blue-100 hover:bg-blue-300/18"
+                >
+                  Voir recu
+                </button>
               </div>
             </div>
           );
@@ -796,6 +810,102 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
               </button>
             );
           })}
+        </div>
+      </div>
+    );
+  };
+
+  const renderReceiptModal = () => {
+    if (!receiptSubmission) return null;
+
+    const valueEntries = Object.entries(receiptSubmission.values || {})
+      .filter(([key, value]) => {
+        if (key.startsWith('_')) return false;
+        if (Array.isArray(value)) return value.length > 0;
+        return value !== undefined && value !== null && String(value).trim() !== '';
+      })
+      .slice(0, 14);
+    const missingItems = Array.isArray(receiptSubmission.requiredMissing)
+      ? receiptSubmission.requiredMissing
+      : [];
+
+    return (
+      <div className="absolute inset-0 z-40 flex items-end justify-center bg-slate-950/72 p-3 backdrop-blur-sm sm:items-center sm:p-6">
+        <div className="flex max-h-[92dvh] w-full max-w-2xl flex-col rounded-[1.5rem] border border-blue-300/20 bg-[#0B1728] shadow-2xl shadow-blue-950/30">
+          <div className="shrink-0 border-b border-white/10 p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-200">Recu Kobo interne</p>
+                <h4 className="mt-2 truncate text-xl font-black uppercase tracking-tight text-white">
+                  {receiptSubmission.numeroOrdre ? `Menage ${receiptSubmission.numeroOrdre}` : 'Soumission terrain'}
+                </h4>
+                <p className="mt-2 text-[12px] font-semibold leading-relaxed text-slate-300">
+                  Identifiant: <span className="font-black text-blue-100">{receiptSubmission.clientSubmissionId}</span>
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setReceiptSubmission(null)}
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-400 hover:text-white"
+                aria-label="Fermer le recu de soumission"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-3">
+                <p className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Statut</p>
+                <p className="mt-1 truncate text-sm font-black text-white">{submissionStatusLabel(receiptSubmission.status)}</p>
+              </div>
+              <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-3">
+                <p className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Role</p>
+                <p className="mt-1 truncate text-sm font-black text-white">{formatInternalKoboValue(receiptSubmission.role || '', 'roles') || 'Non defini'}</p>
+              </div>
+              <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-3">
+                <p className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Date</p>
+                <p className="mt-1 truncate text-sm font-black text-white">{formatHistoryDate(receiptSubmission.savedAt)}</p>
+              </div>
+              <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-3">
+                <p className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Version</p>
+                <p className="mt-1 truncate text-sm font-black text-white">v{receiptSubmission.formVersion}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto p-5 custom-scrollbar">
+            {missingItems.length > 0 ? (
+              <div className="mb-4 rounded-2xl border border-amber-300/25 bg-amber-400/[0.08] p-3">
+                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-amber-100">Requis manquants au moment de l'envoi</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {missingItems.map((fieldName) => (
+                    <span key={fieldName} className="rounded-full border border-amber-200/20 bg-amber-300/10 px-2.5 py-1 text-[9px] font-bold text-amber-50">
+                      {fieldLabelByName.get(fieldName) || fieldName}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
+              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-blue-100">Apercu des valeurs envoyees</p>
+              <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {valueEntries.map(([key, value]) => (
+                  <div key={key} className="min-w-0 rounded-xl border border-white/8 bg-slate-950/25 p-3">
+                    <p className="truncate text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">
+                      {fieldLabelByName.get(key) || key}
+                    </p>
+                    <p className="mt-1 line-clamp-2 text-[11px] font-bold leading-snug text-slate-100">
+                      {formatInternalKoboValue(value)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+              {valueEntries.length === 0 ? (
+                <p className="mt-3 text-[11px] font-semibold text-slate-500">Aucune valeur exploitable dans ce recu.</p>
+              ) : null}
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -1128,6 +1238,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
             </div>
           </div>
         ) : null}
+        {renderReceiptModal()}
       </div>
     </div>
   );
