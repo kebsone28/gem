@@ -18,7 +18,7 @@ const apiUrl = String(
   args.get('api-url') ||
     process.env.GEM_API_URL ||
     process.env.VITE_API_URL ||
-    'https://proquelec.sn/api'
+    'https://gem.proquelec.sn/api'
 ).replace(/\/+$/, '');
 const numeroOrdre = String(args.get('numero') || process.env.GEM_TEST_NUMERO_ORDRE || '').trim();
 const email = String(args.get('email') || process.env.GEM_EMAIL || '').trim();
