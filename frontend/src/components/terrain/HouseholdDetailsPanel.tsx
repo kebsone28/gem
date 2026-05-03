@@ -174,6 +174,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
   const [showInternalReportModal, setShowInternalReportModal] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [nativeKoboAuditForm, setNativeKoboAuditForm] = useState<Record<string, unknown>>({});
+  const [nativeKoboTargetHousehold, setNativeKoboTargetHousehold] = useState<Record<string, any> | null>(null);
   const [nativeKoboValidated, setNativeKoboValidated] = useState(false);
 
   useEffect(() => {
@@ -199,6 +200,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
       (household.latitude && household.longitude ? `${household.latitude} ${household.longitude}` : '')
     );
     setNativeKoboAuditForm(nextForm);
+    setNativeKoboTargetHousehold(household as unknown as Record<string, any>);
     setNativeKoboValidated(Boolean(audit.conforme || household.koboSync?.controleOk));
   }, [household.constructionData, household.koboData, household.koboSync?.controleOk, showInternalReportModal]);
 
@@ -622,11 +624,20 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
     }
 
     const missingRequiredFields = validateInternalKoboRequiredFields(nativeKoboAuditForm);
+    const requestedNumeroOrdre = String(nativeKoboAuditForm.Numero_ordre || '').trim();
+    const currentNumeroOrdre = String(household.numeroordre || household.id || '').trim();
+    const submissionHousehold = nativeKoboTargetHousehold || (household as unknown as Record<string, any>);
+
+    if (requestedNumeroOrdre && requestedNumeroOrdre !== currentNumeroOrdre && !nativeKoboTargetHousehold?.id) {
+      toast.error("Numero ordre introuvable sur le VPS: soumission bloquee pour eviter d'ecrire sur le mauvais menage");
+      return;
+    }
 
     setIsUpdating(true);
     try {
       const now = new Date().toISOString();
-      const internalSubmissionId = `gem-vps-${household.id}-${Date.now()}`;
+      const targetHouseholdId = String(submissionHousehold.id || household.id);
+      const internalSubmissionId = `gem-vps-${targetHouseholdId}-${Date.now()}`;
       const cleanValues = Object.fromEntries(
         Object.entries(nativeKoboAuditForm).filter(([, value]) => {
           if (Array.isArray(value)) return value.length > 0;
@@ -653,10 +664,10 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
                   ? 'Murs terminés'
                   : nativeKoboAuditForm.Situation_du_M_nage === 'menage_non_eligible'
                     ? 'Non éligible'
-                    : household.status;
+                    : submissionHousehold.status || household.status;
 
       const auditPatch: Record<string, any> = {
-        ...((household.constructionData as any)?.audit || {}),
+        ...((submissionHousehold.constructionData as any)?.audit || {}),
         ...cleanValues,
         conforme: controleOk,
         requiredMissing: missingRequiredFields.map((field) => field.name),
@@ -667,10 +678,10 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
       };
 
       const koboDataPatch: Record<string, any> = {
-        ...(household.koboData || {}),
+        ...(submissionHousehold.koboData || {}),
         ...cleanValues,
-        numeroordre: household.numeroordre || household.id,
-        Numero_ordre: nativeKoboAuditForm.Numero_ordre || household.numeroordre || household.id,
+        numeroordre: submissionHousehold.numeroordre || requestedNumeroOrdre || targetHouseholdId,
+        Numero_ordre: nativeKoboAuditForm.Numero_ordre || submissionHousehold.numeroordre || targetHouseholdId,
         _gem_internal_kobo: true,
         _gem_internal_kobo_updated_at: now,
         _gem_submission_target: 'gem-vps',
@@ -679,27 +690,27 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
         _gem_submitted_at: allRequiredComplete ? now : undefined,
       };
 
-      await onUpdate(household.id, {
+      await onUpdate(targetHouseholdId, {
         status: nextStatus,
         koboData: koboDataPatch,
         koboSync: {
-          ...(household.koboSync || {}),
-          preparateurKits: Number(nativeKoboAuditForm.Nombre_de_KIT_pr_par || household.koboSync?.preparateurKits || 0),
-          câbleInt25: Number(nativeKoboAuditForm.Longueur_Cable_2_5mm_Int_rieure || household.koboSync?.câbleInt25 || 0),
-          câbleInt15: Number(nativeKoboAuditForm.Longueur_Cable_1_5mm_Int_rieure || household.koboSync?.câbleInt15 || 0),
-          tranchee4: Number(nativeKoboAuditForm.Longueur_Tranch_e_Cable_arm_4mm || household.koboSync?.tranchee4 || 0),
-          tranchee15: Number(nativeKoboAuditForm.Longueur_Tranch_e_C_ble_arm_1_5mm || household.koboSync?.tranchee15 || 0),
-          maconOk: isTruthyKoboValue(nativeKoboAuditForm.validation_macon_final) || household.koboSync?.maconOk,
-          reseauOk: isTruthyKoboValue(nativeKoboAuditForm.validation_reseau_final) || household.koboSync?.reseauOk,
-          interieurOk: isTruthyKoboValue(nativeKoboAuditForm.validation_interieur_final) || household.koboSync?.interieurOk,
+          ...(submissionHousehold.koboSync || {}),
+          preparateurKits: Number(nativeKoboAuditForm.Nombre_de_KIT_pr_par || submissionHousehold.koboSync?.preparateurKits || 0),
+          câbleInt25: Number(nativeKoboAuditForm.Longueur_Cable_2_5mm_Int_rieure || submissionHousehold.koboSync?.câbleInt25 || 0),
+          câbleInt15: Number(nativeKoboAuditForm.Longueur_Cable_1_5mm_Int_rieure || submissionHousehold.koboSync?.câbleInt15 || 0),
+          tranchee4: Number(nativeKoboAuditForm.Longueur_Tranch_e_Cable_arm_4mm || submissionHousehold.koboSync?.tranchee4 || 0),
+          tranchee15: Number(nativeKoboAuditForm.Longueur_Tranch_e_C_ble_arm_1_5mm || submissionHousehold.koboSync?.tranchee15 || 0),
+          maconOk: isTruthyKoboValue(nativeKoboAuditForm.validation_macon_final) || submissionHousehold.koboSync?.maconOk,
+          reseauOk: isTruthyKoboValue(nativeKoboAuditForm.validation_reseau_final) || submissionHousehold.koboSync?.reseauOk,
+          interieurOk: isTruthyKoboValue(nativeKoboAuditForm.validation_interieur_final) || submissionHousehold.koboSync?.interieurOk,
           controleOk,
-          village: household.village || household.koboSync?.village,
-          departement: household.departement || household.koboSync?.departement,
-          region: String(nativeKoboAuditForm.region_key || household.region || household.koboSync?.region || ''),
-          tel: String(nativeKoboAuditForm.telephone_key || household.phone || household.ownerPhone || household.koboSync?.tel || ''),
+          village: submissionHousehold.village || submissionHousehold.koboSync?.village,
+          departement: submissionHousehold.departement || submissionHousehold.koboSync?.departement,
+          region: String(nativeKoboAuditForm.region_key || submissionHousehold.region || submissionHousehold.koboSync?.region || ''),
+          tel: String(nativeKoboAuditForm.telephone_key || submissionHousehold.phone || submissionHousehold.ownerPhone || submissionHousehold.koboSync?.tel || ''),
         },
         constructionData: {
-          ...(household.constructionData || {}),
+          ...(submissionHousehold.constructionData || {}),
           audit: auditPatch,
           internalKoboSubmission: {
             id: internalSubmissionId,
@@ -1700,11 +1711,12 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
         <InternalKoboForm
           values={nativeKoboAuditForm}
           onChange={updateNativeKoboAuditField}
-          onSave={handleSaveNativeKoboAudit}
-          onClose={() => setShowInternalReportModal(false)}
-          isSaving={isUpdating}
-          onPhotoUpload={onPhotoUpload}
-        />,
+        onSave={handleSaveNativeKoboAudit}
+        onClose={() => setShowInternalReportModal(false)}
+        isSaving={isUpdating}
+        onPhotoUpload={onPhotoUpload}
+        onResolvedHousehold={setNativeKoboTargetHousehold}
+      />,
         document.body
       )}
 

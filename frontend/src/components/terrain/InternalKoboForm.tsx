@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Camera, CheckCircle2, ChevronDown, ChevronRight, Database, ImagePlus, Lock, Search, X } from 'lucide-react';
+import apiClient from '../../api/client';
 import {
   formatInternalKoboValue,
   getVisibleInternalKoboFields,
@@ -19,6 +20,7 @@ type InternalKoboFormProps = {
   onClose: () => void;
   isSaving?: boolean;
   onPhotoUpload?: (file: File) => Promise<string>;
+  onResolvedHousehold?: (household: Record<string, any> | null) => void;
 };
 
 const asArray = (value: unknown): string[] => {
@@ -55,13 +57,86 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
   onClose,
   isSaving = false,
   onPhotoUpload,
+  onResolvedHousehold,
 }) => {
   const [activeSectionId, setActiveSectionId] = useState(INTERNAL_KOBO_SECTIONS[0]?.id || '');
   const [query, setQuery] = useState('');
   const [uploadingField, setUploadingField] = useState<string | null>(null);
+  const [householdLookup, setHouseholdLookup] = useState<{
+    status: 'idle' | 'loading' | 'found' | 'missing' | 'error';
+    message: string;
+  }>({ status: 'idle', message: '' });
+  const lastResolvedNumeroRef = useRef('');
+  const onChangeRef = useRef(onChange);
+  const onResolvedHouseholdRef = useRef(onResolvedHousehold);
   const missingRequired = useMemo(() => validateInternalKoboRequiredFields(values), [values]);
   const progress = useMemo(() => progressFor(values), [values]);
   const normalizedQuery = query.trim().toLowerCase();
+  const numeroOrdre = String(values.Numero_ordre || '').trim();
+
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+
+  useEffect(() => {
+    onResolvedHouseholdRef.current = onResolvedHousehold;
+  }, [onResolvedHousehold]);
+
+  useEffect(() => {
+    if (!numeroOrdre) {
+      setHouseholdLookup({ status: 'idle', message: '' });
+      onResolvedHouseholdRef.current?.(null);
+      return;
+    }
+
+    const timeoutId = window.setTimeout(async () => {
+      if (lastResolvedNumeroRef.current === numeroOrdre) return;
+
+      setHouseholdLookup({ status: 'loading', message: 'Recherche du menage sur le serveur VPS...' });
+      try {
+        const response = await apiClient.get(`households/by-numero/${encodeURIComponent(numeroOrdre)}`);
+        const household = response.data?.household || response.data;
+        if (!household?.id) {
+          throw new Error('Household response missing id');
+        }
+
+        const coordinates = Array.isArray(household.location?.coordinates)
+          ? household.location.coordinates
+          : null;
+        const longitude = household.longitude ?? coordinates?.[0] ?? '';
+        const latitude = household.latitude ?? coordinates?.[1] ?? '';
+        const displayName = household.name || household.owner || household.koboData?.nom_key || '';
+        const phone = household.phone || household.ownerPhone || household.koboData?.telephone_key || '';
+        const region = household.region || household.koboData?.region_key || '';
+
+        onChangeRef.current('nom_key', String(displayName));
+        onChangeRef.current('telephone_key', String(phone));
+        onChangeRef.current('latitude_key', String(latitude));
+        onChangeRef.current('longitude_key', String(longitude));
+        onChangeRef.current('region_key', String(region));
+        onChangeRef.current('LOCALISATION_CLIENT', latitude && longitude ? `${latitude} ${longitude}` : '');
+
+        lastResolvedNumeroRef.current = numeroOrdre;
+        onResolvedHouseholdRef.current?.(household);
+        setHouseholdLookup({
+          status: 'found',
+          message: `Menage trouve: ${displayName || household.numeroordre || numeroOrdre}`,
+        });
+      } catch (error: any) {
+        lastResolvedNumeroRef.current = '';
+        onResolvedHouseholdRef.current?.(null);
+        setHouseholdLookup({
+          status: error?.response?.status === 404 ? 'missing' : 'error',
+          message:
+            error?.response?.status === 404
+              ? `Aucun menage trouve pour le numero ${numeroOrdre}`
+              : 'Recherche impossible: serveur VPS indisponible',
+        });
+      }
+    }, 450);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [numeroOrdre]);
 
   const visibleSections = INTERNAL_KOBO_SECTIONS.map((section) => ({
     ...section,
@@ -296,6 +371,18 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
                 {missingRequired.length ? `${missingRequired.length} requis` : 'pret'}
               </div>
             </div>
+
+            {householdLookup.message ? (
+              <div className={`mt-3 rounded-2xl border px-4 py-3 text-[11px] font-bold ${
+                householdLookup.status === 'found'
+                  ? 'border-emerald-400/25 bg-emerald-500/10 text-emerald-100'
+                  : householdLookup.status === 'loading'
+                    ? 'border-blue-400/25 bg-blue-500/10 text-blue-100'
+                    : 'border-rose-400/25 bg-rose-500/10 text-rose-100'
+              }`}>
+                {householdLookup.message}
+              </div>
+            ) : null}
           </header>
 
           <div className="min-h-0 flex-1 overflow-y-auto p-4 custom-scrollbar sm:p-5">

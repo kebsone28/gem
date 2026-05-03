@@ -330,9 +330,25 @@ export const getHouseholdByNumero = async (req, res) => {
     try {
         const { organizationId } = req.user;
         const { numeroordre } = req.params;
+        const normalizedNumero = String(numeroordre || '').trim();
+
+        if (!normalizedNumero) {
+            return res.status(400).json({ error: 'Numero ordre is required' });
+        }
+
+        const numeroVariants = Array.from(new Set([
+            normalizedNumero,
+            normalizedNumero.replace(/^0+/, '') || normalizedNumero,
+        ]));
 
         const household = await prisma.household.findFirst({
-            where: { organizationId, numeroordre: String(numeroordre), deletedAt: null },
+            where: {
+                organizationId,
+                deletedAt: null,
+                OR: numeroVariants.map((value) => ({
+                    numeroordre: { equals: value, mode: 'insensitive' }
+                }))
+            },
             include: { zone: { select: { name: true, projectId: true } } }
         });
 
