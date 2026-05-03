@@ -26,6 +26,7 @@ import {
   getVisibleInternalKoboFields,
   hasInternalKoboValue,
   INTERNAL_KOBO_CHOICES,
+  INTERNAL_KOBO_FORM_SETTINGS,
   INTERNAL_KOBO_SECTIONS,
   isInternalKoboFieldVisible,
   isTruthyKoboValue,
@@ -160,6 +161,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
   const [activeSectionId, setActiveSectionId] = useState(INTERNAL_KOBO_SECTIONS[0]?.id || '');
   const [query, setQuery] = useState('');
   const [uploadingField, setUploadingField] = useState<string | null>(null);
+  const [isSubmitReviewOpen, setIsSubmitReviewOpen] = useState(false);
   const [householdLookup, setHouseholdLookup] = useState<{
     status: 'idle' | 'loading' | 'found' | 'missing' | 'error';
     message: string;
@@ -392,6 +394,19 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
         block: 'center',
       });
     }, 120);
+  };
+
+  const handlePrimarySave = () => {
+    if (missingRequired.length === 0) {
+      setIsSubmitReviewOpen(true);
+      return;
+    }
+    onSave();
+  };
+
+  const confirmFinalSubmission = () => {
+    setIsSubmitReviewOpen(false);
+    onSave();
   };
 
   const setOption = (field: InternalKoboField, optionName: string) => {
@@ -788,7 +803,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
 
   return (
     <div className="fixed inset-0 z-[3000] flex items-end justify-center bg-slate-950/75 p-0 backdrop-blur-md sm:items-center sm:p-4">
-      <div className="grid h-[100dvh] w-full max-w-7xl overflow-hidden rounded-t-[1.5rem] border border-blue-200/10 bg-[#0B1728] shadow-2xl sm:h-[92vh] sm:rounded-[1.75rem] md:grid-cols-[310px_1fr]">
+      <div className="relative grid h-[100dvh] w-full max-w-7xl overflow-hidden rounded-t-[1.5rem] border border-blue-200/10 bg-[#0B1728] shadow-2xl sm:h-[92vh] sm:rounded-[1.75rem] md:grid-cols-[310px_1fr]">
         <aside className="hidden border-r border-white/10 bg-slate-950/35 p-4 md:block">
           <div className="mb-5 rounded-2xl border border-blue-400/20 bg-blue-500/[0.08] p-4">
             <div className="flex items-center gap-2 text-blue-100">
@@ -1027,7 +1042,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
               </button>
               <button
                 type="button"
-                onClick={onSave}
+                onClick={handlePrimarySave}
                 disabled={isSaving}
                 className="flex h-[52px] items-center justify-center gap-2 rounded-2xl bg-blue-600 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-xl shadow-blue-600/20 transition-all hover:bg-blue-500 active:scale-95 disabled:opacity-50"
               >
@@ -1037,6 +1052,82 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
             </div>
           </footer>
         </main>
+
+        {isSubmitReviewOpen ? (
+          <div className="absolute inset-0 z-30 flex items-end justify-center bg-slate-950/72 p-3 backdrop-blur-sm sm:items-center sm:p-6">
+            <div className="w-full max-w-lg rounded-[1.5rem] border border-emerald-300/20 bg-[#0B1728] p-5 shadow-2xl shadow-emerald-950/30">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-200">Revue finale</p>
+                  <h4 className="mt-2 text-xl font-black uppercase tracking-tight text-white">Soumettre au VPS</h4>
+                  <p className="mt-2 text-[12px] font-semibold leading-relaxed text-slate-300">
+                    Cette fiche est complete. Confirmez l'envoi final vers le serveur GEM.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsSubmitReviewOpen(false)}
+                  className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-400 hover:text-white"
+                  aria-label="Fermer la revue finale"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-3">
+                  <p className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Menage</p>
+                  <p className="mt-1 truncate text-sm font-black text-white">{numeroOrdre || 'Non renseigne'}</p>
+                </div>
+                <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-3">
+                  <p className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Role</p>
+                  <p className="mt-1 truncate text-sm font-black text-white">{formatInternalKoboValue(selectedRole || 'role non defini', 'roles')}</p>
+                </div>
+                <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-3">
+                  <p className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Progression</p>
+                  <p className="mt-1 text-sm font-black text-white">{progress.filled}/{progress.total} champs</p>
+                </div>
+                <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-3">
+                  <p className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Version XLSForm</p>
+                  <p className="mt-1 truncate text-sm font-black text-white">v{INTERNAL_KOBO_FORM_SETTINGS.version}</p>
+                </div>
+              </div>
+
+              <div className="mt-4 rounded-2xl border border-emerald-300/18 bg-emerald-400/[0.07] p-3">
+                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-emerald-100">Sections pretes</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {navigableSections
+                    .filter((section) => !section.locked && section.activeFields.length > 0)
+                    .map((section) => (
+                      <span key={section.id} className="rounded-full border border-emerald-200/20 bg-emerald-200/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.1em] text-emerald-50">
+                        {section.title}
+                      </span>
+                    ))}
+                </div>
+              </div>
+
+              <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1.3fr]">
+                <button
+                  type="button"
+                  onClick={() => setIsSubmitReviewOpen(false)}
+                  disabled={isSaving}
+                  className="h-12 rounded-2xl border border-white/10 bg-white/[0.04] text-[10px] font-black uppercase tracking-[0.14em] text-slate-300 hover:bg-white/[0.08] disabled:opacity-50"
+                >
+                  Revoir
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmFinalSubmission}
+                  disabled={isSaving}
+                  className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-emerald-500 text-[10px] font-black uppercase tracking-[0.14em] text-slate-950 shadow-xl shadow-emerald-500/20 hover:bg-emerald-400 disabled:opacity-50"
+                >
+                  <Database size={15} />
+                  Confirmer l'envoi VPS
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </div>
     </div>
   );
