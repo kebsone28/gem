@@ -26,6 +26,7 @@ import type {
   InternalKoboSubmissionRecord,
 } from '../../services/internalKoboSubmissionService';
 import { compressImage } from '../../utils/imageUtils';
+import { stringifyHouseholdValue } from '../../utils/householdDisplay';
 import {
   formatInternalKoboValue,
   getInternalKoboFieldValue,
@@ -37,6 +38,7 @@ import {
   INTERNAL_KOBO_SECTIONS,
   isInternalKoboFieldVisible,
   isTruthyKoboValue,
+  validateInternalKoboFields,
   validateInternalKoboRequiredFields,
 } from './internalKoboFormDefinition';
 import type { InternalKoboField } from './internalKoboFormDefinition';
@@ -258,7 +260,12 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
   const onChangeRef = useRef(onChange);
   const onResolvedHouseholdRef = useRef(onResolvedHousehold);
   const resolveHouseholdByNumeroRef = useRef(resolveHouseholdByNumero);
+  const validationIssues = useMemo(() => validateInternalKoboFields(values), [values]);
   const missingRequired = useMemo(() => validateInternalKoboRequiredFields(values), [values]);
+  const constraintIssues = useMemo(
+    () => validationIssues.filter((issue) => issue.type === 'constraint'),
+    [validationIssues]
+  );
   const progress = useMemo(() => progressFor(values), [values]);
   const collectionMetadata = useMemo(() => getClientCollectionMetadata(isOnline), [isOnline]);
   const normalizedQuery = query.trim().toLowerCase();
@@ -371,11 +378,31 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
         const coordinates = Array.isArray(household.location?.coordinates)
           ? household.location.coordinates
           : null;
-        const longitude = household.longitude ?? coordinates?.[0] ?? '';
-        const latitude = household.latitude ?? coordinates?.[1] ?? '';
-        const displayName = household.name || household.owner || household.koboData?.nom_key || '';
-        const phone = household.phone || household.ownerPhone || household.koboData?.telephone_key || '';
-        const region = household.region || household.koboData?.region_key || '';
+        const longitude =
+          stringifyHouseholdValue(household.longitude) ||
+          stringifyHouseholdValue(coordinates?.[0]) ||
+          stringifyHouseholdValue(household.koboData?.longitude_key) ||
+          stringifyHouseholdValue(household.koboData?.C4);
+        const latitude =
+          stringifyHouseholdValue(household.latitude) ||
+          stringifyHouseholdValue(coordinates?.[1]) ||
+          stringifyHouseholdValue(household.koboData?.latitude_key) ||
+          stringifyHouseholdValue(household.koboData?.C2);
+        const displayName =
+          stringifyHouseholdValue(household.name) ||
+          stringifyHouseholdValue(household.owner) ||
+          stringifyHouseholdValue(household.koboData?.nom_key) ||
+          stringifyHouseholdValue(household.koboData?.C1);
+        const phone =
+          stringifyHouseholdValue(household.phone) ||
+          stringifyHouseholdValue(household.ownerPhone) ||
+          stringifyHouseholdValue(household.koboData?.telephone_key) ||
+          stringifyHouseholdValue(household.koboData?.C3) ||
+          stringifyHouseholdValue(household.koboSync?.tel);
+        const region =
+          stringifyHouseholdValue(household.region) ||
+          stringifyHouseholdValue(household.koboData?.region_key) ||
+          stringifyHouseholdValue(household.koboData?.region);
 
         onChangeRef.current('nom_key', String(displayName));
         onChangeRef.current('telephone_key', String(phone));
@@ -501,15 +528,15 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
     navigableSections.find((section) => !section.locked) ||
     navigableSections[0];
   const mobileSectionOptions = navigableSections.filter((section) => !section.locked);
-  const missingRequiredDetails = missingRequired.map((field) => {
+  const validationIssueDetails = validationIssues.map((issue) => {
     const section = navigableSections.find((item) =>
-      item.activeFields.some((sectionField) => sectionField.name === field.name)
+      item.activeFields.some((sectionField) => sectionField.name === issue.field.name)
     );
-    return { field, section };
+    return { ...issue, section };
   });
-  const firstActionableMissing = missingRequiredDetails.find((item) => item.section && !item.section.locked);
-  const requiredStatusText = missingRequired.length ? `${missingRequired.length} obligatoire(s)` : 'Pret';
-  const requiredStatusClass = missingRequired.length
+  const firstActionableIssue = validationIssueDetails.find((item) => item.section && !item.section.locked);
+  const requiredStatusText = validationIssues.length ? `${validationIssues.length} a corriger` : 'Pret';
+  const requiredStatusClass = validationIssues.length
     ? 'border-amber-400/35 bg-amber-400/12 text-amber-100'
     : 'border-emerald-400/30 bg-emerald-400/12 text-emerald-100';
 
@@ -564,7 +591,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
   };
 
   const handlePrimarySave = () => {
-    if (missingRequired.length === 0) {
+    if (validationIssues.length === 0) {
       setIsSubmitReviewOpen(true);
       return;
     }
@@ -732,9 +759,11 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
 
   const renderField = (field: InternalKoboField) => {
     const value = getInternalKoboFieldValue(field, values);
-    const missing = missingRequired.some((item) => item.name === field.name);
+    const fieldIssues = validationIssues.filter((issue) => issue.field.name === field.name);
+    const missing = fieldIssues.some((issue) => issue.type === 'required');
+    const invalid = fieldIssues.some((issue) => issue.type === 'constraint');
     const shellClass = `rounded-2xl border p-4 space-y-3 shadow-sm ${
-      missing ? 'border-amber-300/35 bg-amber-400/[0.08]' : 'border-white/[0.09] bg-white/[0.055]'
+      missing || invalid ? 'border-amber-300/35 bg-amber-400/[0.08]' : 'border-white/[0.09] bg-white/[0.055]'
     }`;
 
     if (field.type === 'note') {
@@ -789,6 +818,19 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
             </span>
           ) : null}
         </div>
+
+        {fieldIssues.length > 0 ? (
+          <div className="space-y-1">
+            {fieldIssues.map((issue) => (
+              <p
+                key={`${field.name}-${issue.type}`}
+                className="rounded-xl border border-amber-300/20 bg-amber-400/10 px-3 py-2 text-[10px] font-bold leading-snug text-amber-50"
+              >
+                {issue.message}
+              </p>
+            ))}
+          </div>
+        ) : null}
 
         {field.readOnly ? (
           <div className="flex h-12 items-center gap-2 rounded-2xl border border-white/8 bg-slate-950/35 px-4 text-[12px] font-black text-slate-300">
@@ -1098,7 +1140,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
   };
 
   const renderValidationAssistant = () => {
-    if (missingRequired.length === 0) {
+    if (validationIssues.length === 0) {
       return (
         <div className="mb-4 rounded-2xl border border-emerald-300/20 bg-emerald-400/[0.08] p-4">
           <div className="flex items-center gap-3">
@@ -1122,26 +1164,26 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
           <div className="min-w-0">
             <p className="text-[12px] font-black uppercase tracking-[0.14em] text-amber-100">Validation Kobo incomplete</p>
             <p className="mt-1 text-[11px] font-semibold text-slate-300">
-              {missingRequired.length} champ(s) obligatoire(s) restent a remplir avant la soumission finale.
+              {missingRequired.length} requis et {constraintIssues.length} valeur(s) a corriger avant la soumission finale.
             </p>
           </div>
-          {firstActionableMissing?.section ? (
+          {firstActionableIssue?.section ? (
             <button
               type="button"
-              onClick={() => focusRequiredField(firstActionableMissing.field.name, firstActionableMissing.section?.id)}
+              onClick={() => focusRequiredField(firstActionableIssue.field.name, firstActionableIssue.section?.id)}
               className="rounded-full border border-amber-200/30 bg-amber-300/15 px-3 py-2 text-[9px] font-black uppercase tracking-[0.12em] text-amber-50 hover:bg-amber-300/25"
             >
-              Premier requis
+              Premiere action
             </button>
           ) : null}
         </div>
 
         <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-          {missingRequiredDetails.slice(0, 4).map(({ field, section }) => {
+          {validationIssueDetails.slice(0, 4).map(({ field, section, type, message }) => {
             const canOpen = Boolean(section && !section.locked);
             return (
               <button
-                key={field.name}
+                key={`${field.name}-${type}`}
                 type="button"
                 disabled={!canOpen}
                 onClick={() => section && focusRequiredField(field.name, section.id)}
@@ -1156,6 +1198,9 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
                 </p>
                 <p className="mt-1 line-clamp-2 text-[11px] font-semibold leading-snug">
                   {field.label}
+                </p>
+                <p className="mt-1 line-clamp-2 text-[10px] font-semibold leading-snug text-amber-100/75">
+                  {message}
                 </p>
               </button>
             );
@@ -1366,7 +1411,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
               <div className="h-full rounded-full bg-blue-400 transition-all" style={{ width: `${progress.percent}%` }} />
             </div>
             <p className="mt-3 text-[11px] font-semibold text-slate-400">
-              {missingRequired.length ? `${missingRequired.length} champ(s) obligatoire(s) restant(s)` : 'Tous les champs visibles sont complets'}
+              {validationIssues.length ? `${validationIssues.length} action(s) restante(s)` : 'Tous les champs visibles sont complets'}
             </p>
           </div>
 
@@ -1467,7 +1512,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
                 />
               </div>
               <div className={`rounded-2xl border px-4 py-3 text-center text-[10px] font-black uppercase tracking-[0.13em] sm:flex sm:items-center ${requiredStatusClass}`}>
-                {missingRequired.length ? `${missingRequired.length} obligatoire(s)` : 'Pret a soumettre'}
+                {validationIssues.length ? `${validationIssues.length} a corriger` : 'Pret a soumettre'}
               </div>
               {queueCount > 0 ? (
                 <div className="rounded-2xl border border-sky-300/25 bg-sky-400/10 px-4 py-3 text-center text-[10px] font-black uppercase tracking-[0.13em] text-sky-100 sm:flex sm:items-center">
@@ -1605,7 +1650,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
                 className="flex h-[52px] items-center justify-center gap-2 rounded-2xl bg-blue-600 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-xl shadow-blue-600/20 transition-all hover:bg-blue-500 active:scale-95 disabled:opacity-50"
               >
                 <Database size={16} />
-                {isSaving ? 'Enregistrement...' : missingRequired.length ? 'Enregistrer brouillon' : 'Soumettre au serveur'}
+                {isSaving ? 'Enregistrement...' : validationIssues.length ? 'Enregistrer brouillon' : 'Soumettre au serveur'}
               </button>
             </div>
           </footer>

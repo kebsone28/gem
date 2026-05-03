@@ -25,6 +25,8 @@ export function getHouseholdDisplayName(household: Household | null | undefined)
   return (
     stringifyHouseholdValue((household as any).owner) ||
     stringifyHouseholdValue((household as any).name) ||
+    stringifyHouseholdValue((household as any).koboData?.nom_key) ||
+    stringifyHouseholdValue((household as any).koboData?.C1) ||
     stringifyHouseholdValue((household as any).koboData?.owner) ||
     stringifyHouseholdValue((household as any).koboData?.name) ||
     stringifyHouseholdValue((household as any).koboData?.beneficiaire) ||

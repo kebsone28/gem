@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getServerRequiredMissing } from '../internalKobo.validation.js';
+import { getServerRequiredMissing, getServerValidationIssues } from '../internalKobo.validation.js';
 
 const BASE_VALUES = {
     Numero_ordre: '26',
@@ -124,5 +124,38 @@ describe('internal Kobo server validation', () => {
         });
 
         expect(missing).toEqual([]);
+    });
+
+    it('reports server-side constraint issues for final Kobo values', () => {
+        const issues = getServerValidationIssues({
+            ...BASE_VALUES,
+            Numero_ordre: '-1',
+            LOCALISATION_CLIENT: '999 999',
+            role: 'macon',
+            kit_disponible_macon: 'oui',
+            type_mur_realise_macon: 'mur-standard',
+            notes_generales: 'RAS',
+            validation_macon_final: true
+        });
+
+        expect(issues).toEqual(expect.arrayContaining([
+            expect.objectContaining({ field: 'Numero_ordre', type: 'constraint' }),
+            expect.objectContaining({ field: 'LOCALISATION_CLIENT', type: 'constraint' })
+        ]));
+    });
+
+    it('validates visible optional preparateur integer fields', () => {
+        const issues = getServerValidationIssues({
+            ...BASE_VALUES,
+            role: '__pr_parateur',
+            Nombre_de_KIT_pr_par: '-2',
+            Nombre_de_KIT_Charg_pour_livraison: '1.5',
+            notes_generales: 'RAS'
+        });
+
+        expect(issues).toEqual(expect.arrayContaining([
+            expect.objectContaining({ field: 'Nombre_de_KIT_pr_par', type: 'constraint' }),
+            expect.objectContaining({ field: 'Nombre_de_KIT_Charg_pour_livraison', type: 'constraint' })
+        ]));
     });
 });

@@ -20,12 +20,20 @@ export type InternalKoboField = {
   listName?: string;
   required?: boolean;
   relevant?: string;
+  constraint?: string;
+  constraintMessage?: string;
   hint?: string;
   guidanceHint?: string;
   appearance?: string;
   parameters?: string;
   defaultValue?: unknown;
   readOnly?: boolean;
+};
+
+export type InternalKoboValidationIssue = {
+  field: InternalKoboField;
+  type: 'required' | 'constraint';
+  message: string;
 };
 
 export type InternalKoboSection = {
@@ -479,6 +487,78 @@ const INTERNAL_KOBO_FIELD_ALIASES: Record<string, string[]> = {
   Je_confirme_le_marqu_coffrets_lectriques: ['Je_confirme_le_marqu_s_coffret_lectrique'],
 };
 
+const NON_NEGATIVE_INTEGER_FIELDS = new Set(
+  INTERNAL_KOBO_SECTIONS.flatMap((section) =>
+    section.fields.filter((field) => field.type === 'integer').map((field) => field.name)
+  )
+);
+
+const parseKoboNumber = (value: unknown) => {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  const normalized = String(value ?? '').trim().replace(',', '.');
+  if (!normalized) return null;
+  const number = Number(normalized);
+  return Number.isFinite(number) ? number : null;
+};
+
+const isValidLatitude = (value: unknown) => {
+  const number = parseKoboNumber(value);
+  return number !== null && number >= -90 && number <= 90;
+};
+
+const isValidLongitude = (value: unknown) => {
+  const number = parseKoboNumber(value);
+  return number !== null && number >= -180 && number <= 180;
+};
+
+const parseGeopoint = (value: unknown) => {
+  const parts = String(value ?? '')
+    .trim()
+    .split(/[,\s]+/)
+    .filter(Boolean);
+  if (parts.length < 2) return null;
+  return {
+    latitude: parseKoboNumber(parts[0]),
+    longitude: parseKoboNumber(parts[1]),
+  };
+};
+
+const getInternalKoboConstraintMessage = (field: InternalKoboField, values: Record<string, unknown>) => {
+  const value = getInternalKoboFieldValue(field, values);
+  if (!hasInternalKoboValue(value)) return '';
+
+  if (field.name === 'Numero_ordre') {
+    const number = parseKoboNumber(value);
+    return number !== null && Number.isInteger(number) && number > 0
+      ? ''
+      : 'Le numero ordre doit etre un entier positif.';
+  }
+
+  if (field.name === 'latitude_key') {
+    return isValidLatitude(value) ? '' : 'La latitude doit etre comprise entre -90 et 90.';
+  }
+
+  if (field.name === 'longitude_key') {
+    return isValidLongitude(value) ? '' : 'La longitude doit etre comprise entre -180 et 180.';
+  }
+
+  if (field.type === 'geopoint') {
+    const point = parseGeopoint(value);
+    return point && isValidLatitude(point.latitude) && isValidLongitude(point.longitude)
+      ? ''
+      : 'Le GPS doit contenir latitude et longitude valides.';
+  }
+
+  if (NON_NEGATIVE_INTEGER_FIELDS.has(field.name)) {
+    const number = parseKoboNumber(value);
+    return number !== null && Number.isInteger(number) && number >= 0
+      ? ''
+      : 'La valeur doit etre un entier positif ou nul.';
+  }
+
+  return '';
+};
+
 export const isTruthyKoboValue = (value: unknown) =>
   value === true || value === 'true' || value === 'yes' || value === 'oui' || value === '1';
 
@@ -577,6 +657,29 @@ export const validateInternalKoboRequiredFields = (values: Record<string, unknow
   getVisibleInternalKoboFields(values).filter(
     (field) => field.type !== 'note' && field.required && !hasInternalKoboRequiredValue(field, values)
   );
+
+export const validateInternalKoboConstraintFields = (
+  values: Record<string, unknown>
+): InternalKoboValidationIssue[] =>
+  getVisibleInternalKoboFields(values)
+    .filter((field) => field.type !== 'note')
+    .map((field) => ({
+      field,
+      type: 'constraint' as const,
+      message: field.constraintMessage || getInternalKoboConstraintMessage(field, values),
+    }))
+    .filter((issue) => Boolean(issue.message));
+
+export const validateInternalKoboFields = (
+  values: Record<string, unknown>
+): InternalKoboValidationIssue[] => [
+  ...validateInternalKoboRequiredFields(values).map((field) => ({
+    field,
+    type: 'required' as const,
+    message: 'Champ obligatoire pour cette branche Kobo.',
+  })),
+  ...validateInternalKoboConstraintFields(values),
+];
 
 export const formatInternalKoboValue = (value: unknown, listName?: string): string => {
   if (Array.isArray(value)) {

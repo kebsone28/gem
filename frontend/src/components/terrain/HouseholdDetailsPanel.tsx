@@ -55,6 +55,7 @@ import {
   INTERNAL_KOBO_SECTIONS,
   getInternalKoboSubmissionValues,
   isTruthyKoboValue,
+  validateInternalKoboFields,
   validateInternalKoboRequiredFields,
 } from './internalKoboFormDefinition';
 import {
@@ -310,15 +311,40 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
       nextForm[fieldName] = storedValue;
     });
 
+    const coordinates = Array.isArray((household as any).location?.coordinates)
+      ? (household as any).location.coordinates
+      : null;
+    const initialLatitude =
+      stringifyHouseholdValue(koboData.latitude_key) ||
+      stringifyHouseholdValue(household.latitude) ||
+      stringifyHouseholdValue(coordinates?.[1]) ||
+      stringifyHouseholdValue(koboData.C2);
+    const initialLongitude =
+      stringifyHouseholdValue(koboData.longitude_key) ||
+      stringifyHouseholdValue(household.longitude) ||
+      stringifyHouseholdValue(coordinates?.[0]) ||
+      stringifyHouseholdValue(koboData.C4);
+
     nextForm.Numero_ordre = String(koboData.Numero_ordre ?? household.numeroordre ?? household.id ?? '');
-    nextForm.nom_key = String(koboData.nom_key ?? household.name ?? household.owner ?? '');
-    nextForm.telephone_key = String(koboData.telephone_key ?? household.phone ?? household.ownerPhone ?? '');
-    nextForm.latitude_key = String(koboData.latitude_key ?? household.latitude ?? '');
-    nextForm.longitude_key = String(koboData.longitude_key ?? household.longitude ?? '');
-    nextForm.region_key = String(koboData.region_key ?? household.region ?? '');
+    nextForm.nom_key =
+      stringifyHouseholdValue(koboData.nom_key) ||
+      stringifyHouseholdValue(household.name) ||
+      stringifyHouseholdValue(household.owner) ||
+      stringifyHouseholdValue(koboData.C1);
+    nextForm.telephone_key =
+      stringifyHouseholdValue(koboData.telephone_key) ||
+      stringifyHouseholdValue(household.phone) ||
+      stringifyHouseholdValue(household.ownerPhone) ||
+      stringifyHouseholdValue(koboData.C3);
+    nextForm.latitude_key = initialLatitude;
+    nextForm.longitude_key = initialLongitude;
+    nextForm.region_key =
+      stringifyHouseholdValue(koboData.region_key) ||
+      stringifyHouseholdValue(household.region) ||
+      stringifyHouseholdValue(koboData.region);
     nextForm.LOCALISATION_CLIENT = String(
       koboData.LOCALISATION_CLIENT ??
-      (household.latitude && household.longitude ? `${household.latitude} ${household.longitude}` : '')
+      (initialLatitude && initialLongitude ? `${initialLatitude} ${initialLongitude}` : '')
     );
 
     const localDraft = loadInternalKoboLocalDraft({
@@ -822,7 +848,9 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
   };
 
   const handleSaveNativeKoboAudit = async () => {
+    const validationIssues = validateInternalKoboFields(nativeKoboAuditForm);
     const missingRequiredFields = validateInternalKoboRequiredFields(nativeKoboAuditForm);
+    const constraintIssues = validationIssues.filter((issue) => issue.type === 'constraint');
     const requestedNumeroOrdre = String(nativeKoboAuditForm.Numero_ordre || '').trim();
     const currentNumeroOrdre = String(household.numeroordre || household.id || '').trim();
     const submissionHousehold = nativeKoboTargetHousehold || (household as unknown as Record<string, any>);
@@ -893,7 +921,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
         (fieldName) => nativeKoboAuditForm[fieldName] === 'non_conforme'
       );
       const controlCompleted = isTruthyKoboValue(nativeKoboAuditForm.validation_controleur_final);
-      const allRequiredComplete = missingRequiredFields.length === 0;
+      const allRequiredComplete = validationIssues.length === 0;
       const controleOk = controlCompleted && allRequiredComplete && !hasControlNonConformity;
       const nextStatus =
         controleOk
@@ -915,6 +943,11 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
         ...cleanValues,
         conforme: controleOk,
         requiredMissing: missingRequiredFields.map((field) => field.name),
+        validationIssues: validationIssues.map((issue) => ({
+          field: issue.field.name,
+          type: issue.type,
+          message: issue.message,
+        })),
         source: 'native-gem-kobo-form',
         submissionTarget: 'gem-vps',
         internalSubmissionId,
@@ -964,6 +997,11 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
             xlsForm: INTERNAL_KOBO_FORM_SETTINGS,
             status: allRequiredComplete ? 'submitted' : 'draft',
             requiredMissing: missingRequiredFields.map((field) => field.name),
+            validationIssues: validationIssues.map((issue) => ({
+              field: issue.field.name,
+              type: issue.type,
+              message: issue.message,
+            })),
             submittedAt: allRequiredComplete ? now : undefined,
             savedAt: now,
           },
@@ -1003,6 +1041,12 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
             allRequiredComplete,
             controleOk,
             hasControlNonConformity,
+            constraintIssueCount: constraintIssues.length,
+            issues: validationIssues.map((issue) => ({
+              field: issue.field.name,
+              type: issue.type,
+              message: issue.message,
+            })),
           },
         },
         requiredMissing: missingRequiredFields.map((field) => field.name),
@@ -1037,7 +1081,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
           ? 'Fiche sauvegardee; trace Kobo interne mise en file VPS'
           : allRequiredComplete
             ? 'Formulaire soumis au serveur VPS'
-            : `Brouillon sauvegardé sur le VPS (${missingRequiredFields.length} requis manquant(s))`
+            : `Brouillon sauvegarde sur le VPS (${missingRequiredFields.length} requis, ${constraintIssues.length} correction(s))`
       );
       setShowInternalReportModal(false);
     } catch (error) {

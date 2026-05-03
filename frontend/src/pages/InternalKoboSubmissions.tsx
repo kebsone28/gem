@@ -262,6 +262,10 @@ export default function InternalKoboSubmissions() {
     if (!selectedSubmission?.metadata) return [];
     return Object.entries(selectedSubmission.metadata).filter(([, value]) => value !== undefined && value !== null && String(value).trim() !== '');
   }, [selectedSubmission]);
+  const selectedValidationIssues = useMemo(() => {
+    const issues = (selectedSubmission?.metadata as any)?.serverValidationIssues;
+    return Array.isArray(issues) ? issues : [];
+  }, [selectedSubmission]);
   const selectedAttachments = useMemo(() => getSubmissionAttachments(selectedSubmission), [selectedSubmission]);
 
   const health = globalDiagnostics?.health || 'ok';
@@ -402,13 +406,14 @@ export default function InternalKoboSubmissions() {
             </div>
           ) : null}
 
-          <div className="grid grid-cols-2 gap-3 xl:grid-cols-6">
+          <div className="grid grid-cols-2 gap-3 xl:grid-cols-7">
             {[
               { label: 'Total VPS', value: globalDiagnostics?.total ?? listDiagnostics?.count ?? submissions.length, icon: Database },
               { label: '24h', value: globalDiagnostics?.receivedLast24h ?? 0, icon: Activity },
               { label: 'Soumis', value: countValue(globalDiagnostics, 'byStatus', 'submitted') + countValue(globalDiagnostics, 'byStatus', 'validated'), icon: CheckCircle2 },
               { label: 'Brouillons', value: countValue(globalDiagnostics, 'byStatus', 'draft'), icon: FileJson },
               { label: 'Requis manquants', value: globalDiagnostics?.missingRequiredCount ?? listDiagnostics?.missingRequiredCount ?? 0, icon: AlertTriangle },
+              { label: 'Corrections', value: globalDiagnostics?.validationIssueCount ?? listDiagnostics?.validationIssueCount ?? 0, icon: AlertTriangle },
               { label: 'Etat moteur', value: String(health).toUpperCase(), icon: Server, tone: healthClass },
             ].map((stat) => {
               const Icon = stat.icon;
@@ -458,6 +463,9 @@ export default function InternalKoboSubmissions() {
                 ) : null}
                 {submissions.map((submission) => {
                   const isSelected = selectedSubmission?.id === submission.id;
+                  const validationIssueCount = Array.isArray((submission.metadata as any)?.serverValidationIssues)
+                    ? (submission.metadata as any).serverValidationIssues.length
+                    : 0;
                   return (
                     <button
                       key={submission.id}
@@ -478,6 +486,11 @@ export default function InternalKoboSubmissions() {
                           {(submission.requiredMissing || []).length > 0 ? (
                             <span className="rounded-full border border-amber-300/25 bg-amber-400/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.1em] text-amber-100">
                               {submission.requiredMissing.length} requis
+                            </span>
+                          ) : null}
+                          {validationIssueCount > 0 ? (
+                            <span className="rounded-full border border-rose-300/25 bg-rose-400/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.1em] text-rose-100">
+                              {validationIssueCount} correction(s)
                             </span>
                           ) : null}
                         </div>
@@ -580,7 +593,7 @@ export default function InternalKoboSubmissions() {
                         <button
                           type="button"
                           onClick={() => handleReview('validated')}
-                          disabled={isReviewing}
+                          disabled={isReviewing || (selectedSubmission.requiredMissing || []).length > 0 || selectedValidationIssues.length > 0}
                           className="inline-flex items-center justify-center gap-2 rounded-2xl border border-emerald-300/25 bg-emerald-500/12 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-100 hover:bg-emerald-500/20 disabled:opacity-50"
                         >
                           <CheckCircle2 size={13} />
@@ -613,6 +626,20 @@ export default function InternalKoboSubmissions() {
                         <p className="mt-2 break-words text-[11px] font-bold leading-relaxed text-amber-50">
                           {selectedSubmission.requiredMissing.join(', ')}
                         </p>
+                      </div>
+                    ) : null}
+
+                    {selectedValidationIssues.length > 0 ? (
+                      <div className="mt-4 rounded-2xl border border-rose-300/20 bg-rose-400/10 p-3">
+                        <p className="text-[10px] font-black uppercase tracking-[0.14em] text-rose-100">Corrections serveur</p>
+                        <div className="mt-2 space-y-2">
+                          {selectedValidationIssues.map((issue: any, index: number) => (
+                            <div key={`${issue.field || 'issue'}-${index}`} className="rounded-xl border border-rose-200/10 bg-slate-950/25 p-2">
+                              <p className="text-[10px] font-black text-rose-50">{issue.field || 'Champ inconnu'}</p>
+                              <p className="mt-1 text-[10px] font-semibold leading-relaxed text-rose-100/80">{issue.message || 'Valeur a corriger'}</p>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     ) : null}
 

@@ -238,6 +238,36 @@ function hasValue(value) {
     return value !== undefined && value !== null && String(value).trim() !== '';
 }
 
+function parseKoboNumber(value) {
+    if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+    const normalized = String(value ?? '').trim().replace(',', '.');
+    if (!normalized) return null;
+    const number = Number(normalized);
+    return Number.isFinite(number) ? number : null;
+}
+
+function isValidLatitude(value) {
+    const number = parseKoboNumber(value);
+    return number !== null && number >= -90 && number <= 90;
+}
+
+function isValidLongitude(value) {
+    const number = parseKoboNumber(value);
+    return number !== null && number >= -180 && number <= 180;
+}
+
+function parseGeopoint(value) {
+    const parts = String(value ?? '')
+        .trim()
+        .split(/[,\s]+/)
+        .filter(Boolean);
+    if (parts.length < 2) return null;
+    return {
+        latitude: parseKoboNumber(parts[0]),
+        longitude: parseKoboNumber(parts[1])
+    };
+}
+
 function isTruthyKoboValue(value) {
     return value === true || value === 'true' || value === 'yes' || value === 'oui' || value === '1';
 }
@@ -294,6 +324,78 @@ function hasRequiredValue(rule, values) {
     return hasValue(value);
 }
 
+const INTEGER_FIELD_NAMES = new Set([
+    'Numero_ordre',
+    'Nombre_de_KIT_pr_par',
+    'Nombre_de_KIT_Charg_pour_livraison',
+    'Longueur_Cable_2_5mm_Int_rieure',
+    'Longueur_Cable_1_5mm_Int_rieure',
+    'Longueur_Tranch_e_Cable_arm_4mm',
+    'Longueur_Tranch_e_C_ble_arm_1_5mm',
+    'OBSERVATIONS__007'
+]);
+
+const OPTIONAL_CONSTRAINT_RULES = [
+    { name: 'Nombre_de_KIT_pr_par', relevant: "${role} = '__pr_parateur'" },
+    { name: 'Nombre_de_KIT_Charg_pour_livraison', relevant: "${role} = '__pr_parateur'" }
+];
+
+function getConstraintIssue(rule, values) {
+    const value = getValue(values, rule);
+    if (!hasValue(value)) return null;
+
+    if (rule.name === 'Numero_ordre') {
+        const number = parseKoboNumber(value);
+        if (number === null || !Number.isInteger(number) || number <= 0) {
+            return {
+                field: rule.name,
+                type: 'constraint',
+                message: 'Le numero ordre doit etre un entier positif.'
+            };
+        }
+    }
+
+    if (rule.name === 'latitude_key' && !isValidLatitude(value)) {
+        return {
+            field: rule.name,
+            type: 'constraint',
+            message: 'La latitude doit etre comprise entre -90 et 90.'
+        };
+    }
+
+    if (rule.name === 'longitude_key' && !isValidLongitude(value)) {
+        return {
+            field: rule.name,
+            type: 'constraint',
+            message: 'La longitude doit etre comprise entre -180 et 180.'
+        };
+    }
+
+    if (rule.name === 'LOCALISATION_CLIENT') {
+        const point = parseGeopoint(value);
+        if (!point || !isValidLatitude(point.latitude) || !isValidLongitude(point.longitude)) {
+            return {
+                field: rule.name,
+                type: 'constraint',
+                message: 'Le GPS doit contenir latitude et longitude valides.'
+            };
+        }
+    }
+
+    if (INTEGER_FIELD_NAMES.has(rule.name)) {
+        const number = parseKoboNumber(value);
+        if (number === null || !Number.isInteger(number) || number < 0) {
+            return {
+                field: rule.name,
+                type: 'constraint',
+                message: 'La valeur doit etre un entier positif ou nul.'
+            };
+        }
+    }
+
+    return null;
+}
+
 export function getServerRequiredMissing(values) {
     if (!values || typeof values !== 'object' || Array.isArray(values)) return [];
 
@@ -301,4 +403,34 @@ export function getServerRequiredMissing(values) {
         .filter((rule) => isRelevant(rule, values))
         .filter((rule) => !hasRequiredValue(rule, values))
         .map((rule) => rule.name);
+}
+
+export function getServerValidationIssues(values) {
+    if (!values || typeof values !== 'object' || Array.isArray(values)) {
+        return REQUIRED_RULES.map((rule) => ({
+            field: rule.name,
+            type: 'required',
+            message: 'Champ obligatoire pour cette branche Kobo.'
+        }));
+    }
+
+    const visibleRules = REQUIRED_RULES.filter((rule) => isRelevant(rule, values));
+    const requiredIssues = visibleRules
+        .filter((rule) => !hasRequiredValue(rule, values))
+        .map((rule) => ({
+            field: rule.name,
+            type: 'required',
+            message: 'Champ obligatoire pour cette branche Kobo.'
+        }));
+    const constraintRules = [
+        ...visibleRules,
+        ...OPTIONAL_CONSTRAINT_RULES.filter(
+            (rule) => !visibleRules.some((visibleRule) => visibleRule.name === rule.name) && isRelevant(rule, values)
+        )
+    ];
+    const constraintIssues = constraintRules
+        .map((rule) => getConstraintIssue(rule, values))
+        .filter(Boolean);
+
+    return [...requiredIssues, ...constraintIssues];
 }

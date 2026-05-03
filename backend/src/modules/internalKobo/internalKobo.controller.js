@@ -6,6 +6,7 @@ import crypto from 'node:crypto';
 import ExcelJS from 'exceljs';
 import {
     getServerRequiredMissing,
+    getServerValidationIssues,
     INTERNAL_KOBO_ALLOWED_ROLES,
     INTERNAL_KOBO_FORM_KEY,
     INTERNAL_KOBO_FORM_VERSION
@@ -355,25 +356,30 @@ async function normalizeSubmissionPayload(body, req) {
     }
 
     const serverRequiredMissing = getServerRequiredMissing(values);
+    const serverValidationIssues = getServerValidationIssues(values);
+    const serverConstraintIssues = serverValidationIssues.filter((issue) => issue.type === 'constraint');
     const requiredMissing = uniqueStrings([
         ...normalizeRequiredMissing(body.requiredMissing),
         ...serverRequiredMissing
     ]);
     const requestedStatus = String(body.status || '').trim().toLowerCase();
 
-    if (requiredMissing.length > 0 && ['submitted', 'validated'].includes(requestedStatus)) {
+    if (serverValidationIssues.length > 0 && ['submitted', 'validated'].includes(requestedStatus)) {
         return {
             error: {
                 status: 422,
-                message: 'Submitted internal Kobo form still has required fields missing',
-                details: { requiredMissing }
+                message: 'Submitted internal Kobo form still has validation issues',
+                details: {
+                    requiredMissing,
+                    validationIssues: serverValidationIssues
+                }
             }
         };
     }
 
     const status = SUBMISSION_STATUSES.has(requestedStatus)
         ? requestedStatus
-        : requiredMissing.length > 0
+        : serverValidationIssues.length > 0
             ? 'draft'
             : 'submitted';
 
@@ -399,6 +405,8 @@ async function normalizeSubmissionPayload(body, req) {
                     attachmentCount: attachments.length
                 },
                 serverRequiredMissing,
+                serverValidationIssues,
+                serverConstraintIssues,
                 requestId: req.get('x-request-id') || crypto.randomUUID(),
                 receivedAt: new Date().toISOString(),
                 receivedFromIp: req.ip || req.connection?.remoteAddress || null,
@@ -449,8 +457,29 @@ export const submitInternalKoboSubmission = async (req, res) => {
                 }
             }
 
-            if (payload.status === 'submitted' && !resolvedHousehold) {
+            if (['submitted', 'validated'].includes(payload.status) && !resolvedHousehold) {
                 throw makeHttpError(404, 'Submitted internal Kobo form must target an existing household');
+            }
+
+            const existingSubmission = await tx.internalKoboSubmission.findUnique({
+                where: {
+                    organizationId_clientSubmissionId: {
+                        organizationId,
+                        clientSubmissionId: payload.clientSubmissionId
+                    }
+                },
+                select: {
+                    id: true,
+                    status: true
+                }
+            });
+
+            if (['validated', 'rejected'].includes(existingSubmission?.status)) {
+                throw makeHttpError(409, 'Final reviewed internal Kobo submission cannot be overwritten');
+            }
+
+            if (existingSubmission?.status === 'submitted' && payload.status !== 'submitted') {
+                throw makeHttpError(409, 'Submitted internal Kobo form cannot be downgraded or reviewed by the submit endpoint');
             }
 
             const submissionRecord = await tx.internalKoboSubmission.upsert({
@@ -518,6 +547,7 @@ export const submitInternalKoboSubmission = async (req, res) => {
                         status: payload.status,
                         formVersion: payload.formVersion,
                         requiredMissing: payload.requiredMissing,
+                        validationIssues: payload.metadata.serverValidationIssues,
                         serverFormVersion: INTERNAL_KOBO_FORM_VERSION,
                         formVersionMismatch: payload.metadata.formVersionMismatch
                     }
@@ -551,6 +581,7 @@ export const submitInternalKoboSubmission = async (req, res) => {
                     status: payload.status,
                     formVersion: payload.formVersion,
                     requiredMissing: payload.requiredMissing,
+                    validationIssues: payload.metadata.serverValidationIssues,
                     formVersionMismatch: payload.metadata.formVersionMismatch
                 },
                 req
@@ -810,8 +841,25 @@ export const reviewInternalKoboSubmission = async (req, res) => {
             return res.status(404).json({ success: false, message: 'Internal Kobo submission not found' });
         }
 
+        const currentMetadata = isPlainObject(current.metadata) ? current.metadata : {};
+        const currentValidationIssues = Array.isArray(currentMetadata.serverValidationIssues)
+            ? currentMetadata.serverValidationIssues
+            : [];
+        const hasBlockingIssues = (current.requiredMissing || []).length > 0 || currentValidationIssues.length > 0;
+
+        if (nextStatus === 'validated' && hasBlockingIssues) {
+            return res.status(422).json({
+                success: false,
+                message: 'Internal Kobo submission cannot be validated while required or constraint issues remain',
+                details: {
+                    requiredMissing: current.requiredMissing || [],
+                    validationIssues: currentValidationIssues
+                }
+            });
+        }
+
         const metadata = {
-            ...(isPlainObject(current.metadata) ? current.metadata : {}),
+            ...currentMetadata,
             review: {
                 status: nextStatus,
                 note,
@@ -842,10 +890,33 @@ export const reviewInternalKoboSubmission = async (req, res) => {
                     clientSubmissionId: current.clientSubmissionId,
                     previousStatus: current.status,
                     nextStatus,
-                    note
+                    note,
+                    requiredMissing: current.requiredMissing || [],
+                    validationIssues: currentValidationIssues
                 }
             }
         });
+
+        try {
+            await tracerAction({
+                userId,
+                organizationId,
+                action: 'REVUE_KOBO_INTERNE',
+                resource: 'InternalKoboSubmission',
+                resourceId: submission.id,
+                details: {
+                    clientSubmissionId: current.clientSubmissionId,
+                    previousStatus: current.status,
+                    nextStatus,
+                    note,
+                    requiredMissing: current.requiredMissing || [],
+                    validationIssues: currentValidationIssues
+                },
+                req
+            });
+        } catch (auditError) {
+            console.error('[INTERNAL-KOBO] review audit log error:', auditError.message);
+        }
 
         return res.json({ success: true, submission: sanitizeBigIntForJson(submission) });
     } catch (err) {
@@ -965,6 +1036,9 @@ export const listInternalKoboSubmissions = async (req, res) => {
             byRole: countBy('role'),
             bySyncStatus: countBy('syncStatus'),
             missingRequiredCount: submissions.filter((submission) => (submission.requiredMissing || []).length > 0).length,
+            validationIssueCount: submissions.filter(
+                (submission) => Array.isArray(submission.metadata?.serverValidationIssues) && submission.metadata.serverValidationIssues.length > 0
+            ).length,
             versionMismatchCount: submissions.filter((submission) => submission.metadata?.formVersionMismatch === true).length,
             latestSavedAt: submissions[0]?.savedAt || null,
             serverFormVersion: INTERNAL_KOBO_FORM_VERSION,
@@ -1026,6 +1100,9 @@ export const getInternalKoboDiagnostics = async (req, res) => {
         const missingRequiredCount = latestSubmissions.filter(
             (submission) => (submission.requiredMissing || []).length > 0
         ).length;
+        const validationIssueCount = latestSubmissions.filter(
+            (submission) => Array.isArray(submission.metadata?.serverValidationIssues) && submission.metadata.serverValidationIssues.length > 0
+        ).length;
         const unresolvedHouseholdCount = latestSubmissions.filter((submission) => !submission.householdId).length;
         const warningMessages = [];
 
@@ -1035,12 +1112,15 @@ export const getInternalKoboDiagnostics = async (req, res) => {
         if (missingRequiredCount > 0) {
             warningMessages.push(`${missingRequiredCount} brouillon(s) ou fiche(s) avec champs requis manquants`);
         }
+        if (validationIssueCount > 0) {
+            warningMessages.push(`${validationIssueCount} soumission(s) avec correction de valeur a traiter`);
+        }
         if (unresolvedHouseholdCount > 0) {
             warningMessages.push(`${unresolvedHouseholdCount} soumission(s) non rattachee(s) a un menage serveur`);
         }
 
         const health =
-            unresolvedHouseholdCount > 0 || versionMismatchCount > 0
+            unresolvedHouseholdCount > 0 || versionMismatchCount > 0 || validationIssueCount > 0
                 ? 'warning'
                 : latestSubmissions.some((submission) => submission.syncStatus !== 'synced')
                     ? 'warning'
@@ -1059,6 +1139,7 @@ export const getInternalKoboDiagnostics = async (req, res) => {
                 bySyncStatus: countBy(latestSubmissions, (submission) => submission.syncStatus),
                 versionMismatchCount,
                 missingRequiredCount,
+                validationIssueCount,
                 unresolvedHouseholdCount,
                 latestSavedAt: latestSubmissions[0]?.savedAt || null,
                 serverFormVersion: INTERNAL_KOBO_FORM_VERSION,

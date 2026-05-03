@@ -4,6 +4,7 @@ import {
   INTERNAL_KOBO_FIELD_NAMES,
   INTERNAL_KOBO_FORM_SETTINGS,
   getVisibleInternalKoboFields,
+  validateInternalKoboFields,
   validateInternalKoboRequiredFields,
 } from '../src/components/terrain/internalKoboFormDefinition';
 
@@ -191,5 +192,38 @@ describe('internal Kobo form definition', () => {
       VALEUR_DE_LA_RESISTANCE_DE_TER: 'conforme',
       OBSERVATIONS__007: '8',
     })).toContain('validation_controleur_final');
+  });
+
+  it('blocks final submission when numeric or GPS values are invalid', () => {
+    const issues = validateInternalKoboFields({
+      ...BASE_VALUES,
+      Numero_ordre: '-1',
+      LOCALISATION_CLIENT: '999 999',
+      role: 'macon',
+      kit_disponible_macon: 'oui',
+      type_mur_realise_macon: 'mur-standard',
+      validation_macon_final: true,
+      notes_generales: 'RAS',
+    });
+
+    expect(issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({ field: expect.objectContaining({ name: 'Numero_ordre' }), type: 'constraint' }),
+      expect.objectContaining({ field: expect.objectContaining({ name: 'LOCALISATION_CLIENT' }), type: 'constraint' }),
+    ]));
+  });
+
+  it('validates optional preparateur integer fields when they are visible', () => {
+    const issues = validateInternalKoboFields({
+      ...BASE_VALUES,
+      role: '__pr_parateur',
+      Nombre_de_KIT_pr_par: '-2',
+      Nombre_de_KIT_Charg_pour_livraison: '1.5',
+      notes_generales: 'RAS',
+    });
+
+    expect(issues.map((issue) => issue.field.name)).toEqual(expect.arrayContaining([
+      'Nombre_de_KIT_pr_par',
+      'Nombre_de_KIT_Charg_pour_livraison',
+    ]));
   });
 });

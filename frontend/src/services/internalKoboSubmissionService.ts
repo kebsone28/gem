@@ -96,6 +96,7 @@ export interface InternalKoboSubmissionDiagnostics {
   bySyncStatus?: Record<string, number>;
   versionMismatchCount?: number;
   missingRequiredCount?: number;
+  validationIssueCount?: number;
   unresolvedHouseholdCount?: number;
   latestSavedAt?: string | null;
   serverFormVersion?: string;
