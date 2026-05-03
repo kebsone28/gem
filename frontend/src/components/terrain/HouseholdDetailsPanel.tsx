@@ -57,10 +57,12 @@ import {
   validateInternalKoboRequiredFields,
 } from './internalKoboFormDefinition';
 import {
+  fetchInternalKoboSubmissions,
   flushInternalKoboSubmissionQueue,
   getInternalKoboQueueCount,
   queueInternalKoboSubmission,
   submitInternalKoboSubmission,
+  type InternalKoboSubmissionRecord,
   type InternalKoboSubmissionPayload,
 } from '../../services/internalKoboSubmissionService';
 
@@ -183,12 +185,48 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
   const [nativeKoboTargetHousehold, setNativeKoboTargetHousehold] = useState<Record<string, any> | null>(null);
   const [nativeKoboValidated, setNativeKoboValidated] = useState(false);
   const [internalKoboQueueCount, setInternalKoboQueueCount] = useState(0);
+  const [internalKoboHistory, setInternalKoboHistory] = useState<InternalKoboSubmissionRecord[]>([]);
+  const [isInternalKoboHistoryLoading, setIsInternalKoboHistoryLoading] = useState(false);
+  const [internalKoboHistoryError, setInternalKoboHistoryError] = useState('');
 
   const refreshInternalKoboQueueCount = useCallback(async () => {
     const count = await getInternalKoboQueueCount();
     setInternalKoboQueueCount(count);
     return count;
   }, []);
+
+  const loadInternalKoboHistory = useCallback(async (target?: Record<string, any> | null) => {
+    const targetHousehold = target || (household as unknown as Record<string, any>);
+    const householdId = targetHousehold?.id ? String(targetHousehold.id) : '';
+    const numeroOrdre = String(targetHousehold?.numeroordre || targetHousehold?.koboData?.Numero_ordre || household.numeroordre || '').trim();
+
+    if (!householdId && !numeroOrdre) {
+      setInternalKoboHistory([]);
+      setInternalKoboHistoryError('');
+      return;
+    }
+
+    if (!isOnline) {
+      setInternalKoboHistoryError('Historique VPS indisponible hors-ligne');
+      return;
+    }
+
+    setIsInternalKoboHistoryLoading(true);
+    setInternalKoboHistoryError('');
+
+    try {
+      const submissions = await fetchInternalKoboSubmissions({
+        householdId: householdId || undefined,
+        numeroOrdre: householdId ? undefined : numeroOrdre,
+        limit: 6,
+      });
+      setInternalKoboHistory(submissions);
+    } catch (error) {
+      setInternalKoboHistoryError(error instanceof Error ? error.message : 'Historique VPS indisponible');
+    } finally {
+      setIsInternalKoboHistoryLoading(false);
+    }
+  }, [household, isOnline]);
 
   useEffect(() => {
     refreshInternalKoboQueueCount();
@@ -221,6 +259,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
   useEffect(() => {
     if (!showInternalReportModal) return;
     refreshInternalKoboQueueCount();
+    void loadInternalKoboHistory(household as unknown as Record<string, any>);
 
     const audit = ((household.constructionData as any)?.audit || {}) as Record<string, any>;
     const koboData = (household.koboData || {}) as Record<string, any>;
@@ -244,7 +283,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
     setNativeKoboAuditForm(nextForm);
     setNativeKoboTargetHousehold(household as unknown as Record<string, any>);
     setNativeKoboValidated(Boolean(audit.conforme || household.koboSync?.controleOk));
-  }, [household, refreshInternalKoboQueueCount, showInternalReportModal]);
+  }, [household, loadInternalKoboHistory, refreshInternalKoboQueueCount, showInternalReportModal]);
 
   const [selectedNewStatus, setSelectedNewStatus] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -661,6 +700,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
 
   const handleInternalKoboResolvedHousehold = (resolvedHousehold: Record<string, any> | null) => {
     setNativeKoboTargetHousehold(resolvedHousehold);
+    void loadInternalKoboHistory(resolvedHousehold);
 
     const resolvedId = resolvedHousehold?.id ? String(resolvedHousehold.id) : '';
     if (resolvedId && resolvedId !== household.id) {
@@ -844,6 +884,10 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
         }
       } else {
         await submitInternalKoboSubmission(fallbackSubmissionPayload);
+      }
+
+      if (!traceQueued) {
+        await loadInternalKoboHistory(submissionHousehold);
       }
 
       toast.success(
@@ -1862,6 +1906,10 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
           resolveHouseholdByNumero={resolveHouseholdByNumero}
           queueCount={internalKoboQueueCount}
           isOnline={isOnline}
+          submissions={internalKoboHistory}
+          isHistoryLoading={isInternalKoboHistoryLoading}
+          historyError={internalKoboHistoryError}
+          onRefreshHistory={() => loadInternalKoboHistory(nativeKoboTargetHousehold)}
         />,
         document.body
       )}

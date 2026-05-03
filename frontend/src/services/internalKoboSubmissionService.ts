@@ -41,8 +41,21 @@ export interface InternalKoboSubmissionRecord {
   savedAt: string;
   createdAt: string;
   updatedAt: string;
-  household?: Record<string, unknown> | null;
-  submittedBy?: Record<string, unknown> | null;
+  household?: {
+    id?: string;
+    numeroordre?: string | null;
+    name?: string | null;
+    phone?: string | null;
+    status?: string | null;
+    region?: string | null;
+    village?: string | null;
+    updatedAt?: string | null;
+  } | null;
+  submittedBy?: {
+    id?: string;
+    name?: string | null;
+    email?: string | null;
+  } | null;
 }
 
 const INTERNAL_KOBO_OUTBOX_ACTION = 'internal-kobo-submit';

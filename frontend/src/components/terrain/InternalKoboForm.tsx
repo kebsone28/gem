@@ -9,10 +9,12 @@ import {
   ImagePlus,
   Lock,
   LockKeyhole,
+  RefreshCcw,
   Search,
   X,
 } from 'lucide-react';
 import apiClient from '../../api/client';
+import type { InternalKoboSubmissionRecord } from '../../services/internalKoboSubmissionService';
 import { compressImage } from '../../utils/imageUtils';
 import {
   formatInternalKoboValue,
@@ -38,6 +40,10 @@ type InternalKoboFormProps = {
   resolveHouseholdByNumero?: (numeroOrdre: string) => Record<string, any> | null;
   queueCount?: number;
   isOnline?: boolean;
+  submissions?: InternalKoboSubmissionRecord[];
+  isHistoryLoading?: boolean;
+  historyError?: string;
+  onRefreshHistory?: () => void;
 };
 
 const asArray = (value: unknown): string[] => {
@@ -81,6 +87,36 @@ const maxPixelsFromParameters = (parameters?: string) => {
   return match ? Number(match[1]) : undefined;
 };
 
+const formatHistoryDate = (value?: string | null) => {
+  if (!value) return 'En attente';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Date inconnue';
+
+  return date.toLocaleString('fr-FR', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+};
+
+const submissionStatusClass = (status: string) => {
+  if (status === 'submitted' || status === 'validated') {
+    return 'border-emerald-300/25 bg-emerald-400/10 text-emerald-100';
+  }
+  if (status === 'rejected') {
+    return 'border-rose-300/25 bg-rose-400/10 text-rose-100';
+  }
+  return 'border-amber-300/25 bg-amber-400/10 text-amber-100';
+};
+
+const submissionStatusLabel = (status: string) => {
+  if (status === 'submitted') return 'Soumis';
+  if (status === 'validated') return 'Valide';
+  if (status === 'rejected') return 'Rejete';
+  return 'Brouillon';
+};
+
 export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
   values,
   onChange,
@@ -92,6 +128,10 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
   resolveHouseholdByNumero,
   queueCount = 0,
   isOnline = true,
+  submissions = [],
+  isHistoryLoading = false,
+  historyError = '',
+  onRefreshHistory,
 }) => {
   const [activeSectionId, setActiveSectionId] = useState(INTERNAL_KOBO_SECTIONS[0]?.id || '');
   const [query, setQuery] = useState('');
@@ -493,6 +533,81 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
     );
   };
 
+  const renderSubmissionHistory = (compact = false) => (
+    <div className={`rounded-2xl border border-white/10 bg-white/[0.045] ${compact ? 'p-3' : 'p-4'}`}>
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-blue-100">Historique VPS</p>
+          <p className="mt-1 text-[10px] font-semibold text-slate-500">
+            {submissions.length ? `${submissions.length} derniere(s) soumission(s)` : 'Aucune soumission serveur'}
+          </p>
+        </div>
+        {onRefreshHistory ? (
+          <button
+            type="button"
+            onClick={onRefreshHistory}
+            disabled={isHistoryLoading}
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-xl border border-white/10 bg-slate-950/35 text-slate-300 transition-colors hover:text-white disabled:opacity-40"
+            aria-label="Actualiser l'historique VPS"
+          >
+            <RefreshCcw size={14} className={isHistoryLoading ? 'animate-spin' : ''} />
+          </button>
+        ) : null}
+      </div>
+
+      {historyError ? (
+        <div className="mt-3 rounded-xl border border-amber-300/20 bg-amber-400/10 px-3 py-2 text-[10px] font-bold text-amber-100">
+          {historyError}
+        </div>
+      ) : null}
+
+      <div className="mt-3 space-y-2">
+        {isHistoryLoading && submissions.length === 0 ? (
+          <div className="rounded-xl border border-white/8 bg-slate-950/30 px-3 py-3 text-[10px] font-bold text-slate-400">
+            Chargement de l'historique...
+          </div>
+        ) : null}
+
+        {submissions.slice(0, compact ? 2 : 4).map((submission) => {
+          const missingCount = Array.isArray(submission.requiredMissing) ? submission.requiredMissing.length : 0;
+          return (
+            <div key={submission.id} className="rounded-xl border border-white/[0.07] bg-slate-950/35 p-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-[11px] font-black text-white">
+                    {formatInternalKoboValue(submission.role || 'role non defini', 'roles')}
+                  </p>
+                  <p className="mt-1 text-[9px] font-semibold text-slate-500">
+                    {formatHistoryDate(submission.savedAt)} - v{submission.formVersion}
+                  </p>
+                </div>
+                <span className={`shrink-0 rounded-full border px-2 py-1 text-[8px] font-black uppercase tracking-[0.1em] ${submissionStatusClass(submission.status)}`}>
+                  {submissionStatusLabel(submission.status)}
+                </span>
+              </div>
+              <div className="mt-2 flex flex-wrap gap-2 text-[9px] font-bold text-slate-400">
+                <span className="rounded-full bg-white/[0.05] px-2 py-1">
+                  {missingCount ? `${missingCount} requis manquant(s)` : 'Complet'}
+                </span>
+                {submission.submittedBy?.name || submission.submittedBy?.email ? (
+                  <span className="rounded-full bg-white/[0.05] px-2 py-1">
+                    {String(submission.submittedBy.name || submission.submittedBy.email)}
+                  </span>
+                ) : null}
+              </div>
+            </div>
+          );
+        })}
+
+        {!isHistoryLoading && submissions.length === 0 && !historyError ? (
+          <div className="rounded-xl border border-white/8 bg-slate-950/30 px-3 py-3 text-[10px] font-bold text-slate-500">
+            Aucun envoi interne trouve pour ce menage.
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+
   return (
     <div className="fixed inset-0 z-[3000] flex items-end justify-center bg-slate-950/75 p-0 backdrop-blur-md sm:items-center sm:p-4">
       <div className="grid h-[100dvh] w-full max-w-7xl overflow-hidden rounded-t-[1.5rem] border border-blue-200/10 bg-[#0B1728] shadow-2xl sm:h-[92vh] sm:rounded-[1.75rem] md:grid-cols-[310px_1fr]">
@@ -514,6 +629,10 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
             <p className="mt-3 text-[11px] font-semibold text-slate-400">
               {missingRequired.length ? `${missingRequired.length} champ(s) obligatoire(s) restant(s)` : 'Tous les champs visibles sont complets'}
             </p>
+          </div>
+
+          <div className="mb-5">
+            {renderSubmissionHistory()}
           </div>
 
           <div className="space-y-2">
@@ -651,6 +770,9 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
                   </option>
                 ))}
               </select>
+              <div className="mt-3">
+                {renderSubmissionHistory(true)}
+              </div>
             </div>
 
             {activeSection ? (
