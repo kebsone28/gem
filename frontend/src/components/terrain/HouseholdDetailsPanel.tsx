@@ -617,6 +617,15 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
     }));
   };
 
+  const handleInternalKoboResolvedHousehold = (resolvedHousehold: Record<string, any> | null) => {
+    setNativeKoboTargetHousehold(resolvedHousehold);
+
+    const resolvedId = resolvedHousehold?.id ? String(resolvedHousehold.id) : '';
+    if (resolvedId && resolvedId !== household.id) {
+      setSelectedHouseholdId(resolvedId);
+    }
+  };
+
   const handleSaveNativeKoboAudit = async () => {
     if (!onUpdate) {
       toast.error('Sauvegarde indisponible');
@@ -1715,7 +1724,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
         onClose={() => setShowInternalReportModal(false)}
         isSaving={isUpdating}
         onPhotoUpload={onPhotoUpload}
-        onResolvedHousehold={setNativeKoboTargetHousehold}
+        onResolvedHousehold={handleInternalKoboResolvedHousehold}
       />,
         document.body
       )}
