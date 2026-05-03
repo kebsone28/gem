@@ -60,6 +60,7 @@ backend/reset_pass.js
 backend/update_project_id.js
 backend/verification_sync_automation.js
 backend/scripts/*.js
+backend/scripts/dev/*.js
 backend/scratch/
 frontend/build_output.txt
 
