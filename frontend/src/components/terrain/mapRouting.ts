@@ -41,7 +41,7 @@ export const fetchOSRMRoute = async (coords: RouteCoordinates): Promise<RouteRes
 
   try {
     // Use env var for OSRM URL (fixes hardcoding issue for production)
-    const osrmUrl = import.meta.env.VITE_OSRM_URL || 'http://localhost:5000';
+    const osrmUrl = import.meta.env.VITE_OSRM_URL || 'http://localhost:5010';
     const response = await fetch(
       `${osrmUrl}/route/v1/driving/${startStr};${destStr}?overview=full&geometries=geojson&steps=true&annotations=distance,duration,speed`
     );
