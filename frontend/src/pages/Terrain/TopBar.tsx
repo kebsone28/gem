@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React from 'react';
-import { ChevronRight, RefreshCw, X } from 'lucide-react';
+import { ChevronRight, RefreshCw, X, ChevronDown, ChevronUp } from 'lucide-react';
 
 import { MapToolbar } from '../../components/terrain/MapToolbar';
 import { useTerrainUIStore } from '../../store/terrainUIStore';
@@ -88,28 +88,32 @@ const TopBar: React.FC<TopBarProps> = ({
 }) => {
   const showToolbar = useTerrainUIStore((s) => s.showToolbar);
   const toggleToolbar = useTerrainUIStore((s) => s.toggleToolbar);
+  const [isMinimized, setIsMinimized] = React.useState(false);
 
   return (
     <>
       {showToolbar && (
         <div
-          className="
+          className={`
                     fixed md:absolute
-                    top-0 md:top-4
-                    left-0 md:left-4
-                    right-0 md:right-4
+                    top-3 md:top-4
+                    left-3 md:left-4
+                    right-3 md:right-4
                     z-[1300]
 
-                    bg-[#050F1F]/95 md:bg-transparent
-                    backdrop-blur-xl md:backdrop-blur-0
+                    bg-white/80 dark:bg-[#050F1F]/90
+                    backdrop-blur-2xl shadow-[0_8px_32px_rgba(0,0,0,0.3)]
+                    border border-white/10 dark:border-white/5
+                    rounded-2xl md:rounded-none
+                    transition-all duration-300 ease-in-out
 
-                    max-h-[46dvh] overflow-y-auto overscroll-contain md:max-h-none md:overflow-visible
-                    px-2.5 pt-[calc(0.625rem+env(safe-area-inset-top))] pb-3 sm:px-3 md:p-0
+                    ${isMinimized ? 'h-[64px] overflow-hidden' : 'max-h-[85vh] overflow-visible'}
 
+                    px-2.5 pt-1.5 pb-2 md:p-0
                     grid grid-cols-1 md:grid-cols-[auto_1fr_auto]
                     gap-2 md:gap-3
                     pointer-events-none
-                "
+                `}
         >
           {/* ================= LEFT COLUMN ================= */}
           <div className="flex flex-col gap-2 md:gap-3 pointer-events-auto w-full md:w-[280px] shrink-0">
@@ -134,31 +138,50 @@ const TopBar: React.FC<TopBarProps> = ({
                 />
               )}
 
-              {/* Filters Section */}
-              <FiltersPanel
-                selectedTeam={selectedTeam}
-                onTeamChange={onTeamChange}
-                allAvailableTeams={allAvailableTeams}
-                selectedStatusFilter={selectedStatusFilter}
-                onStatusFilterChange={onStatusFilterChange}
-                statusOptions={statusOptions}
-                showTeamFilter={showTeamFilter}
-                showStatusFilter={showStatusFilter}
-                onOpenDataHub={onOpenDataHub}
-                showDataHub={showDataHub}
-                peutVoirDataHub={peutVoirDataHub}
-              />
+              {/* Filters Section hidden on mobile for focus and speed */}
+              <div className="hidden md:block">
+                <FiltersPanel
+                  selectedTeam={selectedTeam}
+                  onTeamChange={onTeamChange}
+                  allAvailableTeams={allAvailableTeams}
+                  selectedStatusFilter={selectedStatusFilter}
+                  onStatusFilterChange={onStatusFilterChange}
+                  statusOptions={statusOptions}
+                  showTeamFilter={showTeamFilter}
+                  showStatusFilter={showStatusFilter}
+                  onOpenDataHub={onOpenDataHub}
+                  showDataHub={showDataHub}
+                  peutVoirDataHub={peutVoirDataHub}
+                />
+              </div>
             </div>
 
             {/* Mobile-only View Actions & Tools */}
-            <MobileActions
-              viewMode={viewMode}
-              onViewModeChange={onViewModeChange}
-              showListToggle={showListToggle}
-              showAdvancedTools={showAdvancedTools}
-              onRecenter={onRecenter}
-              mapToolbarFeatures={mapToolbarFeatures}
-            />
+            {!isMinimized && (
+              <MobileActions
+                viewMode={viewMode}
+                onViewModeChange={onViewModeChange}
+                showListToggle={showListToggle}
+                showAdvancedTools={showAdvancedTools}
+                onRecenter={onRecenter}
+                mapToolbarFeatures={mapToolbarFeatures}
+              />
+            )}
+
+            {/* Toggle Control - mobile only */}
+            <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 flex md:hidden pointer-events-auto">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsMinimized(!isMinimized);
+                }}
+                title={isMinimized ? "Afficher plus d'outils" : "Masquer les outils"}
+                aria-label={isMinimized ? "Afficher plus d'outils" : "Masquer les outils"}
+                className="w-10 h-10 rounded-full bg-blue-600 text-white shadow-xl flex items-center justify-center border-4 border-white dark:border-slate-900 transition-all hover:scale-110 active:scale-90"
+              >
+                {isMinimized ? <ChevronDown size={24} /> : <ChevronUp size={24} />}
+              </button>
+            </div>
           </div>
 
           {/* ================= CENTER COLUMN (Desktop) ================= */}

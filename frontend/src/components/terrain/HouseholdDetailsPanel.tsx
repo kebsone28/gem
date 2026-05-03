@@ -445,14 +445,14 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
     'Non encore installée',
   ];
 
-  const timelineStages = [
+  const timelineStages = useMemo(() => [
     'Non encore installée',
     'Livraison effectuée',
     'Murs terminés',
     'Réseau terminé',
     'Intérieur terminé',
     'Contrôle conforme',
-  ];
+  ], []);
   const stageVisuals: Record<
     string,
     {
@@ -650,7 +650,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
     // Fallback : si on est "Non Conforme", on est au moins à l'étape 4 (Intérieur terminé)
     if (idx === -1 && currentStatus.toLowerCase().includes('non conforme')) return 4;
     return idx;
-  }, [normalizedStatus, currentStatus]);
+  }, [normalizedStatus, currentStatus, timelineStages]);
 
   const progressPercentRaw =
     currentStageIndex >= 0
@@ -767,7 +767,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
       icon: <TruckIcon size={18} />,
       color: 'from-blue-600 to-indigo-900'
     };
-  }, [household, currentStageIndex]);
+  }, [household, currentStageIndex, currentStatus]);
 
   const handleConfirmStatusChange = async () => {
     if (!selectedNewStatus) return;
@@ -1510,7 +1510,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
                         <span className="text-[7px] font-black text-slate-500 uppercase tracking-widest">Impédance Terre</span>
                       </div>
                       <div className="flex items-end gap-1">
-                        <span className={`text-2xl font-black tracking-tighter ${Number((household.constructionData as any)?.audit?.resistance_terre) > 150 ? 'text-rose-400' : 'text-emerald-400'}`}>
+                        <span className={`text-2xl font-black tracking-tighter ${Number((household.constructionData as any)?.audit?.resistance_terre) > 1500 ? 'text-rose-400' : 'text-emerald-400'}`}>
                           {(household.constructionData as any)?.audit?.resistance_terre ?? '—'}
                         </span>
                         <span className="text-xs font-bold text-slate-600 mb-1.5">Ω</span>
@@ -1518,8 +1518,8 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
                       <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
                         <motion.div
                           initial={{ width: 0 }}
-                          animate={{ width: `${Math.min(100, (Number((household.constructionData as any)?.audit?.resistance_terre) / 200) * 100)}%` }}
-                          className={`h-full ${Number((household.constructionData as any)?.audit?.resistance_terre) > 150 ? 'bg-rose-500' : 'bg-emerald-500'}`}
+                          animate={{ width: `${Math.min(100, (Number((household.constructionData as any)?.audit?.resistance_terre) / 2000) * 100)}%` }}
+                          className={`h-full ${Number((household.constructionData as any)?.audit?.resistance_terre) > 1500 ? 'bg-rose-500' : 'bg-emerald-500'}`}
                         />
                       </div>
                    </div>
@@ -1531,21 +1531,22 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
                         <Hammer size={14} className="text-blue-500/60" />
                         <span className="text-[7px] font-black text-slate-500 uppercase tracking-widest">Maçonnerie</span>
                       </div>
-                      <p className="text-[10px] font-black text-white uppercase tracking-wider truncate">
-                        {(household.constructionData as any)?.macon?.type_mur || 'Non défini'}
-                      </p>
-                      <div className="flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]" />
-                        <span className="text-[8px] font-bold text-slate-500 uppercase">Structure Validée</span>
+                      <div className="flex items-end gap-1">
+                        <span className={`text-2xl font-black tracking-tighter ${household.koboSync?.maconOk ? 'text-emerald-400' : 'text-slate-400'}`}>
+                          {household.koboSync?.maconOk ? 'OK' : '—'}
+                        </span>
                       </div>
+                      <p className="text-[9px] font-bold text-slate-500">
+                        Support mural et kit maçon
+                      </p>
                    </div>
                 </div>
 
                 {/* Sub-Technical Details */}
                 <div className="space-y-4 pt-2">
                   {[
-                    { label: 'Réseau / Branchement', data: (household.constructionData as any)?.reseau?.problemes_branchement, color: 'text-sky-400' },
-                    { label: 'Installation Intérieure', data: (household.constructionData as any)?.interieur?.problemes_installation, color: 'text-violet-400' },
+                    { label: 'Réseau / Branchement', data: (household.constructionData as any)?.reseau?.problemes_branchement || (household.constructionData as any)?.reseau?.etat_branchement, color: 'text-sky-400' },
+                    { label: 'Installation Intérieure', data: (household.constructionData as any)?.interieur?.problemes_installation || (household.constructionData as any)?.interieur?.etat_installation, color: 'text-violet-400' },
                   ].filter(s => !!s.data).map((s, i) => (
                     <div key={i} className="flex flex-col gap-2 p-4 rounded-2xl bg-white/[0.03] border border-white/[0.05]">
                       <div className="flex items-center justify-between">
@@ -1553,7 +1554,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
                         <Info size={10} className="text-slate-600" />
                       </div>
                       <div className="flex flex-wrap gap-1.5">
-                        {s.data.split(' ').filter(Boolean).map((tag: string, j: number) => (
+                        {String(s.data).split(' ').filter(Boolean).map((tag: string, j: number) => (
                           <span key={j} className="px-2 py-0.5 rounded-md bg-white/5 text-[9px] font-bold text-slate-300 border border-white/5">
                             {reformatKoboText(tag)}
                           </span>
@@ -1916,7 +1917,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
           <motion.button
             onClick={smartReportAction.action}
             whileTap={{ scale: 0.96 }}
-            className={`relative flex h-[52px] min-w-0 items-center justify-center gap-2 overflow-hidden rounded-[1.15rem] border border-white/20 bg-[linear-gradient(135deg,var(--tw-gradient-stops))] ${smartReportAction.color} px-2 text-white shadow-xl shadow-blue-600/20 transition-all hover:brightness-110`}
+            className={`relative flex h-[52px] min-w-0 items-center justify-center gap-2 overflow-hidden rounded-[1.15rem] border border-white/20 bg-[linear-gradient(135deg,var(--tw-gradient-stops))] ${smartReportAction.color} px-2 text-white shadow-xl ${(smartReportAction as any).glow || 'shadow-blue-600/20'} transition-all hover:brightness-110`}
           >
             <span className="absolute inset-y-0 -left-1/2 w-1/2 animate-pulse bg-gradient-to-r from-transparent via-white/20 to-transparent blur-sm" />
             {React.cloneElement(smartReportAction.icon as React.ReactElement<any>, { size: 18, className: "relative z-10 shrink-0 text-white/90" })}

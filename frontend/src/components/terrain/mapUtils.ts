@@ -22,6 +22,15 @@ import logger from '../../utils/logger';
 const iconRegistry = new Map<string, boolean>();
 const styleImageFallbackRegistry = new WeakSet<maplibregl.Map>();
 
+const isMapStyleReady = (map: maplibregl.Map | null | undefined): map is maplibregl.Map => {
+  if (!map || (map as any)._removed) return false;
+  try {
+    return !!map.getStyle() && map.isStyleLoaded() === true;
+  } catch {
+    return false;
+  }
+};
+
 /**
  * Draws a Squircle (Lamé Curve approximation) using Cubic Bezier curves
  * @param ctx The canvas context
@@ -230,8 +239,17 @@ const resolveStatusKeyFromImageSegment = (segment: string): string => {
   // 2. Essai direct via la clé de config
   if (STATUS_CONFIG[segment]) return segment;
 
-  // 3. Normalisation agressive (retrait accents, tirets, espaces)
-  const normalize = (s: string) => 
+  // 3. Cas spécifiques connus (bugs de mapping potentiels)
+  const mapping: Record<string, string> = {
+    'non-conforme': 'Non conforme',
+    'non-eligible': 'Non éligible',
+    'non-encore-installee': 'Non encore installée',
+    'controle-conforme': 'Contrôle conforme',
+  };
+  if (mapping[segment]) return mapping[segment];
+
+  // 4. Normalisation agressive
+  const normalize = (s: string) =>
     s.normalize('NFD')
      .replace(/[\u0300-\u036f]/g, '')
      .replace(/[-_]/g, ' ')
@@ -239,7 +257,6 @@ const resolveStatusKeyFromImageSegment = (segment: string): string => {
      .toLowerCase();
 
   const normalizedSegment = normalize(segment);
-
   const foundKey = Object.keys(STATUS_CONFIG).find((status) => {
     if (status === 'default') return false;
     return normalize(status) === normalizedSegment;
@@ -249,7 +266,7 @@ const resolveStatusKeyFromImageSegment = (segment: string): string => {
 };
 
 export async function ensureMapImage(map: maplibregl.Map, imageId: string): Promise<boolean> {
-  if (!map || !map.isStyleLoaded() || map.hasImage(imageId)) return false;
+  if (!isMapStyleReady(map) || map.hasImage(imageId)) return false;
 
   if (imageId === 'photo-indicator') {
     const bitmap = await generatePhotoIndicatorBitmap();
@@ -262,21 +279,36 @@ export async function ensureMapImage(map: maplibregl.Map, imageId: string): Prom
   const resolved = resolveStatusFromImageId(imageId);
   if (!resolved) return false;
 
-  const status = resolveStatusKeyFromImageSegment(resolved.iconId);
+  let status = resolveStatusKeyFromImageSegment(resolved.iconId);
 
-  if (resolved.variant === 'pulsing') {
+  // Fallback: If status is unknown or config missing, use 'default'
+  if (!STATUS_CONFIG[status]) {
+    status = 'default';
+  }
+
+  try {
+    if (resolved.variant === 'pulsing') {
+      if (!map.hasImage(imageId)) {
+        map.addImage(imageId, new PulsingIcon(map, status));
+      }
+      return true;
+    }
+
+    const size = resolved.variant === 'large' ? ICON_SIZES.large : ICON_SIZES.small;
+    const bitmap = await generateIconBitmap(status, size);
     if (!map.hasImage(imageId)) {
-      map.addImage(imageId, new PulsingIcon(map, status));
+      map.addImage(imageId, bitmap, { pixelRatio: 2 });
     }
     return true;
+  } catch (err) {
+    logger.error(`[MapUtils] Failed to ensure image ${imageId}:`, err);
+    // Ultimate fallback to default static icon to avoid empty display
+    if (status !== 'default' && !map.hasImage(imageId)) {
+      const defaultBitmap = await generateIconBitmap('default', ICON_SIZES.small);
+      map.addImage(imageId, defaultBitmap, { pixelRatio: 2 });
+    }
+    return false;
   }
-
-  const size = resolved.variant === 'large' ? ICON_SIZES.large : ICON_SIZES.small;
-  const bitmap = await generateIconBitmap(status, size);
-  if (!map.hasImage(imageId)) {
-    map.addImage(imageId, bitmap, { pixelRatio: 2 });
-  }
-  return true;
 }
 
 function attachStyleImageFallback(map: maplibregl.Map) {
@@ -390,7 +422,7 @@ class PulsingIcon implements maplibregl.StyleImageInterface {
  * Register all icons into a Map instance once per style load
  */
 export async function registerIcons(map: maplibregl.Map) {
-  if (!map || !map.isStyleLoaded()) return;
+  if (!isMapStyleReady(map)) return;
   attachStyleImageFallback(map);
 
   const iconIds = Array.from(new Set(Object.values(STATUS_ICON_IDS)));

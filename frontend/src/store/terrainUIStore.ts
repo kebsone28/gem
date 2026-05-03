@@ -137,7 +137,7 @@ export const useTerrainUIStore = create<TerrainUIState>((set) => ({
   showZones: false,
   showWarehouses: true,
   showDatabaseStats: false,
-  showLegend: true,
+  showLegend: false,
   mapStyle: ((safeStorage.getItem('gem-map-theme') as any) || 'light') as 'light' | 'dark' | 'satellite',
 
   toggleHeatmap: () => set((state) => ({ showHeatmap: !state.showHeatmap })),

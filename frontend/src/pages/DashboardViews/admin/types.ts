@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { MissionStats } from '../../../services/missionStatsService';
 
 export interface PipelineData {
@@ -45,6 +45,12 @@ export interface DashboardMetrics {
   breakdown: {
     byZone: any[];
     byTeam: any[];
+  };
+  nonComplianceBreakdown: {
+    grounding: number;
+    installation: number;
+    branchement: number;
+    other: number;
   };
 }
 

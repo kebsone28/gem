@@ -45,7 +45,7 @@ function isCircuitOpen(): boolean {
 async function measureRTT(): Promise<number | null> {
   try {
     const start = Date.now();
-    await apiClient.get('health', { timeout: 3000 });
+    await apiClient.get('ping', { timeout: 3000 });
     return Date.now() - start;
   } catch {
     return null; // null = unreachable

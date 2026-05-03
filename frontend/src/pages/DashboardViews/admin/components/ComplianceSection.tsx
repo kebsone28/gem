@@ -1,6 +1,5 @@
-﻿ 
 import React from 'react';
-import { ShieldCheck, AlertCircle, FileText, Clock, Activity } from 'lucide-react';
+import { ShieldCheck, AlertCircle, FileText, Clock, Activity, PlugZap, Home, ClipboardList } from 'lucide-react';
 import { KPICard } from '../../../../components/dashboards/DashboardComponents';
 import type { DashboardMetrics } from '../types';
 
@@ -76,6 +75,57 @@ export const ComplianceSection: React.FC<ComplianceSectionProps> = ({ metrics })
           </div>
         ))}
       </div>
+
+      {/* ── ANALYSIS BREAKDOWN : MOTIFS DE NON-CONFORMITÉ ── */}
+      {metrics.nonConforme > 0 && (
+        <div className="rounded-[1.8rem] border border-white/5 bg-slate-900/40 p-6 backdrop-blur-2xl shadow-2xl">
+          <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h3 className="text-lg font-black uppercase tracking-tighter text-white">Analyse des Écarts Techniques</h3>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Répartition des motifs de non-conformité</p>
+            </div>
+            <div className="rounded-full bg-rose-500/10 px-4 py-1.5 text-[10px] font-black uppercase tracking-widest text-rose-400 border border-rose-500/20">
+              {metrics.nonConforme} Ménages Impactés
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+            {[
+              { label: 'Résistance Terre', value: metrics.nonComplianceBreakdown?.grounding || 0, color: 'bg-amber-500', icon: PlugZap, desc: '> 1500Ω Ohm' },
+              { label: 'Installation Int.', value: metrics.nonComplianceBreakdown?.installation || 0, color: 'bg-violet-500', icon: Home, desc: 'Défauts pose' },
+              { label: 'Branchement Res.', value: metrics.nonComplianceBreakdown?.branchement || 0, color: 'bg-sky-500', icon: Activity, desc: 'Erreurs réseau' },
+              { label: 'Autres Motifs', value: metrics.nonComplianceBreakdown?.other || 0, color: 'bg-slate-500', icon: ClipboardList, desc: 'Administratif' },
+            ].map((item) => {
+              const percent = metrics.nonConforme > 0 ? Math.round((item.value / metrics.nonConforme) * 100) : 0;
+              const Icon = item.icon;
+              return (
+                <div key={item.label} className="group flex flex-col gap-3 p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.05] transition-all">
+                  <div className="flex items-center justify-between">
+                    <Icon size={22} className="text-slate-300" />
+                    <span className="text-lg font-black text-white">{item.value}</span>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-300 group-hover:text-white transition-colors">{item.label}</p>
+                    <p className="text-[9px] font-medium text-slate-500">{item.desc}</p>
+                  </div>
+                  <div className="mt-2 space-y-1.5">
+                    <div className="flex items-center justify-between text-[9px] font-black uppercase text-slate-400">
+                      <span>Poids</span>
+                      <span>{percent}%</span>
+                    </div>
+                    <div className="h-1.5 w-full rounded-full bg-white/5 overflow-hidden">
+                      <div
+                        className={`h-full ${item.color} rounded-full transition-all duration-1000 shadow-[0_0_10px_rgba(255,255,255,0.1)]`}
+                        style={{ width: `${percent}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

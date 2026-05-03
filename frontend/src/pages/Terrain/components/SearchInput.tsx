@@ -85,6 +85,8 @@ const SearchInput: React.FC<SearchInputProps> = ({
           {localQuery && (
             <button
               onClick={handleClear}
+              title="Effacer la recherche"
+              aria-label="Effacer la recherche"
               className="p-1 rounded-full hover:bg-white/10 text-white/40 hover:text-white transition-colors"
             >
               <X size={10} />

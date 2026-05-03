@@ -63,16 +63,18 @@ const computeHouseholdHash = (households: any[]) => {
 };
 
 const withStyleSource = (
-  style: StyleSpecification,
+  style: StyleSpecification | string,
   source: TerrainMapStyle | typeof FALLBACK_STYLE_SOURCE
-): StyleSpecification =>
-  ({
+): StyleSpecification | string => {
+  if (typeof style === 'string') return style;
+  return {
     ...style,
     metadata: {
-      ...((style as unknown as { metadata?: Record<string, unknown> }).metadata || {}),
+      ...((style as any).metadata || {}),
       source,
     },
-  }) as StyleSpecification;
+  } as StyleSpecification;
+};
 
 const cloneStyle = (style: StyleSpecification): StyleSpecification => {
   if (typeof structuredClone === 'function') {
@@ -84,21 +86,30 @@ const cloneStyle = (style: StyleSpecification): StyleSpecification => {
 const resolveMapStyle = (
   style: TerrainMapStyle,
   isDarkMode: boolean
-): StyleSpecification => {
+): StyleSpecification | string => {
   if (style === 'satellite') {
     return withStyleSource(cloneStyle(MAP_STYLE_SATELLITE), 'satellite');
   }
 
-  if (style === 'light') return withStyleSource(cloneStyle(MAP_STYLE_LIGHT_VECTOR), 'light');
+  if (style === 'light') {
+    // If it's a URL (string), return as is
+    if (typeof MAP_STYLE_LIGHT_VECTOR === 'string') return MAP_STYLE_LIGHT_VECTOR;
+    return withStyleSource(cloneStyle(MAP_STYLE_LIGHT_VECTOR), 'light');
+  }
+
   if (style === 'dark') return withStyleSource(cloneStyle(MAP_STYLE_DARK), 'dark');
+
+  const defaultStyle = isDarkMode ? MAP_STYLE_DARK : MAP_STYLE_LIGHT_VECTOR;
+  if (typeof defaultStyle === 'string') return defaultStyle;
+
   return withStyleSource(
-    cloneStyle(isDarkMode ? MAP_STYLE_DARK : MAP_STYLE_LIGHT_VECTOR),
+    cloneStyle(defaultStyle as StyleSpecification),
     isDarkMode ? 'dark' : 'light'
   );
 };
 
 const resolveFallbackStyle = (): StyleSpecification =>
-  withStyleSource(cloneStyle(MAP_STYLE_FALLBACK_RASTER), FALLBACK_STYLE_SOURCE);
+  withStyleSource(cloneStyle(MAP_STYLE_FALLBACK_RASTER), FALLBACK_STYLE_SOURCE) as StyleSpecification;
 
 const getCurrentStyleSource = (map: maplibregl.Map | null): string | null => {
   if (!map || (map as any)._removed) return null;
@@ -482,10 +493,33 @@ const MapLibreVectorMap: React.FC<any> = ({
         pitch: 0,
         maxPitch: 85,
         bearing: 0,
-        transformRequest: (url) => {
+        transformRequest: (url, resourceType) => {
+          // 1. Force refresh for dynamic households data
           if (url.includes('households') && !url.includes('t=')) {
             return { url: `${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}` };
           }
+
+          // 2. Redirect Glyphs/Fonts to a stable provider (solve 404s/corrupt PBFs)
+          if (resourceType === 'Glyphs') {
+            const fontStack =
+              url.split('/fonts/')[1]?.split('/')[0] ||
+              url.split('/font/')[1]?.split('/')[0] ||
+              'Open Sans Regular';
+            const range = url.split('/').pop() || '0-255.pbf';
+            const decodedFontStack = decodeURIComponent(fontStack);
+            const supportedFontStack =
+              decodedFontStack === 'Open Sans Regular'
+                ? 'Open Sans Regular,Arial Unicode MS Regular'
+                : decodedFontStack;
+            const encodedFontStack = supportedFontStack
+              .split(',')
+              .map((font) => encodeURIComponent(font.trim()))
+              .join(',');
+            return {
+              url: `https://demotiles.maplibre.org/font/${encodedFontStack}/${range}`
+            };
+          }
+
           return { url };
         },
       };

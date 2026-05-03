@@ -20,8 +20,14 @@ const BackgroundLayer: React.FC<BackgroundLayerProps> = ({ map }) => {
 
     let isCancelled = false;
 
-    const isMapUsable = () =>
-      !isCancelled && !(map as any)._removed && !!map.getStyle() && map.isStyleLoaded();
+    const isMapUsable = () => {
+      if (isCancelled || (map as any)._removed) return false;
+      try {
+        return !!map.getStyle() && map.isStyleLoaded();
+      } catch {
+        return false;
+      }
+    };
 
     const setupBackground = () => {
       if (!isMapUsable()) return;
@@ -87,7 +93,7 @@ const BackgroundLayer: React.FC<BackgroundLayerProps> = ({ map }) => {
       }
     };
 
-    if (map.isStyleLoaded()) {
+    if (isMapUsable()) {
       setTimeout(setupBackground, 0);
     }
 

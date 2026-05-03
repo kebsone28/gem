@@ -59,6 +59,7 @@ export const getHouseholdDerivedStatus = (h: Household) => {
     if (
       String(cData.audit?.installation_conforme || '').toLowerCase().includes('non') ||
       String(cData.audit?.branchement_conforme || '').toLowerCase().includes('non') ||
+      Number(cData.audit?.resistance_terre || 0) > 1500 ||
       h.status === 'BLOQUE' ||
       normalized === 'Non conforme'
     ) {
