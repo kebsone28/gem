@@ -58,6 +58,20 @@ export interface InternalKoboSubmissionRecord {
   } | null;
 }
 
+export interface InternalKoboQueuedSubmission {
+  id?: number;
+  clientSubmissionId: string;
+  householdId?: string | null;
+  numeroOrdre?: string | null;
+  role?: string | null;
+  status: 'pending' | 'failed';
+  submissionStatus: InternalKoboSubmissionStatus;
+  formVersion: string;
+  retryCount: number;
+  lastError?: string;
+  timestamp: number;
+}
+
 const INTERNAL_KOBO_OUTBOX_ACTION = 'internal-kobo-submit';
 const INTERNAL_KOBO_SUBMISSION_ENDPOINT = '/internal-kobo/submissions';
 
@@ -179,7 +193,27 @@ export async function flushInternalKoboSubmissionQueue(): Promise<{
   return { flushed, failed, pending };
 }
 
-export async function getInternalKoboQueueCount(): Promise<number> {
+export async function getInternalKoboQueueItems(): Promise<InternalKoboQueuedSubmission[]> {
   const queuedItems = await db.syncOutbox.where('status').anyOf('pending', 'failed').toArray();
-  return queuedItems.filter(isInternalKoboQueueItem).length;
+
+  return queuedItems
+    .filter(isInternalKoboQueueItem)
+    .map((item) => ({
+      id: item.id,
+      clientSubmissionId: item.payload.clientSubmissionId,
+      householdId: item.payload.householdId,
+      numeroOrdre: item.payload.numeroOrdre,
+      role: item.payload.role,
+      status: item.status,
+      submissionStatus: item.payload.status,
+      formVersion: item.payload.formVersion,
+      retryCount: item.retryCount || 0,
+      lastError: item.lastError,
+      timestamp: item.timestamp,
+    }))
+    .sort((a, b) => b.timestamp - a.timestamp);
+}
+
+export async function getInternalKoboQueueCount(): Promise<number> {
+  return getInternalKoboQueueItems().then((items) => items.length);
 }

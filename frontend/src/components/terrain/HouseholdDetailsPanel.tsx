@@ -59,9 +59,10 @@ import {
 import {
   fetchInternalKoboSubmissions,
   flushInternalKoboSubmissionQueue,
-  getInternalKoboQueueCount,
+  getInternalKoboQueueItems,
   queueInternalKoboSubmission,
   submitInternalKoboSubmission,
+  type InternalKoboQueuedSubmission,
   type InternalKoboSubmissionRecord,
   type InternalKoboSubmissionPayload,
 } from '../../services/internalKoboSubmissionService';
@@ -185,14 +186,17 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
   const [nativeKoboTargetHousehold, setNativeKoboTargetHousehold] = useState<Record<string, any> | null>(null);
   const [nativeKoboValidated, setNativeKoboValidated] = useState(false);
   const [internalKoboQueueCount, setInternalKoboQueueCount] = useState(0);
+  const [internalKoboQueueItems, setInternalKoboQueueItems] = useState<InternalKoboQueuedSubmission[]>([]);
+  const [isInternalKoboQueueFlushing, setIsInternalKoboQueueFlushing] = useState(false);
   const [internalKoboHistory, setInternalKoboHistory] = useState<InternalKoboSubmissionRecord[]>([]);
   const [isInternalKoboHistoryLoading, setIsInternalKoboHistoryLoading] = useState(false);
   const [internalKoboHistoryError, setInternalKoboHistoryError] = useState('');
 
   const refreshInternalKoboQueueCount = useCallback(async () => {
-    const count = await getInternalKoboQueueCount();
-    setInternalKoboQueueCount(count);
-    return count;
+    const items = await getInternalKoboQueueItems();
+    setInternalKoboQueueItems(items);
+    setInternalKoboQueueCount(items.length);
+    return items.length;
   }, []);
 
   const loadInternalKoboHistory = useCallback(async (target?: Record<string, any> | null) => {
@@ -234,9 +238,9 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
 
     let cancelled = false;
     flushInternalKoboSubmissionQueue()
-      .then((result) => {
+      .then(async (result) => {
         if (cancelled) return;
-        setInternalKoboQueueCount(result.pending);
+        await refreshInternalKoboQueueCount();
         if (result.flushed > 0) {
           toast.success(`${result.flushed} soumission(s) terrain envoyee(s) au VPS`);
         }
@@ -250,6 +254,33 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
       cancelled = true;
     };
   }, [isOnline, refreshInternalKoboQueueCount]);
+
+  const handleFlushInternalKoboQueue = useCallback(async () => {
+    if (!isOnline) {
+      toast.error('Connexion requise pour envoyer la file locale au VPS');
+      return;
+    }
+
+    setIsInternalKoboQueueFlushing(true);
+    try {
+      const result = await flushInternalKoboSubmissionQueue();
+      await refreshInternalKoboQueueCount();
+
+      if (result.flushed > 0) {
+        toast.success(`${result.flushed} soumission(s) locale(s) envoyee(s) au VPS`);
+        await loadInternalKoboHistory(nativeKoboTargetHousehold);
+      } else if (result.pending > 0 || result.failed > 0) {
+        toast.error('Envoi impossible pour le moment; la file locale est conservee');
+      } else {
+        toast.success('File locale deja vide');
+      }
+    } catch (error) {
+      await refreshInternalKoboQueueCount();
+      toast.error(error instanceof Error ? error.message : 'Relance de la file locale impossible');
+    } finally {
+      setIsInternalKoboQueueFlushing(false);
+    }
+  }, [isOnline, loadInternalKoboHistory, nativeKoboTargetHousehold, refreshInternalKoboQueueCount]);
 
   // Optimisation rendering via memoization (bloque les references inutiles du state parent)
   const memoizedTeams = useMemo(() => {
@@ -1905,6 +1936,9 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
           onResolvedHousehold={handleInternalKoboResolvedHousehold}
           resolveHouseholdByNumero={resolveHouseholdByNumero}
           queueCount={internalKoboQueueCount}
+          queueItems={internalKoboQueueItems}
+          isQueueFlushing={isInternalKoboQueueFlushing}
+          onFlushQueue={handleFlushInternalKoboQueue}
           isOnline={isOnline}
           submissions={internalKoboHistory}
           isHistoryLoading={isInternalKoboHistoryLoading}

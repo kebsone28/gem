@@ -14,7 +14,10 @@ import {
   X,
 } from 'lucide-react';
 import apiClient from '../../api/client';
-import type { InternalKoboSubmissionRecord } from '../../services/internalKoboSubmissionService';
+import type {
+  InternalKoboQueuedSubmission,
+  InternalKoboSubmissionRecord,
+} from '../../services/internalKoboSubmissionService';
 import { compressImage } from '../../utils/imageUtils';
 import {
   formatInternalKoboValue,
@@ -39,6 +42,9 @@ type InternalKoboFormProps = {
   onResolvedHousehold?: (household: Record<string, any> | null) => void;
   resolveHouseholdByNumero?: (numeroOrdre: string) => Record<string, any> | null;
   queueCount?: number;
+  queueItems?: InternalKoboQueuedSubmission[];
+  isQueueFlushing?: boolean;
+  onFlushQueue?: () => void;
   isOnline?: boolean;
   submissions?: InternalKoboSubmissionRecord[];
   isHistoryLoading?: boolean;
@@ -117,6 +123,16 @@ const submissionStatusLabel = (status: string) => {
   return 'Brouillon';
 };
 
+const queueStatusClass = (status: string) => {
+  if (status === 'failed') return 'border-rose-300/25 bg-rose-400/10 text-rose-100';
+  return 'border-sky-300/25 bg-sky-400/10 text-sky-100';
+};
+
+const queueStatusLabel = (status: string) => {
+  if (status === 'failed') return 'A relancer';
+  return 'En attente';
+};
+
 export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
   values,
   onChange,
@@ -127,6 +143,9 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
   onResolvedHousehold,
   resolveHouseholdByNumero,
   queueCount = 0,
+  queueItems = [],
+  isQueueFlushing = false,
+  onFlushQueue,
   isOnline = true,
   submissions = [],
   isHistoryLoading = false,
@@ -608,6 +627,74 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
     </div>
   );
 
+  const renderLocalQueue = (compact = false) => {
+    if (queueItems.length === 0) return null;
+
+    const visibleQueueItems = queueItems.slice(0, compact ? 2 : 4);
+
+    return (
+      <div className={`rounded-2xl border border-sky-300/15 bg-sky-400/[0.055] ${compact ? 'p-3' : 'p-4'}`}>
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-sky-100">File locale</p>
+            <p className="mt-1 text-[10px] font-semibold text-slate-500">
+              {queueItems.length} saisie(s) gardee(s) sur cet appareil
+            </p>
+          </div>
+          {onFlushQueue ? (
+            <button
+              type="button"
+              onClick={onFlushQueue}
+              disabled={isQueueFlushing || !isOnline}
+              className="inline-flex h-8 shrink-0 items-center gap-1 rounded-xl border border-sky-300/20 bg-sky-300/10 px-2.5 text-[9px] font-black uppercase tracking-[0.1em] text-sky-100 transition-colors hover:bg-sky-300/18 disabled:cursor-not-allowed disabled:opacity-45"
+            >
+              <RefreshCcw size={13} className={isQueueFlushing ? 'animate-spin' : ''} />
+              Envoyer
+            </button>
+          ) : null}
+        </div>
+
+        <div className="mt-3 space-y-2">
+          {visibleQueueItems.map((item) => (
+            <div key={`${item.id || item.clientSubmissionId}`} className="rounded-xl border border-white/[0.07] bg-slate-950/35 p-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-[11px] font-black text-white">
+                    {item.numeroOrdre ? `Menage ${item.numeroOrdre}` : 'Menage non renseigne'}
+                  </p>
+                  <p className="mt-1 text-[9px] font-semibold text-slate-500">
+                    {formatInternalKoboValue(item.role || 'role non defini', 'roles')} - {formatHistoryDate(new Date(item.timestamp).toISOString())}
+                  </p>
+                </div>
+                <span className={`shrink-0 rounded-full border px-2 py-1 text-[8px] font-black uppercase tracking-[0.1em] ${queueStatusClass(item.status)}`}>
+                  {queueStatusLabel(item.status)}
+                </span>
+              </div>
+              <div className="mt-2 flex flex-wrap gap-2 text-[9px] font-bold text-slate-400">
+                <span className="rounded-full bg-white/[0.05] px-2 py-1">
+                  {submissionStatusLabel(item.submissionStatus)}
+                </span>
+                <span className="rounded-full bg-white/[0.05] px-2 py-1">
+                  {item.retryCount} tentative(s)
+                </span>
+                {item.lastError ? (
+                  <span className="max-w-full truncate rounded-full bg-rose-400/10 px-2 py-1 text-rose-100">
+                    {item.lastError}
+                  </span>
+                ) : null}
+              </div>
+            </div>
+          ))}
+          {queueItems.length > visibleQueueItems.length ? (
+            <div className="rounded-xl border border-white/8 bg-slate-950/25 px-3 py-2 text-[10px] font-bold text-slate-500">
+              +{queueItems.length - visibleQueueItems.length} autre(s) saisie(s) en file.
+            </div>
+          ) : null}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="fixed inset-0 z-[3000] flex items-end justify-center bg-slate-950/75 p-0 backdrop-blur-md sm:items-center sm:p-4">
       <div className="grid h-[100dvh] w-full max-w-7xl overflow-hidden rounded-t-[1.5rem] border border-blue-200/10 bg-[#0B1728] shadow-2xl sm:h-[92vh] sm:rounded-[1.75rem] md:grid-cols-[310px_1fr]">
@@ -634,6 +721,11 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
           <div className="mb-5">
             {renderSubmissionHistory()}
           </div>
+          {queueItems.length > 0 ? (
+            <div className="mb-5">
+              {renderLocalQueue()}
+            </div>
+          ) : null}
 
           <div className="space-y-2">
             {navigableSections.map((section) => {
@@ -773,6 +865,11 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
               <div className="mt-3">
                 {renderSubmissionHistory(true)}
               </div>
+              {queueItems.length > 0 ? (
+                <div className="mt-3">
+                  {renderLocalQueue(true)}
+                </div>
+              ) : null}
             </div>
 
             {activeSection ? (
