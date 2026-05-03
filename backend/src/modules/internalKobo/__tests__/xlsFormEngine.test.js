@@ -88,6 +88,46 @@ describe('universal XLSForm engine', () => {
         expect(applyXlsFormCalculations(definition, { numero: 26, role: 'macon' }).values.resume).toBe('26-macon');
     });
 
+    it('supports mobile media field types and arithmetic calculations', () => {
+        const definition = buildXlsFormDefinition({
+            settings: {
+                form_id: 'media_runtime',
+                version: '2026-05-03'
+            },
+            survey: [
+                { type: 'integer', name: 'kits', label: 'Kits', required: 'yes' },
+                { type: 'decimal', name: 'prix', label: 'Prix' },
+                { type: 'calculate', name: 'total', calculation: '${kits} * ${prix}' },
+                { type: 'signature', name: 'signature_menage', label: 'Signature' },
+                { type: 'audio', name: 'audio_note', label: 'Audio' },
+                { type: 'video', name: 'video_chantier', label: 'Video' },
+                { type: 'file', name: 'piece_jointe', label: 'Piece jointe' }
+            ]
+        });
+
+        expect(definition.diagnostics.unsupportedTypes).toEqual([]);
+        expect(definition.diagnostics.mediaCount).toBe(4);
+        expect(applyXlsFormCalculations(definition, { kits: 3, prix: 12.5 }).values.total).toBe(37.5);
+    });
+
+    it('validates repeat instances instead of forcing repeat fields at root level', () => {
+        const definition = buildXlsFormDefinition({
+            settings: { form_id: 'repeat_runtime', version: '2026-05-03' },
+            survey: [
+                { type: 'begin_repeat', name: 'visites', label: 'Visites' },
+                { type: 'text', name: 'observation', label: 'Observation', required: 'yes' },
+                { type: 'integer', name: 'quantite', label: 'Quantite', constraint: '. > 0' },
+                { type: 'end_repeat' }
+            ]
+        });
+
+        expect(validateXlsFormValues(definition, { visites: [{ observation: 'ok', quantite: 2 }] }).issues).toEqual([]);
+        expect(validateXlsFormValues(definition, { visites: [{ quantite: 0 }] }).issues).toEqual(expect.arrayContaining([
+            expect.objectContaining({ field: 'observation', type: 'required', repeatName: 'visites', repeatIndex: 0 }),
+            expect.objectContaining({ field: 'quantite', type: 'constraint', repeatName: 'visites', repeatIndex: 0 })
+        ]));
+    });
+
     it('compares form versions with field and choice deltas', () => {
         const previous = buildSampleDefinition();
         const current = buildXlsFormDefinition({

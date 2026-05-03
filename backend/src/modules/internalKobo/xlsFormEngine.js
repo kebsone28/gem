@@ -193,6 +193,9 @@ function splitFunctionArgs(argsExpression) {
 function getExpressionValue(values, fieldName, context = {}) {
     if (fieldName === '.') return context.currentValue;
     if (Object.prototype.hasOwnProperty.call(values, fieldName)) return values[fieldName];
+    if (context.repeatValues && Object.prototype.hasOwnProperty.call(context.repeatValues, fieldName)) {
+        return context.repeatValues[fieldName];
+    }
     if (context.choice && Object.prototype.hasOwnProperty.call(context.choice, fieldName)) return context.choice[fieldName];
     return undefined;
 }
@@ -307,6 +310,48 @@ function evaluateCalculationOperand(rawOperand, values, context = {}) {
     if (/^today\(\)$/i.test(operand)) return new Date().toISOString().slice(0, 10);
     if (/^pulldata\(/i.test(operand)) return undefined;
 
+    const numberMatch = operand.match(/^number\((.+)\)$/i);
+    if (numberMatch) return parseNumber(evaluateCalculationOperand(numberMatch[1], values, context)) ?? '';
+
+    const intMatch = operand.match(/^int\((.+)\)$/i);
+    if (intMatch) {
+        const value = parseNumber(evaluateCalculationOperand(intMatch[1], values, context));
+        return value === null ? '' : Math.trunc(value);
+    }
+
+    const roundMatch = operand.match(/^round\((.+)\)$/i);
+    if (roundMatch) {
+        const args = splitFunctionArgs(roundMatch[1]);
+        const value = parseNumber(evaluateCalculationOperand(args[0], values, context));
+        const precision = parseNumber(evaluateCalculationOperand(args[1] || '0', values, context)) || 0;
+        if (value === null) return '';
+        const factor = 10 ** precision;
+        return Math.round(value * factor) / factor;
+    }
+
+    const coalesceMatch = operand.match(/^coalesce\((.+)\)$/i);
+    if (coalesceMatch) {
+        for (const arg of splitFunctionArgs(coalesceMatch[1])) {
+            const value = evaluateCalculationOperand(arg, values, context);
+            if (hasValue(value)) return value;
+        }
+        return '';
+    }
+
+    if (/[+\-*/]/.test(operand)) {
+        const expression = operand
+            .replace(/\bdiv\b/gi, '/')
+            .replace(/\$\{([^}]+)\}/g, (_, fieldName) => String(parseNumber(getExpressionValue(values, fieldName, context)) ?? 0));
+        if (/^[\d\s+\-*/().]+$/.test(expression)) {
+            try {
+                const result = Function(`"use strict"; return (${expression});`)();
+                return Number.isFinite(result) ? result : '';
+            } catch {
+                return '';
+            }
+        }
+    }
+
     return parseOperand(operand, values, context);
 }
 
@@ -334,9 +379,13 @@ function getInheritedRelevant(field) {
     return [...(field.parentRelevant || []), field.relevant].filter(Boolean);
 }
 
-export function isXlsFormFieldVisible(field, values = {}) {
+export function isXlsFormFieldVisible(field, values = {}, repeatValues = {}) {
     return getInheritedRelevant(field).every((expression) =>
-        evaluateXlsFormExpression(expression, values, { field, currentValue: values[field.name] })
+        evaluateXlsFormExpression(expression, values, {
+            field,
+            repeatValues,
+            currentValue: repeatValues[field.name] ?? values[field.name]
+        })
     );
 }
 
@@ -369,7 +418,7 @@ function isValidLongitude(value) {
     return number !== null && number >= -180 && number <= 180;
 }
 
-export function getFilteredXlsFormChoices(definition, fieldName, values = {}) {
+export function getFilteredXlsFormChoices(definition, fieldName, values = {}, repeatValues = {}) {
     const field = (definition.fields || []).find((item) => item.name === fieldName);
     if (!field?.listName) return [];
 
@@ -380,23 +429,25 @@ export function getFilteredXlsFormChoices(definition, fieldName, values = {}) {
         evaluateXlsFormExpression(field.choiceFilter, values, {
             choice,
             field,
-            currentValue: values[field.name]
+            repeatValues,
+            currentValue: repeatValues[field.name] ?? values[field.name]
         })
     );
 }
 
-function isRequiredField(field, values) {
+function isRequiredField(field, values, repeatValues = {}) {
     if (field.requiredExpression) {
         return evaluateXlsFormExpression(field.requiredExpression, values, {
             field,
-            currentValue: values[field.name]
+            repeatValues,
+            currentValue: repeatValues[field.name] ?? values[field.name]
         });
     }
     return field.required === true;
 }
 
-function validateTypeAndChoice(definition, field, values) {
-    const value = values[field.name];
+function validateTypeAndChoice(definition, field, values, repeatValues = {}) {
+    const value = repeatValues[field.name] ?? values[field.name];
     if (!hasValue(value)) return null;
 
     if (field.type === 'integer') {
@@ -419,7 +470,7 @@ function validateTypeAndChoice(definition, field, values) {
     }
 
     if (FIELD_TYPES_WITH_CHOICES.has(field.type) && field.listName) {
-        const validNames = new Set(getFilteredXlsFormChoices(definition, field.name, values).map((choice) => String(choice.name)));
+        const validNames = new Set(getFilteredXlsFormChoices(definition, field.name, values, repeatValues).map((choice) => String(choice.name)));
         const selectedValues = field.type === 'select_multiple' ? asValueList(value) : [String(value)];
         const invalidValues = selectedValues.filter((entry) => !validNames.has(entry));
         if (invalidValues.length > 0) {
@@ -436,37 +487,75 @@ export function validateXlsFormValues(definition, values = {}) {
     const visibleFields = getVisibleXlsFormFields(definition, calculatedValues);
     const issues = [];
 
-    for (const field of visibleFields) {
-        if (!field.name || ['note', 'calculate'].includes(field.type)) continue;
-        const value = calculatedValues[field.name];
+    const validateField = (field, repeatValues = {}, repeatContext = {}) => {
+        if (!field.name || ['note', 'calculate'].includes(field.type)) return;
+        const value = repeatValues[field.name] ?? calculatedValues[field.name];
 
-        if (isRequiredField(field, calculatedValues) && !hasValue(value)) {
+        if (isRequiredField(field, calculatedValues, repeatValues) && !hasValue(value)) {
             issues.push({
                 field: field.name,
                 type: 'required',
-                message: field.requiredMessage || 'Champ obligatoire pour cette branche XLSForm.'
+                message: field.requiredMessage || 'Champ obligatoire pour cette branche XLSForm.',
+                ...repeatContext
             });
-            continue;
+            return;
         }
 
-        const typeIssue = validateTypeAndChoice(definition, field, calculatedValues);
+        const typeIssue = validateTypeAndChoice(definition, field, calculatedValues, repeatValues);
         if (typeIssue) {
-            issues.push({ field: field.name, type: 'constraint', message: typeIssue });
+            issues.push({ field: field.name, type: 'constraint', message: typeIssue, ...repeatContext });
         }
 
         if (field.constraint && hasValue(value)) {
             const passes = evaluateXlsFormExpression(field.constraint, calculatedValues, {
                 field,
+                repeatValues,
                 currentValue: value
             });
             if (!passes) {
                 issues.push({
                     field: field.name,
                     type: 'constraint',
-                    message: field.constraintMessage || 'La valeur ne respecte pas la contrainte XLSForm.'
+                    message: field.constraintMessage || 'La valeur ne respecte pas la contrainte XLSForm.',
+                    ...repeatContext
                 });
             }
         }
+    };
+
+    for (const field of visibleFields) {
+        if (field.repeatPath) continue;
+        validateField(field);
+    }
+
+    for (const repeat of definition.repeats || []) {
+        const repeatName = repeat.name;
+        const instances = Array.isArray(calculatedValues[repeatName])
+            ? calculatedValues[repeatName].filter((item) => item && typeof item === 'object' && !Array.isArray(item))
+            : [];
+        const repeatFields = (definition.fields || []).filter((field) => field.repeatPath === repeatName);
+        const requiredRepeatFields = repeatFields.filter((field) =>
+            !['note', 'calculate'].includes(field.type) &&
+            isXlsFormFieldVisible(field, calculatedValues) &&
+            isRequiredField(field, calculatedValues)
+        );
+
+        if (instances.length === 0 && requiredRepeatFields.length > 0) {
+            issues.push({
+                field: requiredRepeatFields[0].name,
+                type: 'required',
+                message: 'Ajoutez au moins une ligne dans ce repeat.',
+                repeatName
+            });
+            continue;
+        }
+
+        instances.forEach((repeatValues, repeatIndex) => {
+            repeatFields.forEach((field) => {
+                if (!isXlsFormFieldVisible(field, calculatedValues, repeatValues)) return;
+                validateField(field, repeatValues, { repeatName, repeatIndex });
+            });
+        });
     }
 
     return {
@@ -565,6 +654,7 @@ export function buildXlsFormDefinition({ survey = [], choices = [], settings = {
             choiceFilter: row.choice_filter || row.choiceFilter || '',
             listName: parsedType.listName,
             external: parsedType.external,
+            readOnly: isTruthyXls(row.readonly || row.read_only),
             groupPath: currentPath,
             repeatPath: stack.filter((entry) => entry.type === 'begin_repeat').map((entry) => entry.name).join('/'),
             bind: {
@@ -600,6 +690,10 @@ export function buildXlsFormDefinition({ survey = [], choices = [], settings = {
             'decimal',
             'geopoint',
             'image',
+            'signature',
+            'file',
+            'audio',
+            'video',
             'date',
             'time',
             'datetime',
@@ -637,6 +731,7 @@ export function buildXlsFormDefinition({ survey = [], choices = [], settings = {
         groupCount: groups.length,
         repeatCount: repeats.length,
         imageCount: fields.filter((field) => field.type === 'image').length,
+        mediaCount: fields.filter((field) => ['image', 'signature', 'file', 'audio', 'video'].includes(field.type)).length,
         externalChoiceCount: fields.filter((field) => field.external).length,
         languages,
         unsupportedTypes: Array.from(unsupportedTypes)

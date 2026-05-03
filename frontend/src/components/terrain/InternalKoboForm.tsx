@@ -8,17 +8,26 @@ import {
   Copy,
   Database,
   Download,
+  FileUp,
   ImagePlus,
   Loader2,
   Lock,
   LockKeyhole,
   MapPin,
+  Minus,
+  PenTool,
+  Plus,
   RefreshCcw,
   Search,
   X,
 } from 'lucide-react';
 import apiClient from '../../api/client';
-import { fetchInternalKoboFormDefinition } from '../../services/internalKoboSubmissionService';
+import SignatureModal from '../common/SignatureModal';
+import {
+  fetchInternalKoboFormDefinition,
+  fetchInternalKoboImportedFormDefinition,
+  type InternalKoboImportedFormSummary,
+} from '../../services/internalKoboSubmissionService';
 import type {
   InternalKoboAttachment,
   InternalKoboLocalDraft,
@@ -42,6 +51,20 @@ import {
   validateInternalKoboRequiredFields,
 } from './internalKoboFormDefinition';
 import type { InternalKoboField } from './internalKoboFormDefinition';
+import {
+  applyXlsFormRuntimeCalculations,
+  buildXlsFormRuntimePages,
+  getFilteredXlsFormRuntimeChoices,
+  getXlsFormRuntimeFieldValue,
+  hasXlsFormRuntimeValue,
+  isRecord as isXlsFormRecord,
+  isXlsFormRuntimeFieldVisible,
+  validateXlsFormRuntime,
+  type XlsFormDefinition,
+  type XlsFormField,
+  type XlsFormPage,
+  type XlsFormRuntimeIssue,
+} from './xlsFormMobileRuntime';
 
 type InternalKoboFormProps = {
   values: Record<string, unknown>;
@@ -63,6 +86,24 @@ type InternalKoboFormProps = {
   isHistoryLoading?: boolean;
   historyError?: string;
   onRefreshHistory?: () => void;
+};
+
+type RuntimeIssueView = {
+  field: InternalKoboField;
+  type: 'required' | 'constraint';
+  message: string;
+  runtimeIssue?: XlsFormRuntimeIssue;
+};
+
+type RepeatContext = {
+  repeatName: string;
+  repeatIndex: number;
+  instance: Record<string, unknown>;
+};
+
+type SignatureTarget = {
+  field: XlsFormField;
+  repeatContext?: RepeatContext;
 };
 
 const asArray = (value: unknown): string[] => {
@@ -99,6 +140,51 @@ const ROLE_SECTION_BY_VALUE: Record<string, string> = {
   reseau: 'reseau',
   interieur: 'interieur',
   controleur: 'controle_branchement',
+};
+
+const XLS_RUNTIME_MEDIA_TYPES = new Set(['image', 'signature', 'file', 'audio', 'video']);
+const XLS_RUNTIME_FILLABLE_SKIP_TYPES = new Set([
+  'note',
+  'calculate',
+  'start',
+  'end',
+  'today',
+  'username',
+  'phonenumber',
+  'deviceid',
+  'subscriberid',
+  'simserial',
+  'audit',
+]);
+
+const isRuntimeDefinition = (value: unknown): value is XlsFormDefinition =>
+  isXlsFormRecord(value) &&
+  value.engine === 'gem-xlsform-universal' &&
+  typeof value.formKey === 'string' &&
+  typeof value.formVersion === 'string';
+
+const pickActiveImportedForm = (forms: InternalKoboImportedFormSummary[] = []) =>
+  forms.find((form) => form.active !== false && form.status !== 'inactive') || null;
+
+const getRuntimeFieldInputType = (field: XlsFormField) => {
+  if (field.type === 'integer' || field.type === 'decimal') return 'number';
+  if (field.type === 'date') return 'date';
+  if (field.type === 'time') return 'time';
+  if (field.type === 'datetime') return 'datetime-local';
+  return 'text';
+};
+
+const getRuntimeFieldAccept = (field: XlsFormField) => {
+  if (field.type === 'image' || field.type === 'signature') return 'image/*';
+  if (field.type === 'audio') return 'audio/*';
+  if (field.type === 'video') return 'video/*';
+  return undefined;
+};
+
+const getRuntimeFieldCapture = (field: XlsFormField) => {
+  if (field.type === 'image') return 'environment';
+  if (field.type === 'video') return 'environment';
+  return undefined;
 };
 
 const maxPixelsFromParameters = (parameters?: string) => {
@@ -245,6 +331,10 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
   const [locatingField, setLocatingField] = useState<string | null>(null);
   const [locationError, setLocationError] = useState('');
   const [isSubmitReviewOpen, setIsSubmitReviewOpen] = useState(false);
+  const [xlsFormDefinition, setXlsFormDefinition] = useState<XlsFormDefinition | null>(null);
+  const [activeRuntimePageId, setActiveRuntimePageId] = useState('');
+  const [activeRepeatIndexByPage, setActiveRepeatIndexByPage] = useState<Record<string, number>>({});
+  const [signatureTarget, setSignatureTarget] = useState<SignatureTarget | null>(null);
   const [receiptSubmission, setReceiptSubmission] = useState<InternalKoboSubmissionRecord | null>(null);
   const [copiedReceiptId, setCopiedReceiptId] = useState('');
   const [householdLookup, setHouseholdLookup] = useState<{
@@ -260,13 +350,6 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
   const onChangeRef = useRef(onChange);
   const onResolvedHouseholdRef = useRef(onResolvedHousehold);
   const resolveHouseholdByNumeroRef = useRef(resolveHouseholdByNumero);
-  const validationIssues = useMemo(() => validateInternalKoboFields(values), [values]);
-  const missingRequired = useMemo(() => validateInternalKoboRequiredFields(values), [values]);
-  const constraintIssues = useMemo(
-    () => validationIssues.filter((issue) => issue.type === 'constraint'),
-    [validationIssues]
-  );
-  const progress = useMemo(() => progressFor(values), [values]);
   const collectionMetadata = useMemo(() => getClientCollectionMetadata(isOnline), [isOnline]);
   const normalizedQuery = query.trim().toLowerCase();
   const numeroOrdre = String(values.Numero_ordre || '').trim();
@@ -279,6 +362,79 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
     );
     return new Map(entries);
   }, []);
+  const runtimeCalculation = useMemo(
+    () => xlsFormDefinition ? applyXlsFormRuntimeCalculations(xlsFormDefinition, values) : { values, calculated: {} },
+    [xlsFormDefinition, values]
+  );
+  const runtimeValues = runtimeCalculation.values;
+  const runtimeAllPages = useMemo(
+    () => xlsFormDefinition ? buildXlsFormRuntimePages(xlsFormDefinition, runtimeValues) : [],
+    [xlsFormDefinition, runtimeValues]
+  );
+  const runtimePages = useMemo(
+    () => xlsFormDefinition ? buildXlsFormRuntimePages(xlsFormDefinition, runtimeValues, query) : [],
+    [xlsFormDefinition, runtimeValues, query]
+  );
+  const runtimeValidation = useMemo(
+    () => xlsFormDefinition ? validateXlsFormRuntime(xlsFormDefinition, runtimeValues, runtimeAllPages) : null,
+    [runtimeAllPages, runtimeValues, xlsFormDefinition]
+  );
+  const validationIssues = useMemo<RuntimeIssueView[]>(() => {
+    if (!runtimeValidation) return validateInternalKoboFields(values);
+    return runtimeValidation.issues.map((issue) => ({
+      field: {
+        name: issue.field.name,
+        type: issue.field.type === 'note' ? 'note' : 'text',
+        label: issue.field.label || issue.field.name,
+        required: issue.type === 'required',
+      } as InternalKoboField,
+      type: issue.type,
+      message: issue.message,
+      runtimeIssue: issue,
+    }));
+  }, [runtimeValidation, values]);
+  const missingRequired = useMemo(() => {
+    if (!runtimeValidation) return validateInternalKoboRequiredFields(values);
+    return runtimeValidation.issues
+      .filter((issue) => issue.type === 'required')
+      .map((issue) => ({
+        name: issue.field.name,
+        type: issue.field.type === 'note' ? 'note' : 'text',
+        label: issue.field.label || issue.field.name,
+        required: true,
+      } as InternalKoboField));
+  }, [runtimeValidation, values]);
+  const constraintIssues = useMemo(
+    () => validationIssues.filter((issue) => issue.type === 'constraint'),
+    [validationIssues]
+  );
+  const progress = useMemo(() => {
+    if (!xlsFormDefinition) return progressFor(values);
+    const visibleValues: unknown[] = [];
+    runtimeAllPages.forEach((page) => {
+      if (page.type === 'repeat' && page.repeatName) {
+        const repeatValue = runtimeValues[page.repeatName];
+        const instances = Array.isArray(repeatValue) ? repeatValue.filter(isRecord) : [];
+        instances.forEach((instance) => {
+          page.allFields.forEach((field) => {
+            if (XLS_RUNTIME_FILLABLE_SKIP_TYPES.has(field.type) || !isXlsFormRuntimeFieldVisible(field, runtimeValues, instance)) return;
+            visibleValues.push(getXlsFormRuntimeFieldValue(field, runtimeValues, instance));
+          });
+        });
+        return;
+      }
+      page.allFields.forEach((field) => {
+        if (XLS_RUNTIME_FILLABLE_SKIP_TYPES.has(field.type) || !isXlsFormRuntimeFieldVisible(field, runtimeValues)) return;
+        visibleValues.push(getXlsFormRuntimeFieldValue(field, runtimeValues));
+      });
+    });
+    const filled = visibleValues.filter(hasXlsFormRuntimeValue).length;
+    return {
+      filled,
+      total: visibleValues.length,
+      percent: visibleValues.length ? Math.round((filled / visibleValues.length) * 100) : 0,
+    };
+  }, [runtimeAllPages, runtimeValues, values, xlsFormDefinition]);
 
   useEffect(() => {
     onChangeRef.current = onChange;
@@ -301,14 +457,42 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
     let cancelled = false;
     setServerFormStatus((current) => current.status === 'ok' ? current : { status: 'loading' });
 
-    fetchInternalKoboFormDefinition()
-      .then((form) => {
+    (async () => {
+      try {
+        const form = await fetchInternalKoboFormDefinition();
         if (cancelled) return;
         if (!form) {
           setServerFormStatus({ status: 'error', message: 'Definition VPS indisponible' });
           return;
         }
 
+        const activeImportedForm = pickActiveImportedForm(form.universalEngine?.importedForms || []);
+        if (activeImportedForm?.formKey) {
+          const importedDefinition = await fetchInternalKoboImportedFormDefinition(activeImportedForm.formKey);
+          if (cancelled) return;
+          if (!isRuntimeDefinition(importedDefinition)) {
+            throw new Error('Definition XLSForm active invalide');
+          }
+
+          setXlsFormDefinition(importedDefinition);
+          setActiveRuntimePageId('');
+          onChangeRef.current('_gem_runtime_form_key', importedDefinition.formKey);
+          onChangeRef.current('_gem_runtime_form_version', importedDefinition.formVersion);
+          onChangeRef.current('_gem_runtime_engine', importedDefinition.engine || 'gem-xlsform-universal');
+          onChangeRef.current('_gem_runtime_title', importedDefinition.title || activeImportedForm.title || importedDefinition.formKey);
+          setServerFormStatus({
+            status: 'ok',
+            version: importedDefinition.formVersion,
+            message: `XLSForm actif: ${importedDefinition.title || importedDefinition.formKey}`,
+          });
+          return;
+        }
+
+        setXlsFormDefinition(null);
+        onChangeRef.current('_gem_runtime_form_key', 'terrain_internal');
+        onChangeRef.current('_gem_runtime_form_version', INTERNAL_KOBO_FORM_SETTINGS.version);
+        onChangeRef.current('_gem_runtime_engine', 'gem-internal-kobo');
+        onChangeRef.current('_gem_runtime_title', 'Formulaire terrain interne');
         setServerFormStatus({
           status: form.formVersion === INTERNAL_KOBO_FORM_SETTINGS.version ? 'ok' : 'mismatch',
           version: form.formVersion,
@@ -317,14 +501,15 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
               ? 'Version VPS verifiee'
               : `Version VPS ${form.formVersion}`,
         });
-      })
-      .catch((error) => {
+      } catch (error) {
         if (cancelled) return;
+        setXlsFormDefinition(null);
         setServerFormStatus({
           status: 'error',
           message: error instanceof Error ? error.message : 'Definition VPS indisponible',
         });
-      });
+      }
+    })();
 
     return () => {
       cancelled = true;
@@ -347,6 +532,48 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
       }
     });
   }, [collectionMetadata, values]);
+
+  useEffect(() => {
+    if (!xlsFormDefinition) return;
+    (xlsFormDefinition.fields || []).forEach((field) => {
+      if (field.repeatPath || !hasXlsFormRuntimeValue(field.defaultValue) || hasXlsFormRuntimeValue(values[field.name])) return;
+      onChangeRef.current(field.name, field.defaultValue);
+    });
+    Object.entries(runtimeCalculation.calculated).forEach(([fieldName, value]) => {
+      if (String(values[fieldName] ?? '') !== String(value ?? '')) {
+        onChangeRef.current(fieldName, value);
+      }
+    });
+  }, [runtimeCalculation.calculated, values, xlsFormDefinition]);
+
+  useEffect(() => {
+    if (!xlsFormDefinition || !runtimeValidation) return;
+    const issues = runtimeValidation.issues.map((issue) => ({
+      field: issue.field.name,
+      type: issue.type,
+      message: issue.message,
+      pageId: issue.pageId || '',
+      repeatName: issue.repeatName || '',
+      repeatIndex: issue.repeatIndex ?? null,
+    }));
+    const nextMeta: Record<string, unknown> = {
+      _gem_runtime_required_missing: runtimeValidation.requiredMissing,
+      _gem_runtime_validation_issues: issues,
+      _gem_runtime_ready: issues.length === 0,
+      _gem_runtime_page_count: runtimeAllPages.length,
+    };
+    Object.entries(nextMeta).forEach(([key, value]) => {
+      if (JSON.stringify(values[key] ?? null) !== JSON.stringify(value ?? null)) {
+        onChangeRef.current(key, value);
+      }
+    });
+  }, [runtimeAllPages.length, runtimeValidation, values, xlsFormDefinition]);
+
+  useEffect(() => {
+    if (!xlsFormDefinition || activeRuntimePageId) return;
+    const firstPage = runtimeAllPages[0];
+    if (firstPage) setActiveRuntimePageId(firstPage.id);
+  }, [activeRuntimePageId, runtimeAllPages, xlsFormDefinition]);
 
   useEffect(() => {
     const startedAt = String(values._gem_session_started_at || values.start || '');
@@ -528,13 +755,59 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
     navigableSections.find((section) => !section.locked) ||
     navigableSections[0];
   const mobileSectionOptions = navigableSections.filter((section) => !section.locked);
+  let previousBlockingRuntimePageId = '';
+  const runtimePageStates = runtimeAllPages.map((page) => {
+    const activeFields = page.allFields.filter((field) => {
+      if (XLS_RUNTIME_FILLABLE_SKIP_TYPES.has(field.type)) return false;
+      if (page.type === 'repeat') return true;
+      return isXlsFormRuntimeFieldVisible(field, runtimeValues);
+    });
+    const missingFields = (runtimeValidation?.issues || [])
+      .filter((issue) => issue.type === 'required' && issue.pageId === page.id)
+      .map((issue) => issue.field);
+    const sequenceLocked = Boolean(previousBlockingRuntimePageId && activeFields.length > 0);
+
+    if (!sequenceLocked && missingFields.length > 0) {
+      previousBlockingRuntimePageId = page.id;
+    }
+
+    return {
+      ...page,
+      activeFields,
+      missingFields,
+      locked: sequenceLocked,
+      lockedReason: sequenceLocked ? 'sequence' : '',
+      blockedByPageId: sequenceLocked ? previousBlockingRuntimePageId : '',
+      fields: (runtimePages.find((item) => item.id === page.id)?.fields || page.fields).filter((field) => {
+        if (!normalizedQuery) return true;
+        return `${field.label || ''} ${field.name}`.toLowerCase().includes(normalizedQuery);
+      }),
+    };
+  });
+  const runtimeNavigablePages = runtimePageStates.filter((page) => {
+    if (!normalizedQuery) return page.activeFields.length > 0 || page.type === 'repeat';
+    return page.fields.length > 0 || `${page.title} ${page.subtitle}`.toLowerCase().includes(normalizedQuery);
+  });
+  const activeRuntimePage =
+    runtimeNavigablePages.find((page) => page.id === activeRuntimePageId && !page.locked) ||
+    runtimeNavigablePages.find((page) => !page.locked) ||
+    runtimeNavigablePages[0];
+  const mobileRuntimePageOptions = runtimeNavigablePages.filter((page) => !page.locked);
   const validationIssueDetails = validationIssues.map((issue) => {
+    if (xlsFormDefinition) {
+      const runtimePage = runtimeNavigablePages.find((item) => item.id === issue.runtimeIssue?.pageId) ||
+        runtimeNavigablePages.find((item) => item.activeFields.some((pageField) => pageField.name === issue.field.name));
+      return { ...issue, section: undefined, runtimePage };
+    }
+
     const section = navigableSections.find((item) =>
       item.activeFields.some((sectionField) => sectionField.name === issue.field.name)
     );
-    return { ...issue, section };
+    return { ...issue, section, runtimePage: undefined };
   });
-  const firstActionableIssue = validationIssueDetails.find((item) => item.section && !item.section.locked);
+  const firstActionableIssue = validationIssueDetails.find(
+    (item) => (item.section && !item.section.locked) || (item.runtimePage && !item.runtimePage.locked)
+  );
   const requiredStatusText = validationIssues.length ? `${validationIssues.length} a corriger` : 'Pret';
   const requiredStatusClass = validationIssues.length
     ? 'border-amber-400/35 bg-amber-400/12 text-amber-100'
@@ -542,6 +815,9 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
 
   const blockedByTitle = (sectionId: string) =>
     navigableSections.find((section) => section.id === sectionId)?.title || 'l etape precedente';
+
+  const blockedByRuntimeTitle = (pageId: string) =>
+    runtimeNavigablePages.find((page) => page.id === pageId)?.title || 'l etape precedente';
 
   const getSectionStatus = (section: typeof navigableSections[number]) => {
     const fillableCount = section.activeFields.filter((field) => field.type !== 'note' && !field.readOnly).length;
@@ -580,8 +856,43 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
     };
   };
 
-  const focusRequiredField = (fieldName: string, sectionId?: string) => {
-    if (sectionId) setActiveSectionId(sectionId);
+  const getRuntimePageStatus = (page: typeof runtimeNavigablePages[number]) => {
+    const fillableCount = page.activeFields.length;
+    if (page.locked) {
+      return {
+        label: 'Verrouille',
+        detail: `Terminer ${blockedByRuntimeTitle(page.blockedByPageId)}`,
+        className: 'border-white/5 bg-white/[0.02] text-slate-600',
+        icon: <LockKeyhole size={13} />,
+      };
+    }
+    if (page.missingFields.length > 0) {
+      return {
+        label: `${page.missingFields.length} requis`,
+        detail: `${fillableCount} champs actifs`,
+        className: 'border-amber-300/25 bg-amber-400/10 text-amber-100',
+        icon: <AlertCircle size={13} />,
+      };
+    }
+    if (fillableCount > 0) {
+      return {
+        label: 'Termine',
+        detail: `${fillableCount} champs actifs`,
+        className: 'border-emerald-300/25 bg-emerald-400/10 text-emerald-100',
+        icon: <CheckCircle2 size={13} />,
+      };
+    }
+    return {
+      label: 'Disponible',
+      detail: 'Aucun champ actif',
+      className: 'border-white/8 bg-white/[0.03] text-slate-400',
+      icon: <ChevronRight size={13} />,
+    };
+  };
+
+  const focusRequiredField = (fieldName: string, sectionId?: string, runtimePageId?: string) => {
+    if (runtimePageId) setActiveRuntimePageId(runtimePageId);
+    else if (sectionId) setActiveSectionId(sectionId);
     window.setTimeout(() => {
       document.getElementById(`internal-kobo-field-${fieldName}`)?.scrollIntoView({
         behavior: 'smooth',
@@ -721,7 +1032,140 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
     onChange(`_gem_photo_${field.name}_captured_at`, '');
   };
 
-  const captureLocation = (field: InternalKoboField) => {
+  const getRepeatInstances = (repeatName: string): Record<string, unknown>[] => {
+    const current = values[repeatName];
+    return Array.isArray(current) ? current.filter(isRecord).map((entry) => ({ ...entry })) : [];
+  };
+
+  const updateRuntimeField = (field: XlsFormField, value: unknown, repeatContext?: RepeatContext) => {
+    if (!repeatContext) {
+      onChange(field.name, value);
+      return;
+    }
+
+    const instances = getRepeatInstances(repeatContext.repeatName);
+    const nextInstances = instances.length > 0 ? instances : [{}];
+    nextInstances[repeatContext.repeatIndex] = {
+      ...(nextInstances[repeatContext.repeatIndex] || {}),
+      [field.name]: value,
+    };
+    onChange(repeatContext.repeatName, nextInstances);
+  };
+
+  const setRuntimeOption = (field: XlsFormField, optionName: string, repeatContext?: RepeatContext) => {
+    const value = getXlsFormRuntimeFieldValue(field, runtimeValues, repeatContext?.instance);
+    if (field.type === 'select_multiple') {
+      const current = new Set(asArray(value));
+      if (current.has(optionName)) current.delete(optionName);
+      else current.add(optionName);
+      updateRuntimeField(field, Array.from(current), repeatContext);
+      return;
+    }
+
+    updateRuntimeField(field, optionName, repeatContext);
+    if (field.name === 'role' && !xlsFormDefinition) {
+      const targetSectionId = ROLE_SECTION_BY_VALUE[optionName];
+      if (targetSectionId) {
+        lastAutoActivatedRoleRef.current = optionName;
+        setActiveSectionId(targetSectionId);
+      }
+    }
+  };
+
+  const getRuntimeAttachmentKey = (field: XlsFormField, repeatContext?: RepeatContext) =>
+    repeatContext ? `${repeatContext.repeatName}_${repeatContext.repeatIndex}_${field.name}` : field.name;
+
+  const handleRuntimeFile = async (field: XlsFormField, file?: File, repeatContext?: RepeatContext) => {
+    if (!file) return;
+    const attachmentKey = getRuntimeAttachmentKey(field, repeatContext);
+    setUploadingField(attachmentKey);
+    try {
+      const shouldCompress = field.type === 'image' || field.type === 'signature';
+      const maxPixels = shouldCompress ? maxPixelsFromParameters(field.parameters) : undefined;
+      const uploadFile = maxPixels ? await compressImage(file, { maxWidth: maxPixels, maxHeight: maxPixels }) : file;
+      const capturedAt = new Date().toISOString();
+      const dataUrl = await fileToDataUrl(uploadFile);
+      const baseAttachment: InternalKoboAttachment = {
+        id: makeAttachmentId(),
+        fieldName: attachmentKey,
+        fileName: file.name,
+        mimeType: file.type || uploadFile.type || 'application/octet-stream',
+        originalBytes: file.size,
+        storedBytes: uploadFile.size,
+        capturedAt,
+        source: repeatContext ? 'gem-xlsform-repeat-runtime' : 'gem-xlsform-runtime',
+      };
+      let fieldValue = dataUrl;
+      let attachment: InternalKoboAttachment = {
+        ...baseAttachment,
+        dataUrl,
+        storage: isOnline ? 'embedded-fallback' : 'embedded-offline',
+        status: 'queued',
+      };
+
+      if (isOnline && onPhotoUpload) {
+        try {
+          const uploaded = await onPhotoUpload(uploadFile);
+          if (uploaded) {
+            fieldValue = uploaded;
+            attachment = {
+              ...baseAttachment,
+              url: uploaded,
+              storage: 'remote',
+              status: 'uploaded',
+            };
+          }
+        } catch {
+          fieldValue = dataUrl;
+        }
+      }
+
+      updateRuntimeField(field, fieldValue, repeatContext);
+      onChange(`_gem_attachment_${attachmentKey}`, attachment);
+      onChange(`_gem_photo_${attachmentKey}_original_name`, file.name);
+      onChange(`_gem_photo_${attachmentKey}_mime`, attachment.mimeType || '');
+      onChange(`_gem_photo_${attachmentKey}_original_bytes`, String(file.size));
+      onChange(`_gem_photo_${attachmentKey}_stored_bytes`, String(uploadFile.size));
+      onChange(`_gem_photo_${attachmentKey}_compressed`, String(uploadFile.size < file.size));
+      onChange(`_gem_photo_${attachmentKey}_storage`, attachment.storage || '');
+      onChange(`_gem_photo_${attachmentKey}_captured_at`, capturedAt);
+    } finally {
+      setUploadingField(null);
+    }
+  };
+
+  const clearRuntimeFile = (field: XlsFormField, repeatContext?: RepeatContext) => {
+    const attachmentKey = getRuntimeAttachmentKey(field, repeatContext);
+    updateRuntimeField(field, '', repeatContext);
+    onChange(`_gem_attachment_${attachmentKey}`, '');
+    onChange(`_gem_photo_${attachmentKey}_original_name`, '');
+    onChange(`_gem_photo_${attachmentKey}_mime`, '');
+    onChange(`_gem_photo_${attachmentKey}_original_bytes`, '');
+    onChange(`_gem_photo_${attachmentKey}_stored_bytes`, '');
+    onChange(`_gem_photo_${attachmentKey}_compressed`, '');
+    onChange(`_gem_photo_${attachmentKey}_storage`, '');
+    onChange(`_gem_photo_${attachmentKey}_captured_at`, '');
+  };
+
+  const addRepeatInstance = (page: XlsFormPage) => {
+    if (!page.repeatName) return;
+    const instances = getRepeatInstances(page.repeatName);
+    const nextIndex = instances.length;
+    onChange(page.repeatName, [...instances, {}]);
+    setActiveRepeatIndexByPage((current) => ({ ...current, [page.id]: nextIndex }));
+  };
+
+  const removeRepeatInstance = (page: XlsFormPage, repeatIndex: number) => {
+    if (!page.repeatName) return;
+    const instances = getRepeatInstances(page.repeatName).filter((_, index) => index !== repeatIndex);
+    onChange(page.repeatName, instances);
+    setActiveRepeatIndexByPage((current) => ({
+      ...current,
+      [page.id]: Math.max(0, Math.min((current[page.id] || 0), instances.length - 1)),
+    }));
+  };
+
+  const captureLocation = (field: InternalKoboField | XlsFormField, repeatContext?: RepeatContext) => {
     if (typeof navigator === 'undefined' || !navigator.geolocation) {
       setLocationError("GPS indisponible sur cet appareil ou ce navigateur.");
       return;
@@ -735,7 +1179,8 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
         const longitude = position.coords.longitude.toFixed(7);
         const capturedAt = new Date(position.timestamp || Date.now()).toISOString();
 
-        onChange(field.name, `${latitude} ${longitude}`);
+        if (repeatContext) updateRuntimeField(field as XlsFormField, `${latitude} ${longitude}`, repeatContext);
+        else onChange(field.name, `${latitude} ${longitude}`);
         if (field.name === 'LOCALISATION_CLIENT') {
           onChange('latitude_key', latitude);
           onChange('longitude_key', longitude);
@@ -755,6 +1200,477 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
         maximumAge: 30000,
       }
     );
+  };
+
+  const getRuntimeFieldIssues = (field: XlsFormField, repeatContext?: RepeatContext) =>
+    (runtimeValidation?.issues || []).filter((issue) => {
+      if (issue.field.name !== field.name) return false;
+      if (!repeatContext) return issue.repeatName === undefined;
+      return issue.repeatName === repeatContext.repeatName && issue.repeatIndex === repeatContext.repeatIndex;
+    });
+
+  const getRuntimeGroupLabel = (groupPath?: string) => {
+    if (!groupPath || !xlsFormDefinition) return '';
+    const group = (xlsFormDefinition.groups || []).find((item) => (item.path || item.name) === groupPath);
+    return group?.label || groupPath.split('/').pop() || groupPath;
+  };
+
+  const renderRuntimeMediaField = (
+    field: XlsFormField,
+    value: unknown,
+    repeatContext?: RepeatContext
+  ) => {
+    const attachmentKey = getRuntimeAttachmentKey(field, repeatContext);
+    const attachment = getAttachmentMeta(values, attachmentKey);
+    const previewSource = getImagePreviewSource(value, attachment);
+    const stringValue = String(value || '');
+    const hasValue = hasXlsFormRuntimeValue(value);
+    const isQueued = attachment?.status === 'queued' || attachment?.storage?.startsWith('embedded');
+
+    return (
+      <div className="rounded-2xl border border-dashed border-blue-200/15 bg-slate-900/35 p-3">
+        {field.type === 'image' || field.type === 'signature' ? (
+          previewSource ? (
+            <div className="mb-3 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/50">
+              <img src={previewSource} alt={field.label || field.name} className="max-h-56 w-full object-cover" />
+            </div>
+          ) : null
+        ) : null}
+
+        {field.type === 'audio' && stringValue ? (
+          <audio controls src={stringValue} className="mb-3 w-full" />
+        ) : null}
+
+        {field.type === 'video' && stringValue ? (
+          <video controls src={stringValue} className="mb-3 max-h-64 w-full rounded-2xl bg-slate-950/60" />
+        ) : null}
+
+        {field.type === 'file' && stringValue ? (
+          <div className="mb-3 rounded-2xl border border-white/10 bg-slate-950/35 px-3 py-2 text-[11px] font-bold text-slate-200">
+            {attachment?.fileName || stringValue}
+          </div>
+        ) : null}
+
+        <div className="flex flex-col gap-2 sm:flex-row">
+          {field.type === 'signature' ? (
+            <button
+              type="button"
+              onClick={() => setSignatureTarget({ field, repeatContext })}
+              className="flex min-h-12 flex-1 items-center justify-center gap-2 rounded-2xl border border-indigo-300/25 bg-indigo-400/12 px-4 text-center text-indigo-100 transition-all hover:bg-indigo-400/20 active:scale-[0.98]"
+            >
+              <PenTool size={18} />
+              <span className="text-[10px] font-black uppercase tracking-[0.14em]">
+                {hasValue ? 'Remplacer la signature' : 'Signer'}
+              </span>
+            </button>
+          ) : (
+            <label className="flex min-h-12 flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl border border-blue-300/20 bg-blue-400/10 px-4 text-center text-blue-100 transition-all hover:bg-blue-400/18 active:scale-[0.98]">
+              <input
+                type="file"
+                accept={getRuntimeFieldAccept(field)}
+                capture={getRuntimeFieldCapture(field) as 'user' | 'environment' | undefined}
+                className="hidden"
+                onChange={(event) => handleRuntimeFile(field, event.target.files?.[0], repeatContext)}
+              />
+              {field.type === 'image' ? (hasValue ? <Camera size={18} /> : <ImagePlus size={18} />) : <FileUp size={18} />}
+              <span className="text-[10px] font-black uppercase tracking-[0.14em]">
+                {uploadingField === attachmentKey ? 'Traitement...' : hasValue ? 'Remplacer' : 'Ajouter'}
+              </span>
+            </label>
+          )}
+
+          {hasValue ? (
+            <button
+              type="button"
+              onClick={() => clearRuntimeFile(field, repeatContext)}
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-rose-300/20 bg-rose-400/10 px-4 text-[10px] font-black uppercase tracking-[0.14em] text-rose-100 transition-all hover:bg-rose-400/18 active:scale-[0.98]"
+            >
+              <X size={16} />
+              Retirer
+            </button>
+          ) : null}
+        </div>
+
+        {hasValue ? (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <span className={`rounded-full border px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.12em] ${
+              isQueued
+                ? 'border-amber-300/25 bg-amber-400/10 text-amber-100'
+                : 'border-emerald-300/25 bg-emerald-400/10 text-emerald-100'
+            }`}>
+              {isQueued ? 'Media local' : 'Media serveur'}
+            </span>
+            <span className="max-w-full truncate text-[10px] font-semibold text-slate-500">
+              {attachment?.fileName || stringValue}
+            </span>
+          </div>
+        ) : null}
+      </div>
+    );
+  };
+
+  const renderXlsRuntimeField = (field: XlsFormField, repeatContext?: RepeatContext) => {
+    const value = getXlsFormRuntimeFieldValue(field, runtimeValues, repeatContext?.instance);
+    const fieldIssues = getRuntimeFieldIssues(field, repeatContext);
+    const missing = fieldIssues.some((issue) => issue.type === 'required');
+    const invalid = fieldIssues.some((issue) => issue.type === 'constraint');
+    const fieldId = repeatContext
+      ? `internal-kobo-field-${field.name}-${repeatContext.repeatName}-${repeatContext.repeatIndex}`
+      : `internal-kobo-field-${field.name}`;
+    const label = field.label || field.name;
+    const required = field.required || Boolean(field.requiredExpression);
+    const shellClass = `rounded-2xl border p-4 space-y-3 shadow-sm ${
+      missing || invalid ? 'border-amber-300/45 bg-amber-400/[0.09]' : 'border-white/[0.09] bg-white/[0.06]'
+    }`;
+
+    if (field.type === 'note') {
+      return (
+        <div key={`${fieldId}-note`} className="rounded-2xl border border-blue-300/20 bg-blue-400/[0.1] p-4">
+          <p className="text-[11px] font-black uppercase tracking-[0.14em] text-blue-100">{label}</p>
+          {field.hint ? <p className="mt-2 text-[11px] font-semibold leading-relaxed text-slate-300">{field.hint}</p> : null}
+        </div>
+      );
+    }
+
+    if (field.type === 'calculate') {
+      return (
+        <div key={`${fieldId}-calculate`} id={fieldId} className="rounded-2xl border border-cyan-300/15 bg-cyan-400/[0.07] p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[12px] font-black uppercase tracking-[0.13em] text-cyan-100">{label}</p>
+              <p className="mt-1 text-[10px] font-semibold text-slate-500">Calcul live: {field.name}</p>
+            </div>
+            <span className="rounded-full border border-cyan-200/20 bg-cyan-300/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-cyan-100">
+              Auto
+            </span>
+          </div>
+          <p className="mt-3 rounded-2xl border border-white/10 bg-slate-950/30 px-4 py-3 text-sm font-black text-white">
+            {hasXlsFormRuntimeValue(value) ? String(value) : 'En attente des valeurs sources'}
+          </p>
+        </div>
+      );
+    }
+
+    if (!isXlsFormRuntimeFieldVisible(field, runtimeValues, repeatContext?.instance)) return null;
+
+    if (field.type === 'acknowledge') {
+      const checked = isTruthyKoboValue(value);
+      return (
+        <button
+          key={fieldId}
+          id={fieldId}
+          type="button"
+          onClick={() => updateRuntimeField(field, !checked, repeatContext)}
+          className={`${shellClass} flex w-full items-center justify-between gap-4 text-left transition-all active:scale-[0.99]`}
+        >
+          <div className="min-w-0">
+            <p className="text-[14px] font-black leading-snug text-white">{label}</p>
+            <p className="mt-1 text-[10px] font-semibold text-slate-500">Code Kobo: {field.name}</p>
+          </div>
+          <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-full border ${
+            checked ? 'border-emerald-300 bg-emerald-400 text-slate-950' : 'border-white/15 bg-slate-950/50 text-slate-500'
+          }`}>
+            <CheckCircle2 size={17} />
+          </span>
+        </button>
+      );
+    }
+
+    return (
+      <div key={fieldId} id={fieldId} className={shellClass}>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[14px] font-black leading-snug text-white">{label}</p>
+            <p className="mt-1 text-[10px] font-semibold text-slate-500">Code Kobo: {field.name}</p>
+            {field.hint ? <p className="mt-2 text-[11px] font-semibold leading-relaxed text-slate-400">{field.hint}</p> : null}
+          </div>
+          {required ? (
+            <span className={`shrink-0 rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.12em] ${
+              missing ? 'bg-amber-300 text-slate-950' : 'bg-amber-400/10 text-amber-100'
+            }`}>
+              Obligatoire
+            </span>
+          ) : null}
+        </div>
+
+        {fieldIssues.length > 0 ? (
+          <div className="space-y-1">
+            {fieldIssues.map((issue) => (
+              <p
+                key={`${fieldId}-${issue.type}`}
+                className="rounded-xl border border-amber-300/20 bg-amber-400/10 px-3 py-2 text-[10px] font-bold leading-snug text-amber-50"
+              >
+                {issue.message}
+              </p>
+            ))}
+          </div>
+        ) : null}
+
+        {field.readOnly ? (
+          <div className="flex h-12 items-center gap-2 rounded-2xl border border-white/8 bg-slate-950/35 px-4 text-[12px] font-black text-slate-300">
+            <Lock size={13} className="text-slate-600" />
+            <span className="truncate">{hasXlsFormRuntimeValue(value) ? String(value) : 'Non renseigne'}</span>
+          </div>
+        ) : null}
+
+        {(field.type === 'text' || field.type === 'barcode') && !field.readOnly ? (
+          <textarea
+            value={String(value || '')}
+            onChange={(event) => updateRuntimeField(field, event.target.value, repeatContext)}
+            rows={field.appearance === 'multiline' ? 3 : 2}
+            placeholder="Saisir la valeur..."
+            className="w-full resize-none rounded-2xl border border-white/10 bg-slate-900/45 px-4 py-3 text-sm font-semibold leading-relaxed text-slate-100 outline-none transition-colors placeholder:text-slate-500 focus:border-blue-400/50"
+          />
+        ) : null}
+
+        {['integer', 'decimal', 'date', 'time', 'datetime', 'geopoint'].includes(field.type) && !field.readOnly ? (
+          <div className="space-y-2">
+            <div className="flex gap-2">
+              <input
+                type={getRuntimeFieldInputType(field)}
+                inputMode={field.type === 'integer' || field.type === 'decimal' ? 'decimal' : undefined}
+                value={String(value || '')}
+                onChange={(event) => updateRuntimeField(field, event.target.value, repeatContext)}
+                placeholder={field.type === 'geopoint' ? 'lat lon' : 'Saisir la valeur...'}
+                className="h-12 min-w-0 flex-1 rounded-2xl border border-white/10 bg-slate-900/50 px-4 text-sm font-bold text-white outline-none transition-colors placeholder:text-slate-500 focus:border-blue-400/50"
+              />
+              {field.type === 'geopoint' ? (
+                <button
+                  type="button"
+                  onClick={() => captureLocation(field, repeatContext)}
+                  disabled={locatingField === field.name}
+                  className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl border border-emerald-300/25 bg-emerald-400/10 text-emerald-100 transition-all hover:bg-emerald-400/18 active:scale-95 disabled:opacity-60"
+                  title="Capturer la position GPS actuelle"
+                  aria-label="Capturer la position GPS actuelle"
+                >
+                  {locatingField === field.name ? <Loader2 size={17} className="animate-spin" /> : <MapPin size={17} />}
+                </button>
+              ) : null}
+            </div>
+            {field.type === 'geopoint' && locationError ? (
+              <p className="rounded-xl border border-rose-300/20 bg-rose-400/10 px-3 py-2 text-[10px] font-bold text-rose-100">
+                {locationError}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
+        {(field.type === 'select_one' || field.type === 'select_multiple') && field.listName && !field.readOnly ? (
+          <div className={`grid grid-cols-1 gap-2 ${field.appearance === 'minimal' ? '' : 'sm:grid-cols-2'}`}>
+            {getFilteredXlsFormRuntimeChoices(xlsFormDefinition!, field, runtimeValues, repeatContext?.instance).map((option) => {
+              const active = field.type === 'select_multiple'
+                ? asArray(value).includes(option.name)
+                : value === option.name;
+
+              return (
+                <button
+                  key={option.name}
+                  type="button"
+                  onClick={() => setRuntimeOption(field, option.name, repeatContext)}
+                  className={`relative overflow-hidden min-h-12 flex items-center justify-between gap-3 rounded-2xl border px-3 py-2 pl-4 text-left text-[12px] font-black uppercase tracking-[0.08em] transition-all active:scale-95 ${
+                    active ? getToneForValue(option.name) : 'border-white/10 bg-slate-950/35 text-slate-300 hover:border-blue-300/30 hover:bg-blue-400/[0.08] hover:text-white'
+                  }`}
+                >
+                  <span className={`absolute inset-y-2 left-0 w-1 rounded-r-full transition-all ${
+                    active ? 'bg-white shadow-[0_0_16px_rgba(255,255,255,0.8)]' : 'bg-white/10'
+                  }`} />
+                  <span className="min-w-0">{option.label || option.name}</span>
+                  <span className={`grid h-6 w-6 shrink-0 place-items-center rounded-full border transition-all ${
+                    active ? 'border-white/70 bg-white text-slate-950' : 'border-white/15 bg-white/[0.03] text-transparent'
+                  }`}>
+                    {active ? <CheckCircle2 size={15} /> : <span className="h-1.5 w-1.5 rounded-full bg-slate-600" />}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
+
+        {XLS_RUNTIME_MEDIA_TYPES.has(field.type) && !field.readOnly ? renderRuntimeMediaField(field, value, repeatContext) : null}
+
+        {hasXlsFormRuntimeValue(value) && !XLS_RUNTIME_MEDIA_TYPES.has(field.type) ? (
+          <p className="text-[10px] font-bold text-slate-500">
+            Valeur Kobo: <span className="text-slate-300">{Array.isArray(value) ? value.join(' ') : String(value)}</span>
+          </p>
+        ) : null}
+      </div>
+    );
+  };
+
+  const renderRuntimeFieldsWithGroups = (
+    page: XlsFormPage,
+    fields: XlsFormField[],
+    repeatContext?: RepeatContext
+  ) => {
+    let currentGroupPath = '';
+    return fields.flatMap((field) => {
+      const items: React.ReactNode[] = [];
+      const groupPath = field.groupPath || '';
+      const shouldShowGroupHeader = groupPath && groupPath !== page.path && groupPath !== currentGroupPath;
+      if (shouldShowGroupHeader) {
+        currentGroupPath = groupPath;
+        items.push(
+          <div key={`${page.id}-${groupPath}`} className="rounded-2xl border border-blue-300/20 bg-blue-500/[0.09] px-4 py-3">
+            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-100">
+              {getRuntimeGroupLabel(groupPath)}
+            </p>
+            <p className="mt-1 truncate text-[10px] font-semibold text-slate-500">{groupPath}</p>
+          </div>
+        );
+      }
+      items.push(renderXlsRuntimeField(field, repeatContext));
+      return items;
+    });
+  };
+
+  const renderRuntimePage = (page: typeof runtimeNavigablePages[number]) => {
+    const status = getRuntimePageStatus(page);
+
+    if (page.type === 'repeat' && page.repeatName) {
+      const instances = getRepeatInstances(page.repeatName);
+      const activeIndex = Math.min(activeRepeatIndexByPage[page.id] || 0, Math.max(0, instances.length - 1));
+      const activeInstance = instances[activeIndex];
+      const repeatContext = activeInstance ? {
+        repeatName: page.repeatName,
+        repeatIndex: activeIndex,
+        instance: activeInstance,
+      } : undefined;
+      const fields = repeatContext
+        ? page.fields.filter((field) => isXlsFormRuntimeFieldVisible(field, runtimeValues, repeatContext.instance))
+        : page.fields;
+
+      return (
+        <section className="space-y-4">
+          <div className="rounded-2xl border border-blue-300/18 bg-blue-500/[0.08] p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="min-w-0">
+                <h4 className="text-sm font-black uppercase tracking-[0.16em] text-white">{page.title}</h4>
+                <p className="mt-1 text-[11px] font-semibold text-slate-400">
+                  Repeat: {page.repeatName} - {instances.length} ligne(s)
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => addRepeatInstance(page)}
+                className="inline-flex h-10 items-center gap-2 rounded-2xl border border-blue-200/25 bg-blue-300/12 px-3 text-[10px] font-black uppercase tracking-[0.12em] text-blue-50 hover:bg-blue-300/20"
+              >
+                <Plus size={15} />
+                Ajouter
+              </button>
+            </div>
+
+            {instances.length > 0 ? (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {instances.map((_, index) => (
+                  <button
+                    key={`${page.id}-instance-${index}`}
+                    type="button"
+                    onClick={() => setActiveRepeatIndexByPage((current) => ({ ...current, [page.id]: index }))}
+                    className={`rounded-full border px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.12em] ${
+                      activeIndex === index
+                        ? 'border-blue-200/45 bg-blue-300/18 text-blue-50'
+                        : 'border-white/10 bg-white/[0.03] text-slate-500'
+                    }`}
+                  >
+                    Ligne {index + 1}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
+
+          {repeatContext ? (
+            <>
+              <div className="rounded-2xl border border-white/10 bg-white/[0.055] p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-blue-100">
+                      Ligne {activeIndex + 1} / {instances.length}
+                    </p>
+                    <p className="mt-1 text-[11px] font-semibold text-slate-400">{status.detail}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeRepeatInstance(page, activeIndex)}
+                    className="inline-flex h-9 items-center gap-2 rounded-2xl border border-rose-300/20 bg-rose-400/10 px-3 text-[9px] font-black uppercase tracking-[0.12em] text-rose-100 hover:bg-rose-400/18"
+                  >
+                    <Minus size={14} />
+                    Retirer
+                  </button>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-3">
+                {fields.length ? renderRuntimeFieldsWithGroups(page, fields, repeatContext) : (
+                  <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.055] p-6 text-center">
+                    <p className="text-sm font-black text-white">Aucun champ visible dans cette ligne.</p>
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="rounded-[1.5rem] border border-amber-300/25 bg-amber-400/[0.08] p-6 text-center">
+              <p className="text-sm font-black text-amber-50">Ajoutez une ligne pour remplir ce repeat.</p>
+              <button
+                type="button"
+                onClick={() => addRepeatInstance(page)}
+                className="mt-4 inline-flex h-11 items-center gap-2 rounded-2xl bg-amber-300 px-4 text-[10px] font-black uppercase tracking-[0.12em] text-slate-950"
+              >
+                <Plus size={15} />
+                Ajouter la premiere ligne
+              </button>
+            </div>
+          )}
+        </section>
+      );
+    }
+
+    return (
+      <section className="space-y-4">
+        <div className="rounded-2xl border border-white/10 bg-white/[0.055] p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0">
+              <h4 className="text-sm font-black uppercase tracking-[0.16em] text-white">{page.title}</h4>
+              <p className="mt-1 text-[11px] font-semibold text-slate-400">{page.subtitle}</p>
+            </div>
+            <span className={`rounded-full border px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] ${status.className}`}>
+              {page.missingFields.length ? `${page.missingFields.length} a completer` : 'Etape complete'}
+            </span>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 gap-3">
+          {page.fields.length ? renderRuntimeFieldsWithGroups(page, page.fields) : (
+            <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.055] p-6 text-center">
+              <p className="text-sm font-black text-white">Aucun champ visible pour cette etape.</p>
+              <p className="mt-2 text-[11px] font-semibold leading-relaxed text-slate-400">
+                Les branchements conditionnels XLSForm cachent cette page tant que les valeurs requises ne sont pas remplies.
+              </p>
+            </div>
+          )}
+        </div>
+      </section>
+    );
+  };
+
+  const saveRuntimeSignature = (signatureBase64: string) => {
+    if (!signatureTarget) return;
+    const attachmentKey = getRuntimeAttachmentKey(signatureTarget.field, signatureTarget.repeatContext);
+    const capturedAt = new Date().toISOString();
+    updateRuntimeField(signatureTarget.field, signatureBase64, signatureTarget.repeatContext);
+    onChange(`_gem_attachment_${attachmentKey}`, {
+      id: makeAttachmentId(),
+      fieldName: attachmentKey,
+      fileName: `${attachmentKey}.png`,
+      mimeType: 'image/png',
+      capturedAt,
+      source: signatureTarget.repeatContext ? 'gem-xlsform-repeat-signature' : 'gem-xlsform-signature',
+      status: 'queued',
+      storage: 'embedded-offline',
+      dataUrl: signatureBase64,
+    } satisfies InternalKoboAttachment);
+    onChange(`_gem_photo_${attachmentKey}_original_name`, `${attachmentKey}.png`);
+    onChange(`_gem_photo_${attachmentKey}_mime`, 'image/png');
+    onChange(`_gem_photo_${attachmentKey}_captured_at`, capturedAt);
+    setSignatureTarget(null);
   };
 
   const renderField = (field: InternalKoboField) => {
@@ -1167,10 +2083,14 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
               {missingRequired.length} requis et {constraintIssues.length} valeur(s) a corriger avant la soumission finale.
             </p>
           </div>
-          {firstActionableIssue?.section ? (
+          {firstActionableIssue?.section || firstActionableIssue?.runtimePage ? (
             <button
               type="button"
-              onClick={() => focusRequiredField(firstActionableIssue.field.name, firstActionableIssue.section?.id)}
+              onClick={() => focusRequiredField(
+                firstActionableIssue.field.name,
+                firstActionableIssue.section?.id,
+                firstActionableIssue.runtimePage?.id
+              )}
               className="rounded-full border border-amber-200/30 bg-amber-300/15 px-3 py-2 text-[9px] font-black uppercase tracking-[0.12em] text-amber-50 hover:bg-amber-300/25"
             >
               Premiere action
@@ -1179,14 +2099,15 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
         </div>
 
         <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-          {validationIssueDetails.slice(0, 4).map(({ field, section, type, message }) => {
-            const canOpen = Boolean(section && !section.locked);
+          {validationIssueDetails.slice(0, 4).map(({ field, section, runtimePage, type, message }) => {
+            const targetTitle = runtimePage?.title || section?.title || 'Etape inconnue';
+            const canOpen = Boolean((section && !section.locked) || (runtimePage && !runtimePage.locked));
             return (
               <button
                 key={`${field.name}-${type}`}
                 type="button"
                 disabled={!canOpen}
-                onClick={() => section && focusRequiredField(field.name, section.id)}
+                onClick={() => focusRequiredField(field.name, section?.id, runtimePage?.id)}
                 className={`rounded-xl border px-3 py-2 text-left transition-colors ${
                   canOpen
                     ? 'border-amber-200/20 bg-slate-950/25 text-amber-50 hover:border-amber-200/40'
@@ -1194,7 +2115,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
                 }`}
               >
                 <p className="truncate text-[10px] font-black uppercase tracking-[0.1em]">
-                  {section?.title || 'Etape inconnue'}
+                  {targetTitle}
                 </p>
                 <p className="mt-1 line-clamp-2 text-[11px] font-semibold leading-snug">
                   {field.label}
@@ -1425,47 +2346,91 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
           ) : null}
 
           <div className="space-y-2">
-            {navigableSections.map((section) => {
-              const status = getSectionStatus(section);
-              const isActive = activeSection?.id === section.id;
-              const inactiveStatusClass = section.locked
-                ? 'border-white/5 bg-white/[0.02] text-slate-600'
-                : 'border-white/8 bg-white/[0.025] text-slate-500';
-              return (
-                <button
-                  key={section.id}
-                  type="button"
-                  disabled={section.locked}
-                  onClick={() => {
-                    if (!section.locked) setActiveSectionId(section.id);
-                  }}
-                  aria-disabled={section.locked}
-                  className={`relative w-full overflow-hidden rounded-2xl border p-3 text-left transition-all ${
-                    isActive
-                      ? 'border-blue-300/70 bg-blue-500/18 text-white shadow-lg shadow-blue-500/10 ring-1 ring-blue-300/25'
-                      : section.locked
-                        ? 'cursor-not-allowed border-white/5 bg-white/[0.02] text-slate-600 opacity-45 grayscale'
-                        : 'border-white/8 bg-white/[0.025] text-slate-500 opacity-50 grayscale hover:opacity-75 hover:grayscale-0'
-                  }`}
-                >
-                  {isActive ? <span className="absolute inset-y-3 left-0 w-1 rounded-r-full bg-blue-300 shadow-[0_0_18px_rgba(96,165,250,0.9)]" /> : null}
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="min-w-0">
-                      <span className={`block truncate text-[12px] font-black uppercase tracking-[0.1em] ${isActive ? 'text-white' : 'text-slate-500'}`}>
-                        {section.title}
+            {xlsFormDefinition ? (
+              runtimeNavigablePages.map((page) => {
+                const status = getRuntimePageStatus(page);
+                const isActive = activeRuntimePage?.id === page.id;
+                const inactiveStatusClass = page.locked
+                  ? 'border-white/5 bg-white/[0.02] text-slate-600'
+                  : 'border-white/8 bg-white/[0.025] text-slate-500';
+                return (
+                  <button
+                    key={page.id}
+                    type="button"
+                    disabled={page.locked}
+                    onClick={() => {
+                      if (!page.locked) setActiveRuntimePageId(page.id);
+                    }}
+                    aria-disabled={page.locked}
+                    className={`relative w-full overflow-hidden rounded-2xl border p-3 text-left transition-all ${
+                      isActive
+                        ? 'border-blue-300/70 bg-blue-500/18 text-white shadow-lg shadow-blue-500/10 ring-1 ring-blue-300/25'
+                        : page.locked
+                          ? 'cursor-not-allowed border-white/5 bg-white/[0.02] text-slate-600 opacity-45 grayscale'
+                          : 'border-white/8 bg-white/[0.025] text-slate-500 opacity-50 grayscale hover:opacity-75 hover:grayscale-0'
+                    }`}
+                  >
+                    {isActive ? <span className="absolute inset-y-3 left-0 w-1 rounded-r-full bg-blue-300 shadow-[0_0_18px_rgba(96,165,250,0.9)]" /> : null}
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="min-w-0">
+                        <span className={`block truncate text-[12px] font-black uppercase tracking-[0.1em] ${isActive ? 'text-white' : 'text-slate-500'}`}>
+                          {page.title}
+                        </span>
+                        <span className={`mt-1 block truncate text-[10px] font-semibold ${isActive ? 'text-blue-100/80' : 'text-slate-600'}`}>
+                          {isActive ? 'Etape choisie - saisie en cours' : status.detail}
+                        </span>
                       </span>
-                      <span className={`mt-1 block truncate text-[10px] font-semibold ${isActive ? 'text-blue-100/80' : 'text-slate-600'}`}>
-                        {isActive ? 'Etape choisie - saisie en cours' : status.detail}
+                      <span className={`flex shrink-0 items-center gap-1 rounded-full border px-2 py-1 text-[8px] font-black uppercase tracking-[0.1em] ${isActive ? 'border-blue-200/45 bg-blue-300/18 text-blue-50' : inactiveStatusClass}`}>
+                        {isActive ? <CheckCircle2 size={13} /> : status.icon}
+                        {isActive ? 'Etape active' : status.label}
                       </span>
-                    </span>
-                    <span className={`flex shrink-0 items-center gap-1 rounded-full border px-2 py-1 text-[8px] font-black uppercase tracking-[0.1em] ${isActive ? 'border-blue-200/45 bg-blue-300/18 text-blue-50' : inactiveStatusClass}`}>
-                      {isActive ? <CheckCircle2 size={13} /> : status.icon}
-                      {isActive ? 'Etape active' : status.label}
-                    </span>
-                  </div>
-                </button>
-              );
-            })}
+                    </div>
+                  </button>
+                );
+              })
+            ) : (
+              navigableSections.map((section) => {
+                const status = getSectionStatus(section);
+                const isActive = activeSection?.id === section.id;
+                const inactiveStatusClass = section.locked
+                  ? 'border-white/5 bg-white/[0.02] text-slate-600'
+                  : 'border-white/8 bg-white/[0.025] text-slate-500';
+                return (
+                  <button
+                    key={section.id}
+                    type="button"
+                    disabled={section.locked}
+                    onClick={() => {
+                      if (!section.locked) setActiveSectionId(section.id);
+                    }}
+                    aria-disabled={section.locked}
+                    className={`relative w-full overflow-hidden rounded-2xl border p-3 text-left transition-all ${
+                      isActive
+                        ? 'border-blue-300/70 bg-blue-500/18 text-white shadow-lg shadow-blue-500/10 ring-1 ring-blue-300/25'
+                        : section.locked
+                          ? 'cursor-not-allowed border-white/5 bg-white/[0.02] text-slate-600 opacity-45 grayscale'
+                          : 'border-white/8 bg-white/[0.025] text-slate-500 opacity-50 grayscale hover:opacity-75 hover:grayscale-0'
+                    }`}
+                  >
+                    {isActive ? <span className="absolute inset-y-3 left-0 w-1 rounded-r-full bg-blue-300 shadow-[0_0_18px_rgba(96,165,250,0.9)]" /> : null}
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="min-w-0">
+                        <span className={`block truncate text-[12px] font-black uppercase tracking-[0.1em] ${isActive ? 'text-white' : 'text-slate-500'}`}>
+                          {section.title}
+                        </span>
+                        <span className={`mt-1 block truncate text-[10px] font-semibold ${isActive ? 'text-blue-100/80' : 'text-slate-600'}`}>
+                          {isActive ? 'Etape choisie - saisie en cours' : status.detail}
+                        </span>
+                      </span>
+                      <span className={`flex shrink-0 items-center gap-1 rounded-full border px-2 py-1 text-[8px] font-black uppercase tracking-[0.1em] ${isActive ? 'border-blue-200/45 bg-blue-300/18 text-blue-50' : inactiveStatusClass}`}>
+                        {isActive ? <CheckCircle2 size={13} /> : status.icon}
+                        {isActive ? 'Etape active' : status.label}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })
+            )}
           </div>
         </aside>
 
@@ -1475,7 +2440,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
               <div className="min-w-0">
                 <p className="text-[10px] font-black uppercase tracking-[0.22em] text-blue-300">Saisie terrain VPS</p>
                 <h3 className="mt-1 truncate text-xl font-black uppercase tracking-tight text-white sm:text-2xl">
-                  Formulaire du menage
+                  {xlsFormDefinition?.title || 'Formulaire du menage'}
                 </h3>
                 <div className="mt-1 flex min-w-0 items-center gap-2">
                   <p className="min-w-0 truncate text-[12px] font-semibold text-slate-300">
@@ -1529,7 +2494,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
 
             {serverFormStatus.status === 'mismatch' ? (
               <div className="mt-3 hidden rounded-2xl border border-amber-400/25 bg-amber-500/10 px-4 py-3 text-[11px] font-bold text-amber-100 sm:block">
-                Version XLSForm a verifier: locale {INTERNAL_KOBO_FORM_SETTINGS.version}, VPS {serverFormStatus.version || 'inconnue'}.
+                Version XLSForm a verifier: locale {xlsFormDefinition?.formVersion || INTERNAL_KOBO_FORM_SETTINGS.version}, VPS {serverFormStatus.version || 'inconnue'}.
               </div>
             ) : null}
 
@@ -1578,11 +2543,14 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
           <div className="min-h-0 flex-1 overflow-y-auto bg-[#0E1B2D] p-4 custom-scrollbar sm:p-5">
             <div className="mb-4 md:hidden">
               <select
-                value={activeSection?.id || ''}
-                onChange={(event) => setActiveSectionId(event.target.value)}
+                value={xlsFormDefinition ? activeRuntimePage?.id || '' : activeSection?.id || ''}
+                onChange={(event) => {
+                  if (xlsFormDefinition) setActiveRuntimePageId(event.target.value);
+                  else setActiveSectionId(event.target.value);
+                }}
                 className="h-12 w-full rounded-2xl border border-blue-300/25 bg-[#0B1728] px-4 text-[12px] font-black uppercase tracking-[0.1em] text-white outline-none"
               >
-                {mobileSectionOptions.map((section) => (
+                {(xlsFormDefinition ? mobileRuntimePageOptions : mobileSectionOptions).map((section) => (
                   <option key={section.id} value={section.id}>
                     {section.title}
                   </option>
@@ -1600,32 +2568,34 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
 
             {renderValidationAssistant()}
 
-            {activeSection ? (
-              <section className="space-y-4">
-                <div className="rounded-2xl border border-white/10 bg-white/[0.055] p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <h4 className="text-sm font-black uppercase tracking-[0.16em] text-white">{activeSection.title}</h4>
-                      <p className="mt-1 text-[11px] font-semibold text-slate-400">{activeSection.subtitle}</p>
+            {xlsFormDefinition && activeRuntimePage ? (
+              renderRuntimePage(activeRuntimePage)
+            ) : !xlsFormDefinition && activeSection ? (
+                <section className="space-y-4">
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.055] p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <h4 className="text-sm font-black uppercase tracking-[0.16em] text-white">{activeSection.title}</h4>
+                        <p className="mt-1 text-[11px] font-semibold text-slate-400">{activeSection.subtitle}</p>
+                      </div>
+                      <span className={`rounded-full border px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] ${getSectionStatus(activeSection).className}`}>
+                        {activeSection.missingFields.length ? `${activeSection.missingFields.length} a completer` : 'Section complete'}
+                      </span>
                     </div>
-                    <span className={`rounded-full border px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] ${getSectionStatus(activeSection).className}`}>
-                      {activeSection.missingFields.length ? `${activeSection.missingFields.length} a completer` : 'Section complete'}
-                    </span>
                   </div>
-                </div>
-                <div className="grid grid-cols-1 gap-3">
-                  {activeSection.fields.length ? (
-                    activeSection.fields.map(renderField)
-                  ) : (
-                    <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.055] p-6 text-center">
-                      <p className="text-sm font-black text-white">Aucun champ actif pour ce role.</p>
-                      <p className="mt-2 text-[11px] font-semibold leading-relaxed text-slate-400">
-                        Changez le role dans Menage pour remplir cette etape, ou utilisez-la comme consultation.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </section>
+                  <div className="grid grid-cols-1 gap-3">
+                    {activeSection.fields.length ? (
+                      activeSection.fields.map(renderField)
+                    ) : (
+                      <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.055] p-6 text-center">
+                        <p className="text-sm font-black text-white">Aucun champ actif pour ce role.</p>
+                        <p className="mt-2 text-[11px] font-semibold leading-relaxed text-slate-400">
+                          Changez le role dans Menage pour remplir cette etape, ou utilisez-la comme consultation.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </section>
             ) : (
               <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.055] p-8 text-center text-sm font-semibold text-slate-400">
                 Aucun champ visible pour cette recherche.
@@ -1692,7 +2662,9 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
                 </div>
                 <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-3">
                   <p className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Version XLSForm</p>
-                  <p className="mt-1 truncate text-sm font-black text-white">v{INTERNAL_KOBO_FORM_SETTINGS.version}</p>
+                  <p className="mt-1 truncate text-sm font-black text-white">
+                    v{xlsFormDefinition?.formVersion || INTERNAL_KOBO_FORM_SETTINGS.version}
+                  </p>
                   {serverFormStatus.version ? (
                     <p className={`mt-1 truncate text-[10px] font-bold ${
                       serverFormStatus.status === 'mismatch' ? 'text-amber-200' : 'text-emerald-200'
@@ -1706,7 +2678,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
               <div className="mt-4 rounded-2xl border border-emerald-300/18 bg-emerald-400/[0.07] p-3">
                 <p className="text-[10px] font-black uppercase tracking-[0.14em] text-emerald-100">Sections pretes</p>
                 <div className="mt-2 flex flex-wrap gap-2">
-                  {navigableSections
+                  {(xlsFormDefinition ? runtimeNavigablePages : navigableSections)
                     .filter((section) => !section.locked && section.activeFields.length > 0)
                     .map((section) => (
                       <span key={section.id} className="rounded-full border border-emerald-200/20 bg-emerald-200/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.1em] text-emerald-50">
@@ -1738,6 +2710,12 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
             </div>
           </div>
         ) : null}
+        <SignatureModal
+          isOpen={Boolean(signatureTarget)}
+          onClose={() => setSignatureTarget(null)}
+          onSave={saveRuntimeSignature}
+          title={signatureTarget?.field.label || signatureTarget?.field.name || 'Signature terrain'}
+        />
         {renderReceiptModal()}
       </div>
     </div>

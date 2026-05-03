@@ -212,6 +212,7 @@ function summarizeUniversalXlsFormMapping(mapping) {
 function sanitizeObjectWithValuePatch(value, valuePatch = {}, key = '') {
     if (key && key.startsWith('_gem_attachment_')) return OMIT_FIELD;
     if (key && Object.prototype.hasOwnProperty.call(valuePatch, key)) return valuePatch[key];
+    if (typeof value === 'string' && value.startsWith('data:')) return '[media stored as attachment]';
     if (Array.isArray(value)) {
         return value
             .map((item) => sanitizeObjectWithValuePatch(item, valuePatch))
@@ -232,6 +233,10 @@ function extensionFromMime(mimeType = '') {
     if (mimeType.includes('webp')) return 'webp';
     if (mimeType.includes('heic')) return 'heic';
     if (mimeType.includes('pdf')) return 'pdf';
+    if (mimeType.includes('audio/mpeg')) return 'mp3';
+    if (mimeType.includes('audio/')) return 'webm';
+    if (mimeType.includes('video/mp4')) return 'mp4';
+    if (mimeType.includes('video/')) return 'webm';
     return 'jpg';
 }
 

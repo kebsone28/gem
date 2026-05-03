@@ -255,8 +255,8 @@ function compactDraftValues(value: unknown, key = ''): unknown {
     delete compactAttachment.dataUrl;
     return { ...compactAttachment, status: attachment.status || 'queued' };
   }
-  if (typeof value === 'string' && value.startsWith('data:image/')) {
-    return '[photo conservee dans la file de synchronisation]';
+  if (typeof value === 'string' && value.startsWith('data:')) {
+    return '[media conserve dans la file de synchronisation]';
   }
   if (Array.isArray(value)) return value.map((item) => compactDraftValues(item));
   if (value && typeof value === 'object') {

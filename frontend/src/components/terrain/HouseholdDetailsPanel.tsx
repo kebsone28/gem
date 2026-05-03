@@ -848,8 +848,38 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
   };
 
   const handleSaveNativeKoboAudit = async () => {
-    const validationIssues = validateInternalKoboFields(nativeKoboAuditForm);
-    const missingRequiredFields = validateInternalKoboRequiredFields(nativeKoboAuditForm);
+    const runtimeFormKey = String(nativeKoboAuditForm._gem_runtime_form_key || 'terrain_internal').trim() || 'terrain_internal';
+    const runtimeFormVersion = String(nativeKoboAuditForm._gem_runtime_form_version || INTERNAL_KOBO_FORM_SETTINGS.version).trim();
+    const runtimeFormTitle = String(nativeKoboAuditForm._gem_runtime_title || 'Formulaire terrain interne').trim();
+    const isUniversalXlsForm = runtimeFormKey !== 'terrain_internal';
+    const runtimeIssueRows = Array.isArray(nativeKoboAuditForm._gem_runtime_validation_issues)
+      ? nativeKoboAuditForm._gem_runtime_validation_issues.filter((issue): issue is Record<string, any> =>
+        Boolean(issue) && typeof issue === 'object' && !Array.isArray(issue)
+      )
+      : [];
+    const runtimeMissingNames = Array.isArray(nativeKoboAuditForm._gem_runtime_required_missing)
+      ? nativeKoboAuditForm._gem_runtime_required_missing.map(String).filter(Boolean)
+      : [];
+    const validationIssues = isUniversalXlsForm
+      ? runtimeIssueRows.map((issue) => ({
+        field: {
+          name: String(issue.field || ''),
+          label: String(issue.field || ''),
+          type: 'text',
+          required: issue.type === 'required',
+        },
+        type: issue.type === 'constraint' ? 'constraint' as const : 'required' as const,
+        message: String(issue.message || 'Validation XLSForm a corriger'),
+      })).filter((issue) => issue.field.name)
+      : validateInternalKoboFields(nativeKoboAuditForm);
+    const missingRequiredFields = isUniversalXlsForm
+      ? runtimeMissingNames.map((name) => ({
+        name,
+        label: name,
+        type: 'text',
+        required: true,
+      }))
+      : validateInternalKoboRequiredFields(nativeKoboAuditForm);
     const constraintIssues = validationIssues.filter((issue) => issue.type === 'constraint');
     const requestedNumeroOrdre = String(nativeKoboAuditForm.Numero_ordre || '').trim();
     const currentNumeroOrdre = String(household.numeroordre || household.id || '').trim();
@@ -867,7 +897,9 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
       const now = new Date().toISOString();
       const targetHouseholdId = String(submissionHousehold.id || household.id);
       const internalSubmissionId = `gem-vps-${targetHouseholdId}-${Date.now()}`;
-      const submissionValues = getInternalKoboSubmissionValues(nativeKoboAuditForm);
+      const submissionValues = isUniversalXlsForm
+        ? nativeKoboAuditForm
+        : getInternalKoboSubmissionValues(nativeKoboAuditForm);
       const today = now.slice(0, 10);
       const xlsFormMetadata = {
         start: nativeKoboAuditForm.start || (submissionHousehold.koboData as any)?.start || now,
@@ -892,7 +924,9 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
         C4: nativeKoboAuditForm.longitude_key || '',
         C5: nativeKoboAuditForm.region_key || '',
         _xform_style: INTERNAL_KOBO_FORM_SETTINGS.style,
-        _xform_version: INTERNAL_KOBO_FORM_SETTINGS.version,
+        _xform_version: runtimeFormVersion,
+        _xform_id: runtimeFormKey,
+        _xform_title: runtimeFormTitle,
         _xform_default_language: INTERNAL_KOBO_FORM_SETTINGS.defaultLanguage,
       };
       const cleanValues = Object.fromEntries(
@@ -901,14 +935,14 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
           return value !== undefined && value !== null && String(value).trim() !== '';
         })
       );
-      const imageFieldNames = INTERNAL_KOBO_SECTIONS.flatMap((section) =>
-        section.fields.filter((field) => field.type === 'image').map((field) => field.name)
-      );
-      const photoFields = imageFieldNames.filter((fieldName) => cleanValues[fieldName]);
       const attachments = Object.entries(cleanValues)
         .filter(([key, value]) => key.startsWith('_gem_attachment_') && value && typeof value === 'object' && !Array.isArray(value))
         .map(([, value]) => value as InternalKoboAttachment)
         .filter((attachment) => attachment.fieldName);
+      const photoFields = attachments
+        .filter((attachment) => String(attachment.mimeType || '').startsWith('image/'))
+        .map((attachment) => attachment.fieldName);
+      const mediaFields = attachments.map((attachment) => attachment.fieldName);
       const clientGps = {
         geopoint: cleanValues.LOCALISATION_CLIENT || '',
         latitude: cleanValues.latitude_key || '',
@@ -916,6 +950,16 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
         accuracyMeters: cleanValues._gem_client_gps_accuracy_m || '',
         capturedAt: cleanValues._gem_client_gps_captured_at || '',
       };
+      const activeXlsFormSettings = isUniversalXlsForm
+        ? {
+          formKey: runtimeFormKey,
+          version: runtimeFormVersion,
+          title: runtimeFormTitle,
+          engine: 'gem-xlsform-universal',
+          style: INTERNAL_KOBO_FORM_SETTINGS.style,
+          defaultLanguage: INTERNAL_KOBO_FORM_SETTINGS.defaultLanguage,
+        }
+        : INTERNAL_KOBO_FORM_SETTINGS;
 
       const hasControlNonConformity = INTERNAL_KOBO_CONTROL_FIELD_NAMES.some(
         (fieldName) => nativeKoboAuditForm[fieldName] === 'non_conforme'
@@ -951,7 +995,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
         source: 'native-gem-kobo-form',
         submissionTarget: 'gem-vps',
         internalSubmissionId,
-        xlsForm: INTERNAL_KOBO_FORM_SETTINGS,
+        xlsForm: activeXlsFormSettings,
         updatedAt: now,
       };
 
@@ -966,7 +1010,8 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
         _gem_submission_id: internalSubmissionId,
         _gem_submission_status: allRequiredComplete ? 'submitted' : 'draft',
         _gem_submitted_at: allRequiredComplete ? now : undefined,
-        _gem_xlsform_version: INTERNAL_KOBO_FORM_SETTINGS.version,
+        _gem_xlsform_key: runtimeFormKey,
+        _gem_xlsform_version: runtimeFormVersion,
       };
 
       const householdPatch = {
@@ -994,7 +1039,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
           internalKoboSubmission: {
             id: internalSubmissionId,
             target: 'gem-vps',
-            xlsForm: INTERNAL_KOBO_FORM_SETTINGS,
+            xlsForm: activeXlsFormSettings,
             status: allRequiredComplete ? 'submitted' : 'draft',
             requiredMissing: missingRequiredFields.map((field) => field.name),
             validationIssues: validationIssues.map((issue) => ({
@@ -1012,16 +1057,16 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
         clientSubmissionId: internalSubmissionId,
         householdId: targetHouseholdId,
         numeroOrdre: String(nativeKoboAuditForm.Numero_ordre || submissionHousehold.numeroordre || targetHouseholdId),
-        formKey: 'terrain_internal',
-        formVersion: INTERNAL_KOBO_FORM_SETTINGS.version,
+        formKey: runtimeFormKey,
+        formVersion: runtimeFormVersion,
         role: nativeKoboAuditForm.role ? String(nativeKoboAuditForm.role) : null,
         status: allRequiredComplete ? 'submitted' : 'draft',
         values: cleanValues,
         attachments,
         metadata: {
-          xlsForm: INTERNAL_KOBO_FORM_SETTINGS,
+          xlsForm: activeXlsFormSettings,
           target: 'gem-vps',
-          source: 'native-gem-kobo-form',
+          source: isUniversalXlsForm ? 'gem-xlsform-universal-runtime' : 'native-gem-kobo-form',
           localSavedAt: now,
           device: {
             mode: cleanValues._gem_collection_mode,
@@ -1034,6 +1079,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
           media: {
             photoCount: photoFields.length,
             photoFields,
+            mediaFields,
             attachmentCount: attachments.length,
             attachments,
           },
