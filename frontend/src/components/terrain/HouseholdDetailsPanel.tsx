@@ -71,6 +71,7 @@ interface HouseholdDetailsPanelProps {
   isAdmin?: boolean;
   pendingSyncCount?: number;
   koboAssetUid?: string;
+  resolveHouseholdByNumero?: (numeroOrdre: string) => Record<string, any> | null;
 }
 
 type NativeKoboAuditField = {
@@ -157,6 +158,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
   grappeInfo,
   isAdmin = false,
   pendingSyncCount = 0,
+  resolveHouseholdByNumero,
 }) => {
   const closePanel = useTerrainUIStore((s) => s.closePanel);
   const setSelectedHouseholdId = useTerrainUIStore((s) => s.setSelectedHouseholdId);
@@ -1725,6 +1727,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
         isSaving={isUpdating}
         onPhotoUpload={onPhotoUpload}
         onResolvedHousehold={handleInternalKoboResolvedHousehold}
+        resolveHouseholdByNumero={resolveHouseholdByNumero}
       />,
         document.body
       )}

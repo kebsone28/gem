@@ -681,14 +681,36 @@ const Terrain: React.FC = () => {
     };
   }, [selectedHousehold, households, grappesConfig?.grappes, grappesConfig?.sous_grappes]);
 
+  const resolveHouseholdByNumero = useCallback(
+    (numeroOrdre: string) => {
+      const requestedRaw = String(numeroOrdre || '').trim();
+      const requestedNormalized = requestedRaw.replace(/^0+/, '').toLowerCase();
+      if (!requestedRaw) return null;
+
+      return (
+        (households || []).find((h) => {
+          const householdNumero = String(h.numeroordre || '').trim();
+          const householdId = String(h.id || '').trim();
+
+          return (
+            householdNumero.toLowerCase() === requestedRaw.toLowerCase() ||
+            householdNumero.replace(/^0+/, '').toLowerCase() === requestedNormalized ||
+            householdId.toLowerCase() === requestedRaw.toLowerCase()
+          );
+        }) || null
+      );
+    },
+    [households]
+  );
+
   const peutVoirDataHub = peut(PERMISSIONS.GERER_UTILISATEURS) || user?.role === 'ADMIN_PROQUELEC';
 
   return (
     <div
       className={`relative isolate flex h-full min-h-[100dvh] w-full flex-col overflow-hidden bg-[radial-gradient(circle_at_top,#0b1f1a_0%,#07131a_38%,#030712_100%)] ${terrainAccent.surface}`}
     >
-      {/* 🗺️ MAP / LIST LAYER */}
-      <div className="absolute inset-0 z-0 pt-[214px] pb-[132px] sm:pt-[232px] md:pt-0 md:pb-0">
+      {/* 🗺️ MAP / LIST LAYER — FULLSCREEN MOBILE (Floating Header) */}
+      <div className="absolute inset-0 z-0 pt-0 pb-[100px] sm:pt-[160px] md:pt-0 md:pb-0">
         <ContentArea
           padding="none"
           className="h-full w-full border-none rounded-none bg-transparent"
@@ -920,6 +942,13 @@ const Terrain: React.FC = () => {
             grappeInfo={selectedHouseholdGrappeInfo}
             isAdmin={terrainFeatures.householdAdminEdit}
             pendingSyncCount={pendingSyncCount}
+            resolveHouseholdByNumero={resolveHouseholdByNumero}
+            koboAssetUid={
+              (project?.config as any)?.kobo?.formUrl ||
+              (project?.config as any)?.kobo?.webformUrl ||
+              (project?.config as any)?.kobo?.publicUrl ||
+              (project?.config as any)?.kobo?.assetUid
+            }
           />
         </TerrainErrorBoundary>
       )}

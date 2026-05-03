@@ -21,6 +21,7 @@ type InternalKoboFormProps = {
   isSaving?: boolean;
   onPhotoUpload?: (file: File) => Promise<string>;
   onResolvedHousehold?: (household: Record<string, any> | null) => void;
+  resolveHouseholdByNumero?: (numeroOrdre: string) => Record<string, any> | null;
 };
 
 const asArray = (value: unknown): string[] => {
@@ -58,6 +59,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
   isSaving = false,
   onPhotoUpload,
   onResolvedHousehold,
+  resolveHouseholdByNumero,
 }) => {
   const [activeSectionId, setActiveSectionId] = useState(INTERNAL_KOBO_SECTIONS[0]?.id || '');
   const [query, setQuery] = useState('');
@@ -69,6 +71,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
   const lastResolvedNumeroRef = useRef('');
   const onChangeRef = useRef(onChange);
   const onResolvedHouseholdRef = useRef(onResolvedHousehold);
+  const resolveHouseholdByNumeroRef = useRef(resolveHouseholdByNumero);
   const missingRequired = useMemo(() => validateInternalKoboRequiredFields(values), [values]);
   const progress = useMemo(() => progressFor(values), [values]);
   const normalizedQuery = query.trim().toLowerCase();
@@ -83,6 +86,10 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
   }, [onResolvedHousehold]);
 
   useEffect(() => {
+    resolveHouseholdByNumeroRef.current = resolveHouseholdByNumero;
+  }, [resolveHouseholdByNumero]);
+
+  useEffect(() => {
     if (!numeroOrdre) {
       setHouseholdLookup({ status: 'idle', message: '' });
       onResolvedHouseholdRef.current?.(null);
@@ -92,14 +99,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
     const timeoutId = window.setTimeout(async () => {
       if (lastResolvedNumeroRef.current === numeroOrdre) return;
 
-      setHouseholdLookup({ status: 'loading', message: 'Recherche du menage sur le serveur VPS...' });
-      try {
-        const response = await apiClient.get(`households/by-numero/${encodeURIComponent(numeroOrdre)}`);
-        const household = response.data?.household || response.data;
-        if (!household?.id) {
-          throw new Error('Household response missing id');
-        }
-
+      const applyResolvedHousehold = (household: Record<string, any>, source: 'server' | 'local') => {
         const coordinates = Array.isArray(household.location?.coordinates)
           ? household.location.coordinates
           : null;
@@ -120,17 +120,44 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
         onResolvedHouseholdRef.current?.(household);
         setHouseholdLookup({
           status: 'found',
-          message: `Menage trouve: ${displayName || household.numeroordre || numeroOrdre}`,
+          message:
+            source === 'server'
+              ? `Menage trouve sur le VPS: ${displayName || household.numeroordre || numeroOrdre}`
+              : `Menage trouve dans les donnees chargees: ${displayName || household.numeroordre || numeroOrdre}`,
         });
+      };
+
+      setHouseholdLookup({ status: 'loading', message: 'Recherche du menage sur le serveur VPS...' });
+      try {
+        const response = await apiClient.get(`households/by-numero/${encodeURIComponent(numeroOrdre)}`);
+        const household = response.data?.household || response.data;
+        if (!household?.id) {
+          throw new Error('Household response missing id');
+        }
+
+        applyResolvedHousehold(household, 'server');
       } catch (error: any) {
         lastResolvedNumeroRef.current = '';
+        const fallbackHousehold = resolveHouseholdByNumeroRef.current?.(numeroOrdre);
+        if (fallbackHousehold?.id) {
+          applyResolvedHousehold(fallbackHousehold, 'local');
+          return;
+        }
+
+        const status = error?.response?.status;
         onResolvedHouseholdRef.current?.(null);
         setHouseholdLookup({
-          status: error?.response?.status === 404 ? 'missing' : 'error',
+          status: status === 404 ? 'missing' : 'error',
           message:
-            error?.response?.status === 404
+            status === 404
               ? `Aucun menage trouve pour le numero ${numeroOrdre}`
-              : 'Recherche impossible: serveur VPS indisponible',
+              : status === 401
+                ? 'Recherche impossible: session expiree, reconnectez-vous'
+                : status === 403
+                  ? 'Recherche impossible: droit insuffisant pour lire les menages'
+                  : status
+                    ? `Recherche impossible: erreur API VPS ${status}`
+                    : 'Recherche impossible: API VPS injoignable',
         });
       }
     }, 450);
