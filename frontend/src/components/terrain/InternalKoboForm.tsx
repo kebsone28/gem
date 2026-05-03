@@ -574,8 +574,8 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
               </button>
             </div>
 
-            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto]">
-              <div className="flex h-12 items-center gap-2 rounded-2xl border border-white/10 bg-slate-950/45 px-3">
+            <div className="mt-3 grid grid-cols-1 gap-3 sm:mt-4 sm:grid-cols-[1fr_auto]">
+              <div className="hidden h-12 items-center gap-2 rounded-2xl border border-white/10 bg-slate-950/45 px-3 sm:flex">
                 <Search size={15} className="text-slate-500" />
                 <input
                   value={query}
@@ -584,7 +584,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
                   className="min-w-0 flex-1 bg-transparent text-[12px] font-semibold text-white outline-none placeholder:text-slate-600"
                 />
               </div>
-              <div className={`rounded-2xl border px-4 py-3 text-center text-[10px] font-black uppercase tracking-[0.13em] sm:flex sm:items-center ${
+              <div className={`rounded-2xl border px-4 py-2.5 text-center text-[10px] font-black uppercase tracking-[0.13em] sm:flex sm:items-center sm:py-3 ${
                 missingRequired.length ? 'border-amber-400/25 bg-amber-500/10 text-amber-100' : 'border-emerald-400/25 bg-emerald-500/10 text-emerald-100'
               }`}>
                 {missingRequired.length ? `${missingRequired.length} obligatoire(s)` : 'Pret a soumettre'}
