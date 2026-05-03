@@ -51,6 +51,15 @@ const getToneForValue = (value: unknown) => {
   return 'border-blue-400/35 bg-blue-500/12 text-blue-50';
 };
 
+const ROLE_SECTION_BY_VALUE: Record<string, string> = {
+  livreur: 'preparation_livraison',
+  __pr_parateur: 'preparation_livraison',
+  macon: 'macon',
+  reseau: 'reseau',
+  interieur: 'interieur',
+  controleur: 'controle_branchement',
+};
+
 export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
   values,
   onChange,
@@ -76,6 +85,9 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
   const progress = useMemo(() => progressFor(values), [values]);
   const normalizedQuery = query.trim().toLowerCase();
   const numeroOrdre = String(values.Numero_ordre || '').trim();
+  const selectedRole = String(values.role || '').trim();
+  const selectedRoleSectionId = ROLE_SECTION_BY_VALUE[selectedRole] || '';
+  const lastAutoActivatedRoleRef = useRef('');
 
   useEffect(() => {
     onChangeRef.current = onChange;
@@ -165,6 +177,19 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
     return () => window.clearTimeout(timeoutId);
   }, [numeroOrdre]);
 
+  useEffect(() => {
+    if (!selectedRole || !selectedRoleSectionId) {
+      lastAutoActivatedRoleRef.current = '';
+      setActiveSectionId('menage');
+      return;
+    }
+
+    if (lastAutoActivatedRoleRef.current !== selectedRole) {
+      lastAutoActivatedRoleRef.current = selectedRole;
+      setActiveSectionId(selectedRoleSectionId);
+    }
+  }, [selectedRole, selectedRoleSectionId]);
+
   const visibleSections = INTERNAL_KOBO_SECTIONS.map((section) => ({
     ...section,
     fields: section.fields.filter((field) => {
@@ -173,9 +198,15 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
       if (!normalizedQuery) return true;
       return `${field.label} ${field.name}`.toLowerCase().includes(normalizedQuery);
     }),
-  })).filter((section) => section.fields.length > 0);
+  })).filter((section) => {
+    if (!selectedRole) return section.id === 'menage' && section.fields.length > 0;
+    return section.fields.length > 0;
+  });
 
-  const activeSection = visibleSections.find((section) => section.id === activeSectionId) || visibleSections[0];
+  const activeSection =
+    visibleSections.find((section) => section.id === activeSectionId) ||
+    visibleSections.find((section) => section.id === selectedRoleSectionId) ||
+    visibleSections[0];
 
   const setOption = (field: InternalKoboField, optionName: string) => {
     if (field.type === 'select_multiple') {
@@ -187,6 +218,13 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
     }
 
     onChange(field.name, optionName);
+    if (field.name === 'role') {
+      const targetSectionId = ROLE_SECTION_BY_VALUE[optionName];
+      if (targetSectionId) {
+        lastAutoActivatedRoleRef.current = optionName;
+        setActiveSectionId(targetSectionId);
+      }
+    }
   };
 
   const handleFile = async (field: InternalKoboField, file?: File) => {
@@ -408,6 +446,12 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
                     : 'border-rose-400/25 bg-rose-500/10 text-rose-100'
               }`}>
                 {householdLookup.message}
+              </div>
+            ) : null}
+
+            {!selectedRole ? (
+              <div className="mt-3 rounded-2xl border border-amber-400/25 bg-amber-500/10 px-4 py-3 text-[11px] font-bold text-amber-100">
+                Passage obligatoire: choisissez d'abord le role dans Menage pour activer le formulaire metier correspondant.
               </div>
             ) : null}
           </header>
