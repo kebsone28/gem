@@ -332,6 +332,13 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
     navigableSections.find((section) => !section.locked) ||
     navigableSections[0];
   const mobileSectionOptions = navigableSections.filter((section) => !section.locked);
+  const missingRequiredDetails = missingRequired.map((field) => {
+    const section = navigableSections.find((item) =>
+      item.activeFields.some((sectionField) => sectionField.name === field.name)
+    );
+    return { field, section };
+  });
+  const firstActionableMissing = missingRequiredDetails.find((item) => item.section && !item.section.locked);
   const requiredStatusText = missingRequired.length ? `${missingRequired.length} obligatoire(s)` : 'Pret';
   const requiredStatusClass = missingRequired.length
     ? 'border-amber-400/35 bg-amber-400/12 text-amber-100'
@@ -375,6 +382,16 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
       className: 'border-white/8 bg-white/[0.03] text-slate-400',
       icon: <ChevronRight size={13} />,
     };
+  };
+
+  const focusRequiredField = (fieldName: string, sectionId?: string) => {
+    if (sectionId) setActiveSectionId(sectionId);
+    window.setTimeout(() => {
+      document.getElementById(`internal-kobo-field-${fieldName}`)?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      });
+    }, 120);
   };
 
   const setOption = (field: InternalKoboField, optionName: string) => {
@@ -432,6 +449,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
       return (
         <button
           key={field.name}
+          id={`internal-kobo-field-${field.name}`}
           type="button"
           onClick={() => onChange(field.name, !checked)}
           className={`${shellClass} flex w-full items-center justify-between gap-4 text-left transition-all active:scale-[0.99]`}
@@ -450,7 +468,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
     }
 
     return (
-      <div key={field.name} className={shellClass}>
+      <div key={field.name} id={`internal-kobo-field-${field.name}`} className={shellClass}>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-[14px] font-black leading-snug text-white">{field.label}</p>
@@ -700,6 +718,74 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
     );
   };
 
+  const renderValidationAssistant = () => {
+    if (missingRequired.length === 0) {
+      return (
+        <div className="mb-4 rounded-2xl border border-emerald-300/20 bg-emerald-400/[0.08] p-4">
+          <div className="flex items-center gap-3">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-2xl border border-emerald-300/25 bg-emerald-300/12 text-emerald-100">
+              <CheckCircle2 size={18} />
+            </span>
+            <div className="min-w-0">
+              <p className="text-[12px] font-black uppercase tracking-[0.14em] text-emerald-100">Validation Kobo prete</p>
+              <p className="mt-1 text-[11px] font-semibold text-slate-300">
+                Tous les champs visibles requis sont remplis. La prochaine action soumettra la fiche au serveur VPS.
+              </p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="mb-4 rounded-2xl border border-amber-300/25 bg-amber-400/[0.08] p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[12px] font-black uppercase tracking-[0.14em] text-amber-100">Validation Kobo incomplete</p>
+            <p className="mt-1 text-[11px] font-semibold text-slate-300">
+              {missingRequired.length} champ(s) obligatoire(s) restent a remplir avant la soumission finale.
+            </p>
+          </div>
+          {firstActionableMissing?.section ? (
+            <button
+              type="button"
+              onClick={() => focusRequiredField(firstActionableMissing.field.name, firstActionableMissing.section?.id)}
+              className="rounded-full border border-amber-200/30 bg-amber-300/15 px-3 py-2 text-[9px] font-black uppercase tracking-[0.12em] text-amber-50 hover:bg-amber-300/25"
+            >
+              Premier requis
+            </button>
+          ) : null}
+        </div>
+
+        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {missingRequiredDetails.slice(0, 4).map(({ field, section }) => {
+            const canOpen = Boolean(section && !section.locked);
+            return (
+              <button
+                key={field.name}
+                type="button"
+                disabled={!canOpen}
+                onClick={() => section && focusRequiredField(field.name, section.id)}
+                className={`rounded-xl border px-3 py-2 text-left transition-colors ${
+                  canOpen
+                    ? 'border-amber-200/20 bg-slate-950/25 text-amber-50 hover:border-amber-200/40'
+                    : 'cursor-not-allowed border-white/8 bg-slate-950/15 text-slate-500 opacity-60'
+                }`}
+              >
+                <p className="truncate text-[10px] font-black uppercase tracking-[0.1em]">
+                  {section?.title || 'Etape inconnue'}
+                </p>
+                <p className="mt-1 line-clamp-2 text-[11px] font-semibold leading-snug">
+                  {field.label}
+                </p>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="fixed inset-0 z-[3000] flex items-end justify-center bg-slate-950/75 p-0 backdrop-blur-md sm:items-center sm:p-4">
       <div className="grid h-[100dvh] w-full max-w-7xl overflow-hidden rounded-t-[1.5rem] border border-blue-200/10 bg-[#0B1728] shadow-2xl sm:h-[92vh] sm:rounded-[1.75rem] md:grid-cols-[310px_1fr]">
@@ -893,6 +979,8 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
                 </div>
               ) : null}
             </div>
+
+            {renderValidationAssistant()}
 
             {activeSection ? (
               <section className="space-y-4">
