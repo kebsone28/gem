@@ -51,6 +51,7 @@ import { InternalKoboForm } from './InternalKoboForm';
 import {
   INTERNAL_KOBO_CONTROL_FIELD_NAMES,
   INTERNAL_KOBO_FIELD_NAMES,
+  getInternalKoboSubmissionValues,
   isTruthyKoboValue,
   validateInternalKoboRequiredFields,
 } from './internalKoboFormDefinition';
@@ -649,8 +650,9 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
       const now = new Date().toISOString();
       const targetHouseholdId = String(submissionHousehold.id || household.id);
       const internalSubmissionId = `gem-vps-${targetHouseholdId}-${Date.now()}`;
+      const submissionValues = getInternalKoboSubmissionValues(nativeKoboAuditForm);
       const cleanValues = Object.fromEntries(
-        Object.entries(nativeKoboAuditForm).filter(([, value]) => {
+        Object.entries({ ...nativeKoboAuditForm, ...submissionValues }).filter(([, value]) => {
           if (Array.isArray(value)) return value.length > 0;
           return value !== undefined && value !== null && String(value).trim() !== '';
         })

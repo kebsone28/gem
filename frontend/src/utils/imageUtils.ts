@@ -33,7 +33,7 @@ export async function compressImage(
   const maxSize = options?.maxSizeBytes ?? MAX_SIZE_BYTES;
 
   // Skip compression for small files or non-images
-  if (file.size <= maxSize || !file.type.startsWith('image/')) {
+  if ((file.size <= maxSize && !options?.maxWidth && !options?.maxHeight) || !file.type.startsWith('image/')) {
     return file;
   }
 

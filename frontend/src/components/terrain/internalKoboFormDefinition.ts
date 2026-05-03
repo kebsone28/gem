@@ -5,6 +5,7 @@ export type InternalKoboFieldType =
   | 'select_one'
   | 'select_multiple'
   | 'acknowledge'
+  | 'note'
   | 'image';
 
 export type InternalKoboChoice = {
@@ -20,6 +21,10 @@ export type InternalKoboField = {
   required?: boolean;
   relevant?: string;
   hint?: string;
+  guidanceHint?: string;
+  appearance?: string;
+  parameters?: string;
+  defaultValue?: unknown;
   readOnly?: boolean;
 };
 
@@ -298,7 +303,7 @@ export const INTERNAL_KOBO_SECTIONS: InternalKoboSection[] = [
       { name: 'longitude_key', type: 'text', label: 'Longitude', required: true, readOnly: true },
       { name: 'region_key', type: 'text', label: 'Region', required: true, readOnly: true },
       { name: 'LOCALISATION_CLIENT', type: 'geopoint', label: 'GPS du menage', required: true, hint: 'Coordonnees GPS du menage' },
-      { name: 'role', type: 'select_one', listName: 'roles', label: 'Votre role', required: true },
+      { name: 'role', type: 'select_one', listName: 'roles', label: 'Votre role', required: true, appearance: 'likert', parameters: 'randomize=true' },
     ],
   },
   {
@@ -307,8 +312,10 @@ export const INTERNAL_KOBO_SECTIONS: InternalKoboSection[] = [
     subtitle: 'Kit, eligibilite et quantites de cable',
     role: 'livreur',
     fields: [
+      { name: 'PREPARATION_DES_KITS', type: 'note', label: 'Preparation des kits', relevant: "${role} = '__pr_parateur'" },
       { name: 'Nombre_de_KIT_pr_par', type: 'integer', label: 'Nombre de KIT prepare', relevant: "${role} = '__pr_parateur'" },
       { name: 'Nombre_de_KIT_Charg_pour_livraison', type: 'integer', label: 'Nombre de KIT charge pour livraison', relevant: "${role} = '__pr_parateur'" },
+      { name: 'note_Livreur', type: 'note', label: 'Etape 1/4: livreur', relevant: "${role} = 'livreur'" },
       { name: 'Situation_du_M_nage', type: 'select_one', listName: 'cj3rh91', label: 'Situation du menage', relevant: "${role} = 'livreur'" },
       { name: 'justificatif', type: 'select_multiple', listName: 'pr4rq21', label: 'Justificatif', relevant: "${role} = 'livreur' and ${Situation_du_M_nage} = 'menage_non_eligible'" },
       { name: 'Longueur_Cable_2_5mm_Int_rieure', type: 'integer', label: 'Longueur cable 2,5mm2 interieure', required: true, relevant: "${role} = 'livreur' and ${Situation_du_M_nage} = 'menage_eligible'" },
@@ -319,7 +326,7 @@ export const INTERNAL_KOBO_SECTIONS: InternalKoboSection[] = [
       { name: 'Je_confirme_le_marqu_osition_des_coffrets', type: 'acknowledge', label: 'Je confirme le marquage du mur et des coffrets', required: true, relevant: "${role} = 'livreur' and ${Situation_du_M_nage} = 'menage_eligible'" },
       { name: 'Presence_de_Mur', type: 'select_one', listName: 'pg7bi79', label: 'Presence de mur', relevant: "${role} = 'livreur' and ${Situation_du_M_nage} = 'menage_eligible'" },
       { name: 'Je_confirme_le_marqu_coffrets_lectriques', type: 'acknowledge', label: "Je confirme le marquage de l'emplacement des coffrets electriques", required: true, relevant: "${role} = 'livreur' and ${Situation_du_M_nage} = 'menage_eligible'" },
-      { name: 'Photo', type: 'image', label: 'Photo', relevant: "${role} = 'livreur' and ${Situation_du_M_nage} = 'menage_eligible'" },
+      { name: 'Photo', type: 'image', label: 'Photo', relevant: "${role} = 'livreur' and ${Situation_du_M_nage} = 'menage_eligible'", parameters: 'max-pixels=1024' },
     ],
   },
   {
@@ -328,6 +335,7 @@ export const INTERNAL_KOBO_SECTIONS: InternalKoboSection[] = [
     subtitle: 'Disponibilite du kit et mur',
     role: 'macon',
     fields: [
+      { name: 'note_macon_1', type: 'note', label: 'Etape 2/4: realisation du mur', relevant: "${role} = 'macon'" },
       { name: 'kit_disponible_macon', type: 'select_one', listName: 'kit_disponible', label: 'Le kit est-il disponible et complet ?', required: true, relevant: "${role} = 'macon'" },
       { name: 'problemes_kit_macon', type: 'select_multiple', listName: 'problemes_kit_macon', label: 'Pourquoi ?', relevant: "${role} = 'macon' and ${kit_disponible_macon} = 'non'" },
       { name: 'type_mur_realise_macon', type: 'select_one', listName: 'type_mur', label: 'Type de mur', required: true, relevant: "${role} = 'macon' and ${kit_disponible_macon} = 'oui'" },
@@ -341,6 +349,7 @@ export const INTERNAL_KOBO_SECTIONS: InternalKoboSection[] = [
     subtitle: 'Verification mur et branchement',
     role: 'reseau',
     fields: [
+      { name: 'note_reseau_1', type: 'note', label: 'Etape 3/4: branchement', relevant: "${role} = 'reseau'" },
       { name: 'verification_mur_reseau', type: 'select_one', listName: 'verification_mur', label: 'Le mur est-il realise et conforme ?', required: true, relevant: "${role} = 'reseau'" },
       { name: 'problemes_mur_reseau', type: 'select_multiple', listName: 'problemes_mur_reseau', label: 'Problemes avec le mur', required: true, relevant: "${role} = 'reseau' and ${verification_mur_reseau} = 'non'" },
       { name: 'etat_branchement_reseau', type: 'select_one', listName: 'etat_branchement', label: 'Etat du branchement', required: true, relevant: "${role} = 'reseau' and ${verification_mur_reseau} = 'oui'" },
@@ -354,6 +363,7 @@ export const INTERNAL_KOBO_SECTIONS: InternalKoboSection[] = [
     subtitle: 'Verification branchement et installation',
     role: 'interieur',
     fields: [
+      { name: 'note_interieur_1', type: 'note', label: 'Etape 4/4: installation interieure', relevant: "${role} = 'interieur'" },
       { name: 'verification_branchement_interieur', type: 'select_one', listName: 'verification_branchement', label: 'Le branchement est-il realise et conforme ?', required: true, relevant: "${role} = 'interieur'" },
       { name: 'problemes_branchement_interieur', type: 'select_multiple', listName: 'problemes_branchement_interieur', label: 'Problemes avec le branchement', relevant: "${role} = 'interieur' and ${verification_branchement_interieur} = 'non'" },
       { name: 'etat_installation_interieur', type: 'select_one', listName: 'etat_installation', label: "Etat de l'installation interieure realisee", required: true, relevant: "${role} = 'interieur' and ${verification_branchement_interieur} = 'oui'" },
@@ -369,22 +379,22 @@ export const INTERNAL_KOBO_SECTIONS: InternalKoboSection[] = [
     fields: [
       { name: 'ETAT_DE_L_INSTALLATION', type: 'select_one', listName: 'rr4dg37', label: 'Controle prealable', required: true, relevant: "${role} = 'controleur'" },
       { name: 'controleurPROB', type: 'select_multiple', listName: 'oo84j36', label: 'Quel est le probleme ?', required: true, relevant: "${role} = 'controleur' and ${ETAT_DE_L_INSTALLATION} = 'probleme_a_signaler'" },
-      { name: 'Phase_de_controle', type: 'select_one', listName: 'ga7rh54', label: 'Phase du controle', required: true, relevant: "${role} = 'controleur' and ${ETAT_DE_L_INSTALLATION} = 'terminee'" },
+      { name: 'Phase_de_controle', type: 'select_one', listName: 'ga7rh54', label: 'Phase du controle', required: true, relevant: "${role} = 'controleur' and ${ETAT_DE_L_INSTALLATION} = 'terminee'", appearance: 'minimal' },
       { name: 'ETAT_BRANCHEMENT', type: 'select_one', listName: 'sv3tg34', label: 'Etat du branchement', required: true, relevant: "${role} = 'controleur' and ${ETAT_DE_L_INSTALLATION} = 'terminee'" },
       { name: 'OBSERVATION', type: 'select_multiple', listName: 'kx9fr02', label: 'Observation', required: true, relevant: "${role} = 'controleur' and ${ETAT_DE_L_INSTALLATION} = 'terminee' and ${ETAT_BRANCHEMENT} = 'non_termine'" },
       { name: 'Position_du_branchement', type: 'select_one', listName: 'lo9ia24', label: 'Position et longueur du branchement sur le reseau', required: true, relevant: "${role} = 'controleur' and ${ETAT_DE_L_INSTALLATION} = 'terminee' and ${ETAT_BRANCHEMENT} = 'realise'" },
       { name: 'Observations_sur_la_ition_du_branchement', type: 'select_multiple', listName: 'la7vc77', label: 'Observations sur la position du branchement', required: true, relevant: "${role} = 'controleur' and ${ETAT_DE_L_INSTALLATION} = 'terminee' and ${ETAT_BRANCHEMENT} = 'realise' and ${Position_du_branchement} = 'non_conforme'" },
       { name: 'Hauteur_branchement', type: 'select_one', listName: 'nk1mo89', label: 'Hauteur branchement', required: true, relevant: "${role} = 'controleur' and ${ETAT_DE_L_INSTALLATION} = 'terminee' and ${ETAT_BRANCHEMENT} = 'realise'" },
-      { name: 'Observations', type: 'text', label: 'Observations', required: true, relevant: "${role} = 'controleur' and ${ETAT_DE_L_INSTALLATION} = 'terminee' and ${ETAT_BRANCHEMENT} = 'realise' and ${Hauteur_branchement} = 'non_conforme'" },
+      { name: 'Observations', type: 'text', label: 'Observations', required: true, relevant: "${role} = 'controleur' and ${ETAT_DE_L_INSTALLATION} = 'terminee' and ${ETAT_BRANCHEMENT} = 'realise' and ${Hauteur_branchement} = 'non_conforme'", defaultValue: 'La Hauteur du branchement est inferieure a la norme' },
       { name: 'Hauteur_coffret', type: 'select_one', listName: 'nk1mo89', label: 'Hauteur du coffret', required: true, relevant: "${role} = 'controleur' and ${ETAT_DE_L_INSTALLATION} = 'terminee' and ${ETAT_BRANCHEMENT} = 'realise'" },
-      { name: 'Observations_001', type: 'text', label: 'Observations', required: true, relevant: "${role} = 'controleur' and ${ETAT_DE_L_INSTALLATION} = 'terminee' and ${ETAT_BRANCHEMENT} = 'realise' and ${Hauteur_coffret} = 'non_conforme'" },
+      { name: 'Observations_001', type: 'text', label: 'Observations', required: true, relevant: "${role} = 'controleur' and ${ETAT_DE_L_INSTALLATION} = 'terminee' and ${ETAT_BRANCHEMENT} = 'realise' and ${Hauteur_coffret} = 'non_conforme'", defaultValue: "Coffret place a l'exterieur des deux limites fixees 1,20m Mini ET 1,60m Maxi" },
       { name: 'Etat_du_coupe_circuit', type: 'select_one', listName: 'ur9iq73', label: 'Etat du coupe circuit ?', relevant: "${role} = 'controleur' and ${ETAT_DE_L_INSTALLATION} = 'terminee' and ${ETAT_BRANCHEMENT} = 'realise'" },
       { name: 'OBSERVATION_001', type: 'select_multiple', listName: 'rz78v01', label: 'Observation', required: true, relevant: "${role} = 'controleur' and ${ETAT_DE_L_INSTALLATION} = 'terminee' and ${ETAT_BRANCHEMENT} = 'realise' and ${Etat_du_coupe_circuit} = 'nc'" },
       { name: 'Continuit_PVC', type: 'select_one', listName: 'nk1mo89', label: 'Isolation coffret et protection descente cable', required: true, relevant: "${role} = 'controleur' and ${ETAT_DE_L_INSTALLATION} = 'terminee' and ${ETAT_BRANCHEMENT} = 'realise'" },
       { name: 'OBSERVATION_002', type: 'select_multiple', listName: 'fv5uq33', label: 'Observation', required: true, relevant: "${role} = 'controleur' and ${ETAT_DE_L_INSTALLATION} = 'terminee' and ${ETAT_BRANCHEMENT} = 'realise' and ${Continuit_PVC} = 'non_conforme'" },
       { name: 'Mise_en_oeuvre', type: 'select_one', listName: 'nk1mo89', label: 'Mise en oeuvre du branchement', required: true, relevant: "${role} = 'controleur' and ${ETAT_DE_L_INSTALLATION} = 'terminee' and ${ETAT_BRANCHEMENT} = 'realise'" },
       { name: 'OBSERVATION_003', type: 'select_multiple', listName: 'ey6uw71', label: 'Observation', required: true, relevant: "${role} = 'controleur' and ${ETAT_DE_L_INSTALLATION} = 'terminee' and ${ETAT_BRANCHEMENT} = 'realise' and ${Mise_en_oeuvre} = 'non_conforme'" },
-      { name: '_1_photo_anomalie_si_possible', type: 'image', label: '1 photo anomalie si possible', relevant: "${role} = 'controleur' and ${ETAT_DE_L_INSTALLATION} = 'terminee' and ${ETAT_BRANCHEMENT} = 'realise'" },
+      { name: '_1_photo_anomalie_si_possible', type: 'image', label: '1 photo anomalie si possible', relevant: "${role} = 'controleur' and ${ETAT_DE_L_INSTALLATION} = 'terminee' and ${ETAT_BRANCHEMENT} = 'realise'", parameters: 'max-pixels=1024' },
     ],
   },
   {
@@ -396,22 +406,24 @@ export const INTERNAL_KOBO_SECTIONS: InternalKoboSection[] = [
       { name: 'DISJONCTEUR_GENERAL_EN_TETE_D_', type: 'select_one', listName: 'el0wa18', label: "Disjoncteur general en tete d'installation", required: true, relevant: "${role} = 'controleur' and ${ETAT_DE_L_INSTALLATION} = 'terminee'", hint: 'Verifier conformite materiel, mise en oeuvre, coupure generale, calibre et emplacement du coffret.' },
       { name: 'OBSERVATIONS_', type: 'select_multiple', listName: 'zs4mw04', label: 'Observations', required: true, relevant: "${role} = 'controleur' and ${ETAT_DE_L_INSTALLATION} = 'terminee' and ${DISJONCTEUR_GENERAL_EN_TETE_D_} = 'non_conforme'" },
       { name: 'TYPE_DE_DISJONCTEUR_GENERAL', type: 'select_one', listName: 'nr78z46', label: 'Type de disjoncteur general', required: true, relevant: "${role} = 'controleur' and ${ETAT_DE_L_INSTALLATION} = 'terminee' and ${DISJONCTEUR_GENERAL_EN_TETE_D_} = 'conforme'" },
-      { name: 'ENSEMBLE_DE_L_INSTALLATION_PRO', type: 'select_one', listName: 'gk2qz88', label: "Ensemble de l'installation protege par DDR 30mA", required: true, relevant: "${role} = 'controleur' and ${ETAT_DE_L_INSTALLATION} = 'terminee'" },
+      { name: 'ENSEMBLE_DE_L_INSTALLATION_PRO', type: 'select_one', listName: 'gk2qz88', label: "Ensemble de l'installation protege par DDR 30mA", required: true, relevant: "${role} = 'controleur' and ${ETAT_DE_L_INSTALLATION} = 'terminee'", appearance: 'quick', parameters: 'randomize=false' },
       { name: 'OBSERVATIONS__001', type: 'select_multiple', listName: 'py9cc56', label: 'Observations', required: true, relevant: "${role} = 'controleur' and ${ETAT_DE_L_INSTALLATION} = 'terminee' and ${ENSEMBLE_DE_L_INSTALLATION_PRO} = 'non_conforme'" },
-      { name: 'PROTECTION_L_ORIGINE_DE_CHAQ', type: 'select_one', listName: 'nm4md59', label: "Protection a l'origine de chaque circuit", required: true, relevant: "${role} = 'controleur' and ${ETAT_DE_L_INSTALLATION} = 'terminee'" },
+      { name: 'PROTECTION_L_ORIGINE_DE_CHAQ', type: 'select_one', listName: 'nm4md59', label: "Protection a l'origine de chaque circuit", required: true, relevant: "${role} = 'controleur' and ${ETAT_DE_L_INSTALLATION} = 'terminee'", appearance: 'quick', parameters: 'randomize=false' },
       { name: 'OBSERVATIONS_002', type: 'select_multiple', listName: 'nr8tv95', label: 'Observations', required: true, relevant: "${role} = 'controleur' and ${ETAT_DE_L_INSTALLATION} = 'terminee' and ${PROTECTION_L_ORIGINE_DE_CHAQ} = 'non_conforme'" },
-      { name: 'S_PARATION_DES_CIRCUITS_Lumi_', type: 'select_one', listName: 'nm4md59', label: 'Separation des circuits lumiere et prise', required: true, relevant: "${role} = 'controleur' and ${ETAT_DE_L_INSTALLATION} = 'terminee'" },
-      { name: 'OBSERVATIONS__002', type: 'text', label: 'Observations', required: true, relevant: "${role} = 'controleur' and ${ETAT_DE_L_INSTALLATION} = 'terminee' and ${S_PARATION_DES_CIRCUITS_Lumi_} = 'non_conforme'" },
+      { name: 'S_PARATION_DES_CIRCUITS_Lumi_', type: 'select_one', listName: 'nm4md59', label: 'Separation des circuits lumiere et prise', required: true, relevant: "${role} = 'controleur' and ${ETAT_DE_L_INSTALLATION} = 'terminee'", appearance: 'quick', parameters: 'randomize=false', guidanceHint: 'Circuit prise et lumiere non separe' },
+      { name: 'OBSERVATIONS__002', type: 'text', label: 'Observations', required: true, relevant: "${role} = 'controleur' and ${ETAT_DE_L_INSTALLATION} = 'terminee' and ${S_PARATION_DES_CIRCUITS_Lumi_} = 'non_conforme'", defaultValue: 'Circuits prise et lumiere non separes' },
+      { name: 'PROTECTION_CONTACT_D_TOUTE_L_INSTALLATION', type: 'note', label: "Protection contact direct a verifier sur toute l'installation", relevant: "${role} = 'controleur' and ${ETAT_DE_L_INSTALLATION} = 'terminee'" },
       { name: 'PROTECTION_CONTRE_LES_CONTACTS', type: 'select_one', listName: 'bm2rn03', label: 'Protection contre les contacts directs', required: true, relevant: "${role} = 'controleur' and ${ETAT_DE_L_INSTALLATION} = 'terminee'" },
       { name: 'OBSERVATIONS__003', type: 'select_multiple', listName: 'ps4nb23', label: 'Observations', required: true, relevant: "${role} = 'controleur' and ${ETAT_DE_L_INSTALLATION} = 'terminee' and ${PROTECTION_CONTRE_LES_CONTACTS} = 'non_conforme'" },
-      { name: 'MISE_EN_OEUVRE_MAT_RIEL_ET_APP', type: 'select_one', listName: 'nm4md59', label: 'Mise en oeuvre materiel et appareillage', required: true, relevant: "${role} = 'controleur' and ${ETAT_DE_L_INSTALLATION} = 'terminee'" },
+      { name: 'MISE_EN_OEUVRE_MAT_RIEL_ET_APP', type: 'select_one', listName: 'nm4md59', label: 'Mise en oeuvre materiel et appareillage', required: true, relevant: "${role} = 'controleur' and ${ETAT_DE_L_INSTALLATION} = 'terminee'", appearance: 'quick', parameters: 'randomize=false' },
       { name: 'OBSERVATIONS__004', type: 'select_multiple', listName: 'jm8qy41', label: 'Observations', required: true, relevant: "${role} = 'controleur' and ${ETAT_DE_L_INSTALLATION} = 'terminee' and ${MISE_EN_OEUVRE_MAT_RIEL_ET_APP} = 'non_conforme'" },
-      { name: 'CONTINUITE_DE_LA_PROTECTION_ME', type: 'select_one', listName: 'nm4md59', label: 'Continuite de la protection mecanique des conducteurs', required: true, relevant: "${role} = 'controleur' and ${ETAT_DE_L_INSTALLATION} = 'terminee'" },
+      { name: 'CONTINUITE_DE_LA_PROTECTION_ME', type: 'select_one', listName: 'nm4md59', label: 'Continuite de la protection mecanique des conducteurs', required: true, relevant: "${role} = 'controleur' and ${ETAT_DE_L_INSTALLATION} = 'terminee'", appearance: 'quick', parameters: 'randomize=false' },
       { name: 'OBSERVATIONS__005', type: 'select_multiple', listName: 'vo5kj15', label: 'Observations', required: true, relevant: "${role} = 'controleur' and ${ETAT_DE_L_INSTALLATION} = 'terminee' and ${CONTINUITE_DE_LA_PROTECTION_ME} = 'non_conforme'" },
-      { name: 'MISE_EN_UVRE_DU_R_SEAU_DE_TER', type: 'select_one', listName: 'nm4md59', label: 'Mise en oeuvre du reseau de terre et continuite', required: true, relevant: "${role} = 'controleur' and ${ETAT_DE_L_INSTALLATION} = 'terminee'" },
+      { name: 'RESEAU_DE_TERRE_A_VE_TOUTE_L_INSTALLATION', type: 'note', label: "Reseau de terre a verifier sur toute l'installation", relevant: "${role} = 'controleur' and ${ETAT_DE_L_INSTALLATION} = 'terminee'" },
+      { name: 'MISE_EN_UVRE_DU_R_SEAU_DE_TER', type: 'select_one', listName: 'nm4md59', label: 'Mise en oeuvre du reseau de terre et continuite', required: true, relevant: "${role} = 'controleur' and ${ETAT_DE_L_INSTALLATION} = 'terminee'", appearance: 'quick', parameters: 'randomize=false' },
       { name: 'OBSERVATIONS__006', type: 'select_multiple', listName: 'pi0xx78', label: 'Observations', required: true, relevant: "${role} = 'controleur' and ${ETAT_DE_L_INSTALLATION} = 'terminee' and ${MISE_EN_UVRE_DU_R_SEAU_DE_TER} = 'non_conforme'" },
       { name: 'ETAT_DE_LA_BARRETTE_DE_TERRE', type: 'select_one', listName: 'lk4xz51', label: 'Etat de la barrette de terre', relevant: "${role} = 'controleur' and ${ETAT_DE_L_INSTALLATION} = 'terminee'" },
-      { name: 'VALEUR_DE_LA_RESISTANCE_DE_TER', type: 'select_one', listName: 'nm4md59', label: 'Valeur de la resistance de terre ou de boucle', required: true, relevant: "${role} = 'controleur' and ${ETAT_DE_L_INSTALLATION} = 'terminee'" },
+      { name: 'VALEUR_DE_LA_RESISTANCE_DE_TER', type: 'select_one', listName: 'nm4md59', label: 'Valeur de la resistance de terre ou de boucle', required: true, relevant: "${role} = 'controleur' and ${ETAT_DE_L_INSTALLATION} = 'terminee'", appearance: 'quick', parameters: 'randomize=false' },
       { name: 'OBSERVATIONS__007', type: 'integer', label: 'Valeur mesuree / observation', required: true, relevant: "${role} = 'controleur' and ${ETAT_DE_L_INSTALLATION} = 'terminee' and ${VALEUR_DE_LA_RESISTANCE_DE_TER} != ''" },
       { name: 'validation_controleur_final', type: 'acknowledge', label: 'Je confirme avoir tout controle', required: true, relevant: "${role} = 'controleur' and ${ETAT_DE_L_INSTALLATION} = 'terminee' and ${OBSERVATIONS__007} != ''" },
     ],
@@ -421,7 +433,7 @@ export const INTERNAL_KOBO_SECTIONS: InternalKoboSection[] = [
     title: 'Notes generales',
     subtitle: 'Commentaire obligatoire de fin de visite',
     fields: [
-      { name: 'notes_generales', type: 'text', label: 'Notes generales', required: true, relevant: "${role} != ''" },
+      { name: 'notes_generales', type: 'text', label: 'Notes generales', required: true, relevant: "${role} != ''", appearance: 'multiline' },
     ],
   },
 ];
@@ -448,6 +460,26 @@ export const isTruthyKoboValue = (value: unknown) =>
 export const hasInternalKoboValue = (value: unknown) => {
   if (Array.isArray(value)) return value.length > 0;
   return value !== undefined && value !== null && String(value).trim() !== '';
+};
+
+export const getInternalKoboFieldValue = (
+  field: InternalKoboField,
+  values: Record<string, unknown>
+) => {
+  const value = values[field.name];
+  return hasInternalKoboValue(value) ? value : field.defaultValue;
+};
+
+export const getInternalKoboSubmissionValues = (values: Record<string, unknown>) => {
+  const submissionValues: Record<string, unknown> = {};
+
+  getVisibleInternalKoboFields(values).forEach((field) => {
+    if (field.type === 'note') return;
+    const value = getInternalKoboFieldValue(field, values);
+    if (hasInternalKoboValue(value)) submissionValues[field.name] = value;
+  });
+
+  return submissionValues;
 };
 
 const getValue = (values: Record<string, unknown>, name: string) => values[name];
@@ -493,7 +525,7 @@ export const getVisibleInternalKoboFields = (values: Record<string, unknown>) =>
 
 export const validateInternalKoboRequiredFields = (values: Record<string, unknown>) =>
   getVisibleInternalKoboFields(values).filter(
-    (field) => field.required && !hasInternalKoboValue(values[field.name])
+    (field) => field.type !== 'note' && field.required && !hasInternalKoboValue(getInternalKoboFieldValue(field, values))
   );
 
 export const formatInternalKoboValue = (value: unknown, listName?: string): string => {

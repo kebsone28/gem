@@ -1,8 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Camera, CheckCircle2, ChevronDown, ChevronRight, Database, ImagePlus, Lock, Search, X } from 'lucide-react';
 import apiClient from '../../api/client';
+import { compressImage } from '../../utils/imageUtils';
 import {
   formatInternalKoboValue,
+  getInternalKoboFieldValue,
   getVisibleInternalKoboFields,
   hasInternalKoboValue,
   INTERNAL_KOBO_CHOICES,
@@ -31,8 +33,8 @@ const asArray = (value: unknown): string[] => {
 };
 
 const progressFor = (values: Record<string, unknown>) => {
-  const visibleFields = getVisibleInternalKoboFields(values).filter((field) => !field.readOnly);
-  const filled = visibleFields.filter((field) => hasInternalKoboValue(values[field.name])).length;
+  const visibleFields = getVisibleInternalKoboFields(values).filter((field) => !field.readOnly && field.type !== 'note');
+  const filled = visibleFields.filter((field) => hasInternalKoboValue(getInternalKoboFieldValue(field, values))).length;
   return {
     filled,
     total: visibleFields.length,
@@ -58,6 +60,11 @@ const ROLE_SECTION_BY_VALUE: Record<string, string> = {
   reseau: 'reseau',
   interieur: 'interieur',
   controleur: 'controle_branchement',
+};
+
+const maxPixelsFromParameters = (parameters?: string) => {
+  const match = parameters?.match(/max-pixels\s*=\s*(\d+)/i);
+  return match ? Number(match[1]) : undefined;
 };
 
 export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
@@ -232,7 +239,9 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
     if (!file) return;
     setUploadingField(field.name);
     try {
-      const uploaded = onPhotoUpload ? await onPhotoUpload(file) : file.name;
+      const maxPixels = maxPixelsFromParameters(field.parameters);
+      const uploadFile = maxPixels ? await compressImage(file, { maxWidth: maxPixels, maxHeight: maxPixels }) : file;
+      const uploaded = onPhotoUpload ? await onPhotoUpload(uploadFile) : uploadFile.name;
       onChange(field.name, uploaded);
     } finally {
       setUploadingField(null);
@@ -240,11 +249,22 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
   };
 
   const renderField = (field: InternalKoboField) => {
-    const value = values[field.name];
+    const value = getInternalKoboFieldValue(field, values);
     const missing = missingRequired.some((item) => item.name === field.name);
     const shellClass = `rounded-[1.4rem] border p-4 space-y-3 ${
       missing ? 'border-rose-400/35 bg-rose-500/[0.08]' : 'border-white/[0.08] bg-white/[0.045]'
     }`;
+
+    if (field.type === 'note') {
+      return (
+        <div key={field.name} className="rounded-[1.4rem] border border-blue-300/20 bg-blue-400/[0.08] p-4">
+          <p className="text-[10px] font-black uppercase tracking-[0.22em] text-blue-200">{field.label}</p>
+          {field.hint || field.guidanceHint ? (
+            <p className="mt-2 text-[11px] font-semibold leading-relaxed text-slate-300">{field.hint || field.guidanceHint}</p>
+          ) : null}
+        </div>
+      );
+    }
 
     if (field.type === 'acknowledge') {
       const checked = isTruthyKoboValue(value);
@@ -274,7 +294,9 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
           <div className="min-w-0">
             <p className="text-[13px] font-black leading-snug text-white">{field.label}</p>
             <p className="mt-1 text-[9px] font-bold uppercase tracking-[0.16em] text-blue-300/55">{field.name}</p>
-            {field.hint ? <p className="mt-2 text-[11px] font-semibold leading-relaxed text-slate-400">{field.hint}</p> : null}
+            {field.hint || field.guidanceHint ? (
+              <p className="mt-2 text-[11px] font-semibold leading-relaxed text-slate-400">{field.hint || field.guidanceHint}</p>
+            ) : null}
           </div>
           {field.required ? (
             <span className="shrink-0 rounded-full bg-amber-400/10 px-2.5 py-1 text-[8px] font-black uppercase tracking-widest text-amber-100">
@@ -295,7 +317,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
             <textarea
               value={String(value || '')}
               onChange={(event) => onChange(field.name, event.target.value)}
-              rows={field.name === 'notes_generales' ? 3 : 2}
+              rows={field.appearance === 'multiline' || field.name === 'notes_generales' ? 3 : 2}
               placeholder="Saisir la valeur..."
               className="w-full resize-none rounded-2xl border border-white/8 bg-slate-950/35 px-4 py-3 text-[12px] font-semibold leading-relaxed text-slate-100 outline-none transition-colors placeholder:text-slate-600 focus:border-blue-400/40"
             />
@@ -312,7 +334,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
         ) : null}
 
         {(field.type === 'select_one' || field.type === 'select_multiple') && field.listName ? (
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <div className={`grid grid-cols-1 gap-2 ${field.appearance === 'minimal' ? '' : 'sm:grid-cols-2'}`}>
             {(INTERNAL_KOBO_CHOICES[field.listName] || []).map((option) => {
               const active = field.type === 'select_multiple'
                 ? asArray(value).includes(option.name)
@@ -323,7 +345,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
                   key={option.name}
                   type="button"
                   onClick={() => setOption(field, option.name)}
-                  className={`min-h-11 rounded-2xl border px-3 py-2 text-left text-[10px] font-black uppercase tracking-[0.08em] transition-all active:scale-95 ${
+                  className={`${field.appearance === 'quick' ? 'min-h-10' : 'min-h-11'} rounded-2xl border px-3 py-2 text-left text-[10px] font-black uppercase tracking-[0.08em] transition-all active:scale-95 ${
                     active ? getToneForValue(option.name) : 'border-white/10 bg-slate-950/30 text-slate-400 hover:bg-white/[0.06]'
                   }`}
                 >
