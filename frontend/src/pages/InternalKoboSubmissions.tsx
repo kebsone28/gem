@@ -212,7 +212,7 @@ export default function InternalKoboSubmissions() {
       const result = await importInternalKoboXlsForm(file);
       const diagnostics = result.form?.diagnostics as Record<string, unknown> | undefined;
       setImportMessage(
-        `XLSForm importe: ${result.form?.formVersion || 'version inconnue'} - ${diagnostics?.fieldCount || 0} champs, ${diagnostics?.choiceCount || 0} choix`
+        `XLSForm universel importe: ${result.form?.title || result.form?.formKey || 'formulaire'} v${result.form?.formVersion || 'inconnue'} - ${diagnostics?.fieldCount || 0} champs, ${diagnostics?.choiceCount || 0} choix, ${diagnostics?.repeatCount || 0} repeat(s)`
       );
       await loadSubmissions();
     } catch (importError) {

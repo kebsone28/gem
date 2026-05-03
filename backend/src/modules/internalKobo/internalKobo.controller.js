@@ -11,6 +11,11 @@ import {
     INTERNAL_KOBO_FORM_KEY,
     INTERNAL_KOBO_FORM_VERSION
 } from './internalKobo.validation.js';
+import {
+    parseXlsFormBuffer,
+    validateXlsFormValues,
+    XLSFORM_ENGINE_VERSION
+} from './xlsFormEngine.js';
 
 const SUBMISSION_STATUSES = new Set(['draft', 'submitted', 'validated', 'rejected']);
 const REVIEW_STATUSES = new Set(['submitted', 'validated', 'rejected']);
@@ -112,6 +117,43 @@ function makeHttpError(statusCode, message) {
     const error = new Error(message);
     error.statusCode = statusCode;
     return error;
+}
+
+async function findUniversalXlsFormDefinition(organizationId, formKey) {
+    const mapping = await prisma.koboFormMapping.findUnique({
+        where: {
+            organizationId_koboAssetId: {
+                organizationId,
+                koboAssetId: formKey
+            }
+        }
+    });
+
+    if (!mapping || !isPlainObject(mapping.mapping)) return null;
+    return {
+        id: mapping.id,
+        koboAssetId: mapping.koboAssetId,
+        version: mapping.version,
+        lastValidated: mapping.lastValidated,
+        updatedAt: mapping.updatedAt,
+        definition: mapping.mapping
+    };
+}
+
+function summarizeUniversalXlsFormMapping(mapping) {
+    const definition = isPlainObject(mapping.mapping) ? mapping.mapping : {};
+    return {
+        id: mapping.id,
+        formKey: mapping.koboAssetId,
+        formVersion: mapping.version,
+        title: definition.title || mapping.koboAssetId,
+        engine: definition.engine || 'gem-xlsform-universal',
+        engineVersion: definition.engineVersion || XLSFORM_ENGINE_VERSION,
+        diagnostics: definition.diagnostics || {},
+        capabilities: definition.capabilities || [],
+        lastValidated: mapping.lastValidated,
+        updatedAt: mapping.updatedAt
+    };
 }
 
 function sanitizeObjectWithValuePatch(value, valuePatch = {}, key = '') {
@@ -219,66 +261,6 @@ async function normalizeSubmissionAttachments({ attachments, organizationId, cli
     return { attachments: normalized, valuePatch };
 }
 
-function getWorksheetJson(workbook, sheetName) {
-    const worksheet = workbook.getWorksheet(sheetName);
-    if (!worksheet) return [];
-
-    const headers = [];
-    worksheet.getRow(1).eachCell({ includeEmpty: true }, (cell, index) => {
-        headers[index] = String(cell.value || '').trim();
-    });
-
-    const rows = [];
-    worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
-        if (rowNumber === 1) return;
-        const item = {};
-        headers.forEach((header, index) => {
-            if (!header) return;
-            const cell = row.getCell(index);
-            const rawValue = cell.value;
-            item[header] = rawValue && typeof rawValue === 'object'
-                ? rawValue.text || rawValue.result || rawValue.richText?.map((part) => part.text || '').join('') || String(rawValue)
-                : rawValue;
-        });
-        if (Object.values(item).some((value) => value !== undefined && value !== null && String(value).trim() !== '')) {
-            rows.push(item);
-        }
-    });
-
-    return rows;
-}
-
-async function parseXlsFormBuffer(buffer) {
-    const workbook = new ExcelJS.Workbook();
-    await workbook.xlsx.load(buffer);
-
-    const survey = getWorksheetJson(workbook, 'survey');
-    const choices = getWorksheetJson(workbook, 'choices');
-    const settingsRows = getWorksheetJson(workbook, 'settings');
-    const settings = settingsRows[0] || {};
-    const formVersion = String(settings.version || settings.form_version || settings.form_id || INTERNAL_KOBO_FORM_VERSION);
-    const requiredCount = survey.filter((row) => String(row.required || '').toLowerCase() === 'yes' || String(row.required || '').toLowerCase() === 'true').length;
-    const imageCount = survey.filter((row) => String(row.type || '').toLowerCase().startsWith('image')).length;
-    const roleField = survey.find((row) => String(row.name || '').trim() === 'role');
-
-    return {
-        formKey: INTERNAL_KOBO_FORM_KEY,
-        formVersion,
-        importedAt: new Date().toISOString(),
-        settings,
-        survey,
-        choices,
-        diagnostics: {
-            fieldCount: survey.length,
-            choiceCount: choices.length,
-            requiredCount,
-            imageCount,
-            roleFieldPresent: Boolean(roleField),
-            versionMatchesServer: formVersion === INTERNAL_KOBO_FORM_VERSION
-        }
-    };
-}
-
 function escapeCsv(value) {
     return `"${String(value ?? '').replace(/"/g, '""')}"`;
 }
@@ -329,16 +311,20 @@ async function normalizeSubmissionPayload(body, req) {
         return { error: { status: 400, message: 'clientSubmissionId is required' } };
     }
 
-    if (formKey !== INTERNAL_KOBO_FORM_KEY) {
-        return { error: { status: 400, message: `Unsupported formKey: ${formKey}` } };
-    }
-
     if (!formVersion) {
         return { error: { status: 400, message: 'formVersion is required' } };
     }
 
     if (!isPlainObject(body.values)) {
         return { error: { status: 400, message: 'values must be an object' } };
+    }
+
+    const universalMapping = formKey === INTERNAL_KOBO_FORM_KEY
+        ? null
+        : await findUniversalXlsFormDefinition(req.user.organizationId, formKey);
+
+    if (formKey !== INTERNAL_KOBO_FORM_KEY && !universalMapping) {
+        return { error: { status: 400, message: `Unsupported formKey: ${formKey}` } };
     }
 
     const { attachments, valuePatch } = await normalizeSubmissionAttachments({
@@ -351,12 +337,15 @@ async function normalizeSubmissionPayload(body, req) {
 
     const roleSource = body.role ?? values.role;
     const role = roleSource ? String(roleSource).trim() : null;
-    if (role && !INTERNAL_KOBO_ALLOWED_ROLES.has(role)) {
+    if (formKey === INTERNAL_KOBO_FORM_KEY && role && !INTERNAL_KOBO_ALLOWED_ROLES.has(role)) {
         return { error: { status: 400, message: `Unsupported role: ${role}` } };
     }
 
-    const serverRequiredMissing = getServerRequiredMissing(values);
-    const serverValidationIssues = getServerValidationIssues(values);
+    const universalValidation = universalMapping
+        ? validateXlsFormValues(universalMapping.definition, values)
+        : null;
+    const serverValidationIssues = universalValidation?.issues || getServerValidationIssues(values);
+    const serverRequiredMissing = universalValidation?.requiredMissing || getServerRequiredMissing(values);
     const serverConstraintIssues = serverValidationIssues.filter((issue) => issue.type === 'constraint');
     const requiredMissing = uniqueStrings([
         ...normalizeRequiredMissing(body.requiredMissing),
@@ -382,6 +371,7 @@ async function normalizeSubmissionPayload(body, req) {
         : serverValidationIssues.length > 0
             ? 'draft'
             : 'submitted';
+    const serverFormVersion = universalMapping?.definition?.formVersion || INTERNAL_KOBO_FORM_VERSION;
 
     return {
         payload: {
@@ -396,9 +386,13 @@ async function normalizeSubmissionPayload(body, req) {
             values,
             metadata: {
                 ...(isPlainObject(body.metadata) ? body.metadata : {}),
-                serverFormKey: INTERNAL_KOBO_FORM_KEY,
-                serverFormVersion: INTERNAL_KOBO_FORM_VERSION,
-                formVersionMismatch: formVersion !== INTERNAL_KOBO_FORM_VERSION,
+                serverFormKey: formKey,
+                serverEngine: universalMapping ? 'gem-xlsform-universal' : 'gem-internal-kobo',
+                serverEngineVersion: universalMapping?.definition?.engineVersion || XLSFORM_ENGINE_VERSION,
+                serverFormKeyResolved: universalMapping?.definition?.formKey || INTERNAL_KOBO_FORM_KEY,
+                serverFormVersion,
+                formVersionMismatch: formVersion !== serverFormVersion,
+                universalFormDiagnostics: universalMapping?.definition?.diagnostics || null,
                 media: {
                     ...(isPlainObject(body.metadata?.media) ? body.metadata.media : {}),
                     attachments,
@@ -407,6 +401,7 @@ async function normalizeSubmissionPayload(body, req) {
                 serverRequiredMissing,
                 serverValidationIssues,
                 serverConstraintIssues,
+                unresolvedCalculations: universalValidation?.unresolvedCalculations || [],
                 requestId: req.get('x-request-id') || crypto.randomUUID(),
                 receivedAt: new Date().toISOString(),
                 receivedFromIp: req.ip || req.connection?.remoteAddress || null,
@@ -457,7 +452,7 @@ export const submitInternalKoboSubmission = async (req, res) => {
                 }
             }
 
-            if (['submitted', 'validated'].includes(payload.status) && !resolvedHousehold) {
+            if (payload.formKey === INTERNAL_KOBO_FORM_KEY && ['submitted', 'validated'].includes(payload.status) && !resolvedHousehold) {
                 throw makeHttpError(404, 'Submitted internal Kobo form must target an existing household');
             }
 
@@ -605,22 +600,102 @@ export const submitInternalKoboSubmission = async (req, res) => {
     }
 };
 
-export const getInternalKoboFormDefinition = async (_req, res) => {
-    return res.json({
-        success: true,
-        form: {
-            formKey: INTERNAL_KOBO_FORM_KEY,
-            formVersion: INTERNAL_KOBO_FORM_VERSION,
-            engine: 'gem-internal-kobo',
-            allowedRoles: Array.from(INTERNAL_KOBO_ALLOWED_ROLES),
-            serverValidation: true,
-            xlsFormImport: true,
-            media: {
-                embeddedOfflineMedia: true,
-                maxEmbeddedAttachmentBytes: MAX_EMBEDDED_ATTACHMENT_BYTES
+export const getInternalKoboFormDefinition = async (req, res) => {
+    try {
+        const importedMappings = await prisma.koboFormMapping.findMany({
+            where: { organizationId: req.user.organizationId },
+            orderBy: { updatedAt: 'desc' },
+            take: 20
+        });
+        const importedForms = importedMappings.map(summarizeUniversalXlsFormMapping);
+
+        return res.json({
+            success: true,
+            form: {
+                formKey: INTERNAL_KOBO_FORM_KEY,
+                formVersion: INTERNAL_KOBO_FORM_VERSION,
+                engine: 'gem-internal-kobo',
+                allowedRoles: Array.from(INTERNAL_KOBO_ALLOWED_ROLES),
+                serverValidation: true,
+                xlsFormImport: true,
+                universalEngine: {
+                    enabled: true,
+                    engine: 'gem-xlsform-universal',
+                    engineVersion: XLSFORM_ENGINE_VERSION,
+                    importedForms,
+                    capabilities: [
+                        'multi-form',
+                        'survey',
+                        'choices',
+                        'settings',
+                        'relevant',
+                        'required',
+                        'constraint',
+                        'calculate-basic',
+                        'choice_filter',
+                        'groups',
+                        'repeats',
+                        'media'
+                    ]
+                },
+                media: {
+                    embeddedOfflineMedia: true,
+                    maxEmbeddedAttachmentBytes: MAX_EMBEDDED_ATTACHMENT_BYTES
+                }
             }
+        });
+    } catch (err) {
+        console.error('[INTERNAL-KOBO] form-definition error:', err);
+        return res.status(500).json({
+            success: false,
+            message: 'Server error while loading internal Kobo form definition'
+        });
+    }
+};
+
+export const listInternalKoboFormDefinitions = async (req, res) => {
+    try {
+        const mappings = await prisma.koboFormMapping.findMany({
+            where: { organizationId: req.user.organizationId },
+            orderBy: { updatedAt: 'desc' }
+        });
+
+        return res.json({
+            success: true,
+            count: mappings.length,
+            forms: mappings.map(summarizeUniversalXlsFormMapping)
+        });
+    } catch (err) {
+        console.error('[INTERNAL-KOBO] form-definitions list error:', err);
+        return res.status(500).json({
+            success: false,
+            message: 'Server error while listing XLSForm definitions'
+        });
+    }
+};
+
+export const getInternalKoboImportedFormDefinition = async (req, res) => {
+    try {
+        const formKey = String(req.params.formKey || '').trim();
+        const mapping = await findUniversalXlsFormDefinition(req.user.organizationId, formKey);
+        if (!mapping) {
+            return res.status(404).json({
+                success: false,
+                message: 'XLSForm definition not found'
+            });
         }
-    });
+
+        return res.json({
+            success: true,
+            form: sanitizeBigIntForJson(mapping.definition)
+        });
+    } catch (err) {
+        console.error('[INTERNAL-KOBO] form-definition get error:', err);
+        return res.status(500).json({
+            success: false,
+            message: 'Server error while loading XLSForm definition'
+        });
+    }
 };
 
 export const importInternalKoboXlsForm = async (req, res) => {
@@ -630,7 +705,10 @@ export const importInternalKoboXlsForm = async (req, res) => {
         }
 
         const { organizationId, id: userId } = req.user;
-        const importedDefinition = await parseXlsFormBuffer(req.file.buffer);
+        const importedDefinition = await parseXlsFormBuffer(req.file.buffer, {
+            fileName: req.file.originalname,
+            mimeType: req.file.mimetype || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        });
         const importId = crypto.randomUUID();
         const baseKey = `${organizationId}/internal-kobo/forms/${importId}`;
 
@@ -641,6 +719,26 @@ export const importInternalKoboXlsForm = async (req, res) => {
             'application/json'
         );
 
+        await prisma.koboFormMapping.upsert({
+            where: {
+                organizationId_koboAssetId: {
+                    organizationId,
+                    koboAssetId: importedDefinition.formKey
+                }
+            },
+            create: {
+                organizationId,
+                koboAssetId: importedDefinition.formKey,
+                version: importedDefinition.formVersion,
+                mapping: importedDefinition
+            },
+            update: {
+                version: importedDefinition.formVersion,
+                mapping: importedDefinition,
+                lastValidated: new Date()
+            }
+        });
+
         await prisma.syncLog.create({
             data: {
                 userId,
@@ -650,8 +748,12 @@ export const importInternalKoboXlsForm = async (req, res) => {
                 details: {
                     importId,
                     fileName: req.file.originalname,
+                    formKey: importedDefinition.formKey,
                     formVersion: importedDefinition.formVersion,
-                    diagnostics: importedDefinition.diagnostics
+                    diagnostics: importedDefinition.diagnostics,
+                    engine: importedDefinition.engine,
+                    engineVersion: importedDefinition.engineVersion,
+                    capabilities: importedDefinition.capabilities
                 }
             }
         });
@@ -663,6 +765,10 @@ export const importInternalKoboXlsForm = async (req, res) => {
             form: {
                 formKey: importedDefinition.formKey,
                 formVersion: importedDefinition.formVersion,
+                title: importedDefinition.title,
+                engine: importedDefinition.engine,
+                engineVersion: importedDefinition.engineVersion,
+                capabilities: importedDefinition.capabilities,
                 diagnostics: importedDefinition.diagnostics
             }
         });

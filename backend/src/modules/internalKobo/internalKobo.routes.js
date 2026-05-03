@@ -5,8 +5,10 @@ import {
     exportInternalKoboSubmissions,
     getInternalKoboDiagnostics,
     getInternalKoboFormDefinition,
+    getInternalKoboImportedFormDefinition,
     getInternalKoboSubmission,
     importInternalKoboXlsForm,
+    listInternalKoboFormDefinitions,
     listInternalKoboSubmissions,
     reviewInternalKoboSubmission,
     submitInternalKoboSubmission
@@ -21,6 +23,8 @@ const upload = multer({
 router.use(authProtect);
 
 router.get('/form-definition', getInternalKoboFormDefinition);
+router.get('/form-definitions', listInternalKoboFormDefinitions);
+router.get('/form-definitions/:formKey', getInternalKoboImportedFormDefinition);
 router.post('/form-definition/import', upload.single('file'), importInternalKoboXlsForm);
 router.get('/diagnostics', getInternalKoboDiagnostics);
 router.get('/submissions', listInternalKoboSubmissions);

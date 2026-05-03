@@ -47,6 +47,24 @@ export interface InternalKoboFormDefinitionInfo {
   engine: string;
   allowedRoles: string[];
   serverValidation: boolean;
+  universalEngine?: {
+    enabled: boolean;
+    engine: string;
+    engineVersion: string;
+    capabilities: string[];
+    importedForms: Array<{
+      id: string;
+      formKey: string;
+      formVersion: string;
+      title?: string;
+      engine?: string;
+      engineVersion?: string;
+      capabilities?: string[];
+      diagnostics?: Record<string, unknown>;
+      lastValidated?: string;
+      updatedAt?: string;
+    }>;
+  };
 }
 
 export interface InternalKoboSubmissionRecord {
@@ -152,6 +170,7 @@ export interface InternalKoboLocalDraft {
 const INTERNAL_KOBO_OUTBOX_ACTION = 'internal-kobo-submit';
 const INTERNAL_KOBO_SUBMISSION_ENDPOINT = '/internal-kobo/submissions';
 const INTERNAL_KOBO_FORM_DEFINITION_ENDPOINT = '/internal-kobo/form-definition';
+const INTERNAL_KOBO_FORM_DEFINITIONS_ENDPOINT = '/internal-kobo/form-definitions';
 const INTERNAL_KOBO_FORM_IMPORT_ENDPOINT = '/internal-kobo/form-definition/import';
 const INTERNAL_KOBO_DIAGNOSTICS_ENDPOINT = '/internal-kobo/diagnostics';
 const INTERNAL_KOBO_DRAFT_PREFIX = 'gem-internal-kobo-draft:';
@@ -250,6 +269,24 @@ export async function fetchInternalKoboFormDefinition(): Promise<InternalKoboFor
   return response.data.form || null;
 }
 
+export async function fetchInternalKoboFormDefinitions(): Promise<NonNullable<InternalKoboFormDefinitionInfo['universalEngine']>['importedForms']> {
+  const response = await apiClient.get<{
+    success: boolean;
+    forms?: NonNullable<InternalKoboFormDefinitionInfo['universalEngine']>['importedForms'];
+  }>(INTERNAL_KOBO_FORM_DEFINITIONS_ENDPOINT);
+
+  return response.data.forms || [];
+}
+
+export async function fetchInternalKoboImportedFormDefinition(formKey: string): Promise<Record<string, unknown> | null> {
+  const response = await apiClient.get<{
+    success: boolean;
+    form?: Record<string, unknown>;
+  }>(`${INTERNAL_KOBO_FORM_DEFINITIONS_ENDPOINT}/${encodeURIComponent(formKey)}`);
+
+  return response.data.form || null;
+}
+
 export async function fetchInternalKoboSubmissionsReport(
   params: InternalKoboSubmissionFilters = {}
 ): Promise<InternalKoboSubmissionsReport> {
@@ -320,6 +357,10 @@ export async function importInternalKoboXlsForm(file: File): Promise<{
   form?: {
     formKey: string;
     formVersion: string;
+    title?: string;
+    engine?: string;
+    engineVersion?: string;
+    capabilities?: string[];
     diagnostics?: Record<string, unknown>;
   };
   message?: string;
