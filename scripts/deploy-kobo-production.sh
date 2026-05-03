@@ -48,6 +48,13 @@ NODE_OPTIONS='--max-old-space-size=4096' npm run build
 
 curl -fsS http://localhost:5005/health >/dev/null
 
+KOBO_ROUTE_STATUS="$(curl -s -o /dev/null -w '%{http_code}' http://localhost:5005/api/internal-kobo/form-definition || true)"
+if [ "${KOBO_ROUTE_STATUS}" = "404" ] || [ "${KOBO_ROUTE_STATUS}" = "000" ]; then
+  echo "[DEPLOY] Internal Kobo backend route is not active: HTTP ${KOBO_ROUTE_STATUS}" >&2
+  exit 1
+fi
+echo "[DEPLOY] Internal Kobo backend route detected: HTTP ${KOBO_ROUTE_STATUS}"
+
 if [ -n "${GEM_SMOKE_TOKEN:-}" ]; then
   cd "${APP_DIR}"
   GEM_API_URL='http://localhost:5005/api' GEM_AUTH_TOKEN="${GEM_SMOKE_TOKEN}" node scripts/internal-kobo-smoke.mjs
