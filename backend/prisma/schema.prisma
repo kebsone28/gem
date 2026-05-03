@@ -24,6 +24,7 @@ model Organization {
   conflictLogs    ConflictLog[]
   syncLogs        SyncLog[]
   koboFormMappings KoboFormMapping[]
+  internalKoboSubmissions InternalKoboSubmission[]
 }
 
 model User {
@@ -58,6 +59,7 @@ model User {
   chatCreated        ChatConversation[] @relation("ChatConversationCreator")
   chatBlocksReceived ChatUserBlock[]  @relation("ChatBlockedUser")
   chatBlocksIssued   ChatUserBlock[]  @relation("ChatBlockIssuer")
+  internalKoboSubmissions InternalKoboSubmission[]
 }
 
 model Project {
@@ -126,6 +128,7 @@ model Household {
   grappe           Grappe?                  @relation(fields: [grappeId], references: [id])
   zone             Zone?                    @relation(fields: [zoneId], references: [id])
   performanceLogs  PerformanceLog[]
+  internalKoboSubmissions InternalKoboSubmission[]
 
   @@unique([numeroordre, organizationId])
   @@index([region])
@@ -250,6 +253,37 @@ model KoboFormMapping {
   @@unique([organizationId, koboAssetId])
   @@index([organizationId])
   @@index([koboAssetId])
+}
+
+model InternalKoboSubmission {
+  id                 String       @id @default(uuid())
+  organizationId     String
+  householdId         String?
+  numeroOrdre         String?
+  formKey            String       @default("terrain_internal")
+  formVersion        String
+  clientSubmissionId  String
+  role               String?
+  status             String       @default("draft")
+  syncStatus         String       @default("synced")
+  values             Json
+  metadata           Json?        @default("{}")
+  requiredMissing    String[]     @default([])
+  submittedById      String?
+  submittedAt        DateTime?
+  savedAt            DateTime     @default(now())
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+  organization       Organization @relation(fields: [organizationId], references: [id])
+  household          Household?   @relation(fields: [householdId], references: [id])
+  submittedBy        User?        @relation(fields: [submittedById], references: [id])
+
+  @@unique([organizationId, clientSubmissionId])
+  @@index([organizationId, householdId])
+  @@index([organizationId, numeroOrdre])
+  @@index([organizationId, formKey, formVersion])
+  @@index([organizationId, status, syncStatus])
+  @@index([savedAt])
 }
 
 model AuditLog {

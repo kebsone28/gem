@@ -83,6 +83,7 @@ import alertsRoutes from './modules/alerts/alerts.routes.js';
 import formationRoutes from './modules/formation/formation.routes.js';
 import chatRoutes from './modules/chat/chat.routes.js';
 import pvRoutes from './api/routes/pv.routes.js';
+import internalKoboRoutes from './modules/internalKobo/internalKobo.routes.js';
 
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
@@ -106,6 +107,7 @@ app.use('/api/approvals', approvalRoutes);
 app.use('/api/alerts', alertsRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/pvs', pvRoutes);
+app.use('/api/internal-kobo', internalKoboRoutes);
 
 app.get('/health', async (req, res) => {
     const health = {

@@ -56,6 +56,12 @@ import {
   isTruthyKoboValue,
   validateInternalKoboRequiredFields,
 } from './internalKoboFormDefinition';
+import {
+  flushInternalKoboSubmissionQueue,
+  queueInternalKoboSubmission,
+  submitInternalKoboSubmission,
+  type InternalKoboSubmissionPayload,
+} from '../../services/internalKoboSubmissionService';
 
 interface HouseholdDetailsPanelProps {
   household: Household;
@@ -167,6 +173,24 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
   const routingEnabled = useTerrainUIStore((s) => s.activePanel === 'routing');
   const lastSyncError = useSyncStore((s) => s.lastSyncError);
   const isOnline = useOfflineStore((s) => s.isOnline);
+
+  useEffect(() => {
+    if (!isOnline) return;
+
+    let cancelled = false;
+    flushInternalKoboSubmissionQueue()
+      .then((result) => {
+        if (cancelled || result.flushed === 0) return;
+        toast.success(`${result.flushed} soumission(s) terrain envoyee(s) au VPS`);
+      })
+      .catch(() => {
+        // La file locale reste intacte; la prochaine reconnexion relancera l'envoi.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isOnline]);
 
   // Optimisation rendering via memoization (bloque les references inutiles du state parent)
   const memoizedTeams = useMemo(() => {
@@ -631,11 +655,6 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
   };
 
   const handleSaveNativeKoboAudit = async () => {
-    if (!onUpdate) {
-      toast.error('Sauvegarde indisponible');
-      return;
-    }
-
     const missingRequiredFields = validateInternalKoboRequiredFields(nativeKoboAuditForm);
     const requestedNumeroOrdre = String(nativeKoboAuditForm.Numero_ordre || '').trim();
     const currentNumeroOrdre = String(household.numeroordre || household.id || '').trim();
@@ -647,6 +666,8 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
     }
 
     setIsUpdating(true);
+    let fallbackSubmissionPayload: InternalKoboSubmissionPayload | null = null;
+
     try {
       const now = new Date().toISOString();
       const targetHouseholdId = String(submissionHousehold.id || household.id);
@@ -733,7 +754,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
         _gem_xlsform_version: INTERNAL_KOBO_FORM_SETTINGS.version,
       };
 
-      await onUpdate(targetHouseholdId, {
+      const householdPatch = {
         status: nextStatus,
         koboData: koboDataPatch,
         koboSync: {
@@ -765,16 +786,70 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
             savedAt: now,
           },
         },
-      } as Partial<Household>);
+      } as Partial<Household>;
+
+      fallbackSubmissionPayload = {
+        clientSubmissionId: internalSubmissionId,
+        householdId: targetHouseholdId,
+        numeroOrdre: String(nativeKoboAuditForm.Numero_ordre || submissionHousehold.numeroordre || targetHouseholdId),
+        formKey: 'terrain_internal',
+        formVersion: INTERNAL_KOBO_FORM_SETTINGS.version,
+        role: nativeKoboAuditForm.role ? String(nativeKoboAuditForm.role) : null,
+        status: allRequiredComplete ? 'submitted' : 'draft',
+        values: cleanValues,
+        metadata: {
+          xlsForm: INTERNAL_KOBO_FORM_SETTINGS,
+          target: 'gem-vps',
+          source: 'native-gem-kobo-form',
+          localSavedAt: now,
+          validation: {
+            allRequiredComplete,
+            controleOk,
+            hasControlNonConformity,
+          },
+        },
+        requiredMissing: missingRequiredFields.map((field) => field.name),
+        householdPatch: householdPatch as Record<string, unknown>,
+      };
+
+      let traceQueued = false;
+
+      if (onUpdate) {
+        await onUpdate(targetHouseholdId, householdPatch);
+
+        const { householdPatch: _householdPatch, ...submissionTracePayload } = fallbackSubmissionPayload;
+        try {
+          await submitInternalKoboSubmission(submissionTracePayload);
+        } catch (submissionError) {
+          traceQueued = true;
+          await queueInternalKoboSubmission(
+            submissionTracePayload,
+            submissionError instanceof Error ? submissionError.message : 'Trace VPS indisponible'
+          );
+        }
+      } else {
+        await submitInternalKoboSubmission(fallbackSubmissionPayload);
+      }
 
       toast.success(
-        allRequiredComplete
-          ? 'Formulaire soumis au serveur VPS'
-          : `Brouillon sauvegardé sur le VPS (${missingRequiredFields.length} requis manquant(s))`
+        traceQueued
+          ? 'Fiche sauvegardee; trace Kobo interne mise en file VPS'
+          : allRequiredComplete
+            ? 'Formulaire soumis au serveur VPS'
+            : `Brouillon sauvegardé sur le VPS (${missingRequiredFields.length} requis manquant(s))`
       );
       setShowInternalReportModal(false);
-    } catch {
-      toast.error('Soumission impossible: serveur VPS indisponible');
+    } catch (error) {
+      if (fallbackSubmissionPayload) {
+        await queueInternalKoboSubmission(
+          fallbackSubmissionPayload,
+          error instanceof Error ? error.message : 'VPS indisponible'
+        );
+        toast.success('VPS indisponible: saisie securisee en file locale');
+        setShowInternalReportModal(false);
+      } else {
+        toast.error('Soumission impossible: serveur VPS indisponible');
+      }
     } finally {
       setIsUpdating(false);
     }
