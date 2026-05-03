@@ -200,7 +200,8 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
     }),
   })).filter((section) => {
     if (!selectedRole) return section.id === 'menage' && section.fields.length > 0;
-    return section.fields.length > 0;
+    if (!normalizedQuery) return true;
+    return section.fields.length > 0 || `${section.title} ${section.subtitle}`.toLowerCase().includes(normalizedQuery);
   });
 
   const activeSection =
@@ -481,7 +482,16 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
                   </div>
                 </div>
                 <div className="grid grid-cols-1 gap-3">
-                  {activeSection.fields.map(renderField)}
+                  {activeSection.fields.length ? (
+                    activeSection.fields.map(renderField)
+                  ) : (
+                    <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.035] p-6 text-center">
+                      <p className="text-sm font-black text-white">Aucun champ actif pour ce role.</p>
+                      <p className="mt-2 text-[11px] font-semibold leading-relaxed text-slate-400">
+                        Changez le role dans Menage pour remplir cette etape, ou utilisez-la comme consultation.
+                      </p>
+                    </div>
+                  )}
                 </div>
               </section>
             ) : (
