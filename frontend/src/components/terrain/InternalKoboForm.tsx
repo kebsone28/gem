@@ -1,5 +1,17 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Camera, CheckCircle2, ChevronDown, ChevronRight, Database, ImagePlus, Lock, Search, X } from 'lucide-react';
+import {
+  AlertCircle,
+  Camera,
+  CheckCircle2,
+  ChevronRight,
+  ClipboardList,
+  Database,
+  ImagePlus,
+  Lock,
+  LockKeyhole,
+  Search,
+  X,
+} from 'lucide-react';
 import apiClient from '../../api/client';
 import { compressImage } from '../../utils/imageUtils';
 import {
@@ -246,6 +258,40 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
   const blockedByTitle = (sectionId: string) =>
     navigableSections.find((section) => section.id === sectionId)?.title || 'l etape precedente';
 
+  const getSectionStatus = (section: typeof navigableSections[number]) => {
+    const fillableCount = section.activeFields.filter((field) => field.type !== 'note' && !field.readOnly).length;
+    if (section.locked) {
+      return {
+        label: 'Verrouille',
+        detail: `Terminer ${blockedByTitle(section.blockedBySectionId)}`,
+        className: 'border-white/5 bg-white/[0.02] text-slate-600',
+        icon: <LockKeyhole size={13} />,
+      };
+    }
+    if (section.missingFields.length > 0) {
+      return {
+        label: `${section.missingFields.length} requis`,
+        detail: `${fillableCount} champs actifs`,
+        className: 'border-amber-300/25 bg-amber-400/10 text-amber-100',
+        icon: <AlertCircle size={13} />,
+      };
+    }
+    if (fillableCount > 0) {
+      return {
+        label: 'Termine',
+        detail: `${fillableCount} champs actifs`,
+        className: 'border-emerald-300/25 bg-emerald-400/10 text-emerald-100',
+        icon: <CheckCircle2 size={13} />,
+      };
+    }
+    return {
+      label: 'Disponible',
+      detail: 'Aucun champ actif',
+      className: 'border-white/8 bg-white/[0.03] text-slate-400',
+      icon: <ChevronRight size={13} />,
+    };
+  };
+
   const setOption = (field: InternalKoboField, optionName: string) => {
     if (field.type === 'select_multiple') {
       const current = new Set(asArray(values[field.name]));
@@ -281,14 +327,14 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
   const renderField = (field: InternalKoboField) => {
     const value = getInternalKoboFieldValue(field, values);
     const missing = missingRequired.some((item) => item.name === field.name);
-    const shellClass = `rounded-[1.4rem] border p-4 space-y-3 ${
-      missing ? 'border-rose-400/35 bg-rose-500/[0.08]' : 'border-white/[0.08] bg-white/[0.045]'
+    const shellClass = `rounded-2xl border p-4 space-y-3 shadow-sm ${
+      missing ? 'border-amber-300/35 bg-amber-400/[0.08]' : 'border-white/[0.08] bg-white/[0.04]'
     }`;
 
     if (field.type === 'note') {
       return (
-        <div key={field.name} className="rounded-[1.4rem] border border-blue-300/20 bg-blue-400/[0.08] p-4">
-          <p className="text-[10px] font-black uppercase tracking-[0.22em] text-blue-200">{field.label}</p>
+        <div key={field.name} className="rounded-2xl border border-blue-300/20 bg-blue-400/[0.08] p-4">
+          <p className="text-[11px] font-black uppercase tracking-[0.14em] text-blue-100">{field.label}</p>
           {field.hint || field.guidanceHint ? (
             <p className="mt-2 text-[11px] font-semibold leading-relaxed text-slate-300">{field.hint || field.guidanceHint}</p>
           ) : null}
@@ -306,8 +352,8 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
           className={`${shellClass} flex w-full items-center justify-between gap-4 text-left transition-all active:scale-[0.99]`}
         >
           <div className="min-w-0">
-            <p className="text-[13px] font-black leading-snug text-white">{field.label}</p>
-            <p className="mt-1 text-[9px] font-bold uppercase tracking-[0.16em] text-slate-500">{field.name}</p>
+            <p className="text-[14px] font-black leading-snug text-white">{field.label}</p>
+            <p className="mt-1 text-[10px] font-semibold text-slate-500">Code Kobo: {field.name}</p>
           </div>
           <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-full border ${
             checked ? 'border-emerald-300 bg-emerald-400 text-slate-950' : 'border-white/15 bg-slate-950/50 text-slate-500'
@@ -322,15 +368,17 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
       <div key={field.name} className={shellClass}>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-[13px] font-black leading-snug text-white">{field.label}</p>
-            <p className="mt-1 text-[9px] font-bold uppercase tracking-[0.16em] text-blue-300/55">{field.name}</p>
+            <p className="text-[14px] font-black leading-snug text-white">{field.label}</p>
+            <p className="mt-1 text-[10px] font-semibold text-slate-500">Code Kobo: {field.name}</p>
             {field.hint || field.guidanceHint ? (
               <p className="mt-2 text-[11px] font-semibold leading-relaxed text-slate-400">{field.hint || field.guidanceHint}</p>
             ) : null}
           </div>
           {field.required ? (
-            <span className="shrink-0 rounded-full bg-amber-400/10 px-2.5 py-1 text-[8px] font-black uppercase tracking-widest text-amber-100">
-              Requis
+            <span className={`shrink-0 rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.12em] ${
+              missing ? 'bg-amber-300 text-slate-950' : 'bg-amber-400/10 text-amber-100'
+            }`}>
+              Obligatoire
             </span>
           ) : null}
         </div>
@@ -349,7 +397,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
               onChange={(event) => onChange(field.name, event.target.value)}
               rows={field.appearance === 'multiline' || field.name === 'notes_generales' ? 3 : 2}
               placeholder="Saisir la valeur..."
-              className="w-full resize-none rounded-2xl border border-white/8 bg-slate-950/35 px-4 py-3 text-[12px] font-semibold leading-relaxed text-slate-100 outline-none transition-colors placeholder:text-slate-600 focus:border-blue-400/40"
+              className="w-full resize-none rounded-2xl border border-white/10 bg-slate-950/35 px-4 py-3 text-sm font-semibold leading-relaxed text-slate-100 outline-none transition-colors placeholder:text-slate-600 focus:border-blue-400/50"
             />
           ) : (
             <input
@@ -358,7 +406,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
               value={String(value || '')}
               onChange={(event) => onChange(field.name, event.target.value)}
               placeholder={field.type === 'geopoint' ? 'lat lon' : 'Saisir la valeur...'}
-              className="h-12 w-full rounded-2xl border border-white/10 bg-slate-950/45 px-4 text-sm font-black text-white outline-none transition-colors focus:border-blue-400/50"
+              className="h-12 w-full rounded-2xl border border-white/10 bg-slate-950/45 px-4 text-sm font-bold text-white outline-none transition-colors focus:border-blue-400/50"
             />
           )
         ) : null}
@@ -375,11 +423,12 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
                   key={option.name}
                   type="button"
                   onClick={() => setOption(field, option.name)}
-                  className={`${field.appearance === 'quick' ? 'min-h-10' : 'min-h-11'} rounded-2xl border px-3 py-2 text-left text-[10px] font-black uppercase tracking-[0.08em] transition-all active:scale-95 ${
-                    active ? getToneForValue(option.name) : 'border-white/10 bg-slate-950/30 text-slate-400 hover:bg-white/[0.06]'
+                  className={`${field.appearance === 'quick' ? 'min-h-10' : 'min-h-12'} flex items-center justify-between gap-3 rounded-2xl border px-3 py-2 text-left text-[12px] font-black uppercase tracking-[0.08em] transition-all active:scale-95 ${
+                    active ? getToneForValue(option.name) : 'border-white/10 bg-slate-950/30 text-slate-300 hover:bg-white/[0.06]'
                   }`}
                 >
-                  {option.label}
+                  <span>{option.label}</span>
+                  {active ? <CheckCircle2 size={15} className="shrink-0" /> : null}
                 </button>
               );
             })}
@@ -418,56 +467,72 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
 
   return (
     <div className="fixed inset-0 z-[3000] flex items-end justify-center bg-slate-950/80 p-0 backdrop-blur-md sm:items-center sm:p-4">
-      <div className="grid h-[96vh] w-full max-w-6xl overflow-hidden rounded-t-[2rem] border border-white/10 bg-[#050F1F] shadow-2xl sm:h-[90vh] sm:rounded-[2rem] md:grid-cols-[280px_1fr]">
-        <aside className="hidden border-r border-white/10 bg-slate-950/45 p-4 md:block">
-          <div className="mb-5 rounded-[1.5rem] border border-blue-400/15 bg-blue-500/[0.08] p-4">
-            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-blue-200">GEM Kobo Engine</p>
-            <p className="mt-2 text-3xl font-black text-white">{progress.percent}%</p>
-            <p className="text-[11px] font-semibold text-slate-400">{progress.filled}/{progress.total} champs visibles remplis</p>
-            <div className="mt-3 h-2 rounded-full bg-slate-900">
-              <div className="h-full rounded-full bg-blue-400" style={{ width: `${progress.percent}%` }} />
+      <div className="grid h-[100dvh] w-full max-w-7xl overflow-hidden rounded-t-[1.5rem] border border-white/10 bg-[#07111F] shadow-2xl sm:h-[92vh] sm:rounded-[1.75rem] md:grid-cols-[310px_1fr]">
+        <aside className="hidden border-r border-white/10 bg-slate-950/35 p-4 md:block">
+          <div className="mb-5 rounded-2xl border border-blue-400/20 bg-blue-500/[0.08] p-4">
+            <div className="flex items-center gap-2 text-blue-100">
+              <ClipboardList size={17} />
+              <p className="text-[11px] font-black uppercase tracking-[0.18em]">Avancement</p>
             </div>
+            <div className="mt-4 flex items-end justify-between gap-3">
+              <p className="text-4xl font-black text-white">{progress.percent}%</p>
+              <p className="pb-1 text-right text-[11px] font-bold leading-snug text-slate-400">
+                {progress.filled}/{progress.total}<br />renseignes
+              </p>
+            </div>
+            <div className="mt-4 h-2.5 rounded-full bg-slate-950/70">
+              <div className="h-full rounded-full bg-blue-400 transition-all" style={{ width: `${progress.percent}%` }} />
+            </div>
+            <p className="mt-3 text-[11px] font-semibold text-slate-400">
+              {missingRequired.length ? `${missingRequired.length} champ(s) obligatoire(s) restant(s)` : 'Tous les champs visibles sont complets'}
+            </p>
           </div>
 
           <div className="space-y-2">
-            {navigableSections.map((section) => (
-              <button
-                key={section.id}
-                type="button"
-                disabled={section.locked}
-                onClick={() => {
-                  if (!section.locked) setActiveSectionId(section.id);
-                }}
-                className={`flex w-full items-center justify-between gap-2 rounded-2xl border px-3 py-3 text-left transition-colors ${
-                  activeSection?.id === section.id
-                    ? 'border-blue-400/35 bg-blue-500/12 text-white'
-                    : section.locked
-                      ? 'cursor-not-allowed border-white/5 bg-white/[0.02] text-slate-600 opacity-60'
-                      : 'border-white/8 bg-white/[0.035] text-slate-400 hover:bg-white/[0.06]'
-                }`}
-              >
-                <span className="min-w-0">
-                  <span className="block truncate text-[11px] font-black uppercase tracking-[0.12em]">{section.title}</span>
-                  <span className="block text-[9px] font-semibold text-slate-500">
-                    {section.locked ? `Bloque par ${blockedByTitle(section.blockedBySectionId)}` : `${section.fields.length} champs`}
-                  </span>
-                </span>
-                <ChevronRight size={14} />
-              </button>
-            ))}
+            {navigableSections.map((section) => {
+              const status = getSectionStatus(section);
+              return (
+                <button
+                  key={section.id}
+                  type="button"
+                  disabled={section.locked}
+                  onClick={() => {
+                    if (!section.locked) setActiveSectionId(section.id);
+                  }}
+                  className={`w-full rounded-2xl border p-3 text-left transition-colors ${
+                    activeSection?.id === section.id
+                      ? 'border-blue-300/45 bg-blue-500/14 text-white'
+                      : section.locked
+                        ? 'cursor-not-allowed border-white/5 bg-white/[0.02] text-slate-600 opacity-70'
+                        : 'border-white/8 bg-white/[0.035] text-slate-300 hover:bg-white/[0.06]'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="min-w-0">
+                      <span className="block truncate text-[12px] font-black uppercase tracking-[0.1em]">{section.title}</span>
+                      <span className="mt-1 block truncate text-[10px] font-semibold text-slate-500">{status.detail}</span>
+                    </span>
+                    <span className={`flex shrink-0 items-center gap-1 rounded-full border px-2 py-1 text-[8px] font-black uppercase tracking-[0.1em] ${status.className}`}>
+                      {status.icon}
+                      {status.label}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </aside>
 
         <main className="flex min-h-0 flex-col">
-          <header className="shrink-0 border-b border-white/10 bg-[#050F1F] p-4 sm:p-5">
+          <header className="shrink-0 border-b border-white/10 bg-[#07111F] p-4 sm:p-5">
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
-                <p className="text-[10px] font-black uppercase tracking-[0.22em] text-blue-300">Systeme Kobo interne</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.22em] text-blue-300">Saisie terrain VPS</p>
                 <h3 className="mt-1 truncate text-xl font-black uppercase tracking-tight text-white sm:text-2xl">
-                  Formulaire terrain complet
+                  Formulaire du menage
                 </h3>
-                <p className="mt-1 text-[11px] font-semibold text-slate-400">
-                  Moteur XLSForm natif: choix, conditions, champs requis, photos et soumission au serveur VPS GEM.
+                <p className="mt-1 text-[12px] font-semibold text-slate-400">
+                  {numeroOrdre ? `Numero ordre ${numeroOrdre}` : 'Renseignez le numero ordre'}{selectedRole ? ` - ${formatInternalKoboValue(selectedRole, 'roles')}` : ''}
                 </p>
               </div>
               <button
@@ -480,20 +545,20 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
               </button>
             </div>
 
-            <div className="mt-4 grid grid-cols-[1fr_auto] gap-3">
-              <div className="flex h-11 items-center gap-2 rounded-2xl border border-white/10 bg-slate-950/45 px-3">
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto]">
+              <div className="flex h-12 items-center gap-2 rounded-2xl border border-white/10 bg-slate-950/45 px-3">
                 <Search size={15} className="text-slate-500" />
                 <input
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Rechercher un champ Kobo..."
+                  placeholder="Rechercher une question..."
                   className="min-w-0 flex-1 bg-transparent text-[12px] font-semibold text-white outline-none placeholder:text-slate-600"
                 />
               </div>
-              <div className={`hidden rounded-2xl border px-4 text-[10px] font-black uppercase tracking-[0.13em] sm:flex sm:items-center ${
+              <div className={`rounded-2xl border px-4 py-3 text-center text-[10px] font-black uppercase tracking-[0.13em] sm:flex sm:items-center ${
                 missingRequired.length ? 'border-amber-400/25 bg-amber-500/10 text-amber-100' : 'border-emerald-400/25 bg-emerald-500/10 text-emerald-100'
               }`}>
-                {missingRequired.length ? `${missingRequired.length} requis` : 'pret'}
+                {missingRequired.length ? `${missingRequired.length} obligatoire(s)` : 'Pret a soumettre'}
               </div>
             </div>
 
@@ -533,13 +598,15 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
 
             {activeSection ? (
               <section className="space-y-4">
-                <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.035] p-4">
-                  <div className="flex items-center justify-between gap-3">
+                <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <h4 className="text-sm font-black uppercase tracking-[0.16em] text-white">{activeSection.title}</h4>
                       <p className="mt-1 text-[11px] font-semibold text-slate-400">{activeSection.subtitle}</p>
                     </div>
-                    <ChevronDown size={18} className="text-slate-500" />
+                    <span className={`rounded-full border px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] ${getSectionStatus(activeSection).className}`}>
+                      {activeSection.missingFields.length ? `${activeSection.missingFields.length} a completer` : 'Section complete'}
+                    </span>
                   </div>
                 </div>
                 <div className="grid grid-cols-1 gap-3">
@@ -562,13 +629,13 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
             )}
           </div>
 
-          <footer className="shrink-0 border-t border-white/10 bg-[#050F1F] p-4">
+          <footer className="shrink-0 border-t border-white/10 bg-[#07111F] p-4">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1.6fr]">
               <button
                 type="button"
                 onClick={onClose}
                 disabled={isSaving}
-                className="h-[52px] rounded-2xl border border-white/10 bg-white/[0.045] text-[10px] font-black uppercase tracking-[0.16em] text-slate-300 transition-colors hover:bg-white/[0.08] disabled:opacity-50"
+                className="h-[52px] rounded-2xl border border-white/10 bg-white/[0.045] text-[11px] font-black uppercase tracking-[0.16em] text-slate-300 transition-colors hover:bg-white/[0.08] disabled:opacity-50"
               >
                 Fermer
               </button>
@@ -576,10 +643,10 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
                 type="button"
                 onClick={onSave}
                 disabled={isSaving}
-                className="flex h-[52px] items-center justify-center gap-2 rounded-2xl bg-blue-600 text-[10px] font-black uppercase tracking-[0.16em] text-white shadow-xl shadow-blue-600/20 transition-all hover:bg-blue-500 active:scale-95 disabled:opacity-50"
+                className="flex h-[52px] items-center justify-center gap-2 rounded-2xl bg-blue-600 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-xl shadow-blue-600/20 transition-all hover:bg-blue-500 active:scale-95 disabled:opacity-50"
               >
                 <Database size={16} />
-                {isSaving ? 'Soumission...' : missingRequired.length ? 'Sauvegarder brouillon VPS' : 'Soumettre au VPS'}
+                {isSaving ? 'Enregistrement...' : missingRequired.length ? 'Enregistrer brouillon' : 'Soumettre au serveur'}
               </button>
             </div>
           </footer>
