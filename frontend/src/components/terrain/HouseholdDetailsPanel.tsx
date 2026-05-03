@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import {
   X,
@@ -23,6 +23,9 @@ import {
   Settings2,
   Lock,
   LockOpen,
+  ClipboardList,
+  Activity,
+  Info,
 } from 'lucide-react';
 import { AdminControlCenterModal } from './AdminControlCenterModal';
 import { motion } from 'framer-motion';
@@ -44,6 +47,13 @@ import { useTerrainUIStore } from '../../store/terrainUIStore';
 import { useSyncStore } from '../../store/syncStore';
 import { useOfflineStore } from '../../store/offlineStore';
 import { TeamAllocationsBadge, HouseholdStatusTimeline } from './shared';
+import { InternalKoboForm } from './InternalKoboForm';
+import {
+  INTERNAL_KOBO_CONTROL_FIELD_NAMES,
+  INTERNAL_KOBO_FIELD_NAMES,
+  isTruthyKoboValue,
+  validateInternalKoboRequiredFields,
+} from './internalKoboFormDefinition';
 
 interface HouseholdDetailsPanelProps {
   household: Household;
@@ -60,7 +70,79 @@ interface HouseholdDetailsPanelProps {
   userRole?: string;
   isAdmin?: boolean;
   pendingSyncCount?: number;
+  koboAssetUid?: string;
 }
+
+type NativeKoboAuditField = {
+  key: string;
+  koboKey: string;
+  label: string;
+  observationKey?: string;
+  type?: 'select' | 'number' | 'text';
+};
+
+const NATIVE_KOBO_AUDIT_FIELDS: NativeKoboAuditField[] = [
+  {
+    key: 'disjoncteur_tete',
+    koboKey: 'DISJONCTEUR_GENERAL_EN_TETE_D_',
+    observationKey: 'obs_disjoncteur',
+    label: "Disjoncteur général en tête d'installation",
+  },
+  {
+    key: 'protection_ddr_30ma',
+    koboKey: 'ENSEMBLE_DE_L_INSTALLATION_PRO',
+    observationKey: 'obs_ddr',
+    label: "Ensemble de l'installation protégé par DDR 30 mA",
+  },
+  {
+    key: 'protection_origine',
+    koboKey: 'PROTECTION_L_ORIGINE_DE_CHAQ',
+    observationKey: 'obs_protection_origine',
+    label: "Protection à l'origine de chaque circuit",
+  },
+  {
+    key: 'separation_circuits',
+    koboKey: 'S_PARATION_DES_CIRCUITS_Lumi_',
+    observationKey: 'obs_separation',
+    label: 'Séparation des circuits lumière et prise',
+  },
+  {
+    key: 'contact_direct',
+    koboKey: 'PROTECTION_CONTRE_LES_CONTACTS',
+    observationKey: 'obs_contact_direct',
+    label: 'Protection contre les contacts directs',
+  },
+  {
+    key: 'mise_en_oeuvre_mat',
+    koboKey: 'MISE_EN_OEUVRE_MAT_RIEL_ET_APP',
+    observationKey: 'obs_mat',
+    label: 'Mise en œuvre matériel et appareillage',
+  },
+  {
+    key: 'continuite_protection',
+    koboKey: 'CONTINUITE_DE_LA_PROTECTION_ME',
+    observationKey: 'obs_continuite',
+    label: 'Continuité de la protection mécanique',
+  },
+  {
+    key: 'audit_terre',
+    koboKey: 'MISE_EN_UVRE_DU_R_SEAU_DE_TER',
+    observationKey: 'obs_terre',
+    label: 'Mise en œuvre du réseau de terre et continuité',
+  },
+  {
+    key: 'barrette_terre',
+    koboKey: 'ETAT_DE_LA_BARRETTE_DE_TERRE',
+    label: 'État de la barrette de terre',
+  },
+  {
+    key: 'resistance_terre',
+    koboKey: 'VALEUR_DE_LA_RESISTANCE_DE_TER',
+    observationKey: 'obs_resistance',
+    label: 'Valeur de la résistance de terre ou de boucle',
+    type: 'number',
+  },
+];
 
 export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
   household,
@@ -89,6 +171,37 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
 
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [showAdminModal, setShowAdminModal] = useState(false);
+  const [showInternalReportModal, setShowInternalReportModal] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [nativeKoboAuditForm, setNativeKoboAuditForm] = useState<Record<string, unknown>>({});
+  const [nativeKoboValidated, setNativeKoboValidated] = useState(false);
+
+  useEffect(() => {
+    if (!showInternalReportModal) return;
+
+    const audit = ((household.constructionData as any)?.audit || {}) as Record<string, any>;
+    const koboData = (household.koboData || {}) as Record<string, any>;
+    const nextForm: Record<string, unknown> = {};
+
+    INTERNAL_KOBO_FIELD_NAMES.forEach((fieldName) => {
+      const storedValue = audit[fieldName] ?? koboData[fieldName] ?? '';
+      nextForm[fieldName] = storedValue;
+    });
+
+    nextForm.Numero_ordre = String(koboData.Numero_ordre ?? household.numeroordre ?? household.id ?? '');
+    nextForm.nom_key = String(koboData.nom_key ?? household.name ?? household.owner ?? '');
+    nextForm.telephone_key = String(koboData.telephone_key ?? household.phone ?? household.ownerPhone ?? '');
+    nextForm.latitude_key = String(koboData.latitude_key ?? household.latitude ?? '');
+    nextForm.longitude_key = String(koboData.longitude_key ?? household.longitude ?? '');
+    nextForm.region_key = String(koboData.region_key ?? household.region ?? '');
+    nextForm.LOCALISATION_CLIENT = String(
+      koboData.LOCALISATION_CLIENT ??
+      (household.latitude && household.longitude ? `${household.latitude} ${household.longitude}` : '')
+    );
+    setNativeKoboAuditForm(nextForm);
+    setNativeKoboValidated(Boolean(audit.conforme || household.koboSync?.controleOk));
+  }, [household.constructionData, household.koboData, household.koboSync?.controleOk, showInternalReportModal]);
+
   const [selectedNewStatus, setSelectedNewStatus] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const alerts = Array.isArray(household.alerts) ? household.alerts : [];
@@ -203,23 +316,165 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
     },
   };
 
+  // Helper de reformatage de texte Kobo (slugs -> texte lisible)
+  const reformatKoboText = (text: string | null | undefined): string => {
+    if (!text) return '—';
+
+    const knownKoboLabels: Record<string, string> = {
+      etape_controleur: 'Étape contrôleur - vérification finale',
+      group_hx7ae46: 'Contrôle installation intérieure',
+      DISJONCTEUR_GENERAL_EN_TETE_D_: "Disjoncteur général en tête d'installation",
+      TYPE_DE_DISJONCTEUR_GENERAL: 'Type de disjoncteur général',
+      ENSEMBLE_DE_L_INSTALLATION_PRO: "Ensemble de l'installation protégé par DDR 30 mA",
+      PROTECTION_L_ORIGINE_DE_CHAQ: "Protection à l'origine de chaque circuit (modulaire et conducteur)",
+      S_PARATION_DES_CIRCUITS_Lumi_: 'Séparation des circuits (lumière et prise)',
+      PROTECTION_CONTACT_D_TOUTE_L_INSTALLATION: "Protection contact direct à vérifier sur toute l'installation",
+      PROTECTION_CONTRE_LES_CONTACTS: 'Protection contre les contacts directs',
+      MISE_EN_OEUVRE_MAT_RIEL_ET_APP: 'Mise en œuvre matériel et appareillage (coffret, prise, interrupteur, boîte, câble...)',
+      CONTINUITE_DE_LA_PROTECTION_ME: 'Continuité de la protection mécanique des fils conducteurs (phase, neutre, terre)',
+      RESEAU_DE_TERRE_A_VE_TOUTE_L_INSTALLATION: "Réseau de terre à vérifier sur toute l'installation",
+      MISE_EN_UVRE_DU_R_SEAU_DE_TER: 'Mise en œuvre du réseau de terre et continuité',
+      ETAT_DE_LA_BARRETTE_DE_TERRE: 'État de la barrette de terre',
+      VALEUR_DE_LA_RESISTANCE_DE_TER: 'Valeur de la résistance de terre ou de boucle',
+      validation_controleur_final: "Validation finale du contrôle et de l'installation",
+      notes_generales: 'Notes générales',
+      // Nouveaux mappings issus de l'audit
+      verification_branchement_interieur: 'Conformité du branchement',
+      problemes_branchement_interieur: 'Anomalies branchement',
+      etat_installation_interieur: 'Qualité installation intérieure',
+      problemes_installation_interieur: 'Détails anomalies intérieures',
+      validation_interieur_final: 'Confirmation contrôle final',
+      rr4dg37: 'Contrôle préalable',
+      oo84j36: 'Détails des anomalies détectées',
+      ga7rh54: 'Phase du contrôle',
+      sv3tg34: 'État du branchement',
+      ETAT_DE_L_INSTALLATION: "État de l'installation",
+      controleurPROB: 'Problèmes détectés par le contrôleur'
+    };
+
+    const makeLookupKey = (value: string) =>
+      value
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-zA-Z0-9]+/g, ' ')
+        .trim()
+        .toUpperCase();
+
+    const knownKoboLabelsByLookup = Object.fromEntries(
+      Object.entries(knownKoboLabels).map(([key, label]) => [makeLookupKey(key), label])
+    );
+
+    let formatted = String(text).trim();
+    const rawSegment = formatted.split('/').filter(Boolean).pop()?.trim() || formatted;
+    const exactLabel = knownKoboLabels[rawSegment] || knownKoboLabels[formatted];
+    if (exactLabel) return exactLabel;
+
+    const lookupLabel = knownKoboLabelsByLookup[makeLookupKey(rawSegment)] || knownKoboLabelsByLookup[makeLookupKey(formatted)];
+    if (lookupLabel) return lookupLabel;
+
+    formatted = rawSegment;
+
+    // Kobo tronque parfois les noms de variables : on complète ici les cas métier connus.
+    const inferredLabels: Array<[RegExp, string]> = [
+      [/S\s*PARATION\s+DES\s+CIRCUITS\s+LUMI/i, 'Séparation des circuits (lumière et prise)'],
+      [/PROTECTION\s+L\s+ORIGINE\s+DE\s+CHAQ/i, "Protection à l'origine de chaque circuit (modulaire et conducteur)"],
+      [/MISE\s+EN\s+UVRE\s+DU\s+R\s*SEAU\s+DE\s+TER/i, 'Mise en œuvre du réseau de terre et continuité'],
+      [/MISE\s+EN\s+OEUVRE\s+MAT\s*RIEL\s+ET\s+APP/i, 'Mise en œuvre matériel et appareillage (coffret, prise, interrupteur, boîte, câble...)'],
+      [/CONTINUITE\s+DE\s+LA\s+PROTECTION\s+ME/i, 'Continuité de la protection mécanique des fils conducteurs (phase, neutre, terre)'],
+      [/VALEUR\s+DE\s+LA\s+RESISTANCE\s+DE\s+TER/i, 'Valeur de la résistance de terre ou de boucle'],
+      [/ENSEMBLE\s+DE\s+L\s+INSTALLATION\s+PRO/i, "Ensemble de l'installation protégé par DDR 30 mA"],
+      [/DISJONCTEUR\s+GENERAL\s+EN\s+TETE/i, "Disjoncteur général en tête d'installation"],
+    ];
+
+    const inferredLabel = inferredLabels.find(([pattern]) => pattern.test(formatted))?.[1];
+    if (inferredLabel) return inferredLabel;
+
+    // 1. Remplacement des séparateurs Kobo restants
+    formatted = formatted.replace(/__/g, ' / ');
+    formatted = formatted.replace(/_/g, ' ');
+
+    // 2. Correction heuristique des accents courants cassés par l'export Kobo
+    const corrections: Record<string, string> = {
+      'etape controleur': 'étape contrôleur',
+      'group': 'groupe',
+      'fix e': 'fixée',
+      'lumi re': 'lumière',
+      'c blage': 'câblage',
+      'd rivation': 'dérivation',
+      'rése': 'réseau',
+      'r seau': 'réseau',
+      'mise en uvre': 'mise en œuvre',
+      's paration': 'séparation',
+      'protection l origine': "protection à l'origine",
+      'chaq': 'chaque',
+      'ter': 'terre',
+      'pr parateur': 'préparateur',
+      'récupér': 'récupéré',
+      'installat': 'installation',
+      'effec': 'effectué',
+      'piquet': 'piquet de terre',
+      'disjoncteur': 'disjoncteur',
+      'd placer': 'déplacer',
+      'en lieu c': 'en lieu sûr',
+      'contr leur': 'contrôleur'
+    };
+
+    Object.entries(corrections).forEach(([search, replace]) => {
+      const regex = new RegExp(search, 'gi');
+      formatted = formatted.replace(regex, replace);
+    });
+
+    // 3. Nettoyage final (espaces multiples et capitalisation)
+    formatted = formatted.replace(/\s+/g, ' ').trim();
+    return formatted.charAt(0).toUpperCase() + formatted.slice(1);
+  };
+
+  const formatKoboValue = (value: unknown): string => {
+    if (value === null || value === undefined || value === '') return '—';
+
+    const raw = String(value).trim();
+    const normalized = raw.toLowerCase().replace(/\s+/g, '_');
+    const knownValues: Record<string, string> = {
+      true: 'Oui',
+      false: 'Non',
+      oui: 'Oui',
+      non: 'Non',
+      conforme: 'Conforme',
+      non_conforme: 'Non conforme',
+      nc: 'Non conforme',
+      c: 'Conforme',
+      barrette_conforme: 'Barrette conforme',
+    };
+
+    return knownValues[normalized] || reformatKoboText(raw);
+  };
+
   const currentStatus = getHouseholdDerivedStatus(household);
 
-  // Normalize status for timeline. If derived status says 'Conforme ✅', match it to 'Contrôle conforme'
-  const normalizedStatus =
-    currentStatus.toLowerCase().includes('conforme') &&
-      !currentStatus.toLowerCase().includes('non conforme')
-      ? 'Contrôle conforme'
-      : currentStatus
+  // Normalize status for timeline.
+  const normalizedStatus = useMemo(() => {
+    const status = currentStatus.toLowerCase();
+    if (status.includes('conforme') && !status.includes('non conforme')) return 'Contrôle conforme';
+    if (status.includes('non conforme')) return 'Intérieur terminé'; // Si non conforme, l'intérieur est forcément fini
+    if (status.includes('audit')) return 'Intérieur terminé';
+
+    return currentStatus
         .replace(
           /[\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF]/g,
           ''
         )
         .trim();
+  }, [currentStatus]);
 
-  const currentStageIndex = timelineStages.findIndex(
-    (s) => s.toLowerCase() === normalizedStatus.toLowerCase()
-  );
+  const currentStageIndex = useMemo(() => {
+    const idx = timelineStages.findIndex(
+      (s) => s.toLowerCase() === normalizedStatus.toLowerCase()
+    );
+    // Fallback : si on est "Non Conforme", on est au moins à l'étape 4 (Intérieur terminé)
+    if (idx === -1 && currentStatus.toLowerCase().includes('non conforme')) return 4;
+    return idx;
+  }, [normalizedStatus, currentStatus]);
+
   const progressPercentRaw =
     currentStageIndex >= 0
       ? Math.round((currentStageIndex / (timelineStages.length - 1)) * 100)
@@ -233,6 +488,33 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
   const activeStageMeta =
     stageVisuals[timelineStages[currentStageIndex] || 'Non encore installée'] ||
     stageVisuals['Non encore installée'];
+  const progressRingCircumference = 2 * Math.PI * 28;
+  const progressRingOffset =
+    progressRingCircumference - (Math.max(0, Math.min(100, progressPercent)) / 100) * progressRingCircumference;
+  const completedStageCount = currentStageIndex >= 0 ? currentStageIndex + 1 : 0;
+  const headerAuraClass = isTerminalStatus
+    ? 'from-rose-500/26 via-rose-500/8 to-transparent'
+    : progressPercent >= 100
+      ? 'from-emerald-400/24 via-emerald-500/8 to-transparent'
+      : progressPercent >= 50
+        ? 'from-sky-400/24 via-blue-500/8 to-transparent'
+        : 'from-amber-400/22 via-blue-500/8 to-transparent';
+  const lastUpdateSummary = useMemo(() => {
+    if (!household.updatedAt) return 'En attente';
+
+    const updatedAt = new Date(household.updatedAt);
+    if (Number.isNaN(updatedAt.getTime())) return 'En attente';
+
+    const elapsedMs = Date.now() - updatedAt.getTime();
+    const elapsedMinutes = Math.max(0, Math.floor(elapsedMs / 60000));
+    if (elapsedMinutes < 60) return `${elapsedMinutes || 1} min`;
+
+    const elapsedHours = Math.floor(elapsedMinutes / 60);
+    if (elapsedHours < 24) return `${elapsedHours} h`;
+
+    const elapsedDays = Math.floor(elapsedHours / 24);
+    return `${elapsedDays} j`;
+  }, [household.updatedAt]);
 
   const hasConflict = alerts.some((a: any) => a.type === 'DOUBLON_DETECTE');
   const syncState = household.syncStatus || 'synced';
@@ -260,6 +542,56 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
     };
   }, [syncState]);
 
+  // Détermination du rapport principal intelligent
+  const smartReportAction = useMemo(() => {
+    const statusLower = currentStatus.toLowerCase();
+    const isAuditPhase = statusLower.includes('conforme') || statusLower.includes('audit');
+
+    // 1. Audit Final / Certificat (Uniquement si CONFORME)
+    if ((currentStageIndex >= 5 || household.koboSync?.controleOk || (household.constructionData as any)?.audit) && !statusLower.includes('non conforme')) {
+      return {
+        label: 'Certificat Final',
+        action: () => ReportGen.generateConformiteFinalPDF(household),
+        icon: <ShieldCheck size={18} />,
+        color: 'from-emerald-600 to-emerald-900'
+      };
+    }
+    // 2. Installation Intérieure (Active si Intérieur fini OU Audit en cours/fini même non conforme)
+    if (currentStageIndex >= 4 || isAuditPhase || household.koboSync?.interieurOk || (household.constructionData as any)?.interieur) {
+      return {
+        label: 'PV Intérieur',
+        action: () => ReportGen.generateInstallationPDF(household),
+        icon: <FileText size={18} />,
+        color: 'from-violet-600 to-violet-900'
+      };
+    }
+    // 3. Réseau / Branchement
+    if (currentStageIndex >= 3 || household.koboSync?.reseauOk || (household.constructionData as any)?.reseau) {
+      return {
+        label: 'Fiche Réseau',
+        action: () => ReportGen.generateBranchementPDF(household),
+        icon: <ZapIcon size={18} />,
+        color: 'from-sky-600 to-sky-900'
+      };
+    }
+    // 4. Maçonnerie / Support
+    if (currentStageIndex >= 2 || household.koboSync?.maconOk || (household.constructionData as any)?.macon) {
+      return {
+        label: 'PV Maçonnerie',
+        action: () => ReportGen.generateMaconneriePDF(household),
+        icon: <HammerIcon size={18} />,
+        color: 'from-amber-600 to-amber-900'
+      };
+    }
+    // Default: Livraison
+    return {
+      label: 'Bon Livraison',
+      action: () => ReportGen.generateLivraisonPDF(household),
+      icon: <TruckIcon size={18} />,
+      color: 'from-blue-600 to-indigo-900'
+    };
+  }, [household, currentStageIndex]);
+
   const handleConfirmStatusChange = async () => {
     if (!selectedNewStatus) return;
 
@@ -276,85 +608,286 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
     }
   };
 
+  const updateNativeKoboAuditField = (key: string, value: unknown) => {
+    setNativeKoboAuditForm((current) => ({
+      ...current,
+      [key]: value,
+    }));
+  };
+
+  const handleSaveNativeKoboAudit = async () => {
+    if (!onUpdate) {
+      toast.error('Sauvegarde indisponible');
+      return;
+    }
+
+    const missingRequiredFields = validateInternalKoboRequiredFields(nativeKoboAuditForm);
+
+    setIsUpdating(true);
+    try {
+      const now = new Date().toISOString();
+      const internalSubmissionId = `gem-vps-${household.id}-${Date.now()}`;
+      const cleanValues = Object.fromEntries(
+        Object.entries(nativeKoboAuditForm).filter(([, value]) => {
+          if (Array.isArray(value)) return value.length > 0;
+          return value !== undefined && value !== null && String(value).trim() !== '';
+        })
+      );
+
+      const hasControlNonConformity = INTERNAL_KOBO_CONTROL_FIELD_NAMES.some(
+        (fieldName) => nativeKoboAuditForm[fieldName] === 'non_conforme'
+      );
+      const controlCompleted = isTruthyKoboValue(nativeKoboAuditForm.validation_controleur_final);
+      const allRequiredComplete = missingRequiredFields.length === 0;
+      const controleOk = controlCompleted && allRequiredComplete && !hasControlNonConformity;
+      const nextStatus =
+        controleOk
+          ? 'Contrôle conforme'
+          : hasControlNonConformity || nativeKoboAuditForm.ETAT_DE_L_INSTALLATION === 'probleme_a_signaler'
+            ? 'Non conforme'
+            : isTruthyKoboValue(nativeKoboAuditForm.validation_interieur_final)
+              ? 'Intérieur terminé'
+              : isTruthyKoboValue(nativeKoboAuditForm.validation_reseau_final)
+                ? 'Réseau terminé'
+                : isTruthyKoboValue(nativeKoboAuditForm.validation_macon_final)
+                  ? 'Murs terminés'
+                  : nativeKoboAuditForm.Situation_du_M_nage === 'menage_non_eligible'
+                    ? 'Non éligible'
+                    : household.status;
+
+      const auditPatch: Record<string, any> = {
+        ...((household.constructionData as any)?.audit || {}),
+        ...cleanValues,
+        conforme: controleOk,
+        requiredMissing: missingRequiredFields.map((field) => field.name),
+        source: 'native-gem-kobo-form',
+        submissionTarget: 'gem-vps',
+        internalSubmissionId,
+        updatedAt: now,
+      };
+
+      const koboDataPatch: Record<string, any> = {
+        ...(household.koboData || {}),
+        ...cleanValues,
+        numeroordre: household.numeroordre || household.id,
+        Numero_ordre: nativeKoboAuditForm.Numero_ordre || household.numeroordre || household.id,
+        _gem_internal_kobo: true,
+        _gem_internal_kobo_updated_at: now,
+        _gem_submission_target: 'gem-vps',
+        _gem_submission_id: internalSubmissionId,
+        _gem_submission_status: allRequiredComplete ? 'submitted' : 'draft',
+        _gem_submitted_at: allRequiredComplete ? now : undefined,
+      };
+
+      await onUpdate(household.id, {
+        status: nextStatus,
+        koboData: koboDataPatch,
+        koboSync: {
+          ...(household.koboSync || {}),
+          preparateurKits: Number(nativeKoboAuditForm.Nombre_de_KIT_pr_par || household.koboSync?.preparateurKits || 0),
+          câbleInt25: Number(nativeKoboAuditForm.Longueur_Cable_2_5mm_Int_rieure || household.koboSync?.câbleInt25 || 0),
+          câbleInt15: Number(nativeKoboAuditForm.Longueur_Cable_1_5mm_Int_rieure || household.koboSync?.câbleInt15 || 0),
+          tranchee4: Number(nativeKoboAuditForm.Longueur_Tranch_e_Cable_arm_4mm || household.koboSync?.tranchee4 || 0),
+          tranchee15: Number(nativeKoboAuditForm.Longueur_Tranch_e_C_ble_arm_1_5mm || household.koboSync?.tranchee15 || 0),
+          maconOk: isTruthyKoboValue(nativeKoboAuditForm.validation_macon_final) || household.koboSync?.maconOk,
+          reseauOk: isTruthyKoboValue(nativeKoboAuditForm.validation_reseau_final) || household.koboSync?.reseauOk,
+          interieurOk: isTruthyKoboValue(nativeKoboAuditForm.validation_interieur_final) || household.koboSync?.interieurOk,
+          controleOk,
+          village: household.village || household.koboSync?.village,
+          departement: household.departement || household.koboSync?.departement,
+          region: String(nativeKoboAuditForm.region_key || household.region || household.koboSync?.region || ''),
+          tel: String(nativeKoboAuditForm.telephone_key || household.phone || household.ownerPhone || household.koboSync?.tel || ''),
+        },
+        constructionData: {
+          ...(household.constructionData || {}),
+          audit: auditPatch,
+          internalKoboSubmission: {
+            id: internalSubmissionId,
+            target: 'gem-vps',
+            status: allRequiredComplete ? 'submitted' : 'draft',
+            requiredMissing: missingRequiredFields.map((field) => field.name),
+            submittedAt: allRequiredComplete ? now : undefined,
+            savedAt: now,
+          },
+        },
+      } as Partial<Household>);
+
+      toast.success(
+        allRequiredComplete
+          ? 'Formulaire soumis au serveur VPS'
+          : `Brouillon sauvegardé sur le VPS (${missingRequiredFields.length} requis manquant(s))`
+      );
+      setShowInternalReportModal(false);
+    } catch {
+      toast.error('Soumission impossible: serveur VPS indisponible');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   return (
     <motion.div
       initial={{ x: '100%' }}
       animate={{ x: 0 }}
       exit={{ x: '100%' }}
       transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-      className="fixed bottom-0 left-0 right-0 z-[2000] flex h-[86dvh] w-full flex-col overflow-y-auto rounded-t-[1.75rem] border-t border-white/10 bg-slate-950/92 pb-[env(safe-area-inset-bottom)] text-white shadow-[-20px_0_90px_rgba(0,0,0,0.56)] backdrop-blur-3xl custom-scrollbar sm:h-[88dvh] sm:rounded-t-[2.4rem] md:left-auto md:right-0 md:top-0 md:h-screen md:w-[430px] md:rounded-none md:border-l lg:w-[446px]"
+      className={`fixed inset-x-0 bottom-0 z-[2000] flex w-full flex-col overflow-hidden rounded-t-[1.75rem] border-t border-white/10 bg-slate-950/94 text-white shadow-[-20px_0_90px_rgba(0,0,0,0.56)] backdrop-blur-3xl transition-[max-height,min-height] duration-300 sm:rounded-t-[2.4rem] md:inset-y-0 md:left-auto md:right-0 md:h-screen md:max-h-none md:min-h-0 md:w-[430px] md:rounded-none md:border-l lg:w-[446px] ${
+        isExpanded ? 'max-h-[98dvh] min-h-[92dvh] sm:max-h-[96dvh]' : 'max-h-[94dvh] min-h-[72dvh] sm:max-h-[92dvh]'
+      }`}
     >
       {/* Drag Handle for Mobile */}
-      <div className="md:hidden w-10 h-1.5 bg-white/10 rounded-full mx-auto my-3 shrink-0" />
+      <motion.button
+        type="button"
+        className="mx-auto my-2.5 h-5 w-16 shrink-0 rounded-full md:hidden"
+        aria-label={isExpanded ? 'Réduire le panneau' : 'Agrandir le panneau'}
+        drag="y"
+        dragConstraints={{ top: 0, bottom: 0 }}
+        dragElastic={0.18}
+        whileTap={{ scale: 0.92 }}
+        onClick={() => setIsExpanded((value) => !value)}
+        onDragEnd={(_, info) => {
+          if (info.offset.y < -18) setIsExpanded(true);
+          if (info.offset.y > 18) setIsExpanded(false);
+        }}
+      >
+        <span className="mx-auto mt-1.5 block h-1.5 w-10 rounded-full bg-white/[0.16] shadow-[0_0_16px_rgba(255,255,255,0.08)]" />
+      </motion.button>
 
       {/* Header Sticky */}
-      <div className="sticky top-0 z-10 px-4 py-3.5 sm:px-5 sm:py-4 md:px-7 md:py-5 bg-gradient-to-b from-slate-950/97 via-slate-950/86 to-slate-950/62 backdrop-blur-xl border-b border-white/5 flex justify-between items-start gap-3 shrink-0">
-        <div className="flex flex-col min-w-0 flex-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <h2 className="text-[1.05rem] sm:text-[1.15rem] md:text-[1.5rem] font-black uppercase tracking-[-0.05em] leading-none text-white drop-shadow-sm truncate max-w-[210px] sm:max-w-[260px] md:max-w-none">
+      <div className="sticky top-0 z-10 shrink-0 overflow-hidden border-b border-white/[0.08] bg-slate-950/95 px-4 pb-3 pt-2.5 backdrop-blur-2xl sm:px-5 sm:py-4 md:px-7 md:py-5">
+        <div className={`pointer-events-none absolute -right-20 -top-24 h-52 w-52 rounded-full bg-gradient-to-br ${headerAuraClass} blur-3xl`} />
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent" />
+
+        <div className="relative z-10 flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <h2 className="truncate text-[1.5rem] font-black uppercase leading-[0.94] tracking-[-0.035em] text-white drop-shadow-sm sm:text-[1.68rem] md:text-[1.5rem]">
               MÉNAGE {household.numeroordre || household.id.slice(-6)}
             </h2>
-            {hasConflict && (
-              <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-500 border border-rose-500/20 shrink-0 animate-pulse">
-                <AlertTriangle size={8} />
-                <span className="text-[7px] sm:text-[9px] font-black uppercase tracking-[0.1em]">CONFLIT</span>
-              </div>
-            )}
-            {isTerminalStatus && (
-              <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-500 border border-rose-500/20 shrink-0 shadow-[0_0_15px_rgba(244,63,94,0.1)]">
-                <AlertTriangle size={8} />
-                <span className="text-[7px] sm:text-[9px] font-black uppercase tracking-[0.1em]">
-                  {currentStatus}
-                </span>
-              </div>
-            )}
-            {!isTerminalStatus && (
-              <div className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full border shrink-0 shadow-inner ${syncBadge.classes}`}>
-                {syncState === 'pending' ? (
-                  <RefreshCcw size={8} className="animate-spin text-amber-500" />
-                ) : syncState === 'error' ? (
-                  <CloudOff size={8} />
-                ) : (
-                  <CheckCircle2 size={8} />
-                )}
-                <span className="text-[7px] sm:text-[9px] font-black uppercase tracking-[0.1em]">
-                  {syncBadge.label}
-                </span>
-              </div>
-            )}
+            <div className="mt-2 flex min-w-0 flex-wrap items-center gap-1.5">
+              {hasConflict && (
+                <div className="flex shrink-0 animate-pulse items-center gap-1 rounded-full border border-rose-500/20 bg-rose-500/10 px-2 py-0.5 text-rose-500">
+                  <AlertTriangle size={8} />
+                  <span className="text-[7px] font-black uppercase tracking-[0.1em] sm:text-[9px]">CONFLIT</span>
+                </div>
+              )}
+              {isTerminalStatus ? (
+                <div className="flex shrink-0 items-center gap-1 rounded-full border border-rose-500/20 bg-rose-500/10 px-2 py-0.5 text-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.1)]">
+                  <AlertTriangle size={8} />
+                  <span className="text-[7px] font-black uppercase tracking-[0.1em] sm:text-[9px]">
+                    {currentStatus}
+                  </span>
+                </div>
+              ) : (
+                <div className={`flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 shadow-inner sm:px-3 ${syncBadge.classes}`}>
+                  {syncState === 'pending' ? (
+                    <RefreshCcw size={8} className="animate-spin text-amber-500" />
+                  ) : syncState === 'error' ? (
+                    <CloudOff size={8} />
+                  ) : (
+                    <CheckCircle2 size={8} />
+                  )}
+                  <span className="text-[7px] font-black uppercase tracking-[0.1em] sm:text-[9px]">
+                    {syncBadge.label}
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
-          <p className="mt-1.5 text-[10px] sm:text-[11px] font-bold text-slate-300 tracking-[0.08em] truncate uppercase">
-            {household.village || household.departement || 'Terrain actif'}
-          </p>
-        </div>
-        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          {/* Admin Edit Button */}
-          {isAdmin && onUpdate && (
-            <button
-              onClick={() => setShowAdminModal(true)}
-              className="w-10 h-10 sm:w-11 sm:h-11 bg-white/5 hover:bg-white/10 text-blue-400 rounded-[1.1rem] transition-all border border-white/5 shadow-inner active:scale-95 group flex items-center justify-center"
-              title="Admin : Modifier tout le profil"
-            >
-              <Settings2 className="w-[18px] h-[18px] sm:w-5 sm:h-5 group-hover:rotate-45 transition-transform duration-500" />
-            </button>
-          )}
 
-          <button
-            onClick={() => {
-              setSelectedHouseholdId(null);
-              closePanel();
-            }}
-            title="Fermer le panneau"
-            className="w-10 h-10 sm:w-11 sm:h-11 rounded-[1.1rem] flex items-center justify-center transition-all bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 border border-white/5 shadow-inner group"
-          >
-            <X size={16} className="group-hover:rotate-90 transition-transform duration-300" />
-          </button>
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+            {isAdmin && onUpdate && (
+              <button
+                onClick={() => setShowAdminModal(true)}
+                className="group flex h-10 w-10 items-center justify-center rounded-[1.1rem] border border-white/[0.08] bg-white/[0.055] text-blue-300 shadow-inner transition-all hover:bg-white/10 active:scale-95 sm:h-11 sm:w-11"
+                title="Admin : Modifier tout le profil"
+                aria-label="Modifier le profil ménage"
+              >
+                <Settings2 className="h-[18px] w-[18px] transition-transform duration-500 group-hover:rotate-45 sm:h-5 sm:w-5" />
+              </button>
+            )}
+
+            <button
+              onClick={() => {
+                setSelectedHouseholdId(null);
+                closePanel();
+              }}
+              title="Fermer le panneau"
+              aria-label="Fermer le panneau"
+              className="group flex h-10 w-10 items-center justify-center rounded-[1.1rem] border border-white/[0.08] bg-white/[0.055] text-slate-300 shadow-inner transition-all hover:bg-white/10 hover:text-white sm:h-11 sm:w-11"
+            >
+              <X size={16} className="transition-transform duration-300 group-hover:rotate-90" />
+            </button>
+          </div>
+        </div>
+
+        <div className="relative z-10 mt-3 rounded-[1.35rem] border border-white/[0.09] bg-white/[0.045] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_18px_45px_rgba(2,6,23,0.36)]">
+          <div className="flex items-center gap-3">
+            <div className="relative grid h-[72px] w-[72px] shrink-0 place-items-center">
+              <svg className="absolute inset-0 h-full w-full -rotate-90" viewBox="0 0 72 72" aria-hidden="true">
+                <circle cx="36" cy="36" r="28" fill="none" stroke="rgba(255,255,255,0.09)" strokeWidth="6" />
+                <circle
+                  className={isTerminalStatus ? 'animate-pulse' : ''}
+                  cx="36"
+                  cy="36"
+                  r="28"
+                  fill="none"
+                  stroke="url(#household-progress-ring)"
+                  strokeLinecap="round"
+                  strokeWidth="6"
+                  strokeDasharray={progressRingCircumference}
+                  strokeDashoffset={progressRingOffset}
+                  style={{ filter: isTerminalStatus ? 'drop-shadow(0 0 5px rgba(239,68,68,0.9))' : 'none' }}
+                />
+                <defs>
+                  <linearGradient id="household-progress-ring" x1="0" y1="0" x2="72" y2="72">
+                    <stop stopColor="#38bdf8" />
+                    <stop offset="1" stopColor={isTerminalStatus ? '#fb7185' : '#34d399'} />
+                  </linearGradient>
+                </defs>
+              </svg>
+              <div className="grid h-[48px] w-[48px] place-items-center rounded-[1.05rem] border border-white/10 bg-slate-950/70 text-blue-200 shadow-[0_0_28px_rgba(59,130,246,0.22)]">
+                {activeStageMeta.icon || <MapPin size={18} />}
+              </div>
+            </div>
+
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[11px] font-black uppercase tracking-[0.08em] text-slate-100">
+                {getHouseholdDisplayName(household)}
+              </p>
+              <p className="mt-1 truncate text-[9px] font-bold uppercase tracking-[0.12em] text-slate-500 sm:text-[10px]">
+                {household.village || household.departement || 'Terrain actif'}
+              </p>
+              <div className="mt-2 flex items-center gap-2">
+                <span className="rounded-full border border-white/10 bg-black/20 px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.14em] text-slate-300">
+                  {completedStageCount}/{timelineStages.length}
+                </span>
+                <span className="truncate rounded-full border border-blue-400/20 bg-blue-500/10 px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.14em] text-blue-200">
+                  {timelineStages[currentStageIndex] || currentStatus}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            <div className="rounded-2xl border border-white/[0.07] bg-black/18 px-3 py-2">
+              <p className="text-[7px] font-black uppercase tracking-[0.16em] text-slate-500">Progression</p>
+              <p className="mt-1 text-sm font-black text-white">{progressPercent}%</p>
+            </div>
+            <div className="rounded-2xl border border-white/[0.07] bg-black/18 px-3 py-2">
+              <p className="text-[7px] font-black uppercase tracking-[0.16em] text-slate-500">Équipes</p>
+              <p className="mt-1 text-sm font-black text-white">{memoizedTeams.length || 0}</p>
+            </div>
+            <div className="rounded-2xl border border-white/[0.07] bg-black/18 px-3 py-2">
+              <p className="text-[7px] font-black uppercase tracking-[0.16em] text-slate-500">MAJ</p>
+              <p className="mt-1 truncate text-sm font-black text-white">{lastUpdateSummary}</p>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Scrollable Content Container */}
-      <div className="flex-1 px-4 sm:px-5 md:px-7 py-4 sm:py-5 space-y-6 pb-6">
-        <div className="space-y-7 animate-in fade-in slide-in-from-bottom-2 duration-500">
+      <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5 sm:py-5 md:px-7">
+        <div className="space-y-5 pb-3 animate-in fade-in slide-in-from-bottom-2 duration-500 sm:space-y-6">
           {/* ALERTES BLOQUANTES & SYSTÈME */}
           {alerts.length > 0 && (
             <div className="space-y-4">
@@ -646,110 +1179,83 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
             </div>
           </div>
 
-          {/* Technical Specs Glass Card - Hidden if ineligible */}
+          {/* TECHNICAL COCKPIT DASHBOARD */}
           {!isTerminalStatus && (
-            <div className="p-8 rounded-[2.5rem] bg-white/5 border border-white/10 shadow-xl space-y-8">
-              <h4 className="text-[9px] font-black uppercase tracking-[0.4em] text-blue-400/40">
-                JOURNAL D'AUDIT DE CONSTRUCTION
-              </h4>
-
-              {/* Main Metrics */}
-              <div className="grid grid-cols-2 gap-6 pb-6 border-b border-white/5">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Zap size={14} className="text-amber-500 opacity-60" />
-                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
-                      Terre / Ohm
-                    </span>
-                  </div>
-                  <p
-                    className={`text-xl font-black ${(household.constructionData as any)?.audit?.resistance_terre > 1500 ? 'text-rose-400' : 'text-blue-400'} drop-shadow-md`}
-                  >
-                    {(household.constructionData as any)?.audit?.resistance_terre ?? '—'}{' '}
-                    <span className="text-[10px] uppercase font-bold text-slate-600 not-italic ml-1">
-                      Ω
-                    </span>
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Hammer size={14} className="text-blue-500 opacity-60" />
-                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
-                      Maçonnerie
-                    </span>
-                  </div>
-                  <p className="text-xs font-black uppercase text-white tracking-widest truncate leading-none">
-                    {(household.constructionData as any)?.macon?.type_mur || 'SANS DONNÉE'}
-                  </p>
-                  {(household.constructionData as any)?.macon?.problemes && (
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {(household.constructionData as any).macon.problemes.split(' ').map((p: string, j: number) => (
-                        <span key={j} className="text-[6px] font-black text-rose-400 bg-rose-500/10 px-1 py-0.5 rounded border border-rose-500/20 uppercase tracking-tighter">
-                          {p.replace(/_/g, ' ')}
-                        </span>
-                      ))}
+            <div className="p-1 rounded-[2.5rem] bg-gradient-to-br from-white/10 to-transparent border border-white/10 shadow-2xl overflow-hidden">
+              <div className="bg-slate-950/40 backdrop-blur-xl rounded-[2.35rem] p-6 sm:p-8 space-y-8">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-blue-400/60 flex items-center gap-2">
+                    <Activity size={14} className="animate-pulse" /> SPÉCIFICATIONS SYSTÈME
+                  </h4>
+                  {(household as any).priority === 'URGENT' && (
+                    <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-rose-500/20 border border-rose-500/30 text-[8px] font-black text-rose-400 uppercase tracking-widest animate-bounce">
+                      <AlertTriangle size={10} /> Urgence Terrain
                     </div>
                   )}
                 </div>
-              </div>
 
-              {/* Anomaly Tags for Stages 1-4 */}
-              <div className="space-y-4">
-                {[
-                  { label: 'Livraison', data: (household.constructionData as any)?.livreur?.justificatif },
-                  { label: 'Réseau', data: (household.constructionData as any)?.reseau?.problemes_branchement },
-                  { label: 'Intérieur', data: (household.constructionData as any)?.interieur?.problemes_installation },
-                ].filter(s => !!s.data && s.data.trim() !== '').map((s, i) => (
-                  <div key={i} className="space-y-1">
-                    <p className="text-[7px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
-                      <AlertTriangle size={8} className="text-amber-500" /> Observation {s.label}
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {s.data.split(' ').filter(Boolean).map((tag: string, j: number) => (
-                        <span key={j} className="px-2 py-0.5 rounded-lg bg-amber-500/5 border border-amber-500/10 text-[8px] font-bold text-amber-500 uppercase">
-                          {tag.replace(/_/g, ' ')}
+                {/* Grid Visualizer */}
+                <div className="grid grid-cols-2 gap-4">
+                   {/* Ohm Meter Card */}
+                   <div className="p-5 rounded-3xl bg-black/40 border border-white/5 space-y-3 relative overflow-hidden group">
+                      <div className="absolute top-0 left-0 w-1 h-full bg-blue-500/50" />
+                      <div className="flex items-center justify-between">
+                        <Zap size={14} className="text-amber-500/60" />
+                        <span className="text-[7px] font-black text-slate-500 uppercase tracking-widest">Impédance Terre</span>
+                      </div>
+                      <div className="flex items-end gap-1">
+                        <span className={`text-2xl font-black tracking-tighter ${Number((household.constructionData as any)?.audit?.resistance_terre) > 150 ? 'text-rose-400' : 'text-emerald-400'}`}>
+                          {(household.constructionData as any)?.audit?.resistance_terre ?? '—'}
                         </span>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
+                        <span className="text-xs font-bold text-slate-600 mb-1.5">Ω</span>
+                      </div>
+                      <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${Math.min(100, (Number((household.constructionData as any)?.audit?.resistance_terre) / 200) * 100)}%` }}
+                          className={`h-full ${Number((household.constructionData as any)?.audit?.resistance_terre) > 150 ? 'bg-rose-500' : 'bg-emerald-500'}`}
+                        />
+                      </div>
+                   </div>
 
-              {/* Job Toggles / Statuses */}
-              <div className="grid grid-cols-2 gap-y-4 gap-x-2">
-                {[
-                  { label: 'Maçonnerie', ok: household.koboSync?.maconOk },
-                  { label: 'Réseau', ok: household.koboSync?.reseauOk },
-                  { label: 'Intérieur', ok: household.koboSync?.interieurOk },
-                  { label: 'Contrôle Final', ok: household.koboSync?.controleOk },
-                ].map((task, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center gap-2 p-2 rounded-xl hover:bg-white/5 transition-colors"
-                  >
-                    <div
-                      className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 border shadow-inner ${task.ok === true
-                        ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400'
-                        : task.ok === false
-                          ? 'bg-rose-500/20 border-rose-500/30 text-rose-400'
-                          : 'bg-slate-800 border-slate-700 text-slate-600'
-                        }`}
-                    >
-                      {task.ok === true ? (
-                        <CheckCircle2 size={12} />
-                      ) : task.ok === false ? (
-                        <X size={12} />
-                      ) : (
-                        '-'
-                      )}
+                   {/* Masonry Card */}
+                   <div className="p-5 rounded-3xl bg-black/40 border border-white/5 space-y-3 relative overflow-hidden">
+                      <div className="absolute top-0 left-0 w-1 h-full bg-amber-500/50" />
+                      <div className="flex items-center justify-between">
+                        <Hammer size={14} className="text-blue-500/60" />
+                        <span className="text-[7px] font-black text-slate-500 uppercase tracking-widest">Maçonnerie</span>
+                      </div>
+                      <p className="text-[10px] font-black text-white uppercase tracking-wider truncate">
+                        {(household.constructionData as any)?.macon?.type_mur || 'Non défini'}
+                      </p>
+                      <div className="flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]" />
+                        <span className="text-[8px] font-bold text-slate-500 uppercase">Structure Validée</span>
+                      </div>
+                   </div>
+                </div>
+
+                {/* Sub-Technical Details */}
+                <div className="space-y-4 pt-2">
+                  {[
+                    { label: 'Réseau / Branchement', data: (household.constructionData as any)?.reseau?.problemes_branchement, color: 'text-sky-400' },
+                    { label: 'Installation Intérieure', data: (household.constructionData as any)?.interieur?.problemes_installation, color: 'text-violet-400' },
+                  ].filter(s => !!s.data).map((s, i) => (
+                    <div key={i} className="flex flex-col gap-2 p-4 rounded-2xl bg-white/[0.03] border border-white/[0.05]">
+                      <div className="flex items-center justify-between">
+                        <span className={`text-[8px] font-black uppercase tracking-widest ${s.color}`}>{s.label}</span>
+                        <Info size={10} className="text-slate-600" />
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {s.data.split(' ').filter(Boolean).map((tag: string, j: number) => (
+                          <span key={j} className="px-2 py-0.5 rounded-md bg-white/5 text-[9px] font-bold text-slate-300 border border-white/5">
+                            {reformatKoboText(tag)}
+                          </span>
+                        ))}
+                      </div>
                     </div>
-                    <span
-                      className={`text-[10px] font-black uppercase tracking-widest ${task.ok === undefined ? 'text-slate-600' : 'text-slate-300'}`}
-                    >
-                      {task.label}
-                    </span>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </div>
           )}
@@ -798,16 +1304,42 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
                     key !== 'photo' &&
                     key !== 'photoUrl'
                   )
-                  .map(([key, val]) => (
-                    <div key={key} className="flex flex-col gap-1 p-3 rounded-xl bg-black/20 border border-white/5">
-                      <span className="text-[8px] font-black uppercase tracking-widest text-slate-500">
-                        {key.replace(/_/g, ' ')}
-                      </span>
-                      <span className="text-xs font-bold text-slate-200">
-                        {String(val)}
-                      </span>
-                    </div>
-                  ))
+                  .map(([key, val]) => {
+                    const rawValue = String(val);
+                    const isMultiValue = rawValue.includes(' ') && (rawValue.includes('_') || rawValue.length > 40);
+                    const displayValue = formatKoboValue(val);
+                    const normalizedValue = displayValue.toLowerCase();
+                    const valueTone = normalizedValue.includes('non conforme')
+                      ? 'text-rose-200'
+                      : normalizedValue === 'conforme' || normalizedValue === 'oui'
+                        ? 'text-emerald-200'
+                        : 'text-slate-50';
+
+                    return (
+                      <div
+                        key={key}
+                        className="flex flex-col gap-2 rounded-[1.35rem] border border-white/[0.07] bg-black/[0.22] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] transition-colors hover:border-blue-300/[0.18] hover:bg-white/[0.045]"
+                      >
+                        <span className="max-w-full whitespace-normal break-words text-[11px] font-semibold normal-case leading-[1.45] tracking-normal text-blue-200/85 sm:text-[12px]">
+                          {reformatKoboText(key)}
+                        </span>
+                        <div className={`max-w-full whitespace-normal break-words text-[14px] font-black leading-snug tracking-[-0.01em] ${valueTone}`}>
+                          {isMultiValue ? (
+                            <ul className="mt-1 space-y-2">
+                              {rawValue.split(' ').filter(Boolean).map((v, idx) => (
+                                <li key={idx} className="flex items-start gap-2.5">
+                                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-blue-400/50" />
+                                  <span className="flex-1">{formatKoboValue(v)}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p>{displayValue}</p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
                 }
               </div>
 
@@ -960,8 +1492,8 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
                 </div>
               </button>
 
-              {/* ÉTAPE 2 : MAÇONNERIE (Si données dispo) */}
-              {(household.koboSync?.maconOk || (household.constructionData as any)?.macon) ? (
+              {/* ÉTAPE 2 : MAÇONNERIE */}
+              {(currentStageIndex >= 2 || household.koboSync?.maconOk || (household.constructionData as any)?.macon) ? (
                 <button
                   onClick={() => ReportGen.generateMaconneriePDF(household)}
                   className="flex items-center gap-3 p-4 bg-white/5 border border-white/5 rounded-2xl hover:bg-white/10 hover:border-amber-500/30 transition-all group animate-in fade-in zoom-in-95"
@@ -984,7 +1516,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
               )}
 
               {/* ÉTAPE 3 : RÉSEAU */}
-              {(household.koboSync?.reseauOk || (household.constructionData as any)?.reseau) ? (
+              {(currentStageIndex >= 3 || household.koboSync?.reseauOk || (household.constructionData as any)?.reseau) ? (
                 <button
                   onClick={() => ReportGen.generateBranchementPDF(household)}
                   className="flex items-center gap-3 p-4 bg-white/5 border border-white/5 rounded-2xl hover:bg-white/10 hover:border-sky-500/30 transition-all group animate-in fade-in zoom-in-95"
@@ -1007,7 +1539,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
               )}
 
               {/* ÉTAPE 4 : INSTALLATION */}
-              {(household.koboSync?.interieurOk || (household.constructionData as any)?.interieur) ? (
+              {(currentStageIndex >= 4 || household.koboSync?.interieurOk || (household.constructionData as any)?.interieur) ? (
                 <button
                   onClick={() => ReportGen.generateInstallationPDF(household)}
                   className="flex items-center gap-3 p-4 bg-white/5 border border-white/5 rounded-2xl hover:bg-white/10 hover:border-violet-500/30 transition-all group animate-in fade-in zoom-in-95"
@@ -1030,7 +1562,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
               )}
 
               {/* ÉTAPE 5 : CERTIFICAT FINAL */}
-              {(household.koboSync?.controleOk || (household.constructionData as any)?.audit) ? (
+              {(currentStageIndex >= 5 || household.koboSync?.controleOk || (household.constructionData as any)?.audit) ? (
                 <button
                   onClick={() => ReportGen.generateConformiteFinalPDF(household)}
                   className="col-span-1 sm:col-span-2 flex items-center justify-center gap-4 p-5 bg-emerald-500/10 border border-emerald-500/20 rounded-[1.5rem] hover:bg-emerald-500/20 hover:border-emerald-500/40 transition-all group shadow-lg shadow-emerald-500/5 animate-in fade-in slide-in-from-bottom-4"
@@ -1053,37 +1585,60 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
         </div>
       </div>
 
-      {/* Navigation Actions Bottom Sticky */}
-      <div className="sticky bottom-0 left-0 right-0 px-4 sm:px-5 md:px-7 py-2.5 sm:py-3 bg-[linear-gradient(180deg,rgba(2,6,23,0.38),rgba(2,6,23,0.94))] backdrop-blur-2xl border-t border-white/10 flex flex-col gap-2 shadow-[0_-14px_26px_rgba(0,0,0,0.34)] pb-[calc(0.65rem+env(safe-area-inset-bottom))]">
-        {!routingEnabled ? (
-          <button
-            onClick={onTraceItinerary}
-            className="w-full h-11 sm:h-12 bg-[linear-gradient(135deg,#2563eb,#1d4ed8)] hover:brightness-110 text-white rounded-[1.15rem] font-black text-[10px] sm:text-[11px] transition-all shadow-[0_12px_24px_rgba(37,99,235,0.24)] active:scale-95 flex items-center justify-center gap-2 uppercase tracking-[0.16em]"
-          >
-            <Navigation size={18} className="rotate-45" />
-            CALCULER L'ITINÉRAIRE
-          </button>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+      {/* Navigation Actions Bottom Sticky — OPTIMISÉ MOBILE FIELD WORK */}
+      <div className="shrink-0 border-t border-white/10 bg-slate-950/92 px-3 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-[0_-15px_35px_rgba(0,0,0,0.5)] backdrop-blur-3xl sm:px-5">
+        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_3.5rem] gap-2.5">
+          {!routingEnabled ? (
+            <button
+              onClick={onTraceItinerary}
+              className="flex h-[52px] min-w-0 items-center justify-center gap-2 rounded-[1.15rem] border border-blue-300/20 bg-blue-600 px-2 text-white shadow-xl shadow-blue-600/20 transition-all hover:bg-blue-500 active:scale-95"
+            >
+              <Navigation size={18} className="shrink-0 rotate-45" />
+              <span className="truncate text-[10px] font-black uppercase tracking-[0.12em]">Itinéraire</span>
+            </button>
+          ) : (
             <button
               onClick={onCancelItinerary}
-              className="h-11 sm:h-14 bg-white/5 border border-white/10 text-slate-400 rounded-2xl font-black text-[10px] transition-all hover:bg-rose-500/10 hover:text-rose-500 hover:border-rose-500/20 active:scale-95 uppercase tracking-[0.18em]"
+              className="flex h-[52px] min-w-0 items-center justify-center gap-2 rounded-[1.15rem] border border-rose-500/40 bg-rose-500/[0.18] px-2 text-rose-300 transition-all active:scale-95"
             >
-              ARRÊTER
+              <X size={18} className="shrink-0" />
+              <span className="truncate text-[10px] font-black uppercase tracking-[0.12em]">Annuler</span>
             </button>
-            <button
-              onClick={() => {
-                const [lng, lat] = household.location!.coordinates;
-                window.open(
-                  `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`,
-                  '_blank'
-                );
-              }}
-              className="h-12 sm:h-14 bg-blue-600 text-white rounded-2xl font-black text-[10px] transition-all shadow-2xl shadow-blue-600/30 hover:brightness-110 active:scale-95 uppercase tracking-[0.18em] flex items-center justify-center gap-2"
-            >
-              GOOGLE MAPS <Navigation2 size={14} className="rotate-90" />
-            </button>
-          </div>
+          )}
+
+          {/* BOUTON RAPPORT CONTEXTUEL — SMART ACTION */}
+          <motion.button
+            onClick={smartReportAction.action}
+            whileTap={{ scale: 0.96 }}
+            className={`relative flex h-[52px] min-w-0 items-center justify-center gap-2 overflow-hidden rounded-[1.15rem] border border-white/20 bg-[linear-gradient(135deg,var(--tw-gradient-stops))] ${smartReportAction.color} px-2 text-white shadow-xl shadow-blue-600/20 transition-all hover:brightness-110`}
+          >
+            <span className="absolute inset-y-0 -left-1/2 w-1/2 animate-pulse bg-gradient-to-r from-transparent via-white/20 to-transparent blur-sm" />
+            {React.cloneElement(smartReportAction.icon as React.ReactElement<any>, { size: 18, className: "relative z-10 shrink-0 text-white/90" })}
+            <span className="relative z-10 truncate text-[10px] font-black uppercase tracking-[0.12em]">{smartReportAction.label}</span>
+          </motion.button>
+
+          {/* Formulaire interne GEM — soumission VPS */}
+          <button
+            onClick={() => setShowInternalReportModal(true)}
+            className="flex h-[52px] w-14 items-center justify-center rounded-[1.15rem] border border-white/[0.08] bg-slate-900/85 text-slate-300 transition-all hover:bg-slate-800 hover:text-white active:scale-95"
+            title="Ouvrir le formulaire interne VPS"
+            aria-label="Ouvrir le formulaire interne VPS"
+          >
+            <Database size={20} />
+          </button>
+        </div>
+
+        {routingEnabled && (
+          <button
+            onClick={() => {
+              const [lng, lat] = household.location!.coordinates;
+              window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`, '_blank');
+            }}
+            className="mt-2.5 flex h-11 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 text-[10px] font-black uppercase tracking-widest text-white/70"
+          >
+            <Navigation2 size={14} className="rotate-90" />
+            Lancer Google Maps
+          </button>
         )}
       </div>
 
@@ -1140,6 +1695,19 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
         </div>,
         document.body
       )}
+      {/* Formulaire GEM-Kobo natif */}
+      {showInternalReportModal && createPortal(
+        <InternalKoboForm
+          values={nativeKoboAuditForm}
+          onChange={updateNativeKoboAuditField}
+          onSave={handleSaveNativeKoboAudit}
+          onClose={() => setShowInternalReportModal(false)}
+          isSaving={isUpdating}
+          onPhotoUpload={onPhotoUpload}
+        />,
+        document.body
+      )}
+
       {/* Admin Control Center Modal */}
       {isAdmin && onUpdate && (
         <AdminControlCenterModal

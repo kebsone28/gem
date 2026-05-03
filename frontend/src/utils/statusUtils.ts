@@ -57,9 +57,10 @@ export const getHouseholdDerivedStatus = (h: Household) => {
     }
 
     if (
-      cData.audit?.installation_conforme === 'non_conforme' ||
-      cData.audit?.branchement_conforme === 'non-conforme' ||
-      h.status === 'BLOQUE'
+      String(cData.audit?.installation_conforme || '').toLowerCase().includes('non') ||
+      String(cData.audit?.branchement_conforme || '').toLowerCase().includes('non') ||
+      h.status === 'BLOQUE' ||
+      normalized === 'Non conforme'
     ) {
       return 'Non conforme';
     }

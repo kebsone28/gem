@@ -53,28 +53,48 @@ export const HouseholdStatusTimeline: React.FC<HouseholdStatusTimelineProps> = R
   );
 
   const activeStage = currentIndex >= 0 ? effectiveStages[currentIndex] : null;
+  const completedCount = currentIndex >= 0 ? currentIndex + 1 : 0;
+  const progressPercent = effectiveStages.length > 1
+    ? Math.max(0, Math.min(100, (completedCount / effectiveStages.length) * 100))
+    : 0;
 
   return (
-    <div className="p-6 sm:p-8 rounded-[2.25rem] bg-[radial-gradient(circle_at_top_left,rgba(148,163,184,0.12),transparent_35%),linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.04))] border border-white/10 shadow-inner">
-      <h4 className="text-[10px] font-black uppercase tracking-[0.28em] mb-6 text-slate-300/70">
-        GLOBAL STATUS TRACKING
-      </h4>
-
-      <div className="flex items-center justify-between gap-4">
-        <HouseholdStatusLabel currentStatus={currentStatus} updatedAt={updatedAt} />
+    <div className="rounded-[1.6rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.14),transparent_38%),linear-gradient(180deg,rgba(255,255,255,0.07),rgba(255,255,255,0.035))] p-4 shadow-inner sm:rounded-[2rem] sm:p-6">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h4 className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-300/70 sm:text-[10px] sm:tracking-[0.26em]">
+            Avancement terrain
+          </h4>
+          <div className="mt-3">
+            <HouseholdStatusLabel currentStatus={currentStatus} updatedAt={updatedAt} />
+          </div>
+        </div>
 
         {isAdmin && onEdit && (
           <button
             onClick={() => onEdit(currentStatus || 'UNKNOWN')}
             title="Changer l'état global du ménage"
-            className="px-5 py-3 bg-slate-950/25 text-slate-100 border border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-[0.18em] shadow-inner hover:bg-white/10 hover:text-white transition-all duration-200 active:scale-95"
+            className="h-10 shrink-0 rounded-2xl border border-white/10 bg-slate-950/30 px-3 text-[9px] font-black uppercase tracking-[0.14em] text-slate-100 shadow-inner transition-all duration-200 hover:bg-white/10 hover:text-white active:scale-95 sm:h-11 sm:px-4 sm:text-[10px]"
           >
             Modifier
           </button>
         )}
       </div>
 
-      <div className="mt-8 flex flex-col gap-4">
+      <div className="mt-4">
+        <div className="mb-2 flex items-center justify-between text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">
+          <span>{completedCount}/{effectiveStages.length} étapes</span>
+          <span>{Math.round(progressPercent)}%</span>
+        </div>
+        <div className="h-2 overflow-hidden rounded-full bg-white/[0.08]">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-sky-500 to-emerald-400 shadow-[0_0_18px_rgba(52,211,153,0.35)] transition-all duration-500"
+            style={{ width: `${progressPercent}%` }}
+          />
+        </div>
+      </div>
+
+      <div className="mt-5 flex flex-col gap-2.5 sm:gap-3">
         {effectiveStages.map((stage, index) => {
           const isCompleted = currentIndex >= 0 && index < currentIndex;
           const isCurrent = index === currentIndex;
@@ -82,22 +102,22 @@ export const HouseholdStatusTimeline: React.FC<HouseholdStatusTimelineProps> = R
           return (
             <div
               key={stage.value}
-              className={`relative rounded-[1.6rem] border p-5 transition-all duration-300 ${
+              className={`relative rounded-[1.25rem] border p-3.5 transition-all duration-300 sm:rounded-[1.45rem] sm:p-4 ${
                 isCurrent
                   ? 'border-emerald-400/40 bg-emerald-500/10 shadow-[0_10px_30px_rgba(16,185,129,0.12)] ring-1 ring-emerald-400/20'
                   : isCompleted
                     ? 'border-sky-400/20 bg-sky-500/10'
-                    : 'border-white/5 bg-white/[0.02] opacity-60'
+                    : 'border-white/[0.07] bg-white/[0.035]'
               }`}
             >
               {/* Ligne de connexion verticale entre les étapes */}
               {index < effectiveStages.length - 1 && (
-                <div className="absolute left-[34px] top-[60px] bottom-[-20px] w-px bg-gradient-to-b from-white/10 to-transparent z-0" />
+                <div className="absolute left-[25px] top-[48px] bottom-[-14px] z-0 w-px bg-gradient-to-b from-white/10 to-transparent sm:left-[29px] sm:top-[52px]" />
               )}
 
-              <div className="flex items-start gap-5 relative z-10">
+              <div className="relative z-10 flex items-start gap-3 sm:gap-4">
                 <div
-                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border text-[14px] font-black transition-all ${
+                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[1rem] border text-[13px] font-black transition-all sm:h-10 sm:w-10 sm:rounded-2xl ${
                     isCurrent
                       ? 'border-emerald-400/50 bg-emerald-500/25 text-emerald-200 shadow-[0_0_20px_rgba(52,211,153,0.3)]'
                       : isCompleted
@@ -109,20 +129,20 @@ export const HouseholdStatusTimeline: React.FC<HouseholdStatusTimelineProps> = R
                 </div>
 
                 <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                  <div className="flex items-start justify-between gap-2">
                     <p
-                      className={`text-[12px] font-black uppercase tracking-[0.12em] leading-none ${
+                      className={`min-w-0 text-[10px] font-black uppercase leading-snug tracking-[0.09em] sm:text-[11px] sm:tracking-[0.12em] ${
                         isCurrent
                           ? 'text-emerald-300'
                           : isCompleted
                             ? 'text-sky-200'
-                            : 'text-slate-400'
+                            : 'text-slate-300/75'
                       }`}
                     >
                       {stage.label}
                     </p>
                     <span
-                      className={`rounded-full px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.16em] border ${
+                      className={`shrink-0 rounded-full border px-2 py-0.5 text-[7px] font-black uppercase tracking-[0.12em] sm:px-2.5 sm:py-1 sm:text-[8px] ${
                         isCurrent
                           ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
                           : isCompleted
@@ -135,7 +155,7 @@ export const HouseholdStatusTimeline: React.FC<HouseholdStatusTimelineProps> = R
                   </div>
 
                   {stage.description && (
-                    <p className={`text-[11px] leading-relaxed transition-colors ${isCurrent ? 'text-slate-200' : 'text-slate-500'}`}>
+                    <p className={`mt-1.5 text-[10px] leading-relaxed transition-colors sm:text-[11px] ${isCurrent ? 'text-slate-200' : 'text-slate-500'}`}>
                       {stage.description}
                     </p>
                   )}
@@ -147,11 +167,11 @@ export const HouseholdStatusTimeline: React.FC<HouseholdStatusTimelineProps> = R
       </div>
 
       {activeStage?.description ? (
-        <div className="mt-6 rounded-[1.5rem] border border-white/8 bg-black/15 p-4">
-          <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">
+        <div className="mt-4 rounded-[1.25rem] border border-white/[0.08] bg-black/15 p-3.5 sm:mt-5 sm:rounded-[1.5rem] sm:p-4">
+          <p className="text-[8px] font-black uppercase tracking-[0.18em] text-slate-400 sm:text-[9px]">
             Focus étape courante
           </p>
-          <p className="mt-2 text-sm font-semibold leading-relaxed text-slate-200">
+          <p className="mt-2 text-[12px] font-semibold leading-relaxed text-slate-200 sm:text-sm">
             {activeStage.description}
           </p>
         </div>
