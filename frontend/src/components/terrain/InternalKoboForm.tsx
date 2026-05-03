@@ -199,7 +199,10 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
 
   const visibleSections = INTERNAL_KOBO_SECTIONS.map((section) => ({
     ...section,
-    fields: section.fields.filter((field) => {
+    activeFields: section.fields.filter((field) => isInternalKoboFieldVisible(field, values)),
+  })).map((section) => ({
+    ...section,
+    fields: section.activeFields.filter((field) => {
       const visible = isInternalKoboFieldVisible(field, values);
       if (!visible) return false;
       if (!normalizedQuery) return true;
@@ -211,10 +214,37 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
     return section.fields.length > 0 || `${section.title} ${section.subtitle}`.toLowerCase().includes(normalizedQuery);
   });
 
+  let previousBlockingSectionId = '';
+  const navigableSections = visibleSections.map((section) => {
+    const missingFields = section.activeFields.filter(
+      (field) =>
+        field.type !== 'note' &&
+        field.required &&
+        !hasInternalKoboValue(getInternalKoboFieldValue(field, values))
+    );
+    const locked = Boolean(previousBlockingSectionId && section.activeFields.length > 0);
+    const blockedBySectionId = locked ? previousBlockingSectionId : '';
+
+    if (!locked && missingFields.length > 0) {
+      previousBlockingSectionId = section.id;
+    }
+
+    return {
+      ...section,
+      locked,
+      blockedBySectionId,
+      missingFields,
+    };
+  });
+
   const activeSection =
-    visibleSections.find((section) => section.id === activeSectionId) ||
-    visibleSections.find((section) => section.id === selectedRoleSectionId) ||
-    visibleSections[0];
+    navigableSections.find((section) => section.id === activeSectionId && !section.locked) ||
+    navigableSections.find((section) => section.id === selectedRoleSectionId && !section.locked) ||
+    navigableSections.find((section) => !section.locked) ||
+    navigableSections[0];
+
+  const blockedByTitle = (sectionId: string) =>
+    navigableSections.find((section) => section.id === sectionId)?.title || 'l etape precedente';
 
   const setOption = (field: InternalKoboField, optionName: string) => {
     if (field.type === 'select_multiple') {
@@ -400,20 +430,27 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
           </div>
 
           <div className="space-y-2">
-            {visibleSections.map((section) => (
+            {navigableSections.map((section) => (
               <button
                 key={section.id}
                 type="button"
-                onClick={() => setActiveSectionId(section.id)}
+                disabled={section.locked}
+                onClick={() => {
+                  if (!section.locked) setActiveSectionId(section.id);
+                }}
                 className={`flex w-full items-center justify-between gap-2 rounded-2xl border px-3 py-3 text-left transition-colors ${
                   activeSection?.id === section.id
                     ? 'border-blue-400/35 bg-blue-500/12 text-white'
-                    : 'border-white/8 bg-white/[0.035] text-slate-400 hover:bg-white/[0.06]'
+                    : section.locked
+                      ? 'cursor-not-allowed border-white/5 bg-white/[0.02] text-slate-600 opacity-60'
+                      : 'border-white/8 bg-white/[0.035] text-slate-400 hover:bg-white/[0.06]'
                 }`}
               >
                 <span className="min-w-0">
                   <span className="block truncate text-[11px] font-black uppercase tracking-[0.12em]">{section.title}</span>
-                  <span className="block text-[9px] font-semibold text-slate-500">{section.fields.length} champs</span>
+                  <span className="block text-[9px] font-semibold text-slate-500">
+                    {section.locked ? `Bloque par ${blockedByTitle(section.blockedBySectionId)}` : `${section.fields.length} champs`}
+                  </span>
                 </span>
                 <ChevronRight size={14} />
               </button>
@@ -486,8 +523,10 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
                 onChange={(event) => setActiveSectionId(event.target.value)}
                 className="h-12 w-full rounded-2xl border border-white/10 bg-slate-950/60 px-4 text-[12px] font-black uppercase tracking-[0.1em] text-white outline-none"
               >
-                {visibleSections.map((section) => (
-                  <option key={section.id} value={section.id}>{section.title}</option>
+                {navigableSections.map((section) => (
+                  <option key={section.id} value={section.id} disabled={section.locked}>
+                    {section.locked ? `${section.title} - bloque` : section.title}
+                  </option>
                 ))}
               </select>
             </div>
