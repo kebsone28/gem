@@ -9,8 +9,10 @@ import {
   Database,
   Download,
   ImagePlus,
+  Loader2,
   Lock,
   LockKeyhole,
+  MapPin,
   RefreshCcw,
   Search,
   X,
@@ -122,8 +124,12 @@ const CLIENT_METADATA_LABELS: Record<string, string> = {
   _gem_client_language: 'Langue',
   _gem_client_platform: 'Appareil',
   _gem_client_user_agent: 'Navigateur',
+  _gem_client_network: 'Reseau',
   _gem_client_touch: 'Ecran tactile',
   _gem_client_viewport: 'Fenetre',
+  _gem_client_gps_accuracy_m: 'Precision GPS',
+  _gem_client_gps_captured_at: 'Capture GPS',
+  _gem_client_gps_source: 'Source GPS',
   _gem_session_started_at: 'Debut session',
   _gem_session_duration_s: 'Duree session',
 };
@@ -132,6 +138,7 @@ const formatMetadataLabel = (key: string) => CLIENT_METADATA_LABELS[key] || key.
 
 const getClientCollectionMetadata = (isOnline: boolean): Record<string, string> => {
   const nav = typeof navigator !== 'undefined' ? navigator : null;
+  const connection = nav ? (nav as Navigator & { connection?: { effectiveType?: string; type?: string } }).connection : null;
   const viewport = typeof window !== 'undefined' ? `${window.innerWidth}x${window.innerHeight}` : '';
   const timezone =
     typeof Intl !== 'undefined'
@@ -146,6 +153,7 @@ const getClientCollectionMetadata = (isOnline: boolean): Record<string, string> 
     _gem_client_language: nav?.language || '',
     _gem_client_platform: nav?.platform || '',
     _gem_client_user_agent: nav?.userAgent || '',
+    _gem_client_network: connection?.effectiveType || connection?.type || '',
     _gem_client_touch: String((nav?.maxTouchPoints || 0) > 0),
     _gem_client_viewport: viewport,
   };
@@ -203,6 +211,8 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
   const [activeSectionId, setActiveSectionId] = useState(INTERNAL_KOBO_SECTIONS[0]?.id || '');
   const [query, setQuery] = useState('');
   const [uploadingField, setUploadingField] = useState<string | null>(null);
+  const [locatingField, setLocatingField] = useState<string | null>(null);
+  const [locationError, setLocationError] = useState('');
   const [isSubmitReviewOpen, setIsSubmitReviewOpen] = useState(false);
   const [receiptSubmission, setReceiptSubmission] = useState<InternalKoboSubmissionRecord | null>(null);
   const [copiedReceiptId, setCopiedReceiptId] = useState('');
@@ -594,9 +604,51 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
       const uploadFile = maxPixels ? await compressImage(file, { maxWidth: maxPixels, maxHeight: maxPixels }) : file;
       const uploaded = onPhotoUpload ? await onPhotoUpload(uploadFile) : uploadFile.name;
       onChange(field.name, uploaded);
+      onChange(`_gem_photo_${field.name}_original_name`, file.name);
+      onChange(`_gem_photo_${field.name}_mime`, file.type || uploadFile.type || '');
+      onChange(`_gem_photo_${field.name}_original_bytes`, String(file.size));
+      onChange(`_gem_photo_${field.name}_stored_bytes`, String(uploadFile.size));
+      onChange(`_gem_photo_${field.name}_compressed`, String(uploadFile.size < file.size));
+      onChange(`_gem_photo_${field.name}_captured_at`, new Date().toISOString());
     } finally {
       setUploadingField(null);
     }
+  };
+
+  const captureLocation = (field: InternalKoboField) => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      setLocationError("GPS indisponible sur cet appareil ou ce navigateur.");
+      return;
+    }
+
+    setLocationError('');
+    setLocatingField(field.name);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const latitude = position.coords.latitude.toFixed(7);
+        const longitude = position.coords.longitude.toFixed(7);
+        const capturedAt = new Date(position.timestamp || Date.now()).toISOString();
+
+        onChange(field.name, `${latitude} ${longitude}`);
+        if (field.name === 'LOCALISATION_CLIENT') {
+          onChange('latitude_key', latitude);
+          onChange('longitude_key', longitude);
+        }
+        onChange('_gem_client_gps_accuracy_m', String(Math.round(position.coords.accuracy || 0)));
+        onChange('_gem_client_gps_captured_at', capturedAt);
+        onChange('_gem_client_gps_source', 'browser-geolocation-high-accuracy');
+        setLocatingField(null);
+      },
+      (error) => {
+        setLocationError(error.message || 'Capture GPS impossible.');
+        setLocatingField(null);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 30000,
+      }
+    );
   };
 
   const renderField = (field: InternalKoboField) => {
@@ -676,14 +728,35 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
               className="w-full resize-none rounded-2xl border border-white/10 bg-slate-900/45 px-4 py-3 text-sm font-semibold leading-relaxed text-slate-100 outline-none transition-colors placeholder:text-slate-500 focus:border-blue-400/50"
             />
           ) : (
-            <input
-              type={field.type === 'integer' ? 'number' : 'text'}
-              inputMode={field.type === 'integer' ? 'numeric' : 'text'}
-              value={String(value || '')}
-              onChange={(event) => onChange(field.name, event.target.value)}
-              placeholder={field.type === 'geopoint' ? 'lat lon' : 'Saisir la valeur...'}
-              className="h-12 w-full rounded-2xl border border-white/10 bg-slate-900/50 px-4 text-sm font-bold text-white outline-none transition-colors placeholder:text-slate-500 focus:border-blue-400/50"
-            />
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <input
+                  type={field.type === 'integer' ? 'number' : 'text'}
+                  inputMode={field.type === 'integer' ? 'numeric' : 'text'}
+                  value={String(value || '')}
+                  onChange={(event) => onChange(field.name, event.target.value)}
+                  placeholder={field.type === 'geopoint' ? 'lat lon' : 'Saisir la valeur...'}
+                  className="h-12 min-w-0 flex-1 rounded-2xl border border-white/10 bg-slate-900/50 px-4 text-sm font-bold text-white outline-none transition-colors placeholder:text-slate-500 focus:border-blue-400/50"
+                />
+                {field.type === 'geopoint' ? (
+                  <button
+                    type="button"
+                    onClick={() => captureLocation(field)}
+                    disabled={locatingField === field.name}
+                    className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl border border-emerald-300/25 bg-emerald-400/10 text-emerald-100 transition-all hover:bg-emerald-400/18 active:scale-95 disabled:opacity-60"
+                    title="Capturer la position GPS actuelle"
+                    aria-label="Capturer la position GPS actuelle"
+                  >
+                    {locatingField === field.name ? <Loader2 size={17} className="animate-spin" /> : <MapPin size={17} />}
+                  </button>
+                ) : null}
+              </div>
+              {field.type === 'geopoint' && locationError ? (
+                <p className="rounded-xl border border-rose-300/20 bg-rose-400/10 px-3 py-2 text-[10px] font-bold text-rose-100">
+                  {locationError}
+                </p>
+              ) : null}
+            </div>
           )
         ) : null}
 

@@ -276,6 +276,13 @@ restart_backend
 
 sleep 10
 curl -fsS http://localhost:5005/health
+
+cd "__DEPLOY_PATH__"
+if [ -n "${GEM_SMOKE_TOKEN:-}" ]; then
+  GEM_API_URL='http://localhost:5005/api' GEM_AUTH_TOKEN="$GEM_SMOKE_TOKEN" node scripts/internal-kobo-smoke.mjs
+else
+  echo '[DEPLOY] Internal Kobo smoke skipped: set GEM_SMOKE_TOKEN on the VPS to enable authenticated smoke checks.'
+fi
 '@
 
     $remoteScript = $remoteScriptTemplate.

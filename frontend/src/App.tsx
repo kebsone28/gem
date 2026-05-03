@@ -64,6 +64,10 @@ const KoboTerminal = lazyWithRetry(
   () => import('./pages/DashboardViews/KoboTerminal'),
   'lazy:kobo-terminal'
 );
+const InternalKoboSubmissions = lazyWithRetry(
+  () => import('./pages/InternalKoboSubmissions'),
+  'lazy:internal-kobo-submissions'
+);
 const KoboMappingMaster = lazyWithRetry(
   () => import('./pages/KoboMappingMaster'),
   'lazy:kobo-mapping'
@@ -309,6 +313,17 @@ function App() {
                 <ProtectedRoute>
                   <PermissionRoute permission={PERMISSIONS.ACCES_TERMINAL_KOBO}>
                     <KoboTerminal />
+                  </PermissionRoute>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/admin/internal-kobo"
+              element={
+                <ProtectedRoute>
+                  <PermissionRoute permission={PERMISSIONS.ACCES_TERMINAL_KOBO}>
+                    <InternalKoboSubmissions />
                   </PermissionRoute>
                 </ProtectedRoute>
               }

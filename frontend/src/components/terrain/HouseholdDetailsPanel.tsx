@@ -52,6 +52,7 @@ import {
   INTERNAL_KOBO_CONTROL_FIELD_NAMES,
   INTERNAL_KOBO_FIELD_NAMES,
   INTERNAL_KOBO_FORM_SETTINGS,
+  INTERNAL_KOBO_SECTIONS,
   getInternalKoboSubmissionValues,
   isTruthyKoboValue,
   validateInternalKoboRequiredFields,
@@ -871,6 +872,17 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
           return value !== undefined && value !== null && String(value).trim() !== '';
         })
       );
+      const imageFieldNames = INTERNAL_KOBO_SECTIONS.flatMap((section) =>
+        section.fields.filter((field) => field.type === 'image').map((field) => field.name)
+      );
+      const photoFields = imageFieldNames.filter((fieldName) => cleanValues[fieldName]);
+      const clientGps = {
+        geopoint: cleanValues.LOCALISATION_CLIENT || '',
+        latitude: cleanValues.latitude_key || '',
+        longitude: cleanValues.longitude_key || '',
+        accuracyMeters: cleanValues._gem_client_gps_accuracy_m || '',
+        capturedAt: cleanValues._gem_client_gps_captured_at || '',
+      };
 
       const hasControlNonConformity = INTERNAL_KOBO_CONTROL_FIELD_NAMES.some(
         (fieldName) => nativeKoboAuditForm[fieldName] === 'non_conforme'
@@ -967,6 +979,18 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
           target: 'gem-vps',
           source: 'native-gem-kobo-form',
           localSavedAt: now,
+          device: {
+            mode: cleanValues._gem_collection_mode,
+            platform: cleanValues._gem_client_platform,
+            network: cleanValues._gem_client_network,
+            viewport: cleanValues._gem_client_viewport,
+            sessionDurationSeconds: cleanValues._gem_session_duration_s,
+          },
+          gps: clientGps,
+          media: {
+            photoCount: photoFields.length,
+            photoFields,
+          },
           validation: {
             allRequiredComplete,
             controleOk,

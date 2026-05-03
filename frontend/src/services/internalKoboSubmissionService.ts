@@ -66,6 +66,45 @@ export interface InternalKoboSubmissionRecord {
   } | null;
 }
 
+export interface InternalKoboSubmissionDiagnostics {
+  scope?: string;
+  health?: 'ok' | 'warning' | 'critical' | string;
+  total?: number;
+  count?: number;
+  receivedLast24h?: number;
+  sampleSize?: number;
+  byStatus?: Record<string, number>;
+  byRole?: Record<string, number>;
+  bySyncStatus?: Record<string, number>;
+  versionMismatchCount?: number;
+  missingRequiredCount?: number;
+  unresolvedHouseholdCount?: number;
+  latestSavedAt?: string | null;
+  serverFormVersion?: string;
+  warnings?: string[];
+  generatedAt?: string;
+}
+
+export interface InternalKoboSubmissionFilters {
+  householdId?: string;
+  numeroOrdre?: string;
+  status?: InternalKoboSubmissionStatus;
+  syncStatus?: string;
+  role?: string;
+  formKey?: string;
+  clientSubmissionId?: string;
+  q?: string;
+  from?: string;
+  to?: string;
+  limit?: number;
+}
+
+export interface InternalKoboSubmissionsReport {
+  submissions: InternalKoboSubmissionRecord[];
+  diagnostics: InternalKoboSubmissionDiagnostics | null;
+  count: number;
+}
+
 export interface InternalKoboQueuedSubmission {
   id?: number;
   clientSubmissionId: string;
@@ -93,6 +132,7 @@ export interface InternalKoboLocalDraft {
 const INTERNAL_KOBO_OUTBOX_ACTION = 'internal-kobo-submit';
 const INTERNAL_KOBO_SUBMISSION_ENDPOINT = '/internal-kobo/submissions';
 const INTERNAL_KOBO_FORM_DEFINITION_ENDPOINT = '/internal-kobo/form-definition';
+const INTERNAL_KOBO_DIAGNOSTICS_ENDPOINT = '/internal-kobo/diagnostics';
 const INTERNAL_KOBO_DRAFT_PREFIX = 'gem-internal-kobo-draft:';
 const MAX_INTERNAL_KOBO_RETRIES = 6;
 
@@ -159,19 +199,37 @@ export async function fetchInternalKoboFormDefinition(): Promise<InternalKoboFor
   return response.data.form || null;
 }
 
-export async function fetchInternalKoboSubmissions(params: {
-  householdId?: string;
-  numeroOrdre?: string;
-  status?: InternalKoboSubmissionStatus;
-  formKey?: string;
-  limit?: number;
-} = {}): Promise<InternalKoboSubmissionRecord[]> {
+export async function fetchInternalKoboSubmissionsReport(
+  params: InternalKoboSubmissionFilters = {}
+): Promise<InternalKoboSubmissionsReport> {
   const response = await apiClient.get<{
     success: boolean;
+    count?: number;
     submissions?: InternalKoboSubmissionRecord[];
+    diagnostics?: InternalKoboSubmissionDiagnostics;
   }>(INTERNAL_KOBO_SUBMISSION_ENDPOINT, { params });
 
-  return response.data.submissions || [];
+  return {
+    submissions: response.data.submissions || [],
+    diagnostics: response.data.diagnostics || null,
+    count: response.data.count ?? response.data.submissions?.length ?? 0,
+  };
+}
+
+export async function fetchInternalKoboSubmissions(
+  params: InternalKoboSubmissionFilters = {}
+): Promise<InternalKoboSubmissionRecord[]> {
+  const report = await fetchInternalKoboSubmissionsReport(params);
+  return report.submissions;
+}
+
+export async function fetchInternalKoboDiagnostics(): Promise<InternalKoboSubmissionDiagnostics | null> {
+  const response = await apiClient.get<{
+    success: boolean;
+    diagnostics?: InternalKoboSubmissionDiagnostics;
+  }>(INTERNAL_KOBO_DIAGNOSTICS_ENDPOINT);
+
+  return response.data.diagnostics || null;
 }
 
 export async function queueInternalKoboSubmission(

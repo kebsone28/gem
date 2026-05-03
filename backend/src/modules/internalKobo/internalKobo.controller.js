@@ -1,6 +1,7 @@
 import prisma from '../../core/utils/prisma.js';
 import eventBus from '../../core/utils/eventBus.js';
 import { tracerAction } from '../../services/audit.service.js';
+import crypto from 'node:crypto';
 import {
     getServerRequiredMissing,
     INTERNAL_KOBO_ALLOWED_ROLES,
@@ -174,7 +175,9 @@ function normalizeSubmissionPayload(body, req) {
                 serverFormVersion: INTERNAL_KOBO_FORM_VERSION,
                 formVersionMismatch: formVersion !== INTERNAL_KOBO_FORM_VERSION,
                 serverRequiredMissing,
+                requestId: req.get('x-request-id') || crypto.randomUUID(),
                 receivedAt: new Date().toISOString(),
+                receivedFromIp: req.ip || req.connection?.remoteAddress || null,
                 userAgent: req.get('user-agent') || null
             },
             requiredMissing,
@@ -352,20 +355,69 @@ export const getInternalKoboFormDefinition = async (_req, res) => {
 export const listInternalKoboSubmissions = async (req, res) => {
     try {
         const { organizationId } = req.user;
-        const { householdId, numeroOrdre, status, formKey, clientSubmissionId, limit = '100' } = req.query;
+        const {
+            householdId,
+            numeroOrdre,
+            status,
+            syncStatus,
+            role,
+            formKey,
+            clientSubmissionId,
+            q,
+            from,
+            to,
+            limit = '100'
+        } = req.query;
         const take = Math.min(Math.max(parseInt(limit, 10) || 100, 1), 500);
         const numeroVariants = normalizeNumeroVariants(numeroOrdre);
+        const filters = [{ organizationId }];
 
-        const where = {
-            organizationId,
-            ...(householdId ? { householdId: String(householdId) } : {}),
-            ...(numeroVariants.length > 0
-                ? { OR: numeroVariants.map((value) => ({ numeroOrdre: { equals: value, mode: 'insensitive' } })) }
-                : {}),
-            ...(status ? { status: String(status) } : {}),
-            ...(formKey ? { formKey: String(formKey) } : {}),
-            ...(clientSubmissionId ? { clientSubmissionId: String(clientSubmissionId) } : {})
-        };
+        if (householdId) filters.push({ householdId: String(householdId) });
+        if (numeroVariants.length > 0) {
+            filters.push({
+                OR: numeroVariants.map((value) => ({ numeroOrdre: { equals: value, mode: 'insensitive' } }))
+            });
+        }
+        if (status) filters.push({ status: String(status) });
+        if (syncStatus) filters.push({ syncStatus: String(syncStatus) });
+        if (role) filters.push({ role: String(role) });
+        if (formKey) filters.push({ formKey: String(formKey) });
+        if (clientSubmissionId) filters.push({ clientSubmissionId: String(clientSubmissionId) });
+
+        const savedAtFilter = {};
+        if (from) {
+            const fromDate = new Date(String(from));
+            if (!Number.isNaN(fromDate.getTime())) savedAtFilter.gte = fromDate;
+        }
+        if (to) {
+            const toDate = new Date(String(to));
+            if (!Number.isNaN(toDate.getTime())) savedAtFilter.lte = toDate;
+        }
+        if (Object.keys(savedAtFilter).length > 0) filters.push({ savedAt: savedAtFilter });
+
+        const search = String(q || '').trim();
+        if (search) {
+            filters.push({
+                OR: [
+                    { clientSubmissionId: { contains: search, mode: 'insensitive' } },
+                    { numeroOrdre: { contains: search, mode: 'insensitive' } },
+                    { role: { contains: search, mode: 'insensitive' } },
+                    {
+                        household: {
+                            is: {
+                                OR: [
+                                    { name: { contains: search, mode: 'insensitive' } },
+                                    { phone: { contains: search, mode: 'insensitive' } },
+                                    { village: { contains: search, mode: 'insensitive' } }
+                                ]
+                            }
+                        }
+                    }
+                ]
+            });
+        }
+
+        const where = filters.length === 1 ? filters[0] : { AND: filters };
 
         const submissions = await prisma.internalKoboSubmission.findMany({
             where,
@@ -394,9 +446,30 @@ export const listInternalKoboSubmissions = async (req, res) => {
             take
         });
 
+        const countBy = (key) =>
+            submissions.reduce((acc, submission) => {
+                const value = String(submission[key] || 'non_renseigne');
+                acc[value] = (acc[value] || 0) + 1;
+                return acc;
+            }, {});
+
+        const diagnostics = {
+            scope: 'filtered',
+            count: submissions.length,
+            byStatus: countBy('status'),
+            byRole: countBy('role'),
+            bySyncStatus: countBy('syncStatus'),
+            missingRequiredCount: submissions.filter((submission) => (submission.requiredMissing || []).length > 0).length,
+            versionMismatchCount: submissions.filter((submission) => submission.metadata?.formVersionMismatch === true).length,
+            latestSavedAt: submissions[0]?.savedAt || null,
+            serverFormVersion: INTERNAL_KOBO_FORM_VERSION,
+            generatedAt: new Date().toISOString()
+        };
+
         return res.json({
             success: true,
             count: submissions.length,
+            diagnostics,
             submissions: sanitizeBigIntForJson(submissions)
         });
     } catch (err) {
@@ -404,6 +477,95 @@ export const listInternalKoboSubmissions = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: 'Server error while fetching internal Kobo submissions'
+        });
+    }
+};
+
+export const getInternalKoboDiagnostics = async (req, res) => {
+    try {
+        const { organizationId } = req.user;
+        const recentSince = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        const [total, last24h, latestSubmissions] = await Promise.all([
+            prisma.internalKoboSubmission.count({ where: { organizationId } }),
+            prisma.internalKoboSubmission.count({ where: { organizationId, savedAt: { gte: recentSince } } }),
+            prisma.internalKoboSubmission.findMany({
+                where: { organizationId },
+                orderBy: { savedAt: 'desc' },
+                take: 1000,
+                select: {
+                    id: true,
+                    numeroOrdre: true,
+                    role: true,
+                    status: true,
+                    syncStatus: true,
+                    formVersion: true,
+                    metadata: true,
+                    requiredMissing: true,
+                    savedAt: true,
+                    submittedAt: true,
+                    householdId: true
+                }
+            })
+        ]);
+
+        const countBy = (values, selector) =>
+            values.reduce((acc, item) => {
+                const value = String(selector(item) || 'non_renseigne');
+                acc[value] = (acc[value] || 0) + 1;
+                return acc;
+            }, {});
+
+        const versionMismatchCount = latestSubmissions.filter(
+            (submission) => submission.metadata?.formVersionMismatch === true || submission.formVersion !== INTERNAL_KOBO_FORM_VERSION
+        ).length;
+        const missingRequiredCount = latestSubmissions.filter(
+            (submission) => (submission.requiredMissing || []).length > 0
+        ).length;
+        const unresolvedHouseholdCount = latestSubmissions.filter((submission) => !submission.householdId).length;
+        const warningMessages = [];
+
+        if (versionMismatchCount > 0) {
+            warningMessages.push(`${versionMismatchCount} soumission(s) avec une version XLSForm differente du serveur`);
+        }
+        if (missingRequiredCount > 0) {
+            warningMessages.push(`${missingRequiredCount} brouillon(s) ou fiche(s) avec champs requis manquants`);
+        }
+        if (unresolvedHouseholdCount > 0) {
+            warningMessages.push(`${unresolvedHouseholdCount} soumission(s) non rattachee(s) a un menage serveur`);
+        }
+
+        const health =
+            unresolvedHouseholdCount > 0 || versionMismatchCount > 0
+                ? 'warning'
+                : latestSubmissions.some((submission) => submission.syncStatus !== 'synced')
+                    ? 'warning'
+                    : 'ok';
+
+        return res.json({
+            success: true,
+            diagnostics: sanitizeBigIntForJson({
+                scope: 'organization',
+                health,
+                total,
+                receivedLast24h: last24h,
+                sampleSize: latestSubmissions.length,
+                byStatus: countBy(latestSubmissions, (submission) => submission.status),
+                byRole: countBy(latestSubmissions, (submission) => submission.role),
+                bySyncStatus: countBy(latestSubmissions, (submission) => submission.syncStatus),
+                versionMismatchCount,
+                missingRequiredCount,
+                unresolvedHouseholdCount,
+                latestSavedAt: latestSubmissions[0]?.savedAt || null,
+                serverFormVersion: INTERNAL_KOBO_FORM_VERSION,
+                warnings: warningMessages,
+                generatedAt: new Date().toISOString()
+            })
+        });
+    } catch (err) {
+        console.error('[INTERNAL-KOBO] diagnostics error:', err);
+        return res.status(500).json({
+            success: false,
+            message: 'Server error while fetching internal Kobo diagnostics'
         });
     }
 };

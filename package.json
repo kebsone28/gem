@@ -21,6 +21,7 @@
     "pmtiles:dev": "cd backend\\pmtiles-server && npm run dev",
     "pmtiles:start": "cd backend\\pmtiles-server && npm run start",
     "agent:deploy": "node scripts/local-deploy-agent.mjs",
+    "smoke:internal-kobo": "node scripts/internal-kobo-smoke.mjs",
     "build": "cd frontend && npm run build",
     "preview": "cd frontend && npm run preview",
     "mentor:audit": "node --experimental-strip-types ./scripts/mission_sage_auto_audit.ts",
