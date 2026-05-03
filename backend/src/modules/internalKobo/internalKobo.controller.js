@@ -613,12 +613,10 @@ export const submitInternalKoboSubmission = async (req, res) => {
                 throw makeHttpError(404, 'Submitted internal Kobo form must target an existing household');
             }
 
-            const existingSubmission = await tx.internalKoboSubmission.findUnique({
+            const existingSubmission = await tx.internalKoboSubmission.findFirst({
                 where: {
-                    organizationId_clientSubmissionId: {
-                        organizationId,
-                        clientSubmissionId: payload.clientSubmissionId
-                    }
+                    organizationId,
+                    clientSubmissionId: payload.clientSubmissionId
                 },
                 select: {
                     id: true,
