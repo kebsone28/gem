@@ -471,6 +471,14 @@ export const INTERNAL_KOBO_CONTROL_FIELD_NAMES = [
   'VALEUR_DE_LA_RESISTANCE_DE_TER',
 ];
 
+const INTERNAL_KOBO_FIELD_ALIASES: Record<string, string[]> = {
+  Longueur_Cable_2_5mm_Int_rieure: ['Longueur_c\u00e2ble_2_5mm_Int_rieure'],
+  Longueur_Cable_1_5mm_Int_rieure: ['Longueur_c\u00e2ble_1_5mm_Int_rieure'],
+  Longueur_Tranch_e_Cable_arm_4mm: ['Longueur_Tranch_e_c\u00e2ble_arm_4mm'],
+  Presence_de_Mur: ['New_Question'],
+  Je_confirme_le_marqu_coffrets_lectriques: ['Je_confirme_le_marqu_s_coffret_lectrique'],
+};
+
 export const isTruthyKoboValue = (value: unknown) =>
   value === true || value === 'true' || value === 'yes' || value === 'oui' || value === '1';
 
@@ -487,13 +495,27 @@ export const getInternalKoboFieldValue = (
   return hasInternalKoboValue(value) ? value : field.defaultValue;
 };
 
+export const hasInternalKoboRequiredValue = (
+  field: InternalKoboField,
+  values: Record<string, unknown>
+) => {
+  const value = getInternalKoboFieldValue(field, values);
+  if (field.type === 'acknowledge') return isTruthyKoboValue(value);
+  return hasInternalKoboValue(value);
+};
+
 export const getInternalKoboSubmissionValues = (values: Record<string, unknown>) => {
   const submissionValues: Record<string, unknown> = {};
 
   getVisibleInternalKoboFields(values).forEach((field) => {
     if (field.type === 'note') return;
     const value = getInternalKoboFieldValue(field, values);
-    if (hasInternalKoboValue(value)) submissionValues[field.name] = value;
+    if (hasInternalKoboValue(value)) {
+      submissionValues[field.name] = value;
+      INTERNAL_KOBO_FIELD_ALIASES[field.name]?.forEach((alias) => {
+        submissionValues[alias] = value;
+      });
+    }
   });
 
   return submissionValues;
@@ -553,7 +575,7 @@ export const getVisibleInternalKoboFields = (values: Record<string, unknown>) =>
 
 export const validateInternalKoboRequiredFields = (values: Record<string, unknown>) =>
   getVisibleInternalKoboFields(values).filter(
-    (field) => field.type !== 'note' && field.required && !hasInternalKoboValue(getInternalKoboFieldValue(field, values))
+    (field) => field.type !== 'note' && field.required && !hasInternalKoboRequiredValue(field, values)
   );
 
 export const formatInternalKoboValue = (value: unknown, listName?: string): string => {

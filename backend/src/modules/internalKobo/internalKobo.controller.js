@@ -1,6 +1,12 @@
 import prisma from '../../core/utils/prisma.js';
 import eventBus from '../../core/utils/eventBus.js';
 import { tracerAction } from '../../services/audit.service.js';
+import {
+    getServerRequiredMissing,
+    INTERNAL_KOBO_ALLOWED_ROLES,
+    INTERNAL_KOBO_FORM_KEY,
+    INTERNAL_KOBO_FORM_VERSION
+} from './internalKobo.validation.js';
 
 const SUBMISSION_STATUSES = new Set(['draft', 'submitted', 'validated', 'rejected']);
 
@@ -91,12 +97,27 @@ function normalizeRequiredMissing(requiredMissing) {
         .filter(Boolean);
 }
 
+function uniqueStrings(values) {
+    return Array.from(new Set(values.map((value) => String(value || '').trim()).filter(Boolean)));
+}
+
+function makeHttpError(statusCode, message) {
+    const error = new Error(message);
+    error.statusCode = statusCode;
+    return error;
+}
+
 function normalizeSubmissionPayload(body, req) {
     const clientSubmissionId = String(body.clientSubmissionId || '').trim();
     const formVersion = String(body.formVersion || '').trim();
+    const formKey = String(body.formKey || INTERNAL_KOBO_FORM_KEY).trim() || INTERNAL_KOBO_FORM_KEY;
 
     if (!clientSubmissionId) {
         return { error: { status: 400, message: 'clientSubmissionId is required' } };
+    }
+
+    if (formKey !== INTERNAL_KOBO_FORM_KEY) {
+        return { error: { status: 400, message: `Unsupported formKey: ${formKey}` } };
     }
 
     if (!formVersion) {
@@ -107,8 +128,29 @@ function normalizeSubmissionPayload(body, req) {
         return { error: { status: 400, message: 'values must be an object' } };
     }
 
-    const requiredMissing = normalizeRequiredMissing(body.requiredMissing);
+    const roleSource = body.role ?? body.values.role;
+    const role = roleSource ? String(roleSource).trim() : null;
+    if (role && !INTERNAL_KOBO_ALLOWED_ROLES.has(role)) {
+        return { error: { status: 400, message: `Unsupported role: ${role}` } };
+    }
+
+    const serverRequiredMissing = getServerRequiredMissing(body.values);
+    const requiredMissing = uniqueStrings([
+        ...normalizeRequiredMissing(body.requiredMissing),
+        ...serverRequiredMissing
+    ]);
     const requestedStatus = String(body.status || '').trim().toLowerCase();
+
+    if (requiredMissing.length > 0 && ['submitted', 'validated'].includes(requestedStatus)) {
+        return {
+            error: {
+                status: 422,
+                message: 'Submitted internal Kobo form still has required fields missing',
+                details: { requiredMissing }
+            }
+        };
+    }
+
     const status = SUBMISSION_STATUSES.has(requestedStatus)
         ? requestedStatus
         : requiredMissing.length > 0
@@ -118,21 +160,25 @@ function normalizeSubmissionPayload(body, req) {
     return {
         payload: {
             clientSubmissionId,
-            formKey: String(body.formKey || 'terrain_internal').trim() || 'terrain_internal',
+            formKey,
             formVersion,
             householdId: body.householdId ? String(body.householdId) : null,
             numeroOrdre: body.numeroOrdre ? String(body.numeroOrdre).trim() : null,
-            role: body.role ? String(body.role).trim() : null,
+            role,
             status,
             syncStatus: 'synced',
             values: body.values,
             metadata: {
                 ...(isPlainObject(body.metadata) ? body.metadata : {}),
+                serverFormKey: INTERNAL_KOBO_FORM_KEY,
+                serverFormVersion: INTERNAL_KOBO_FORM_VERSION,
+                formVersionMismatch: formVersion !== INTERNAL_KOBO_FORM_VERSION,
+                serverRequiredMissing,
                 receivedAt: new Date().toISOString(),
                 userAgent: req.get('user-agent') || null
             },
             requiredMissing,
-            submittedAt: status === 'submitted' ? new Date() : null,
+            submittedAt: ['submitted', 'validated'].includes(status) ? new Date() : null,
             savedAt: new Date(),
             householdPatch: body.householdPatch
         }
@@ -144,7 +190,7 @@ export const submitInternalKoboSubmission = async (req, res) => {
     const { payload, error } = normalizeSubmissionPayload(req.body || {}, req);
 
     if (error) {
-        return res.status(error.status).json({ success: false, message: error.message });
+        return res.status(error.status).json({ success: false, message: error.message, details: error.details });
     }
 
     try {
@@ -156,6 +202,18 @@ export const submitInternalKoboSubmission = async (req, res) => {
                 householdId: payload.householdId,
                 numeroOrdre: payload.numeroOrdre
             });
+
+            if (resolvedHousehold && payload.numeroOrdre) {
+                const numeroVariants = normalizeNumeroVariants(payload.numeroOrdre).map((value) => value.toLowerCase());
+                const resolvedNumero = String(resolvedHousehold.numeroordre || '').trim().toLowerCase();
+                if (resolvedNumero && !numeroVariants.includes(resolvedNumero)) {
+                    throw makeHttpError(409, 'Household target does not match submitted numeroOrdre');
+                }
+            }
+
+            if (payload.status === 'submitted' && !resolvedHousehold) {
+                throw makeHttpError(404, 'Submitted internal Kobo form must target an existing household');
+            }
 
             const submissionRecord = await tx.internalKoboSubmission.upsert({
                 where: {
@@ -220,7 +278,10 @@ export const submitInternalKoboSubmission = async (req, res) => {
                         householdId: resolvedHousehold?.id || null,
                         numeroOrdre: resolvedHousehold?.numeroordre || payload.numeroOrdre,
                         status: payload.status,
-                        formVersion: payload.formVersion
+                        formVersion: payload.formVersion,
+                        requiredMissing: payload.requiredMissing,
+                        serverFormVersion: INTERNAL_KOBO_FORM_VERSION,
+                        formVersionMismatch: payload.metadata.formVersionMismatch
                     }
                 }
             });
@@ -250,7 +311,9 @@ export const submitInternalKoboSubmission = async (req, res) => {
                     clientSubmissionId: payload.clientSubmissionId,
                     householdId: updatedHousehold?.id || payload.householdId || null,
                     status: payload.status,
-                    formVersion: payload.formVersion
+                    formVersion: payload.formVersion,
+                    requiredMissing: payload.requiredMissing,
+                    formVersionMismatch: payload.metadata.formVersionMismatch
                 },
                 req
             });
@@ -265,11 +328,25 @@ export const submitInternalKoboSubmission = async (req, res) => {
         });
     } catch (err) {
         console.error('[INTERNAL-KOBO] submit error:', err);
-        return res.status(500).json({
+        const statusCode = err.statusCode || 500;
+        return res.status(statusCode).json({
             success: false,
-            message: 'Server error while saving internal Kobo submission'
+            message: statusCode === 500 ? 'Server error while saving internal Kobo submission' : err.message
         });
     }
+};
+
+export const getInternalKoboFormDefinition = async (_req, res) => {
+    return res.json({
+        success: true,
+        form: {
+            formKey: INTERNAL_KOBO_FORM_KEY,
+            formVersion: INTERNAL_KOBO_FORM_VERSION,
+            engine: 'gem-internal-kobo',
+            allowedRoles: Array.from(INTERNAL_KOBO_ALLOWED_ROLES),
+            serverValidation: true
+        }
+    });
 };
 
 export const listInternalKoboSubmissions = async (req, res) => {

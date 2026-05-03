@@ -16,6 +16,7 @@ import {
   X,
 } from 'lucide-react';
 import apiClient from '../../api/client';
+import { fetchInternalKoboFormDefinition } from '../../services/internalKoboSubmissionService';
 import type {
   InternalKoboLocalDraft,
   InternalKoboQueuedSubmission,
@@ -26,6 +27,7 @@ import {
   formatInternalKoboValue,
   getInternalKoboFieldValue,
   getVisibleInternalKoboFields,
+  hasInternalKoboRequiredValue,
   hasInternalKoboValue,
   INTERNAL_KOBO_CHOICES,
   INTERNAL_KOBO_FORM_SETTINGS,
@@ -66,7 +68,7 @@ const asArray = (value: unknown): string[] => {
 
 const progressFor = (values: Record<string, unknown>) => {
   const visibleFields = getVisibleInternalKoboFields(values).filter((field) => !field.readOnly && field.type !== 'note');
-  const filled = visibleFields.filter((field) => hasInternalKoboValue(getInternalKoboFieldValue(field, values))).length;
+  const filled = visibleFields.filter((field) => hasInternalKoboRequiredValue(field, values)).length;
   return {
     filled,
     total: visibleFields.length,
@@ -112,6 +114,43 @@ const formatHistoryDate = (value?: string | null) => {
   });
 };
 
+const CLIENT_METADATA_LABELS: Record<string, string> = {
+  _gem_collection_app: 'Application',
+  _gem_collection_engine: 'Moteur',
+  _gem_collection_mode: 'Mode',
+  _gem_client_timezone: 'Fuseau horaire',
+  _gem_client_language: 'Langue',
+  _gem_client_platform: 'Appareil',
+  _gem_client_user_agent: 'Navigateur',
+  _gem_client_touch: 'Ecran tactile',
+  _gem_client_viewport: 'Fenetre',
+  _gem_session_started_at: 'Debut session',
+  _gem_session_duration_s: 'Duree session',
+};
+
+const formatMetadataLabel = (key: string) => CLIENT_METADATA_LABELS[key] || key.replace(/^_gem_/, '').replace(/_/g, ' ');
+
+const getClientCollectionMetadata = (isOnline: boolean): Record<string, string> => {
+  const nav = typeof navigator !== 'undefined' ? navigator : null;
+  const viewport = typeof window !== 'undefined' ? `${window.innerWidth}x${window.innerHeight}` : '';
+  const timezone =
+    typeof Intl !== 'undefined'
+      ? Intl.DateTimeFormat().resolvedOptions().timeZone || ''
+      : '';
+
+  return {
+    _gem_collection_app: 'gem-terrain-internal',
+    _gem_collection_engine: 'xlsform-native',
+    _gem_collection_mode: isOnline ? 'online' : 'offline',
+    _gem_client_timezone: timezone,
+    _gem_client_language: nav?.language || '',
+    _gem_client_platform: nav?.platform || '',
+    _gem_client_user_agent: nav?.userAgent || '',
+    _gem_client_touch: String((nav?.maxTouchPoints || 0) > 0),
+    _gem_client_viewport: viewport,
+  };
+};
+
 const submissionStatusClass = (status: string) => {
   if (status === 'submitted' || status === 'validated') {
     return 'border-emerald-300/25 bg-emerald-400/10 text-emerald-100';
@@ -134,7 +173,8 @@ const queueStatusClass = (status: string) => {
   return 'border-sky-300/25 bg-sky-400/10 text-sky-100';
 };
 
-const queueStatusLabel = (status: string) => {
+const queueStatusLabel = (status: string, retryCount = 0) => {
+  if (status === 'failed' && retryCount >= 6) return 'Bloque';
   if (status === 'failed') return 'A relancer';
   return 'En attente';
 };
@@ -170,12 +210,18 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
     status: 'idle' | 'loading' | 'found' | 'missing' | 'error';
     message: string;
   }>({ status: 'idle', message: '' });
+  const [serverFormStatus, setServerFormStatus] = useState<{
+    status: 'idle' | 'loading' | 'ok' | 'mismatch' | 'error';
+    version?: string;
+    message?: string;
+  }>({ status: 'idle' });
   const lastResolvedNumeroRef = useRef('');
   const onChangeRef = useRef(onChange);
   const onResolvedHouseholdRef = useRef(onResolvedHousehold);
   const resolveHouseholdByNumeroRef = useRef(resolveHouseholdByNumero);
   const missingRequired = useMemo(() => validateInternalKoboRequiredFields(values), [values]);
   const progress = useMemo(() => progressFor(values), [values]);
+  const collectionMetadata = useMemo(() => getClientCollectionMetadata(isOnline), [isOnline]);
   const normalizedQuery = query.trim().toLowerCase();
   const numeroOrdre = String(values.Numero_ordre || '').trim();
   const selectedRole = String(values.role || '').trim();
@@ -199,6 +245,78 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
   useEffect(() => {
     resolveHouseholdByNumeroRef.current = resolveHouseholdByNumero;
   }, [resolveHouseholdByNumero]);
+
+  useEffect(() => {
+    if (!isOnline) {
+      setServerFormStatus({ status: 'idle' });
+      return undefined;
+    }
+
+    let cancelled = false;
+    setServerFormStatus((current) => current.status === 'ok' ? current : { status: 'loading' });
+
+    fetchInternalKoboFormDefinition()
+      .then((form) => {
+        if (cancelled) return;
+        if (!form) {
+          setServerFormStatus({ status: 'error', message: 'Definition VPS indisponible' });
+          return;
+        }
+
+        setServerFormStatus({
+          status: form.formVersion === INTERNAL_KOBO_FORM_SETTINGS.version ? 'ok' : 'mismatch',
+          version: form.formVersion,
+          message:
+            form.formVersion === INTERNAL_KOBO_FORM_SETTINGS.version
+              ? 'Version VPS verifiee'
+              : `Version VPS ${form.formVersion}`,
+        });
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        setServerFormStatus({
+          status: 'error',
+          message: error instanceof Error ? error.message : 'Definition VPS indisponible',
+        });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isOnline]);
+
+  useEffect(() => {
+    const now = new Date();
+    const startValue = String(values.start || values._gem_session_started_at || now.toISOString());
+    const nextMetadata: Record<string, unknown> = {
+      ...collectionMetadata,
+      start: startValue,
+      today: values.today || now.toISOString().slice(0, 10),
+      _gem_session_started_at: startValue,
+    };
+
+    Object.entries(nextMetadata).forEach(([key, value]) => {
+      if (String(values[key] ?? '') !== String(value ?? '')) {
+        onChangeRef.current(key, value);
+      }
+    });
+  }, [collectionMetadata, values]);
+
+  useEffect(() => {
+    const startedAt = String(values._gem_session_started_at || values.start || '');
+    if (!startedAt) return undefined;
+
+    const updateDuration = () => {
+      const startedTime = new Date(startedAt).getTime();
+      if (Number.isNaN(startedTime)) return;
+      const durationSeconds = Math.max(0, Math.round((Date.now() - startedTime) / 1000));
+      onChangeRef.current('_gem_session_duration_s', String(durationSeconds));
+    };
+
+    updateDuration();
+    const intervalId = window.setInterval(updateDuration, 15000);
+    return () => window.clearInterval(intervalId);
+  }, [values._gem_session_started_at, values.start]);
 
   useEffect(() => {
     if (!numeroOrdre) {
@@ -437,6 +555,18 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
     window.URL.revokeObjectURL(url);
   };
 
+  const downloadSubmissionHistoryJson = () => {
+    if (submissions.length === 0) return;
+    const safeNumero = String(numeroOrdre || submissions[0]?.numeroOrdre || 'menage').replace(/[^a-z0-9_-]+/gi, '-');
+    const blob = new Blob([JSON.stringify(submissions, null, 2)], { type: 'application/json' });
+    const url = window.URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `historique-kobo-${safeNumero}.json`;
+    anchor.click();
+    window.URL.revokeObjectURL(url);
+  };
+
   const setOption = (field: InternalKoboField, optionName: string) => {
     if (field.type === 'select_multiple') {
       const current = new Set(asArray(values[field.name]));
@@ -627,17 +757,30 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
             {submissions.length ? `${submissions.length} derniere(s) soumission(s)` : 'Aucune soumission serveur'}
           </p>
         </div>
-        {onRefreshHistory ? (
-          <button
-            type="button"
-            onClick={onRefreshHistory}
-            disabled={isHistoryLoading}
-            className="grid h-8 w-8 shrink-0 place-items-center rounded-xl border border-white/10 bg-slate-950/35 text-slate-300 transition-colors hover:text-white disabled:opacity-40"
-            aria-label="Actualiser l'historique VPS"
-          >
-            <RefreshCcw size={14} className={isHistoryLoading ? 'animate-spin' : ''} />
-          </button>
-        ) : null}
+        <div className="flex shrink-0 items-center gap-2">
+          {submissions.length > 0 ? (
+            <button
+              type="button"
+              onClick={downloadSubmissionHistoryJson}
+              className="grid h-8 w-8 place-items-center rounded-xl border border-white/10 bg-slate-950/35 text-slate-300 transition-colors hover:text-white"
+              aria-label="Exporter l'historique Kobo"
+              title="Exporter l'historique JSON"
+            >
+              <Download size={14} />
+            </button>
+          ) : null}
+          {onRefreshHistory ? (
+            <button
+              type="button"
+              onClick={onRefreshHistory}
+              disabled={isHistoryLoading}
+              className="grid h-8 w-8 place-items-center rounded-xl border border-white/10 bg-slate-950/35 text-slate-300 transition-colors hover:text-white disabled:opacity-40"
+              aria-label="Actualiser l'historique VPS"
+            >
+              <RefreshCcw size={14} className={isHistoryLoading ? 'animate-spin' : ''} />
+            </button>
+          ) : null}
+        </div>
       </div>
 
       {historyError ? (
@@ -740,7 +883,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
                   </p>
                 </div>
                 <span className={`shrink-0 rounded-full border px-2 py-1 text-[8px] font-black uppercase tracking-[0.1em] ${queueStatusClass(item.status)}`}>
-                  {queueStatusLabel(item.status)}
+                  {queueStatusLabel(item.status, item.retryCount)}
                 </span>
               </div>
               <div className="mt-2 flex flex-wrap gap-2 text-[9px] font-bold text-slate-400">
@@ -856,6 +999,17 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
         return true;
       })
       .slice(0, 8);
+    const clientMetadataEntries = Object.entries(receiptSubmission.values || {})
+      .filter(([key, value]) => {
+        const isClientMetadata =
+          key.startsWith('_gem_collection_') ||
+          key.startsWith('_gem_client_') ||
+          key.startsWith('_gem_session_');
+        if (!isClientMetadata) return false;
+        if (value === undefined || value === null) return false;
+        return String(value).trim().length > 0;
+      })
+      .slice(0, 12);
 
     return (
       <div className="absolute inset-0 z-40 flex items-end justify-center bg-slate-950/72 p-3 backdrop-blur-sm sm:items-center sm:p-6">
@@ -970,6 +1124,31 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
                       </p>
                       <p className="mt-1 line-clamp-3 break-words text-[11px] font-bold leading-snug text-slate-100">
                         {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            {clientMetadataEntries.length > 0 ? (
+              <div className="mt-4 rounded-2xl border border-cyan-300/15 bg-cyan-400/[0.055] p-3">
+                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-cyan-100">Contexte appareil</p>
+                <p className="mt-1 text-[10px] font-semibold leading-relaxed text-slate-400">
+                  Donnees techniques jointes automatiquement pour tracer la saisie, le mode hors-ligne et la session.
+                </p>
+                <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {clientMetadataEntries.map(([key, value]) => (
+                    <div key={key} className="min-w-0 rounded-xl border border-cyan-200/10 bg-slate-950/25 p-3">
+                      <p className="truncate text-[9px] font-black uppercase tracking-[0.12em] text-cyan-200/70">
+                        {formatMetadataLabel(key)}
+                      </p>
+                      <p className="mt-1 line-clamp-3 break-words text-[11px] font-bold leading-snug text-slate-100">
+                        {key === '_gem_client_touch'
+                          ? String(value) === 'true' ? 'Oui' : 'Non'
+                          : key === '_gem_session_duration_s'
+                            ? `${String(value)} s`
+                            : String(value)}
                       </p>
                     </div>
                   ))}
@@ -1114,6 +1293,18 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
             {queueCount > 0 && !isOnline ? (
               <div className="mt-3 rounded-2xl border border-sky-300/25 bg-sky-400/10 px-4 py-3 text-[11px] font-bold text-sky-100">
                 Mode hors-ligne: les saisies sont gardees sur cet appareil et seront envoyees au retour du reseau.
+              </div>
+            ) : null}
+
+            {serverFormStatus.status === 'mismatch' ? (
+              <div className="mt-3 hidden rounded-2xl border border-amber-400/25 bg-amber-500/10 px-4 py-3 text-[11px] font-bold text-amber-100 sm:block">
+                Version XLSForm a verifier: locale {INTERNAL_KOBO_FORM_SETTINGS.version}, VPS {serverFormStatus.version || 'inconnue'}.
+              </div>
+            ) : null}
+
+            {serverFormStatus.status === 'error' && isOnline ? (
+              <div className="mt-3 hidden rounded-2xl border border-rose-400/25 bg-rose-500/10 px-4 py-3 text-[11px] font-bold text-rose-100 sm:block">
+                Controle de version VPS indisponible: la saisie reste possible, la validation serveur tranchera a l'envoi.
               </div>
             ) : null}
 
@@ -1271,6 +1462,13 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
                 <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-3">
                   <p className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Version XLSForm</p>
                   <p className="mt-1 truncate text-sm font-black text-white">v{INTERNAL_KOBO_FORM_SETTINGS.version}</p>
+                  {serverFormStatus.version ? (
+                    <p className={`mt-1 truncate text-[10px] font-bold ${
+                      serverFormStatus.status === 'mismatch' ? 'text-amber-200' : 'text-emerald-200'
+                    }`}>
+                      VPS {serverFormStatus.version}
+                    </p>
+                  ) : null}
                 </div>
               </div>
 

@@ -60,7 +60,9 @@ import {
   clearInternalKoboLocalDraft,
   fetchInternalKoboSubmissions,
   flushInternalKoboSubmissionQueue,
+  getInternalKoboErrorMessage,
   getInternalKoboQueueItems,
+  isRetriableInternalKoboError,
   loadInternalKoboLocalDraft,
   queueInternalKoboSubmission,
   saveInternalKoboLocalDraft,
@@ -977,22 +979,19 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
 
       let traceQueued = false;
 
-      if (onUpdate) {
-        await onUpdate(targetHouseholdId, householdPatch);
-
-        const { householdPatch: _householdPatch, ...submissionTracePayload } = fallbackSubmissionPayload;
-        try {
-          await submitInternalKoboSubmission(submissionTracePayload);
-        } catch (submissionError) {
-          traceQueued = true;
-          await queueInternalKoboSubmission(
-            submissionTracePayload,
-            submissionError instanceof Error ? submissionError.message : 'Trace VPS indisponible'
-          );
-          await refreshInternalKoboQueueCount();
-        }
-      } else {
+      try {
         await submitInternalKoboSubmission(fallbackSubmissionPayload);
+      } catch (submissionError) {
+        if (!isRetriableInternalKoboError(submissionError)) {
+          throw submissionError;
+        }
+
+        traceQueued = true;
+        await queueInternalKoboSubmission(
+          fallbackSubmissionPayload,
+          getInternalKoboErrorMessage(submissionError) || 'VPS indisponible'
+        );
+        await refreshInternalKoboQueueCount();
       }
 
       if (!traceQueued) {
@@ -1010,10 +1009,15 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
       );
       setShowInternalReportModal(false);
     } catch (error) {
+      if (!isRetriableInternalKoboError(error)) {
+        toast.error(getInternalKoboErrorMessage(error) || 'Soumission refusee par le serveur VPS');
+        return;
+      }
+
       if (fallbackSubmissionPayload) {
         await queueInternalKoboSubmission(
           fallbackSubmissionPayload,
-          error instanceof Error ? error.message : 'VPS indisponible'
+          getInternalKoboErrorMessage(error) || 'VPS indisponible'
         );
         await refreshInternalKoboQueueCount();
         clearInternalKoboDraftForTarget(null, fallbackSubmissionPayload.numeroOrdre);

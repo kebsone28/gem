@@ -24,6 +24,14 @@ export interface InternalKoboSubmissionResponse {
   message?: string;
 }
 
+export interface InternalKoboFormDefinitionInfo {
+  formKey: string;
+  formVersion: string;
+  engine: string;
+  allowedRoles: string[];
+  serverValidation: boolean;
+}
+
 export interface InternalKoboSubmissionRecord {
   id: string;
   householdId?: string | null;
@@ -84,9 +92,24 @@ export interface InternalKoboLocalDraft {
 
 const INTERNAL_KOBO_OUTBOX_ACTION = 'internal-kobo-submit';
 const INTERNAL_KOBO_SUBMISSION_ENDPOINT = '/internal-kobo/submissions';
+const INTERNAL_KOBO_FORM_DEFINITION_ENDPOINT = '/internal-kobo/form-definition';
 const INTERNAL_KOBO_DRAFT_PREFIX = 'gem-internal-kobo-draft:';
+const MAX_INTERNAL_KOBO_RETRIES = 6;
 
-function getErrorMessage(error: unknown): string {
+export function getInternalKoboErrorStatus(error: unknown): number | null {
+  const status = (error as any)?.response?.status;
+  return typeof status === 'number' ? status : null;
+}
+
+export function isRetriableInternalKoboError(error: unknown): boolean {
+  const status = getInternalKoboErrorStatus(error);
+  if (!status) return true;
+  return status === 408 || status === 429 || status >= 500;
+}
+
+export function getInternalKoboErrorMessage(error: unknown): string {
+  const responseMessage = (error as any)?.response?.data?.message;
+  if (typeof responseMessage === 'string' && responseMessage.trim()) return responseMessage;
   if (error instanceof Error && error.message) return error.message;
   if (typeof error === 'string') return error;
   return 'Erreur reseau inconnue';
@@ -125,6 +148,15 @@ export async function submitInternalKoboSubmission(
     payload
   );
   return response.data;
+}
+
+export async function fetchInternalKoboFormDefinition(): Promise<InternalKoboFormDefinitionInfo | null> {
+  const response = await apiClient.get<{
+    success: boolean;
+    form?: InternalKoboFormDefinitionInfo;
+  }>(INTERNAL_KOBO_FORM_DEFINITION_ENDPOINT);
+
+  return response.data.form || null;
 }
 
 export async function fetchInternalKoboSubmissions(params: {
@@ -184,6 +216,7 @@ export async function flushInternalKoboSubmissionQueue(): Promise<{
   const queuedItems = await db.syncOutbox.where('status').anyOf('pending', 'failed').toArray();
   const internalItems = queuedItems
     .filter(isInternalKoboQueueItem)
+    .filter((item) => (item.retryCount || 0) < MAX_INTERNAL_KOBO_RETRIES)
     .sort((a, b) => a.timestamp - b.timestamp);
 
   let flushed = 0;
@@ -206,10 +239,13 @@ export async function flushInternalKoboSubmissionQueue(): Promise<{
     } catch (error) {
       failed += 1;
       if (item.id) {
+        const canRetry = isRetriableInternalKoboError(error);
         await db.syncOutbox.update(item.id, {
           status: 'failed',
-          retryCount: (item.retryCount || 0) + 1,
-          lastError: getErrorMessage(error),
+          retryCount: canRetry ? (item.retryCount || 0) + 1 : MAX_INTERNAL_KOBO_RETRIES,
+          lastError: canRetry
+            ? getInternalKoboErrorMessage(error)
+            : `Validation serveur: ${getInternalKoboErrorMessage(error)}`,
           timestamp: Date.now(),
         });
       }
