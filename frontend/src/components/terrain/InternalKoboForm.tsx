@@ -491,6 +491,10 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
           <div className="space-y-2">
             {navigableSections.map((section) => {
               const status = getSectionStatus(section);
+              const isActive = activeSection?.id === section.id;
+              const inactiveStatusClass = section.locked
+                ? 'border-white/5 bg-white/[0.02] text-slate-600'
+                : 'border-white/8 bg-white/[0.025] text-slate-500';
               return (
                 <button
                   key={section.id}
@@ -499,22 +503,27 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
                   onClick={() => {
                     if (!section.locked) setActiveSectionId(section.id);
                   }}
-                  className={`w-full rounded-2xl border p-3 text-left transition-colors ${
-                    activeSection?.id === section.id
-                      ? 'border-blue-300/45 bg-blue-500/14 text-white'
+                  className={`relative w-full overflow-hidden rounded-2xl border p-3 text-left transition-all ${
+                    isActive
+                      ? 'border-blue-300/70 bg-blue-500/18 text-white shadow-lg shadow-blue-500/10 ring-1 ring-blue-300/25'
                       : section.locked
-                        ? 'cursor-not-allowed border-white/5 bg-white/[0.02] text-slate-600 opacity-70'
-                        : 'border-white/8 bg-white/[0.035] text-slate-300 hover:bg-white/[0.06]'
+                        ? 'cursor-not-allowed border-white/5 bg-white/[0.02] text-slate-600 opacity-45 grayscale'
+                        : 'border-white/8 bg-white/[0.025] text-slate-500 opacity-50 grayscale hover:opacity-75 hover:grayscale-0'
                   }`}
                 >
+                  {isActive ? <span className="absolute inset-y-3 left-0 w-1 rounded-r-full bg-blue-300 shadow-[0_0_18px_rgba(96,165,250,0.9)]" /> : null}
                   <div className="flex items-center justify-between gap-3">
                     <span className="min-w-0">
-                      <span className="block truncate text-[12px] font-black uppercase tracking-[0.1em]">{section.title}</span>
-                      <span className="mt-1 block truncate text-[10px] font-semibold text-slate-500">{status.detail}</span>
+                      <span className={`block truncate text-[12px] font-black uppercase tracking-[0.1em] ${isActive ? 'text-white' : 'text-slate-500'}`}>
+                        {section.title}
+                      </span>
+                      <span className={`mt-1 block truncate text-[10px] font-semibold ${isActive ? 'text-blue-100/80' : 'text-slate-600'}`}>
+                        {isActive ? 'Etape choisie - saisie en cours' : status.detail}
+                      </span>
                     </span>
-                    <span className={`flex shrink-0 items-center gap-1 rounded-full border px-2 py-1 text-[8px] font-black uppercase tracking-[0.1em] ${status.className}`}>
-                      {status.icon}
-                      {status.label}
+                    <span className={`flex shrink-0 items-center gap-1 rounded-full border px-2 py-1 text-[8px] font-black uppercase tracking-[0.1em] ${isActive ? 'border-blue-200/45 bg-blue-300/18 text-blue-50' : inactiveStatusClass}`}>
+                      {isActive ? <CheckCircle2 size={13} /> : status.icon}
+                      {isActive ? 'Etape active' : status.label}
                     </span>
                   </div>
                 </button>
