@@ -263,6 +263,10 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
     navigableSections.find((section) => section.id === selectedRoleSectionId && !section.locked) ||
     navigableSections.find((section) => !section.locked) ||
     navigableSections[0];
+  const requiredStatusText = missingRequired.length ? `${missingRequired.length} obligatoire(s)` : 'Pret';
+  const requiredStatusClass = missingRequired.length
+    ? 'border-amber-400/35 bg-amber-400/12 text-amber-100'
+    : 'border-emerald-400/30 bg-emerald-400/12 text-emerald-100';
 
   const blockedByTitle = (sectionId: string) =>
     navigableSections.find((section) => section.id === sectionId)?.title || 'l etape precedente';
@@ -553,16 +557,21 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
         </aside>
 
         <main className="flex min-h-0 flex-col">
-          <header className="shrink-0 border-b border-white/10 bg-[#07111F] p-4 sm:p-5">
+          <header className="shrink-0 border-b border-blue-300/15 bg-[#0A1830] p-4 shadow-[inset_0_-1px_0_rgba(96,165,250,0.08)] sm:p-5">
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
                 <p className="text-[10px] font-black uppercase tracking-[0.22em] text-blue-300">Saisie terrain VPS</p>
                 <h3 className="mt-1 truncate text-xl font-black uppercase tracking-tight text-white sm:text-2xl">
                   Formulaire du menage
                 </h3>
-                <p className="mt-1 text-[12px] font-semibold text-slate-400">
-                  {numeroOrdre ? `Numero ordre ${numeroOrdre}` : 'Renseignez le numero ordre'}{selectedRole ? ` - ${formatInternalKoboValue(selectedRole, 'roles')}` : ''}
-                </p>
+                <div className="mt-1 flex min-w-0 items-center gap-2">
+                  <p className="min-w-0 truncate text-[12px] font-semibold text-slate-300">
+                    {numeroOrdre ? `Numero ordre ${numeroOrdre}` : 'Renseignez le numero ordre'}{selectedRole ? ` - ${formatInternalKoboValue(selectedRole, 'roles')}` : ''}
+                  </p>
+                  <span className={`inline-flex shrink-0 rounded-full border px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.1em] sm:hidden ${requiredStatusClass}`}>
+                    {requiredStatusText}
+                  </span>
+                </div>
               </div>
               <button
                 type="button"
@@ -574,7 +583,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
               </button>
             </div>
 
-            <div className="mt-3 grid grid-cols-1 gap-3 sm:mt-4 sm:grid-cols-[1fr_auto]">
+            <div className="mt-3 hidden grid-cols-1 gap-3 sm:mt-4 sm:grid sm:grid-cols-[1fr_auto]">
               <div className="hidden h-12 items-center gap-2 rounded-2xl border border-white/10 bg-slate-950/45 px-3 sm:flex">
                 <Search size={15} className="text-slate-500" />
                 <input
@@ -584,9 +593,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
                   className="min-w-0 flex-1 bg-transparent text-[12px] font-semibold text-white outline-none placeholder:text-slate-600"
                 />
               </div>
-              <div className={`rounded-2xl border px-4 py-2.5 text-center text-[10px] font-black uppercase tracking-[0.13em] sm:flex sm:items-center sm:py-3 ${
-                missingRequired.length ? 'border-amber-400/25 bg-amber-500/10 text-amber-100' : 'border-emerald-400/25 bg-emerald-500/10 text-emerald-100'
-              }`}>
+              <div className={`rounded-2xl border px-4 py-3 text-center text-[10px] font-black uppercase tracking-[0.13em] sm:flex sm:items-center ${requiredStatusClass}`}>
                 {missingRequired.length ? `${missingRequired.length} obligatoire(s)` : 'Pret a soumettre'}
               </div>
             </div>
