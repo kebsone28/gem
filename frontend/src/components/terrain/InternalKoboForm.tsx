@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import apiClient from '../../api/client';
 import type {
+  InternalKoboLocalDraft,
   InternalKoboQueuedSubmission,
   InternalKoboSubmissionRecord,
 } from '../../services/internalKoboSubmissionService';
@@ -45,6 +46,8 @@ type InternalKoboFormProps = {
   queueItems?: InternalKoboQueuedSubmission[];
   isQueueFlushing?: boolean;
   onFlushQueue?: () => void;
+  localDraft?: InternalKoboLocalDraft | null;
+  onClearLocalDraft?: () => void;
   isOnline?: boolean;
   submissions?: InternalKoboSubmissionRecord[];
   isHistoryLoading?: boolean;
@@ -146,6 +149,8 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
   queueItems = [],
   isQueueFlushing = false,
   onFlushQueue,
+  localDraft = null,
+  onClearLocalDraft,
   isOnline = true,
   submissions = [],
   isHistoryLoading = false,
@@ -827,6 +832,23 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
             {queueCount > 0 && !isOnline ? (
               <div className="mt-3 rounded-2xl border border-sky-300/25 bg-sky-400/10 px-4 py-3 text-[11px] font-bold text-sky-100">
                 Mode hors-ligne: les saisies sont gardees sur cet appareil et seront envoyees au retour du reseau.
+              </div>
+            ) : null}
+
+            {localDraft ? (
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-blue-300/20 bg-blue-400/10 px-4 py-3 text-[11px] font-bold text-blue-100">
+                <span>
+                  Brouillon local sauvegarde - {formatHistoryDate(localDraft.updatedAt)}
+                </span>
+                {onClearLocalDraft ? (
+                  <button
+                    type="button"
+                    onClick={onClearLocalDraft}
+                    className="rounded-full border border-blue-200/25 bg-blue-200/10 px-3 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-blue-50 hover:bg-blue-200/18"
+                  >
+                    Effacer
+                  </button>
+                ) : null}
               </div>
             ) : null}
 

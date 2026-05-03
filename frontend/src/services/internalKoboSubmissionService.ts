@@ -72,8 +72,19 @@ export interface InternalKoboQueuedSubmission {
   timestamp: number;
 }
 
+export interface InternalKoboLocalDraft {
+  key: string;
+  householdId?: string | null;
+  numeroOrdre?: string | null;
+  role?: string | null;
+  formVersion: string;
+  values: Record<string, unknown>;
+  updatedAt: string;
+}
+
 const INTERNAL_KOBO_OUTBOX_ACTION = 'internal-kobo-submit';
 const INTERNAL_KOBO_SUBMISSION_ENDPOINT = '/internal-kobo/submissions';
+const INTERNAL_KOBO_DRAFT_PREFIX = 'gem-internal-kobo-draft:';
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error && error.message) return error.message;
@@ -86,6 +97,24 @@ function isInternalKoboQueueItem(item: SyncQueueItem): item is SyncQueueItem & {
 } {
   const payload = item.payload as Partial<InternalKoboSubmissionPayload>;
   return item.action === INTERNAL_KOBO_OUTBOX_ACTION && Boolean(payload?.clientSubmissionId);
+}
+
+function canUseLocalStorage(): boolean {
+  return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
+}
+
+function getInternalKoboDraftKeys(params: {
+  householdId?: string | null;
+  numeroOrdre?: string | null;
+}): string[] {
+  const keys: string[] = [];
+  const householdId = String(params.householdId || '').trim();
+  const numeroOrdre = String(params.numeroOrdre || '').trim();
+
+  if (householdId) keys.push(`${INTERNAL_KOBO_DRAFT_PREFIX}household:${householdId}`);
+  if (numeroOrdre) keys.push(`${INTERNAL_KOBO_DRAFT_PREFIX}numero:${numeroOrdre}`);
+
+  return keys;
 }
 
 export async function submitInternalKoboSubmission(
@@ -216,4 +245,64 @@ export async function getInternalKoboQueueItems(): Promise<InternalKoboQueuedSub
 
 export async function getInternalKoboQueueCount(): Promise<number> {
   return getInternalKoboQueueItems().then((items) => items.length);
+}
+
+export function saveInternalKoboLocalDraft(params: {
+  householdId?: string | null;
+  numeroOrdre?: string | null;
+  role?: string | null;
+  formVersion: string;
+  values: Record<string, unknown>;
+}): InternalKoboLocalDraft | null {
+  if (!canUseLocalStorage()) return null;
+
+  const [key] = getInternalKoboDraftKeys(params);
+  if (!key) return null;
+
+  const draft: InternalKoboLocalDraft = {
+    key,
+    householdId: params.householdId,
+    numeroOrdre: params.numeroOrdre,
+    role: params.role,
+    formVersion: params.formVersion,
+    values: params.values,
+    updatedAt: new Date().toISOString(),
+  };
+
+  window.localStorage.setItem(key, JSON.stringify(draft));
+  return draft;
+}
+
+export function loadInternalKoboLocalDraft(params: {
+  householdId?: string | null;
+  numeroOrdre?: string | null;
+}): InternalKoboLocalDraft | null {
+  if (!canUseLocalStorage()) return null;
+
+  for (const key of getInternalKoboDraftKeys(params)) {
+    const rawDraft = window.localStorage.getItem(key);
+    if (!rawDraft) continue;
+
+    try {
+      const draft = JSON.parse(rawDraft) as InternalKoboLocalDraft;
+      if (draft?.values && typeof draft.values === 'object') {
+        return { ...draft, key };
+      }
+    } catch {
+      window.localStorage.removeItem(key);
+    }
+  }
+
+  return null;
+}
+
+export function clearInternalKoboLocalDraft(params: {
+  householdId?: string | null;
+  numeroOrdre?: string | null;
+}): void {
+  if (!canUseLocalStorage()) return;
+
+  getInternalKoboDraftKeys(params).forEach((key) => {
+    window.localStorage.removeItem(key);
+  });
 }

@@ -57,11 +57,15 @@ import {
   validateInternalKoboRequiredFields,
 } from './internalKoboFormDefinition';
 import {
+  clearInternalKoboLocalDraft,
   fetchInternalKoboSubmissions,
   flushInternalKoboSubmissionQueue,
   getInternalKoboQueueItems,
+  loadInternalKoboLocalDraft,
   queueInternalKoboSubmission,
+  saveInternalKoboLocalDraft,
   submitInternalKoboSubmission,
+  type InternalKoboLocalDraft,
   type InternalKoboQueuedSubmission,
   type InternalKoboSubmissionRecord,
   type InternalKoboSubmissionPayload,
@@ -188,6 +192,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
   const [internalKoboQueueCount, setInternalKoboQueueCount] = useState(0);
   const [internalKoboQueueItems, setInternalKoboQueueItems] = useState<InternalKoboQueuedSubmission[]>([]);
   const [isInternalKoboQueueFlushing, setIsInternalKoboQueueFlushing] = useState(false);
+  const [internalKoboLocalDraft, setInternalKoboLocalDraft] = useState<InternalKoboLocalDraft | null>(null);
   const [internalKoboHistory, setInternalKoboHistory] = useState<InternalKoboSubmissionRecord[]>([]);
   const [isInternalKoboHistoryLoading, setIsInternalKoboHistoryLoading] = useState(false);
   const [internalKoboHistoryError, setInternalKoboHistoryError] = useState('');
@@ -311,10 +316,66 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
       koboData.LOCALISATION_CLIENT ??
       (household.latitude && household.longitude ? `${household.latitude} ${household.longitude}` : '')
     );
+
+    const localDraft = loadInternalKoboLocalDraft({
+      householdId: String(household.id || ''),
+      numeroOrdre: String(nextForm.Numero_ordre || household.numeroordre || ''),
+    });
+
+    if (localDraft?.values) {
+      Object.assign(nextForm, localDraft.values);
+      setInternalKoboLocalDraft(localDraft);
+    } else {
+      setInternalKoboLocalDraft(null);
+    }
+
     setNativeKoboAuditForm(nextForm);
     setNativeKoboTargetHousehold(household as unknown as Record<string, any>);
     setNativeKoboValidated(Boolean(audit.conforme || household.koboSync?.controleOk));
   }, [household, loadInternalKoboHistory, refreshInternalKoboQueueCount, showInternalReportModal]);
+
+  useEffect(() => {
+    if (!showInternalReportModal) return;
+    if (Object.keys(nativeKoboAuditForm).length === 0) return;
+
+    const targetHousehold = nativeKoboTargetHousehold || (household as unknown as Record<string, any>);
+    const householdId = targetHousehold?.id ? String(targetHousehold.id) : String(household.id || '');
+    const numeroOrdre = String(
+      nativeKoboAuditForm.Numero_ordre ||
+      targetHousehold?.numeroordre ||
+      household.numeroordre ||
+      ''
+    ).trim();
+
+    if (!householdId && !numeroOrdre) return;
+
+    const timeoutId = window.setTimeout(() => {
+      const draft = saveInternalKoboLocalDraft({
+        householdId,
+        numeroOrdre,
+        role: nativeKoboAuditForm.role ? String(nativeKoboAuditForm.role) : null,
+        formVersion: INTERNAL_KOBO_FORM_SETTINGS.version,
+        values: nativeKoboAuditForm,
+      });
+      if (draft) setInternalKoboLocalDraft(draft);
+    }, 700);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [household, nativeKoboAuditForm, nativeKoboTargetHousehold, showInternalReportModal]);
+
+  const clearInternalKoboDraftForTarget = useCallback((target?: Record<string, any> | null, numeroOverride?: string | null) => {
+    const targetHousehold = target || nativeKoboTargetHousehold || (household as unknown as Record<string, any>);
+    clearInternalKoboLocalDraft({
+      householdId: targetHousehold?.id ? String(targetHousehold.id) : String(household.id || ''),
+      numeroOrdre: String(numeroOverride || nativeKoboAuditForm.Numero_ordre || targetHousehold?.numeroordre || household.numeroordre || ''),
+    });
+    setInternalKoboLocalDraft(null);
+  }, [household, nativeKoboAuditForm.Numero_ordre, nativeKoboTargetHousehold]);
+
+  const handleClearInternalKoboDraft = useCallback(() => {
+    clearInternalKoboDraftForTarget();
+    toast.success('Brouillon local efface');
+  }, [clearInternalKoboDraftForTarget]);
 
   const [selectedNewStatus, setSelectedNewStatus] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -733,6 +794,23 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
     setNativeKoboTargetHousehold(resolvedHousehold);
     void loadInternalKoboHistory(resolvedHousehold);
 
+    if (resolvedHousehold?.id) {
+      const restoredDraft = loadInternalKoboLocalDraft({
+        householdId: String(resolvedHousehold.id),
+        numeroOrdre: String(resolvedHousehold.numeroordre || nativeKoboAuditForm.Numero_ordre || ''),
+      });
+
+      if (restoredDraft?.values) {
+        setNativeKoboAuditForm((current) => ({
+          ...current,
+          ...restoredDraft.values,
+        }));
+        setInternalKoboLocalDraft(restoredDraft);
+      } else {
+        setInternalKoboLocalDraft(null);
+      }
+    }
+
     const resolvedId = resolvedHousehold?.id ? String(resolvedHousehold.id) : '';
     if (resolvedId && resolvedId !== household.id) {
       setSelectedHouseholdId(resolvedId);
@@ -921,6 +999,8 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
         await loadInternalKoboHistory(submissionHousehold);
       }
 
+      clearInternalKoboDraftForTarget(submissionHousehold, fallbackSubmissionPayload.numeroOrdre);
+
       toast.success(
         traceQueued
           ? 'Fiche sauvegardee; trace Kobo interne mise en file VPS'
@@ -936,6 +1016,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
           error instanceof Error ? error.message : 'VPS indisponible'
         );
         await refreshInternalKoboQueueCount();
+        clearInternalKoboDraftForTarget(null, fallbackSubmissionPayload.numeroOrdre);
         toast.success('VPS indisponible: saisie securisee en file locale');
         setShowInternalReportModal(false);
       } else {
@@ -1939,6 +2020,8 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
           queueItems={internalKoboQueueItems}
           isQueueFlushing={isInternalKoboQueueFlushing}
           onFlushQueue={handleFlushInternalKoboQueue}
+          localDraft={internalKoboLocalDraft}
+          onClearLocalDraft={handleClearInternalKoboDraft}
           isOnline={isOnline}
           submissions={internalKoboHistory}
           isHistoryLoading={isInternalKoboHistoryLoading}
