@@ -3,6 +3,22 @@ import { db, type SyncQueueItem } from '../store/db';
 
 export type InternalKoboSubmissionStatus = 'draft' | 'submitted' | 'validated' | 'rejected';
 
+export interface InternalKoboAttachment {
+  id?: string;
+  fieldName: string;
+  fileName?: string;
+  mimeType?: string;
+  originalBytes?: number;
+  storedBytes?: number;
+  capturedAt?: string;
+  source?: string;
+  status?: string;
+  storage?: string;
+  url?: string;
+  key?: string;
+  dataUrl?: string;
+}
+
 export interface InternalKoboSubmissionPayload {
   clientSubmissionId: string;
   householdId?: string | null;
@@ -12,6 +28,7 @@ export interface InternalKoboSubmissionPayload {
   role?: string | null;
   status: InternalKoboSubmissionStatus;
   values: Record<string, unknown>;
+  attachments?: InternalKoboAttachment[];
   metadata?: Record<string, unknown>;
   requiredMissing: string[];
   householdPatch?: Record<string, unknown>;
@@ -44,6 +61,7 @@ export interface InternalKoboSubmissionRecord {
   syncStatus: string;
   values: Record<string, unknown>;
   metadata?: Record<string, unknown>;
+  attachments?: InternalKoboAttachment[];
   requiredMissing: string[];
   submittedAt?: string | null;
   savedAt: string;
@@ -114,6 +132,7 @@ export interface InternalKoboQueuedSubmission {
   status: 'pending' | 'failed';
   submissionStatus: InternalKoboSubmissionStatus;
   formVersion: string;
+  attachmentCount: number;
   retryCount: number;
   lastError?: string;
   timestamp: number;
@@ -132,9 +151,18 @@ export interface InternalKoboLocalDraft {
 const INTERNAL_KOBO_OUTBOX_ACTION = 'internal-kobo-submit';
 const INTERNAL_KOBO_SUBMISSION_ENDPOINT = '/internal-kobo/submissions';
 const INTERNAL_KOBO_FORM_DEFINITION_ENDPOINT = '/internal-kobo/form-definition';
+const INTERNAL_KOBO_FORM_IMPORT_ENDPOINT = '/internal-kobo/form-definition/import';
 const INTERNAL_KOBO_DIAGNOSTICS_ENDPOINT = '/internal-kobo/diagnostics';
 const INTERNAL_KOBO_DRAFT_PREFIX = 'gem-internal-kobo-draft:';
 const MAX_INTERNAL_KOBO_RETRIES = 6;
+
+const getFilenameFromDisposition = (disposition?: string, fallback = 'soumissions-kobo-interne.csv') => {
+  if (!disposition) return fallback;
+  const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+  if (utf8Match?.[1]) return decodeURIComponent(utf8Match[1].replace(/"/g, ''));
+  const match = disposition.match(/filename="?([^"]+)"?/i);
+  return match?.[1] || fallback;
+};
 
 export function getInternalKoboErrorStatus(error: unknown): number | null {
   const status = (error as any)?.response?.status;
@@ -178,6 +206,28 @@ function getInternalKoboDraftKeys(params: {
   if (numeroOrdre) keys.push(`${INTERNAL_KOBO_DRAFT_PREFIX}numero:${numeroOrdre}`);
 
   return keys;
+}
+
+function compactDraftValues(value: unknown, key = ''): unknown {
+  if (key.startsWith('_gem_attachment_') && value && typeof value === 'object' && !Array.isArray(value)) {
+    const attachment = value as InternalKoboAttachment;
+    const compactAttachment = { ...attachment };
+    delete compactAttachment.dataUrl;
+    return { ...compactAttachment, status: attachment.status || 'queued' };
+  }
+  if (typeof value === 'string' && value.startsWith('data:image/')) {
+    return '[photo conservee dans la file de synchronisation]';
+  }
+  if (Array.isArray(value)) return value.map((item) => compactDraftValues(item));
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([entryKey, entryValue]) => [
+        entryKey,
+        compactDraftValues(entryValue, entryKey),
+      ])
+    );
+  }
+  return value;
 }
 
 export async function submitInternalKoboSubmission(
@@ -230,6 +280,57 @@ export async function fetchInternalKoboDiagnostics(): Promise<InternalKoboSubmis
   }>(INTERNAL_KOBO_DIAGNOSTICS_ENDPOINT);
 
   return response.data.diagnostics || null;
+}
+
+export async function reviewInternalKoboSubmission(
+  id: string,
+  status: Exclude<InternalKoboSubmissionStatus, 'draft'>,
+  note = ''
+): Promise<InternalKoboSubmissionRecord | null> {
+  const response = await apiClient.patch<{
+    success: boolean;
+    submission?: InternalKoboSubmissionRecord;
+  }>(`${INTERNAL_KOBO_SUBMISSION_ENDPOINT}/${id}/review`, { status, note });
+
+  return response.data.submission || null;
+}
+
+export async function downloadInternalKoboSubmissionsExport(
+  params: InternalKoboSubmissionFilters = {},
+  format: 'csv' | 'json' | 'xlsx' = 'csv'
+): Promise<{ blob: Blob; filename: string }> {
+  const response = await apiClient.get<Blob>(`${INTERNAL_KOBO_SUBMISSION_ENDPOINT}/export`, {
+    params: { ...params, format },
+    responseType: 'blob',
+  });
+  const extension = format === 'xlsx' ? 'xlsx' : format === 'json' ? 'json' : 'csv';
+  const fallback = `soumissions-kobo-interne-${new Date().toISOString().slice(0, 10)}.${extension}`;
+
+  return {
+    blob: response.data,
+    filename: getFilenameFromDisposition(response.headers?.['content-disposition'], fallback),
+  };
+}
+
+export async function importInternalKoboXlsForm(file: File): Promise<{
+  success: boolean;
+  importId?: string;
+  storageKey?: string;
+  form?: {
+    formKey: string;
+    formVersion: string;
+    diagnostics?: Record<string, unknown>;
+  };
+  message?: string;
+}> {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await apiClient.post(INTERNAL_KOBO_FORM_IMPORT_ENDPOINT, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+
+  return response.data;
 }
 
 export async function queueInternalKoboSubmission(
@@ -330,6 +431,7 @@ export async function getInternalKoboQueueItems(): Promise<InternalKoboQueuedSub
       status: item.status,
       submissionStatus: item.payload.status,
       formVersion: item.payload.formVersion,
+      attachmentCount: item.payload.attachments?.length || 0,
       retryCount: item.retryCount || 0,
       lastError: item.lastError,
       timestamp: item.timestamp,
@@ -363,8 +465,21 @@ export function saveInternalKoboLocalDraft(params: {
     updatedAt: new Date().toISOString(),
   };
 
-  window.localStorage.setItem(key, JSON.stringify(draft));
-  return draft;
+  try {
+    window.localStorage.setItem(key, JSON.stringify(draft));
+    return draft;
+  } catch {
+    const compactDraft = {
+      ...draft,
+      values: compactDraftValues(draft.values) as Record<string, unknown>,
+    };
+    try {
+      window.localStorage.setItem(key, JSON.stringify(compactDraft));
+      return compactDraft;
+    } catch {
+      return null;
+    }
+  }
 }
 
 export function loadInternalKoboLocalDraft(params: {

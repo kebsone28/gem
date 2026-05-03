@@ -10,15 +10,22 @@ import {
   Download,
   Eye,
   FileJson,
+  FileSpreadsheet,
   RefreshCw,
   Search,
   Server,
+  ShieldCheck,
+  Upload,
   X,
 } from 'lucide-react';
 import { PageContainer, PageHeader, ContentArea } from '../components';
 import {
   fetchInternalKoboDiagnostics,
   fetchInternalKoboSubmissionsReport,
+  downloadInternalKoboSubmissionsExport,
+  importInternalKoboXlsForm,
+  reviewInternalKoboSubmission,
+  type InternalKoboAttachment,
   type InternalKoboSubmissionDiagnostics,
   type InternalKoboSubmissionRecord,
   type InternalKoboSubmissionStatus,
@@ -63,10 +70,7 @@ const formatDateTime = (value?: string | null) => {
   });
 };
 
-const escapeCsv = (value: unknown) => `"${String(value ?? '').replace(/"/g, '""')}"`;
-
-const downloadBlob = (filename: string, content: string, type: string) => {
-  const blob = new Blob([content], { type });
+const saveBlob = (blob: Blob, filename: string) => {
   const url = window.URL.createObjectURL(blob);
   const anchor = document.createElement('a');
   anchor.href = url;
@@ -75,43 +79,16 @@ const downloadBlob = (filename: string, content: string, type: string) => {
   window.URL.revokeObjectURL(url);
 };
 
-const toCsv = (submissions: InternalKoboSubmissionRecord[]) => {
-  const header = [
-    'id',
-    'numero_ordre',
-    'menage',
-    'telephone',
-    'role',
-    'statut',
-    'sync',
-    'version',
-    'champs_requis_manquants',
-    'agent',
-    'sauvegarde_le',
-    'client_submission_id',
-  ];
-  const rows = submissions.map((submission) => [
-    submission.id,
-    submission.numeroOrdre || submission.household?.numeroordre || '',
-    submission.household?.name || '',
-    submission.household?.phone || '',
-    formatInternalKoboValue(submission.role || '', 'roles'),
-    statusLabels[submission.status] || submission.status,
-    submission.syncStatus,
-    submission.formVersion,
-    (submission.requiredMissing || []).join('|'),
-    submission.submittedBy?.name || submission.submittedBy?.email || '',
-    formatDateTime(submission.savedAt),
-    submission.clientSubmissionId,
-  ]);
-
-  return [header, ...rows].map((row) => row.map(escapeCsv).join(',')).join('\n');
-};
-
 const countValue = (diagnostics: InternalKoboSubmissionDiagnostics | null, bucket: keyof InternalKoboSubmissionDiagnostics, key: string) => {
   const value = diagnostics?.[bucket];
   if (!value || typeof value !== 'object' || Array.isArray(value)) return 0;
   return Number((value as Record<string, number>)[key] || 0);
+};
+
+const getSubmissionAttachments = (submission: InternalKoboSubmissionRecord | null): InternalKoboAttachment[] => {
+  const media = (submission?.metadata as any)?.media;
+  const attachments = media?.attachments;
+  return Array.isArray(attachments) ? attachments : [];
 };
 
 export default function InternalKoboSubmissions() {
@@ -130,6 +107,11 @@ export default function InternalKoboSubmissions() {
   const [error, setError] = useState('');
   const [receiptQr, setReceiptQr] = useState('');
   const [copied, setCopied] = useState(false);
+  const [reviewNote, setReviewNote] = useState('');
+  const [isReviewing, setIsReviewing] = useState(false);
+  const [isExporting, setIsExporting] = useState('');
+  const [isImporting, setIsImporting] = useState(false);
+  const [importMessage, setImportMessage] = useState('');
 
   const selectedSubmission = useMemo(
     () => submissions.find((submission) => submission.id === selectedId) || submissions[0] || null,
@@ -171,6 +153,10 @@ export default function InternalKoboSubmissions() {
   }, [loadSubmissions]);
 
   useEffect(() => {
+    setReviewNote('');
+  }, [selectedSubmission?.id]);
+
+  useEffect(() => {
     let cancelled = false;
     setReceiptQr('');
     if (!selectedSubmission) return undefined;
@@ -197,20 +183,64 @@ export default function InternalKoboSubmissions() {
     };
   }, [selectedSubmission]);
 
-  const exportJson = () => {
-    downloadBlob(
-      `soumissions-kobo-interne-${new Date().toISOString().slice(0, 10)}.json`,
-      JSON.stringify({ diagnostics: listDiagnostics, submissions }, null, 2),
-      'application/json'
-    );
+  const exportFromServer = async (format: 'csv' | 'json' | 'xlsx') => {
+    setIsExporting(format);
+    setError('');
+    try {
+      const cleanFilters = {
+        q: filters.q.trim() || undefined,
+        status: filters.status || undefined,
+        role: filters.role || undefined,
+        syncStatus: filters.syncStatus || undefined,
+        limit: Math.max(filters.limit, 500),
+      };
+      const { blob, filename } = await downloadInternalKoboSubmissionsExport(cleanFilters, format);
+      saveBlob(blob, filename);
+    } catch (exportError) {
+      setError(exportError instanceof Error ? exportError.message : 'Export serveur impossible');
+    } finally {
+      setIsExporting('');
+    }
   };
 
-  const exportCsv = () => {
-    downloadBlob(
-      `soumissions-kobo-interne-${new Date().toISOString().slice(0, 10)}.csv`,
-      toCsv(submissions),
-      'text/csv;charset=utf-8'
-    );
+  const handleImportXlsForm = async (file?: File) => {
+    if (!file) return;
+    setIsImporting(true);
+    setImportMessage('');
+    setError('');
+    try {
+      const result = await importInternalKoboXlsForm(file);
+      const diagnostics = result.form?.diagnostics as Record<string, unknown> | undefined;
+      setImportMessage(
+        `XLSForm importe: ${result.form?.formVersion || 'version inconnue'} - ${diagnostics?.fieldCount || 0} champs, ${diagnostics?.choiceCount || 0} choix`
+      );
+      await loadSubmissions();
+    } catch (importError) {
+      setError(importError instanceof Error ? importError.message : 'Import XLSForm impossible');
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  const handleReview = async (status: Exclude<InternalKoboSubmissionStatus, 'draft'>) => {
+    if (!selectedSubmission) return;
+    setIsReviewing(true);
+    setError('');
+    try {
+      const updated = await reviewInternalKoboSubmission(selectedSubmission.id, status, reviewNote);
+      if (updated) {
+        setSubmissions((current) =>
+          current.map((submission) => (submission.id === updated.id ? updated : submission))
+        );
+        setSelectedId(updated.id);
+      }
+      setReviewNote('');
+      await loadSubmissions();
+    } catch (reviewError) {
+      setError(reviewError instanceof Error ? reviewError.message : 'Validation admin impossible');
+    } finally {
+      setIsReviewing(false);
+    }
   };
 
   const copyReceipt = async () => {
@@ -232,6 +262,7 @@ export default function InternalKoboSubmissions() {
     if (!selectedSubmission?.metadata) return [];
     return Object.entries(selectedSubmission.metadata).filter(([, value]) => value !== undefined && value !== null && String(value).trim() !== '');
   }, [selectedSubmission]);
+  const selectedAttachments = useMemo(() => getSubmissionAttachments(selectedSubmission), [selectedSubmission]);
 
   const health = globalDiagnostics?.health || 'ok';
   const healthClass =
@@ -258,22 +289,45 @@ export default function InternalKoboSubmissions() {
             </button>
             <button
               type="button"
-              onClick={exportCsv}
+              onClick={() => exportFromServer('csv')}
               disabled={submissions.length === 0}
               className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-2 text-[11px] font-black uppercase tracking-[0.12em] text-slate-100 hover:bg-white/[0.08] disabled:opacity-40"
             >
-              <Download size={14} />
+              <Download size={14} className={isExporting === 'csv' ? 'animate-pulse' : ''} />
               CSV
             </button>
             <button
               type="button"
-              onClick={exportJson}
+              onClick={() => exportFromServer('json')}
               disabled={submissions.length === 0}
               className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-2 text-[11px] font-black uppercase tracking-[0.12em] text-slate-100 hover:bg-white/[0.08] disabled:opacity-40"
             >
-              <FileJson size={14} />
+              <FileJson size={14} className={isExporting === 'json' ? 'animate-pulse' : ''} />
               JSON
             </button>
+            <button
+              type="button"
+              onClick={() => exportFromServer('xlsx')}
+              disabled={submissions.length === 0}
+              className="inline-flex items-center gap-2 rounded-2xl border border-emerald-300/20 bg-emerald-500/10 px-4 py-2 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-100 hover:bg-emerald-500/18 disabled:opacity-40"
+            >
+              <FileSpreadsheet size={14} className={isExporting === 'xlsx' ? 'animate-pulse' : ''} />
+              XLSX
+            </button>
+            <label className="inline-flex cursor-pointer items-center gap-2 rounded-2xl border border-amber-300/20 bg-amber-500/10 px-4 py-2 text-[11px] font-black uppercase tracking-[0.12em] text-amber-100 hover:bg-amber-500/18">
+              <Upload size={14} className={isImporting ? 'animate-pulse' : ''} />
+              Import XLSForm
+              <input
+                type="file"
+                accept=".xlsx,.xls"
+                className="hidden"
+                disabled={isImporting}
+                onChange={(event) => {
+                  handleImportXlsForm(event.target.files?.[0]);
+                  event.target.value = '';
+                }}
+              />
+            </label>
           </div>
         }
       />
@@ -339,6 +393,12 @@ export default function InternalKoboSubmissions() {
             <div className="flex items-center gap-3 rounded-2xl border border-rose-300/25 bg-rose-500/10 p-4 text-sm font-bold text-rose-100">
               <AlertTriangle size={18} />
               {error}
+            </div>
+          ) : null}
+          {importMessage ? (
+            <div className="flex items-center gap-3 rounded-2xl border border-emerald-300/25 bg-emerald-500/10 p-4 text-sm font-bold text-emerald-100">
+              <FileSpreadsheet size={18} />
+              {importMessage}
             </div>
           ) : null}
 
@@ -501,12 +561,83 @@ export default function InternalKoboSubmissions() {
                       ))}
                     </div>
 
+                    <div className="mt-4 rounded-2xl border border-blue-300/15 bg-blue-500/[0.06] p-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-[10px] font-black uppercase tracking-[0.14em] text-blue-100">Validation admin</p>
+                          <p className="mt-1 text-[10px] font-semibold text-slate-500">Decision stockee avec horodatage et agent.</p>
+                        </div>
+                        <ShieldCheck size={18} className="text-blue-200" />
+                      </div>
+                      <textarea
+                        value={reviewNote}
+                        onChange={(event) => setReviewNote(event.target.value)}
+                        rows={2}
+                        placeholder="Observation de validation..."
+                        className="mt-3 w-full resize-none rounded-2xl border border-white/10 bg-slate-950/35 px-3 py-2 text-xs font-semibold text-white outline-none placeholder:text-slate-500 focus:border-blue-300/40"
+                      />
+                      <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                        <button
+                          type="button"
+                          onClick={() => handleReview('validated')}
+                          disabled={isReviewing}
+                          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-emerald-300/25 bg-emerald-500/12 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-100 hover:bg-emerald-500/20 disabled:opacity-50"
+                        >
+                          <CheckCircle2 size={13} />
+                          Valider
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleReview('rejected')}
+                          disabled={isReviewing}
+                          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-rose-300/25 bg-rose-500/12 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-rose-100 hover:bg-rose-500/20 disabled:opacity-50"
+                        >
+                          <X size={13} />
+                          Rejeter
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleReview('submitted')}
+                          disabled={isReviewing}
+                          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.045] px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-slate-100 hover:bg-white/[0.08] disabled:opacity-50"
+                        >
+                          <RefreshCw size={13} className={isReviewing ? 'animate-spin' : ''} />
+                          A revoir
+                        </button>
+                      </div>
+                    </div>
+
                     {(selectedSubmission.requiredMissing || []).length > 0 ? (
                       <div className="mt-4 rounded-2xl border border-amber-300/20 bg-amber-400/10 p-3">
                         <p className="text-[10px] font-black uppercase tracking-[0.14em] text-amber-100">Champs requis restants</p>
                         <p className="mt-2 break-words text-[11px] font-bold leading-relaxed text-amber-50">
                           {selectedSubmission.requiredMissing.join(', ')}
                         </p>
+                      </div>
+                    ) : null}
+
+                    {selectedAttachments.length > 0 ? (
+                      <div className="mt-4">
+                        <p className="text-[10px] font-black uppercase tracking-[0.14em] text-emerald-100">Pieces jointes</p>
+                        <div className="mt-3 grid grid-cols-1 gap-2">
+                          {selectedAttachments.map((attachment, index) => (
+                            <a
+                              key={attachment.id || `${attachment.fieldName}-${index}`}
+                              href={attachment.url || attachment.dataUrl || '#'}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="flex items-center justify-between gap-3 rounded-2xl border border-emerald-300/15 bg-emerald-400/[0.06] p-3 text-left transition-colors hover:bg-emerald-400/[0.1]"
+                            >
+                              <div className="min-w-0">
+                                <p className="truncate text-[11px] font-black text-emerald-50">{attachment.fileName || attachment.fieldName}</p>
+                                <p className="mt-1 truncate text-[9px] font-bold uppercase tracking-[0.12em] text-emerald-100/60">
+                                  {attachment.fieldName} - {attachment.storage || attachment.status || 'stockee'}
+                                </p>
+                              </div>
+                              <Download size={15} className="shrink-0 text-emerald-100" />
+                            </a>
+                          ))}
+                        </div>
                       </div>
                     ) : null}
 

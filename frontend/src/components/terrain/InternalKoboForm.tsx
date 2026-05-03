@@ -20,6 +20,7 @@ import {
 import apiClient from '../../api/client';
 import { fetchInternalKoboFormDefinition } from '../../services/internalKoboSubmissionService';
 import type {
+  InternalKoboAttachment,
   InternalKoboLocalDraft,
   InternalKoboQueuedSubmission,
   InternalKoboSubmissionRecord,
@@ -101,6 +102,34 @@ const ROLE_SECTION_BY_VALUE: Record<string, string> = {
 const maxPixelsFromParameters = (parameters?: string) => {
   const match = parameters?.match(/max-pixels\s*=\s*(\d+)/i);
   return match ? Number(match[1]) : undefined;
+};
+
+const isRecord = (value: unknown): value is Record<string, any> =>
+  Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+
+const makeAttachmentId = () =>
+  globalThis.crypto?.randomUUID?.() || `attachment-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+const fileToDataUrl = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(reader.error || new Error('Lecture de fichier impossible'));
+    reader.readAsDataURL(file);
+  });
+
+const getAttachmentMeta = (values: Record<string, unknown>, fieldName: string): InternalKoboAttachment | null => {
+  const value = values[`_gem_attachment_${fieldName}`];
+  return isRecord(value) ? (value as InternalKoboAttachment) : null;
+};
+
+const getImagePreviewSource = (fieldValue: unknown, attachment: InternalKoboAttachment | null) => {
+  const value = String(fieldValue || '');
+  if (value.startsWith('data:image/')) return value;
+  if (/^(https?:)?\/\//i.test(value) || value.startsWith('/api/')) return value;
+  if (attachment?.dataUrl?.startsWith('data:image/')) return attachment.dataUrl;
+  if (attachment?.url) return attachment.url;
+  return '';
 };
 
 const formatHistoryDate = (value?: string | null) => {
@@ -602,17 +631,67 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
     try {
       const maxPixels = maxPixelsFromParameters(field.parameters);
       const uploadFile = maxPixels ? await compressImage(file, { maxWidth: maxPixels, maxHeight: maxPixels }) : file;
-      const uploaded = onPhotoUpload ? await onPhotoUpload(uploadFile) : uploadFile.name;
-      onChange(field.name, uploaded);
+      const capturedAt = new Date().toISOString();
+      const dataUrl = await fileToDataUrl(uploadFile);
+      const baseAttachment: InternalKoboAttachment = {
+        id: makeAttachmentId(),
+        fieldName: field.name,
+        fileName: file.name,
+        mimeType: file.type || uploadFile.type || 'image/jpeg',
+        originalBytes: file.size,
+        storedBytes: uploadFile.size,
+        capturedAt,
+        source: 'gem-internal-kobo',
+      };
+      let fieldValue = dataUrl;
+      let attachment: InternalKoboAttachment = {
+        ...baseAttachment,
+        dataUrl,
+        storage: isOnline ? 'embedded-fallback' : 'embedded-offline',
+        status: 'queued',
+      };
+
+      if (isOnline && onPhotoUpload) {
+        try {
+          const uploaded = await onPhotoUpload(uploadFile);
+          if (uploaded) {
+            fieldValue = uploaded;
+            attachment = {
+              ...baseAttachment,
+              url: uploaded,
+              storage: 'remote',
+              status: 'uploaded',
+            };
+          }
+        } catch {
+          fieldValue = dataUrl;
+        }
+      }
+
+      onChange(field.name, fieldValue);
+      onChange(`_gem_attachment_${field.name}`, attachment);
       onChange(`_gem_photo_${field.name}_original_name`, file.name);
-      onChange(`_gem_photo_${field.name}_mime`, file.type || uploadFile.type || '');
+      onChange(`_gem_photo_${field.name}_mime`, attachment.mimeType || '');
       onChange(`_gem_photo_${field.name}_original_bytes`, String(file.size));
       onChange(`_gem_photo_${field.name}_stored_bytes`, String(uploadFile.size));
       onChange(`_gem_photo_${field.name}_compressed`, String(uploadFile.size < file.size));
-      onChange(`_gem_photo_${field.name}_captured_at`, new Date().toISOString());
+      onChange(`_gem_photo_${field.name}_storage`, attachment.storage || '');
+      onChange(`_gem_photo_${field.name}_captured_at`, capturedAt);
     } finally {
       setUploadingField(null);
     }
+  };
+
+  const clearFile = (field: InternalKoboField) => {
+    onChange(field.name, '');
+    onChange(`_gem_attachment_${field.name}`, '');
+    onChange(`_gem_photo_${field.name}_original_name`, '');
+    onChange(`_gem_photo_${field.name}_mime`, '');
+    onChange(`_gem_photo_${field.name}_original_bytes`, '');
+    onChange(`_gem_photo_${field.name}_stored_bytes`, '');
+    onChange(`_gem_photo_${field.name}_compressed`, '');
+    onChange(`_gem_photo_${field.name}_storage`, '');
+    onChange(`_gem_photo_${field.name}_captured_at`, '');
   };
 
   const captureLocation = (field: InternalKoboField) => {
@@ -791,26 +870,60 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
           </div>
         ) : null}
 
-        {field.type === 'image' ? (
-          <div className="rounded-2xl border border-dashed border-white/12 bg-slate-900/45 p-4">
-            <label className="flex cursor-pointer flex-col items-center justify-center gap-2 text-center">
-              <input
-                type="file"
-                accept="image/*"
-                capture="environment"
-                className="hidden"
-                onChange={(event) => handleFile(field, event.target.files?.[0])}
-              />
-              {hasInternalKoboValue(value) ? <Camera size={20} className="text-emerald-300" /> : <ImagePlus size={20} className="text-blue-300" />}
-              <span className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-300">
-                {uploadingField === field.name ? 'Envoi photo...' : hasInternalKoboValue(value) ? 'Photo ajoutee' : 'Ajouter une photo'}
-              </span>
-              {hasInternalKoboValue(value) ? (
-                <span className="max-w-full truncate text-[10px] font-semibold text-slate-500">{String(value)}</span>
+        {field.type === 'image' ? (() => {
+          const attachment = getAttachmentMeta(values, field.name);
+          const previewSource = getImagePreviewSource(value, attachment);
+          const isQueuedPhoto = attachment?.status === 'queued' || attachment?.storage?.startsWith('embedded');
+
+          return (
+            <div className="rounded-2xl border border-dashed border-white/12 bg-slate-900/45 p-3">
+              {previewSource ? (
+                <div className="mb-3 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/50">
+                  <img src={previewSource} alt={field.label} className="max-h-56 w-full object-cover" />
+                </div>
               ) : null}
-            </label>
-          </div>
-        ) : null}
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <label className="flex min-h-12 flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl border border-blue-300/20 bg-blue-400/10 px-4 text-center text-blue-100 transition-all hover:bg-blue-400/18 active:scale-[0.98]">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    className="hidden"
+                    onChange={(event) => handleFile(field, event.target.files?.[0])}
+                  />
+                  {hasInternalKoboValue(value) ? <Camera size={18} /> : <ImagePlus size={18} />}
+                  <span className="text-[10px] font-black uppercase tracking-[0.14em]">
+                    {uploadingField === field.name ? 'Traitement photo...' : hasInternalKoboValue(value) ? 'Remplacer la photo' : 'Ajouter une photo'}
+                  </span>
+                </label>
+                {hasInternalKoboValue(value) ? (
+                  <button
+                    type="button"
+                    onClick={() => clearFile(field)}
+                    className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-rose-300/20 bg-rose-400/10 px-4 text-[10px] font-black uppercase tracking-[0.14em] text-rose-100 transition-all hover:bg-rose-400/18 active:scale-[0.98]"
+                  >
+                    <X size={16} />
+                    Retirer
+                  </button>
+                ) : null}
+              </div>
+              {hasInternalKoboValue(value) ? (
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <span className={`rounded-full border px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.12em] ${
+                    isQueuedPhoto
+                      ? 'border-amber-300/25 bg-amber-400/10 text-amber-100'
+                      : 'border-emerald-300/25 bg-emerald-400/10 text-emerald-100'
+                  }`}>
+                    {isQueuedPhoto ? 'Photo en file locale' : 'Photo serveur'}
+                  </span>
+                  <span className="max-w-full truncate text-[10px] font-semibold text-slate-500">
+                    {attachment?.fileName || String(value)}
+                  </span>
+                </div>
+              ) : null}
+            </div>
+          );
+        })() : null}
 
         {hasInternalKoboValue(value) && field.type !== 'image' && !field.readOnly ? (
           <p className="text-[10px] font-bold text-slate-500">

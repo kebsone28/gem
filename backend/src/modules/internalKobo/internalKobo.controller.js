@@ -1,7 +1,9 @@
 import prisma from '../../core/utils/prisma.js';
 import eventBus from '../../core/utils/eventBus.js';
 import { tracerAction } from '../../services/audit.service.js';
+import { uploadFile, getFileUrl } from '../../services/storage.service.js';
 import crypto from 'node:crypto';
+import ExcelJS from 'exceljs';
 import {
     getServerRequiredMissing,
     INTERNAL_KOBO_ALLOWED_ROLES,
@@ -10,6 +12,9 @@ import {
 } from './internalKobo.validation.js';
 
 const SUBMISSION_STATUSES = new Set(['draft', 'submitted', 'validated', 'rejected']);
+const REVIEW_STATUSES = new Set(['submitted', 'validated', 'rejected']);
+const MAX_EMBEDDED_ATTACHMENT_BYTES = 8 * 1024 * 1024;
+const OMIT_FIELD = Symbol('omit-field');
 
 function sanitizeBigIntForJson(value) {
     if (typeof value === 'bigint') return value.toString();
@@ -108,7 +113,213 @@ function makeHttpError(statusCode, message) {
     return error;
 }
 
-function normalizeSubmissionPayload(body, req) {
+function sanitizeObjectWithValuePatch(value, valuePatch = {}, key = '') {
+    if (key && key.startsWith('_gem_attachment_')) return OMIT_FIELD;
+    if (key && Object.prototype.hasOwnProperty.call(valuePatch, key)) return valuePatch[key];
+    if (Array.isArray(value)) {
+        return value
+            .map((item) => sanitizeObjectWithValuePatch(item, valuePatch))
+            .filter((item) => item !== OMIT_FIELD);
+    }
+    if (!isPlainObject(value)) return value;
+
+    const next = {};
+    Object.entries(value).forEach(([entryKey, entryValue]) => {
+        const sanitized = sanitizeObjectWithValuePatch(entryValue, valuePatch, entryKey);
+        if (sanitized !== OMIT_FIELD) next[entryKey] = sanitized;
+    });
+    return next;
+}
+
+function extensionFromMime(mimeType = '') {
+    if (mimeType.includes('png')) return 'png';
+    if (mimeType.includes('webp')) return 'webp';
+    if (mimeType.includes('heic')) return 'heic';
+    if (mimeType.includes('pdf')) return 'pdf';
+    return 'jpg';
+}
+
+function parseDataUrl(dataUrl) {
+    const match = String(dataUrl || '').match(/^data:([^;]+);base64,(.+)$/);
+    if (!match) return null;
+    const buffer = Buffer.from(match[2], 'base64');
+    return { mimeType: match[1], buffer };
+}
+
+async function normalizeSubmissionAttachments({ attachments, organizationId, clientSubmissionId, values }) {
+    if (!Array.isArray(attachments) || attachments.length === 0) {
+        return { attachments: [], valuePatch: {} };
+    }
+
+    const normalized = [];
+    const valuePatch = {};
+
+    for (const rawAttachment of attachments) {
+        if (!isPlainObject(rawAttachment)) continue;
+
+        const fieldName = String(rawAttachment.fieldName || '').trim();
+        const fileName = String(rawAttachment.fileName || `${fieldName || 'piece'}-${Date.now()}`).trim();
+        const mimeType = String(rawAttachment.mimeType || '').trim() || 'application/octet-stream';
+        const capturedAt = rawAttachment.capturedAt || new Date().toISOString();
+        const baseRecord = {
+            id: String(rawAttachment.id || crypto.randomUUID()),
+            fieldName,
+            fileName,
+            mimeType,
+            originalBytes: Number(rawAttachment.originalBytes || rawAttachment.size || 0) || null,
+            storedBytes: Number(rawAttachment.storedBytes || rawAttachment.size || 0) || null,
+            capturedAt,
+            source: rawAttachment.source || 'gem-internal-kobo',
+            status: 'stored'
+        };
+
+        if (rawAttachment.url || rawAttachment.key) {
+            normalized.push({
+                ...baseRecord,
+                key: rawAttachment.key || null,
+                url: rawAttachment.url || values?.[fieldName] || null,
+                storage: rawAttachment.key ? 'remote' : 'external'
+            });
+            if (fieldName && rawAttachment.url) valuePatch[fieldName] = rawAttachment.url;
+            continue;
+        }
+
+        const parsed = parseDataUrl(rawAttachment.dataUrl);
+        if (!parsed) {
+            normalized.push({
+                ...baseRecord,
+                status: 'unresolved',
+                storage: 'client-reference',
+                url: values?.[fieldName] || null
+            });
+            continue;
+        }
+
+        if (parsed.buffer.length > MAX_EMBEDDED_ATTACHMENT_BYTES) {
+            throw makeHttpError(413, `Attachment ${fieldName || fileName} exceeds the internal Kobo size limit`);
+        }
+
+        const extension = extensionFromMime(parsed.mimeType || mimeType);
+        const key = `${organizationId}/internal-kobo/${clientSubmissionId}/${baseRecord.id}.${extension}`;
+        await uploadFile(key, parsed.buffer, parsed.mimeType || mimeType);
+        const url = await getFileUrl(key);
+
+        normalized.push({
+            ...baseRecord,
+            mimeType: parsed.mimeType || mimeType,
+            storedBytes: parsed.buffer.length,
+            key,
+            url,
+            storage: 'server'
+        });
+        if (fieldName && url) valuePatch[fieldName] = url;
+    }
+
+    return { attachments: normalized, valuePatch };
+}
+
+function getWorksheetJson(workbook, sheetName) {
+    const worksheet = workbook.getWorksheet(sheetName);
+    if (!worksheet) return [];
+
+    const headers = [];
+    worksheet.getRow(1).eachCell({ includeEmpty: true }, (cell, index) => {
+        headers[index] = String(cell.value || '').trim();
+    });
+
+    const rows = [];
+    worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+        if (rowNumber === 1) return;
+        const item = {};
+        headers.forEach((header, index) => {
+            if (!header) return;
+            const cell = row.getCell(index);
+            const rawValue = cell.value;
+            item[header] = rawValue && typeof rawValue === 'object'
+                ? rawValue.text || rawValue.result || rawValue.richText?.map((part) => part.text || '').join('') || String(rawValue)
+                : rawValue;
+        });
+        if (Object.values(item).some((value) => value !== undefined && value !== null && String(value).trim() !== '')) {
+            rows.push(item);
+        }
+    });
+
+    return rows;
+}
+
+async function parseXlsFormBuffer(buffer) {
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(buffer);
+
+    const survey = getWorksheetJson(workbook, 'survey');
+    const choices = getWorksheetJson(workbook, 'choices');
+    const settingsRows = getWorksheetJson(workbook, 'settings');
+    const settings = settingsRows[0] || {};
+    const formVersion = String(settings.version || settings.form_version || settings.form_id || INTERNAL_KOBO_FORM_VERSION);
+    const requiredCount = survey.filter((row) => String(row.required || '').toLowerCase() === 'yes' || String(row.required || '').toLowerCase() === 'true').length;
+    const imageCount = survey.filter((row) => String(row.type || '').toLowerCase().startsWith('image')).length;
+    const roleField = survey.find((row) => String(row.name || '').trim() === 'role');
+
+    return {
+        formKey: INTERNAL_KOBO_FORM_KEY,
+        formVersion,
+        importedAt: new Date().toISOString(),
+        settings,
+        survey,
+        choices,
+        diagnostics: {
+            fieldCount: survey.length,
+            choiceCount: choices.length,
+            requiredCount,
+            imageCount,
+            roleFieldPresent: Boolean(roleField),
+            versionMatchesServer: formVersion === INTERNAL_KOBO_FORM_VERSION
+        }
+    };
+}
+
+function escapeCsv(value) {
+    return `"${String(value ?? '').replace(/"/g, '""')}"`;
+}
+
+function flattenSubmissionForExport(submission, valueKeys = []) {
+    const values = isPlainObject(submission.values) ? submission.values : {};
+    const metadata = isPlainObject(submission.metadata) ? submission.metadata : {};
+    const attachments = metadata?.media?.attachments || [];
+    const row = {
+        id: submission.id,
+        clientSubmissionId: submission.clientSubmissionId,
+        numeroOrdre: submission.numeroOrdre || submission.household?.numeroordre || '',
+        householdName: submission.household?.name || '',
+        telephone: submission.household?.phone || values.telephone_key || '',
+        region: submission.household?.region || values.region_key || '',
+        role: submission.role || '',
+        status: submission.status,
+        syncStatus: submission.syncStatus,
+        formVersion: submission.formVersion,
+        requiredMissing: (submission.requiredMissing || []).join('|'),
+        attachmentCount: Array.isArray(attachments) ? attachments.length : 0,
+        attachmentUrls: Array.isArray(attachments) ? attachments.map((item) => item.url || item.key).filter(Boolean).join('|') : '',
+        submittedBy: submission.submittedBy?.name || submission.submittedBy?.email || '',
+        submittedAt: submission.submittedAt?.toISOString?.() || submission.submittedAt || '',
+        savedAt: submission.savedAt?.toISOString?.() || submission.savedAt || '',
+        reviewStatus: metadata.review?.status || '',
+        reviewNote: metadata.review?.note || ''
+    };
+
+    valueKeys.forEach((key) => {
+        const value = values[key];
+        row[`value.${key}`] = Array.isArray(value)
+            ? value.join('|')
+            : isPlainObject(value)
+                ? JSON.stringify(value)
+                : value ?? '';
+    });
+
+    return row;
+}
+
+async function normalizeSubmissionPayload(body, req) {
     const clientSubmissionId = String(body.clientSubmissionId || '').trim();
     const formVersion = String(body.formVersion || '').trim();
     const formKey = String(body.formKey || INTERNAL_KOBO_FORM_KEY).trim() || INTERNAL_KOBO_FORM_KEY;
@@ -129,13 +340,21 @@ function normalizeSubmissionPayload(body, req) {
         return { error: { status: 400, message: 'values must be an object' } };
     }
 
-    const roleSource = body.role ?? body.values.role;
+    const { attachments, valuePatch } = await normalizeSubmissionAttachments({
+        attachments: body.attachments,
+        organizationId: req.user.organizationId,
+        clientSubmissionId,
+        values: body.values
+    });
+    const values = sanitizeObjectWithValuePatch({ ...body.values, ...valuePatch }, valuePatch);
+
+    const roleSource = body.role ?? values.role;
     const role = roleSource ? String(roleSource).trim() : null;
     if (role && !INTERNAL_KOBO_ALLOWED_ROLES.has(role)) {
         return { error: { status: 400, message: `Unsupported role: ${role}` } };
     }
 
-    const serverRequiredMissing = getServerRequiredMissing(body.values);
+    const serverRequiredMissing = getServerRequiredMissing(values);
     const requiredMissing = uniqueStrings([
         ...normalizeRequiredMissing(body.requiredMissing),
         ...serverRequiredMissing
@@ -168,12 +387,17 @@ function normalizeSubmissionPayload(body, req) {
             role,
             status,
             syncStatus: 'synced',
-            values: body.values,
+            values,
             metadata: {
                 ...(isPlainObject(body.metadata) ? body.metadata : {}),
                 serverFormKey: INTERNAL_KOBO_FORM_KEY,
                 serverFormVersion: INTERNAL_KOBO_FORM_VERSION,
                 formVersionMismatch: formVersion !== INTERNAL_KOBO_FORM_VERSION,
+                media: {
+                    ...(isPlainObject(body.metadata?.media) ? body.metadata.media : {}),
+                    attachments,
+                    attachmentCount: attachments.length
+                },
                 serverRequiredMissing,
                 requestId: req.get('x-request-id') || crypto.randomUUID(),
                 receivedAt: new Date().toISOString(),
@@ -183,14 +407,25 @@ function normalizeSubmissionPayload(body, req) {
             requiredMissing,
             submittedAt: ['submitted', 'validated'].includes(status) ? new Date() : null,
             savedAt: new Date(),
-            householdPatch: body.householdPatch
+            householdPatch: sanitizeObjectWithValuePatch(body.householdPatch, valuePatch)
         }
     };
 }
 
 export const submitInternalKoboSubmission = async (req, res) => {
     const { organizationId, id: userId } = req.user;
-    const { payload, error } = normalizeSubmissionPayload(req.body || {}, req);
+    let normalized;
+    try {
+        normalized = await normalizeSubmissionPayload(req.body || {}, req);
+    } catch (err) {
+        const statusCode = err.statusCode || 500;
+        return res.status(statusCode).json({
+            success: false,
+            message: statusCode === 500 ? 'Server error while preparing internal Kobo submission' : err.message
+        });
+    }
+
+    const { payload, error } = normalized;
 
     if (error) {
         return res.status(error.status).json({ success: false, message: error.message, details: error.details });
@@ -347,9 +582,279 @@ export const getInternalKoboFormDefinition = async (_req, res) => {
             formVersion: INTERNAL_KOBO_FORM_VERSION,
             engine: 'gem-internal-kobo',
             allowedRoles: Array.from(INTERNAL_KOBO_ALLOWED_ROLES),
-            serverValidation: true
+            serverValidation: true,
+            xlsFormImport: true,
+            media: {
+                embeddedOfflineMedia: true,
+                maxEmbeddedAttachmentBytes: MAX_EMBEDDED_ATTACHMENT_BYTES
+            }
         }
     });
+};
+
+export const importInternalKoboXlsForm = async (req, res) => {
+    try {
+        if (!req.file?.buffer) {
+            return res.status(400).json({ success: false, message: 'XLSForm file is required' });
+        }
+
+        const { organizationId, id: userId } = req.user;
+        const importedDefinition = await parseXlsFormBuffer(req.file.buffer);
+        const importId = crypto.randomUUID();
+        const baseKey = `${organizationId}/internal-kobo/forms/${importId}`;
+
+        await uploadFile(`${baseKey}.xlsx`, req.file.buffer, req.file.mimetype || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        await uploadFile(
+            `${baseKey}.json`,
+            Buffer.from(JSON.stringify(importedDefinition, null, 2), 'utf8'),
+            'application/json'
+        );
+
+        await prisma.syncLog.create({
+            data: {
+                userId,
+                organizationId,
+                deviceId: 'gem-internal-kobo-admin',
+                action: 'INTERNAL_KOBO_XLSFORM_IMPORT',
+                details: {
+                    importId,
+                    fileName: req.file.originalname,
+                    formVersion: importedDefinition.formVersion,
+                    diagnostics: importedDefinition.diagnostics
+                }
+            }
+        });
+
+        return res.status(201).json({
+            success: true,
+            importId,
+            storageKey: `${baseKey}.json`,
+            form: {
+                formKey: importedDefinition.formKey,
+                formVersion: importedDefinition.formVersion,
+                diagnostics: importedDefinition.diagnostics
+            }
+        });
+    } catch (err) {
+        console.error('[INTERNAL-KOBO] XLSForm import error:', err);
+        return res.status(500).json({
+            success: false,
+            message: 'Server error while importing XLSForm'
+        });
+    }
+};
+
+function buildSubmissionWhere(organizationId, query = {}) {
+    const {
+        householdId,
+        numeroOrdre,
+        status,
+        syncStatus,
+        role,
+        formKey,
+        clientSubmissionId,
+        q,
+        from,
+        to
+    } = query;
+    const numeroVariants = normalizeNumeroVariants(numeroOrdre);
+    const filters = [{ organizationId }];
+
+    if (householdId) filters.push({ householdId: String(householdId) });
+    if (numeroVariants.length > 0) {
+        filters.push({
+            OR: numeroVariants.map((value) => ({ numeroOrdre: { equals: value, mode: 'insensitive' } }))
+        });
+    }
+    if (status) filters.push({ status: String(status) });
+    if (syncStatus) filters.push({ syncStatus: String(syncStatus) });
+    if (role) filters.push({ role: String(role) });
+    if (formKey) filters.push({ formKey: String(formKey) });
+    if (clientSubmissionId) filters.push({ clientSubmissionId: String(clientSubmissionId) });
+
+    const savedAtFilter = {};
+    if (from) {
+        const fromDate = new Date(String(from));
+        if (!Number.isNaN(fromDate.getTime())) savedAtFilter.gte = fromDate;
+    }
+    if (to) {
+        const toDate = new Date(String(to));
+        if (!Number.isNaN(toDate.getTime())) savedAtFilter.lte = toDate;
+    }
+    if (Object.keys(savedAtFilter).length > 0) filters.push({ savedAt: savedAtFilter });
+
+    const search = String(q || '').trim();
+    if (search) {
+        filters.push({
+            OR: [
+                { clientSubmissionId: { contains: search, mode: 'insensitive' } },
+                { numeroOrdre: { contains: search, mode: 'insensitive' } },
+                { role: { contains: search, mode: 'insensitive' } },
+                {
+                    household: {
+                        is: {
+                            OR: [
+                                { name: { contains: search, mode: 'insensitive' } },
+                                { phone: { contains: search, mode: 'insensitive' } },
+                                { village: { contains: search, mode: 'insensitive' } }
+                            ]
+                        }
+                    }
+                }
+            ]
+        });
+    }
+
+    return filters.length === 1 ? filters[0] : { AND: filters };
+}
+
+function internalKoboSubmissionInclude() {
+    return {
+        household: {
+            select: {
+                id: true,
+                numeroordre: true,
+                name: true,
+                phone: true,
+                status: true,
+                region: true,
+                village: true,
+                updatedAt: true
+            }
+        },
+        submittedBy: {
+            select: {
+                id: true,
+                name: true,
+                email: true
+            }
+        }
+    };
+}
+
+export const exportInternalKoboSubmissions = async (req, res) => {
+    try {
+        const { organizationId } = req.user;
+        const format = String(req.query.format || 'csv').toLowerCase();
+        const take = Math.min(Math.max(parseInt(req.query.limit, 10) || 500, 1), 5000);
+        const where = buildSubmissionWhere(organizationId, req.query);
+        const submissions = await prisma.internalKoboSubmission.findMany({
+            where,
+            include: internalKoboSubmissionInclude(),
+            orderBy: { savedAt: 'desc' },
+            take
+        });
+
+        const valueKeys = Array.from(new Set(
+            submissions.flatMap((submission) =>
+                Object.keys(isPlainObject(submission.values) ? submission.values : {}).filter((key) => !key.startsWith('_gem_attachment_'))
+            )
+        )).sort();
+        const rows = submissions.map((submission) => flattenSubmissionForExport(submission, valueKeys));
+        const generatedAt = new Date().toISOString();
+        const baseFilename = `soumissions-kobo-interne-${generatedAt.slice(0, 10)}`;
+
+        if (format === 'json') {
+            res.setHeader('Content-Type', 'application/json; charset=utf-8');
+            res.setHeader('Content-Disposition', `attachment; filename="${baseFilename}.json"`);
+            return res.send(JSON.stringify({ generatedAt, count: submissions.length, submissions: sanitizeBigIntForJson(submissions) }, null, 2));
+        }
+
+        if (format === 'xlsx') {
+            const workbook = new ExcelJS.Workbook();
+            const worksheet = workbook.addWorksheet('soumissions');
+            const headers = Object.keys(rows[0] || flattenSubmissionForExport({}, valueKeys));
+            worksheet.columns = headers.map((header) => ({ header, key: header, width: Math.min(Math.max(header.length + 4, 14), 42) }));
+            rows.forEach((row) => worksheet.addRow(row));
+            worksheet.views = [{ state: 'frozen', ySplit: 1 }];
+
+            const buffer = await workbook.xlsx.writeBuffer();
+            res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            res.setHeader('Content-Disposition', `attachment; filename="${baseFilename}.xlsx"`);
+            return res.send(Buffer.from(buffer));
+        }
+
+        const headers = Object.keys(rows[0] || flattenSubmissionForExport({}, valueKeys));
+        const csv = [
+            headers.map(escapeCsv).join(','),
+            ...rows.map((row) => headers.map((header) => escapeCsv(row[header])).join(','))
+        ].join('\n');
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="${baseFilename}.csv"`);
+        return res.send(csv);
+    } catch (err) {
+        console.error('[INTERNAL-KOBO] export error:', err);
+        return res.status(500).json({
+            success: false,
+            message: 'Server error while exporting internal Kobo submissions'
+        });
+    }
+};
+
+export const reviewInternalKoboSubmission = async (req, res) => {
+    try {
+        const { organizationId, id: userId } = req.user;
+        const { id } = req.params;
+        const nextStatus = String(req.body.status || '').trim().toLowerCase();
+        const note = String(req.body.note || '').trim();
+
+        if (!REVIEW_STATUSES.has(nextStatus)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Review status must be submitted, validated or rejected'
+            });
+        }
+
+        const current = await prisma.internalKoboSubmission.findFirst({ where: { id, organizationId } });
+        if (!current) {
+            return res.status(404).json({ success: false, message: 'Internal Kobo submission not found' });
+        }
+
+        const metadata = {
+            ...(isPlainObject(current.metadata) ? current.metadata : {}),
+            review: {
+                status: nextStatus,
+                note,
+                reviewedById: userId,
+                reviewedAt: new Date().toISOString()
+            }
+        };
+
+        const submission = await prisma.internalKoboSubmission.update({
+            where: { id: current.id },
+            data: {
+                status: nextStatus,
+                metadata,
+                syncStatus: 'synced',
+                savedAt: new Date()
+            },
+            include: internalKoboSubmissionInclude()
+        });
+
+        await prisma.syncLog.create({
+            data: {
+                userId,
+                organizationId,
+                deviceId: 'gem-internal-kobo-admin',
+                action: 'INTERNAL_KOBO_REVIEW',
+                details: {
+                    submissionId: current.id,
+                    clientSubmissionId: current.clientSubmissionId,
+                    previousStatus: current.status,
+                    nextStatus,
+                    note
+                }
+            }
+        });
+
+        return res.json({ success: true, submission: sanitizeBigIntForJson(submission) });
+    } catch (err) {
+        console.error('[INTERNAL-KOBO] review error:', err);
+        return res.status(500).json({
+            success: false,
+            message: 'Server error while reviewing internal Kobo submission'
+        });
+    }
 };
 
 export const listInternalKoboSubmissions = async (req, res) => {

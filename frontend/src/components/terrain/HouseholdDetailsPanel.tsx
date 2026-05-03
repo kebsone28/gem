@@ -70,6 +70,7 @@ import {
   submitInternalKoboSubmission,
   type InternalKoboLocalDraft,
   type InternalKoboQueuedSubmission,
+  type InternalKoboAttachment,
   type InternalKoboSubmissionRecord,
   type InternalKoboSubmissionPayload,
 } from '../../services/internalKoboSubmissionService';
@@ -876,6 +877,10 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
         section.fields.filter((field) => field.type === 'image').map((field) => field.name)
       );
       const photoFields = imageFieldNames.filter((fieldName) => cleanValues[fieldName]);
+      const attachments = Object.entries(cleanValues)
+        .filter(([key, value]) => key.startsWith('_gem_attachment_') && value && typeof value === 'object' && !Array.isArray(value))
+        .map(([, value]) => value as InternalKoboAttachment)
+        .filter((attachment) => attachment.fieldName);
       const clientGps = {
         geopoint: cleanValues.LOCALISATION_CLIENT || '',
         latitude: cleanValues.latitude_key || '',
@@ -974,6 +979,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
         role: nativeKoboAuditForm.role ? String(nativeKoboAuditForm.role) : null,
         status: allRequiredComplete ? 'submitted' : 'draft',
         values: cleanValues,
+        attachments,
         metadata: {
           xlsForm: INTERNAL_KOBO_FORM_SETTINGS,
           target: 'gem-vps',
@@ -990,6 +996,8 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
           media: {
             photoCount: photoFields.length,
             photoFields,
+            attachmentCount: attachments.length,
+            attachments,
           },
           validation: {
             allRequiredComplete,
