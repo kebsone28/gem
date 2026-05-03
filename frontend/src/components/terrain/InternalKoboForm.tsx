@@ -57,12 +57,12 @@ const progressFor = (values: Record<string, unknown>) => {
 const getToneForValue = (value: unknown) => {
   const str = String(value ?? '').toLowerCase();
   if (['non', 'non_conforme', 'nc', 'probleme', 'menage_non_eligible', 'probleme_a_signaler'].includes(str)) {
-    return 'border-rose-400/45 bg-rose-500/15 text-rose-50';
+    return 'border-rose-300/75 bg-rose-400/22 text-white shadow-lg shadow-rose-500/15 ring-1 ring-rose-200/20';
   }
   if (['oui', 'conforme', 'c', 'termine', 'terminee', 'realise', 'menage_eligible'].includes(str)) {
-    return 'border-emerald-400/45 bg-emerald-500/15 text-emerald-50';
+    return 'border-emerald-300/75 bg-emerald-400/22 text-white shadow-lg shadow-emerald-500/15 ring-1 ring-emerald-200/20';
   }
-  return 'border-blue-400/35 bg-blue-500/12 text-blue-50';
+  return 'border-blue-300/70 bg-blue-400/20 text-white shadow-lg shadow-blue-500/15 ring-1 ring-blue-200/20';
 };
 
 const ROLE_SECTION_BY_VALUE: Record<string, string> = {
@@ -234,16 +234,25 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
         field.required &&
         !hasInternalKoboValue(getInternalKoboFieldValue(field, values))
     );
-    const locked = Boolean(previousBlockingSectionId && section.activeFields.length > 0);
-    const blockedBySectionId = locked ? previousBlockingSectionId : '';
+    const roleLocked = Boolean(
+      selectedRole &&
+      section.role &&
+      section.role !== selectedRole &&
+      section.id !== selectedRoleSectionId
+    );
+    const sequenceLocked = Boolean(previousBlockingSectionId && section.activeFields.length > 0);
+    const locked = roleLocked || sequenceLocked;
+    const lockedReason = roleLocked ? 'role' : sequenceLocked ? 'sequence' : '';
+    const blockedBySectionId = sequenceLocked ? previousBlockingSectionId : '';
 
-    if (!locked && missingFields.length > 0) {
+    if (!roleLocked && !sequenceLocked && missingFields.length > 0) {
       previousBlockingSectionId = section.id;
     }
 
     return {
       ...section,
       locked,
+      lockedReason,
       blockedBySectionId,
       missingFields,
     };
@@ -261,9 +270,12 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
   const getSectionStatus = (section: typeof navigableSections[number]) => {
     const fillableCount = section.activeFields.filter((field) => field.type !== 'note' && !field.readOnly).length;
     if (section.locked) {
+      const isRoleLock = section.lockedReason === 'role';
       return {
-        label: 'Verrouille',
-        detail: `Terminer ${blockedByTitle(section.blockedBySectionId)}`,
+        label: isRoleLock ? 'Non concerne' : 'Verrouille',
+        detail: isRoleLock
+          ? `Role actif: ${formatInternalKoboValue(selectedRole, 'roles')}`
+          : `Terminer ${blockedByTitle(section.blockedBySectionId)}`,
         className: 'border-white/5 bg-white/[0.02] text-slate-600',
         icon: <LockKeyhole size={13} />,
       };
@@ -423,12 +435,19 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
                   key={option.name}
                   type="button"
                   onClick={() => setOption(field, option.name)}
-                  className={`${field.appearance === 'quick' ? 'min-h-10' : 'min-h-12'} flex items-center justify-between gap-3 rounded-2xl border px-3 py-2 text-left text-[12px] font-black uppercase tracking-[0.08em] transition-all active:scale-95 ${
-                    active ? getToneForValue(option.name) : 'border-white/10 bg-slate-950/30 text-slate-300 hover:bg-white/[0.06]'
+                  className={`relative overflow-hidden ${field.appearance === 'quick' ? 'min-h-10' : 'min-h-12'} flex items-center justify-between gap-3 rounded-2xl border px-3 py-2 pl-4 text-left text-[12px] font-black uppercase tracking-[0.08em] transition-all active:scale-95 ${
+                    active ? getToneForValue(option.name) : 'border-white/10 bg-slate-950/35 text-slate-300 hover:border-blue-300/30 hover:bg-blue-400/[0.08] hover:text-white'
                   }`}
                 >
-                  <span>{option.label}</span>
-                  {active ? <CheckCircle2 size={15} className="shrink-0" /> : null}
+                  <span className={`absolute inset-y-2 left-0 w-1 rounded-r-full transition-all ${
+                    active ? 'bg-white shadow-[0_0_16px_rgba(255,255,255,0.8)]' : 'bg-white/10'
+                  }`} />
+                  <span className="min-w-0">{option.label}</span>
+                  <span className={`grid h-6 w-6 shrink-0 place-items-center rounded-full border transition-all ${
+                    active ? 'border-white/70 bg-white text-slate-950' : 'border-white/15 bg-white/[0.03] text-transparent'
+                  }`}>
+                    {active ? <CheckCircle2 size={15} /> : <span className="h-1.5 w-1.5 rounded-full bg-slate-600" />}
+                  </span>
                 </button>
               );
             })}
@@ -503,6 +522,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
                   onClick={() => {
                     if (!section.locked) setActiveSectionId(section.id);
                   }}
+                  aria-disabled={section.locked}
                   className={`relative w-full overflow-hidden rounded-2xl border p-3 text-left transition-all ${
                     isActive
                       ? 'border-blue-300/70 bg-blue-500/18 text-white shadow-lg shadow-blue-500/10 ring-1 ring-blue-300/25'
@@ -599,7 +619,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
               >
                 {navigableSections.map((section) => (
                   <option key={section.id} value={section.id} disabled={section.locked}>
-                    {section.locked ? `${section.title} - bloque` : section.title}
+                    {section.locked ? `${section.title} - ${getSectionStatus(section).label}` : section.title}
                   </option>
                 ))}
               </select>
