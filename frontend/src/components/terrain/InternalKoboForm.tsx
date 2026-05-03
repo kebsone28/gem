@@ -263,6 +263,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
     navigableSections.find((section) => section.id === selectedRoleSectionId && !section.locked) ||
     navigableSections.find((section) => !section.locked) ||
     navigableSections[0];
+  const mobileSectionOptions = navigableSections.filter((section) => !section.locked);
   const requiredStatusText = missingRequired.length ? `${missingRequired.length} obligatoire(s)` : 'Pret';
   const requiredStatusClass = missingRequired.length
     ? 'border-amber-400/35 bg-amber-400/12 text-amber-100'
@@ -344,12 +345,12 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
     const value = getInternalKoboFieldValue(field, values);
     const missing = missingRequired.some((item) => item.name === field.name);
     const shellClass = `rounded-2xl border p-4 space-y-3 shadow-sm ${
-      missing ? 'border-amber-300/35 bg-amber-400/[0.08]' : 'border-white/[0.08] bg-white/[0.04]'
+      missing ? 'border-amber-300/35 bg-amber-400/[0.08]' : 'border-white/[0.09] bg-white/[0.055]'
     }`;
 
     if (field.type === 'note') {
       return (
-        <div key={field.name} className="rounded-2xl border border-blue-300/20 bg-blue-400/[0.08] p-4">
+        <div key={field.name} className="rounded-2xl border border-blue-300/20 bg-blue-400/[0.1] p-4">
           <p className="text-[11px] font-black uppercase tracking-[0.14em] text-blue-100">{field.label}</p>
           {field.hint || field.guidanceHint ? (
             <p className="mt-2 text-[11px] font-semibold leading-relaxed text-slate-300">{field.hint || field.guidanceHint}</p>
@@ -413,7 +414,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
               onChange={(event) => onChange(field.name, event.target.value)}
               rows={field.appearance === 'multiline' || field.name === 'notes_generales' ? 3 : 2}
               placeholder="Saisir la valeur..."
-              className="w-full resize-none rounded-2xl border border-white/10 bg-slate-950/35 px-4 py-3 text-sm font-semibold leading-relaxed text-slate-100 outline-none transition-colors placeholder:text-slate-600 focus:border-blue-400/50"
+              className="w-full resize-none rounded-2xl border border-white/10 bg-slate-900/45 px-4 py-3 text-sm font-semibold leading-relaxed text-slate-100 outline-none transition-colors placeholder:text-slate-500 focus:border-blue-400/50"
             />
           ) : (
             <input
@@ -422,7 +423,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
               value={String(value || '')}
               onChange={(event) => onChange(field.name, event.target.value)}
               placeholder={field.type === 'geopoint' ? 'lat lon' : 'Saisir la valeur...'}
-              className="h-12 w-full rounded-2xl border border-white/10 bg-slate-950/45 px-4 text-sm font-bold text-white outline-none transition-colors focus:border-blue-400/50"
+              className="h-12 w-full rounded-2xl border border-white/10 bg-slate-900/50 px-4 text-sm font-bold text-white outline-none transition-colors placeholder:text-slate-500 focus:border-blue-400/50"
             />
           )
         ) : null}
@@ -459,7 +460,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
         ) : null}
 
         {field.type === 'image' ? (
-          <div className="rounded-2xl border border-dashed border-white/12 bg-slate-950/35 p-4">
+          <div className="rounded-2xl border border-dashed border-white/12 bg-slate-900/45 p-4">
             <label className="flex cursor-pointer flex-col items-center justify-center gap-2 text-center">
               <input
                 type="file"
@@ -489,8 +490,8 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[3000] flex items-end justify-center bg-slate-950/80 p-0 backdrop-blur-md sm:items-center sm:p-4">
-      <div className="grid h-[100dvh] w-full max-w-7xl overflow-hidden rounded-t-[1.5rem] border border-white/10 bg-[#07111F] shadow-2xl sm:h-[92vh] sm:rounded-[1.75rem] md:grid-cols-[310px_1fr]">
+    <div className="fixed inset-0 z-[3000] flex items-end justify-center bg-slate-950/75 p-0 backdrop-blur-md sm:items-center sm:p-4">
+      <div className="grid h-[100dvh] w-full max-w-7xl overflow-hidden rounded-t-[1.5rem] border border-blue-200/10 bg-[#0B1728] shadow-2xl sm:h-[92vh] sm:rounded-[1.75rem] md:grid-cols-[310px_1fr]">
         <aside className="hidden border-r border-white/10 bg-slate-950/35 p-4 md:block">
           <div className="mb-5 rounded-2xl border border-blue-400/20 bg-blue-500/[0.08] p-4">
             <div className="flex items-center gap-2 text-blue-100">
@@ -617,16 +618,16 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
             ) : null}
           </header>
 
-          <div className="min-h-0 flex-1 overflow-y-auto p-4 custom-scrollbar sm:p-5">
+          <div className="min-h-0 flex-1 overflow-y-auto bg-[#0E1B2D] p-4 custom-scrollbar sm:p-5">
             <div className="mb-4 md:hidden">
               <select
                 value={activeSection?.id || ''}
                 onChange={(event) => setActiveSectionId(event.target.value)}
-                className="h-12 w-full rounded-2xl border border-white/10 bg-slate-950/60 px-4 text-[12px] font-black uppercase tracking-[0.1em] text-white outline-none"
+                className="h-12 w-full rounded-2xl border border-blue-300/25 bg-[#0B1728] px-4 text-[12px] font-black uppercase tracking-[0.1em] text-white outline-none"
               >
-                {navigableSections.map((section) => (
-                  <option key={section.id} value={section.id} disabled={section.locked}>
-                    {section.locked ? `${section.title} - ${getSectionStatus(section).label}` : section.title}
+                {mobileSectionOptions.map((section) => (
+                  <option key={section.id} value={section.id}>
+                    {section.title}
                   </option>
                 ))}
               </select>
@@ -634,7 +635,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
 
             {activeSection ? (
               <section className="space-y-4">
-                <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
+                <div className="rounded-2xl border border-white/10 bg-white/[0.055] p-4">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <h4 className="text-sm font-black uppercase tracking-[0.16em] text-white">{activeSection.title}</h4>
@@ -649,7 +650,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
                   {activeSection.fields.length ? (
                     activeSection.fields.map(renderField)
                   ) : (
-                    <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.035] p-6 text-center">
+                    <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.055] p-6 text-center">
                       <p className="text-sm font-black text-white">Aucun champ actif pour ce role.</p>
                       <p className="mt-2 text-[11px] font-semibold leading-relaxed text-slate-400">
                         Changez le role dans Menage pour remplir cette etape, ou utilisez-la comme consultation.
@@ -659,13 +660,13 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
                 </div>
               </section>
             ) : (
-              <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.035] p-8 text-center text-sm font-semibold text-slate-400">
+              <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.055] p-8 text-center text-sm font-semibold text-slate-400">
                 Aucun champ visible pour cette recherche.
               </div>
             )}
           </div>
 
-          <footer className="shrink-0 border-t border-white/10 bg-[#07111F] p-4">
+          <footer className="shrink-0 border-t border-blue-300/12 bg-[#0A1830] p-4">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1.6fr]">
               <button
                 type="button"
