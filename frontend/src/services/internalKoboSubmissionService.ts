@@ -6,10 +6,13 @@ export type InternalKoboSubmissionStatus = 'draft' | 'submitted' | 'validated' |
 export interface InternalKoboAttachment {
   id?: string;
   fieldName: string;
+  fieldCode?: string;
+  valuePath?: Array<string | number>;
   fileName?: string;
   mimeType?: string;
   originalBytes?: number;
   storedBytes?: number;
+  sha256?: string;
   capturedAt?: string;
   source?: string;
   status?: string;
@@ -132,10 +135,31 @@ export interface InternalKoboSubmissionDiagnostics {
   byStatus?: Record<string, number>;
   byRole?: Record<string, number>;
   bySyncStatus?: Record<string, number>;
+  byFormKey?: Record<string, number>;
+  byFormVersion?: Record<string, number>;
   versionMismatchCount?: number;
   missingRequiredCount?: number;
   validationIssueCount?: number;
   unresolvedHouseholdCount?: number;
+  activeFormCount?: number;
+  inactiveFormCount?: number;
+  activeForms?: InternalKoboImportedFormSummary[];
+  inactiveForms?: InternalKoboImportedFormSummary[];
+  mediaStats?: {
+    attachmentCount?: number;
+    serverStoredCount?: number;
+    unresolvedCount?: number;
+    totalStoredBytes?: number;
+    duplicateHashCount?: number;
+  };
+  clientQueue?: {
+    latestReportedAt?: string | null;
+    pending?: number;
+    failed?: number;
+    blocked?: number;
+    mediaBytes?: number;
+    devices?: Array<Record<string, unknown>>;
+  };
   latestSavedAt?: string | null;
   serverFormVersion?: string;
   warnings?: string[];
@@ -149,6 +173,8 @@ export interface InternalKoboSubmissionFilters {
   syncStatus?: string;
   role?: string;
   formKey?: string;
+  submittedById?: string;
+  agent?: string;
   clientSubmissionId?: string;
   q?: string;
   from?: string;
@@ -170,10 +196,16 @@ export interface InternalKoboQueuedSubmission {
   role?: string | null;
   status: 'pending' | 'failed';
   submissionStatus: InternalKoboSubmissionStatus;
+  formKey?: string;
   formVersion: string;
   attachmentCount: number;
+  mediaBytes?: number;
   retryCount: number;
   lastError?: string;
+  lastAttemptAt?: number;
+  nextRetryAt?: number;
+  nextRetryInMs?: number;
+  errorType?: string;
   timestamp: number;
 }
 
@@ -193,8 +225,11 @@ const INTERNAL_KOBO_FORM_DEFINITION_ENDPOINT = '/internal-kobo/form-definition';
 const INTERNAL_KOBO_FORM_DEFINITIONS_ENDPOINT = '/internal-kobo/form-definitions';
 const INTERNAL_KOBO_FORM_IMPORT_ENDPOINT = '/internal-kobo/form-definition/import';
 const INTERNAL_KOBO_DIAGNOSTICS_ENDPOINT = '/internal-kobo/diagnostics';
+const INTERNAL_KOBO_CLIENT_QUEUE_ENDPOINT = '/internal-kobo/client-queue-report';
 const INTERNAL_KOBO_DRAFT_PREFIX = 'gem-internal-kobo-draft:';
 const MAX_INTERNAL_KOBO_RETRIES = 6;
+const INTERNAL_KOBO_BASE_RETRY_DELAY_MS = 5000;
+const INTERNAL_KOBO_MAX_RETRY_DELAY_MS = 15 * 60 * 1000;
 
 const getFilenameFromDisposition = (disposition?: string, fallback = 'soumissions-kobo-interne.csv') => {
   if (!disposition) return fallback;
@@ -221,6 +256,28 @@ export function getInternalKoboErrorMessage(error: unknown): string {
   if (error instanceof Error && error.message) return error.message;
   if (typeof error === 'string') return error;
   return 'Erreur reseau inconnue';
+}
+
+function getInternalKoboErrorType(error: unknown): NonNullable<SyncQueueItem['errorType']> {
+  const status = getInternalKoboErrorStatus(error);
+  if (!status) return 'network';
+  if (status === 409) return 'version';
+  if (status === 400 || status === 422) return 'validation';
+  if (status >= 500) return 'server';
+  return 'unknown';
+}
+
+function getInternalKoboNextRetryAt(retryCount: number): number {
+  const exponentialDelay = Math.min(
+    INTERNAL_KOBO_MAX_RETRY_DELAY_MS,
+    INTERNAL_KOBO_BASE_RETRY_DELAY_MS * 2 ** Math.max(retryCount, 0)
+  );
+  const jitter = Math.round(exponentialDelay * (0.15 + Math.random() * 0.25));
+  return Date.now() + exponentialDelay + jitter;
+}
+
+function getAttachmentBytes(payload: InternalKoboSubmissionPayload): number {
+  return (payload.attachments || []).reduce((total, attachment) => total + Number(attachment.storedBytes || attachment.originalBytes || 0), 0);
 }
 
 function isInternalKoboQueueItem(item: SyncQueueItem): item is SyncQueueItem & {
@@ -432,6 +489,8 @@ export async function queueInternalKoboSubmission(
       timestamp,
       status: 'pending',
       lastError: reason,
+      nextRetryAt: undefined,
+      errorType: undefined,
     });
     return existing.id;
   }
@@ -445,6 +504,8 @@ export async function queueInternalKoboSubmission(
     status: 'pending',
     retryCount: 0,
     lastError: reason,
+    nextRetryAt: undefined,
+    errorType: undefined,
   });
 }
 
@@ -454,9 +515,11 @@ export async function flushInternalKoboSubmissionQueue(): Promise<{
   pending: number;
 }> {
   const queuedItems = await db.syncOutbox.where('status').anyOf('pending', 'failed').toArray();
+  const now = Date.now();
   const internalItems = queuedItems
     .filter(isInternalKoboQueueItem)
     .filter((item) => (item.retryCount || 0) < MAX_INTERNAL_KOBO_RETRIES)
+    .filter((item) => !item.nextRetryAt || item.nextRetryAt <= now)
     .sort((a, b) => a.timestamp - b.timestamp);
 
   let flushed = 0;
@@ -480,12 +543,18 @@ export async function flushInternalKoboSubmissionQueue(): Promise<{
       failed += 1;
       if (item.id) {
         const canRetry = isRetriableInternalKoboError(error);
+        const nextRetryCount = canRetry ? (item.retryCount || 0) + 1 : MAX_INTERNAL_KOBO_RETRIES;
         await db.syncOutbox.update(item.id, {
           status: 'failed',
-          retryCount: canRetry ? (item.retryCount || 0) + 1 : MAX_INTERNAL_KOBO_RETRIES,
+          retryCount: nextRetryCount,
           lastError: canRetry
             ? getInternalKoboErrorMessage(error)
             : `Validation serveur: ${getInternalKoboErrorMessage(error)}`,
+          errorType: getInternalKoboErrorType(error),
+          lastAttemptAt: Date.now(),
+          nextRetryAt: canRetry && nextRetryCount < MAX_INTERNAL_KOBO_RETRIES
+            ? getInternalKoboNextRetryAt(nextRetryCount)
+            : undefined,
           timestamp: Date.now(),
         });
       }
@@ -503,7 +572,9 @@ export async function getInternalKoboQueueItems(): Promise<InternalKoboQueuedSub
 
   return queuedItems
     .filter(isInternalKoboQueueItem)
-    .map((item) => ({
+    .map((item) => {
+      const mediaBytes = getAttachmentBytes(item.payload);
+      return {
       id: item.id,
       clientSubmissionId: item.payload.clientSubmissionId,
       householdId: item.payload.householdId,
@@ -511,12 +582,19 @@ export async function getInternalKoboQueueItems(): Promise<InternalKoboQueuedSub
       role: item.payload.role,
       status: item.status,
       submissionStatus: item.payload.status,
+      formKey: item.payload.formKey,
       formVersion: item.payload.formVersion,
       attachmentCount: item.payload.attachments?.length || 0,
+      mediaBytes,
       retryCount: item.retryCount || 0,
       lastError: item.lastError,
+      lastAttemptAt: item.lastAttemptAt,
+      nextRetryAt: item.nextRetryAt,
+      nextRetryInMs: item.nextRetryAt ? Math.max(0, item.nextRetryAt - Date.now()) : 0,
+      errorType: item.errorType,
       timestamp: item.timestamp,
-    }))
+    };
+    })
     .sort((a, b) => b.timestamp - a.timestamp);
 }
 
@@ -594,5 +672,44 @@ export function clearInternalKoboLocalDraft(params: {
 
   getInternalKoboDraftKeys(params).forEach((key) => {
     window.localStorage.removeItem(key);
+  });
+}
+
+export async function reportInternalKoboClientQueue(): Promise<void> {
+  const queueItems = await getInternalKoboQueueItems();
+  const pending = queueItems.filter((item) => item.status === 'pending').length;
+  const failed = queueItems.filter((item) => item.status === 'failed' && item.retryCount < MAX_INTERNAL_KOBO_RETRIES).length;
+  const blocked = queueItems.filter((item) => item.retryCount >= MAX_INTERNAL_KOBO_RETRIES).length;
+  const mediaBytes = queueItems.reduce((total, item) => total + Number(item.mediaBytes || 0), 0);
+  const nav = typeof navigator !== 'undefined' ? navigator : null;
+  const connection = nav ? (nav as Navigator & { connection?: { effectiveType?: string; type?: string } }).connection : null;
+
+  await apiClient.post(INTERNAL_KOBO_CLIENT_QUEUE_ENDPOINT, {
+    reportedAt: new Date().toISOString(),
+    pending,
+    failed,
+    blocked,
+    mediaBytes,
+    queue: queueItems.slice(0, 100).map((item) => ({
+      clientSubmissionId: item.clientSubmissionId,
+      numeroOrdre: item.numeroOrdre,
+      role: item.role,
+      formKey: item.formKey,
+      formVersion: item.formVersion,
+      status: item.status,
+      retryCount: item.retryCount,
+      attachmentCount: item.attachmentCount,
+      mediaBytes: item.mediaBytes,
+      nextRetryAt: item.nextRetryAt,
+      errorType: item.errorType,
+      lastError: item.lastError,
+    })),
+    device: {
+      online: nav ? nav.onLine : true,
+      platform: nav?.platform || '',
+      language: nav?.language || '',
+      userAgent: nav?.userAgent || '',
+      network: connection?.effectiveType || connection?.type || '',
+    },
   });
 }

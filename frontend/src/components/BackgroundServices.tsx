@@ -11,7 +11,10 @@ import { useEffect, useRef } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../store/db';
 import { updatePendingCount } from '../services/sync/syncService';
-import { flushInternalKoboSubmissionQueue } from '../services/internalKoboSubmissionService';
+import {
+  flushInternalKoboSubmissionQueue,
+  reportInternalKoboClientQueue,
+} from '../services/internalKoboSubmissionService';
 
 export default function BackgroundServices() {
   const pendingCount = useLiveQuery(
@@ -24,6 +27,7 @@ export default function BackgroundServices() {
     return queuedItems.filter((item) => item.action === 'internal-kobo-submit').length;
   }, [], 0);
   const isFlushingInternalKoboRef = useRef(false);
+  const lastQueueReportAtRef = useRef(0);
 
   useEffect(() => {
     if (pendingCount !== undefined) {
@@ -45,6 +49,11 @@ export default function BackgroundServices() {
       try {
         const result = await flushInternalKoboSubmissionQueue();
         window.dispatchEvent(new CustomEvent('internal-kobo:queue-flushed', { detail: result }));
+        const now = Date.now();
+        if (now - lastQueueReportAtRef.current > 60_000) {
+          lastQueueReportAtRef.current = now;
+          reportInternalKoboClientQueue().catch(() => undefined);
+        }
       } catch (error) {
         window.dispatchEvent(new CustomEvent('internal-kobo:queue-flush-error', { detail: error }));
       } finally {
@@ -73,6 +82,19 @@ export default function BackgroundServices() {
       window.removeEventListener('focus', scheduleFlush);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
+  }, [internalKoboQueueCount]);
+
+  useEffect(() => {
+    if (!internalKoboQueueCount) return undefined;
+    const report = () => {
+      if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+      const now = Date.now();
+      if (now - lastQueueReportAtRef.current < 60_000) return;
+      lastQueueReportAtRef.current = now;
+      reportInternalKoboClientQueue().catch(() => undefined);
+    };
+    const timeoutId = window.setTimeout(report, 3000);
+    return () => window.clearTimeout(timeoutId);
   }, [internalKoboQueueCount]);
 
   return null;

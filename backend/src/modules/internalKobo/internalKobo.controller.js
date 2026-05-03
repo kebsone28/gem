@@ -21,6 +21,7 @@ import {
 const SUBMISSION_STATUSES = new Set(['draft', 'submitted', 'validated', 'rejected']);
 const REVIEW_STATUSES = new Set(['submitted', 'validated', 'rejected']);
 const MAX_EMBEDDED_ATTACHMENT_BYTES = 8 * 1024 * 1024;
+const FINAL_SUBMISSION_STATUSES = new Set(['submitted', 'validated']);
 const OMIT_FIELD = Symbol('omit-field');
 
 function sanitizeBigIntForJson(value) {
@@ -254,6 +255,8 @@ async function normalizeSubmissionAttachments({ attachments, organizationId, cli
 
     const normalized = [];
     const valuePatch = {};
+    const pathPatches = [];
+    const seenHashes = new Set();
 
     for (const rawAttachment of attachments) {
         if (!isPlainObject(rawAttachment)) continue;
@@ -265,6 +268,10 @@ async function normalizeSubmissionAttachments({ attachments, organizationId, cli
         const baseRecord = {
             id: String(rawAttachment.id || crypto.randomUUID()),
             fieldName,
+            fieldCode: rawAttachment.fieldCode ? String(rawAttachment.fieldCode) : fieldName,
+            valuePath: Array.isArray(rawAttachment.valuePath)
+                ? rawAttachment.valuePath.map((entry) => typeof entry === 'number' ? entry : String(entry))
+                : null,
             fileName,
             mimeType,
             originalBytes: Number(rawAttachment.originalBytes || rawAttachment.size || 0) || null,
@@ -279,9 +286,15 @@ async function normalizeSubmissionAttachments({ attachments, organizationId, cli
                 ...baseRecord,
                 key: rawAttachment.key || null,
                 url: rawAttachment.url || values?.[fieldName] || null,
-                storage: rawAttachment.key ? 'remote' : 'external'
+                storage: rawAttachment.key ? 'remote' : 'external',
+                sha256: rawAttachment.sha256 || null,
+                duplicate: rawAttachment.sha256 ? seenHashes.has(String(rawAttachment.sha256)) : false
             });
-            if (fieldName && rawAttachment.url) valuePatch[fieldName] = rawAttachment.url;
+            if (rawAttachment.sha256) seenHashes.add(String(rawAttachment.sha256));
+            const directPatch = !baseRecord.valuePath ||
+                (baseRecord.valuePath.length === 1 && String(baseRecord.valuePath[0]) === fieldName);
+            if (fieldName && rawAttachment.url && directPatch) valuePatch[fieldName] = rawAttachment.url;
+            if (baseRecord.valuePath && rawAttachment.url) pathPatches.push({ path: baseRecord.valuePath, value: rawAttachment.url });
             continue;
         }
 
@@ -301,7 +314,13 @@ async function normalizeSubmissionAttachments({ attachments, organizationId, cli
         }
 
         const extension = extensionFromMime(parsed.mimeType || mimeType);
-        const key = `${organizationId}/internal-kobo/${clientSubmissionId}/${baseRecord.id}.${extension}`;
+        const sha256 = crypto.createHash('sha256').update(parsed.buffer).digest('hex');
+        if (rawAttachment.sha256 && String(rawAttachment.sha256) !== sha256) {
+            throw makeHttpError(400, `Attachment ${fieldName || fileName} checksum mismatch`);
+        }
+        const duplicate = seenHashes.has(sha256);
+        seenHashes.add(sha256);
+        const key = `${organizationId}/internal-kobo/media/${sha256}.${extension}`;
         await uploadFile(key, parsed.buffer, parsed.mimeType || mimeType);
         const url = await getFileUrl(key);
 
@@ -309,14 +328,71 @@ async function normalizeSubmissionAttachments({ attachments, organizationId, cli
             ...baseRecord,
             mimeType: parsed.mimeType || mimeType,
             storedBytes: parsed.buffer.length,
+            sha256,
             key,
             url,
-            storage: 'server'
+            storage: 'server',
+            duplicate
         });
-        if (fieldName && url) valuePatch[fieldName] = url;
+        const directPatch = !baseRecord.valuePath ||
+            (baseRecord.valuePath.length === 1 && String(baseRecord.valuePath[0]) === fieldName);
+        if (fieldName && url && directPatch) valuePatch[fieldName] = url;
+        if (baseRecord.valuePath && url) pathPatches.push({ path: baseRecord.valuePath, value: url });
     }
 
-    return { attachments: normalized, valuePatch };
+    return { attachments: normalized, valuePatch, pathPatches };
+}
+
+function applyPathPatch(target, path, value) {
+    if (!Array.isArray(path) || path.length === 0) return target;
+    const next = Array.isArray(target) ? [...target] : { ...(isPlainObject(target) ? target : {}) };
+    let cursor = next;
+    path.forEach((segment, index) => {
+        const isLast = index === path.length - 1;
+        if (isLast) {
+            cursor[segment] = value;
+            return;
+        }
+        const nextSegment = path[index + 1];
+        const shouldBeArray = typeof nextSegment === 'number';
+        const existing = cursor[segment];
+        if (shouldBeArray) {
+            cursor[segment] = Array.isArray(existing) ? [...existing] : [];
+        } else {
+            cursor[segment] = isPlainObject(existing) ? { ...existing } : {};
+        }
+        cursor = cursor[segment];
+    });
+    return next;
+}
+
+function applyValuePatches(values, valuePatch = {}, pathPatches = []) {
+    let nextValues = { ...values, ...valuePatch };
+    pathPatches.forEach((patch) => {
+        nextValues = applyPathPatch(nextValues, patch.path, patch.value);
+    });
+    return nextValues;
+}
+
+function summarizeAttachmentStats(attachments = []) {
+    const hashes = new Set();
+    return attachments.reduce((acc, attachment) => {
+        acc.attachmentCount += 1;
+        acc.totalStoredBytes += Number(attachment.storedBytes || 0);
+        if (attachment.storage === 'server' || attachment.storage === 'remote') acc.serverStoredCount += 1;
+        if (attachment.status === 'unresolved') acc.unresolvedCount += 1;
+        if (attachment.sha256) {
+            if (hashes.has(attachment.sha256)) acc.duplicateHashCount += 1;
+            hashes.add(attachment.sha256);
+        }
+        return acc;
+    }, {
+        attachmentCount: 0,
+        serverStoredCount: 0,
+        unresolvedCount: 0,
+        totalStoredBytes: 0,
+        duplicateHashCount: 0
+    });
 }
 
 function escapeCsv(value) {
@@ -389,13 +465,32 @@ async function normalizeSubmissionPayload(body, req) {
         return { error: { status: 409, message: `Inactive XLSForm definition: ${formKey}` } };
     }
 
-    const { attachments, valuePatch } = await normalizeSubmissionAttachments({
+    const requestedStatus = String(body.status || '').trim().toLowerCase();
+    const serverFormVersion = universalMapping?.definition?.formVersion || INTERNAL_KOBO_FORM_VERSION;
+
+    if (universalMapping && FINAL_SUBMISSION_STATUSES.has(requestedStatus) && formVersion !== serverFormVersion) {
+        return {
+            error: {
+                status: 409,
+                message: 'Outdated XLSForm version: migrate the local draft before final submission',
+                details: {
+                    formKey,
+                    clientFormVersion: formVersion,
+                    serverFormVersion,
+                    policy: 'block-final-submission-on-version-mismatch'
+                }
+            }
+        };
+    }
+
+    const { attachments, valuePatch, pathPatches } = await normalizeSubmissionAttachments({
         attachments: body.attachments,
         organizationId: req.user.organizationId,
         clientSubmissionId,
         values: body.values
     });
-    const values = sanitizeObjectWithValuePatch({ ...body.values, ...valuePatch }, valuePatch);
+    const patchedValues = applyValuePatches(body.values, valuePatch, pathPatches);
+    const values = sanitizeObjectWithValuePatch(patchedValues, valuePatch);
 
     const roleSource = body.role ?? values.role;
     const role = roleSource ? String(roleSource).trim() : null;
@@ -413,7 +508,6 @@ async function normalizeSubmissionPayload(body, req) {
         ...normalizeRequiredMissing(body.requiredMissing),
         ...serverRequiredMissing
     ]);
-    const requestedStatus = String(body.status || '').trim().toLowerCase();
 
     if (serverValidationIssues.length > 0 && ['submitted', 'validated'].includes(requestedStatus)) {
         return {
@@ -433,7 +527,7 @@ async function normalizeSubmissionPayload(body, req) {
         : serverValidationIssues.length > 0
             ? 'draft'
             : 'submitted';
-    const serverFormVersion = universalMapping?.definition?.formVersion || INTERNAL_KOBO_FORM_VERSION;
+    const mediaStats = summarizeAttachmentStats(attachments);
 
     return {
         payload: {
@@ -458,7 +552,8 @@ async function normalizeSubmissionPayload(body, req) {
                 media: {
                     ...(isPlainObject(body.metadata?.media) ? body.metadata.media : {}),
                     attachments,
-                    attachmentCount: attachments.length
+                    attachmentCount: attachments.length,
+                    ...mediaStats
                 },
                 serverRequiredMissing,
                 serverValidationIssues,
@@ -605,7 +700,8 @@ export const submitInternalKoboSubmission = async (req, res) => {
                         formVersion: payload.formVersion,
                         requiredMissing: payload.requiredMissing,
                         validationIssues: payload.metadata.serverValidationIssues,
-                        serverFormVersion: INTERNAL_KOBO_FORM_VERSION,
+                        serverFormVersion: payload.metadata.serverFormVersion,
+                        media: payload.metadata.media,
                         formVersionMismatch: payload.metadata.formVersionMismatch
                     }
                 }
@@ -732,6 +828,49 @@ export const listInternalKoboFormDefinitions = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: 'Server error while listing XLSForm definitions'
+        });
+    }
+};
+
+export const reportInternalKoboClientQueue = async (req, res) => {
+    try {
+        const { organizationId, id: userId } = req.user;
+        const pending = Math.max(0, Number(req.body?.pending || 0));
+        const failed = Math.max(0, Number(req.body?.failed || 0));
+        const blocked = Math.max(0, Number(req.body?.blocked || 0));
+        const mediaBytes = Math.max(0, Number(req.body?.mediaBytes || 0));
+        const queue = Array.isArray(req.body?.queue) ? req.body.queue.slice(0, 100) : [];
+        const device = isPlainObject(req.body?.device) ? req.body.device : {};
+        const reportedAt = String(req.body?.reportedAt || new Date().toISOString());
+
+        await prisma.syncLog.create({
+            data: {
+                userId,
+                organizationId,
+                deviceId: String(device.userAgent || device.platform || 'gem-internal-kobo-client').slice(0, 160),
+                action: 'INTERNAL_KOBO_CLIENT_QUEUE_REPORT',
+                details: {
+                    reportedAt,
+                    pending,
+                    failed,
+                    blocked,
+                    mediaBytes,
+                    device,
+                    queue
+                }
+            }
+        });
+
+        return res.json({
+            success: true,
+            receivedAt: new Date().toISOString(),
+            summary: { pending, failed, blocked, mediaBytes, count: queue.length }
+        });
+    } catch (err) {
+        console.error('[INTERNAL-KOBO] client queue report error:', err);
+        return res.status(500).json({
+            success: false,
+            message: 'Server error while reporting internal Kobo client queue'
         });
     }
 };
@@ -1004,6 +1143,8 @@ function buildSubmissionWhere(organizationId, query = {}) {
         syncStatus,
         role,
         formKey,
+        submittedById,
+        agent,
         clientSubmissionId,
         q,
         from,
@@ -1022,6 +1163,22 @@ function buildSubmissionWhere(organizationId, query = {}) {
     if (syncStatus) filters.push({ syncStatus: String(syncStatus) });
     if (role) filters.push({ role: String(role) });
     if (formKey) filters.push({ formKey: String(formKey) });
+    if (submittedById) filters.push({ submittedById: String(submittedById) });
+    if (agent) {
+        const agentSearch = String(agent).trim();
+        if (agentSearch) {
+            filters.push({
+                submittedBy: {
+                    is: {
+                        OR: [
+                            { name: { contains: agentSearch, mode: 'insensitive' } },
+                            { email: { contains: agentSearch, mode: 'insensitive' } }
+                        ]
+                    }
+                }
+            });
+        }
+    }
     if (clientSubmissionId) filters.push({ clientSubmissionId: String(clientSubmissionId) });
 
     const savedAtFilter = {};
@@ -1259,6 +1416,8 @@ export const listInternalKoboSubmissions = async (req, res) => {
             syncStatus,
             role,
             formKey,
+            submittedById,
+            agent,
             clientSubmissionId,
             q,
             from,
@@ -1279,6 +1438,22 @@ export const listInternalKoboSubmissions = async (req, res) => {
         if (syncStatus) filters.push({ syncStatus: String(syncStatus) });
         if (role) filters.push({ role: String(role) });
         if (formKey) filters.push({ formKey: String(formKey) });
+        if (submittedById) filters.push({ submittedById: String(submittedById) });
+        if (agent) {
+            const agentSearch = String(agent).trim();
+            if (agentSearch) {
+                filters.push({
+                    submittedBy: {
+                        is: {
+                            OR: [
+                                { name: { contains: agentSearch, mode: 'insensitive' } },
+                                { email: { contains: agentSearch, mode: 'insensitive' } }
+                            ]
+                        }
+                    }
+                });
+            }
+        }
         if (clientSubmissionId) filters.push({ clientSubmissionId: String(clientSubmissionId) });
 
         const savedAtFilter = {};
@@ -1349,6 +1524,21 @@ export const listInternalKoboSubmissions = async (req, res) => {
                 acc[value] = (acc[value] || 0) + 1;
                 return acc;
             }, {});
+        const filteredMediaStats = submissions.reduce((acc, submission) => {
+            const media = isPlainObject(submission.metadata?.media) ? submission.metadata.media : {};
+            acc.attachmentCount += Number(media.attachmentCount || 0);
+            acc.serverStoredCount += Number(media.serverStoredCount || 0);
+            acc.unresolvedCount += Number(media.unresolvedCount || 0);
+            acc.totalStoredBytes += Number(media.totalStoredBytes || 0);
+            acc.duplicateHashCount += Number(media.duplicateHashCount || 0);
+            return acc;
+        }, {
+            attachmentCount: 0,
+            serverStoredCount: 0,
+            unresolvedCount: 0,
+            totalStoredBytes: 0,
+            duplicateHashCount: 0
+        });
 
         const diagnostics = {
             scope: 'filtered',
@@ -1356,11 +1546,14 @@ export const listInternalKoboSubmissions = async (req, res) => {
             byStatus: countBy('status'),
             byRole: countBy('role'),
             bySyncStatus: countBy('syncStatus'),
+            byFormKey: countBy('formKey'),
+            byFormVersion: countBy('formVersion'),
             missingRequiredCount: submissions.filter((submission) => (submission.requiredMissing || []).length > 0).length,
             validationIssueCount: submissions.filter(
                 (submission) => Array.isArray(submission.metadata?.serverValidationIssues) && submission.metadata.serverValidationIssues.length > 0
             ).length,
             versionMismatchCount: submissions.filter((submission) => submission.metadata?.formVersionMismatch === true).length,
+            mediaStats: filteredMediaStats,
             latestSavedAt: submissions[0]?.savedAt || null,
             serverFormVersion: INTERNAL_KOBO_FORM_VERSION,
             generatedAt: new Date().toISOString()
@@ -1385,7 +1578,7 @@ export const getInternalKoboDiagnostics = async (req, res) => {
     try {
         const { organizationId } = req.user;
         const recentSince = new Date(Date.now() - 24 * 60 * 60 * 1000);
-        const [total, last24h, latestSubmissions] = await Promise.all([
+        const [total, last24h, latestSubmissions, mappings, queueReports] = await Promise.all([
             prisma.internalKoboSubmission.count({ where: { organizationId } }),
             prisma.internalKoboSubmission.count({ where: { organizationId, savedAt: { gte: recentSince } } }),
             prisma.internalKoboSubmission.findMany({
@@ -1398,6 +1591,7 @@ export const getInternalKoboDiagnostics = async (req, res) => {
                     role: true,
                     status: true,
                     syncStatus: true,
+                    formKey: true,
                     formVersion: true,
                     metadata: true,
                     requiredMissing: true,
@@ -1405,6 +1599,20 @@ export const getInternalKoboDiagnostics = async (req, res) => {
                     submittedAt: true,
                     householdId: true
                 }
+            }),
+            prisma.koboFormMapping.findMany({
+                where: { organizationId },
+                orderBy: { updatedAt: 'desc' },
+                take: 50
+            }),
+            prisma.syncLog.findMany({
+                where: {
+                    organizationId,
+                    action: 'INTERNAL_KOBO_CLIENT_QUEUE_REPORT',
+                    timestamp: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) }
+                },
+                orderBy: { timestamp: 'desc' },
+                take: 20
             })
         ]);
 
@@ -1415,9 +1623,20 @@ export const getInternalKoboDiagnostics = async (req, res) => {
                 return acc;
             }, {});
 
-        const versionMismatchCount = latestSubmissions.filter(
-            (submission) => submission.metadata?.formVersionMismatch === true || submission.formVersion !== INTERNAL_KOBO_FORM_VERSION
-        ).length;
+        const formSummaries = mappings.map(summarizeUniversalXlsFormMapping);
+        const activeForms = formSummaries.filter((form) => form.active !== false);
+        const inactiveForms = formSummaries.filter((form) => form.active === false);
+        const activeVersionByFormKey = new Map(activeForms.map((form) => [form.formKey, form.formVersion]));
+        const getExpectedFormVersion = (submission) => {
+            if (activeVersionByFormKey.has(submission.formKey)) return activeVersionByFormKey.get(submission.formKey);
+            if (submission.formKey === INTERNAL_KOBO_FORM_KEY) return INTERNAL_KOBO_FORM_VERSION;
+            return null;
+        };
+        const versionMismatchCount = latestSubmissions.filter((submission) => {
+            if (submission.metadata?.formVersionMismatch === true) return true;
+            const expectedVersion = getExpectedFormVersion(submission);
+            return expectedVersion ? submission.formVersion !== expectedVersion : false;
+        }).length;
         const missingRequiredCount = latestSubmissions.filter(
             (submission) => (submission.requiredMissing || []).length > 0
         ).length;
@@ -1425,6 +1644,32 @@ export const getInternalKoboDiagnostics = async (req, res) => {
             (submission) => Array.isArray(submission.metadata?.serverValidationIssues) && submission.metadata.serverValidationIssues.length > 0
         ).length;
         const unresolvedHouseholdCount = latestSubmissions.filter((submission) => !submission.householdId).length;
+        const mediaStats = latestSubmissions.reduce((acc, submission) => {
+            const media = isPlainObject(submission.metadata?.media) ? submission.metadata.media : {};
+            acc.attachmentCount += Number(media.attachmentCount || 0);
+            acc.serverStoredCount += Number(media.serverStoredCount || 0);
+            acc.unresolvedCount += Number(media.unresolvedCount || 0);
+            acc.totalStoredBytes += Number(media.totalStoredBytes || 0);
+            acc.duplicateHashCount += Number(media.duplicateHashCount || 0);
+            return acc;
+        }, {
+            attachmentCount: 0,
+            serverStoredCount: 0,
+            unresolvedCount: 0,
+            totalStoredBytes: 0,
+            duplicateHashCount: 0
+        });
+        const latestQueueReports = queueReports.map((report) => ({
+            id: report.id,
+            timestamp: report.timestamp,
+            pending: Number(report.details?.pending || 0),
+            failed: Number(report.details?.failed || 0),
+            blocked: Number(report.details?.blocked || 0),
+            mediaBytes: Number(report.details?.mediaBytes || 0),
+            device: report.details?.device || {},
+            queueSample: Array.isArray(report.details?.queue) ? report.details.queue.slice(0, 10) : []
+        }));
+        const latestQueueReport = latestQueueReports[0] || null;
         const warningMessages = [];
 
         if (versionMismatchCount > 0) {
@@ -1439,9 +1684,15 @@ export const getInternalKoboDiagnostics = async (req, res) => {
         if (unresolvedHouseholdCount > 0) {
             warningMessages.push(`${unresolvedHouseholdCount} soumission(s) non rattachee(s) a un menage serveur`);
         }
+        if (mediaStats.unresolvedCount > 0) {
+            warningMessages.push(`${mediaStats.unresolvedCount} piece(s) jointe(s) non resolue(s) dans les soumissions recentes`);
+        }
+        if (latestQueueReport && (latestQueueReport.failed > 0 || latestQueueReport.blocked > 0)) {
+            warningMessages.push(`File terrain signalee: ${latestQueueReport.failed} echec(s), ${latestQueueReport.blocked} bloque(s)`);
+        }
 
         const health =
-            unresolvedHouseholdCount > 0 || versionMismatchCount > 0 || validationIssueCount > 0
+            unresolvedHouseholdCount > 0 || versionMismatchCount > 0 || validationIssueCount > 0 || mediaStats.unresolvedCount > 0
                 ? 'warning'
                 : latestSubmissions.some((submission) => submission.syncStatus !== 'synced')
                     ? 'warning'
@@ -1458,12 +1709,28 @@ export const getInternalKoboDiagnostics = async (req, res) => {
                 byStatus: countBy(latestSubmissions, (submission) => submission.status),
                 byRole: countBy(latestSubmissions, (submission) => submission.role),
                 bySyncStatus: countBy(latestSubmissions, (submission) => submission.syncStatus),
+                byFormKey: countBy(latestSubmissions, (submission) => submission.formKey),
+                byFormVersion: countBy(latestSubmissions, (submission) => submission.formVersion),
                 versionMismatchCount,
                 missingRequiredCount,
                 validationIssueCount,
                 unresolvedHouseholdCount,
+                activeFormCount: activeForms.length,
+                inactiveFormCount: inactiveForms.length,
+                activeForms,
+                inactiveForms,
+                serverFormVersions: Object.fromEntries(activeVersionByFormKey),
+                mediaStats,
+                clientQueue: {
+                    latestReportedAt: latestQueueReport?.timestamp || null,
+                    pending: latestQueueReport?.pending || 0,
+                    failed: latestQueueReport?.failed || 0,
+                    blocked: latestQueueReport?.blocked || 0,
+                    mediaBytes: latestQueueReport?.mediaBytes || 0,
+                    devices: latestQueueReports
+                },
                 latestSavedAt: latestSubmissions[0]?.savedAt || null,
-                serverFormVersion: INTERNAL_KOBO_FORM_VERSION,
+                serverFormVersion: activeVersionByFormKey.get(INTERNAL_KOBO_FORM_KEY) || activeForms[0]?.formVersion || INTERNAL_KOBO_FORM_VERSION,
                 warnings: warningMessages,
                 generatedAt: new Date().toISOString()
             })

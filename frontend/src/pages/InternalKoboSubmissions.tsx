@@ -73,6 +73,13 @@ const formatDateTime = (value?: string | null) => {
   });
 };
 
+const formatBytes = (value?: number) => {
+  const bytes = Number(value || 0);
+  if (bytes < 1024) return `${bytes} o`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} Ko`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} Mo`;
+};
+
 const saveBlob = (blob: Blob, filename: string) => {
   const url = window.URL.createObjectURL(blob);
   const anchor = document.createElement('a');
@@ -558,7 +565,7 @@ export default function InternalKoboSubmissions() {
             </div>
           </section>
 
-          <div className="grid grid-cols-2 gap-3 xl:grid-cols-7">
+          <div className="grid grid-cols-2 gap-3 xl:grid-cols-8">
             {[
               { label: 'Total VPS', value: globalDiagnostics?.total ?? listDiagnostics?.count ?? submissions.length, icon: Database },
               { label: '24h', value: globalDiagnostics?.receivedLast24h ?? 0, icon: Activity },
@@ -566,6 +573,8 @@ export default function InternalKoboSubmissions() {
               { label: 'Brouillons', value: countValue(globalDiagnostics, 'byStatus', 'draft'), icon: FileJson },
               { label: 'Requis manquants', value: globalDiagnostics?.missingRequiredCount ?? listDiagnostics?.missingRequiredCount ?? 0, icon: AlertTriangle },
               { label: 'Corrections', value: globalDiagnostics?.validationIssueCount ?? listDiagnostics?.validationIssueCount ?? 0, icon: AlertTriangle },
+              { label: 'File terrain', value: globalDiagnostics?.clientQueue?.pending ?? 0, icon: Upload },
+              { label: 'Medias', value: globalDiagnostics?.mediaStats?.attachmentCount ?? 0, icon: FileSpreadsheet },
               { label: 'Etat moteur', value: String(health).toUpperCase(), icon: Server, tone: healthClass },
             ].map((stat) => {
               const Icon = stat.icon;
@@ -580,6 +589,81 @@ export default function InternalKoboSubmissions() {
               );
             })}
           </div>
+
+          <section className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+            <div className="rounded-3xl border border-blue-300/15 bg-blue-500/[0.055] p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[11px] font-black uppercase tracking-[0.16em] text-blue-100">Versions terrain</p>
+                  <p className="mt-1 text-xs font-semibold text-slate-400">Versions utilisees et formulaires actifs.</p>
+                </div>
+                <Server size={18} className="text-blue-200" />
+              </div>
+              <div className="mt-4 space-y-2">
+                {Object.entries(globalDiagnostics?.byFormVersion || {}).slice(0, 5).map(([version, count]) => (
+                  <div key={version} className="flex items-center justify-between rounded-2xl border border-white/8 bg-slate-950/25 px-3 py-2">
+                    <span className="truncate text-[11px] font-black text-white">v{version}</span>
+                    <span className="rounded-full bg-white/[0.06] px-2 py-1 text-[10px] font-bold text-slate-300">{count}</span>
+                  </div>
+                ))}
+                {Object.keys(globalDiagnostics?.byFormVersion || {}).length === 0 ? (
+                  <p className="rounded-2xl border border-white/8 bg-slate-950/25 px-3 py-3 text-[11px] font-semibold text-slate-500">
+                    Aucune version encore observee.
+                  </p>
+                ) : null}
+              </div>
+            </div>
+
+            <div className="rounded-3xl border border-sky-300/15 bg-sky-500/[0.055] p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[11px] font-black uppercase tracking-[0.16em] text-sky-100">File offline terrain</p>
+                  <p className="mt-1 text-xs font-semibold text-slate-400">
+                    Dernier signalement: {formatDateTime(globalDiagnostics?.clientQueue?.latestReportedAt || null)}
+                  </p>
+                </div>
+                <Upload size={18} className="text-sky-200" />
+              </div>
+              <div className="mt-4 grid grid-cols-3 gap-2">
+                {[
+                  ['Attente', globalDiagnostics?.clientQueue?.pending || 0],
+                  ['Echecs', globalDiagnostics?.clientQueue?.failed || 0],
+                  ['Bloques', globalDiagnostics?.clientQueue?.blocked || 0],
+                ].map(([label, value]) => (
+                  <div key={label} className="rounded-2xl border border-white/8 bg-slate-950/25 p-3">
+                    <p className="text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">{label}</p>
+                    <p className="mt-1 text-lg font-black text-white">{value}</p>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-3 rounded-2xl border border-white/8 bg-slate-950/25 px-3 py-2 text-[11px] font-bold text-slate-300">
+                Medias en attente: {formatBytes(globalDiagnostics?.clientQueue?.mediaBytes)}
+              </p>
+            </div>
+
+            <div className="rounded-3xl border border-emerald-300/15 bg-emerald-500/[0.055] p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[11px] font-black uppercase tracking-[0.16em] text-emerald-100">Stockage medias</p>
+                  <p className="mt-1 text-xs font-semibold text-slate-400">Photos, fichiers, signatures, audio et video.</p>
+                </div>
+                <FileSpreadsheet size={18} className="text-emerald-200" />
+              </div>
+              <div className="mt-4 grid grid-cols-2 gap-2">
+                {[
+                  ['Stockes', globalDiagnostics?.mediaStats?.serverStoredCount || 0],
+                  ['Non resolus', globalDiagnostics?.mediaStats?.unresolvedCount || 0],
+                  ['Doublons hash', globalDiagnostics?.mediaStats?.duplicateHashCount || 0],
+                  ['Volume', formatBytes(globalDiagnostics?.mediaStats?.totalStoredBytes)],
+                ].map(([label, value]) => (
+                  <div key={label} className="rounded-2xl border border-white/8 bg-slate-950/25 p-3">
+                    <p className="text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">{label}</p>
+                    <p className="mt-1 truncate text-sm font-black text-white">{value}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
 
           {globalDiagnostics?.warnings?.length ? (
             <div className="rounded-2xl border border-amber-300/20 bg-amber-400/10 p-4">

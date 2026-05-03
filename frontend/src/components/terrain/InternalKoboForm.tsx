@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertCircle,
   Camera,
@@ -206,6 +206,15 @@ const fileToDataUrl = (file: File): Promise<string> =>
     reader.readAsDataURL(file);
   });
 
+const hashFileSha256 = async (file: File): Promise<string> => {
+  if (!globalThis.crypto?.subtle) return '';
+  const buffer = await file.arrayBuffer();
+  const hashBuffer = await globalThis.crypto.subtle.digest('SHA-256', buffer);
+  return Array.from(new Uint8Array(hashBuffer))
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('');
+};
+
 const getAttachmentMeta = (values: Record<string, unknown>, fieldName: string): InternalKoboAttachment | null => {
   const value = values[`_gem_attachment_${fieldName}`];
   return isRecord(value) ? (value as InternalKoboAttachment) : null;
@@ -332,6 +341,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
   const [locationError, setLocationError] = useState('');
   const [isSubmitReviewOpen, setIsSubmitReviewOpen] = useState(false);
   const [xlsFormDefinition, setXlsFormDefinition] = useState<XlsFormDefinition | null>(null);
+  const [pendingRuntimeDefinition, setPendingRuntimeDefinition] = useState<XlsFormDefinition | null>(null);
   const [activeRuntimePageId, setActiveRuntimePageId] = useState('');
   const [activeRepeatIndexByPage, setActiveRepeatIndexByPage] = useState<Record<string, number>>({});
   const [signatureTarget, setSignatureTarget] = useState<SignatureTarget | null>(null);
@@ -345,6 +355,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
     status: 'idle' | 'loading' | 'ok' | 'mismatch' | 'error';
     version?: string;
     message?: string;
+    checkedAt?: string;
   }>({ status: 'idle' });
   const lastResolvedNumeroRef = useRef('');
   const onChangeRef = useRef(onChange);
@@ -362,6 +373,45 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
     );
     return new Map(entries);
   }, []);
+  const progressFilledRef = useRef(0);
+  const applyRuntimeDefinition = useCallback((definition: XlsFormDefinition, title?: string) => {
+    setXlsFormDefinition(definition);
+    setPendingRuntimeDefinition(null);
+    setActiveRuntimePageId('');
+    onChangeRef.current('_gem_runtime_form_key', definition.formKey);
+    onChangeRef.current('_gem_runtime_form_version', definition.formVersion);
+    onChangeRef.current('_gem_runtime_engine', definition.engine || 'gem-xlsform-universal');
+    onChangeRef.current('_gem_runtime_title', definition.title || title || definition.formKey);
+    onChangeRef.current('_gem_runtime_checked_at', new Date().toISOString());
+    setServerFormStatus({
+      status: 'ok',
+      version: definition.formVersion,
+      message: `XLSForm actif: ${definition.title || title || definition.formKey}`,
+      checkedAt: new Date().toISOString(),
+    });
+  }, []);
+  const isDifferentRuntimeVersion = useCallback((definition: XlsFormDefinition) => {
+    const currentKey = xlsFormDefinition?.formKey || String(values._gem_runtime_form_key || '');
+    const currentVersion = xlsFormDefinition?.formVersion || String(values._gem_runtime_form_version || '');
+    return Boolean(currentKey && currentKey !== 'terrain_internal') &&
+      (currentKey !== definition.formKey || currentVersion !== definition.formVersion);
+  }, [
+    values._gem_runtime_form_key,
+    values._gem_runtime_form_version,
+    xlsFormDefinition?.formKey,
+    xlsFormDefinition?.formVersion,
+  ]);
+  const migrateToPendingRuntimeDefinition = () => {
+    if (!pendingRuntimeDefinition) return;
+    const previousKey = xlsFormDefinition?.formKey || String(values._gem_runtime_form_key || '');
+    const previousVersion = xlsFormDefinition?.formVersion || String(values._gem_runtime_form_version || '');
+    onChangeRef.current('_gem_runtime_migrated_from_key', previousKey);
+    onChangeRef.current('_gem_runtime_migrated_from_version', previousVersion);
+    onChangeRef.current('_gem_runtime_migrated_to_version', pendingRuntimeDefinition.formVersion);
+    onChangeRef.current('_gem_runtime_migration_mode', 'preserve-values-by-field-name');
+    onChangeRef.current('_gem_runtime_migrated_at', new Date().toISOString());
+    applyRuntimeDefinition(pendingRuntimeDefinition);
+  };
   const runtimeCalculation = useMemo(
     () => xlsFormDefinition ? applyXlsFormRuntimeCalculations(xlsFormDefinition, values) : { values, calculated: {} },
     [xlsFormDefinition, values]
@@ -437,6 +487,10 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
   }, [runtimeAllPages, runtimeValues, values, xlsFormDefinition]);
 
   useEffect(() => {
+    progressFilledRef.current = progress.filled;
+  }, [progress.filled]);
+
+  useEffect(() => {
     onChangeRef.current = onChange;
   }, [onChange]);
 
@@ -474,17 +528,18 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
             throw new Error('Definition XLSForm active invalide');
           }
 
-          setXlsFormDefinition(importedDefinition);
-          setActiveRuntimePageId('');
-          onChangeRef.current('_gem_runtime_form_key', importedDefinition.formKey);
-          onChangeRef.current('_gem_runtime_form_version', importedDefinition.formVersion);
-          onChangeRef.current('_gem_runtime_engine', importedDefinition.engine || 'gem-xlsform-universal');
-          onChangeRef.current('_gem_runtime_title', importedDefinition.title || activeImportedForm.title || importedDefinition.formKey);
-          setServerFormStatus({
-            status: 'ok',
-            version: importedDefinition.formVersion,
-            message: `XLSForm actif: ${importedDefinition.title || importedDefinition.formKey}`,
-          });
+          if (isDifferentRuntimeVersion(importedDefinition) && progressFilledRef.current > 0) {
+            setPendingRuntimeDefinition(importedDefinition);
+            setServerFormStatus({
+              status: 'mismatch',
+              version: importedDefinition.formVersion,
+              message: `Nouvelle version disponible: ${importedDefinition.title || importedDefinition.formKey}`,
+              checkedAt: new Date().toISOString(),
+            });
+            return;
+          }
+
+          applyRuntimeDefinition(importedDefinition, activeImportedForm.title);
           return;
         }
 
@@ -500,6 +555,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
             form.formVersion === INTERNAL_KOBO_FORM_SETTINGS.version
               ? 'Version VPS verifiee'
               : `Version VPS ${form.formVersion}`,
+          checkedAt: new Date().toISOString(),
         });
       } catch (error) {
         if (cancelled) return;
@@ -514,7 +570,58 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [isOnline]);
+  }, [applyRuntimeDefinition, isDifferentRuntimeVersion, isOnline]);
+
+  useEffect(() => {
+    if (!isOnline) return undefined;
+
+    let cancelled = false;
+    const checkActiveVersion = async () => {
+      try {
+        const form = await fetchInternalKoboFormDefinition();
+        if (cancelled) return;
+        const activeImportedForm = pickActiveImportedForm(form?.universalEngine?.importedForms || []);
+        if (!activeImportedForm?.formKey) return;
+        const importedDefinition = await fetchInternalKoboImportedFormDefinition(activeImportedForm.formKey);
+        if (cancelled || !isRuntimeDefinition(importedDefinition)) return;
+
+        if (isDifferentRuntimeVersion(importedDefinition)) {
+          setPendingRuntimeDefinition(importedDefinition);
+          setServerFormStatus({
+            status: 'mismatch',
+            version: importedDefinition.formVersion,
+            message: `Nouvelle version XLSForm detectee: ${importedDefinition.title || importedDefinition.formKey}`,
+            checkedAt: new Date().toISOString(),
+          });
+        } else {
+          setServerFormStatus((current) => ({
+            ...current,
+            status: current.status === 'error' ? 'ok' : current.status,
+            version: importedDefinition.formVersion,
+            checkedAt: new Date().toISOString(),
+          }));
+        }
+      } catch {
+        if (!cancelled) {
+          setServerFormStatus((current) => ({
+            ...current,
+            status: current.status === 'mismatch' ? current.status : 'error',
+            message: current.message || 'Controle de version VPS indisponible',
+          }));
+        }
+      }
+    };
+
+    const intervalId = window.setInterval(checkActiveVersion, 90_000);
+    const handleFocus = () => checkActiveVersion();
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [isDifferentRuntimeVersion, isOnline]);
 
   useEffect(() => {
     const now = new Date();
@@ -903,6 +1010,15 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
 
   const handlePrimarySave = () => {
     if (validationIssues.length === 0) {
+      if (pendingRuntimeDefinition) {
+        setServerFormStatus({
+          status: 'mismatch',
+          version: pendingRuntimeDefinition.formVersion,
+          message: 'Soumission finale bloquee: migrez vers la version XLSForm active avant envoi.',
+          checkedAt: new Date().toISOString(),
+        });
+        return;
+      }
       setIsSubmitReviewOpen(true);
       return;
     }
@@ -910,6 +1026,16 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
   };
 
   const confirmFinalSubmission = () => {
+    if (pendingRuntimeDefinition) {
+      setIsSubmitReviewOpen(false);
+      setServerFormStatus({
+        status: 'mismatch',
+        version: pendingRuntimeDefinition.formVersion,
+        message: 'Soumission finale bloquee: migrez vers la version XLSForm active avant envoi.',
+        checkedAt: new Date().toISOString(),
+      });
+      return;
+    }
     setIsSubmitReviewOpen(false);
     onSave();
   };
@@ -971,13 +1097,17 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
       const uploadFile = maxPixels ? await compressImage(file, { maxWidth: maxPixels, maxHeight: maxPixels }) : file;
       const capturedAt = new Date().toISOString();
       const dataUrl = await fileToDataUrl(uploadFile);
+      const sha256 = await hashFileSha256(uploadFile);
       const baseAttachment: InternalKoboAttachment = {
         id: makeAttachmentId(),
         fieldName: field.name,
+        fieldCode: field.name,
+        valuePath: [field.name],
         fileName: file.name,
         mimeType: file.type || uploadFile.type || 'image/jpeg',
         originalBytes: file.size,
         storedBytes: uploadFile.size,
+        sha256,
         capturedAt,
         source: 'gem-internal-kobo',
       };
@@ -1085,13 +1215,17 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
       const uploadFile = maxPixels ? await compressImage(file, { maxWidth: maxPixels, maxHeight: maxPixels }) : file;
       const capturedAt = new Date().toISOString();
       const dataUrl = await fileToDataUrl(uploadFile);
+      const sha256 = await hashFileSha256(uploadFile);
       const baseAttachment: InternalKoboAttachment = {
         id: makeAttachmentId(),
         fieldName: attachmentKey,
+        fieldCode: field.name,
+        valuePath: repeatContext ? [repeatContext.repeatName, repeatContext.repeatIndex, field.name] : [field.name],
         fileName: file.name,
         mimeType: file.type || uploadFile.type || 'application/octet-stream',
         originalBytes: file.size,
         storedBytes: uploadFile.size,
+        sha256,
         capturedAt,
         source: repeatContext ? 'gem-xlsform-repeat-runtime' : 'gem-xlsform-runtime',
       };
@@ -1303,6 +1437,11 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
             <span className="max-w-full truncate text-[10px] font-semibold text-slate-500">
               {attachment?.fileName || stringValue}
             </span>
+            {attachment?.sha256 ? (
+              <span className="rounded-full bg-white/[0.05] px-2 py-1 text-[9px] font-bold text-slate-400">
+                sha256 {attachment.sha256.slice(0, 10)}
+              </span>
+            ) : null}
           </div>
         ) : null}
       </div>
@@ -1659,6 +1798,10 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
     onChange(`_gem_attachment_${attachmentKey}`, {
       id: makeAttachmentId(),
       fieldName: attachmentKey,
+      fieldCode: signatureTarget.field.name,
+      valuePath: signatureTarget.repeatContext
+        ? [signatureTarget.repeatContext.repeatName, signatureTarget.repeatContext.repeatIndex, signatureTarget.field.name]
+        : [signatureTarget.field.name],
       fileName: `${attachmentKey}.png`,
       mimeType: 'image/png',
       capturedAt,
@@ -1877,6 +2020,11 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
                   <span className="max-w-full truncate text-[10px] font-semibold text-slate-500">
                     {attachment?.fileName || String(value)}
                   </span>
+                  {attachment?.sha256 ? (
+                    <span className="rounded-full bg-white/[0.05] px-2 py-1 text-[9px] font-bold text-slate-400">
+                      sha256 {attachment.sha256.slice(0, 10)}
+                    </span>
+                  ) : null}
                 </div>
               ) : null}
             </div>
@@ -2037,6 +2185,16 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
                 <span className="rounded-full bg-white/[0.05] px-2 py-1">
                   {item.retryCount} tentative(s)
                 </span>
+                {item.nextRetryAt && item.nextRetryInMs ? (
+                  <span className="rounded-full bg-amber-400/10 px-2 py-1 text-amber-100">
+                    prochain essai {Math.ceil(item.nextRetryInMs / 1000)}s
+                  </span>
+                ) : null}
+                {item.mediaBytes ? (
+                  <span className="rounded-full bg-white/[0.05] px-2 py-1">
+                    {Math.round(item.mediaBytes / 1024)} Ko media
+                  </span>
+                ) : null}
                 {item.lastError ? (
                   <span className="max-w-full truncate rounded-full bg-rose-400/10 px-2 py-1 text-rose-100">
                     {item.lastError}
@@ -2492,7 +2650,27 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
               </div>
             ) : null}
 
-            {serverFormStatus.status === 'mismatch' ? (
+            {pendingRuntimeDefinition ? (
+              <div className="mt-3 rounded-2xl border border-amber-400/30 bg-amber-500/12 px-4 py-3 text-[11px] font-bold text-amber-50">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-black uppercase tracking-[0.14em] text-amber-100">
+                      Nouvelle version XLSForm detectee
+                    </p>
+                    <p className="mt-1 leading-relaxed">
+                      Locale v{xlsFormDefinition?.formVersion || String(values._gem_runtime_form_version || INTERNAL_KOBO_FORM_SETTINGS.version)} - VPS v{pendingRuntimeDefinition.formVersion}. Les valeurs deja saisies seront preservees par nom de champ.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={migrateToPendingRuntimeDefinition}
+                    className="shrink-0 rounded-full bg-amber-300 px-4 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-slate-950 hover:bg-amber-200"
+                  >
+                    Migrer maintenant
+                  </button>
+                </div>
+              </div>
+            ) : serverFormStatus.status === 'mismatch' ? (
               <div className="mt-3 hidden rounded-2xl border border-amber-400/25 bg-amber-500/10 px-4 py-3 text-[11px] font-bold text-amber-100 sm:block">
                 Version XLSForm a verifier: locale {xlsFormDefinition?.formVersion || INTERNAL_KOBO_FORM_SETTINGS.version}, VPS {serverFormStatus.version || 'inconnue'}.
               </div>
@@ -2508,6 +2686,9 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
               <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-blue-300/20 bg-blue-400/10 px-4 py-3 text-[11px] font-bold text-blue-100">
                 <span>
                   Brouillon local sauvegarde - {formatHistoryDate(localDraft.updatedAt)}
+                  {localDraft.formVersion && localDraft.formVersion !== (xlsFormDefinition?.formVersion || values._gem_runtime_form_version)
+                    ? ` - version brouillon ${localDraft.formVersion}`
+                    : ''}
                 </span>
                 {onClearLocalDraft ? (
                   <button

@@ -18,6 +18,9 @@ export interface SyncQueueItem {
   status: 'pending' | 'failed';
   retryCount: number;
   lastError?: string;
+  lastAttemptAt?: number;
+  nextRetryAt?: number;
+  errorType?: 'network' | 'server' | 'validation' | 'version' | 'unknown';
 }
 
 export interface MissionNotification {

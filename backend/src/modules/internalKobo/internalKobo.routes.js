@@ -11,6 +11,7 @@ import {
     importInternalKoboXlsForm,
     listInternalKoboFormDefinitions,
     listInternalKoboSubmissions,
+    reportInternalKoboClientQueue,
     reviewInternalKoboSubmission,
     submitInternalKoboSubmission,
     updateInternalKoboFormDefinitionStatus
@@ -31,6 +32,7 @@ router.patch('/form-definitions/:formKey/status', updateInternalKoboFormDefiniti
 router.post('/form-definition/import', upload.single('file'), importInternalKoboXlsForm);
 router.get('/form-definitions/:formKey', getInternalKoboImportedFormDefinition);
 router.get('/diagnostics', getInternalKoboDiagnostics);
+router.post('/client-queue-report', reportInternalKoboClientQueue);
 router.get('/submissions', listInternalKoboSubmissions);
 router.get('/submissions/export', exportInternalKoboSubmissions);
 router.patch('/submissions/:id/review', reviewInternalKoboSubmission);
