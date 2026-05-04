@@ -232,7 +232,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
       const submissions = await fetchInternalKoboSubmissions({
         householdId: householdId || undefined,
         numeroOrdre: householdId ? undefined : numeroOrdre,
-        limit: 6,
+        limit: 3,
       });
       setInternalKoboHistory(submissions);
     } catch (error) {

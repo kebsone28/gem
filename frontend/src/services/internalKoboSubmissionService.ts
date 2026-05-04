@@ -223,7 +223,9 @@ const INTERNAL_KOBO_OUTBOX_ACTION = 'internal-kobo-submit';
 const INTERNAL_KOBO_SUBMISSION_ENDPOINT = '/internal-kobo/submissions';
 const INTERNAL_KOBO_FORM_DEFINITION_ENDPOINT = '/internal-kobo/form-definition';
 const INTERNAL_KOBO_FORM_DEFINITIONS_ENDPOINT = '/internal-kobo/form-definitions';
+const INTERNAL_KOBO_FORM_CREATE_ENDPOINT = '/internal-kobo/form-definition/create';
 const INTERNAL_KOBO_FORM_IMPORT_ENDPOINT = '/internal-kobo/form-definition/import';
+const INTERNAL_KOBO_FORM_IMPORT_URL_ENDPOINT = '/internal-kobo/form-definition/import-url';
 const INTERNAL_KOBO_DIAGNOSTICS_ENDPOINT = '/internal-kobo/diagnostics';
 const INTERNAL_KOBO_CLIENT_QUEUE_ENDPOINT = '/internal-kobo/client-queue-report';
 const INTERNAL_KOBO_DRAFT_PREFIX = 'gem-internal-kobo-draft:';
@@ -468,6 +470,40 @@ export async function importInternalKoboXlsForm(file: File): Promise<{
     headers: { 'Content-Type': 'multipart/form-data' },
   });
 
+  return response.data;
+}
+
+export async function importInternalKoboXlsFormFromUrl(url: string): Promise<{
+  success: boolean;
+  importId?: string;
+  storageKey?: string;
+  comparison?: InternalKoboFormComparison;
+  form?: InternalKoboImportedFormSummary;
+  message?: string;
+}> {
+  const response = await apiClient.post(INTERNAL_KOBO_FORM_IMPORT_URL_ENDPOINT, { url });
+  return response.data;
+}
+
+export async function createInternalKoboFormDefinition(payload: {
+  title: string;
+  description?: string;
+  sector?: string;
+  country?: string;
+  sourceType?: string;
+  activate?: boolean;
+  survey?: Array<Record<string, unknown>>;
+  choices?: Array<Record<string, unknown>>;
+  settings?: Record<string, unknown>;
+}): Promise<{
+  success: boolean;
+  importId?: string;
+  storageKey?: string;
+  comparison?: InternalKoboFormComparison;
+  form?: InternalKoboImportedFormSummary;
+  message?: string;
+}> {
+  const response = await apiClient.post(INTERNAL_KOBO_FORM_CREATE_ENDPOINT, payload);
   return response.data;
 }
 

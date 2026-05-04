@@ -88,6 +88,59 @@ describe('universal XLSForm engine', () => {
         expect(applyXlsFormCalculations(definition, { numero: 26, role: 'macon' }).values.resume).toBe('26-macon');
     });
 
+    it('applies Kobo-style pulldata and calculation columns on visible questions', () => {
+        const definition = buildXlsFormDefinition({
+            settings: { form_id: 'pulldata_runtime', version: '2026-05-03' },
+            survey: [
+                { type: 'integer', name: 'Numero_ordre', label: 'Numero ordre', required: 'yes' },
+                { type: 'calculate', name: 'C1', calculation: "pulldata('Thies','nom','code_key',${Numero_ordre})" },
+                { type: 'text', name: 'nom_key', label: 'Prenom et nom', required: 'yes', calculation: '${C1}' }
+            ]
+        });
+
+        const values = applyXlsFormCalculations(definition, {
+            Numero_ordre: '4526',
+            _gem_pulldata_Thies: {
+                code_key: '4526',
+                nom: 'Menage test'
+            }
+        }).values;
+
+        expect(values.C1).toBe('Menage test');
+        expect(values.nom_key).toBe('Menage test');
+        expect(definition.fields.find((field) => field.name === 'nom_key')?.readOnly).toBe(true);
+        expect(validateXlsFormValues(definition, values).requiredMissing).toEqual([]);
+    });
+
+    it('repairs the known earth-resistance observation branch from the active Kobo form', () => {
+        const definition = buildXlsFormDefinition({
+            settings: { form_id: 'terre_runtime', version: '2026-05-03' },
+            survey: [
+                { type: 'select_one etat', name: 'VALEUR_DE_LA_RESISTANCE_DE_TER', label: 'Terre', required: 'yes' },
+                {
+                    type: 'integer',
+                    name: 'OBSERVATIONS__007',
+                    label: 'Valeur de terre',
+                    required: 'yes',
+                    relevant: "${VALEUR_DE_LA_RESISTANCE_DE_TER} = 'conforme' and ${VALEUR_DE_LA_RESISTANCE_DE_TER} = 'non_conforme'"
+                }
+            ],
+            choices: [
+                { list_name: 'etat', name: 'conforme', label: 'Conforme' },
+                { list_name: 'etat', name: 'non_conforme', label: 'Non conforme' }
+            ]
+        });
+
+        const visible = getVisibleXlsFormFields(definition, {
+            VALEUR_DE_LA_RESISTANCE_DE_TER: 'conforme'
+        }).map((field) => field.name);
+
+        expect(visible).toContain('OBSERVATIONS__007');
+        expect(validateXlsFormValues(definition, {
+            VALEUR_DE_LA_RESISTANCE_DE_TER: 'conforme'
+        }).requiredMissing).toContain('OBSERVATIONS__007');
+    });
+
     it('supports mobile media field types and arithmetic calculations', () => {
         const definition = buildXlsFormDefinition({
             settings: {

@@ -12,6 +12,7 @@ import {
     INTERNAL_KOBO_FORM_VERSION
 } from './internalKobo.validation.js';
 import {
+    buildXlsFormDefinition,
     compareXlsFormDefinitions,
     parseXlsFormBuffer,
     validateXlsFormValues,
@@ -21,6 +22,7 @@ import {
 const SUBMISSION_STATUSES = new Set(['draft', 'submitted', 'validated', 'rejected']);
 const REVIEW_STATUSES = new Set(['submitted', 'validated', 'rejected']);
 const MAX_EMBEDDED_ATTACHMENT_BYTES = 8 * 1024 * 1024;
+const MAX_XLSFORM_REMOTE_BYTES = 20 * 1024 * 1024;
 const FINAL_SUBMISSION_STATUSES = new Set(['submitted', 'validated']);
 const OMIT_FIELD = Symbol('omit-field');
 
@@ -113,6 +115,17 @@ function normalizeRequiredMissing(requiredMissing) {
 
 function uniqueStrings(values) {
     return Array.from(new Set(values.map((value) => String(value || '').trim()).filter(Boolean)));
+}
+
+function normalizeBuilderKey(value, fallback = 'gem_form') {
+    const normalized = String(value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '')
+        .slice(0, 72);
+    return normalized || `${fallback}_${crypto.randomUUID().slice(0, 8)}`;
 }
 
 function makeHttpError(statusCode, message) {
@@ -1007,6 +1020,285 @@ export const compareInternalKoboFormDefinitions = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: 'Server error while comparing XLSForm definitions'
+        });
+    }
+};
+
+function getBuilderBaseChoices() {
+    return [
+        { list_name: 'roles', name: 'livreur', label: 'Livreur' },
+        { list_name: 'roles', name: 'macon', label: 'Macon' },
+        { list_name: 'roles', name: 'reseau', label: 'Equipe reseau' },
+        { list_name: 'roles', name: 'interieur', label: 'Equipe installateur' },
+        { list_name: 'roles', name: 'controleur', label: 'Controleur' },
+        { list_name: 'roles', name: '__pr_parateur', label: 'Preparateur' },
+        { list_name: 'oui_non', name: 'oui', label: 'Oui' },
+        { list_name: 'oui_non', name: 'non', label: 'Non' }
+    ];
+}
+
+function buildDefaultBuilderSurvey() {
+    return [
+        { type: 'start', name: 'start' },
+        { type: 'end', name: 'end' },
+        { type: 'begin_group', name: 'TYPE_DE_VISITE', label: 'Menage' },
+        { type: 'integer', name: 'Numero_ordre', label: 'Numero ordre', required: 'yes' },
+        { type: 'text', name: 'nom_key', label: 'Prenom et Nom', calculation: "pulldata('Thies','nom','code_key',${Numero_ordre})", required: 'yes' },
+        { type: 'text', name: 'telephone_key', label: 'Telephone', calculation: "pulldata('Thies','telephone','code_key',${Numero_ordre})" },
+        { type: 'text', name: 'latitude_key', label: 'Latitude', calculation: "pulldata('Thies','latitude','code_key',${Numero_ordre})" },
+        { type: 'text', name: 'longitude_key', label: 'Longitude', calculation: "pulldata('Thies','longitude','code_key',${Numero_ordre})" },
+        { type: 'text', name: 'region_key', label: 'Region', calculation: "pulldata('Thies','region','code_key',${Numero_ordre})" },
+        { type: 'geopoint', name: 'LOCALISATION_CLIENT', label: 'Coordonnees GPS du menage', calculation: "concat(${latitude_key}, ' ', ${longitude_key})" },
+        { type: 'select_one roles', name: 'role', label: 'Votre role', required: 'yes' },
+        { type: 'end_group', name: 'TYPE_DE_VISITE_end' },
+        { type: 'begin_group', name: 'notes_generales_group', label: 'Notes generales' },
+        { type: 'text', name: 'notes_generales', label: 'Notes generales', required: 'yes' },
+        { type: 'end_group', name: 'notes_generales_group_end' }
+    ];
+}
+
+function normalizeBuilderSurveyRows(rawSurvey) {
+    if (!Array.isArray(rawSurvey) || rawSurvey.length === 0) return buildDefaultBuilderSurvey();
+    return rawSurvey
+        .filter((row) => isPlainObject(row))
+        .map((row, index) => {
+            const type = String(row.type || 'text').trim() || 'text';
+            const name = normalizeBuilderKey(row.name || row.label || `question_${index + 1}`, `question_${index + 1}`);
+            return {
+                type,
+                name,
+                label: String(row.label || name).trim(),
+                hint: String(row.hint || '').trim(),
+                required: row.required === true || row.required === 'yes' ? 'yes' : row.required || '',
+                relevant: String(row.relevant || '').trim(),
+                constraint: String(row.constraint || '').trim(),
+                constraint_message: String(row.constraintMessage || row.constraint_message || '').trim(),
+                calculation: String(row.calculation || '').trim(),
+                default: String(row.default || row.defaultValue || '').trim(),
+                readonly: row.readonly === true || row.readOnly === true || row.readonly === 'yes' || row.readOnly === 'yes'
+                    ? 'yes'
+                    : String(row.readonly || row.readOnly || '').trim(),
+                appearance: String(row.appearance || '').trim(),
+                parameters: String(row.parameters || '').trim(),
+                choice_filter: String(row.choiceFilter || row.choice_filter || '').trim()
+            };
+        });
+}
+
+function normalizeBuilderChoices(rawChoices) {
+    const choices = [...getBuilderBaseChoices()];
+    if (!Array.isArray(rawChoices)) return choices;
+    rawChoices
+        .filter((choice) => isPlainObject(choice))
+        .forEach((choice) => {
+            const listName = String(choice.list_name || choice.listName || '').trim();
+            const name = normalizeBuilderKey(choice.name || choice.label, 'choice');
+            if (!listName || !name) return;
+            choices.push({
+                list_name: listName,
+                name,
+                label: String(choice.label || name).trim()
+            });
+        });
+    return choices;
+}
+
+function buildDefinitionPayload({ parsedDefinition, existingDefinition, importId, userId, sourceHash, sourcePatch = {}, lifecycleStatus = 'active' }) {
+    const previousComparison = existingDefinition
+        ? compareXlsFormDefinitions(existingDefinition, parsedDefinition)
+        : null;
+    const importHistoryEntry = buildImportHistoryEntry({
+        definition: parsedDefinition,
+        importId,
+        userId,
+        fileName: sourcePatch.fileName || parsedDefinition.source?.fileName || 'builder.json',
+        storageKey: sourcePatch.definitionStorageKey || parsedDefinition.source?.definitionStorageKey || '',
+        sourceHash
+    });
+
+    return {
+        definition: {
+            ...parsedDefinition,
+            lifecycle: {
+                active: lifecycleStatus !== 'draft' && lifecycleStatus !== 'inactive',
+                status: lifecycleStatus,
+                importedAt: parsedDefinition.importedAt,
+                importedById: userId,
+                activatedAt: lifecycleStatus === 'active' ? new Date().toISOString() : null,
+                activatedById: lifecycleStatus === 'active' ? userId : null,
+                previousVersion: null
+            },
+            source: {
+                ...(parsedDefinition.source || {}),
+                ...sourcePatch,
+                sourceHash
+            },
+            importHistory: mergeImportHistory(existingDefinition, importHistoryEntry),
+            previousDefinitionSummary: existingDefinition ? buildDefinitionSummary(existingDefinition) : null,
+            previousComparisonSummary: previousComparison?.summary || null
+        },
+        previousComparison
+    };
+}
+
+export const createInternalKoboFormDefinition = async (req, res) => {
+    try {
+        const { organizationId, id: userId } = req.user;
+        const title = String(req.body?.title || '').trim();
+        if (!title) {
+            return res.status(400).json({ success: false, message: 'Project title is required' });
+        }
+
+        const importId = crypto.randomUUID();
+        const formKey = normalizeBuilderKey(req.body?.formKey || title, 'gem_form');
+        const formVersion = String(req.body?.formVersion || `draft-${new Date().toISOString().replace(/[:.]/g, '-')}`).trim();
+        const settings = {
+            ...(isPlainObject(req.body?.settings) ? req.body.settings : {}),
+            form_title: title,
+            form_id: formKey,
+            version: formVersion,
+            default_language: req.body?.defaultLanguage || 'Francais (fr)',
+            style: req.body?.style || 'pages'
+        };
+        const survey = normalizeBuilderSurveyRows(req.body?.survey);
+        const choices = normalizeBuilderChoices(req.body?.choices);
+        const sourceHash = crypto.createHash('sha256').update(JSON.stringify({ settings, survey, choices })).digest('hex');
+        const baseKey = `${organizationId}/internal-kobo/forms/${importId}`;
+        const parsedDefinition = buildXlsFormDefinition({
+            survey,
+            choices,
+            settings,
+            source: {
+                sourceType: req.body?.sourceType || 'builder',
+                description: req.body?.description || '',
+                sector: req.body?.sector || '',
+                country: req.body?.country || '',
+                fileName: `${formKey}.json`,
+                storageKey: `${baseKey}.json`,
+                definitionStorageKey: `${baseKey}.json`
+            }
+        });
+
+        const existingMapping = await prisma.koboFormMapping.findUnique({
+            where: {
+                organizationId_koboAssetId: {
+                    organizationId,
+                    koboAssetId: parsedDefinition.formKey
+                }
+            }
+        });
+        const existingDefinition = isPlainObject(existingMapping?.mapping) ? existingMapping.mapping : null;
+        const { definition: nextDefinition, previousComparison } = buildDefinitionPayload({
+            parsedDefinition,
+            existingDefinition,
+            importId,
+            userId,
+            sourceHash,
+            sourcePatch: {
+                sourceType: req.body?.sourceType || 'builder',
+                fileName: `${formKey}.json`,
+                storageKey: `${baseKey}.json`,
+                definitionStorageKey: `${baseKey}.json`
+            },
+            lifecycleStatus: req.body?.activate ? 'active' : 'draft'
+        });
+
+        await uploadFile(
+            `${baseKey}.json`,
+            Buffer.from(JSON.stringify(nextDefinition, null, 2), 'utf8'),
+            'application/json'
+        );
+
+        const storedMapping = await prisma.koboFormMapping.upsert({
+            where: {
+                organizationId_koboAssetId: {
+                    organizationId,
+                    koboAssetId: nextDefinition.formKey
+                }
+            },
+            create: {
+                organizationId,
+                koboAssetId: nextDefinition.formKey,
+                version: nextDefinition.formVersion,
+                mapping: nextDefinition
+            },
+            update: {
+                version: nextDefinition.formVersion,
+                mapping: nextDefinition,
+                lastValidated: new Date()
+            }
+        });
+
+        await prisma.syncLog.create({
+            data: {
+                userId,
+                organizationId,
+                deviceId: 'gem-internal-kobo-admin',
+                action: 'INTERNAL_KOBO_FORM_BUILDER_SAVE',
+                details: {
+                    importId,
+                    formKey: nextDefinition.formKey,
+                    formVersion: nextDefinition.formVersion,
+                    lifecycleStatus: nextDefinition.lifecycle.status,
+                    diagnostics: nextDefinition.diagnostics,
+                    sourceHash,
+                    previousComparisonSummary: previousComparison?.summary || null
+                }
+            }
+        });
+
+        return res.status(201).json({
+            success: true,
+            importId,
+            storageKey: `${baseKey}.json`,
+            comparison: previousComparison,
+            form: summarizeUniversalXlsFormMapping(storedMapping)
+        });
+    } catch (err) {
+        console.error('[INTERNAL-KOBO] form builder create error:', err);
+        return res.status(500).json({
+            success: false,
+            message: 'Server error while creating internal Kobo form'
+        });
+    }
+};
+
+export const importInternalKoboXlsFormFromUrl = async (req, res) => {
+    try {
+        const url = String(req.body?.url || '').trim();
+        if (!/^https?:\/\//i.test(url)) {
+            return res.status(400).json({ success: false, message: 'A valid XLSForm URL is required' });
+        }
+
+        const response = await fetch(url, {
+            headers: { accept: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/octet-stream,*/*' }
+        });
+        if (!response.ok) {
+            return res.status(400).json({ success: false, message: `Unable to download XLSForm URL (${response.status})` });
+        }
+
+        const contentLength = Number(response.headers.get('content-length') || 0);
+        if (contentLength > MAX_XLSFORM_REMOTE_BYTES) {
+            return res.status(413).json({ success: false, message: 'Remote XLSForm is too large' });
+        }
+
+        const arrayBuffer = await response.arrayBuffer();
+        if (arrayBuffer.byteLength > MAX_XLSFORM_REMOTE_BYTES) {
+            return res.status(413).json({ success: false, message: 'Remote XLSForm is too large' });
+        }
+
+        req.file = {
+            buffer: Buffer.from(arrayBuffer),
+            originalname: url.split('/').pop()?.split('?')[0] || 'remote-xlsform.xlsx',
+            mimetype: response.headers.get('content-type') || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        };
+        req.body = { ...req.body, sourceUrl: url };
+        return importInternalKoboXlsForm(req, res);
+    } catch (err) {
+        console.error('[INTERNAL-KOBO] XLSForm URL import error:', err);
+        return res.status(500).json({
+            success: false,
+            message: 'Server error while importing XLSForm URL'
         });
     }
 };

@@ -65,6 +65,18 @@ export type XlsFormRuntimeIssue = {
 };
 
 const CONTROL_TYPES = new Set(['note', 'calculate', 'start', 'end', 'today', 'username', 'phonenumber']);
+const HIDDEN_RUNTIME_TYPES = new Set([
+  'calculate',
+  'start',
+  'end',
+  'today',
+  'username',
+  'phonenumber',
+  'deviceid',
+  'subscriberid',
+  'simserial',
+  'audit',
+]);
 
 export const isRecord = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -133,6 +145,17 @@ const splitTopLevel = (expression: string, separator: string): string[] => {
 
 const splitFunctionArgs = (expression: string): string[] => splitTopLevel(expression, ',');
 
+const normalizeKnownKoboExpression = (expression: string): string => {
+  const value = String(expression || '').trim();
+  if (
+    value.includes("${VALEUR_DE_LA_RESISTANCE_DE_TER} = 'conforme'") &&
+    value.includes("${VALEUR_DE_LA_RESISTANCE_DE_TER} = 'non_conforme'")
+  ) {
+    return "${VALEUR_DE_LA_RESISTANCE_DE_TER} != ''";
+  }
+  return value;
+};
+
 const asValueList = (value: unknown): string[] => {
   if (Array.isArray(value)) return value.map(String);
   if (typeof value === 'string' && value.trim()) return value.trim().split(/\s+/);
@@ -195,6 +218,14 @@ const parseOperand = (
     }
   }
 
+  const contains = operand.match(/^contains\((.+)\)$/i);
+  if (contains) {
+    const args = splitFunctionArgs(contains[1]);
+    return String(parseOperand(args[0], values, context) ?? '').includes(
+      String(parseOperand(args[1], values, context) ?? '')
+    );
+  }
+
   return getExpressionValue(values, operand, context);
 };
 
@@ -203,7 +234,7 @@ export const evaluateXlsFormRuntimeExpression = (
   values: Record<string, unknown>,
   context: Record<string, unknown> = {}
 ): boolean => {
-  const cleaned = stripOuterParens(String(expression || '').trim());
+  const cleaned = stripOuterParens(normalizeKnownKoboExpression(expression));
   if (!cleaned) return true;
 
   const orParts = splitTopLevel(cleaned, ' or ');
@@ -238,6 +269,74 @@ export const evaluateXlsFormRuntimeExpression = (
   return hasXlsFormRuntimeValue(parseOperand(cleaned, values, context));
 };
 
+const normalizePulldataKey = (value: unknown) =>
+  String(value ?? '')
+    .trim()
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .replace(/[^\w.-]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+
+const getPulldataRecord = (
+  values: Record<string, unknown>,
+  sourceName: string
+): Record<string, unknown> | null => {
+  const source = normalizePulldataKey(sourceName);
+  const candidates = [
+    values[`_gem_pulldata_${sourceName}`],
+    values[`_gem_pulldata_${source}`],
+    values._gemPulldata,
+    values._gem_pulldata,
+  ];
+
+  for (const candidate of candidates) {
+    if (!isRecord(candidate)) continue;
+    if (isRecord(candidate[sourceName])) return candidate[sourceName] as Record<string, unknown>;
+    if (isRecord(candidate[source])) return candidate[source] as Record<string, unknown>;
+    if (candidate.nom || candidate.telephone || candidate.latitude || candidate.longitude || candidate.region) return candidate;
+  }
+
+  return null;
+};
+
+const getPulldataColumn = (record: Record<string, unknown>, columnName: string) => {
+  if (Object.prototype.hasOwnProperty.call(record, columnName)) return record[columnName];
+  const normalizedColumn = normalizePulldataKey(columnName);
+  const match = Object.entries(record).find(([key]) => normalizePulldataKey(key) === normalizedColumn);
+  return match?.[1];
+};
+
+const resolvePulldataOperand = (
+  argsExpression: string,
+  values: Record<string, unknown>,
+  context: Record<string, unknown>
+) => {
+  const args = splitFunctionArgs(argsExpression);
+  if (args.length < 2) return undefined;
+
+  const sourceName = String(evaluateCalculationOperand(args[0], values, context) ?? '').trim();
+  const targetColumn = String(evaluateCalculationOperand(args[1], values, context) ?? '').trim();
+  const lookupColumn = args[2] ? String(evaluateCalculationOperand(args[2], values, context) ?? '').trim() : '';
+  const lookupValue = args[3] ? evaluateCalculationOperand(args[3], values, context) : undefined;
+  const record = getPulldataRecord(values, sourceName);
+
+  if (!record || !targetColumn) return undefined;
+
+  if (lookupColumn && hasXlsFormRuntimeValue(lookupValue)) {
+    const recordLookup = getPulldataColumn(record, lookupColumn);
+    const numeroOrdre = values.Numero_ordre;
+    if (
+      hasXlsFormRuntimeValue(recordLookup) &&
+      String(recordLookup) !== String(lookupValue) &&
+      String(numeroOrdre ?? '') !== String(lookupValue)
+    ) {
+      return undefined;
+    }
+  }
+
+  return getPulldataColumn(record, targetColumn);
+};
+
 const evaluateCalculationOperand = (
   rawOperand: string,
   values: Record<string, unknown>,
@@ -257,6 +356,9 @@ const evaluateCalculationOperand = (
 
   if (/^now\(\)$/i.test(operand)) return new Date().toISOString();
   if (/^today\(\)$/i.test(operand)) return new Date().toISOString().slice(0, 10);
+
+  const pulldataMatch = operand.match(/^pulldata\((.+)\)$/i);
+  if (pulldataMatch) return resolvePulldataOperand(pulldataMatch[1], values, context);
 
   const numberMatch = operand.match(/^number\((.+)\)$/i);
   if (numberMatch) return parseNumber(evaluateCalculationOperand(numberMatch[1], values, context)) ?? '';
@@ -312,7 +414,7 @@ export const applyXlsFormRuntimeCalculations = (
   const calculated: Record<string, unknown> = {};
 
   (definition.fields || []).forEach((field) => {
-    if (field.type !== 'calculate' || !field.name || !field.calculation) return;
+    if (!field.name || !field.calculation) return;
     const value = evaluateCalculationOperand(field.calculation, nextValues, {
       field,
       currentValue: nextValues[field.name],
@@ -325,6 +427,8 @@ export const applyXlsFormRuntimeCalculations = (
 
   return { values: nextValues, calculated };
 };
+
+const isRuntimeRenderableField = (field: XlsFormField) => !HIDDEN_RUNTIME_TYPES.has(field.type);
 
 export const isXlsFormRuntimeFieldVisible = (
   field: XlsFormField,
@@ -354,8 +458,7 @@ export const getFilteredXlsFormRuntimeChoices = (
   repeatValues: Record<string, unknown> = {}
 ) => {
   const choices = field.listName ? definition.choices?.[field.listName] || [] : [];
-  if (!field.choiceFilter) return choices;
-  return choices.filter((choice) =>
+  const filteredChoices = !field.choiceFilter ? choices : choices.filter((choice) =>
     evaluateXlsFormRuntimeExpression(field.choiceFilter || '', values, {
       choice,
       field,
@@ -363,6 +466,20 @@ export const getFilteredXlsFormRuntimeChoices = (
       currentValue: repeatValues[field.name] ?? values[field.name],
     })
   );
+
+  if (!/\brandomize\s*=\s*true\b/i.test(String(field.parameters || ''))) return filteredChoices;
+
+  const seed = String(values._gem_session_started_at || values.start || values.Numero_ordre || field.name || '');
+  const score = (choice: XlsFormChoice) => {
+    const input = `${seed}:${field.name}:${choice.name}`;
+    let hash = 0;
+    for (let index = 0; index < input.length; index += 1) {
+      hash = ((hash << 5) - hash + input.charCodeAt(index)) | 0;
+    }
+    return hash;
+  };
+
+  return [...filteredChoices].sort((left, right) => score(left) - score(right));
 };
 
 const isChildOfTopLevelPath = (path: string, topLevelPath: string) =>
@@ -393,7 +510,7 @@ export const buildXlsFormRuntimePages = (
     });
   }
 
-  topGroups.forEach((group) => {
+  topGroups.filter((group) => isXlsFormRuntimeFieldVisible(group, values)).forEach((group) => {
     const path = group.path || group.name;
     const allFields = (definition.fields || []).filter((field) =>
       !field.repeatPath && isChildOfTopLevelPath(field.groupPath || '', path)
@@ -409,7 +526,7 @@ export const buildXlsFormRuntimePages = (
     });
   });
 
-  topRepeats.forEach((repeat) => {
+  topRepeats.filter((repeat) => isXlsFormRuntimeFieldVisible(repeat, values)).forEach((repeat) => {
     const path = repeat.path || repeat.name;
     const allFields = (definition.fields || []).filter((field) =>
       isChildOfTopLevelPath(field.repeatPath || '', repeat.name)
@@ -441,6 +558,7 @@ export const buildXlsFormRuntimePages = (
   return pages
     .map((page) => {
       const fields = page.allFields.filter((field) => {
+        if (!isRuntimeRenderableField(field)) return false;
         if (!isXlsFormRuntimeFieldVisible(field, values)) return false;
         if (!normalizedQuery) return true;
         return `${field.label || ''} ${field.name}`.toLowerCase().includes(normalizedQuery);
@@ -448,8 +566,8 @@ export const buildXlsFormRuntimePages = (
       return { ...page, fields };
     })
     .filter((page) => {
-      if (!normalizedQuery) return true;
-      return page.fields.length > 0 || `${page.title} ${page.subtitle}`.toLowerCase().includes(normalizedQuery);
+      if (!normalizedQuery) return page.fields.length > 0;
+      return page.fields.length > 0;
     });
 };
 
@@ -523,7 +641,11 @@ export const validateXlsFormRuntime = (
   pages.forEach((page) => {
     if (page.type === 'repeat' && page.repeatName) {
       const instances = Array.isArray(values[page.repeatName]) ? values[page.repeatName] as Record<string, unknown>[] : [];
-      const requiredFields = page.allFields.filter((field) => !CONTROL_TYPES.has(field.type) && isRequiredField(field, values));
+      const requiredFields = page.allFields.filter((field) =>
+        !CONTROL_TYPES.has(field.type) &&
+        isXlsFormRuntimeFieldVisible(field, values) &&
+        isRequiredField(field, values)
+      );
       if (instances.length === 0 && requiredFields.length > 0) {
         issues.push({
           field: requiredFields[0],

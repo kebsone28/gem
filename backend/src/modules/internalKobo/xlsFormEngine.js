@@ -190,6 +190,17 @@ function splitFunctionArgs(argsExpression) {
     return splitTopLevel(String(argsExpression || ''), ',');
 }
 
+function normalizeKnownKoboExpression(expression) {
+    const value = String(expression || '').trim();
+    if (
+        value.includes("${VALEUR_DE_LA_RESISTANCE_DE_TER} = 'conforme'") &&
+        value.includes("${VALEUR_DE_LA_RESISTANCE_DE_TER} = 'non_conforme'")
+    ) {
+        return "${VALEUR_DE_LA_RESISTANCE_DE_TER} != ''";
+    }
+    return value;
+}
+
 function getExpressionValue(values, fieldName, context = {}) {
     if (fieldName === '.') return context.currentValue;
     if (Object.prototype.hasOwnProperty.call(values, fieldName)) return values[fieldName];
@@ -251,8 +262,75 @@ function parseOperand(rawOperand, values, context = {}) {
     return getExpressionValue(values, operand, context);
 }
 
+function normalizePulldataKey(value) {
+    return String(value ?? '')
+        .trim()
+        .normalize('NFD')
+        .replace(/\p{Diacritic}/gu, '')
+        .replace(/[^\w.-]+/g, '_')
+        .replace(/^_+|_+$/g, '');
+}
+
+function getPulldataRecord(values, sourceName) {
+    const source = normalizePulldataKey(sourceName);
+    const candidates = [
+        values[`_gem_pulldata_${sourceName}`],
+        values[`_gem_pulldata_${source}`],
+        values._gemPulldata,
+        values._gem_pulldata
+    ];
+
+    for (const candidate of candidates) {
+        if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) continue;
+        if (candidate[sourceName] && typeof candidate[sourceName] === 'object' && !Array.isArray(candidate[sourceName])) {
+            return candidate[sourceName];
+        }
+        if (candidate[source] && typeof candidate[source] === 'object' && !Array.isArray(candidate[source])) {
+            return candidate[source];
+        }
+        if (candidate.nom || candidate.telephone || candidate.latitude || candidate.longitude || candidate.region) return candidate;
+    }
+
+    return null;
+}
+
+function getPulldataColumn(record, columnName) {
+    if (!record || typeof record !== 'object') return undefined;
+    if (Object.prototype.hasOwnProperty.call(record, columnName)) return record[columnName];
+    const normalizedColumn = normalizePulldataKey(columnName);
+    const match = Object.entries(record).find(([key]) => normalizePulldataKey(key) === normalizedColumn);
+    return match?.[1];
+}
+
+function resolvePulldataOperand(argsExpression, values, context = {}) {
+    const args = splitFunctionArgs(argsExpression);
+    if (args.length < 2) return undefined;
+
+    const sourceName = String(evaluateCalculationOperand(args[0], values, context) ?? '').trim();
+    const targetColumn = String(evaluateCalculationOperand(args[1], values, context) ?? '').trim();
+    const lookupColumn = args[2] ? String(evaluateCalculationOperand(args[2], values, context) ?? '').trim() : '';
+    const lookupValue = args[3] ? evaluateCalculationOperand(args[3], values, context) : undefined;
+    const record = getPulldataRecord(values, sourceName);
+
+    if (!record || !targetColumn) return undefined;
+
+    if (lookupColumn && hasValue(lookupValue)) {
+        const recordLookup = getPulldataColumn(record, lookupColumn);
+        const numeroOrdre = values.Numero_ordre;
+        if (
+            hasValue(recordLookup) &&
+            String(recordLookup) !== String(lookupValue) &&
+            String(numeroOrdre ?? '') !== String(lookupValue)
+        ) {
+            return undefined;
+        }
+    }
+
+    return getPulldataColumn(record, targetColumn);
+}
+
 export function evaluateXlsFormExpression(expression, values = {}, context = {}) {
-    const cleaned = stripOuterParens(String(expression || '').trim());
+    const cleaned = stripOuterParens(normalizeKnownKoboExpression(expression));
     if (!cleaned) return true;
 
     const orParts = splitTopLevel(cleaned, ' or ');
@@ -308,7 +386,9 @@ function evaluateCalculationOperand(rawOperand, values, context = {}) {
 
     if (/^now\(\)$/i.test(operand)) return new Date().toISOString();
     if (/^today\(\)$/i.test(operand)) return new Date().toISOString().slice(0, 10);
-    if (/^pulldata\(/i.test(operand)) return undefined;
+
+    const pulldataMatch = operand.match(/^pulldata\((.+)\)$/i);
+    if (pulldataMatch) return resolvePulldataOperand(pulldataMatch[1], values, context);
 
     const numberMatch = operand.match(/^number\((.+)\)$/i);
     if (numberMatch) return parseNumber(evaluateCalculationOperand(numberMatch[1], values, context)) ?? '';
@@ -360,7 +440,7 @@ export function applyXlsFormCalculations(definition, values = {}) {
     const unresolved = [];
 
     for (const field of definition.fields || []) {
-        if (field.type !== 'calculate' || !field.name || !field.calculation) continue;
+        if (!field.name || !field.calculation) continue;
         const calculated = evaluateCalculationOperand(field.calculation, nextValues, {
             field,
             currentValue: nextValues[field.name]
@@ -654,7 +734,7 @@ export function buildXlsFormDefinition({ survey = [], choices = [], settings = {
             choiceFilter: row.choice_filter || row.choiceFilter || '',
             listName: parsedType.listName,
             external: parsedType.external,
-            readOnly: isTruthyXls(row.readonly || row.read_only),
+            readOnly: isTruthyXls(row.readonly || row.read_only) || Boolean(row.calculation && parsedType.type !== 'calculate'),
             groupPath: currentPath,
             repeatPath: stack.filter((entry) => entry.type === 'begin_repeat').map((entry) => entry.name).join('/'),
             bind: {

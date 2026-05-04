@@ -106,19 +106,41 @@ type SignatureTarget = {
   repeatContext?: RepeatContext;
 };
 
+type ProgressItem = {
+  name: string;
+  label: string;
+  pageTitle?: string;
+  filled: boolean;
+};
+
+type ProgressSummary = {
+  filled: number;
+  total: number;
+  percent: number;
+  items: ProgressItem[];
+  missingItems: ProgressItem[];
+};
+
 const asArray = (value: unknown): string[] => {
   if (Array.isArray(value)) return value.map(String);
   if (typeof value === 'string' && value.trim()) return value.split(/\s+/);
   return [];
 };
 
-const progressFor = (values: Record<string, unknown>) => {
+const progressFor = (values: Record<string, unknown>): ProgressSummary => {
   const visibleFields = getVisibleInternalKoboFields(values).filter((field) => !field.readOnly && field.type !== 'note');
-  const filled = visibleFields.filter((field) => hasInternalKoboRequiredValue(field, values)).length;
+  const items = visibleFields.map((field) => ({
+    name: field.name,
+    label: field.label || field.name,
+    filled: hasInternalKoboRequiredValue(field, values),
+  }));
+  const filled = items.filter((item) => item.filled).length;
   return {
     filled,
     total: visibleFields.length,
     percent: visibleFields.length ? Math.round((filled / visibleFields.length) * 100) : 0,
+    items,
+    missingItems: items.filter((item) => !item.filled),
   };
 };
 
@@ -347,6 +369,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
   const [signatureTarget, setSignatureTarget] = useState<SignatureTarget | null>(null);
   const [receiptSubmission, setReceiptSubmission] = useState<InternalKoboSubmissionRecord | null>(null);
   const [copiedReceiptId, setCopiedReceiptId] = useState('');
+  const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
   const [householdLookup, setHouseholdLookup] = useState<{
     status: 'idle' | 'loading' | 'found' | 'missing' | 'error';
     message: string;
@@ -460,29 +483,43 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
   );
   const progress = useMemo(() => {
     if (!xlsFormDefinition) return progressFor(values);
-    const visibleValues: unknown[] = [];
+    const items: ProgressItem[] = [];
     runtimeAllPages.forEach((page) => {
       if (page.type === 'repeat' && page.repeatName) {
         const repeatValue = runtimeValues[page.repeatName];
         const instances = Array.isArray(repeatValue) ? repeatValue.filter(isRecord) : [];
-        instances.forEach((instance) => {
+        instances.forEach((instance, repeatIndex) => {
           page.allFields.forEach((field) => {
             if (XLS_RUNTIME_FILLABLE_SKIP_TYPES.has(field.type) || !isXlsFormRuntimeFieldVisible(field, runtimeValues, instance)) return;
-            visibleValues.push(getXlsFormRuntimeFieldValue(field, runtimeValues, instance));
+            const value = getXlsFormRuntimeFieldValue(field, runtimeValues, instance);
+            items.push({
+              name: `${page.repeatName}.${repeatIndex}.${field.name}`,
+              label: `${field.label || field.name} - ligne ${repeatIndex + 1}`,
+              pageTitle: page.title,
+              filled: hasXlsFormRuntimeValue(value),
+            });
           });
         });
         return;
       }
       page.allFields.forEach((field) => {
         if (XLS_RUNTIME_FILLABLE_SKIP_TYPES.has(field.type) || !isXlsFormRuntimeFieldVisible(field, runtimeValues)) return;
-        visibleValues.push(getXlsFormRuntimeFieldValue(field, runtimeValues));
+        const value = getXlsFormRuntimeFieldValue(field, runtimeValues);
+        items.push({
+          name: field.name,
+          label: field.label || field.name,
+          pageTitle: page.title,
+          filled: hasXlsFormRuntimeValue(value),
+        });
       });
     });
-    const filled = visibleValues.filter(hasXlsFormRuntimeValue).length;
+    const filled = items.filter((item) => item.filled).length;
     return {
       filled,
-      total: visibleValues.length,
-      percent: visibleValues.length ? Math.round((filled / visibleValues.length) * 100) : 0,
+      total: items.length,
+      percent: items.length ? Math.round((filled / items.length) * 100) : 0,
+      items,
+      missingItems: items.filter((item) => !item.filled),
     };
   }, [runtimeAllPages, runtimeValues, values, xlsFormDefinition]);
 
@@ -743,7 +780,20 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
         onChangeRef.current('latitude_key', String(latitude));
         onChangeRef.current('longitude_key', String(longitude));
         onChangeRef.current('region_key', String(region));
+        onChangeRef.current('C1', String(displayName));
+        onChangeRef.current('C2', String(latitude));
+        onChangeRef.current('C3', String(phone));
+        onChangeRef.current('C4', String(longitude));
+        onChangeRef.current('C5', String(region));
         onChangeRef.current('LOCALISATION_CLIENT', latitude && longitude ? `${latitude} ${longitude}` : '');
+        onChangeRef.current('_gem_pulldata_Thies', {
+          code_key: numeroOrdre,
+          nom: String(displayName),
+          telephone: String(phone),
+          latitude: String(latitude),
+          longitude: String(longitude),
+          region: String(region),
+        });
 
         lastResolvedNumeroRef.current = numeroOrdre;
         onResolvedHouseholdRef.current?.(household);
@@ -919,6 +969,8 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
   const requiredStatusClass = validationIssues.length
     ? 'border-amber-400/35 bg-amber-400/12 text-amber-100'
     : 'border-emerald-400/30 bg-emerald-400/12 text-emerald-100';
+  const progressMissingPreview = progress.missingItems.slice(0, 4);
+  const progressHiddenMissingCount = Math.max(0, progress.missingItems.length - progressMissingPreview.length);
 
   const blockedByTitle = (sectionId: string) =>
     navigableSections.find((section) => section.id === sectionId)?.title || 'l etape precedente';
@@ -1458,6 +1510,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
       : `internal-kobo-field-${field.name}`;
     const label = field.label || field.name;
     const required = field.required || Boolean(field.requiredExpression);
+    const readOnly = Boolean(field.readOnly || (field.calculation && field.type !== 'calculate'));
     const shellClass = `rounded-2xl border p-4 space-y-3 shadow-sm ${
       missing || invalid ? 'border-amber-300/45 bg-amber-400/[0.09]' : 'border-white/[0.09] bg-white/[0.06]'
     }`;
@@ -1545,14 +1598,19 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
           </div>
         ) : null}
 
-        {field.readOnly ? (
+        {readOnly ? (
           <div className="flex h-12 items-center gap-2 rounded-2xl border border-white/8 bg-slate-950/35 px-4 text-[12px] font-black text-slate-300">
             <Lock size={13} className="text-slate-600" />
             <span className="truncate">{hasXlsFormRuntimeValue(value) ? String(value) : 'Non renseigne'}</span>
+            {field.calculation ? (
+              <span className="ml-auto shrink-0 rounded-full border border-cyan-200/20 bg-cyan-300/10 px-2 py-1 text-[8px] font-black uppercase tracking-[0.12em] text-cyan-100">
+                Auto
+              </span>
+            ) : null}
           </div>
         ) : null}
 
-        {(field.type === 'text' || field.type === 'barcode') && !field.readOnly ? (
+        {(field.type === 'text' || field.type === 'barcode') && !readOnly ? (
           <textarea
             value={String(value || '')}
             onChange={(event) => updateRuntimeField(field, event.target.value, repeatContext)}
@@ -1562,7 +1620,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
           />
         ) : null}
 
-        {['integer', 'decimal', 'date', 'time', 'datetime', 'geopoint'].includes(field.type) && !field.readOnly ? (
+        {['integer', 'decimal', 'date', 'time', 'datetime', 'geopoint'].includes(field.type) && !readOnly ? (
           <div className="space-y-2">
             <div className="flex gap-2">
               <input
@@ -1594,7 +1652,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
           </div>
         ) : null}
 
-        {(field.type === 'select_one' || field.type === 'select_multiple') && field.listName && !field.readOnly ? (
+        {(field.type === 'select_one' || field.type === 'select_multiple') && field.listName && !readOnly ? (
           <div className={`grid grid-cols-1 gap-2 ${field.appearance === 'minimal' ? '' : 'sm:grid-cols-2'}`}>
             {getFilteredXlsFormRuntimeChoices(xlsFormDefinition!, field, runtimeValues, repeatContext?.instance).map((option) => {
               const active = field.type === 'select_multiple'
@@ -1625,7 +1683,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
           </div>
         ) : null}
 
-        {XLS_RUNTIME_MEDIA_TYPES.has(field.type) && !field.readOnly ? renderRuntimeMediaField(field, value, repeatContext) : null}
+        {XLS_RUNTIME_MEDIA_TYPES.has(field.type) && !readOnly ? renderRuntimeMediaField(field, value, repeatContext) : null}
 
         {hasXlsFormRuntimeValue(value) && !XLS_RUNTIME_MEDIA_TYPES.has(field.type) ? (
           <p className="text-[10px] font-bold text-slate-500">
@@ -2040,13 +2098,20 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
     );
   };
 
-  const renderSubmissionHistory = (compact = false) => (
+  const renderSubmissionHistory = (compact = false) => {
+    const visibleHistory = submissions.slice(0, isHistoryExpanded ? (compact ? 2 : 3) : 1);
+    const hiddenHistoryCount = Math.max(0, submissions.length - visibleHistory.length);
+    const latestSubmission = submissions[0];
+
+    return (
     <div className={`rounded-2xl border border-white/10 bg-white/[0.045] ${compact ? 'p-3' : 'p-4'}`}>
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[10px] font-black uppercase tracking-[0.16em] text-blue-100">Historique VPS</p>
           <p className="mt-1 text-[10px] font-semibold text-slate-500">
-            {submissions.length ? `${submissions.length} derniere(s) soumission(s)` : 'Aucune soumission serveur'}
+            {submissions.length
+              ? `${submissions.length} derniere(s) chargee(s) - apercu compact`
+              : 'Aucune soumission serveur'}
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
@@ -2059,6 +2124,17 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
               title="Exporter l'historique JSON"
             >
               <Download size={14} />
+            </button>
+          ) : null}
+          {submissions.length > 1 ? (
+            <button
+              type="button"
+              onClick={() => setIsHistoryExpanded((current) => !current)}
+              className="grid h-8 w-8 place-items-center rounded-xl border border-white/10 bg-slate-950/35 text-slate-300 transition-colors hover:text-white"
+              aria-label={isHistoryExpanded ? 'Replier l historique VPS' : 'Afficher plus d historique VPS'}
+              title={isHistoryExpanded ? 'Replier' : 'Afficher plus'}
+            >
+              <ChevronRight size={14} className={`transition-transform ${isHistoryExpanded ? 'rotate-90' : ''}`} />
             </button>
           ) : null}
           {onRefreshHistory ? (
@@ -2081,14 +2157,14 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
         </div>
       ) : null}
 
-      <div className="mt-3 space-y-2">
+      <div className={`${latestSubmission || isHistoryLoading || historyError ? 'mt-3' : ''} space-y-2`}>
         {isHistoryLoading && submissions.length === 0 ? (
           <div className="rounded-xl border border-white/8 bg-slate-950/30 px-3 py-3 text-[10px] font-bold text-slate-400">
             Chargement de l'historique...
           </div>
         ) : null}
 
-        {submissions.slice(0, compact ? 2 : 4).map((submission) => {
+        {visibleHistory.map((submission) => {
           const missingCount = Array.isArray(submission.requiredMissing) ? submission.requiredMissing.length : 0;
           return (
             <div key={submission.id} className="rounded-xl border border-white/[0.07] bg-slate-950/35 p-3">
@@ -2126,6 +2202,18 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
           );
         })}
 
+        {hiddenHistoryCount > 0 ? (
+          <button
+            type="button"
+            onClick={() => setIsHistoryExpanded((current) => !current)}
+            className="w-full rounded-xl border border-white/[0.08] bg-slate-950/25 px-3 py-2 text-left text-[10px] font-black uppercase tracking-[0.1em] text-slate-400 transition-colors hover:border-blue-200/20 hover:text-blue-100"
+          >
+            {isHistoryExpanded
+              ? `Replier - ${hiddenHistoryCount} autre(s) non affichee(s)`
+              : `Voir ${hiddenHistoryCount} autre(s) soumission(s) chargee(s)`}
+          </button>
+        ) : null}
+
         {!isHistoryLoading && submissions.length === 0 && !historyError ? (
           <div className="rounded-xl border border-white/8 bg-slate-950/30 px-3 py-3 text-[10px] font-bold text-slate-500">
             Aucun envoi interne trouve pour ce menage.
@@ -2133,7 +2221,8 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
         ) : null}
       </div>
     </div>
-  );
+    );
+  };
 
   const renderLocalQueue = (compact = false) => {
     if (queueItems.length === 0) return null;
@@ -2492,6 +2581,50 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
             <p className="mt-3 text-[11px] font-semibold text-slate-400">
               {validationIssues.length ? `${validationIssues.length} action(s) restante(s)` : 'Tous les champs visibles sont complets'}
             </p>
+            <div className="mt-3 rounded-2xl border border-white/10 bg-slate-950/30 p-3">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-[9px] font-black uppercase tracking-[0.14em] text-blue-100/80">
+                  Calcul detaille
+                </p>
+                <p className="shrink-0 text-[10px] font-black text-white">
+                  {progress.filled} sur {progress.total}
+                </p>
+              </div>
+              <p className="mt-1 text-[10px] font-semibold leading-snug text-slate-400">
+                Champs visibles pris en compte dans le pourcentage.
+              </p>
+              {progressMissingPreview.length > 0 ? (
+                <div className="mt-3 space-y-1.5">
+                  <p className="text-[9px] font-black uppercase tracking-[0.12em] text-amber-100/80">
+                    Restants
+                  </p>
+                  {progressMissingPreview.map((item) => (
+                    <div
+                      key={item.name}
+                      className="min-w-0 rounded-xl border border-amber-300/15 bg-amber-300/[0.06] px-2.5 py-2"
+                    >
+                      <p className="truncate text-[10px] font-black leading-tight text-amber-50">
+                        {item.label}
+                      </p>
+                      {item.pageTitle ? (
+                        <p className="mt-0.5 truncate text-[9px] font-semibold text-amber-100/55">
+                          {item.pageTitle}
+                        </p>
+                      ) : null}
+                    </div>
+                  ))}
+                  {progressHiddenMissingCount > 0 ? (
+                    <p className="text-[10px] font-bold text-slate-500">
+                      + {progressHiddenMissingCount} autre(s) champ(s)
+                    </p>
+                  ) : null}
+                </div>
+              ) : (
+                <p className="mt-3 rounded-xl border border-emerald-300/15 bg-emerald-300/[0.06] px-2.5 py-2 text-[10px] font-bold text-emerald-100">
+                  Aucun champ visible restant.
+                </p>
+              )}
+            </div>
           </div>
 
           <div className="mb-5">

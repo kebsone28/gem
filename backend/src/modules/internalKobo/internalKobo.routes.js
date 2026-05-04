@@ -3,12 +3,14 @@ import multer from 'multer';
 import { authProtect } from '../../api/middlewares/auth.js';
 import {
     compareInternalKoboFormDefinitions,
+    createInternalKoboFormDefinition,
     exportInternalKoboSubmissions,
     getInternalKoboDiagnostics,
     getInternalKoboFormDefinition,
     getInternalKoboImportedFormDefinition,
     getInternalKoboSubmission,
     importInternalKoboXlsForm,
+    importInternalKoboXlsFormFromUrl,
     listInternalKoboFormDefinitions,
     listInternalKoboSubmissions,
     reportInternalKoboClientQueue,
@@ -29,7 +31,9 @@ router.get('/form-definition', getInternalKoboFormDefinition);
 router.get('/form-definitions', listInternalKoboFormDefinitions);
 router.get('/form-definitions/:formKey/compare/:targetFormKey', compareInternalKoboFormDefinitions);
 router.patch('/form-definitions/:formKey/status', updateInternalKoboFormDefinitionStatus);
+router.post('/form-definition/create', createInternalKoboFormDefinition);
 router.post('/form-definition/import', upload.single('file'), importInternalKoboXlsForm);
+router.post('/form-definition/import-url', importInternalKoboXlsFormFromUrl);
 router.get('/form-definitions/:formKey', getInternalKoboImportedFormDefinition);
 router.get('/diagnostics', getInternalKoboDiagnostics);
 router.post('/client-queue-report', reportInternalKoboClientQueue);
