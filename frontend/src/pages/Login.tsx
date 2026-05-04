@@ -147,11 +147,28 @@ export default function Login() {
 
   return (
     <PageContainer maxWidth="full" className="min-h-screen p-0 m-0 overflow-hidden bg-slate-950 font-outfit">
-      {/* Dynamic Background */}
+      {/* Dynamic Background with Patterns */}
       <div className="absolute inset-0 z-0">
-        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-indigo-600/10 blur-[120px] rounded-full animate-pulse" />
+        {/* Tech Grid Pattern */}
+        <div className="absolute inset-0 opacity-[0.15]" style={{ backgroundImage: 'radial-gradient(circle, rgba(99, 102, 241, 0.15) 1px, transparent 1px)', backgroundSize: '30px 30px' }} />
+        
+        {/* Interlaced Lines SVG */}
+        <svg className="absolute inset-0 w-full h-full opacity-20 pointer-events-none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="line-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="rgba(99, 102, 241, 0)" />
+              <stop offset="50%" stopColor="rgba(99, 102, 241, 0.3)" />
+              <stop offset="100%" stopColor="rgba(99, 102, 241, 0)" />
+            </linearGradient>
+          </defs>
+          <path d="M-100,200 Q400,100 900,400 T1900,200" fill="none" stroke="url(#line-grad)" strokeWidth="1" />
+          <path d="M-100,600 Q600,400 1100,700 T2100,500" fill="none" stroke="url(#line-grad)" strokeWidth="1" />
+          <path d="M200,-100 Q400,500 100,1100" fill="none" stroke="url(#line-grad)" strokeWidth="0.5" />
+          <path d="M600,-100 Q800,600 500,1200" fill="none" stroke="url(#line-grad)" strokeWidth="0.5" />
+        </svg>
+
+        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-indigo-600/15 blur-[120px] rounded-full animate-pulse" />
         <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-600/10 blur-[120px] rounded-full animate-pulse" style={{ animationDelay: '2s' }} />
-        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-[0.03] pointer-events-none" />
       </div>
 
       <div className="relative z-10 flex items-center justify-center min-h-screen px-4 py-12">
