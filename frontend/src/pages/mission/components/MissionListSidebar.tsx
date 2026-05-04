@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useMemo } from 'react';
 import { Trash2, Search, FileText } from 'lucide-react';
+import MissionList, { Mission as UMission } from '../../../components/MissionList';
 
 interface MissionListSidebarProps {
   savedMissions: any[];
@@ -98,6 +99,19 @@ export const MissionListSidebar: React.FC<MissionListSidebarProps> = ({
     [visibleMissions, currentMissionId, isCertifiedByWorkflow]
   );
 
+  // Mode robuste: mapping simple pour alimenter le composant `MissionList`
+  const [robustMode, setRobustMode] = useState(false);
+
+  const mappedMissions: UMission[] = (visibleMissions || []).map((m: any) => ({
+    id: m.id || String(m._id || Math.random()).slice(0, 8),
+    title: getMissionPrimaryLabel(m),
+    location: m.region || m.location || m.data?.region || '',
+    status: m.status === 'approuvee' || m.isCertified || m.data?.isCertified ? 'completed' : m.status === 'draft' ? 'draft' : 'online',
+    createdAt: m.createdAt || m.created_at || m.data?.createdAt || new Date().toISOString(),
+    updatedAt: m.updatedAt || m.data?.updatedAt,
+    history: m.history || m.auditLog || [],
+  }));
+
   const filterButtons: { key: StatusFilter; label: string; color: string; activeColor: string }[] =
     [
       {
@@ -159,8 +173,24 @@ export const MissionListSidebar: React.FC<MissionListSidebarProps> = ({
         ))}
       </div>
 
-      {/* Liste ultra-compacte */}
-      <div className="space-y-1 max-h-[75vh] overflow-y-auto custom-scrollbar">
+      {/* Mode robuste toggle */}
+      <div className="flex items-center justify-end">
+        <button
+          type="button"
+          onClick={() => setRobustMode((s) => !s)}
+          className={`text-[11px] font-black uppercase tracking-tight px-2 py-1 rounded-md border transition ${robustMode ? 'bg-indigo-600 text-white' : 'bg-transparent text-slate-400 border-white/5'}`}
+        >
+          {robustMode ? 'Mode robuste ✓' : 'Mode robuste'}
+        </button>
+      </div>
+
+      {/* Liste ultra-compacte (ou Mode robuste) */}
+      {robustMode ? (
+        <div className="max-h-[75vh] overflow-y-auto">
+          <MissionList missions={mappedMissions} />
+        </div>
+      ) : (
+        <div className="space-y-1 max-h-[75vh] overflow-y-auto custom-scrollbar">
         {filteredMissions.length === 0 && (
           <div className="text-center py-6 text-slate-400 dark:text-slate-600 border border-dashed border-slate-200 dark:border-white/5 rounded-xl">
             <FileText size={18} className="mx-auto mb-1.5 opacity-30" />
