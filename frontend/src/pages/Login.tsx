@@ -146,7 +146,7 @@ export default function Login() {
   };
 
   return (
-    <PageContainer maxWidth="full" className="min-h-screen p-0 m-0 overflow-hidden bg-[#020617] font-outfit">
+    <div className="fixed inset-0 w-full h-full overflow-hidden bg-[#020617] font-outfit z-0">
       {/* Ultra-Premium Dynamic Background */}
       <div className="absolute inset-0 z-0">
         {/* Tech Grid */}
@@ -383,6 +383,6 @@ export default function Login() {
           Powered by PROQUELEC GEM Systems
         </p>
       </div>
-    </PageContainer>
+    </div>
   );
 }
