@@ -199,13 +199,13 @@ export default function Login() {
           </p>
         </div>
 
-        <div className="w-full max-w-[940px] flex flex-col md:flex-row bg-slate-900/30 backdrop-blur-3xl rounded-[3rem] border border-white/10 shadow-[0_0_100px_rgba(0,0,0,0.5)] overflow-hidden animate-in fade-in zoom-in duration-700 relative">
+        <div className="w-full max-w-[940px] flex flex-col md:flex-row bg-white/[0.02] backdrop-blur-2xl rounded-[3rem] border border-white/10 shadow-[0_0_100px_rgba(0,0,0,0.5)] overflow-hidden animate-in fade-in zoom-in duration-700 relative">
           {/* Glass Shine Effect */}
           <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent" />
           <div className="absolute -left-[100%] top-0 w-full h-full bg-gradient-to-r from-transparent via-white/[0.03] to-transparent -skew-x-12 animate-[shimmer_8s_infinite]" />
           
-          {/* Left Panel: Branding */}
-          <div className="hidden md:flex flex-col justify-between w-[38%] p-14 bg-gradient-to-b from-indigo-600/10 to-transparent border-r border-white/10 relative">
+          {/* Left Panel: Branding (Now More Translucent) */}
+          <div className="hidden md:flex flex-col justify-between w-[38%] p-14 bg-indigo-500/[0.03] border-r border-white/10 relative">
             <div className="relative z-10">
               <div className="w-14 h-14 bg-indigo-500/10 rounded-2xl flex items-center justify-center border border-indigo-500/20 mb-10 shadow-[inset_0_0_20px_rgba(99,102,241,0.1)]">
                 <ShieldCheck size={28} className="text-indigo-400" />
