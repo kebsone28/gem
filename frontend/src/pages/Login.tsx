@@ -182,14 +182,25 @@ export default function Login() {
       onMouseMove={handleMouseMove}
       className="fixed inset-0 w-full h-full overflow-hidden bg-[#020617] font-outfit z-0"
     >
+      {/* 0. DYNAMIC MOUSE SPOTLIGHT (Ultra-Premium Follower) */}
+      <motion.div 
+        style={{ 
+          x: smoothX, 
+          y: smoothY,
+          translateX: '-50%',
+          translateY: '-50%'
+        }}
+        className="pointer-events-none absolute z-10 w-[600px] h-[600px] bg-indigo-500/[0.08] blur-[120px] rounded-full pointer-events-none transition-opacity duration-500"
+      />
+
       {/* 1. INTERACTIVE PARALLAX BACKGROUND */}
       <div className="absolute inset-0 z-0 pointer-events-none">
-        {/* Parallax Halo Follower */}
+        {/* Parallax Halo (Deep layer) */}
         <motion.div 
           style={{ x: haloX, y: haloY }}
-          className="absolute inset-0 flex items-center justify-center opacity-30"
+          className="absolute inset-0 flex items-center justify-center opacity-20"
         >
-          <div className="w-[800px] h-[800px] bg-indigo-500/5 blur-[120px] rounded-full" />
+          <div className="w-[1000px] h-[1000px] bg-indigo-600/5 blur-[150px] rounded-full" />
         </motion.div>
 
         {/* Parallax Tech Grid */}
