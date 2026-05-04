@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, useRef, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   User, 
@@ -47,7 +47,6 @@ export default function Login() {
   const [pendingUser, setPendingUser] = useState<DBUser | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [showBranding, setShowBranding] = useState(true);
   const { login } = useAuth();
   const navigate = useNavigate();
 
