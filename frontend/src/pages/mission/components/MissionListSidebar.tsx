@@ -1,6 +1,5 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState, useMemo } from 'react';
-import { Trash2, Search, FileText } from 'lucide-react';
+import { Trash2, Search, FileText, Calendar, MapPin, ChevronRight, CheckCircle2, Clock, FileCheck } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import MissionList, { Mission as UMission } from '../../../components/MissionList';
 
 interface MissionListSidebarProps {
@@ -13,10 +12,10 @@ interface MissionListSidebarProps {
 
 type StatusFilter = 'all' | 'draft' | 'pending' | 'certified';
 
-const STATUS_CONFIG: Record<string, { label: string; dot: string; badge: string }> = {
-  certified: { label: 'OFFICIELLE', dot: 'bg-emerald-500', badge: 'bg-emerald-500/15 text-emerald-500' },
-  pending: { label: 'SOUMISE', dot: 'bg-amber-500', badge: 'bg-amber-500/15 text-amber-500' },
-  draft: { label: 'BROUILLON', dot: 'bg-slate-400', badge: 'bg-slate-500/15 text-slate-400' },
+const STATUS_CONFIG: Record<string, { label: string; dot: string; badge: string; icon: any }> = {
+  certified: { label: 'OFFICIELLE', dot: 'bg-emerald-500', badge: 'bg-emerald-500/15 text-emerald-500', icon: FileCheck },
+  pending: { label: 'SOUMISE', dot: 'bg-amber-500', badge: 'bg-amber-500/15 text-amber-500', icon: Clock },
+  draft: { label: 'BROUILLON', dot: 'bg-slate-400', badge: 'bg-slate-500/15 text-slate-400', icon: FileText },
 };
 
 const hasOfficialOrderNumber = (mission: any) =>
@@ -52,15 +51,28 @@ export const MissionListSidebar: React.FC<MissionListSidebarProps> = ({
 }) => {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<StatusFilter>('all');
+  const [selectedRegion, setSelectedRegion] = useState('Toutes');
+  const [showFilters, setShowFilters] = useState(false);
 
-  const visibleMissions = savedMissions;
+  const regions = useMemo(() => {
+    const r = new Set(['Toutes']);
+    savedMissions.forEach(m => {
+      const region = m.region || m.data?.region;
+      if (region) r.add(region);
+    });
+    return Array.from(r);
+  }, [savedMissions]);
 
-  const filteredMissions = useMemo(() => {
-    return visibleMissions
+  const groupedMissions = useMemo(() => {
+    const filtered = savedMissions
       .filter((m) => {
         const isSelected = m.id === currentMissionId;
         const status = getMissionStatus(m, isSelected ? isCertifiedByWorkflow : false);
+        const region = m.region || m.data?.region;
+        
         if (filter !== 'all' && status !== filter) return false;
+        if (selectedRegion !== 'Toutes' && region !== selectedRegion) return false;
+        
         if (search.trim()) {
           const q = search.toLowerCase();
           return (
@@ -78,175 +90,200 @@ export const MissionListSidebar: React.FC<MissionListSidebarProps> = ({
         const timeB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
         return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA);
       });
-  }, [visibleMissions, search, filter, currentMissionId, isCertifiedByWorkflow]);
+
+    // Grouping by Month/Year for traceability and annual tracking
+    const groups: Record<string, any[]> = {};
+    filtered.forEach(m => {
+      const date = new Date(m.updatedAt || m.createdAt || Date.now());
+      const key = date.toLocaleString('fr-FR', { month: 'long', year: 'numeric' });
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(m);
+    });
+    return groups;
+  }, [savedMissions, search, filter, selectedRegion, currentMissionId, isCertifiedByWorkflow]);
 
   const counts = useMemo(
     () => ({
-      all: visibleMissions.length,
-      certified: visibleMissions.filter((m) => {
+      all: savedMissions.length,
+      certified: savedMissions.filter((m) => {
         const isSelected = m.id === currentMissionId;
         return getMissionStatus(m, isSelected ? isCertifiedByWorkflow : false) === 'certified';
       }).length,
-      pending: visibleMissions.filter((m) => {
+      pending: savedMissions.filter((m) => {
         const isSelected = m.id === currentMissionId;
         return getMissionStatus(m, isSelected ? isCertifiedByWorkflow : false) === 'pending';
       }).length,
-      draft: visibleMissions.filter((m) => {
+      draft: savedMissions.filter((m) => {
         const isSelected = m.id === currentMissionId;
         return getMissionStatus(m, isSelected ? isCertifiedByWorkflow : false) === 'draft';
       }).length,
     }),
-    [visibleMissions, currentMissionId, isCertifiedByWorkflow]
+    [savedMissions, currentMissionId, isCertifiedByWorkflow]
   );
 
-  // Mode robuste: mapping simple pour alimenter le composant `MissionList`
-  const [robustMode, setRobustMode] = useState(false);
-
-  const mappedMissions: UMission[] = (visibleMissions || []).map((m: any) => ({
-    id: m.id || String(m._id || Math.random()).slice(0, 8),
-    title: getMissionPrimaryLabel(m),
-    location: m.region || m.location || m.data?.region || '',
-    status: m.status === 'approuvee' || m.isCertified || m.data?.isCertified ? 'completed' : m.status === 'draft' ? 'draft' : 'online',
-    createdAt: m.createdAt || m.created_at || m.data?.createdAt || new Date().toISOString(),
-    updatedAt: m.updatedAt || m.data?.updatedAt,
-    history: m.history || m.auditLog || [],
-  }));
-
-  const filterButtons: { key: StatusFilter; label: string; color: string; activeColor: string }[] =
-    [
-      {
-        key: 'all',
-        label: 'Tous',
-        color: 'text-slate-400',
-        activeColor: 'bg-slate-700 text-white',
-      },
-      {
-        key: 'draft',
-        label: 'BROUILLON',
-        color: 'text-slate-400',
-        activeColor: 'bg-slate-500 text-white',
-      },
-      {
-        key: 'pending',
-        label: 'SOUMISE',
-        color: 'text-amber-400',
-        activeColor: 'bg-amber-500 text-white',
-      },
-      {
-        key: 'certified',
-        label: 'OFFICIELLE',
-        color: 'text-emerald-400',
-        activeColor: 'bg-emerald-600 text-white',
-      },
-    ];
+  const filterButtons: { key: StatusFilter; label: string; activeColor: string }[] = [
+    { key: 'all', label: 'TOUS', activeColor: 'bg-slate-700 text-white' },
+    { key: 'draft', label: 'DFT', activeColor: 'bg-slate-500 text-white' },
+    { key: 'pending', label: 'ATT', activeColor: 'bg-amber-500 text-white' },
+    { key: 'certified', label: 'OFF', activeColor: 'bg-emerald-600 text-white' },
+  ];
 
   return (
-    <div className="w-full no-print space-y-2.5">
-
-      {/* Barre de recherche compacte */}
-      <div className="relative">
-        <Search size={11} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Rechercher une mission…"
-          className="w-full bg-slate-900/40 dark:bg-slate-800/60 border border-white/5 rounded-lg pl-7 pr-3 py-1.5 text-[10px] font-semibold outline-none focus:ring-2 ring-indigo-500/30 placeholder-slate-500 transition-all text-white"
-        />
-      </div>
-
-      {/* Filtres pills compacts */}
-      <div className="flex gap-1 p-0.5 bg-slate-900/60 dark:bg-slate-800/40 rounded-lg border border-white/5">
-        {filterButtons.map(({ key, activeColor }) => (
-          <button
-            key={key}
-            onClick={() => setFilter(key)}
-            className={`flex-1 rounded-md py-1 text-[8px] font-black uppercase tracking-tight transition-all ${
-              filter === key
-                ? `${activeColor} shadow-sm`
-                : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
-            }`}
-          >
-            <span className="block text-[11px] font-black leading-none">{counts[key] || 0}</span>
-            <span>{key === 'all' ? 'TOUS' : key === 'draft' ? 'DFT' : key === 'pending' ? 'ATT' : 'OFF'}</span>
-          </button>
-        ))}
-      </div>
-
-      {/* Mode robuste toggle */}
-      <div className="flex items-center justify-end">
-        <button
-          type="button"
-          onClick={() => setRobustMode((s) => !s)}
-          className={`text-[11px] font-black uppercase tracking-tight px-2 py-1 rounded-md border transition ${robustMode ? 'bg-indigo-600 text-white' : 'bg-transparent text-slate-400 border-white/5'}`}
-        >
-          {robustMode ? 'Mode robuste ✓' : 'Mode robuste'}
-        </button>
-      </div>
-
-      {/* Liste ultra-compacte (ou Mode robuste) */}
-      {robustMode ? (
-        <div className="max-h-[75vh] overflow-y-auto">
-          <MissionList missions={mappedMissions} />
-        </div>
-      ) : (
-        <div className="space-y-1 max-h-[75vh] overflow-y-auto custom-scrollbar">
-        {filteredMissions.length === 0 && (
-          <div className="text-center py-6 text-slate-400 dark:text-slate-600 border border-dashed border-slate-200 dark:border-white/5 rounded-xl">
-            <FileText size={18} className="mx-auto mb-1.5 opacity-30" />
-            <p className="text-[9px] font-black uppercase tracking-widest">Aucune mission</p>
+    <div className="w-full no-print space-y-4">
+      {/* 📊 BARRE DE RECHERCHE & FILTRES */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Rechercher..."
+              className="w-full bg-slate-900/50 border border-white/5 rounded-xl pl-9 pr-3 py-2 text-[11px] font-bold outline-none focus:ring-2 ring-indigo-500/20 transition-all text-white placeholder-slate-600"
+            />
           </div>
-        )}
+          <button 
+            onClick={() => setShowFilters(!showFilters)}
+            className={`p-2 rounded-xl border transition-all ${showFilters ? 'bg-indigo-500/10 border-indigo-500/30 text-indigo-400' : 'bg-slate-900/50 border-white/5 text-slate-500'}`}
+          >
+            <Calendar size={14} />
+          </button>
+        </div>
 
-        {filteredMissions.map((m) => {
-          const isActive = currentMissionId === m.id;
-          const status = getMissionStatus(m, isActive ? isCertifiedByWorkflow : false);
-          const cfg = STATUS_CONFIG[status];
-
-          return (
-            <div
-              key={m.id}
-              className="relative group"
+        <AnimatePresence>
+          {showFilters && (
+            <motion.div 
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden space-y-2 px-1"
             >
-              <button
-                onClick={() => onLoadMission(m)}
-                className={`w-full cursor-pointer text-left px-2.5 py-2 rounded-xl border transition-all duration-150 flex items-center gap-2 overflow-hidden ${
-                  isActive
-                    ? 'bg-indigo-600 border-indigo-500 shadow-md shadow-indigo-500/20'
-                    : 'bg-slate-900/30 dark:bg-slate-900/70 border-white/5 dark:border-white/4 hover:border-indigo-300/50 hover:bg-slate-800/50 dark:hover:bg-slate-800'
-                }`}
-              >
-                {/* Dot statut */}
-                <span className={`flex-shrink-0 w-1.5 h-1.5 rounded-full ${isActive ? 'bg-white' : cfg.dot}`} />
-
-                {/* Texte principal */}
-                <div className="flex-1 min-w-0">
-                  <p className={`text-[10px] font-black truncate leading-tight ${isActive ? 'text-white' : 'text-slate-700 dark:text-slate-200'}`}>
-                    {getMissionPrimaryLabel(m)}
-                  </p>
-                  <p className={`text-[9px] truncate font-medium leading-tight mt-0.5 ${isActive ? 'text-white/60' : 'text-slate-400'}`}>
-                    {getMissionSecondaryLabel(m)}
-                  </p>
+              <div className="flex flex-col gap-1.5 p-2 bg-indigo-500/5 rounded-xl border border-indigo-500/10">
+                <label className="text-[8px] font-black text-indigo-400/60 uppercase tracking-widest ml-1">Filtrer par Région</label>
+                <div className="flex flex-wrap gap-1">
+                  {regions.map(r => (
+                    <button
+                      key={r}
+                      onClick={() => setSelectedRegion(r)}
+                      className={`px-2 py-1 rounded-md text-[9px] font-black transition-all ${selectedRegion === r ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'bg-slate-900/50 text-slate-500 hover:text-slate-300'}`}
+                    >
+                      {r}
+                    </button>
+                  ))}
                 </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-                {/* Badge statut discret */}
-                <span className={`flex-shrink-0 text-[7px] font-black px-1.5 py-0.5 rounded-full ${isActive ? 'bg-white/20 text-white' : cfg.badge}`}>
-                  {status === 'certified' ? '✓' : status === 'pending' ? '⏳' : '~'}
-                </span>
-              </button>
-
-              {/* Bouton supprimer au hover */}
-              <button
-                onClick={(e) => { e.stopPropagation(); onDeleteMission(m.id, getMissionPrimaryLabel(m)); }}
-                className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 text-slate-500 hover:text-rose-500 hover:bg-rose-500/10 dark:hover:bg-rose-500/10 rounded-md opacity-0 group-hover:opacity-100 transition-all z-10"
-                title="Supprimer"
-              >
-                <Trash2 size={9} />
-              </button>
-            </div>
-          );
-        })}
+        <div className="flex gap-1 p-1 bg-slate-900/80 rounded-xl border border-white/5 shadow-inner">
+          {filterButtons.map(({ key, activeColor }) => (
+            <button
+              key={key}
+              onClick={() => setFilter(key)}
+              className={`flex-1 flex flex-col items-center justify-center rounded-lg py-1.5 transition-all ${
+                filter === key ? `${activeColor} shadow-lg` : 'text-slate-500 hover:text-slate-300'
+              }`}
+            >
+              <span className="text-[11px] font-black leading-none">{counts[key]}</span>
+              <span className="text-[8px] font-bold tracking-tighter opacity-70 mt-0.5">{key === 'all' ? 'TOUS' : key.toUpperCase()}</span>
+            </button>
+          ))}
+        </div>
       </div>
+
+      {/* 📜 LISTE GROUPÉE (SUIVI ANNUEL) */}
+      <div className="space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar pr-1">
+        {Object.keys(groupedMissions).length === 0 ? (
+          <div className="text-center py-12 bg-slate-900/30 rounded-2xl border border-dashed border-white/5">
+            <FileText size={24} className="mx-auto mb-2 text-slate-700" />
+            <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Aucune mission trouvée</p>
+          </div>
+        ) : (
+          Object.entries(groupedMissions).map(([group, missions]) => (
+            <div key={group} className="space-y-3">
+              <div className="flex items-center gap-2 px-1">
+                <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">{group}</span>
+                <div className="h-px flex-1 bg-gradient-to-r from-white/10 to-transparent" />
+              </div>
+              
+              <div className="space-y-1.5">
+                {missions.map((m) => {
+                  const isActive = currentMissionId === m.id;
+                  const status = getMissionStatus(m, isActive ? isCertifiedByWorkflow : false);
+                  const cfg = STATUS_CONFIG[status];
+
+                  return (
+                    <motion.div
+                      key={m.id}
+                      layout
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      className="group relative"
+                    >
+                      <button
+                        onClick={() => onLoadMission(m)}
+                        className={`w-full text-left px-3 py-3 rounded-2xl border transition-all duration-300 flex flex-col gap-2 relative overflow-hidden ${
+                          isActive
+                            ? 'bg-gradient-to-br from-indigo-600 to-indigo-700 border-indigo-400 shadow-xl shadow-indigo-500/30 scale-[1.02] z-10'
+                            : 'bg-slate-900/40 border-white/5 hover:border-white/10 hover:bg-slate-800/60'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-white' : cfg.dot}`} />
+                              <p className={`text-[11px] font-black truncate tracking-tight ${isActive ? 'text-white' : 'text-slate-200'}`}>
+                                {getMissionPrimaryLabel(m)}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <MapPin size={10} className={isActive ? 'text-white/40' : 'text-slate-500'} />
+                                <p className={`text-[10px] font-bold truncate ${isActive ? 'text-white/60' : 'text-slate-500'}`}>
+                                    {getMissionSecondaryLabel(m)}
+                                </p>
+                            </div>
+                          </div>
+                          <div className={`p-1.5 rounded-lg ${isActive ? 'bg-white/10' : 'bg-slate-800/50'}`}>
+                            <cfg.icon size={12} className={isActive ? 'text-white' : cfg.badge.split(' ')[1]} />
+                          </div>
+                        </div>
+
+                        {/* 🔗 TRAÇABILITÉ (Timeline Dots) */}
+                        <div className="flex items-center gap-1.5 pt-1 border-t border-white/[0.03]">
+                          <div className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-white/80' : 'bg-slate-700'}`} title="Création" />
+                          <div className={`h-[1px] w-3 ${isActive ? 'bg-white/20' : 'bg-slate-800'}`} />
+                          <div className={`w-1.5 h-1.5 rounded-full ${m.isSubmitted || m.data?.isSubmitted || status !== 'draft' ? (isActive ? 'bg-white' : 'bg-amber-400') : 'bg-slate-800'}`} title="Soumission" />
+                          <div className={`h-[1px] w-3 ${isActive ? 'bg-white/20' : 'bg-slate-800'}`} />
+                          <div className={`w-1.5 h-1.5 rounded-full ${status === 'certified' ? (isActive ? 'bg-white' : 'bg-emerald-400') : 'bg-slate-800'}`} title="Certification" />
+                        </div>
+
+                        {isActive && (
+                          <motion.div 
+                            layoutId="active-indicator"
+                            className="absolute left-0 top-0 bottom-0 w-1 bg-white"
+                          />
+                        )}
+                      </button>
+
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onDeleteMission(m.id, getMissionPrimaryLabel(m)); }}
+                        className="absolute right-3 top-3 p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg opacity-0 group-hover:opacity-100 transition-all z-20"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+};/div>
     </div>
   );
 };
