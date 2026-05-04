@@ -283,7 +283,4 @@ export const MissionListSidebar: React.FC<MissionListSidebarProps> = ({
       </div>
     </div>
   );
-};/div>
-    </div>
-  );
 };
