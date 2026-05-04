@@ -108,12 +108,12 @@ export const MissionOrderActionBar = (props: any) => {
   ].includes(normalizedRole);
 
   const saveLabel = (() => {
-    if (isSubmitted || isCertified) return 'VERROUILLÉ';
-    if (isSyncing || isSyncingServer) return 'SYNC...';
-    if (isDirty) return 'MODIFIÉ';
-    if (syncStatus === 'pending') return 'LOCAL';
-    if (syncStatus === 'failed') return 'À RESYNC';
-    return 'SYNCHRONISÉ';
+    if (isSubmitted || isCertified) return 'ARCHIVÉ';
+    if (isSyncing || isSyncingServer) return 'ENVOI...';
+    if (isDirty) return 'ENREGISTRER';
+    if (syncStatus === 'pending') return 'SYNCHRONISER';
+    if (syncStatus === 'failed') return 'ERREUR SYNC';
+    return 'À JOUR';
   })();
 
   return (
