@@ -29,6 +29,11 @@ const localCorsOrigins = [
     'http://127.0.0.1:3000'
 ];
 
+const productionCorsOrigins = [
+    'https://gem.proquelec.sn',
+    'https://www.gem.proquelec.sn'
+];
+
 const isLoopbackOrigin = (origin) => {
     if (!origin) return true;
 
@@ -55,9 +60,10 @@ export const config = {
             const isDev = process.env.NODE_ENV !== 'production';
             
             // Origins strictly loaded from env in prod, with secure default fallback
-            let allowedOrigins = process.env.CORS_ORIGINS 
+            const configuredOrigins = process.env.CORS_ORIGINS
                 ? process.env.CORS_ORIGINS.split(',').map(o => o.trim())
-                : ['https://gem.proquelec.sn'];
+                : [];
+            let allowedOrigins = [...new Set([...productionCorsOrigins, ...configuredOrigins])];
                 
             if (isDev) {
                 allowedOrigins.push(...localCorsOrigins);
