@@ -137,12 +137,12 @@ export const MissionListSidebar: React.FC<MissionListSidebarProps> = ({
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Rechercher une mission…"
-          className="w-full bg-slate-100 dark:bg-slate-800/60 border-0 rounded-lg pl-7 pr-3 py-1.5 text-[10px] font-semibold outline-none focus:ring-2 ring-indigo-500/30 placeholder-slate-400 transition-all"
+          className="w-full bg-slate-900/40 dark:bg-slate-800/60 border border-white/5 rounded-lg pl-7 pr-3 py-1.5 text-[10px] font-semibold outline-none focus:ring-2 ring-indigo-500/30 placeholder-slate-500 transition-all text-white"
         />
       </div>
 
       {/* Filtres pills compacts */}
-      <div className="flex gap-1 p-0.5 bg-slate-100 dark:bg-slate-800/40 rounded-lg">
+      <div className="flex gap-1 p-0.5 bg-slate-900/60 dark:bg-slate-800/40 rounded-lg border border-white/5">
         {filterButtons.map(({ key, activeColor }) => (
           <button
             key={key}
@@ -183,7 +183,7 @@ export const MissionListSidebar: React.FC<MissionListSidebarProps> = ({
                 className={`w-full cursor-pointer text-left px-2.5 py-2 rounded-xl border transition-all duration-150 flex items-center gap-2 overflow-hidden ${
                   isActive
                     ? 'bg-indigo-600 border-indigo-500 shadow-md shadow-indigo-500/20'
-                    : 'bg-white dark:bg-slate-900/70 border-slate-100 dark:border-white/4 hover:border-indigo-300/50 hover:bg-slate-50 dark:hover:bg-slate-800'
+                    : 'bg-slate-900/30 dark:bg-slate-900/70 border-white/5 dark:border-white/4 hover:border-indigo-300/50 hover:bg-slate-800/50 dark:hover:bg-slate-800'
                 }`}
               >
                 {/* Dot statut */}
@@ -208,7 +208,7 @@ export const MissionListSidebar: React.FC<MissionListSidebarProps> = ({
               {/* Bouton supprimer au hover */}
               <button
                 onClick={(e) => { e.stopPropagation(); onDeleteMission(m.id, getMissionPrimaryLabel(m)); }}
-                className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-md opacity-0 group-hover:opacity-100 transition-all z-10"
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 text-slate-500 hover:text-rose-500 hover:bg-rose-500/10 dark:hover:bg-rose-500/10 rounded-md opacity-0 group-hover:opacity-100 transition-all z-10"
                 title="Supprimer"
               >
                 <Trash2 size={9} />

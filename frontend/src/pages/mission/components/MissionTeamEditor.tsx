@@ -84,8 +84,8 @@ export const MissionTeamEditor: React.FC<MissionTeamEditorProps> = ({
             </div>
             <div className="grid grid-cols-2 gap-3 sm:contents">
             <div className="sm:col-span-6 md:col-span-3">
-              <div className="flex items-center gap-2 bg-white/60 dark:bg-slate-800 p-2 rounded-xl ring-1 ring-slate-200/50 dark:ring-white/10 shadow-inner">
-                <span className="text-[7px] font-black text-slate-400 uppercase tracking-widest leading-none bg-slate-100 dark:bg-white/5 py-1 px-1.5 rounded-md">
+              <div className="flex items-center gap-2 bg-slate-900/60 dark:bg-slate-800 p-2 rounded-xl ring-1 ring-white/5 dark:ring-white/10 shadow-inner">
+                <span className="text-[7px] font-black text-slate-400 uppercase tracking-widest leading-none bg-white/5 dark:bg-white/5 py-1 px-1.5 rounded-md">
                   TAUX
                 </span>
                 <input
@@ -102,8 +102,8 @@ export const MissionTeamEditor: React.FC<MissionTeamEditorProps> = ({
               </div>
             </div>
             <div className="sm:col-span-6 md:col-span-3">
-              <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 p-2 rounded-xl ring-1 ring-slate-200 dark:ring-white/10 shadow-inner">
-                <span className="text-[7px] font-black text-slate-500 uppercase tracking-widest leading-none bg-white/20 dark:bg-white/5 py-1 px-1.5 rounded-md">
+              <div className="flex items-center gap-2 bg-slate-900 dark:bg-slate-800 p-2 rounded-xl ring-1 ring-white/5 dark:ring-white/10 shadow-inner">
+                <span className="text-[7px] font-black text-slate-500 uppercase tracking-widest leading-none bg-white/5 dark:bg-white/5 py-1 px-1.5 rounded-md">
                   JOURS
                 </span>
                 <input

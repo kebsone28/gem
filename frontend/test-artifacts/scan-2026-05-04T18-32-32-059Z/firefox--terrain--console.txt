@@ -1,0 +1,73 @@
+URL: http://localhost:5174/terrain
+Browser: firefox
+--- console logs ---
+[console:debug] [vite] connecting...
+[console:debug] [vite] connected.
+[console:info] Download the React DevTools for a better development experience: https://react.dev/link/react-devtools
+[console:timeStamp] Blocking Track
+[console:timeStamp] Transition Track
+[console:timeStamp] Suspense Track
+[console:timeStamp] Idle Track
+[console:timeStamp] Render
+[console:timeStamp] Commit
+[console:timeStamp] Waiting for Paint
+[console:timeStamp] ErrorBoundary
+[console:timeStamp] AuthProvider
+[console:timeStamp] LabelsProvider
+[console:timeStamp] SyncProvider
+[console:timeStamp] ThemeProvider
+[console:timeStamp] ProjectProvider
+[console:timeStamp] App
+[console:timeStamp] BrowserRouter
+[console:timeStamp] Router
+[console:timeStamp] ImpersonationBanner
+[console:timeStamp] BackgroundServices
+[console:timeStamp] LazyRouteErrorBoundary
+[console:timeStamp] Routes
+[console:timeStamp] RenderedRoute
+[console:timeStamp] ProtectedRoute
+[console:timeStamp] Navigate
+[console:timeStamp] Navigate
+[console:timeStamp] SessionWarningToast
+[console:timeStamp] OfflineBanner
+[console:timeStamp] PWAPrompt
+[console:timeStamp] SyncNotification
+[console:timeStamp] CommandPalette
+[console:timeStamp] AnimatePresence
+[console:timeStamp] CommandPalette
+[console:timeStamp] Fe
+[console:timeStamp] ProjectProvider
+[console:timeStamp] Navigate
+[console:timeStamp] CommandPalette
+[console:timeStamp] Remaining Effects
+[console:timeStamp] Blocking Track
+[console:timeStamp] Transition Track
+[console:timeStamp] Suspense Track
+[console:timeStamp] Idle Track
+[console:timeStamp] Render
+[console:timeStamp] Waiting for Paint
+[console:timeStamp] BrowserRouter
+[console:timeStamp] Routes
+[console:timeStamp] Login
+[console:timeStamp] withAnalytics(PageContainer)
+[console:timeStamp] _c4
+[console:timeStamp] ShieldCheck
+[console:timeStamp] ForwardRef
+[console:timeStamp] Lock
+[console:timeStamp] ForwardRef
+[console:timeStamp] User
+[console:timeStamp] ForwardRef
+[console:timeStamp] Lock
+[console:timeStamp] ForwardRef
+[console:timeStamp] LogIn
+[console:timeStamp] ForwardRef
+[console:timeStamp] CommandPalette
+[console:timeStamp] Remaining Effects
+[console:timeStamp] Blocking Track
+[console:timeStamp] Transition Track
+[console:timeStamp] Suspense Track
+[console:timeStamp] Idle Track
+[console:timeStamp] Render
+[console:timeStamp] Commit
+[console:timeStamp] Waiting for Paint
+[console:timeStamp] ProjectProvider

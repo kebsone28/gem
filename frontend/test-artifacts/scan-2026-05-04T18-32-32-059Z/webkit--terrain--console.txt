@@ -1,0 +1,5 @@
+URL: http://localhost:5174/terrain
+Browser: webkit
+--- console logs ---
+[console:debug] [vite] connecting...
+[console:debug] [vite] connected.

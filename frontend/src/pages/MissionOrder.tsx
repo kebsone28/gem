@@ -1313,18 +1313,18 @@ export default function MissionOrder() {
                         </div>
 
                         {/* Statut de la mission */}
-                        <div className="mt-6 p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl border border-indigo-200 dark:border-indigo-800">
+                        <div className="mt-6 p-4 bg-indigo-950/30 dark:bg-indigo-900/20 rounded-xl border border-indigo-500/20 dark:border-indigo-800">
                           <div className="flex items-center gap-3">
                             <div className={`w-3 h-3 rounded-full ${effectiveIsCertified ? 'bg-emerald-500' : effectiveIsSubmitted ? 'bg-blue-500' : 'bg-amber-500'}`}></div>
                             <div>
-                              <p className="text-sm font-bold text-indigo-900 dark:text-indigo-300">
+                              <p className="text-sm font-bold text-white dark:text-indigo-300">
                                 {effectiveIsCertified
                                   ? 'Mission validée et archivée'
                                   : effectiveIsSubmitted
                                   ? 'Mission soumise en attente de validation'
                                   : 'En attente de soumission'}
                               </p>
-                              <p className="text-xs text-indigo-600 dark:text-indigo-400">
+                              <p className="text-xs text-indigo-400/70 dark:text-indigo-400">
                                 {effectiveIsCertified
                                   ? `Archivée le ${new Date().toLocaleDateString('fr-FR')}`
                                   : effectiveIsSubmitted
@@ -1383,12 +1383,12 @@ export default function MissionOrder() {
       {/* MODAL VALIDATION FINALE */}
       {isPinModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-opacity">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl p-8 max-w-md w-full animate-in zoom-in-95 duration-200 border border-slate-200 dark:border-slate-700">
+          <div className="bg-slate-900 rounded-3xl shadow-2xl p-8 max-w-md w-full animate-in zoom-in-95 duration-200 border border-white/10 dark:border-slate-700">
             <div className="flex flex-col items-center text-center">
-              <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center mb-6 ring-4 ring-white dark:ring-slate-900 shadow-inner">
-                <ShieldCheck className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
+              <div className="w-16 h-16 bg-emerald-900/30 rounded-full flex items-center justify-center mb-6 ring-4 ring-slate-800 dark:ring-slate-900 shadow-inner">
+                <ShieldCheck className="w-8 h-8 text-emerald-400 dark:text-emerald-400" />
               </div>
-              <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-2">
+              <h3 className="text-2xl font-black text-white dark:text-white mb-2">
                 Validation Officielle
               </h3>
               <p className="text-sm font-medium text-slate-500 mb-8 max-w-[280px]">
@@ -1403,7 +1403,7 @@ export default function MissionOrder() {
                   value={pinCode}
                   onChange={(e) => setPinCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 4))}
                   placeholder="• • • •"
-                  className="w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl text-center text-3xl tracking-[1em] font-black text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all font-mono"
+                  className="w-full pl-12 pr-4 py-4 bg-slate-950 dark:bg-slate-800 border-2 border-white/5 dark:border-slate-700 rounded-2xl text-center text-3xl tracking-[1em] font-black text-white dark:text-white focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all font-mono shadow-inner"
                   autoFocus
                 />
               </div>
@@ -1411,7 +1411,7 @@ export default function MissionOrder() {
               <div className="flex gap-3 w-full">
                 <button
                   onClick={() => setIsPinModalOpen(false)}
-                  className="flex-1 py-3.5 px-4 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-2xl font-bold transition-colors"
+                  className="flex-1 py-3.5 px-4 bg-slate-800 hover:bg-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-300 dark:text-slate-300 rounded-2xl font-bold transition-all border border-white/5"
                 >
                   Annuler
                 </button>

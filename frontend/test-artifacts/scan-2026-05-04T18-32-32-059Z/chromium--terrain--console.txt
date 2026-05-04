@@ -1,0 +1,9 @@
+URL: http://localhost:5174/terrain
+Browser: chromium
+--- console logs ---
+[console:debug] [vite] connecting...
+[console:debug] [vite] connected.
+[console:info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[navigation error] TimeoutError: page.goto: Timeout 30000ms exceeded.
+Call log:
+[2m  - navigating to "http://localhost:5174/terrain", waiting until "networkidle"[22m
