@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
+﻿import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
 import QRCode from 'qrcode';
 import {
   Activity,
@@ -2358,6 +2358,7 @@ export default function InternalKoboSubmissions() {
           type="file"
           accept=".xlsx,.xls"
           className="hidden"
+          aria-label="Importer un fichier XLSForm"
           disabled={isImporting}
           onChange={(event) => {
             handleImportXlsForm(event.target.files?.[0]);
@@ -2711,6 +2712,8 @@ export default function InternalKoboSubmissions() {
                                 <select
                                   value={tableColumnFilters[column.id] || ''}
                                   onChange={(event) => setTableColumnFilters((current) => ({ ...current, [column.id]: event.target.value }))}
+                                  title={`Filtrer par ${column.label}`}
+                                  aria-label={`Filtrer par ${column.label}`}
                                   className="h-9 w-full rounded border border-slate-200 bg-white px-2 text-sm font-medium text-slate-900 outline-none"
                                 >
                                   <option value="">Afficher tout</option>
@@ -2761,6 +2764,8 @@ export default function InternalKoboSubmissions() {
                                           : current.filter((id) => id !== submission.id)
                                       );
                                     }}
+                                     aria-label="Selectionner cette soumission"
+                                     title="Selectionner cette soumission"
                                     className="h-5 w-5 rounded border-slate-300 accent-blue-600"
                                   />
                                   <Eye size={18} className="text-blue-800" />
@@ -2858,6 +2863,8 @@ export default function InternalKoboSubmissions() {
             <select
               value={filters.status}
               onChange={(event) => setFilters((current) => ({ ...current, status: event.target.value as Filters['status'], offset: 0 }))}
+              title="Filtrer par statut"
+              aria-label="Filtrer par statut"
               className="h-12 rounded-2xl border border-white/10 bg-slate-900 px-4 text-xs font-black uppercase tracking-[0.1em] text-white outline-none"
             >
               <option value="">Tous statuts</option>
@@ -2869,6 +2876,8 @@ export default function InternalKoboSubmissions() {
             <select
               value={filters.role}
               onChange={(event) => setFilters((current) => ({ ...current, role: event.target.value, offset: 0 }))}
+              title="Filtrer par rôle"
+              aria-label="Filtrer par rôle"
               className="h-12 rounded-2xl border border-white/10 bg-slate-900 px-4 text-xs font-black uppercase tracking-[0.1em] text-white outline-none"
             >
               <option value="">Tous roles</option>
@@ -2881,6 +2890,8 @@ export default function InternalKoboSubmissions() {
             <select
               value={filters.syncStatus}
               onChange={(event) => setFilters((current) => ({ ...current, syncStatus: event.target.value, offset: 0 }))}
+              title="Filtrer par statut de synchronisation"
+              aria-label="Filtrer par statut de synchronisation"
               className="h-12 rounded-2xl border border-white/10 bg-slate-900 px-4 text-xs font-black uppercase tracking-[0.1em] text-white outline-none"
             >
               <option value="">Sync tous</option>
@@ -2891,6 +2902,8 @@ export default function InternalKoboSubmissions() {
             <select
               value={filters.limit}
               onChange={(event) => setFilters((current) => ({ ...current, limit: Number(event.target.value), offset: 0 }))}
+              title="Nombre de résultats par page"
+              aria-label="Nombre de résultats par page"
               className="h-12 rounded-2xl border border-white/10 bg-slate-900 px-4 text-xs font-black uppercase tracking-[0.1em] text-white outline-none"
             >
               <option value={50}>50</option>
@@ -4046,7 +4059,7 @@ export default function InternalKoboSubmissions() {
                 <thead>
                   <tr className="bg-slate-50 text-slate-600">
                     <th className="w-12 border-b border-slate-200 px-4 py-3">
-                      <input type="checkbox" disabled className="h-5 w-5 rounded border-slate-300" />
+                      <input type="checkbox" disabled aria-label="Sélectionner tout" title="Sélectionner tout" className="h-5 w-5 rounded border-slate-300" />
                     </th>
                     {['Nom du projet', 'Statut', 'Date de la modification', 'Date du deploiement', 'Soumissions', 'Actions'].map((header) => (
                       <th key={header} className="border-b border-slate-200 px-4 py-3 text-xs font-black text-slate-600">
@@ -4089,6 +4102,8 @@ export default function InternalKoboSubmissions() {
                               setSelectedProjectFormKey(form.formKey);
                               setFilters((current) => ({ ...current, formKey: form.formKey, status: '', offset: 0 }));
                             }}
+                             aria-label="Selectionner ce projet"
+                             title="Selectionner ce projet"
                             className="h-5 w-5 rounded border-slate-300 accent-blue-600 disabled:cursor-not-allowed disabled:opacity-35"
                           />
                         </td>
@@ -5075,7 +5090,7 @@ export default function InternalKoboSubmissions() {
                                       {getDefinitionLabel(choice)}
                                     </label>
                                   )) : (
-                                    <select className="mt-3 h-11 w-full rounded border border-slate-300 px-3 text-slate-600">
+                                    <select title="Selectionner une valeur" aria-label="Selectionner une valeur" className="mt-3 h-11 w-full rounded border border-slate-300 px-3 text-slate-600">
                                       <option>Selectionner...</option>
                                     </select>
                                   )}
@@ -5088,7 +5103,7 @@ export default function InternalKoboSubmissions() {
                               ) : type === 'note' ? (
                                 <p className="mt-3 rounded bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-900">{label}</p>
                               ) : (
-                                <input className="mt-3 h-11 w-full rounded border border-slate-300 px-3 text-slate-900 outline-none focus:border-[#2494e8]" />
+                                <input aria-label="Saisir une valeur" title="Saisir une valeur" className="mt-3 h-11 w-full rounded border border-slate-300 px-3 text-slate-900 outline-none focus:border-[#2494e8]" />
                               )}
                             </div>
                           );
@@ -5127,3 +5142,4 @@ export default function InternalKoboSubmissions() {
     </PageContainer>
   );
 }
+

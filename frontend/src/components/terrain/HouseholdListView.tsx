@@ -405,9 +405,9 @@ export const HouseholdListView: React.FC<HouseholdListViewProps> = ({
                 }}
                 className="custom-scrollbar"
                 style={{ 
-                    height: height || '100%', 
-                    width: width || '100%' 
-                }}
+                    '--height': height ? `${height}px` : '100%', 
+                    '--width': width ? `${width}px` : '100%' 
+                } as React.CSSProperties}
               />
             )}
           />

@@ -398,8 +398,8 @@ h3 {
 
 /* Glass Card – Now Sleek/Solid */
 .glass-card {
-  background: var(--color-surface-elevated);
-  border: 1px solid var(--color-dark-border);
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: var(--gem-radius-base);
   padding: var(--gem-padding-base);
   box-shadow: var(--shadow-sm);
@@ -412,13 +412,13 @@ h3 {
 }
 
 .dark .glass-card {
-  background: var(--color-dark-card);
-  border-color: var(--color-dark-border);
+  background: rgba(2, 8, 23, 0.85);
+  border-color: rgba(30, 144, 255, 0.15);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
 }
 
 .dark .glass-card:hover {
-  background: var(--color-dark-elevated);
+  background: var(--color-bg-tertiary);
   border-color: rgba(30, 144, 255, 0.3);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
 }
@@ -676,9 +676,9 @@ h3 {
 
 .dark .input-field,
 .dark .input {
-  background: var(--color-dark-elevated);
+  background: var(--color-bg-tertiary);
   border-color: rgba(30, 144, 255, 0.2);
-  color: var(--color-dark-text);
+  color: var(--color-text-primary);
 }
 
 .dark .input-field:focus,

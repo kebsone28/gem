@@ -13,6 +13,7 @@
     "lint:report": "eslint src/ --ext .ts,.tsx --format stylish",
     "format": "prettier --write 'src/**/*.{ts,tsx,css,js,json,md}'",
     "preview": "vite preview --host 0.0.0.0 --port $PORT",
+    "dev:saas": "node --max-old-space-size=4096 ./node_modules/vite/bin/vite.js --host 0.0.0.0 --port 5173",
     "dev:5173": "node --max-old-space-size=4096 ./node_modules/vite/bin/vite.js --port 5173",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build"
@@ -124,5 +125,23 @@
     "lodash": "^4.18.1",
     "tmp": "^0.2.5",
     "fast-csv": "^4.3.6"
+  },
+  "browserslist": {
+    "production": [
+      "Chrome >= 90",
+      "Edge >= 90",
+      "Firefox >= 88",
+      "Safari >= 14",
+      "iOS >= 14",
+      "Android >= 8",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 edge version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
   }
 }

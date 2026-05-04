@@ -1275,14 +1275,25 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
                   stroke="url(#household-progress-ring)"
                   strokeLinecap="round"
                   strokeWidth="6"
-                  strokeDasharray={progressRingCircumference}
-                  strokeDashoffset={progressRingOffset}
-                  style={{ '--filter-value': isTerminalStatus ? 'drop-shadow(0 0 5px rgba(239,68,68,0.9))' : 'none' } as React.CSSProperties}
+                  strokeDasharray="var(--progress-array)"
+                  strokeDashoffset="var(--progress-offset)"
+                  style={{ 
+                    '--filter-value': isTerminalStatus ? 'drop-shadow(0 0 5px rgba(239,68,68,0.9))' : 'none',
+                    '--progress-array': progressRingCircumference,
+                    '--progress-offset': progressRingOffset
+                  } as React.CSSProperties}
                 />
                 <defs>
                   <linearGradient id="household-progress-ring" x1="0" y1="0" x2="72" y2="72">
-                    <stop stopColor="#38bdf8" />
-                    <stop offset="1" stopColor={isTerminalStatus ? '#fb7185' : '#34d399'} />
+                    <stop 
+                      style={{ '--stop-color': '#38bdf8' } as React.CSSProperties} 
+                      stopColor="var(--stop-color)" 
+                    />
+                    <stop 
+                      offset="1" 
+                      style={{ '--stop-color': isTerminalStatus ? '#fb7185' : '#34d399' } as React.CSSProperties} 
+                      stopColor="var(--stop-color)" 
+                    />
                   </linearGradient>
                 </defs>
               </svg>
@@ -1652,9 +1663,12 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
                       </div>
                       <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
                         <motion.div
-                          initial={{ width: 0 }}
-                          animate={{ width: `${Math.min(100, (Number((household.constructionData as any)?.audit?.resistance_terre) / 2000) * 100)}%` }}
-                          className={`h-full ${Number((household.constructionData as any)?.audit?.resistance_terre) > 1500 ? 'bg-rose-500' : 'bg-emerald-500'}`}
+                          initial={{ '--progress': '0%' } as any}
+                          animate={{ '--progress': `${Math.min(100, (Number((household.constructionData as any)?.audit?.resistance_terre) / 2000) * 100)}%` } as any}
+                          className="h-full"
+                          style={{ 
+                            '--bg-color': Number((household.constructionData as any)?.audit?.resistance_terre) > 1500 ? '#f43f5e' : '#10b981'
+                          } as React.CSSProperties}
                         />
                       </div>
                    </div>

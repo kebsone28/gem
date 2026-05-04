@@ -148,9 +148,23 @@
   /* CSS variables are automatically available in these elements */
 }
 
+/* SVG Specific Custom Properties */
+[style*="--progress-array"] {
+  stroke-dasharray: var(--progress-array);
+}
+
+[style*="--progress-offset"] {
+  stroke-dashoffset: var(--progress-offset);
+}
+
+[style*="--stop-color"] {
+  stop-color: var(--stop-color);
+}
+
 /* ErrorBoundary Component Styles */
 .error-boundary-screen {
   min-height: 100vh;
+  min-height: var(--gem-vh, 100vh);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -225,4 +239,42 @@
   max-width: 640px;
   overflow: auto;
   text-align: left;
+}
+
+/* Approbation page */
+.approval-mission-card {
+  background-color: rgba(15, 23, 42, 0.8) !important; /* Fallback sombre solide pour les machines sans blur net */
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+}
+
+@supports (-webkit-backdrop-filter: none) {
+  .approval-mission-card {
+    -webkit-backdrop-filter: blur(18px);
+    background-color: rgba(15, 23, 42, 0.6) !important;
+  }
+}
+
+@supports (backdrop-filter: none) {
+  .approval-mission-card {
+    backdrop-filter: blur(18px);
+    background-color: rgba(15, 23, 42, 0.6) !important;
+  }
+}
+
+.approval-mission-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.03), transparent 42%),
+    radial-gradient(circle at 100% 0%, rgba(59, 130, 246, 0.1), transparent 34%);
+  opacity: 0.5;
+}
+
+.approval-mission-title {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
 }

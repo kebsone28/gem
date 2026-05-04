@@ -583,7 +583,7 @@ export default function AITrainingStudio({
   return (
     <div
       className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/70 p-2 backdrop-blur-md sm:p-4 lg:py-6 lg:pr-6"
-      style={{ paddingLeft: desktopLeftInset ? `${desktopLeftInset}px` : undefined }}
+      style={{ '--inset-left': desktopLeftInset ? `${desktopLeftInset}px` : undefined } as React.CSSProperties}
     >
       <div className="relative flex h-[95vh] w-full max-w-[1520px] flex-col overflow-hidden rounded-[1.5rem] border border-white/10 bg-slate-950 shadow-[0_50px_120px_-24px_rgba(0,0,0,0.6)] sm:rounded-[2rem]">
         <div className="flex items-start justify-between gap-4 border-b border-white/6 bg-slate-900/80 px-4 py-4 sm:px-7 sm:py-5">

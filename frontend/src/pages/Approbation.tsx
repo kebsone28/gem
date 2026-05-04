@@ -684,84 +684,97 @@ Ces missions n'ont pas encore été validées ni rejetées. Si vous videz la lis
         <div className="xl:col-span-4 space-y-6">
           <StockMonitorWidget />
 
-          <div className="flex items-center justify-between px-2">
-            <div className="flex flex-col gap-1">
-              <h3 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em]">
-                {isArchiveMode ? 'Archives Certifiées' : 'Soumissions Reçues'}
-              </h3>
+          <div className="rounded-[1.75rem] border border-white/10 bg-slate-950/55 p-3 shadow-xl shadow-slate-950/30">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[9px] font-black uppercase tracking-[0.26em] text-blue-300">
+                  Validation missions
+                </p>
+                <h3 className="mt-1 text-lg font-black uppercase leading-tight tracking-tight text-white">
+                  {isArchiveMode ? 'Archives' : 'Soumissions'}
+                </h3>
+                <p className="mt-0.5 text-[10px] font-bold text-slate-500">
+                  {filteredMissions.length}/{pendingMissions.length} visible(s)
+                </p>
+              </div>
+              <div className="flex items-center gap-1.5">
+                {canDelete && !isArchiveMode && (
+                  <button
+                    onClick={handleDeleteAll}
+                    disabled={pendingMissions.length === 0}
+                    title={
+                      pendingMissions.length > 0
+                        ? 'Tout supprimer définitivement'
+                        : 'La liste est déjà vide'
+                    }
+                    className={`h-9 rounded-xl px-3 text-[9px] font-black uppercase tracking-widest transition-all
+                      ${
+                        pendingMissions.length > 0
+                          ? 'border border-rose-400/30 bg-rose-500/10 text-rose-200 hover:bg-rose-500/20'
+                          : 'border border-white/5 bg-slate-900 text-slate-600 opacity-50 cursor-not-allowed'
+                      }`}
+                  >
+                    Vider
+                  </button>
+                )}
+                <button
+                  title="Actualiser la liste"
+                  onClick={() => fetchPending()}
+                  className="flex h-9 w-9 items-center justify-center rounded-xl border border-blue-400/20 bg-blue-500/10 text-blue-200 transition-all hover:bg-blue-500/20"
+                >
+                  <ClipboardList size={15} />
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-3 flex flex-wrap items-center gap-2">
               <button
                 onClick={() => {
                   setSelectedMission(null);
                   setIsArchiveMode(!isArchiveMode);
                 }}
-                className={`text-[10px] font-black uppercase tracking-widest px-3 py-2 rounded-xl border transition-all w-fit flex items-center gap-3
-                                     ${
-                                       isArchiveMode
-                                         ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20 hover:bg-emerald-500/20'
-                                         : 'bg-white/5 text-slate-400 border-white/10 hover:bg-white/10'
-                                     }`}
+                className={`flex h-10 min-w-0 items-center gap-2 rounded-2xl border px-3 text-[10px] font-black uppercase tracking-[0.18em] transition-all
+                  ${
+                    isArchiveMode
+                      ? 'border-emerald-400/25 bg-emerald-500/10 text-emerald-200 hover:bg-emerald-500/20'
+                      : 'border-white/10 bg-white/[0.04] text-slate-300 hover:bg-white/[0.08]'
+                  }`}
               >
-                <span>{isArchiveMode ? '← Voir en attente' : '📂 Voir les archives'}</span>
+                <span>{isArchiveMode ? 'En attente' : 'Archives'}</span>
                 <span className={`px-1.5 py-0.5 rounded-md text-[8px] font-black ${
                   isArchiveMode ? 'bg-emerald-500 text-white' : 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'
                 }`}>
                   {isArchiveMode ? counts.pending : counts.archive}
                 </span>
               </button>
-            </div>
-            <div className="flex items-center gap-2">
-              {canDelete && !isArchiveMode && (
-                <button
-                  onClick={handleDeleteAll}
-                  disabled={pendingMissions.length === 0}
-                  title={
-                    pendingMissions.length > 0
-                      ? 'Tout supprimer définitivement'
-                      : 'La liste est déjà vide'
-                  }
-                  className={`text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl transition-all shadow-lg
-                                        ${
-                                          pendingMissions.length > 0
-                                            ? 'bg-rose-600 text-white hover:bg-rose-500 shadow-rose-600/20'
-                                            : 'bg-slate-900 text-slate-600 border border-white/5 opacity-50 cursor-not-allowed'
-                                        }`}
-                >
-                  Vider
-                </button>
-              )}
+
               <button
-                title="Actualiser la liste"
-                onClick={() => fetchPending()}
-                className="p-2 text-blue-500 hover:bg-blue-500/10 rounded-xl transition-all"
+                onClick={() => setUrgencyFilter((prev) => (prev === 'urgent' ? 'all' : 'urgent'))}
+                aria-pressed={urgencyFilter === 'urgent'}
+                className={`h-10 rounded-2xl border px-3 text-[10px] font-black uppercase tracking-[0.18em] transition-all ${
+                  urgencyFilter === 'urgent'
+                    ? 'border-rose-400/40 bg-rose-500 text-white shadow-lg shadow-rose-600/20'
+                    : 'border-white/10 bg-white/[0.04] text-slate-300 hover:bg-white/[0.08]'
+                }`}
               >
-                <ClipboardList size={18} />
+                Urgentes
               </button>
             </div>
+
+            <div className="mt-3">
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Rechercher mission, demandeur, région..."
+                className="h-11 w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 text-[12px] font-bold text-white outline-none placeholder:text-slate-600 focus:border-blue-400/40 focus:ring-2 focus:ring-blue-500/20"
+              />
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3">
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Rechercher mission, demandeur, région..."
-              className="w-full rounded-2xl border border-white/5 bg-slate-900/60 px-4 py-3 text-xs font-bold text-white outline-none placeholder:text-slate-600 focus:ring-2 focus:ring-blue-500/30"
-            />
-            <button
-              onClick={() => setUrgencyFilter((prev) => (prev === 'urgent' ? 'all' : 'urgent'))}
-              className={`rounded-2xl px-4 py-3 text-[10px] font-black uppercase tracking-widest border transition-all ${
-                urgencyFilter === 'urgent'
-                  ? 'bg-rose-600 text-white border-rose-500'
-                  : 'bg-slate-900/60 text-slate-400 border-white/5 hover:bg-white/5'
-              }`}
-            >
-              Urgentes
-            </button>
-          </div>
-
-          <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
+          <div className="space-y-2.5 max-h-[66vh] overflow-y-auto pr-1.5 custom-scrollbar">
             {filteredMissions.length === 0 ? (
-              <div className="py-20 text-center border-2 border-dashed border-white/5 rounded-[2.5rem] bg-white/2">
-                <CheckCircle2 size={48} className="mx-auto text-emerald-500/20 mb-4" />
+              <div className="rounded-[1.75rem] border border-dashed border-white/10 bg-white/[0.03] py-12 text-center">
+                <CheckCircle2 size={34} className="mx-auto mb-3 text-emerald-500/25" />
                 <p className="text-slate-500 font-bold text-xs uppercase italic">
                   Aucune mission {isArchiveMode ? 'archivée' : 'en attente'}
                 </p>
@@ -784,64 +797,70 @@ Ces missions n'ont pas encore été validées ni rejetées. Si vous videz la lis
                           setComment('');
                           setRejectionCategory('DONNEES_INCOMPLETES');
                         }}
-                        className={`group p-6 rounded-[2.5rem] border transition-all cursor-pointer relative overflow-hidden ${
+                        className={`approval-mission-card group rounded-[1.55rem] border p-3.5 transition-all cursor-pointer relative overflow-hidden ${
                           selectedMission?.id === mission.id
-                            ? 'bg-blue-600 border-blue-500 shadow-xl shadow-blue-900/40 ring-4 ring-blue-500/20'
-                            : 'bg-slate-900/40 border-white/5 hover:border-blue-500/30 hover:bg-slate-900/60'
+                            ? 'border-blue-400/70 bg-blue-600/95 shadow-xl shadow-blue-950/40 ring-2 ring-blue-300/20'
+                            : 'border-white/10 bg-slate-950/55 hover:border-blue-400/35 hover:bg-slate-900/70'
                         }`}
                       >
                         {/* Background Urgency Glow */}
                         {isUrgent && selectedMission?.id !== mission.id && (
-                          <div className="absolute top-0 right-0 w-24 h-24 bg-rose-500/5 blur-2xl rounded-full" />
+                          <div className="absolute right-0 top-0 h-20 w-20 rounded-full bg-rose-500/10 blur-2xl" />
                         )}
 
-                        <div className="flex justify-between items-start mb-4 relative z-10">
-                          <div className="flex flex-col">
-                            <div className="flex items-center gap-2 mb-1">
+                        <div className="relative z-10 flex items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <div className="mb-2 flex flex-wrap items-center gap-1.5">
                               {isUrgent && (
-                                <span className="px-1.5 py-0.5 rounded-md bg-rose-500/20 text-rose-500 text-[8px] font-black uppercase tracking-widest border border-rose-500/20 animate-pulse">
+                                <span className="rounded-full border border-rose-400/25 bg-rose-500/20 px-2 py-0.5 text-[7px] font-black uppercase tracking-widest text-rose-100">
                                   Urgent
                                 </span>
                               )}
-                              <span className={`text-[8px] font-black uppercase tracking-[0.2em] ${
-                                selectedMission?.id === mission.id ? 'text-white/60' : 'text-slate-500'
+                              <span className={`rounded-full px-2 py-0.5 text-[7px] font-black uppercase tracking-[0.2em] ${
+                                selectedMission?.id === mission.id ? 'bg-white/10 text-white/70' : 'bg-white/[0.04] text-slate-500'
                               }`}>
                                 ID: {mission.id.substring(0, 8)}
                               </span>
                             </div>
-                            <h3 className={`text-sm font-black uppercase tracking-tight italic ${
+                            <h3 className={`approval-mission-title text-[13px] font-black uppercase leading-snug tracking-tight ${
                               selectedMission?.id === mission.id ? 'text-white' : 'text-slate-200'
                             }`}>
                               {mission.title || mission.data?.purpose || 'Mission sans titre'}
                             </h3>
                           </div>
-                          
-                          <div className={`text-right ${selectedMission?.id === mission.id ? 'text-white' : 'text-emerald-500'}`}>
-                            <div className="text-[10px] font-black opacity-60 uppercase tracking-widest mb-0.5">Budget</div>
-                            <div className="text-sm font-black tracking-tighter">{fmtFCFA(budget)}</div>
+
+                          <div className={`shrink-0 rounded-2xl border px-3 py-2 text-right ${
+                            selectedMission?.id === mission.id
+                              ? 'border-white/15 bg-white/10 text-white'
+                              : 'border-emerald-400/15 bg-emerald-500/10 text-emerald-300'
+                          }`}>
+                            <div className="text-[7px] font-black uppercase tracking-[0.2em] opacity-60">Budget</div>
+                            <div className="text-[12px] font-black leading-tight">{fmtFCFA(budget)}</div>
                           </div>
                         </div>
 
-                        <div className="flex items-center justify-between relative z-10">
-                          <div className="flex items-center gap-2">
-                             <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest ${
-                               selectedMission?.id === mission.id ? 'bg-white/10 text-white' : 'bg-slate-950/50 text-slate-400 border border-white/5'
+                        <div className="relative z-10 mt-3 flex items-center justify-between gap-2">
+                          <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                             <div className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[8px] font-black uppercase tracking-widest ${
+                               selectedMission?.id === mission.id ? 'bg-white/10 text-white' : 'bg-slate-950/60 text-slate-400 border border-white/5'
                              }`}>
-                               <Users size={10} />
-                               {mission.data?.members?.length || 0} Pers.
+                                <Users size={10} />
+                                {mission.data?.members?.length || 0} Pers.
                              </div>
-                             <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest ${
-                               selectedMission?.id === mission.id ? 'bg-white/10 text-white' : 'bg-slate-950/50 text-slate-400 border border-white/5'
+                             <div className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[8px] font-black uppercase tracking-widest ${
+                               selectedMission?.id === mission.id ? 'bg-white/10 text-white' : 'bg-slate-950/60 text-slate-400 border border-white/5'
                              }`}>
                                <Calendar size={10} />
                                {days} Jours
                              </div>
                           </div>
-                          
+
                           {/* Scoring Tooltip-like Badge */}
-                          <div className={`flex items-center gap-1.5 ${selectedMission?.id === mission.id ? 'text-white/40' : 'text-slate-700'}`}>
+                          <div className={`flex shrink-0 items-center gap-1.5 rounded-full px-2 py-1 ${
+                            selectedMission?.id === mission.id ? 'bg-white/10 text-white/70' : 'bg-white/[0.03] text-slate-500'
+                          }`}>
                              <TrendingUp size={10} />
-                             <span className="text-[9px] font-black">SCORE: {score.toFixed(1)}</span>
+                             <span className="text-[8px] font-black">{score.toFixed(1)}</span>
                           </div>
                         </div>
                       </motion.div>

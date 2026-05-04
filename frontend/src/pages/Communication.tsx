@@ -680,6 +680,8 @@ export default function Communication() {
                         checked={selectedUserIds.includes(member.id)}
                         onChange={() => handleUserSelection(member.id)}
                         onClick={(event) => event.stopPropagation()}
+                        aria-label={`Sélectionner ${member.name}`}
+                        title={`Sélectionner ${member.name}`}
                         className="mt-1 h-4 w-4 rounded border-white/20 bg-slate-950/60 text-violet-500"
                       />
 

@@ -403,8 +403,8 @@ const Bordereau = () => {
           </div>
           <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
             <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: `${progress}%` }}
+              initial={{ '--progress': '0%' } as any}
+              animate={{ '--progress': `${progress}%` } as any}
               className={`h-full rounded-full ${progress >= 70 ? 'bg-emerald-500' : 'bg-primary'}`}
             />
           </div>

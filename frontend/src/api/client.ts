@@ -4,7 +4,7 @@ import logger from '../utils/logger';
 import * as safeStorage from '../utils/safeStorage';
 
 const apiClient = axios.create({
-  // Use relative URL - Vite proxy forwards /api/* → http://localhost:5005/api/*
+  // Use relative URL. Vite dev proxies /api/* to GEM_API_PORT, defaulting to Docker on 5009.
   baseURL: import.meta.env.VITE_API_URL || '/api',
   headers: {
     'Content-Type': 'application/json',

@@ -83,6 +83,8 @@ export function GrappeSelectorPanel({
         </div>
         <button
           onClick={onClose}
+          aria-label="Fermer"
+          title="Fermer"
           className={`p-2 rounded-xl hover:bg-slate-500/10 ${subText}`}
         >
           <X size={18} />

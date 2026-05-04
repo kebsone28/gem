@@ -369,10 +369,10 @@ export const MapToolbar: React.FC<MapToolbarProps> = ({ onRecenter, features }) 
                 exit={{ opacity: 0, y: 10 }}
                 style={{
                   position: 'fixed',
-                  top: styleMenuPosition.top,
-                  left: styleMenuPosition.left,
-                  width: 176,
-                }}
+                  '--top': `${styleMenuPosition.top}px`,
+                  '--left': `${styleMenuPosition.left}px`,
+                  '--width': '176px',
+                } as React.CSSProperties}
                 className="p-2 rounded-2xl bg-[#0D1E35] border border-white/10 shadow-2xl flex flex-col gap-2 z-[2600]"
               >
                 <button

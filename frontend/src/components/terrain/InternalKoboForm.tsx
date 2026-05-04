@@ -1699,6 +1699,8 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
                 step={field.parameters?.match(/step\s*=\s*([0-9.]+)/i)?.[1] || '1'}
                 value={String(value || '')}
                 onChange={(event) => updateRuntimeField(field, event.target.value, repeatContext)}
+                aria-label={label}
+                title={label}
                 className="w-full accent-blue-400"
               />
             ) : null}
@@ -2657,8 +2659,8 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
             </div>
             <div className="mt-4 h-2.5 rounded-full bg-slate-950/70">
               <div
-                className="h-full rounded-full bg-blue-400 transition-all"
-                style={{ '--progress': `${progress.percent}%` } as React.CSSProperties}
+                className="h-full rounded-full bg-blue-400 transition-all workflow-progress-bar"
+                style={{ '--workflow-progress': `${progress.percent}%` } as React.CSSProperties}
               />
             </div>
             <p className="mt-3 text-[11px] font-semibold text-slate-400">
@@ -2735,7 +2737,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
                     onClick={() => {
                       if (!page.locked) setActiveRuntimePageId(page.id);
                     }}
-                    aria-disabled={page.locked}
+
                     className={`relative w-full overflow-hidden rounded-2xl border p-3 text-left transition-all ${
                       isActive
                         ? 'border-blue-300/70 bg-blue-500/18 text-white shadow-lg shadow-blue-500/10 ring-1 ring-blue-300/25'
@@ -2777,7 +2779,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
                     onClick={() => {
                       if (!section.locked) setActiveSectionId(section.id);
                     }}
-                    aria-disabled={section.locked}
+
                     className={`relative w-full overflow-hidden rounded-2xl border p-3 text-left transition-all ${
                       isActive
                         ? 'border-blue-300/70 bg-blue-500/18 text-white shadow-lg shadow-blue-500/10 ring-1 ring-blue-300/25'
@@ -2979,6 +2981,8 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
                   if (xlsFormDefinition) setActiveRuntimePageId(event.target.value);
                   else setActiveSectionId(event.target.value);
                 }}
+                title="Navigation entre les sections du formulaire"
+                aria-label="Navigation entre les sections du formulaire"
                 className="h-12 w-full rounded-2xl border border-blue-300/25 bg-[#0B1728] px-4 text-[12px] font-black uppercase tracking-[0.1em] text-white outline-none"
               >
                 {(xlsFormDefinition ? mobileRuntimePageOptions : mobileSectionOptions).map((section) => (
