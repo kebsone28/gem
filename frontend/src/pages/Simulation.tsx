@@ -783,6 +783,7 @@ export default function Simulation() {
                                   className="w-12 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
                                 />
                                 <select
+                                  title="Mode de véhicule"
                                   disabled={isOptimized || config.vehiclesPerTeam === 0}
                                   value={config.vehicleMode}
                                   onChange={(e) => updateTeamConfig(role, 'vehicleMode', e.target.value as VehicleMode)}

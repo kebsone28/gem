@@ -1,4 +1,4 @@
-﻿ 
+
 /**
  * ErrorBoundary — Global error boundary
  * Catches uncaught render errors and displays a recovery UI.
@@ -40,72 +40,30 @@ export class ErrorBoundary extends React.Component<Props, State> {
       if (this.props.fallback) return this.props.fallback;
 
       return (
-        <div
-          role="alert"
-          style={{
-            minHeight: '100vh',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: '#0D1E35',
-            color: '#fff',
-            fontFamily: 'Inter, system-ui, sans-serif',
-            padding: '2rem',
-            gap: '1rem',
-            textAlign: 'center',
-          }}
-        >
-          <div style={{ fontSize: '3rem' }}>⚠️</div>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 700, margin: 0 }}>
+        <div role="alert" className="error-boundary-screen">
+          <div className="error-boundary-icon">⚠️</div>
+          <h1 className="error-boundary-title">
             Une erreur inattendue s'est produite
           </h1>
-          <p style={{ color: '#94a3b8', maxWidth: '480px', margin: 0, fontSize: '0.9rem' }}>
+          <p className="error-boundary-message">
             {this.state.error?.message ?? 'Erreur inconnue'}
           </p>
-          <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem' }}>
+          <div className="error-boundary-actions">
             <button
               onClick={this.handleReset}
-              style={{
-                padding: '0.625rem 1.25rem',
-                borderRadius: '0.5rem',
-                background: '#3b82f6',
-                color: '#fff',
-                border: 'none',
-                cursor: 'pointer',
-                fontWeight: 600,
-              }}
+              className="error-boundary-btn-primary"
             >
               Réessayer
             </button>
             <button
               onClick={() => window.location.reload()}
-              style={{
-                padding: '0.625rem 1.25rem',
-                borderRadius: '0.5rem',
-                background: 'transparent',
-                color: '#94a3b8',
-                border: '1px solid #334155',
-                cursor: 'pointer',
-              }}
+              className="error-boundary-btn-secondary"
             >
               Recharger la page
             </button>
           </div>
           {import.meta.env.DEV && (
-            <pre
-              style={{
-                marginTop: '1.5rem',
-                background: '#1e293b',
-                padding: '1rem',
-                borderRadius: '0.5rem',
-                fontSize: '0.75rem',
-                color: '#f87171',
-                maxWidth: '640px',
-                overflow: 'auto',
-                textAlign: 'left',
-              }}
-            >
+            <pre className="error-boundary-stack">
               {this.state.error?.stack}
             </pre>
           )}

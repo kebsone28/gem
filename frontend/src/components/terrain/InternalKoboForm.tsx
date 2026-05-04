@@ -2656,7 +2656,10 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
               </p>
             </div>
             <div className="mt-4 h-2.5 rounded-full bg-slate-950/70">
-              <div className="h-full rounded-full bg-blue-400 transition-all" style={{ width: `${progress.percent}%` }} />
+              <div
+                className="h-full rounded-full bg-blue-400 transition-all"
+                style={{ '--progress': `${progress.percent}%` } as React.CSSProperties}
+              />
             </div>
             <p className="mt-3 text-[11px] font-semibold text-slate-400">
               {validationIssues.length ? `${validationIssues.length} action(s) restante(s)` : 'Tous les champs visibles sont complets'}

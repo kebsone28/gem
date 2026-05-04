@@ -1267,7 +1267,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
               <svg className="absolute inset-0 h-full w-full -rotate-90" viewBox="0 0 72 72" aria-hidden="true">
                 <circle cx="36" cy="36" r="28" fill="none" stroke="rgba(255,255,255,0.09)" strokeWidth="6" />
                 <circle
-                  className={isTerminalStatus ? 'animate-pulse' : ''}
+                  className={`household-filter-glow ${isTerminalStatus ? 'animate-pulse' : ''}`}
                   cx="36"
                   cy="36"
                   r="28"
@@ -1277,7 +1277,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
                   strokeWidth="6"
                   strokeDasharray={progressRingCircumference}
                   strokeDashoffset={progressRingOffset}
-                  style={{ filter: isTerminalStatus ? 'drop-shadow(0 0 5px rgba(239,68,68,0.9))' : 'none' }}
+                  style={{ '--filter-value': isTerminalStatus ? 'drop-shadow(0 0 5px rgba(239,68,68,0.9))' : 'none' } as React.CSSProperties}
                 />
                 <defs>
                   <linearGradient id="household-progress-ring" x1="0" y1="0" x2="72" y2="72">

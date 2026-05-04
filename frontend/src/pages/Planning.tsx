@@ -1185,7 +1185,7 @@ export default function Planning() {
                           className={`h-full rounded-full ${
                             stage.atRisk ? 'bg-rose-500' : 'bg-cyan-500'
                           }`}
-                          style={{ width: `${Math.min(stage.progress, 100)}%` }}
+                          style={{ '--progress': `${Math.min(stage.progress, 100)}%` } as React.CSSProperties}
                         />
                       </div>
                       <div className="mt-2 text-[11px] text-slate-500">
@@ -1595,11 +1595,11 @@ export default function Planning() {
                               <div
                                 className={`h-full rounded-full ${isOver ? 'bg-emerald-500' : 'bg-cyan-500'}`}
                                 style={{
-                                  width: `${Math.min(
+                                  '--progress': `${Math.min(
                                     100,
                                     theoreticalCount > 0 ? (actualCount / theoreticalCount) * 100 : actualCount > 0 ? 100 : 0
                                   )}%`,
-                                }}
+                                } as React.CSSProperties}
                               />
                             </div>
                             <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-slate-400">
@@ -1675,7 +1675,13 @@ export default function Planning() {
                         </div>
                       </div>
                       <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-800">
-                        <div className="h-full rounded-full" style={{ width: `${Math.min(row.progress, 100)}%`, backgroundColor: row.fillColor }} />
+                        <div
+                          className="h-full rounded-full"
+                          style={{
+                            '--progress': `${Math.min(row.progress, 100)}%`,
+                            '--bg-color': row.fillColor
+                          } as React.CSSProperties}
+                        />
                       </div>
                       <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-slate-400">
                         <span>{row.siteCount} site(s)</span>
@@ -1711,7 +1717,10 @@ export default function Planning() {
                         <tr key={row.id} className={`transition-colors hover:bg-white/[0.04] ${row.atRisk ? 'bg-rose-900/10' : ''}`}>
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-2">
-                              <div className="h-2 w-2 rounded-full" style={{ backgroundColor: row.fillColor }} />
+                              <div
+                                className="h-2 w-2 rounded-full"
+                                style={{ '--bg-color': row.fillColor } as React.CSSProperties}
+                              />
                               <span className="text-xs font-bold text-white">{row.teamName}</span>
                             </div>
                           </td>
@@ -1725,7 +1734,13 @@ export default function Planning() {
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-2">
                               <div className="w-24 h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                                <div className="h-full rounded-full" style={{ width: `${Math.min(row.progress, 100)}%`, backgroundColor: row.fillColor }} />
+                                <div
+                                  className="h-full rounded-full"
+                                  style={{
+                                    '--progress': `${Math.min(row.progress, 100)}%`,
+                                    '--bg-color': row.fillColor
+                                  } as React.CSSProperties}
+                                />
                               </div>
                               <span className="text-[10px] font-bold text-slate-400">{row.progress}%</span>
                             </div>
@@ -1818,8 +1833,8 @@ export default function Planning() {
                         <div
                           className="grid"
                           style={{
-                            gridTemplateColumns: `repeat(${ganttDays.length}, minmax(44px, 44px))`,
-                          }}
+                            '--grid-cols': `repeat(${ganttDays.length}, minmax(44px, 44px))`,
+                          } as React.CSSProperties}
                         >
                           {ganttDays.map((day) => (
                             <div
@@ -1870,8 +1885,8 @@ export default function Planning() {
                             <div
                               className="grid"
                               style={{
-                                gridTemplateColumns: `repeat(${ganttDays.length}, minmax(44px, 44px))`,
-                              }}
+                                '--grid-cols': `repeat(${ganttDays.length}, minmax(44px, 44px))`,
+                              } as React.CSSProperties}
                             >
                               {ganttDays.map((day, dayIndex) => {
                                 const inSpan = row.isVisibleOnWindow && dayIndex >= row.firstActiveIndex && dayIndex <= row.lastActiveIndex;
@@ -1884,9 +1899,9 @@ export default function Planning() {
                                       <div
                                         className="absolute inset-x-1 bottom-1 top-1 rounded-lg"
                                         style={{
-                                          backgroundColor: row.fillColor,
-                                          opacity: 0.1,
-                                        }}
+                                          '--bg-color': row.fillColor,
+                                          '--opacity': 0.1,
+                                        } as React.CSSProperties}
                                       />
                                     )}
                                   </div>
@@ -1897,11 +1912,11 @@ export default function Planning() {
                               <div
                                 className="absolute left-0 top-1/2 flex h-10 -translate-y-1/2 items-center overflow-hidden rounded-xl border px-3 shadow-lg"
                                 style={{
-                                  left: `${row.firstActiveIndex * 44 + 4}px`,
-                                  width: `${Math.max(row.visibleSpanDays * 44 - 8, 92)}px`,
-                                  backgroundColor: `${row.fillColor}33`,
-                                  borderColor: `${row.fillColor}66`,
-                                }}
+                                  '--left': `${row.firstActiveIndex * 44 + 4}px`,
+                                  '--progress': `${Math.max(row.visibleSpanDays * 44 - 8, 92)}px`,
+                                  '--bg-color': `${row.fillColor}33`,
+                                  '--border-color': `${row.fillColor}66`,
+                                } as React.CSSProperties}
                               >
                                 <div className="flex w-full items-center justify-between gap-2 text-white">
                                   <span className="truncate text-[11px] font-semibold">{row.teamName}</span>
@@ -1962,7 +1977,13 @@ export default function Planning() {
                       </div>
                     </div>
                     <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-800">
-                      <div className="h-full rounded-full" style={{ width: `${Math.min(row.progress, 100)}%`, backgroundColor: row.fillColor }} />
+                      <div
+                        className="h-full rounded-full"
+                        style={{
+                          '--progress': `${Math.min(row.progress, 100)}%`,
+                          '--bg-color': row.fillColor
+                        } as React.CSSProperties}
+                      />
                     </div>
                     <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-slate-400">
                       <span>{row.progress}% progression</span>
@@ -2046,11 +2067,11 @@ export default function Planning() {
                         </div>
                         <div className="space-y-1">
                           {dayStages.slice(0, 3).map(row => (
-                            <div
-                              key={`${row.id}-${day.toISOString()}`}
-                              className="text-[8px] font-bold px-1 py-0.5 rounded truncate text-white"
-                              style={{ backgroundColor: row.fillColor }}
-                            >
+                              <div
+                                key={`${row.id}-${day.toISOString()}`}
+                                className="text-[8px] font-bold px-1 py-0.5 rounded truncate text-white"
+                                style={{ '--bg-color': row.fillColor } as React.CSSProperties}
+                              >
                               {row.teamName}
                             </div>
                           ))}
@@ -2104,9 +2125,9 @@ export default function Planning() {
                         <div
                           className="h-full rounded-full transition-all"
                           style={{
-                            width: `${Math.min(tp.utilization, 100)}%`,
-                            backgroundColor: tp.utilization > 100 ? '#ef4444' : (tp.utilization > 70 ? '#f59e0b' : '#10b981')
-                          }}
+                            '--progress': `${Math.min(tp.utilization, 100)}%`,
+                            '--bg-color': tp.utilization > 100 ? '#ef4444' : (tp.utilization > 70 ? '#f59e0b' : '#10b981')
+                          } as React.CSSProperties}
                         />
                       </div>
                       <span className="text-xs font-bold text-white">{tp.utilization.toFixed(0)}%</span>

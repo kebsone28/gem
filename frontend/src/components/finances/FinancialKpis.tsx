@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { DollarSign, Users, Truck, Package, TrendingUp, Target, ArrowUpRight, Wrench } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { fmtFCFA } from '../../utils/format';
@@ -194,7 +194,7 @@ export default function FinancialKpis({ stats, devis }: { stats: any; devis: any
           >
             <div
               className={`h-full bg-gradient-to-r from-indigo-600 to-blue-500 rounded-full shadow-[0_0_15px_rgba(79,70,229,0.3)] transition-all duration-1000`}
-              style={{ width: `${Math.min(Math.round((devis.totalReal / devis.ceiling) * 100), 100)}%` }}
+              style={{ '--progress': `${Math.min(Math.round((devis.totalReal / devis.ceiling) * 100), 100)}%` } as React.CSSProperties}
             />
           </div>
         </div>

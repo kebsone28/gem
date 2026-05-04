@@ -124,7 +124,11 @@ export default function MissionOrder() {
   });
   const toggleSidebar = () => setSidebarCollapsed(prev => {
     const next = !prev;
-    try { localStorage.setItem('gem_mission_sidebar_collapsed', next ? '1' : '0'); } catch {}
+    try {
+      localStorage.setItem('gem_mission_sidebar_collapsed', next ? '1' : '0');
+    } catch {
+      // Ignore storage failures; the sidebar state still updates for this session.
+    }
     return next;
   });
   const autosaveTimerRef = useRef<number | null>(null);
@@ -151,21 +155,19 @@ export default function MissionOrder() {
   // DB Queries & Filtered List
   const allMissions = useLiveQuery(() => db.missions.toArray()) || [];
   const savedMissions = useMemo(() => {
-    const r = role?.toUpperCase() || '';
-    const isPowerful = r === 'ADMIN_PROQUELEC' || r === 'ADMIN' || r === 'DIRECTEUR' || r === 'DG_PROQUELEC' || r === 'COMPTABLE';
+    // FILTRAGE STRICT : Chaque utilisateur ne voit que ses propres créations
+    // On conserve un accès pour l'administrateur système 'admingem' par sécurité
+    const isSystemAdmin = user?.email === 'admingem';
     
-    if (isPowerful) return allMissions;
+    if (isSystemAdmin) return allMissions;
     
-    // Inclure les missions créées par l'utilisateur OU les missions sans 'createdBy' (données legacy)
     return allMissions.filter(
       (m: any) =>
-        !m.createdBy ||
         m.createdBy === user?.id ||
         m.createdBy === user?.email ||
-        m.creatorId === user?.id ||
-        m.createdBy === 'inconnu'
+        m.creatorId === user?.id
     );
-  }, [allMissions, role, user?.id, user?.email]);
+  }, [allMissions, user?.id, user?.email]);
 
   const unreadCount = useLiveQuery(() => db.notifications.where('read').equals(0).count(), []) || 0;
 
@@ -1125,8 +1127,7 @@ export default function MissionOrder() {
                                             missionState.updateFormField('reportDays', days);
                                           }}
                                           placeholder="Commentaire..."
-                                          className="w-full px-1 py-0.5 text-[10px] rounded-b bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-indigo-400"
-                                          style={{ minHeight: 18, maxHeight: 28 }}
+                                          className="w-full px-1 py-0.5 text-[10px] rounded-b bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-indigo-400 photo-comment-input"
                                         />
                                       </div>
                                     ))}

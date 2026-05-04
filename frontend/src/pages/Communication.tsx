@@ -751,8 +751,7 @@ export default function Communication() {
 
               {selectedUserIds.length > 0 && (
                 <div
-                  className="rounded-xl border border-violet-500/20 bg-violet-500/10 p-2"
-                  style={{ animation: 'slideUpFade 0.2s ease-out forwards' }}
+                  className="rounded-xl border border-violet-500/20 bg-violet-500/10 p-2 animate-slide-up-fade"
                 >
                   <div className="flex items-center justify-between gap-2">
                     <div>
@@ -915,8 +914,7 @@ export default function Communication() {
                       return (
                         <div
                           key={message.id}
-                          className={`flex ${own ? 'justify-end' : 'justify-start'}`}
-                          style={{ animation: 'messageSlideUp 0.3s ease-out forwards' }}
+                          className={`flex ${own ? 'justify-end' : 'justify-start'} animate-message-slide-up`}
                         >
                           <div
                             className={`max-w-[80%] rounded-[1.5rem] border px-4 py-3 shadow-[0_18px_36px_rgba(2,6,23,0.18)] ${own

@@ -561,13 +561,19 @@ export const downloadMissionCertifiedDocumentPublic = async (req, res) => {
 export const downloadMissionCertifiedDocument = async (req, res) => {
     try {
         const { missionId } = req.params;
-        const { organizationId, id: userId } = req.user;
+        const { organizationId, id: userId, role: rawUserRole } = req.user;
+        const userRole = (rawUserRole || '').toUpperCase();
+
         const mission = await prisma.mission.findFirst({
             where: {
                 id: missionId,
                 organizationId,
                 status: 'approuvee',
-                deletedAt: null
+                deletedAt: null,
+                // Restriction d'appartenance pour les non-admins
+                ...(!['DG_PROQUELEC', 'DIRECTEUR', 'ADMIN', 'ADMIN_PROQUELEC'].includes(userRole) && req.user.email !== 'admingem'
+                    ? { createdBy: userId }
+                    : {})
             },
             include: {
                 approvalWorkflow: {
@@ -610,16 +616,24 @@ export const sendMissionDocumentEmail = async (req, res) => {
     try {
         const { missionId } = req.params;
         const { recipientEmail, subject, body } = req.body;
-        const { organizationId } = req.user;
+        const { organizationId, id: userId, role: rawUserRole } = req.user;
+        const userRole = (rawUserRole || '').toUpperCase();
         const file = req.file;
 
         if (!file) {
             return res.status(400).json({ error: 'Fichier manquant' });
         }
 
-        // 🔒 SECURITY CHECK: Ensure user is from the same organization as the mission
+        // 🔒 SECURITY CHECK: Ensure user is from the same organization as the mission + Ownership
         const mission = await prisma.mission.findFirst({
-            where: { id: missionId, organizationId },
+            where: {
+                id: missionId,
+                organizationId,
+                // Restriction d'appartenance pour les non-admins
+                ...(!['DG_PROQUELEC', 'DIRECTEUR', 'ADMIN', 'ADMIN_PROQUELEC'].includes(userRole) && req.user.email !== 'admingem'
+                    ? { createdBy: userId }
+                    : {})
+            },
             select: { orderNumber: true, title: true }
         });
 
@@ -655,10 +669,18 @@ export const sendMissionDocumentEmail = async (req, res) => {
 export const analyzeMissionIA = async (req, res) => {
     try {
         const { missionId } = req.params;
-        const { organizationId } = req.user;
+        const { organizationId, id: userId, role: rawUserRole } = req.user;
+        const userRole = (rawUserRole || '').toUpperCase();
 
         const mission = await prisma.mission.findFirst({
-            where: { id: missionId, organizationId }
+            where: {
+                id: missionId,
+                organizationId,
+                // Restriction IA : uniquement pour le créateur ou les validateurs
+                ...(!['DG_PROQUELEC', 'DIRECTEUR', 'ADMIN', 'ADMIN_PROQUELEC'].includes(userRole) && req.user.email !== 'admingem'
+                    ? { createdBy: userId }
+                    : {})
+            }
         });
 
         if (!mission) {
@@ -710,30 +732,12 @@ export const getMissions = async (req, res) => {
             whereClause = { ...whereClause, status };
         }
 
-        if (userRole === 'CHEF_PROJET') {
-            // Chef de Projet : voit UNIQUEMENT ses propres missions
+        // FILTRE DE VISIBILITÉ STRICTE : Chaque utilisateur ne voit que ses propres créations
+        // Exception faite de l'administrateur système central
+        const isSystemAdmin = req.user?.email === 'admingem';
+
+        if (!isSystemAdmin) {
             whereClause = { ...whereClause, createdBy: userId };
-        } else if (userRole === 'ADMIN_PROQUELEC') {
-            // Admin : voit TOUT sans restriction
-            // (pas de filtre supplémentaire)
-        } else if (userRole === 'DIRECTEUR') {
-            // Directeur : voit toutes les missions soumises + ses propres drafts
-            whereClause = {
-                ...whereClause,
-                OR: [
-                    { createdBy: userId },           // Ses propres missions (meme drafts)
-                    { status: { not: 'draft' } }     // Toutes les missions soumises des autres
-                ]
-            };
-        } else {
-            // Autres rôles (COMPTABLE, SUPERVISEUR...) : les leurs + publiées
-            whereClause = {
-                ...whereClause,
-                OR: [
-                    { createdBy: userId },
-                    { status: { not: 'draft' } }
-                ]
-            };
         }
 
         // PAGINATION + COMPTE TOTAL
@@ -774,7 +778,8 @@ export const getMissionStats = async (req, res) => {
         const whereClause = {
             organizationId,
             deletedAt: null,
-            ...(projectId && { projectId })
+            ...(projectId && { projectId }),
+            ...(req.user.email !== 'admingem' ? { createdBy: req.user.id } : {})
         };
 
         // Compter par statut
@@ -1041,7 +1046,15 @@ export const updateMission = async (req, res) => {
 
         // Find mission first to verify ownership
         const missionBefore = await prisma.mission.findFirst({
-            where: { id, organizationId, deletedAt: null }
+            where: {
+                id,
+                organizationId,
+                deletedAt: null,
+                // Si l'utilisateur n'est pas un administrateur système ou un validateur, il ne peut modifier que SA mission
+                ...(!['DG_PROQUELEC', 'DIRECTEUR', 'ADMIN', 'ADMIN_PROQUELEC'].includes(userRole) && req.user.email !== 'admingem'
+                    ? { createdBy: userId }
+                    : {})
+            }
         });
         if (!missionBefore) return res.status(404).json({ error: 'Mission not found' });
 
@@ -1243,7 +1256,12 @@ export const deleteMission = async (req, res) => {
 
         // 🔒 Ownership check
         const mission = await prisma.mission.findFirst({
-            where: { id, organizationId, deletedAt: null }
+            where: {
+                id,
+                organizationId,
+                deletedAt: null,
+                ...(req.user.email !== 'admingem' ? { createdBy: userId } : {})
+            }
         });
 
         if (!mission) {
@@ -1278,7 +1296,12 @@ export const duplicateMission = async (req, res) => {
         const { organizationId, id: userId } = req.user;
 
         const original = await prisma.mission.findFirst({
-            where: { id, organizationId, deletedAt: null }
+            where: {
+                id,
+                organizationId,
+                deletedAt: null,
+                ...(req.user.email !== 'admingem' ? { createdBy: userId } : {})
+            }
         });
 
         if (!original) return res.status(404).json({ error: 'Mission originale introuvable' });
@@ -1447,13 +1470,18 @@ async function findMissionStakeholderEmails(organizationId, roleNames) {
 export const getMissionApprovalHistory = async (req, res) => {
     try {
         const { missionId } = req.params;
-        const { organizationId } = req.user;
+        const { organizationId, id: userId, role: rawUserRole } = req.user;
+        const userRole = (rawUserRole || '').toUpperCase();
 
         // Verify mission exists and belongs to org
         const mission = await prisma.mission.findFirst({
             where: {
                 id: missionId,
-                organizationId
+                organizationId,
+                // Restriction Historique : uniquement pour le créateur ou les validateurs
+                ...(!['DG_PROQUELEC', 'DIRECTEUR', 'ADMIN', 'ADMIN_PROQUELEC'].includes(userRole) && req.user.email !== 'admingem'
+                    ? { createdBy: userId }
+                    : {})
             },
             include: {
                 approvalWorkflow: {

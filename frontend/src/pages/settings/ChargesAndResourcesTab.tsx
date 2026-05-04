@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Users, MapPin, Zap, Trash2, DollarSign, Wrench } from 'lucide-react';
+import { MapPin, Trash2, DollarSign, Wrench } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useTeams } from '../../hooks/useTeams';
 import { useProject } from '../../contexts/ProjectContext';
-import { getAvailablePlanningRegions } from '../../services/planningDomain';
 import apiClient from '../../api/client';
-import logger from '../../utils/logger';
 
 function DebouncedInput({ value, onChange, type = 'text', placeholder, className, disabled, min, max }: any) {
   const [localValue, setLocalValue] = useState(value);
@@ -55,7 +53,6 @@ function DebouncedInput({ value, onChange, type = 'text', placeholder, className
 export default function ChargesAndResourcesTab({
   project,
   households,
-  householdsError,
 }: {
   project: any;
   households: any[];
@@ -104,7 +101,7 @@ export default function ChargesAndResourcesTab({
     toast.success('Configuration sauvegardée avec succès sur le serveur');
   };
 
-  const [searchQuery, setSearchQuery] = useState('');
+  const searchQuery = '';
   const [isAutoGenerating, setIsAutoGenerating] = useState(false);
 
   useEffect(() => {
@@ -137,11 +134,11 @@ export default function ChargesAndResourcesTab({
   const handleUpdateTeamField = async (id: string, field: string, value: any) => {
     try {
       await updateTeam(id, { [field]: value });
-      
+
       const team = teamTree.find((t: any) => t.id === id);
       if (team) {
-         let currentTrade = field === 'tradeKey' ? value : team.tradeKey;
-         let currentRegion = field === 'regionId' ? value : team.regionId;
+         const currentTrade = field === 'tradeKey' ? value : team.tradeKey;
+         const currentRegion = field === 'regionId' ? value : team.regionId;
          if (currentTrade && currentRegion) {
             const defRate = tradeRates[currentTrade];
             if (defRate) {
@@ -174,7 +171,7 @@ export default function ChargesAndResourcesTab({
     const newCosts = { ...costs };
     const newTradeRates = { ...(newCosts.tradeRates || {}) };
     newTradeRates[tradeKey] = { ...(newTradeRates[tradeKey] || { amount: 0, mode: 'daily' }), [field]: value };
-    
+
     const newStaffRates = { ...(newCosts.staffRates || {}) };
     teamTree.forEach((t: any) => {
       if (t.tradeKey === tradeKey && t.regionId) {
@@ -300,6 +297,7 @@ export default function ChargesAndResourcesTab({
                 <h4 className="text-xs font-black text-white uppercase tracking-widest">{tradeKey}</h4>
                 <div className="flex gap-2">
                   <select
+                    title="Mode de paiement"
                     value={tr.mode}
                     onChange={(e) => handleUpdateTradeRate(tradeKey, 'mode', e.target.value)}
                     className="w-1/2 bg-slate-900 border border-white/10 rounded-lg pl-2 pr-6 py-1.5 text-white text-[11px] font-bold outline-none truncate"
@@ -330,7 +328,11 @@ export default function ChargesAndResourcesTab({
           return (
             <div key={team.id} className="bg-slate-900/50 p-5 rounded-[1.5rem] border border-white/10 relative overflow-hidden">
               <div className="absolute top-4 right-4">
-                <button onClick={() => handleRemoveTeam(team.id)} className="text-slate-500 hover:text-red-500 transition-colors">
+                <button
+                  onClick={() => handleRemoveTeam(team.id)}
+                  className="text-slate-500 hover:text-red-500 transition-colors"
+                  title="Supprimer le groupement"
+                >
                   <Trash2 size={16} />
                 </button>
               </div>
@@ -348,6 +350,7 @@ export default function ChargesAndResourcesTab({
                   <div className="col-span-2 sm:col-span-1">
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Métier</label>
                     <select
+                      title="Métier associé"
                       value={team.tradeKey || ''}
                       onChange={(e) => handleUpdateTeamField(team.id, 'tradeKey', e.target.value)}
                       className="w-full bg-slate-950 border border-white/10 rounded-xl pl-3 pr-7 py-2 text-white text-[11px] font-bold outline-none truncate"
@@ -366,6 +369,7 @@ export default function ChargesAndResourcesTab({
                       <MapPin size={12} className="text-rose-400"/> Affectation
                     </label>
                     <select
+                      title="Affectation régionale"
                       value={team.regionId || ''}
                       onChange={(e) => handleUpdateTeamField(team.id, 'regionId', e.target.value)}
                       className="w-full bg-slate-900 border border-white/10 rounded-lg pl-2 pr-6 py-1.5 text-white text-[11px] font-bold outline-none truncate"
@@ -380,6 +384,7 @@ export default function ChargesAndResourcesTab({
                       <DollarSign size={12} className="text-emerald-400"/> Mode de Paie
                     </label>
                      <select
+                        title="Mode de rémunération"
                         value={teamRate.mode}
                         onChange={(e) => handleUpdateRate(team.id, team.regionId, 'mode', e.target.value)}
                         disabled={!team.regionId}
@@ -419,11 +424,15 @@ export default function ChargesAndResourcesTab({
             + Ajouter Article
           </button>
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
            {materialCatalog.map((item: any) => (
             <div key={item.id} className="bg-slate-950 rounded-xl border border-white/5 p-4 space-y-3 relative group">
-              <button onClick={() => handleDeleteCatalogItem(item.id)} className="absolute top-4 right-4 text-slate-600 hover:text-rose-500">
+              <button
+                onClick={() => handleDeleteCatalogItem(item.id)}
+                className="absolute top-4 right-4 text-slate-600 hover:text-rose-500"
+                title="Supprimer l'article du catalogue"
+              >
                 <Trash2 size={14}/>
               </button>
               <DebouncedInput

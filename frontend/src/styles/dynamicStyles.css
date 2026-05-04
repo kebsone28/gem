@@ -17,6 +17,14 @@
   height: var(--progress-percent, 0%);
 }
 
+.resistance-bar {
+  width: var(--resistance-width, 0%);
+}
+
+.household-filter-glow {
+  filter: var(--filter-value, none);
+}
+
 /* Map item background color - MapComponent */
 .map-item-indicator {
   background-color: var(--item-bg-color, #64748b);
@@ -44,9 +52,64 @@
   width: var(--width-critique, 0%);
 }
 
+.compliance-bar {
+  width: var(--progress-width, 0%);
+}
+
+.photo-comment-input {
+  min-height: 18px;
+  max-height: 28px;
+}
+
 /* Dashboard components using CSS custom properties */
 [style*="--progress"] {
   width: var(--progress, 0%);
+}
+
+[style*="--bg-color"] {
+  background-color: var(--bg-color);
+}
+
+[style*="--inset-left"] {
+  padding-left: var(--inset-left);
+}
+
+/* Animation utilities */
+.animate-slide-up-fade {
+  animation: slideUpFade 0.2s ease-out forwards;
+}
+
+.animate-message-slide-up {
+  animation: messageSlideUp 0.3s ease-out forwards;
+}
+
+/* Dynamic positioning & sizing */
+[style*="--left"] {
+  left: var(--left, 0%);
+}
+
+[style*="--top"] {
+  top: var(--top, 0%);
+}
+
+[style*="--height"] {
+  height: var(--height);
+}
+
+[style*="--width"] {
+  width: var(--width);
+}
+
+[style*="--border-color"] {
+  border-color: var(--border-color);
+}
+
+[style*="--grid-cols"] {
+  grid-template-columns: var(--grid-cols);
+}
+
+[style*="--opacity"] {
+  opacity: var(--opacity);
 }
 
 /* OrganizationSettings component - dynamic branding colors using data attributes */
@@ -83,4 +146,83 @@
 /* Generic fallback for CSS custom properties on any element */
 [style*="--"] {
   /* CSS variables are automatically available in these elements */
+}
+
+/* ErrorBoundary Component Styles */
+.error-boundary-screen {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #0D1E35;
+  color: #fff;
+  font-family: 'Inter', system-ui, sans-serif;
+  padding: 2rem;
+  gap: 1rem;
+  text-align: center;
+}
+
+.error-boundary-icon {
+  font-size: 3rem;
+}
+
+.error-boundary-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.error-boundary-message {
+  color: #94a3b8;
+  max-width: 480px;
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.error-boundary-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.error-boundary-btn-primary {
+  padding: 0.625rem 1.25rem;
+  border-radius: 0.5rem;
+  background: #3b82f6;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  transition: opacity 0.2s;
+}
+
+.error-boundary-btn-primary:hover {
+  opacity: 0.9;
+}
+
+.error-boundary-btn-secondary {
+  padding: 0.625rem 1.25rem;
+  border-radius: 0.5rem;
+  background: transparent;
+  color: #94a3b8;
+  border: 1px solid #334155;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.error-boundary-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.error-boundary-stack {
+  margin-top: 1.5rem;
+  background: #1e293b;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.75rem;
+  color: #f87171;
+  max-width: 640px;
+  overflow: auto;
+  text-align: left;
 }

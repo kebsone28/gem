@@ -50,7 +50,7 @@ export const MissionBudgetPanel: React.FC<MissionBudgetPanelProps> = ({
               <div className="h-1 bg-slate-800 rounded-full overflow-hidden">
                 <div
                   className={`h-full rounded-full transition-all duration-700 ${over ? 'bg-rose-500' : warn ? 'bg-amber-400' : 'bg-emerald-500'}`}
-                  style={{ width: `${Math.min(100, consumption)}%` }}
+                  style={{ '--progress': `${Math.min(100, consumption)}%` } as React.CSSProperties}
                 />
               </div>
               <div className="flex justify-between text-[8px] font-black text-slate-600">

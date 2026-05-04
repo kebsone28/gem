@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useMemo } from 'react';
-import { ChevronRight, Trash2, Search, Clock, CheckCircle2, FileText } from 'lucide-react';
-import { useAuth } from '../../../contexts/AuthContext';
+import { Trash2, Search, FileText } from 'lucide-react';
 
 interface MissionListSidebarProps {
   savedMissions: any[];
@@ -50,26 +49,10 @@ export const MissionListSidebar: React.FC<MissionListSidebarProps> = ({
   onDeleteMission,
   isCertifiedByWorkflow = false,
 }) => {
-  const { user } = useAuth();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<StatusFilter>('all');
 
-  const role = user?.role?.toUpperCase() || '';
-  const isMaster = role === 'ADMIN_PROQUELEC' || role === 'DIRECTEUR' || role === 'DG_PROQUELEC' || user?.email === 'admingem';
-
-  const visibleMissions = useMemo(() => {
-    if (isMaster) return savedMissions;
-    return savedMissions.filter((m) => {
-      // Vérification complète des champs possibles : par email, par ID (createdBy ou creatorId)
-      const isCreator = !m.createdBy || 
-                        m.createdBy === 'inconnu' || 
-                        m.createdBy === user?.email || 
-                        m.createdBy === user?.id || 
-                        m.creatorId === user?.id;
-      const isMember = m.members?.some((member: any) => member.name === user?.name);
-      return isCreator || isMember;
-    });
-  }, [savedMissions, user, isMaster]);
+  const visibleMissions = savedMissions;
 
   const filteredMissions = useMemo(() => {
     return visibleMissions
@@ -160,7 +143,7 @@ export const MissionListSidebar: React.FC<MissionListSidebarProps> = ({
 
       {/* Filtres pills compacts */}
       <div className="flex gap-1 p-0.5 bg-slate-100 dark:bg-slate-800/40 rounded-lg">
-        {filterButtons.map(({ key, label, activeColor }) => (
+        {filterButtons.map(({ key, activeColor }) => (
           <button
             key={key}
             onClick={() => setFilter(key)}
@@ -193,38 +176,39 @@ export const MissionListSidebar: React.FC<MissionListSidebarProps> = ({
           return (
             <div
               key={m.id}
-              role="button"
-              tabIndex={0}
-              onClick={() => onLoadMission(m)}
-              onKeyDown={(e) => e.key === 'Enter' && onLoadMission(m)}
-              className={`w-full cursor-pointer text-left px-2.5 py-2 rounded-xl border transition-all duration-150 group flex items-center gap-2 overflow-hidden relative ${
-                isActive
-                  ? 'bg-indigo-600 border-indigo-500 shadow-md shadow-indigo-500/20'
-                  : 'bg-white dark:bg-slate-900/70 border-slate-100 dark:border-white/4 hover:border-indigo-300/50 hover:bg-slate-50 dark:hover:bg-slate-800'
-              }`}
+              className="relative group"
             >
-              {/* Dot statut */}
-              <span className={`flex-shrink-0 w-1.5 h-1.5 rounded-full ${isActive ? 'bg-white' : cfg.dot}`} />
+              <button
+                onClick={() => onLoadMission(m)}
+                className={`w-full cursor-pointer text-left px-2.5 py-2 rounded-xl border transition-all duration-150 flex items-center gap-2 overflow-hidden ${
+                  isActive
+                    ? 'bg-indigo-600 border-indigo-500 shadow-md shadow-indigo-500/20'
+                    : 'bg-white dark:bg-slate-900/70 border-slate-100 dark:border-white/4 hover:border-indigo-300/50 hover:bg-slate-50 dark:hover:bg-slate-800'
+                }`}
+              >
+                {/* Dot statut */}
+                <span className={`flex-shrink-0 w-1.5 h-1.5 rounded-full ${isActive ? 'bg-white' : cfg.dot}`} />
 
-              {/* Texte principal */}
-              <div className="flex-1 min-w-0">
-                <p className={`text-[10px] font-black truncate leading-tight ${isActive ? 'text-white' : 'text-slate-700 dark:text-slate-200'}`}>
-                  {getMissionPrimaryLabel(m)}
-                </p>
-                <p className={`text-[9px] truncate font-medium leading-tight mt-0.5 ${isActive ? 'text-white/60' : 'text-slate-400'}`}>
-                  {getMissionSecondaryLabel(m)}
-                </p>
-              </div>
+                {/* Texte principal */}
+                <div className="flex-1 min-w-0">
+                  <p className={`text-[10px] font-black truncate leading-tight ${isActive ? 'text-white' : 'text-slate-700 dark:text-slate-200'}`}>
+                    {getMissionPrimaryLabel(m)}
+                  </p>
+                  <p className={`text-[9px] truncate font-medium leading-tight mt-0.5 ${isActive ? 'text-white/60' : 'text-slate-400'}`}>
+                    {getMissionSecondaryLabel(m)}
+                  </p>
+                </div>
 
-              {/* Badge statut discret */}
-              <span className={`flex-shrink-0 text-[7px] font-black px-1.5 py-0.5 rounded-full ${isActive ? 'bg-white/20 text-white' : cfg.badge}`}>
-                {status === 'certified' ? '✓' : status === 'pending' ? '⏳' : '~'}
-              </span>
+                {/* Badge statut discret */}
+                <span className={`flex-shrink-0 text-[7px] font-black px-1.5 py-0.5 rounded-full ${isActive ? 'bg-white/20 text-white' : cfg.badge}`}>
+                  {status === 'certified' ? '✓' : status === 'pending' ? '⏳' : '~'}
+                </span>
+              </button>
 
               {/* Bouton supprimer au hover */}
               <button
                 onClick={(e) => { e.stopPropagation(); onDeleteMission(m.id, getMissionPrimaryLabel(m)); }}
-                className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-md opacity-0 group-hover:opacity-100 transition-all"
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-md opacity-0 group-hover:opacity-100 transition-all z-10"
                 title="Supprimer"
               >
                 <Trash2 size={9} />

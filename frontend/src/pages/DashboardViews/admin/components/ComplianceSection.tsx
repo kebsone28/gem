@@ -115,8 +115,8 @@ export const ComplianceSection: React.FC<ComplianceSectionProps> = ({ metrics })
                     </div>
                     <div className="h-1.5 w-full rounded-full bg-white/5 overflow-hidden">
                       <div
-                        className={`h-full ${item.color} rounded-full transition-all duration-1000 shadow-[0_0_10px_rgba(255,255,255,0.1)]`}
-                        style={{ width: `${percent}%` }}
+                        className={`h-full ${item.color} rounded-full transition-all duration-1000 shadow-[0_0_10px_rgba(255,255,255,0.1)] compliance-bar`}
+                        style={{ '--progress-width': `${percent}%` } as React.CSSProperties}
                       />
                     </div>
                   </div>

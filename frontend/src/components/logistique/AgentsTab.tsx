@@ -227,7 +227,7 @@ export default function AgentsTab({ searchQuery = '' }: AgentsTabProps) {
                           >
                             <div
                               className="h-full bg-gradient-to-r from-primary to-blue-400"
-                              style={{ width: `${Math.min((agent.avgTime / 60) * 100, 100)}%` }}
+                              style={{ '--progress': `${Math.min((agent.avgTime / 60) * 100, 100)}%` } as React.CSSProperties}
                             />
                           </div>
                         </div>

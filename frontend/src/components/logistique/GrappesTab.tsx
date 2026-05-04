@@ -172,7 +172,7 @@ export default function GrappesTab() {
                 <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
                     <div
                       className="h-full bg-blue-600 shadow-[0_0_10px_rgba(37,99,235,0.5)] transition-all duration-1000"
-                      style={{ width: `${score}%` }}
+                      style={{ '--progress': `${score}%` } as React.CSSProperties}
                     />
                 </div>
 

@@ -1436,7 +1436,10 @@ export const importInternalKoboXlsForm = async (req, res) => {
     }
 };
 
-function buildSubmissionWhere(organizationId, query = {}) {
+function buildSubmissionWhere(user, query = {}) {
+    const { organizationId, id: userId, role: rawUserRole } = user;
+    const userRole = (rawUserRole || '').toUpperCase();
+
     const {
         householdId,
         numeroOrdre,
@@ -1453,6 +1456,12 @@ function buildSubmissionWhere(organizationId, query = {}) {
     } = query;
     const numeroVariants = normalizeNumeroVariants(numeroOrdre);
     const filters = [{ organizationId }];
+
+    // --- ISOLATION STRICTE DES DONNÉES ---
+    // Chaque utilisateur ne voit que ses propres soumissions, sauf s'il est administrateur ou validateur
+    if (!['DG_PROQUELEC', 'DIRECTEUR', 'ADMIN', 'ADMIN_PROQUELEC'].includes(userRole) && user.email !== 'admingem') {
+        filters.push({ submittedById: userId });
+    }
 
     if (householdId) filters.push({ householdId: String(householdId) });
     if (numeroVariants.length > 0) {
@@ -1547,7 +1556,7 @@ export const exportInternalKoboSubmissions = async (req, res) => {
         const { organizationId } = req.user;
         const format = String(req.query.format || 'csv').toLowerCase();
         const take = Math.min(Math.max(parseInt(req.query.limit, 10) || 500, 1), 5000);
-        const where = buildSubmissionWhere(organizationId, req.query);
+        const where = buildSubmissionWhere(req.user, req.query);
         const submissions = await prisma.internalKoboSubmission.findMany({
             where,
             include: internalKoboSubmissionInclude(),
@@ -1603,7 +1612,8 @@ export const exportInternalKoboSubmissions = async (req, res) => {
 
 export const reviewInternalKoboSubmission = async (req, res) => {
     try {
-        const { organizationId, id: userId } = req.user;
+        const { organizationId, id: userId, role: rawUserRole } = req.user;
+        const userRole = (rawUserRole || '').toUpperCase();
         const { id } = req.params;
         const nextStatus = String(req.body.status || '').trim().toLowerCase();
         const note = String(req.body.note || '').trim();
@@ -1615,7 +1625,16 @@ export const reviewInternalKoboSubmission = async (req, res) => {
             });
         }
 
-        const current = await prisma.internalKoboSubmission.findFirst({ where: { id, organizationId } });
+        const current = await prisma.internalKoboSubmission.findFirst({
+            where: {
+                id,
+                organizationId,
+                // Restriction d'appartenance pour les non-admins
+                ...(!['DG_PROQUELEC', 'DIRECTEUR', 'ADMIN', 'ADMIN_PROQUELEC'].includes(userRole) && req.user.email !== 'admingem'
+                    ? { submittedById: userId }
+                    : {})
+            }
+        });
         if (!current) {
             return res.status(404).json({ success: false, message: 'Internal Kobo submission not found' });
         }
@@ -1709,90 +1728,11 @@ export const reviewInternalKoboSubmission = async (req, res) => {
 
 export const listInternalKoboSubmissions = async (req, res) => {
     try {
-        const { organizationId } = req.user;
-        const {
-            householdId,
-            numeroOrdre,
-            status,
-            syncStatus,
-            role,
-            formKey,
-            submittedById,
-            agent,
-            clientSubmissionId,
-            q,
-            from,
-            to,
-            limit = '100',
-            offset = '0'
-        } = req.query;
+        const { limit = '100', offset = '0' } = req.query;
         const take = Math.min(Math.max(parseInt(limit, 10) || 100, 1), 500);
         const skip = Math.min(Math.max(parseInt(offset, 10) || 0, 0), 100000);
-        const numeroVariants = normalizeNumeroVariants(numeroOrdre);
-        const filters = [{ organizationId }];
 
-        if (householdId) filters.push({ householdId: String(householdId) });
-        if (numeroVariants.length > 0) {
-            filters.push({
-                OR: numeroVariants.map((value) => ({ numeroOrdre: { equals: value, mode: 'insensitive' } }))
-            });
-        }
-        if (status) filters.push({ status: String(status) });
-        if (syncStatus) filters.push({ syncStatus: String(syncStatus) });
-        if (role) filters.push({ role: String(role) });
-        if (formKey) filters.push({ formKey: String(formKey) });
-        if (submittedById) filters.push({ submittedById: String(submittedById) });
-        if (agent) {
-            const agentSearch = String(agent).trim();
-            if (agentSearch) {
-                filters.push({
-                    submittedBy: {
-                        is: {
-                            OR: [
-                                { name: { contains: agentSearch, mode: 'insensitive' } },
-                                { email: { contains: agentSearch, mode: 'insensitive' } }
-                            ]
-                        }
-                    }
-                });
-            }
-        }
-        if (clientSubmissionId) filters.push({ clientSubmissionId: String(clientSubmissionId) });
-
-        const savedAtFilter = {};
-        if (from) {
-            const fromDate = new Date(String(from));
-            if (!Number.isNaN(fromDate.getTime())) savedAtFilter.gte = fromDate;
-        }
-        if (to) {
-            const toDate = new Date(String(to));
-            if (!Number.isNaN(toDate.getTime())) savedAtFilter.lte = toDate;
-        }
-        if (Object.keys(savedAtFilter).length > 0) filters.push({ savedAt: savedAtFilter });
-
-        const search = String(q || '').trim();
-        if (search) {
-            filters.push({
-                OR: [
-                    { clientSubmissionId: { contains: search, mode: 'insensitive' } },
-                    { numeroOrdre: { contains: search, mode: 'insensitive' } },
-                    { role: { contains: search, mode: 'insensitive' } },
-                    {
-                        household: {
-                            is: {
-                                OR: [
-                                    { name: { contains: search, mode: 'insensitive' } },
-                                    { phone: { contains: search, mode: 'insensitive' } },
-                                    { village: { contains: search, mode: 'insensitive' } }
-                                ]
-                            }
-                        }
-                    }
-                ]
-            });
-        }
-
-        const where = filters.length === 1 ? filters[0] : { AND: filters };
+        const where = buildSubmissionWhere(req.user, req.query);
 
         const [submissions, totalCount] = await Promise.all([
             prisma.internalKoboSubmission.findMany({
@@ -1889,13 +1829,17 @@ export const listInternalKoboSubmissions = async (req, res) => {
 
 export const getInternalKoboDiagnostics = async (req, res) => {
     try {
-        const { organizationId } = req.user;
-        const recentSince = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        const where = buildSubmissionWhere(req.user, req.query);
+
+        const last24hDate = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
         const [total, last24h, latestSubmissions, mappings, queueReports] = await Promise.all([
-            prisma.internalKoboSubmission.count({ where: { organizationId } }),
-            prisma.internalKoboSubmission.count({ where: { organizationId, savedAt: { gte: recentSince } } }),
+            prisma.internalKoboSubmission.count({ where }),
+            prisma.internalKoboSubmission.count({
+                where: { ...where, savedAt: { gte: last24hDate } }
+            }),
             prisma.internalKoboSubmission.findMany({
-                where: { organizationId },
+                where,
                 orderBy: { savedAt: 'desc' },
                 take: 1000,
                 select: {
@@ -2059,11 +2003,19 @@ export const getInternalKoboDiagnostics = async (req, res) => {
 
 export const getInternalKoboSubmission = async (req, res) => {
     try {
-        const { organizationId } = req.user;
+        const { organizationId, id: userId, role: rawUserRole } = req.user;
+        const userRole = (rawUserRole || '').toUpperCase();
         const { id } = req.params;
 
         const submission = await prisma.internalKoboSubmission.findFirst({
-            where: { id, organizationId },
+            where: {
+                id,
+                organizationId,
+                // Restriction d'appartenance pour les non-admins
+                ...(!['DG_PROQUELEC', 'DIRECTEUR', 'ADMIN', 'ADMIN_PROQUELEC'].includes(userRole) && req.user.email !== 'admingem'
+                    ? { submittedById: userId }
+                    : {})
+            },
             include: {
                 household: {
                     select: {

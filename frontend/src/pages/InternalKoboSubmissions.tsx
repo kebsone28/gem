@@ -4424,7 +4424,10 @@ export default function InternalKoboSubmissions() {
                                       <span className="font-black text-slate-500">{row.value}</span>
                                     </div>
                                     <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
-                                      <div className="h-full rounded-full bg-cyan-500" style={{ width: `${percent}%` }} />
+                                      <div
+                                        className="h-full rounded-full bg-cyan-500"
+                                        style={{ '--progress': `${percent}%` } as React.CSSProperties}
+                                      />
                                     </div>
                                   </div>
                                 );
@@ -4560,7 +4563,7 @@ export default function InternalKoboSubmissions() {
                                     ? 'border-blue-700 bg-blue-600 text-white'
                                     : 'border-white bg-cyan-500 text-white hover:bg-blue-600'
                                 }`}
-                                style={{ left: `${left}%`, top: `${top}%` }}
+                                style={{ '--left': `${left}%`, '--top': `${top}%` } as React.CSSProperties}
                               >
                                 <MapPin size={16} />
                               </button>

@@ -89,7 +89,7 @@ export const HouseholdStatusTimeline: React.FC<HouseholdStatusTimelineProps> = R
         <div className="h-2 overflow-hidden rounded-full bg-white/[0.08]">
           <div
             className="h-full rounded-full bg-gradient-to-r from-sky-500 to-emerald-400 shadow-[0_0_18px_rgba(52,211,153,0.35)] transition-all duration-500"
-            style={{ width: `${progressPercent}%` }}
+            style={{ '--progress': `${progressPercent}%` } as React.CSSProperties}
           />
         </div>
       </div>

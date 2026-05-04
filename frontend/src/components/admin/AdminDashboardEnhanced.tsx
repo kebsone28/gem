@@ -1,4 +1,4 @@
-﻿ 
+
 /**
  * AdminDashboardEnhanced - Console d'Administration avec paramètres ajustables
  * Exemple d'implémentation avec ConsoleSettings et useConsoleLayout
@@ -69,7 +69,7 @@ export const AdminDashboardEnhanced: React.FC = () => {
                 </p>
               </div>
             </div>
-            
+
             {/* Status Badge */}
             <div className="px-4 py-2 rounded-lg bg-blue-500/20 border border-blue-500/50">
               <p className="text-xs font-bold text-blue-400 uppercase tracking-wider">
@@ -150,7 +150,7 @@ export const AdminDashboardEnhanced: React.FC = () => {
                       <div className="w-24 h-2 rounded-full bg-slate-700">
                         <div
                           className="h-full rounded-full bg-gradient-to-r from-blue-500 to-blue-400"
-                          style={{ width: `${teamMetrics[i]}%` }}
+                          style={{ '--progress': `${teamMetrics[i]}%` } as React.CSSProperties}
                         />
                       </div>
                       <span className="text-sm font-bold text-blue-400 w-10">

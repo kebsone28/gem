@@ -68,7 +68,7 @@ export const MissionKPIBoard: React.FC<MissionKPIBoardProps> = ({
                         ? 'bg-orange-500'
                         : 'bg-rose-500'
                 }`}
-                style={{ width: `${completionRate}%` }}
+                style={{ '--progress': `${completionRate}%` } as React.CSSProperties}
               />
             </div>
             <div className="text-[9px] text-slate-600 dark:text-slate-400 leading-tight">

@@ -57,6 +57,9 @@ backend/clear_cache.js
 backend/discover_columns.js
 backend/find_grappe_keys.js
 backend/reset_pass.js
+backend/reset-*.cjs
+backend/test-*.cjs
+backend/test-*.mjs
 backend/update_project_id.js
 backend/verification_sync_automation.js
 backend/scripts/*.js

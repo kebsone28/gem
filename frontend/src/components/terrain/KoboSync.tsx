@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState } from 'react';
 import logger from '../../utils/logger';
 import { RefreshCw, Settings, CloudDownload, CheckCircle2, AlertCircle } from 'lucide-react';
@@ -134,7 +134,7 @@ export default function KoboSync({ onImport }: KoboSyncProps) {
           <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden border border-white/5">
             <div 
               className="h-full bg-gradient-to-r from-blue-600 to-indigo-500 shadow-[0_0_10px_rgba(59,130,246,0.5)] transition-all duration-700 ease-out"
-              style={{ width: `${((syncStep + 1) / steps.length) * 100}%` }}
+              style={{ '--progress': `${((syncStep + 1) / steps.length) * 100}%` } as React.CSSProperties}
             />
           </div>
         </div>

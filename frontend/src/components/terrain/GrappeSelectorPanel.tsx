@@ -203,8 +203,8 @@ export function GrappeSelectorPanel({
                     }`}
                   >
                     <div
-                      className="w-1.5 h-10 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: color }}
+                      className="w-1.5 h-10 rounded-full flex-shrink-0 map-item-indicator"
+                      style={{ '--item-bg-color': color } as React.CSSProperties}
                     />
                     <div className="flex-1 min-w-0">
                       <p className="text-[11px] font-black uppercase tracking-tight truncate">
