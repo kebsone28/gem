@@ -141,7 +141,7 @@ export default function Login() {
       const accessToken = token1 || token2;
       login(user.email, user.role, user.name, user.organization, user.id, accessToken, user.organizationConfig, user.permissions);
       navigate('/dashboard');
-    } catch (err: any) {
+    } catch {
       setError('Réponse de sécurité incorrecte.');
     } finally {
       setLoading(false);
@@ -169,7 +169,7 @@ export default function Login() {
       });
       setRecoveryInfo('Mot de passe réinitialisé.');
       setStep('credentials');
-    } catch (err: any) {
+    } catch {
       setError('Échec de la réinitialisation.');
     } finally {
       setLoading(false);
