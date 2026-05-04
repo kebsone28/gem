@@ -41,9 +41,7 @@ import {
 } from '../services/localDeployAgent';
 import { computeTheoreticalNeeds, getAvailablePlanningRegions } from '../services/planningDomain';
 import { exportProjectConfig, importProjectConfig } from '../services/configExportService';
-import TeamsTab from './settings/TeamsTab';
-import CostsTab from './settings/CostsTab';
-import RegionsTab from './settings/RegionsTab';
+import ChargesAndResourcesTab from './settings/ChargesAndResourcesTab';
 
 // Helper stable id generator (defined outside components to avoid impure calls during render)
 const makeId = (prefix = 'id') =>
@@ -88,15 +86,13 @@ type ProjectData = Record<string, unknown> & {
 };
 
 type TabType =
-  | 'teams'
-  | 'costs'
-  | 'regions'
+  | 'charges'
   | 'kobo'
   | 'data'
   | 'system';
 
 export default function Settings() {
-  const [activeTab, setActiveTab] = useState<TabType>('teams');
+  const [activeTab, setActiveTab] = useState<TabType>('charges');
   const [isDeploying, setIsDeploying] = useState(false);
   const [localAgentState, setLocalAgentState] = useState<{
     checked: boolean;
@@ -126,7 +122,7 @@ export default function Settings() {
 
   useEffect(() => {
     if (!canAccessAdminOnlyTabs && ['kobo', 'data', 'system'].includes(activeTab)) {
-      setActiveTab('teams');
+      setActiveTab('charges');
     }
   }, [activeTab, canAccessAdminOnlyTabs]);
 
@@ -274,9 +270,7 @@ export default function Settings() {
       : 'DÉPLOYER DEPUIS GITHUB';
 
   const tabs = [
-    { id: 'teams', label: 'Équipes', icon: Users },
-    { id: 'costs', label: 'Tarifs', icon: DollarSign },
-    { id: 'regions', label: 'Régions & Affectations', icon: Layers },
+    { id: 'charges', label: 'Charges & Ressources', icon: DollarSign },
     ...(canAccessAdminOnlyTabs
       ? [
           { id: 'kobo', label: 'KoBo', icon: CloudDownload },
@@ -398,21 +392,11 @@ export default function Settings() {
                 <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/5 blur-[100px] pointer-events-none rounded-full" />
 
                 <div className="relative z-10">
-                  {activeTab === 'teams' && (
-                    <TeamsTab
-                      project={project}
-                      households={households}
-                      householdsError={householdsError}
-                    />
-                  )}
-                  {activeTab === 'costs' && (
-                    <CostsTab project={project} onUpdate={updateProject} />
-                  )}
-                  {activeTab === 'regions' && (
-                    <RegionsTab
+                  {activeTab === 'charges' && (
+                    <ChargesAndResourcesTab
                       project={project}
                       households={households || []}
-                      onUpdate={updateProject}
+                      householdsError={householdsError}
                     />
                   )}
                   {canAccessAdminOnlyTabs && activeTab === 'kobo' && (

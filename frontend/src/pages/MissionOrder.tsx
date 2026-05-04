@@ -4,7 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useAuth } from '../contexts/AuthContext';
 import * as safeStorage from '../utils/safeStorage';
-import { ClipboardList, MapPin, KeyRound, ShieldCheck } from 'lucide-react';
+import { ClipboardList, MapPin, KeyRound, ShieldCheck, PanelLeftClose, PanelLeftOpen, Maximize2, Minimize2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import logger from '../utils/logger';
 import * as missionApprovalService from '../services/missionApprovalService';
@@ -118,6 +118,15 @@ export default function MissionOrder() {
   const [showAudit, setShowAudit] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [focusMode, setFocusMode] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try { return localStorage.getItem('gem_mission_sidebar_collapsed') === '1'; } catch { return false; }
+  });
+  const toggleSidebar = () => setSidebarCollapsed(prev => {
+    const next = !prev;
+    try { localStorage.setItem('gem_mission_sidebar_collapsed', next ? '1' : '0'); } catch {}
+    return next;
+  });
   const autosaveTimerRef = useRef<number | null>(null);
   // Toujours initialiser à 'prep' pour éviter l'accès prématuré à state
   const [activeTab, setActiveTab] = useState<'prep' | 'report' | 'approval'>('prep');
@@ -837,62 +846,124 @@ export default function MissionOrder() {
         </div>
 
         {/* GRILLE PRINCIPALE */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 lg:gap-8 relative z-10">
-          {/* SIDEBAR : COL-3 */}
-          <div className="lg:col-span-3 no-print">
-            <MissionListSidebar
-              savedMissions={savedMissions}
-              currentMissionId={state.currentMissionId}
-              onLoadMission={handleLoadMission}
-              onDeleteMission={handleDeleteMission}
-              isCertifiedByWorkflow={effectiveIsCertified}
-            />
-          </div>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 lg:gap-6 relative z-10">
 
-          {/* CONTENU : COL-9 */}
-          <div className="lg:col-span-9">
-            <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 sm:gap-6 lg:gap-8 items-start">
-              {/* FORMULAIRE : COL-8 (interne) */}
-              <div className="xl:col-span-8 space-y-4 sm:space-y-6 lg:space-y-8">
+          {/* SIDEBAR GAUCHE : collapsible + sticky + persistante */}
+          {!focusMode && (
+            <div className={`no-print transition-all duration-300 ${sidebarCollapsed ? 'lg:col-span-1' : 'lg:col-span-2'}`}>
+              <div className="sticky top-4">
+                {/* Toggle button */}
+                <div className="flex items-center justify-between mb-3">
+                  {!sidebarCollapsed && (
+                    <span className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Missions</span>
+                  )}
+                  <button
+                    onClick={toggleSidebar}
+                    className="ml-auto p-1.5 rounded-lg text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10 transition-all"
+                    title={sidebarCollapsed ? 'Afficher la liste' : 'Réduire la liste'}
+                  >
+                    {sidebarCollapsed ? <PanelLeftOpen size={15} /> : <PanelLeftClose size={15} />}
+                  </button>
+                </div>
+                {!sidebarCollapsed ? (
+                  <MissionListSidebar
+                    savedMissions={savedMissions}
+                    currentMissionId={state.currentMissionId}
+                    onLoadMission={handleLoadMission}
+                    onDeleteMission={handleDeleteMission}
+                    isCertifiedByWorkflow={effectiveIsCertified}
+                  />
+                ) : (
+                  /* Mini sidebar – points de statut */
+                  <div className="space-y-1.5 max-h-[80vh] overflow-y-auto custom-scrollbar">
+                    {savedMissions.slice(0, 30).map((m: any) => {
+                      const isActive = state.currentMissionId === m.id;
+                      const isCert = m.isCertified || m.data?.isCertified || m.status === 'certified' || m.status === 'approuvee';
+                      const isPend = !isCert && (m.isSubmitted || m.data?.isSubmitted || m.status === 'soumise');
+                      const dotColor = isCert ? 'bg-emerald-500' : isPend ? 'bg-amber-500' : 'bg-slate-400';
+                      return (
+                        <button
+                          key={m.id}
+                          onClick={() => handleLoadMission(m)}
+                          title={m.purpose || m.title || m.orderNumber || 'Mission'}
+                          className={`w-full flex items-center justify-center p-2 rounded-xl transition-all ${
+                            isActive ? 'bg-indigo-600 shadow-lg shadow-indigo-500/20' : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 hover:border-indigo-400/40'
+                          }`}
+                        >
+                          <span className={`w-2 h-2 rounded-full ${isActive ? 'bg-white' : dotColor}`} />
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* CONTENU PRINCIPAL */}
+          <div className={`transition-all duration-300 ${
+            focusMode ? 'lg:col-span-12' : sidebarCollapsed ? 'lg:col-span-11' : 'lg:col-span-10'
+          }`}>
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 sm:gap-6 lg:gap-6 items-start">
+              {/* FORMULAIRE : s'étend selon le focus mode */}
+              <div className={`space-y-4 sm:space-y-6 lg:space-y-6 ${
+                focusMode ? 'xl:col-span-12' : 'xl:col-span-9'
+              }`}>
                 {(effectiveIsSubmitted || effectiveIsCertified) && (
                   <MissionApprovalStatusBanner workflow={workflow} />
                 )}
 
-                {/* ONGLETS PRÉPARATION / RAPPORT / APPROBATION */}
-                <div className="flex gap-2 mb-4 sm:mb-6 border-b-2 border-slate-300 dark:border-slate-700 pb-2 overflow-x-auto no-scrollbar">
+                {/* BARRE ONGLETS PILL + BOUTON FOCUS */}
+                <div className="flex items-center gap-2 mb-5">
+                  {/* Segmented control */}
+                  <div className="flex-1 flex gap-1 p-1 bg-slate-100 dark:bg-slate-800/60 rounded-2xl min-w-0 overflow-x-auto no-scrollbar">
+                    <button
+                      onClick={() => setActiveTab('prep')}
+                      className={`flex-1 shrink-0 px-3 py-2 text-[11px] font-black uppercase tracking-wide rounded-xl transition-all duration-200 whitespace-nowrap ${
+                        activeTab === 'prep'
+                          ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-md shadow-black/10'
+                          : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                      }`}
+                    >
+                      📋 Préparation
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('report')}
+                      className={`flex-1 shrink-0 px-3 py-2 text-[11px] font-black uppercase tracking-wide rounded-xl transition-all duration-200 whitespace-nowrap ${
+                        activeTab === 'report'
+                          ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-md shadow-black/10'
+                          : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                      }`}
+                    >
+                      📝 Rapport
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('approval')}
+                      className={`flex-1 shrink-0 px-3 py-2 text-[11px] font-black uppercase tracking-wide rounded-xl transition-all duration-200 whitespace-nowrap ${
+                        activeTab === 'approval'
+                          ? 'bg-white dark:bg-slate-900 text-amber-600 dark:text-amber-400 shadow-md shadow-black/10'
+                          : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                      }`}
+                    >
+                      ✅ Approbation
+                    </button>
+                  </div>
+                  {/* Bouton Focus Mode */}
                   <button
-                    onClick={() => setActiveTab('prep')}
-                    className={`shrink-0 min-w-[150px] sm:min-w-[180px] px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base font-extrabold uppercase tracking-[0.12em] sm:tracking-wider rounded-t-lg focus:outline-none transition-all duration-200
-                      ${activeTab === 'prep'
-                        ? 'text-indigo-600 dark:text-indigo-300 border-b-4 border-indigo-500 bg-white dark:bg-slate-900 shadow-lg'
-                        : 'text-slate-500 dark:text-slate-400 hover:text-indigo-500 dark:hover:text-indigo-400 bg-transparent'}
-                    `}
+                    onClick={() => setFocusMode(f => !f)}
+                    className={`shrink-0 p-2 rounded-xl transition-all border ${
+                      focusMode
+                        ? 'bg-indigo-600 text-white border-indigo-500 shadow-lg shadow-indigo-500/20'
+                        : 'text-slate-400 hover:text-indigo-400 border-slate-200 dark:border-white/10 hover:border-indigo-400/50 bg-white dark:bg-slate-900'
+                    }`}
+                    title={focusMode ? 'Quitter le mode plein écran' : 'Mode plein écran'}
                   >
-                    PRÉPARATION
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('report')}
-                    className={`shrink-0 min-w-[180px] sm:min-w-[220px] px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base font-extrabold uppercase tracking-[0.12em] sm:tracking-wider rounded-t-lg focus:outline-none transition-all duration-200
-                      ${activeTab === 'report'
-                        ? 'text-emerald-600 dark:text-emerald-300 border-b-4 border-emerald-500 bg-white dark:bg-slate-900 shadow-lg'
-                        : 'text-slate-500 dark:text-slate-400 hover:text-emerald-500 dark:hover:text-emerald-400 bg-transparent'}
-                    `}
-                  >
-                    RAPPORT POST-MISSION
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('approval')}
-                    className={`shrink-0 min-w-[150px] sm:min-w-[180px] px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base font-extrabold uppercase tracking-[0.12em] sm:tracking-wider rounded-t-lg focus:outline-none transition-all duration-200
-                      ${activeTab === 'approval'
-                        ? 'text-amber-600 dark:text-amber-300 border-b-4 border-amber-500 bg-white dark:bg-slate-900 shadow-lg'
-                        : 'text-slate-500 dark:text-slate-400 hover:text-amber-500 dark:hover:text-amber-400 bg-transparent'}
-                    `}
-                  >
-                    APPROBATION
+                    {focusMode ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
                   </button>
                 </div>
 
                 {/* CONTENU SELON L'ONGLET */}
+
                 {activeTab === 'prep' && (
                   <>
                 <MissionInfoSection
@@ -1269,8 +1340,10 @@ export default function MissionOrder() {
                 )}
               </div>
 
-              {/* WIDGETS : COL-4 (interne) */}
-              <div className="xl:col-span-4 space-y-4 sm:space-y-6 lg:space-y-8">
+              {/* WIDGETS : COL-3 sticky – masqués en focus mode */}
+              {!focusMode && (
+              <div className="xl:col-span-3 space-y-4 sm:space-y-6 lg:space-y-6">
+                <div className="sticky top-4">
                 <MissionBudgetPanel
                   totalFrais={totalFrais}
                   projectBudget={projectBudget}
@@ -1291,7 +1364,9 @@ export default function MissionOrder() {
                   budgetVariance={budgetVariance}
                 />
               </WidgetErrorBoundary>
+                </div>
               </div>
+              )}
             </div>
           </div>
         </div>

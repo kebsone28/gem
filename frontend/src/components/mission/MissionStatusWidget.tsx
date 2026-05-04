@@ -1,16 +1,14 @@
-﻿/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import React from 'react';
 import {
-  AlertCircle,
   CheckCircle2,
   Clock,
   Zap,
   RefreshCw,
-  Database,
   Activity,
-  TrendingUp,
-  TrendingDown,
   ShieldCheck,
+  Users,
+  AlertTriangle,
 } from 'lucide-react';
 import { getMissionReadiness } from '../../services/missionValidation';
 import { verifyIntegrity } from '../../utils/crypto';
@@ -65,198 +63,119 @@ export const MissionStatusWidget: React.FC<MissionStatusWidgetProps> = ({
     isSubmitted
   );
 
-  const statusConfig: Record<
-    string,
-    { label: string; color: string; icon: React.ElementType; bgGlow: string }
-  > = {
-    draft: {
-      label: 'BROUILLON',
-      color: 'bg-slate-500',
-      icon: Clock,
-      bgGlow: 'bg-slate-500/10',
-    },
-    ready: {
-      label: 'BROUILLON',
-      color: 'bg-indigo-500',
-      icon: Clock,
-      bgGlow: 'bg-indigo-500/10',
-    },
-    certified: {
-      label: 'OFFICIELLE',
-      color: 'bg-emerald-600',
-      icon: CheckCircle2,
-      bgGlow: 'bg-emerald-500/10',
-    },
-    submitted: {
-      label: 'SOUMISE',
-      color: 'bg-amber-500',
-      icon: Clock,
-      bgGlow: 'bg-amber-500/10',
-    },
-    executed: {
-      label: 'EXÉCUTÉE',
-      color: 'bg-emerald-500',
-      icon: CheckCircle2,
-      bgGlow: 'bg-emerald-500/10',
-    },
+  const statusConfig: Record<string, { label: string; color: string; dot: string; glow: string }> = {
+    draft:     { label: 'Brouillon', color: 'text-slate-400',  dot: 'bg-slate-500',   glow: 'bg-slate-500/10' },
+    ready:     { label: 'Prêt',      color: 'text-indigo-400', dot: 'bg-indigo-500',  glow: 'bg-indigo-500/10' },
+    submitted: { label: 'Soumise',   color: 'text-amber-400',  dot: 'bg-amber-500',   glow: 'bg-amber-500/10' },
+    certified: { label: 'Officielle',color: 'text-emerald-400',dot: 'bg-emerald-500', glow: 'bg-emerald-500/10' },
+    executed:  { label: 'Exécutée', color: 'text-emerald-400', dot: 'bg-emerald-400', glow: 'bg-emerald-500/10' },
   };
 
-  const healthUI = {
-    optimal: {
-      color: 'text-emerald-500',
-      bg: 'bg-emerald-500/10',
-      border: 'border-emerald-500/20',
-      label: 'Optimal',
-    },
-    warning: {
-      color: 'text-amber-500',
-      bg: 'bg-amber-500/10',
-      border: 'border-amber-500/20',
-      label: 'Vigilance',
-    },
-    critical: {
-      color: 'text-rose-500',
-      bg: 'bg-rose-500/10',
-      border: 'border-rose-500/20',
-      label: 'Critique',
-    },
+  const healthColors = {
+    optimal:  { text: 'text-emerald-400', bar: 'bg-emerald-500', bg: 'bg-emerald-500/10', label: 'Optimal' },
+    warning:  { text: 'text-amber-400',   bar: 'bg-amber-400',   bg: 'bg-amber-500/10',   label: 'Vigilance' },
+    critical: { text: 'text-rose-400',    bar: 'bg-rose-500',    bg: 'bg-rose-500/10',     label: 'Critique' },
   }[healthStatus];
 
-  const config = statusConfig[status] || statusConfig.draft;
+  const cfg = statusConfig[status] || statusConfig.draft;
+  const totalIndemnites = members.reduce((s, m) => s + (m.dailyIndemnity || 0) * (m.days || 1), 0);
 
   return (
-    <div className="glass-card !p-5 !rounded-[1.5rem] space-y-5 relative overflow-hidden group">
-      {/* Background Glow */}
-      <div
-        className={`absolute top-0 right-0 w-32 h-32 ${config.bgGlow} filter blur-3xl rounded-full -mr-16 -mt-16 transition-all group-hover:scale-110`}
-      />
+    <div className="glass-card !p-4 !rounded-2xl space-y-3 relative overflow-hidden">
+      {/* Glow */}
+      <div className={`absolute -top-6 -right-6 w-24 h-24 ${cfg.glow} blur-3xl rounded-full pointer-events-none`} />
 
-      {/* Sync Status Header */}
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2">
-          <Database size={12} className={isDirty ? 'text-amber-500' : 'text-emerald-500'} />
-          <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none">
-            {isDirty ? 'Modifié' : 'Synchronisé'}
+      {/* Header : sync + statut */}
+      <div className="flex items-center justify-between relative z-10">
+        <div className="flex items-center gap-1.5">
+          {isSyncing
+            ? <RefreshCw size={10} className="text-indigo-400 animate-spin" />
+            : <span className={`w-1.5 h-1.5 rounded-full ${isDirty ? 'bg-amber-400' : 'bg-emerald-500'}`} />
+          }
+          <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">
+            {isSyncing ? 'Sync…' : isDirty ? 'Modifié' : 'Synchronisé'}
           </span>
         </div>
-        {isSyncing && <RefreshCw size={12} className="text-indigo-500 animate-spin" />}
+        <div className="flex items-center gap-1.5">
+          <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
+          <span className={`text-[9px] font-black uppercase tracking-wider ${cfg.color}`}>{cfg.label}</span>
+        </div>
       </div>
 
-      {/* Integrity Badge (Phase 4) */}
+      {/* Health Score compact */}
+      <div className={`flex items-center gap-3 px-3 py-2 rounded-xl ${healthColors.bg} relative z-10`}>
+        <div className="flex-1">
+          <div className="flex justify-between items-baseline mb-1">
+            <span className="text-[8px] font-black uppercase tracking-widest text-slate-500">Préparation</span>
+            <span className={`text-sm font-black ${healthColors.text}`}>
+              {effectiveCertified ? 100 : percentage.toFixed(0)}%
+            </span>
+          </div>
+          <div className="h-1 bg-slate-800/30 dark:bg-white/5 rounded-full overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-700 ${healthColors.bar}`}
+              style={{ width: `${effectiveCertified ? 100 : percentage}%` }}
+            />
+          </div>
+        </div>
+        <Activity size={14} className={`${healthColors.text} flex-shrink-0`} />
+      </div>
+
+      {/* KPIs inline */}
+      <div className="grid grid-cols-2 gap-2 relative z-10">
+        <div className="px-3 py-2 bg-slate-50 dark:bg-white/4 rounded-xl">
+          <div className="flex items-center gap-1 mb-0.5">
+            <Users size={9} className="text-slate-400" />
+            <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Effectif</span>
+          </div>
+          <span className="text-sm font-black text-slate-900 dark:text-white">{members.length}</span>
+          <span className="text-[8px] text-slate-400 font-bold ml-1">pers.</span>
+        </div>
+        <div className="px-3 py-2 bg-slate-50 dark:bg-white/4 rounded-xl">
+          <div className="flex items-center gap-1 mb-0.5">
+            <Zap size={9} className={budgetVariance > 10 ? 'text-rose-400' : 'text-emerald-400'} />
+            <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Indem.</span>
+          </div>
+          <span className="text-[10px] font-black text-slate-900 dark:text-white font-mono">
+            {new Intl.NumberFormat('fr-FR', { notation: 'compact' }).format(totalIndemnites)}
+          </span>
+          <span className="text-[7px] text-slate-400 font-bold ml-1">XOF</span>
+        </div>
+      </div>
+
+      {/* Intégrité */}
       {isIntegrityValid !== null && (
-        <div className={`p-2 rounded-xl flex items-center justify-between gap-3 ${isIntegrityValid ? 'bg-indigo-500/10 border-indigo-500/20' : 'bg-rose-500/10 border-rose-500/20'} border border-dashed`}>
-          <div className="flex items-center gap-1.5">
-            <ShieldCheck size={12} className={isIntegrityValid ? 'text-indigo-500' : 'text-rose-500'} />
-            <span className={`text-[8px] font-black uppercase tracking-widest ${isIntegrityValid ? 'text-indigo-500' : 'text-rose-500'}`}>
-              {isIntegrityValid ? 'Intégrité Certifiée' : 'Données Altérées'}
-            </span>
-          </div>
-          {isIntegrityValid && <Zap size={8} className="text-indigo-500 animate-pulse" />}
+        <div className={`flex items-center gap-2 px-2.5 py-1.5 rounded-xl border border-dashed relative z-10 ${
+          isIntegrityValid ? 'bg-indigo-500/8 border-indigo-500/20' : 'bg-rose-500/8 border-rose-500/20'
+        }`}>
+          <ShieldCheck size={10} className={isIntegrityValid ? 'text-indigo-400' : 'text-rose-400'} />
+          <span className={`text-[8px] font-black uppercase tracking-widest ${isIntegrityValid ? 'text-indigo-400' : 'text-rose-400'}`}>
+            {isIntegrityValid ? 'Intégrité OK' : 'Données altérées'}
+          </span>
         </div>
       )}
 
-      {/* Health Score Central KPI */}
-      <div
-        className={`p-3 rounded-[1.5rem] ${healthUI.bg} ${healthUI.border} border border-dashed flex flex-col items-center justify-center relative overflow-hidden`}
-      >
-        <div className="absolute top-2 right-3">
-          <Activity size={12} className={healthUI.color} />
-        </div>
-        <span className="text-[8px] font-black text-slate-500 uppercase tracking-[0.2em] mb-0.5">
-          Health Score
-        </span>
-        <div className={`text-3xl font-black ${healthUI.color} tracking-tighter`}>
-          {healthScore}
-          <span className="text-xs opacity-50 ml-0.5">%</span>
-        </div>
-        <span className={`text-[8px] font-bold uppercase tracking-widest mt-0.5 ${healthUI.color}`}>
-          Performance : {healthUI.label}
-        </span>
-      </div>
-
-      {/* Status Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex flex-col">
-          <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-            Statut mission
-          </h4>
-          <span className="text-[8px] font-bold text-slate-500 uppercase">
-            v{version} • {lastSync}
-          </span>
-        </div>
-        <div
-          className={`px-2 py-1 rounded-full text-[9px] font-black uppercase tracking-widest text-white shadow-xl shadow-slate-500/10 ${config.color}`}
-        >
-          {config.label}
-        </div>
-      </div>
-
-      {/* Progress Bar */}
-      <div className="space-y-3">
-        <div className="flex justify-between items-center">
-          <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">
-            Préparation
-          </span>
-          <span className="text-[11px] font-black text-slate-900 dark:text-white">
-            {effectiveCertified ? '100%' : `${percentage.toFixed(0)}%`}
-          </span>
-        </div>
-        <div className="w-full h-2 bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden">
-          <div
-            className={`h-full transition-all duration-700 ease-out mission-status-bar ${config?.color || 'bg-slate-500'}`}
-            style={{ '--status-width': `${effectiveCertified ? 100 : percentage}%` } as React.CSSProperties}
-          />
-        </div>
-      </div>
-
-      {/* Detailed KPIs */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="p-3 rounded-2xl bg-slate-100/80 dark:bg-white/5 border border-slate-100 dark:border-white/5">
-          <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1.5 leading-none">
-            Indemnités
-          </div>
-            {budgetVariance > 10 ? (
-              <TrendingUp size={12} className="text-rose-500" />
-            ) : (
-              <Zap size={12} className="text-emerald-500" />
-            )}
-            <span className="text-emerald-600">
-               {new Intl.NumberFormat('fr-FR').format(members.reduce((s, m) => s + (m.dailyIndemnity || 0) * (m.days || 1), 0))} XOF
-            </span>
-        </div>
-        <div className="p-3 rounded-2xl bg-slate-100/80 dark:bg-white/5 border border-slate-100 dark:border-white/5">
-          <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1.5 leading-none">
-            Effectif
-          </div>
-          <div className="text-sm font-black text-slate-900 dark:text-white">
-            {members.length}{' '}
-            <span className="text-[9px] opacity-40 font-bold uppercase ml-0.5">Pers.</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Next Steps */}
+      {/* Checklist préparation */}
       {nextSteps.length > 0 && (
-        <div className="pt-4 border-t border-slate-100 dark:border-white/5 space-y-3">
-          <div className="flex items-center gap-2">
-            <AlertCircle size={12} className="text-indigo-500" />
-            <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none">
-              Checklist Pré-Déploiement
-            </span>
+        <div className="pt-2 border-t border-slate-100 dark:border-white/5 space-y-1 relative z-10">
+          <div className="flex items-center gap-1.5 mb-1">
+            <AlertTriangle size={9} className="text-amber-400" />
+            <span className="text-[8px] font-black uppercase tracking-widest text-slate-500">À compléter</span>
           </div>
-          <div className="space-y-1.5">
-            {nextSteps.slice(0, 2).map((step: string, i: number) => (
-              <div
-                key={i}
-                className="flex items-start gap-1.5 text-[10px] text-slate-600 dark:text-slate-400 leading-tight"
-              >
-                <span className="text-indigo-500 font-bold">•</span>
-                <span className="font-semibold">{step}</span>
-              </div>
-            ))}
-          </div>
+          {nextSteps.slice(0, 2).map((step: string, i: number) => (
+            <div key={i} className="flex items-start gap-1.5">
+              <Clock size={8} className="text-slate-400 mt-0.5 flex-shrink-0" />
+              <span className="text-[9px] text-slate-500 dark:text-slate-400 font-medium leading-tight">{step}</span>
+            </div>
+          ))}
         </div>
       )}
+
+      {/* Version + dernière sync */}
+      <div className="flex justify-between items-center pt-1 border-t border-slate-100 dark:border-white/5 relative z-10">
+        <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">v{version}</span>
+        <span className="text-[8px] text-slate-500 truncate max-w-[100px]">{lastSync}</span>
+      </div>
     </div>
   );
 };

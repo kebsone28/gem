@@ -1,5 +1,6 @@
+
 import React from 'react';
-import { ShieldCheck, AlertCircle, FileText, Clock, Activity, PlugZap, Home, ClipboardList } from 'lucide-react';
+import { ShieldCheck, AlertCircle, FileText, Clock, Activity } from 'lucide-react';
 import { KPICard } from '../../../../components/dashboards/DashboardComponents';
 import type { DashboardMetrics } from '../types';
 
@@ -91,17 +92,16 @@ export const ComplianceSection: React.FC<ComplianceSectionProps> = ({ metrics })
 
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
             {[
-              { label: 'Résistance Terre', value: metrics.nonComplianceBreakdown?.grounding || 0, color: 'bg-amber-500', icon: PlugZap, desc: '> 1500Ω Ohm' },
-              { label: 'Installation Int.', value: metrics.nonComplianceBreakdown?.installation || 0, color: 'bg-violet-500', icon: Home, desc: 'Défauts pose' },
-              { label: 'Branchement Res.', value: metrics.nonComplianceBreakdown?.branchement || 0, color: 'bg-sky-500', icon: Activity, desc: 'Erreurs réseau' },
-              { label: 'Autres Motifs', value: metrics.nonComplianceBreakdown?.other || 0, color: 'bg-slate-500', icon: ClipboardList, desc: 'Administratif' },
+              { label: 'Résistance Terre', value: metrics.nonComplianceBreakdown?.grounding || 0, color: 'bg-amber-500', icon: '⚡', desc: '> 1500Ω Ohm' },
+              { label: 'Installation Int.', value: metrics.nonComplianceBreakdown?.installation || 0, color: 'bg-violet-500', icon: '🏠', desc: 'Défauts pose' },
+              { label: 'Branchement Res.', value: metrics.nonComplianceBreakdown?.branchement || 0, color: 'bg-sky-500', icon: '🌐', desc: 'Erreurs réseau' },
+              { label: 'Autres Motifs', value: metrics.nonComplianceBreakdown?.other || 0, color: 'bg-slate-500', icon: '📋', desc: 'Administratif' },
             ].map((item) => {
               const percent = metrics.nonConforme > 0 ? Math.round((item.value / metrics.nonConforme) * 100) : 0;
-              const Icon = item.icon;
               return (
                 <div key={item.label} className="group flex flex-col gap-3 p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.05] transition-all">
                   <div className="flex items-center justify-between">
-                    <Icon size={22} className="text-slate-300" />
+                    <span className="text-2xl">{item.icon}</span>
                     <span className="text-lg font-black text-white">{item.value}</span>
                   </div>
                   <div>

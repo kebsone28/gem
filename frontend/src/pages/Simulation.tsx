@@ -1,5 +1,5 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization */
-import { useCallback, useMemo, useState } from 'react';
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization */
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -23,7 +23,7 @@ import {
   optimiserConfigurationsEquipes,
   buildRoleCapacities,
 } from '../hooks/useSimulationModel';
-import type { TeamConfig, RoleKey, ModeOptimisation, Scenario } from '../hooks/useSimulationModel';
+import type { TeamConfig, RoleKey, ModeOptimisation, Scenario, CustomCharge, VehicleMode, PaymentMode } from '../hooks/useSimulationModel';
 import * as safeStorage from '../utils/safeStorage';
 import { db } from '../store/db';
 import apiClient from '../api/client';
@@ -56,6 +56,8 @@ export default function Simulation() {
   // Simulation state
   const [tauxImprevu, setTauxImprevu] = useState(10);
   const [baseVehicleCount, setBaseVehicleCount] = useState(2); // Base logistics vehicles
+  const [baseVehicleMode, setBaseVehicleMode] = useState<VehicleMode>('rental');
+  const [baseVehicleRate, setBaseVehicleRate] = useState(50000);
   const [isHivernage, setIsHivernage] = useState(false);
   const [penaliteHivernageMacon, setPenaliteHivernageMacon] = useState(30); // 30% penalty
   const [penaliteHivernageReseau, setPenaliteHivernageReseau] = useState(20); // 20% penalty
@@ -65,6 +67,17 @@ export default function Simulation() {
   const [limiteBudgetPourcent, setLimiteBudgetPourcent] = useState(95);
   const [margeMinimalePourcent, setMargeMinimalePourcent] = useState(10);
   const [optimizationMode, setOptimizationMode] = useState<ModeOptimisation>('duration');
+
+  // Nouveaux états financiers didactiques
+  const [coutMaterielReel, setCoutMaterielReel] = useState<number>(0);
+  const [customCharges, setCustomCharges] = useState<CustomCharge[]>([]);
+
+  // Synchronisation avec les finances réelles au premier chargement
+  useEffect(() => {
+    if (coutMaterielReel === 0 && devis.totalReal > 0) {
+      setCoutMaterielReel(devis.totalReal);
+    }
+  }, [devis.totalReal]);
 
   // Date de démarrage initiale
   const [dateDemarrageInitiale, setDateDemarrageInitiale] = useState(() => {
@@ -78,10 +91,10 @@ export default function Simulation() {
   const [holidaysCount, setHolidaysCount] = useState(14); // Estimated Senegalese holidays
 
   const [teamConfigs, setTeamConfigs] = useState<Record<RoleKey, TeamConfig>>({
-    macon: { count: 25, paymentMode: 'task', rate: 29000, vehiclesPerTeam: 0 },
-    network: { count: 6, paymentMode: 'task', rate: 4025, vehiclesPerTeam: 0 },
-    interior: { count: 41, paymentMode: 'task', rate: 15000, vehiclesPerTeam: 0 },
-    controller: { count: 6, paymentMode: 'day', rate: 6000, vehiclesPerTeam: 1 }, // 1 vehicle per controller
+    macon: { count: 25, paymentMode: 'task', rate: 29000, vehiclesPerTeam: 0, vehicleMode: 'rental', vehicleRate: 25000 },
+    network: { count: 6, paymentMode: 'task', rate: 4025, vehiclesPerTeam: 0, vehicleMode: 'rental', vehicleRate: 25000 },
+    interior: { count: 41, paymentMode: 'task', rate: 15000, vehiclesPerTeam: 0, vehicleMode: 'rental', vehicleRate: 25000 },
+    controller: { count: 6, paymentMode: 'day', rate: 6000, vehiclesPerTeam: 1, vehicleMode: 'rental', vehicleRate: 30000 },
   });
 
   const [isOptimized, setIsOptimized] = useState(false);
@@ -89,6 +102,13 @@ export default function Simulation() {
     null
   );
   const [showApplyModal, setShowApplyModal] = useState(false);
+
+  // Custom Charges Handlers
+  const addCustomCharge = () => setCustomCharges([...customCharges, { id: Date.now().toString(), label: '', amount: 0 }]);
+  const updateCustomCharge = (id: string, field: keyof CustomCharge, value: string | number) => {
+    setCustomCharges(customCharges.map(c => c.id === id ? { ...c, [field]: value } : c));
+  };
+  const removeCustomCharge = (id: string) => setCustomCharges(customCharges.filter(c => c.id !== id));
 
   const exporterPlanningPDF = useCallback((scenario: Scenario) => {
     try {
@@ -338,6 +358,8 @@ export default function Simulation() {
         projectConfig: project,
         teamConfigs,
         baseVehicleCount,
+        baseVehicleMode,
+        baseVehicleRate,
         tauxImprevu,
         isHivernage,
         tauxRejet,
@@ -346,6 +368,8 @@ export default function Simulation() {
         holidaysCount,
         penaliteHivernageMacon,
         penaliteHivernageReseau,
+        coutMaterielReel,
+        customCharges,
         dateDemarrageInitiale,
       }),
     [
@@ -354,6 +378,8 @@ export default function Simulation() {
       project,
       teamConfigs,
       baseVehicleCount,
+      baseVehicleMode,
+      baseVehicleRate,
       tauxImprevu,
       isHivernage,
       tauxRejet,
@@ -362,6 +388,8 @@ export default function Simulation() {
       holidaysCount,
       penaliteHivernageMacon,
       penaliteHivernageReseau,
+      coutMaterielReel,
+      customCharges,
       dateDemarrageInitiale,
     ]
   );
@@ -379,12 +407,16 @@ export default function Simulation() {
       holidaysCount,
       projectConfig: project,
       baseVehicleCount,
+      baseVehicleMode,
+      baseVehicleRate,
       tauxImprevu,
       isHivernage,
       tauxRejet,
       tauxAcompte,
       penaliteHivernageMacon,
       penaliteHivernageReseau,
+      coutMaterielReel,
+      customCharges,
       mode: optimizationMode,
       dateDemarrageInitiale,
     });
@@ -401,12 +433,16 @@ export default function Simulation() {
     holidaysCount,
     project,
     baseVehicleCount,
+    baseVehicleMode,
+    baseVehicleRate,
     tauxImprevu,
     isHivernage,
     tauxRejet,
     tauxAcompte,
     penaliteHivernageMacon,
     penaliteHivernageReseau,
+    coutMaterielReel,
+    customCharges,
     optimizationMode,
     devis.totalPlanned,
   ]);
@@ -420,6 +456,8 @@ export default function Simulation() {
             projectConfig: project,
             teamConfigs: optimizedConfigs,
             baseVehicleCount,
+            baseVehicleMode,
+            baseVehicleRate,
             tauxImprevu,
             isHivernage,
             tauxRejet,
@@ -428,6 +466,8 @@ export default function Simulation() {
             holidaysCount,
             penaliteHivernageMacon,
             penaliteHivernageReseau,
+            coutMaterielReel,
+            customCharges,
             dateDemarrageInitiale,
           })
         : null,
@@ -437,6 +477,8 @@ export default function Simulation() {
       devis.totalPlanned,
       project,
       baseVehicleCount,
+      baseVehicleMode,
+      baseVehicleRate,
       tauxImprevu,
       isHivernage,
       tauxRejet,
@@ -445,6 +487,8 @@ export default function Simulation() {
       holidaysCount,
       penaliteHivernageMacon,
       penaliteHivernageReseau,
+      coutMaterielReel,
+      customCharges,
       dateDemarrageInitiale,
     ]
   );
@@ -516,10 +560,107 @@ export default function Simulation() {
                 </h3>
 
                 <div className="space-y-6 mt-6">
-                  {/* Teams Counter */}
+                  {/* Step 1: Financials */}
                   <div className="space-y-4">
-                    <label className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest block">
-                      Effectifs & Rémunérations
+                    <label className="text-xs font-black text-indigo-400 uppercase tracking-widest flex items-center gap-2">
+                      <DollarSign size={14} /> Étape 1 : Coûts & Charges Réelles
+                    </label>
+                    <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 space-y-4">
+                      <div className="flex flex-col gap-1">
+                        <div className="flex justify-between items-center">
+                          <label className="text-xs font-bold text-slate-600 dark:text-slate-400">
+                            Devis Entreprise (Revenus)
+                          </label>
+                          <span className="text-sm font-black text-emerald-500">
+                            {fmtFCFA(devis.totalPlanned)}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-500">Le montant total facturé au client final.</p>
+                      </div>
+
+                      <div className="flex flex-col gap-1 pt-3 border-t border-slate-200 dark:border-slate-700/50">
+                        <div className="flex justify-between items-center mb-1">
+                          <label className="text-xs font-bold text-slate-600 dark:text-slate-400">
+                            Coût Réel Matériel (Dépenses)
+                          </label>
+                        </div>
+                        <input
+                          type="number"
+                          disabled={isOptimized}
+                          value={coutMaterielReel === 0 ? '' : coutMaterielReel}
+                          placeholder="0"
+                          onChange={(e) => setCoutMaterielReel(e.target.value === '' ? 0 : parseInt(e.target.value) || 0)}
+                          className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 w-full"
+                        />
+                        <p className="text-[10px] text-slate-500 dark:text-slate-500">
+                          Saisi selon vos achats réels (remplace l'estimation forfaitaire).
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col gap-1 pt-3 border-t border-slate-200 dark:border-slate-700/50">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-bold text-slate-600 dark:text-slate-400">
+                            Charges Additionnelles (Siège, Assurances...)
+                          </label>
+                          <button
+                            onClick={addCustomCharge}
+                            disabled={isOptimized}
+                            className="text-[10px] bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 px-2 py-1 rounded hover:bg-indigo-100 transition-colors"
+                          >
+                            + Ajouter une charge
+                          </button>
+                        </div>
+
+                        <div className="space-y-2 mt-2">
+                          {customCharges.length === 0 ? (
+                            <p className="text-[10px] text-slate-500 italic">Aucune charge supplémentaire.</p>
+                          ) : (
+                            customCharges.map((charge) => (
+                              <div key={charge.id} className="flex gap-2 items-center">
+                                <input
+                                  type="text"
+                                  disabled={isOptimized}
+                                  placeholder="Intitulé (ex: Loyer)"
+                                  value={charge.label}
+                                  onChange={(e) => updateCustomCharge(charge.id, 'label', e.target.value)}
+                                  className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 flex-1"
+                                />
+                                <input
+                                  type="number"
+                                  disabled={isOptimized}
+                                  placeholder="Montant"
+                                  value={charge.amount === 0 ? '' : charge.amount}
+                                  onChange={(e) => updateCustomCharge(charge.id, 'amount', e.target.value === '' ? 0 : parseInt(e.target.value) || 0)}
+                                  className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 w-28"
+                                />
+                                <button
+                                  disabled={isOptimized}
+                                  onClick={() => removeCustomCharge(charge.id)}
+                                  className="text-rose-500 hover:text-rose-600 p-1 bg-rose-50 dark:bg-rose-900/20 rounded"
+                                >
+                                  ×
+                                </button>
+                              </div>
+                            ))
+                          )}
+                        </div>
+
+                        {customCharges.length > 0 && (
+                          <div className="flex justify-between items-center mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                            <span className="text-[10px] font-bold text-slate-500 uppercase">Total Charges</span>
+                            <span className="text-xs font-black text-slate-700 dark:text-slate-300">
+                              {fmtFCFA(customCharges.reduce((sum, c) => sum + c.amount, 0))}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Step 2: Teams Counter */}
+                  <div className="space-y-4 pt-2">
+                    <label className="text-xs font-black text-indigo-400 uppercase tracking-widest flex items-center gap-2">
+                      <Users size={14} /> Étape 2 : Effectifs & Rémunérations
                     </label>
                     {(
                       Object.entries(activeConfigs) as [keyof typeof teamConfigs, TeamConfig][]
@@ -605,6 +746,7 @@ export default function Simulation() {
                               >
                                 <option value="task">À la Tâche</option>
                                 <option value="day">Par Jour</option>
+                                <option value="monthly">Au Mois</option>
                               </select>
                             </div>
                             <div className="flex flex-col gap-1">
@@ -615,34 +757,51 @@ export default function Simulation() {
                                 title="Tarif"
                                 disabled={isOptimized}
                                 type="number"
-                                value={config.rate}
+                                value={config.rate === 0 ? '' : config.rate}
+                                placeholder="0"
                                 onChange={(e) =>
-                                  updateTeamConfig(role, 'rate', parseInt(e.target.value) || 0)
+                                  updateTeamConfig(role, 'rate', e.target.value === '' ? 0 : parseInt(e.target.value) || 0)
                                 }
                                 className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
                               />
                             </div>
                             <div className="flex flex-col gap-1 col-span-2">
                               <label className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-widest font-black flex items-center justify-between">
-                                Véhicules alloués (par équipe)
-                                <span className="text-blue-400">{config.vehiclesPerTeam}</span>
+                                Véhicules & Logistique
+                                <span className="text-blue-400 font-bold">{config.vehiclesPerTeam} véh./éq.</span>
                               </label>
-                              <input
-                                title="Véhicules"
-                                disabled={isOptimized}
-                                type="range"
-                                min="0"
-                                max="3"
-                                value={config.vehiclesPerTeam}
-                                onChange={(e) =>
-                                  updateTeamConfig(
-                                    role,
-                                    'vehiclesPerTeam',
-                                    parseInt(e.target.value) || 0
-                                  )
-                                }
-                                className="w-full accent-blue-500"
-                              />
+                              <div className="flex gap-2 items-center">
+                                <input
+                                  title="Véhicules par équipe"
+                                  disabled={isOptimized}
+                                  type="number"
+                                  min="0"
+                                  max="5"
+                                  value={config.vehiclesPerTeam === 0 ? '' : config.vehiclesPerTeam}
+                                  placeholder="0"
+                                  onChange={(e) => updateTeamConfig(role, 'vehiclesPerTeam', e.target.value === '' ? 0 : parseInt(e.target.value) || 0)}
+                                  className="w-12 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
+                                />
+                                <select
+                                  disabled={isOptimized || config.vehiclesPerTeam === 0}
+                                  value={config.vehicleMode}
+                                  onChange={(e) => updateTeamConfig(role, 'vehicleMode', e.target.value as VehicleMode)}
+                                  className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 flex-1"
+                                >
+                                  <option value="rental">Location (/j)</option>
+                                  <option value="internal">Amort. Interne (/j)</option>
+                                  <option value="purchase">Achat Direct</option>
+                                </select>
+                                <input
+                                  title="Coût véhicule"
+                                  disabled={isOptimized || config.vehiclesPerTeam === 0}
+                                  type="number"
+                                  value={config.vehicleRate === 0 ? '' : config.vehicleRate}
+                                  placeholder="0"
+                                  onChange={(e) => updateTeamConfig(role, 'vehicleRate', e.target.value === '' ? 0 : parseInt(e.target.value) || 0)}
+                                  className="w-20 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
+                                />
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -653,7 +812,7 @@ export default function Simulation() {
                   {/* Advanced Contexts (Weather, Rejects, Cashflow) */}
                   <div className="space-y-4 pt-6 border-t border-slate-200 dark:border-slate-200 dark:border-slate-800/50">
                     <label className="text-xs font-black text-rose-400 uppercase tracking-widest flex items-center gap-2">
-                      <AlertTriangle size={14} /> Contraintes & Risques
+                      <AlertTriangle size={14} /> Étape 3 : Contraintes & Risques
                     </label>
 
                     {/* Weather Toggle */}
@@ -768,7 +927,7 @@ export default function Simulation() {
                   {/* Cashflow Context */}
                   <div className="space-y-4 pt-6 border-t border-slate-200 dark:border-slate-800/50">
                     <label className="text-xs font-black text-emerald-400 uppercase tracking-widest flex items-center gap-2">
-                      <DollarSign size={14} /> Trésorerie Client
+                      <DollarSign size={14} /> Étape 4 : Règles Financières Client
                     </label>
                     <div className="space-y-2 p-4 rounded-xl bg-slate-100/60 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/50">
                       <div className="flex justify-between text-sm">
@@ -949,7 +1108,7 @@ export default function Simulation() {
                   {/* Calendar Settings */}
                   <div className="space-y-4 pt-6 border-t border-slate-200 dark:border-slate-800/50">
                     <label className="text-xs font-black text-indigo-400 uppercase tracking-widest flex items-center gap-2">
-                      <Clock size={14} /> Calendrier & Jours Fériés
+                      <Clock size={14} /> Étape 5 : Calendrier & Délais
                     </label>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

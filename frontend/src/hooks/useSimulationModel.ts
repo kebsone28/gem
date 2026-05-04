@@ -1,12 +1,21 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 export type RoleKey = 'macon' | 'network' | 'interior' | 'controller';
-export type PaymentMode = 'task' | 'day';
+export type PaymentMode = 'task' | 'day' | 'monthly';
+export type VehicleMode = 'rental' | 'purchase' | 'internal';
 
 export type TeamConfig = {
   count: number;
   paymentMode: PaymentMode;
   rate: number;
   vehiclesPerTeam: number;
+  vehicleMode: VehicleMode;
+  vehicleRate: number;
+};
+
+export type CustomCharge = {
+  id: string;
+  label: string;
+  amount: number;
 };
 
 export type RoleSchedule = {
@@ -54,6 +63,8 @@ export type SimulationInputs = {
   projectConfig: any;
   teamConfigs: Record<RoleKey, TeamConfig>;
   baseVehicleCount: number;
+  baseVehicleMode: VehicleMode;
+  baseVehicleRate: number;
   tauxImprevu: number;
   isHivernage: boolean;
   tauxRejet: number;
@@ -62,6 +73,8 @@ export type SimulationInputs = {
   holidaysCount: number;
   penaliteHivernageMacon: number;
   penaliteHivernageReseau: number;
+  coutMaterielReel?: number;
+  customCharges?: CustomCharge[];
   dateDemarrageInitiale?: Date;
 };
 
@@ -97,6 +110,8 @@ export function calculateScenario({
   projectConfig,
   teamConfigs,
   baseVehicleCount,
+  baseVehicleMode,
+  baseVehicleRate,
   tauxImprevu,
   isHivernage,
   tauxRejet,
@@ -105,6 +120,8 @@ export function calculateScenario({
   holidaysCount,
   penaliteHivernageMacon,
   penaliteHivernageReseau,
+  coutMaterielReel,
+  customCharges,
 }: SimulationInputs): ScenarioBase {
   const safeHouseholds = Math.max(0, householdsCount || 0);
   const safeDevis = Math.max(0, devisTotalPlanned || 0);
@@ -187,24 +204,44 @@ export function calculateScenario({
     const teamDuration = schedule[role].duration;
     const householdsTreated =
       role === 'network' || role === 'interior' ? baseHouseholds + menagesRejetes : baseHouseholds;
+    const teamCalendarDuration = getCalendarDays(teamDuration, workDaysPerWeek, holidaysCount);
 
     if (config.paymentMode === 'task') {
       laborCost += householdsTreated * config.rate;
+    } else if (config.paymentMode === 'monthly') {
+      const months = teamCalendarDuration / 30; // Approximation mensuelle
+      laborCost += config.count * config.rate * months;
     } else {
-      laborCost += config.count * config.rate * teamDuration;
+      laborCost += config.count * config.rate * teamDuration; // Jours travaillés
     }
 
-    const teamCalendarDuration = getCalendarDays(teamDuration, workDaysPerWeek, holidaysCount);
-    teamsLogisticsCost += config.count * config.vehiclesPerTeam * 60000 * teamCalendarDuration;
+    // Logistic Cost handled per team configuration
+    let vCost = 0;
+    if (config.vehicleMode === 'purchase') {
+      vCost = config.count * config.vehiclesPerTeam * config.vehicleRate; // Coût global
+    } else {
+      // rental or internal (coût par jour)
+      vCost = config.count * config.vehiclesPerTeam * config.vehicleRate * teamCalendarDuration;
+    }
+    const fuelPenalty = isHivernage ? 10000 * config.count * config.vehiclesPerTeam * teamCalendarDuration : 0;
+    teamsLogisticsCost += vCost + fuelPenalty;
   });
 
-  const baseLogisticsCost = (baseVehicleCount || 0) * 60000 * globalCalendarDuration;
+  let baseLogisticsCost = 0;
+  if (baseVehicleMode === 'purchase') {
+    baseLogisticsCost = (baseVehicleCount || 0) * baseVehicleRate;
+  } else {
+    baseLogisticsCost = (baseVehicleCount || 0) * baseVehicleRate * globalCalendarDuration;
+  }
+  baseLogisticsCost += isHivernage ? 10000 * (baseVehicleCount || 0) * globalCalendarDuration : 0;
+
   const logisticsCost = teamsLogisticsCost + baseLogisticsCost;
-  const materialsCost = safeDevis * 0.4;
-  const totalCost = laborCost + logisticsCost + materialsCost;
+  const materialsCost = coutMaterielReel !== undefined ? coutMaterielReel : safeDevis * 0.4;
+  const additionalsCost = customCharges?.reduce((sum, c) => sum + c.amount, 0) || 0;
+  const totalCost = laborCost + logisticsCost + materialsCost + additionalsCost;
   const margin = safeDevis - totalCost;
   const tresorerieInitiale = devisTotalPlanned * (tauxAcompte / 100);
-  const depenseMax = laborCost + logisticsCost;
+  const depenseMax = laborCost + logisticsCost + additionalsCost;
   const aRisqueTresorerie = depenseMax > tresorerieInitiale;
 
   return {
@@ -241,12 +278,16 @@ export type OptionsOptimisation = {
   holidaysCount: number;
   projectConfig: any;
   baseVehicleCount: number;
+  baseVehicleMode: VehicleMode;
+  baseVehicleRate: number;
   tauxImprevu: number;
   isHivernage: boolean;
   tauxRejet: number;
   tauxAcompte: number;
   penaliteHivernageMacon: number;
   penaliteHivernageReseau: number;
+  coutMaterielReel?: number;
+  customCharges?: CustomCharge[];
   mode: ModeOptimisation;
   dateDemarrageInitiale?: Date;
 };
@@ -291,19 +332,22 @@ function calculerTresorerie({
   devisTotalPlanned,
   tauxAcompte,
   duration,
+  customCharges,
 }: {
   laborCost: number;
   logisticsCost: number;
   devisTotalPlanned: number;
   tauxAcompte: number;
   duration: number;
+  customCharges?: CustomCharge[];
 }): {
   initialCash: number;
   minCash: number;
   hasRisk: boolean;
 } {
   const acompte = devisTotalPlanned * (tauxAcompte / 100);
-  const weeklyOutflow = (laborCost + logisticsCost) / Math.max(duration / 7, 1);
+  const additionals = customCharges?.reduce((sum, c) => sum + c.amount, 0) || 0;
+  const weeklyOutflow = (laborCost + logisticsCost + additionals) / Math.max(duration / 7, 1);
 
   let cash = acompte;
   let minCash = cash;
@@ -334,18 +378,35 @@ function calculerTresorerie({
 // V2: Improved logistics with utilization factor
 function computeLogisticsCostV2(
   teams: Record<RoleKey, TeamConfig>,
+  baseCount: number,
+  baseMode: VehicleMode,
+  baseRate: number,
   duration: number,
   isHivernage: boolean
 ): number {
-  const fuelPerDay = isHivernage ? 70000 : 60000;
-  const utilization = 0.85; // realistic usage
+  const utilization = 0.85;
 
   let total = 0;
   (Object.values(teams) as TeamConfig[]).forEach((team) => {
-    total += team.count * team.vehiclesPerTeam * fuelPerDay * duration * utilization;
+    let vCost = 0;
+    if (team.vehicleMode === 'purchase') {
+      vCost = team.vehicleRate * team.count * team.vehiclesPerTeam;
+    } else {
+      vCost = team.vehicleRate * team.count * team.vehiclesPerTeam * duration * utilization;
+    }
+    const fuelPenalty = isHivernage ? 10000 * team.count * team.vehiclesPerTeam * duration * utilization : 0;
+    total += vCost + fuelPenalty;
   });
 
-  return total;
+  let baseCost = 0;
+  if (baseMode === 'purchase') {
+    baseCost = baseCount * baseRate;
+  } else {
+    baseCost = baseCount * baseRate * duration * utilization;
+  }
+  baseCost += isHivernage ? 10000 * baseCount * duration * utilization : 0;
+
+  return total + baseCost;
 }
 
 function genererPlanningDetaille(
@@ -441,15 +502,18 @@ export function calculerScenarioV2(inputs: SimulationInputs): Scenario {
     inputs.holidaysCount
   );
 
-  const teamsLogisticsCost = computeLogisticsCostV2(
+  const logisticsCost = computeLogisticsCostV2(
     inputs.teamConfigs,
+    inputs.baseVehicleCount,
+    inputs.baseVehicleMode,
+    inputs.baseVehicleRate,
     newDuration,
     inputs.isHivernage
   );
-  const baseLogisticsCost = inputs.baseVehicleCount * 60000 * newCalendarDuration;
-  const logisticsCost = teamsLogisticsCost + baseLogisticsCost;
-  const materialsCost = inputs.devisTotalPlanned * 0.4;
-  const totalCost = base.laborCost + logisticsCost + materialsCost;
+
+  const materialsCost = inputs.coutMaterielReel !== undefined ? inputs.coutMaterielReel : inputs.devisTotalPlanned * 0.4;
+  const additionalsCost = inputs.customCharges?.reduce((sum, c) => sum + c.amount, 0) || 0;
+  const totalCost = base.laborCost + logisticsCost + materialsCost + additionalsCost;
   const margin = inputs.devisTotalPlanned - totalCost;
 
   // Realistic cashflow
@@ -459,6 +523,7 @@ export function calculerScenarioV2(inputs: SimulationInputs): Scenario {
     devisTotalPlanned: inputs.devisTotalPlanned,
     tauxAcompte: inputs.tauxAcompte,
     duration: newDuration,
+    customCharges: inputs.customCharges,
   });
 
   // Générer le planning détaillé
@@ -481,7 +546,7 @@ export function calculerScenarioV2(inputs: SimulationInputs): Scenario {
     margin,
     logisticsCost,
     tresorerieInitiale: cashflow.initialCash,
-    depenseMax: Math.max(base.laborCost + logisticsCost, Math.abs(cashflow.minCash)),
+    depenseMax: Math.max(base.laborCost + logisticsCost + (inputs.customCharges?.reduce((s,c) => s+c.amount, 0) || 0), Math.abs(cashflow.minCash)),
     aRisqueTresorerie: cashflow.hasRisk,
     dateDemarrageInitiale,
     planningDetaille,
@@ -612,12 +677,16 @@ export function optimiserConfigurationsEquipes(
     holidaysCount,
     projectConfig,
     baseVehicleCount,
+    baseVehicleMode,
+    baseVehicleRate,
     tauxImprevu,
     isHivernage,
     tauxRejet,
     tauxAcompte,
     penaliteHivernageMacon,
     penaliteHivernageReseau,
+    coutMaterielReel,
+    customCharges,
     mode,
     dateDemarrageInitiale,
   } = options;
@@ -629,6 +698,8 @@ export function optimiserConfigurationsEquipes(
     projectConfig,
     teamConfigs: currentConfigs,
     baseVehicleCount,
+    baseVehicleMode,
+    baseVehicleRate,
     tauxImprevu,
     isHivernage,
     tauxRejet,
@@ -637,6 +708,8 @@ export function optimiserConfigurationsEquipes(
     holidaysCount,
     penaliteHivernageMacon,
     penaliteHivernageReseau,
+    coutMaterielReel,
+    customCharges,
     dateDemarrageInitiale,
   });
 
@@ -662,6 +735,8 @@ export function optimiserConfigurationsEquipes(
       projectConfig,
       teamConfigs: testConfigs,
       baseVehicleCount,
+      baseVehicleMode,
+      baseVehicleRate,
       tauxImprevu,
       isHivernage,
       tauxRejet,
@@ -670,6 +745,8 @@ export function optimiserConfigurationsEquipes(
       holidaysCount,
       penaliteHivernageMacon,
       penaliteHivernageReseau,
+      coutMaterielReel,
+      customCharges,
       dateDemarrageInitiale,
     });
 
@@ -709,6 +786,8 @@ export function optimiserConfigurationsEquipes(
         projectConfig,
         teamConfigs: testConfigs,
         baseVehicleCount,
+        baseVehicleMode,
+        baseVehicleRate,
         tauxImprevu,
         isHivernage,
         tauxRejet,
@@ -717,6 +796,8 @@ export function optimiserConfigurationsEquipes(
         holidaysCount,
         penaliteHivernageMacon,
         penaliteHivernageReseau,
+        coutMaterielReel,
+        customCharges,
         dateDemarrageInitiale,
       });
 

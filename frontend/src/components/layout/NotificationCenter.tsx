@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/exhaustive-deps */
+/* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/exhaustive-deps */
 import React, { useState, useEffect, useMemo, memo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
@@ -127,6 +127,13 @@ export default function NotificationCenter() {
   useEffect(() => {
     // S'abonner aux notifications WebSockets via notre EventBus propre
     const unsubscribe = syncEventBus.subscribe('notification', async (data: any) => {
+      // 🚫 Ignorer complètement les notifications de synchronisation automatique ("SYNC")
+      // Cela évite de spammer l'utilisateur avec des toasts bleus et des sons à chaque
+      // changement si l'Auto-Save est activé.
+      if (data.type === 'SYNC') {
+        return;
+      }
+
       const newToast = { id: Date.now(), ...data };
       
       // Afficher le toast flottant

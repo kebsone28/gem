@@ -1,4 +1,5 @@
 import bcrypt from 'bcryptjs';
+import fs from 'fs';
 import prisma from '../../core/utils/prisma.js';
 import { tracerAction } from '../../services/audit.service.js';
 import { socketService } from '../../services/socket.service.js';
@@ -148,7 +149,9 @@ export const updateProject = async (req, res) => {
             return res.status(404).json({ error: 'Project not found' });
         }
 
+        fs.appendFileSync('debug-trace.log', `[${new Date().toISOString()}] BEFORE prisma update id=${id} BODY=${JSON.stringify(req.body)}\n`);
         const updatedProject = await prisma.project.update({
+
             where: { id },
             data: {
                 name,
@@ -189,8 +192,9 @@ export const updateProject = async (req, res) => {
 
         res.json(updatedProject);
     } catch (error) {
+        fs.appendFileSync('debug-trace.log', `[${new Date().toISOString()}] ERROR updateProject: ${error.message}\n${error.stack}\n`);
         console.error('Update project error:', error);
-        res.status(500).json({ error: 'Server error while updating project' });
+        res.status(500).json({ error: 'Server error while updating project', details: error.message, stack: error.stack });
     }
 };
 
