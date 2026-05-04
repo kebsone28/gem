@@ -161,7 +161,7 @@ export const MissionOrderActionBar = (props: any) => {
             <button
               onClick={onSave}
               disabled={isSyncing || isSyncingServer || isSubmitted || isCertified}
-              className={`flex min-h-11 items-center justify-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black tracking-[0.14em] sm:tracking-widest transition-all shadow-lg active:scale-95 ${
+              className={`flex min-h-12 items-center justify-center gap-2 px-4 py-2 rounded-xl text-[11px] font-black tracking-[0.14em] sm:tracking-widest transition-all shadow-lg active:scale-95 ${
                 isSubmitted || isCertified
                   ? 'bg-slate-800 text-slate-600'
                   : isDirty
@@ -176,7 +176,7 @@ export const MissionOrderActionBar = (props: any) => {
             {!isSubmitted && !isCertified && (
               <button
                 onClick={() => window.confirm('Soumettre la mission ?') && onSubmit()}
-                className="flex min-h-11 items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-[10px] font-black tracking-[0.14em] sm:tracking-widest shadow-lg shadow-indigo-600/20 active:scale-95 transition-all"
+                className="flex min-h-12 items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-[11px] font-black tracking-[0.14em] sm:tracking-widest shadow-lg shadow-indigo-600/20 active:scale-95 transition-all"
               >
                 <ListChecks size={14}/> SOUMETTRE
               </button>
@@ -185,7 +185,7 @@ export const MissionOrderActionBar = (props: any) => {
             {isValidator && isSubmitted && !isCertified && (
               <button
                 onClick={onValidate}
-                className="flex min-h-11 items-center justify-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl text-[10px] font-black tracking-[0.14em] sm:tracking-widest shadow-lg shadow-emerald-600/20 active:scale-95 transition-all"
+                className="flex min-h-12 items-center justify-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl text-[11px] font-black tracking-[0.14em] sm:tracking-widest shadow-lg shadow-emerald-600/20 active:scale-95 transition-all"
               >
                 <Fingerprint size={14}/> VALIDER
               </button>

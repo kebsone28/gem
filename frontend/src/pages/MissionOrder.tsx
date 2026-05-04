@@ -800,9 +800,9 @@ export default function MissionOrder() {
         icon={<ClipboardList className="text-indigo-500" />}
       />
 
-      <ContentArea>
+      <ContentArea className="!p-3 sm:!p-6 lg:!p-8">
         {/* BARRE D'ACTIONS - HAUTE PRIORITÉ Z-INDEX */}
-        <div className="relative z-50 mb-4 sm:mb-8 no-print">
+        <div className="relative z-50 mb-4 sm:mb-6 lg:mb-8 no-print">
           <WidgetErrorBoundary title="Barre d'Actions">
             <MissionOrderActionBar
             formData={state.formData}
@@ -848,7 +848,7 @@ export default function MissionOrder() {
         </div>
 
         {/* GRILLE PRINCIPALE */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 lg:gap-6 relative z-10">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 relative z-10">
 
           {/* SIDEBAR GAUCHE : collapsible + sticky + persistante */}
           {!focusMode && (
@@ -906,9 +906,9 @@ export default function MissionOrder() {
           <div className={`transition-all duration-300 ${
             focusMode ? 'lg:col-span-12' : sidebarCollapsed ? 'lg:col-span-11' : 'lg:col-span-10'
           }`}>
-            <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 sm:gap-6 lg:gap-6 items-start">
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 sm:gap-6 items-start">
               {/* FORMULAIRE : s'étend selon le focus mode */}
-              <div className={`space-y-4 sm:space-y-6 lg:space-y-6 ${
+              <div className={`space-y-4 sm:space-y-6 ${
                 focusMode ? 'xl:col-span-12' : 'xl:col-span-9'
               }`}>
                 {(effectiveIsSubmitted || effectiveIsCertified) && (
@@ -918,7 +918,7 @@ export default function MissionOrder() {
                 {/* BARRE ONGLETS PILL + BOUTON FOCUS */}
                 <div className="flex items-center gap-2 mb-5">
                   {/* Segmented control */}
-                  <div className="flex-1 flex gap-1 p-1 bg-slate-900/40 dark:bg-slate-800/60 border border-white/5 rounded-2xl min-w-0 overflow-x-auto no-scrollbar">
+                  <div className="flex-1 flex gap-1.5 p-1 bg-slate-900/60 dark:bg-slate-800/60 border border-white/5 rounded-2xl min-w-0 overflow-x-auto no-scrollbar shadow-inner">
                     <button
                       onClick={() => setActiveTab('prep')}
                       className={`flex-1 shrink-0 px-3 py-2 text-[11px] font-black uppercase tracking-wide rounded-xl transition-all duration-200 whitespace-nowrap ${
@@ -943,7 +943,7 @@ export default function MissionOrder() {
                       onClick={() => setActiveTab('approval')}
                       className={`flex-1 shrink-0 px-3 py-2 text-[11px] font-black uppercase tracking-wide rounded-xl transition-all duration-200 whitespace-nowrap ${
                         activeTab === 'approval'
-                          ? 'bg-slate-900 dark:bg-slate-900 text-amber-400 shadow-md shadow-black/10'
+                          ? 'bg-slate-900 dark:bg-slate-900 text-amber-400 shadow-lg shadow-black/20 ring-1 ring-white/5'
                           : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
                       }`}
                     >
@@ -953,14 +953,14 @@ export default function MissionOrder() {
                   {/* Bouton Focus Mode */}
                   <button
                     onClick={() => setFocusMode(f => !f)}
-                    className={`shrink-0 p-2 rounded-xl transition-all border ${
+                    className={`shrink-0 p-3 rounded-xl transition-all border shadow-sm ${
                       focusMode
                         ? 'bg-indigo-600 text-white border-indigo-500 shadow-lg shadow-indigo-500/20'
-                        : 'text-slate-400 hover:text-indigo-400 border-slate-200 dark:border-white/10 hover:border-indigo-400/50 bg-white dark:bg-slate-900'
+                        : 'text-slate-400 hover:text-indigo-400 border-white/10 hover:border-indigo-400/50 bg-slate-900/40 dark:bg-slate-900'
                     }`}
                     title={focusMode ? 'Quitter le mode plein écran' : 'Mode plein écran'}
                   >
-                    {focusMode ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+                    {focusMode ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
                   </button>
                 </div>
 
@@ -1021,9 +1021,9 @@ export default function MissionOrder() {
                 {/* ONGLET RAPPORT POST-MISSION */}
                 {activeTab === 'report' && (
                   <div className="space-y-6">
-                    <div className="glass-card !p-6">
-                      <h3 className="text-lg font-black text-slate-900 dark:text-white mb-4 flex items-center gap-2">
-                        <span className="w-2 h-8 bg-emerald-500 rounded-full"></span>
+                    <div className="glass-card !p-5 sm:!p-8">
+                      <h3 className="text-clamp-title text-slate-900 dark:text-white mb-4 flex items-center gap-3">
+                        <span className="w-2 h-8 bg-emerald-500 rounded-full shadow-lg shadow-emerald-500/20"></span>
                         Rapport Post-Mission
                       </h3>
                       
@@ -1183,9 +1183,9 @@ export default function MissionOrder() {
                 {activeTab === 'approval' && (
                   <div className="space-y-6">
                     {/* Sélecteur de mission */}
-                    <div className="glass-card !p-6">
-                      <h3 className="text-lg font-black text-slate-900 dark:text-white mb-4 flex items-center gap-2">
-                        <span className="w-2 h-8 bg-indigo-500 rounded-full"></span>
+                    <div className="glass-card !p-5 sm:!p-8">
+                      <h3 className="text-clamp-title text-slate-900 dark:text-white mb-4 flex items-center gap-3">
+                        <span className="w-2 h-8 bg-indigo-500 rounded-full shadow-lg shadow-indigo-500/20"></span>
                         Archivage & Rapports
                       </h3>
                       
@@ -1343,7 +1343,7 @@ export default function MissionOrder() {
 
               {/* WIDGETS : COL-3 sticky – masqués en focus mode */}
               {!focusMode && (
-              <div className="xl:col-span-3 space-y-4 sm:space-y-6 lg:space-y-6">
+              <div className="xl:col-span-3 space-y-4 sm:space-y-6">
                 <div className="sticky top-4">
                 <MissionBudgetPanel
                   totalFrais={totalFrais}
