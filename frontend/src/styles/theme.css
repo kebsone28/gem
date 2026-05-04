@@ -53,19 +53,20 @@
   --color-gray-900: #0f172a;
   --color-gray-950: #020617;
 
-  /* ── SURFACES (LIGHT) ── */
-  --color-bg-primary: #ffffff;
-  --color-bg-secondary: #f8fafc;
-  --color-bg-tertiary: #f1f5f9;
-  --color-surface-elevated: #ffffff;
-  --color-overlay: rgba(15, 23, 42, 0.5);
+  /* ── SURFACES (LIGHT/DEEP NAVY BASE) ── */
+  --color-bg-primary: #020817;
+  --color-surface: #020817;
+  --color-bg-secondary: #050f1f;
+  --color-bg-tertiary: #0a1628;
+  --color-surface-elevated: #0d1e35;
+  --color-overlay: rgba(0, 0, 0, 0.7);
 
-  /* ── TEXT (LIGHT) ── */
-  --color-text-primary: #0f172a;
-  --color-text-secondary: #475569;
-  --color-text-tertiary: #64748b;
-  --color-text-muted: #94a3b8;
-  --color-text-inverse: #ffffff;
+  /* ── TEXT (LIGHT/CONTRAST BASE) ── */
+  --color-text-primary: #e8f0ff;
+  --color-text-secondary: #9bb8dc;
+  --color-text-tertiary: #6b8bae;
+  --color-text-muted: #4a6a8a;
+  --color-text-inverse: #0f172a;
 
   /* ── BORDERS (LIGHT) ── */
   --color-border-primary: #e2e8f0;
@@ -157,6 +158,7 @@
 
   /* ── SURFACES (DARK) ── */
   --color-bg-primary: #020817;
+  --color-surface: #020817;
   --color-bg-secondary: #050f1f;
   --color-bg-tertiary: #0a1628;
   --color-surface-elevated: #0d1e35;
@@ -482,7 +484,7 @@
 }
 
 .dark .toast {
-  background: var(--color-bg-secondary);
+  background: var(--color-surface);
   border-color: var(--color-border-primary);
 }
 

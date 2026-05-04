@@ -644,7 +644,7 @@ export default function AITrainingStudio({
                     }}
                     rows={3}
                     placeholder="Ex : Le coffret compteur est posé à l’intérieur de la concession. Est-ce certifiable ?"
-                    className="w-full rounded-[1.25rem] border border-white/8 bg-slate-900/70 px-4 py-3 text-sm font-medium leading-6 text-white outline-none transition-colors placeholder:text-slate-500 focus:border-cyan-400/30"
+                    className="w-full bg-slate-900 dark:bg-slate-900 border border-slate-800 dark:border-slate-800 rounded-xl p-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                   />
 
                   <div className="rounded-[1.25rem] border border-white/8 bg-slate-900/55 px-4 py-3">
@@ -703,7 +703,7 @@ export default function AITrainingStudio({
                     <button
                       onClick={() => handleTestReplacement()}
                       disabled={!question.trim() || !referenceAnswer.trim() || isTestingReplacement}
-                      className="inline-flex w-full items-center gap-2 rounded-2xl border border-blue-400/20 bg-blue-400/10 px-4 py-3 text-xs font-black uppercase tracking-[0.16em] text-blue-200 transition-colors hover:bg-blue-400/15 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="p-4 bg-slate-950/40 dark:bg-slate-900/50 rounded-xl border border-slate-800 dark:border-slate-800 inline-flex w-full items-center gap-2 rounded-2xl border border-blue-400/20 bg-blue-400/10 px-4 py-3 text-xs font-black uppercase tracking-[0.16em] text-blue-200 transition-colors hover:bg-blue-400/15 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-blue-300/20 bg-blue-300/10 text-[10px] font-black text-blue-100">
                         4
@@ -860,7 +860,7 @@ export default function AITrainingStudio({
 
                 <div className="mt-4">
                   {!currentResponse || !referenceAnswer.trim() ? (
-                    <div className="rounded-[1.5rem] border border-dashed border-white/10 px-5 py-8 text-center text-sm leading-7 text-slate-500">
+                    <div className="p-4 rounded-xl bg-slate-900/40 dark:bg-slate-900/50 border border-slate-800 dark:border-slate-800 flex items-center gap-4 text-sm leading-7 text-slate-500">
                       Le diff apparaîtra dès qu&apos;une réponse actuelle et une correction seront disponibles.
                     </div>
                   ) : changedDiffRows.length === 0 ? (

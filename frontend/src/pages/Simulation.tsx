@@ -565,7 +565,7 @@ export default function Simulation() {
                     <label className="text-xs font-black text-indigo-400 uppercase tracking-widest flex items-center gap-2">
                       <DollarSign size={14} /> Étape 1 : Coûts & Charges Réelles
                     </label>
-                    <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 space-y-4">
+                    <div className="p-4 rounded-xl bg-slate-900/40 dark:bg-slate-900/50 border border-slate-800/50 dark:border-slate-800 space-y-4">
                       <div className="flex flex-col gap-1">
                         <div className="flex justify-between items-center">
                           <label className="text-xs font-bold text-slate-600 dark:text-slate-400">
@@ -590,7 +590,7 @@ export default function Simulation() {
                           value={coutMaterielReel === 0 ? '' : coutMaterielReel}
                           placeholder="0"
                           onChange={(e) => setCoutMaterielReel(e.target.value === '' ? 0 : parseInt(e.target.value) || 0)}
-                          className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 w-full"
+                          className="bg-slate-900 dark:bg-slate-950 border border-slate-800 dark:border-slate-700 rounded-lg p-2 text-sm text-white dark:text-white focus:outline-none focus:border-indigo-500 w-full"
                         />
                         <p className="text-[10px] text-slate-500 dark:text-slate-500">
                           Saisi selon vos achats réels (remplace l'estimation forfaitaire).
@@ -623,15 +623,7 @@ export default function Simulation() {
                                   placeholder="Intitulé (ex: Loyer)"
                                   value={charge.label}
                                   onChange={(e) => updateCustomCharge(charge.id, 'label', e.target.value)}
-                                  className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 flex-1"
-                                />
-                                <input
-                                  type="number"
-                                  disabled={isOptimized}
-                                  placeholder="Montant"
-                                  value={charge.amount === 0 ? '' : charge.amount}
-                                  onChange={(e) => updateCustomCharge(charge.id, 'amount', e.target.value === '' ? 0 : parseInt(e.target.value) || 0)}
-                                  className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 w-28"
+                                  className="bg-slate-900 dark:bg-slate-950 border border-slate-800 dark:border-slate-700 rounded-lg p-2 text-xs text-white dark:text-white focus:outline-none focus:border-indigo-500 w-28"
                                 />
                                 <button
                                   disabled={isOptimized}
@@ -671,7 +663,7 @@ export default function Simulation() {
                       return (
                         <div
                           key={role}
-                          className={`flex flex-col gap-3 p-4 rounded-2xl border transition-all ${isOptimized ? 'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-500/30' : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800/50'}`}
+                          className={`flex flex-col gap-3 p-4 rounded-2xl border transition-all ${isOptimized ? 'bg-indigo-950/40 border-indigo-500/30' : 'bg-slate-900/40 border-slate-800/50'}`}
                         >
                           <div className="flex items-center justify-between">
                             <div className="flex flex-col">
@@ -690,13 +682,13 @@ export default function Simulation() {
                                     onClick={() =>
                                       updateTeamConfig(role, 'count', Math.max(1, config.count - 1))
                                     }
-                                    className="w-8 h-8 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-900 dark:text-white hover:bg-slate-800 transition-colors"
+                                    className="w-8 h-8 rounded-xl bg-slate-800 dark:bg-slate-900 border border-slate-700 dark:border-slate-800 flex items-center justify-center text-white dark:text-white hover:bg-slate-700 transition-colors"
                                   >
                                     -
                                   </button>
                                 )}
                                 <span
-                                  className={`text-xl font-black w-8 text-center ${isOptimized ? 'text-emerald-400' : 'text-slate-900 dark:text-white'}`}
+                                  className={`text-xl font-black w-8 text-center ${isOptimized ? 'text-emerald-400' : 'text-white dark:text-white'}`}
                                 >
                                   {config.count}
                                 </span>
@@ -706,7 +698,7 @@ export default function Simulation() {
                                     onClick={() =>
                                       updateTeamConfig(role, 'count', config.count + 1)
                                     }
-                                    className="w-8 h-8 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-900 dark:text-white hover:bg-slate-800 transition-colors"
+                                    className="w-8 h-8 rounded-xl bg-slate-800 dark:bg-slate-900 border border-slate-700 dark:border-slate-800 flex items-center justify-center text-white dark:text-white hover:bg-slate-700 transition-colors"
                                   >
                                     +
                                   </button>
@@ -742,7 +734,7 @@ export default function Simulation() {
                                     e.target.value as 'task' | 'day'
                                   )
                                 }
-                                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
+                                className="bg-slate-900 dark:bg-slate-900 border border-slate-800 dark:border-slate-800 rounded-lg p-1.5 text-xs text-white dark:text-white focus:outline-none focus:border-indigo-500"
                               >
                                 <option value="task">À la Tâche</option>
                                 <option value="day">Par Jour</option>
@@ -762,7 +754,7 @@ export default function Simulation() {
                                 onChange={(e) =>
                                   updateTeamConfig(role, 'rate', e.target.value === '' ? 0 : parseInt(e.target.value) || 0)
                                 }
-                                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
+                                className="bg-slate-900 dark:bg-slate-900 border border-slate-800 dark:border-slate-800 rounded-lg p-1.5 text-xs text-white dark:text-white focus:outline-none focus:border-indigo-500"
                               />
                             </div>
                             <div className="flex flex-col gap-1 col-span-2">
@@ -780,14 +772,14 @@ export default function Simulation() {
                                   value={config.vehiclesPerTeam === 0 ? '' : config.vehiclesPerTeam}
                                   placeholder="0"
                                   onChange={(e) => updateTeamConfig(role, 'vehiclesPerTeam', e.target.value === '' ? 0 : parseInt(e.target.value) || 0)}
-                                  className="w-12 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
+                                  className="w-12 bg-slate-900 dark:bg-slate-900 border border-slate-800 dark:border-slate-800 rounded-lg p-1.5 text-xs text-white dark:text-white focus:outline-none focus:border-indigo-500"
                                 />
                                 <select
                                   title="Mode de véhicule"
                                   disabled={isOptimized || config.vehiclesPerTeam === 0}
                                   value={config.vehicleMode}
                                   onChange={(e) => updateTeamConfig(role, 'vehicleMode', e.target.value as VehicleMode)}
-                                  className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 flex-1"
+                                  className="bg-slate-900 dark:bg-slate-900 border border-slate-800 dark:border-slate-800 rounded-lg p-1.5 text-xs text-white dark:text-white focus:outline-none focus:border-indigo-500 flex-1"
                                 >
                                   <option value="rental">Location (/j)</option>
                                   <option value="internal">Amort. Interne (/j)</option>
@@ -800,7 +792,7 @@ export default function Simulation() {
                                   value={config.vehicleRate === 0 ? '' : config.vehicleRate}
                                   placeholder="0"
                                   onChange={(e) => updateTeamConfig(role, 'vehicleRate', e.target.value === '' ? 0 : parseInt(e.target.value) || 0)}
-                                  className="w-20 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
+                                  className="w-20 bg-slate-900 dark:bg-slate-900 border border-slate-800 dark:border-slate-800 rounded-lg p-1.5 text-xs text-white dark:text-white focus:outline-none focus:border-indigo-500"
                                 />
                               </div>
                             </div>
@@ -1169,7 +1161,7 @@ export default function Simulation() {
                     key={activeScenario.duration}
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className={`p-8 rounded-2xl border-t-4 shadow-xl ${isOptimized ? 'bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-500 border-x border-b border-x-emerald-500/20 border-b-emerald-500/20' : 'bg-white dark:bg-slate-900/50 border-blue-500 border-x border-b border-slate-200 dark:border-slate-800'}`}
+                    className={`p-8 rounded-2xl border-t-4 shadow-xl ${isOptimized ? 'bg-emerald-950/20 border-emerald-500 border-x border-b border-x-emerald-500/20 border-b-emerald-500/20' : 'bg-slate-900/40 border-blue-500 border-x border-b border-slate-800'}`}
                   >
                     <div className="flex items-center gap-4 mb-4">
                       <div
@@ -1212,7 +1204,7 @@ export default function Simulation() {
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: 0.1 }}
-                    className={`p-8 rounded-2xl border-t-4 shadow-xl ${isOptimized ? 'bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-500 border-x border-b border-x-emerald-500/20 border-b-emerald-500/20' : 'bg-white dark:bg-slate-900/50 border-indigo-500 border-x border-b border-slate-200 dark:border-slate-800'}`}
+                    className={`p-8 rounded-2xl border-t-4 shadow-xl ${isOptimized ? 'bg-emerald-950/20 border-emerald-500 border-x border-b border-x-emerald-500/20 border-b-emerald-500/20' : 'bg-slate-900/40 border-indigo-500 border-x border-b border-slate-800'}`}
                   >
                     <div className="flex items-center gap-4 mb-4">
                       <div
@@ -1237,7 +1229,7 @@ export default function Simulation() {
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: 0.2 }}
-                    className={`p-8 rounded-2xl border-t-4 shadow-xl ${activeScenario.margin >= 0 ? 'bg-white dark:bg-slate-900/50 border-emerald-500 border-x border-b border-slate-200 dark:border-slate-800' : 'bg-rose-50/50 dark:bg-rose-950/20 border-rose-500 border-x border-b border-rose-500/20'}`}
+                    className={`p-8 rounded-2xl border-t-4 shadow-xl ${activeScenario.margin >= 0 ? 'bg-slate-900/40 border-emerald-500 border-x border-b border-slate-800' : 'bg-rose-950/20 border-rose-500 border-x border-b border-rose-500/20'}`}
                   >
                     <div className="flex items-center gap-4 mb-4">
                       <div
@@ -1352,7 +1344,7 @@ export default function Simulation() {
               )}
 
               {/* Cashflow Display */}
-              <div className="bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 shadow-xl">
+              <div className="bg-slate-900/40 border border-slate-800 rounded-3xl p-8 shadow-xl">
                 <div>
                   <h3 className="text-2xl font-black text-slate-900 dark:text-white italic uppercase tracking-tighter">
                     Profil de Trésorerie
@@ -1363,16 +1355,16 @@ export default function Simulation() {
                 </div>
 
                 <div className="space-y-4 mt-6">
-                  <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
-                    <span className="text-slate-600 dark:text-slate-400">
+                  <div className="flex justify-between items-center bg-slate-900/50 p-4 rounded-2xl border border-slate-800">
+                    <span className="text-slate-400">
                       Acompte perçu ({tauxAcompte}%)
                     </span>
-                    <span className="text-slate-900 dark:text-white font-mono font-bold">
+                    <span className="text-white font-mono font-bold">
                       {fmtFCFA(activeScenario.tresorerieInitiale)}
                     </span>
                   </div>
-                  <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
-                    <span className="text-slate-600 dark:text-slate-400">
+                  <div className="flex justify-between items-center bg-slate-900/50 p-4 rounded-2xl border border-slate-800">
+                    <span className="text-slate-400">
                       Besoin FdR (Salaires + Logistique)
                     </span>
                     <span className="text-rose-400 font-mono font-bold">
@@ -1411,7 +1403,7 @@ export default function Simulation() {
               </div>
 
               {/* Analysis & Bottlenecks */}
-              <div className="bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 shadow-xl">
+              <div className="bg-slate-900/40 border border-slate-800 rounded-3xl p-8 shadow-xl">
                 <div>
                   <h3 className="text-2xl font-black text-slate-900 dark:text-white italic uppercase tracking-tighter">
                     Planning & Flux
@@ -1458,7 +1450,7 @@ export default function Simulation() {
                             </span>
                           </div>
                         </div>
-                        <div className="h-6 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full overflow-hidden relative">
+                        <div className="h-6 w-full bg-slate-950 border border-slate-800 rounded-full overflow-hidden relative">
                           <motion.div
                             initial={{ width: 0, left: 0 }}
                             animate={{ width: `${widthPct}%`, left: `${startPct}%` }}
@@ -1478,12 +1470,12 @@ export default function Simulation() {
                 </div>
 
                 {activeScenario.goulotDetroits && (
-                  <div className="p-6 bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-500/20 rounded-2xl flex items-start gap-4 mt-6">
+                  <div className="p-6 bg-indigo-950/30 border border-indigo-500/20 rounded-2xl flex items-start gap-4 mt-6">
                     <div className="p-2 bg-indigo-500/20 text-indigo-400 rounded-lg shrink-0">
                       <Users size={20} />
                     </div>
                     <div>
-                      <h4 className="text-slate-900 dark:text-white font-bold mb-1">
+                      <h4 className="text-white font-bold mb-1">
                         Impact sur la rentabilité
                       </h4>
                       <p className="text-sm text-indigo-200/70 font-medium">
@@ -1515,7 +1507,7 @@ export default function Simulation() {
                   </div>
                   <button
                     onClick={() => exporterPlanningPDF(activeScenario)}
-                    className="flex items-center gap-2 bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                    className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path
@@ -1533,29 +1525,29 @@ export default function Simulation() {
                   {Object.entries(activeScenario.planningDetaille).map(([roleKey, planning]) => (
                     <div
                       key={roleKey}
-                      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6"
+                      className="bg-slate-900 border border-slate-800 rounded-xl p-6"
                     >
                       <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-indigo-100 dark:bg-indigo-900/50 rounded-lg flex items-center justify-center">
-                            <Users className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                          <div className="w-10 h-10 bg-indigo-900/50 rounded-lg flex items-center justify-center">
+                            <Users className="w-5 h-5 text-indigo-400" />
                           </div>
                           <div>
-                            <h4 className="font-bold text-slate-900 dark:text-white">
+                            <h4 className="font-bold text-white">
                               {ROLE_LABELS[roleKey as RoleKey]}
                             </h4>
-                            <p className="text-sm text-slate-500 dark:text-slate-400">
+                            <p className="text-sm text-slate-400">
                               {planning.equipesAllouees} équipe
                               {planning.equipesAllouees > 1 ? 's' : ''}
                             </p>
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className="text-sm font-medium text-slate-900 dark:text-white">
+                          <div className="text-sm font-medium text-white">
                             {planning.dateDebut.toLocaleDateString('fr-FR')} -{' '}
                             {planning.dateFin.toLocaleDateString('fr-FR')}
                           </div>
-                          <div className="text-xs text-slate-500 dark:text-slate-400">
+                          <div className="text-xs text-slate-400">
                             {planning.dureeCalendrier} jours calendaires
                           </div>
                         </div>
@@ -1563,28 +1555,28 @@ export default function Simulation() {
 
                       <div className="space-y-3">
                         <div className="flex justify-between text-sm">
-                          <span className="text-slate-600 dark:text-slate-400">
+                          <span className="text-slate-400">
                             Capacité journalière:
                           </span>
-                          <span className="font-medium text-slate-900 dark:text-white">
+                          <span className="font-medium text-white">
                             {planning.capaciteJournaliere} ménages/jour
                           </span>
                         </div>
                         <div className="flex justify-between text-sm">
-                          <span className="text-slate-600 dark:text-slate-400">
+                          <span className="text-slate-400">
                             Durée effective:
                           </span>
-                          <span className="font-medium text-slate-900 dark:text-white">
+                          <span className="font-medium text-white">
                             {planning.dureeJours} jours
                           </span>
                         </div>
                       </div>
 
-                      <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-800">
-                        <h5 className="text-sm font-medium text-slate-900 dark:text-white mb-2">
+                      <div className="mt-4 pt-4 border-t border-slate-800">
+                        <h5 className="text-sm font-medium text-white mb-2">
                           Tâches principales:
                         </h5>
-                        <ul className="text-sm text-slate-600 dark:text-slate-400 space-y-1">
+                        <ul className="text-sm text-slate-400 space-y-1">
                           {planning.taches.map((tache, index) => (
                             <li key={index} className="flex items-start gap-2">
                               <span className="text-indigo-500 mt-1">•</span>
@@ -1616,37 +1608,37 @@ export default function Simulation() {
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.95, opacity: 0 }}
                 onClick={(e) => e.stopPropagation()}
-                className="bg-white dark:bg-slate-900 rounded-3xl p-8 shadow-2xl max-w-md mx-4 border border-slate-200 dark:border-slate-800"
+                className="bg-slate-900 rounded-3xl p-8 shadow-2xl max-w-md mx-4 border border-slate-800"
               >
                 <div className="flex items-start gap-4 mb-6">
                   <div className="w-12 h-12 bg-indigo-500/20 border border-indigo-500/50 rounded-2xl flex items-center justify-center text-indigo-400 shrink-0">
                     <Check size={24} />
                   </div>
                   <div>
-                    <h3 className="text-xl font-black text-slate-900 dark:text-white">
+                    <h3 className="text-xl font-black text-white">
                       Appliquer la configuration optimisée ?
                     </h3>
-                    <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                    <p className="text-sm text-slate-400 mt-1">
                       Les effectifs optimisés remplaceront votre configuration actuelle.
                     </p>
                   </div>
                 </div>
 
-                <div className="bg-slate-50 dark:bg-slate-950/50 rounded-2xl p-4 mb-6 space-y-3">
+                <div className="bg-slate-950/50 rounded-2xl p-4 mb-6 space-y-3">
                   <div className="flex justify-between text-sm">
-                    <span className="text-slate-600 dark:text-slate-400">Durée</span>
-                    <span className="font-bold text-slate-900 dark:text-white">
+                    <span className="text-slate-400">Durée</span>
+                    <span className="font-bold text-white">
                       {activeScenario.calendarDuration} jours
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-slate-600 dark:text-slate-400">Coût</span>
-                    <span className="font-bold text-slate-900 dark:text-white">
+                    <span className="text-slate-400">Coût</span>
+                    <span className="font-bold text-white">
                       {fmtFCFA(activeScenario.cost)}
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-slate-600 dark:text-slate-400">Marge</span>
+                    <span className="text-slate-400">Marge</span>
                     <span
                       className={`font-bold ${activeScenario.margin >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}
                     >
@@ -1658,7 +1650,7 @@ export default function Simulation() {
                 <div className="flex gap-3">
                   <button
                     onClick={() => setShowApplyModal(false)}
-                    className="flex-1 px-4 py-3 bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-white font-bold rounded-xl hover:bg-slate-300 dark:hover:bg-slate-700 transition-all"
+                    className="flex-1 px-4 py-3 bg-slate-800 text-white font-bold rounded-xl hover:bg-slate-700 transition-all"
                   >
                     Annuler
                   </button>

@@ -101,7 +101,7 @@ const TopBar: React.FC<TopBarProps> = ({
                     right-3 md:right-4
                     z-[1300]
 
-                    bg-white/80 dark:bg-[#050F1F]/90
+                    bg-slate-950/80 dark:bg-[#050F1F]/90 text-white/90
                     backdrop-blur-2xl shadow-[0_8px_32px_rgba(0,0,0,0.3)]
                     border border-white/10 dark:border-white/5
                     rounded-2xl md:rounded-none
@@ -221,7 +221,7 @@ const TopBar: React.FC<TopBarProps> = ({
 
 
               {showListToggle && (
-                <div className="flex p-0.5 rounded-xl bg-white/5 border border-white/5">
+                <div className="flex p-0.5 rounded-xl bg-slate-900/50 border border-white/5">
                   <button
                     onClick={() => onViewModeChange('map')}
                     className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${
