@@ -415,6 +415,68 @@ const formatKoboTableCellValue = (submission: InternalKoboSubmissionRecord, colu
   return String(value ?? '');
 };
 
+const normalizeBucketLabel = (bucket: 'status' | 'role' | 'sync' | 'version', value: string) => {
+  if (bucket === 'status') return statusLabels[value] || value || 'Non defini';
+  if (bucket === 'role') return formatInternalKoboValue(value, 'roles') || value || 'Role non defini';
+  if (bucket === 'sync') return value || 'Non synchronise';
+  return value ? `v${value}` : 'Version inconnue';
+};
+
+const getSubmissionBucketCounts = (
+  submissions: InternalKoboSubmissionRecord[],
+  bucket: 'status' | 'role' | 'sync' | 'version'
+) => {
+  const counts: Record<string, number> = {};
+  submissions.forEach((submission) => {
+    const rawValue =
+      bucket === 'status'
+        ? submission.status
+        : bucket === 'role'
+          ? submission.role || ''
+          : bucket === 'sync'
+            ? submission.syncStatus
+            : submission.formVersion;
+    const key = String(rawValue || '').trim() || 'non_defini';
+    counts[key] = (counts[key] || 0) + 1;
+  });
+  return Object.entries(counts)
+    .sort((a, b) => b[1] - a[1])
+    .map(([key, value]) => ({ key, label: normalizeBucketLabel(bucket, key), value }));
+};
+
+const parseCoordinatePair = (value: unknown): { lat: number; lon: number } | null => {
+  if (Array.isArray(value) && value.length >= 2) {
+    const lat = Number(value[0]);
+    const lon = Number(value[1]);
+    return Number.isFinite(lat) && Number.isFinite(lon) ? { lat, lon } : null;
+  }
+
+  const text = String(value || '').trim();
+  if (!text) return null;
+  const matches = text.match(/-?\d+(?:[.,]\d+)?/g);
+  if (!matches || matches.length < 2) return null;
+  const lat = Number(matches[0].replace(',', '.'));
+  const lon = Number(matches[1].replace(',', '.'));
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+  return { lat, lon };
+};
+
+const getSubmissionCoordinates = (submission: InternalKoboSubmissionRecord) => {
+  const values = submission.values || {};
+  const direct = parseCoordinatePair([
+    (values as any).latitude_key || (values as any).latitude || (values as any).lat,
+    (values as any).longitude_key || (values as any).longitude || (values as any).lon || (values as any).lng,
+  ]);
+  if (direct) return direct;
+
+  return (
+    parseCoordinatePair((values as any).LOCALISATION_CLIENT) ||
+    parseCoordinatePair((values as any).gps) ||
+    parseCoordinatePair((values as any).geopoint) ||
+    parseCoordinatePair((values as any)._geolocation)
+  );
+};
+
 const XLSFORM_CONTROL_TYPES = new Set([
   'start',
   'end',
@@ -1352,7 +1414,50 @@ export default function InternalKoboSubmissions() {
       ),
     [submissions]
   );
+  const imageGalleryAttachments = useMemo(
+    () =>
+      galleryAttachments.filter(({ attachment }) =>
+        String(attachment.mimeType || '').startsWith('image/') || Boolean(attachment.url || attachment.dataUrl)
+      ),
+    [galleryAttachments]
+  );
+  const mappedSubmissions = useMemo(
+    () =>
+      submissions
+        .map((submission) => ({ submission, coordinates: getSubmissionCoordinates(submission) }))
+        .filter((entry): entry is { submission: InternalKoboSubmissionRecord; coordinates: { lat: number; lon: number } } =>
+          Boolean(entry.coordinates)
+        ),
+    [submissions]
+  );
+  const mapBounds = useMemo(() => {
+    if (!mappedSubmissions.length) return null;
+    const lats = mappedSubmissions.map((entry) => entry.coordinates.lat);
+    const lons = mappedSubmissions.map((entry) => entry.coordinates.lon);
+    const minLat = Math.min(...lats);
+    const maxLat = Math.max(...lats);
+    const minLon = Math.min(...lons);
+    const maxLon = Math.max(...lons);
+    return {
+      minLat,
+      maxLat,
+      minLon,
+      maxLon,
+      latSpan: Math.max(maxLat - minLat, 0.0001),
+      lonSpan: Math.max(maxLon - minLon, 0.0001),
+    };
+  }, [mappedSubmissions]);
+  const reportBuckets = useMemo(
+    () => [
+      { title: 'Par statut', bucket: 'status' as const, rows: getSubmissionBucketCounts(submissions, 'status') },
+      { title: 'Par role', bucket: 'role' as const, rows: getSubmissionBucketCounts(submissions, 'role') },
+      { title: 'Par synchronisation', bucket: 'sync' as const, rows: getSubmissionBucketCounts(submissions, 'sync') },
+      { title: 'Par version', bucket: 'version' as const, rows: getSubmissionBucketCounts(submissions, 'version') },
+    ],
+    [submissions]
+  );
   const deployedProjectForms = importedForms.filter((form) => getProjectStatus(form) === 'deployed');
+  const selectedProjectForm = deployedProjectForms.find((form) => form.formKey === selectedProjectFormKey) || deployedProjectForms[0] || null;
   const activeFormCount = deployedProjectForms.length;
   const draftFormCount = importedForms.filter((form) => getProjectStatus(form) === 'draft').length;
   const inactiveFormCount = importedForms.filter((form) => getProjectStatus(form) === 'archived').length;
@@ -2998,153 +3103,305 @@ export default function InternalKoboSubmissions() {
           ) : null}
 
           {mainTab === 'data' && dataTab !== 'table' ? (
-            <section className="rounded-3xl border border-white/10 bg-slate-900/45 p-3">
-              <div className="flex flex-wrap gap-2">
-                {dataTabs.map((tab) => {
-                  const Icon = tab.icon;
-                  const active = dataTab === tab.id;
-                  return (
-                    <button
-                      key={tab.id}
-                      type="button"
-                      onClick={() => setDataTab(tab.id)}
-                      className={`inline-flex items-center gap-2 rounded-2xl border px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] transition-colors ${
-                        active
-                          ? 'border-blue-300/40 bg-blue-400/15 text-blue-50'
-                          : 'border-white/10 bg-slate-950/25 text-slate-400 hover:text-white'
-                      }`}
-                    >
-                      <Icon size={13} />
-                      {tab.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </section>
-          ) : null}
-
-          {mainTab === 'data' && dataTab === 'reports' ? (
-            <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-              {[
-                ['Par statut', globalDiagnostics?.byStatus || {}],
-                ['Par role', globalDiagnostics?.byRole || {}],
-                ['Par version', globalDiagnostics?.byFormVersion || {}],
-              ].map(([title, bucket]) => (
-                <div key={String(title)} className="rounded-3xl border border-white/10 bg-slate-900/45 p-4">
-                  <p className="text-[11px] font-black uppercase tracking-[0.16em] text-blue-100">{String(title)}</p>
-                  <div className="mt-4 space-y-2">
-                    {Object.entries(bucket as Record<string, number>).slice(0, 8).map(([key, value]) => (
-                      <div key={key} className="flex items-center justify-between gap-3 rounded-2xl border border-white/8 bg-slate-950/30 px-3 py-2">
-                        <span className="truncate text-[11px] font-black text-white">
-                          {String(title) === 'Par role' ? formatInternalKoboValue(key, 'roles') || key : key}
-                        </span>
-                        <span className="rounded-full bg-white/[0.06] px-2 py-1 text-[10px] font-bold text-slate-300">{value}</span>
-                      </div>
-                    ))}
-                    {Object.keys(bucket as Record<string, number>).length === 0 ? (
-                      <p className="rounded-2xl border border-white/8 bg-slate-950/30 p-3 text-xs font-semibold text-slate-500">
-                        Aucun indicateur disponible.
-                      </p>
-                    ) : null}
+            <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white text-slate-900 shadow-xl shadow-slate-200/70">
+              <div className="grid min-h-[640px] grid-cols-1 lg:grid-cols-[230px_1fr]">
+                <aside className="border-b border-slate-200 bg-slate-50 lg:border-b-0 lg:border-r">
+                  <div className="space-y-1 p-3">
+                    {dataTabs.map((tab) => {
+                      const Icon = tab.icon;
+                      const active = dataTab === tab.id;
+                      return (
+                        <button
+                          key={tab.id}
+                          type="button"
+                          onClick={() => setDataTab(tab.id)}
+                          className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-bold transition-colors ${
+                            active
+                              ? 'border-l-4 border-cyan-400 bg-white text-slate-950 shadow-sm'
+                              : 'text-slate-600 hover:bg-white hover:text-slate-950'
+                          }`}
+                        >
+                          <Icon size={21} className={active ? 'text-slate-950' : 'text-slate-500'} />
+                          {tab.label}
+                        </button>
+                      );
+                    })}
                   </div>
-                </div>
-              ))}
-            </section>
-          ) : null}
+                </aside>
 
-          {mainTab === 'data' && dataTab === 'gallery' ? (
-            <section className="rounded-3xl border border-white/10 bg-slate-900/45 p-4">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-[11px] font-black uppercase tracking-[0.16em] text-blue-100">Galerie photo</p>
-                  <p className="mt-1 text-xs font-semibold text-slate-500">{galleryAttachments.length} piece(s) jointe(s) dans la selection chargee.</p>
-                </div>
-                <Image size={18} className="text-blue-200" />
-              </div>
-              <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-                {galleryAttachments.map(({ attachment, submission, key }) => (
-                  <a
-                    key={key}
-                    href={attachment.url || attachment.dataUrl || '#'}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="overflow-hidden rounded-2xl border border-white/10 bg-slate-950/35 transition-colors hover:border-blue-300/30"
-                  >
-                    {String(attachment.mimeType || '').startsWith('image/') && (attachment.url || attachment.dataUrl) ? (
-                      <img src={attachment.url || attachment.dataUrl} alt={attachment.fileName || attachment.fieldName} className="h-40 w-full object-cover" />
-                    ) : (
-                      <div className="grid h-40 place-items-center bg-slate-950/45 text-slate-500">
-                        <FileSpreadsheet size={30} />
-                      </div>
-                    )}
-                    <div className="p-3">
-                      <p className="truncate text-[11px] font-black text-white">{attachment.fileName || attachment.fieldName}</p>
-                      <p className="mt-1 truncate text-[10px] font-semibold text-slate-500">
-                        Menage {submission.numeroOrdre || submission.household?.numeroordre || '-'} - {attachment.fieldName}
+                <div className="min-w-0">
+                  <div className="flex flex-col gap-3 border-b border-slate-200 px-5 py-4 xl:flex-row xl:items-center xl:justify-between">
+                    <div>
+                      <p className="text-[11px] font-black uppercase tracking-[0.14em] text-slate-500">
+                        {dataTabs.find((tab) => tab.id === dataTab)?.label}
+                      </p>
+                      <h3 className="mt-1 text-xl font-black text-slate-950">
+                        {selectedProjectForm?.title || KOBO_SOURCE_SNAPSHOT.name}
+                      </h3>
+                      <p className="mt-1 text-sm font-semibold text-slate-500">
+                        {submissions.length} soumission(s) chargee(s), filtrees par le projet deploye selectionne.
                       </p>
                     </div>
-                  </a>
-                ))}
-                {galleryAttachments.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-white/12 bg-slate-950/30 p-6 text-sm font-semibold text-slate-500">
-                    Aucun media dans la selection actuelle.
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={loadSubmissions}
+                        className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-black uppercase tracking-[0.08em] text-slate-700 hover:bg-slate-50"
+                      >
+                        <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
+                        Actualiser
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => exportFromServer('xlsx')}
+                        disabled={submissions.length === 0}
+                        className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-xs font-black uppercase tracking-[0.08em] text-white hover:bg-blue-700 disabled:opacity-40"
+                      >
+                        <Download size={14} />
+                        Export
+                      </button>
+                    </div>
                   </div>
-                ) : null}
-              </div>
-            </section>
-          ) : null}
 
-          {mainTab === 'data' && dataTab === 'downloads' ? (
-            <section className="rounded-3xl border border-white/10 bg-slate-900/45 p-4">
-              <p className="text-[11px] font-black uppercase tracking-[0.16em] text-blue-100">Telechargements</p>
-              <p className="mt-1 text-xs font-semibold text-slate-500">Exports filtres depuis le VPS, prets pour audit ou reporting.</p>
-              <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
-                {([
-                  ['CSV', 'csv', FileSpreadsheet],
-                  ['JSON', 'json', FileJson],
-                  ['XLSX', 'xlsx', FileSpreadsheet],
-                ] as const).map(([label, format, Icon]) => (
-                  <button
-                    key={format}
-                    type="button"
-                    onClick={() => exportFromServer(format)}
-                    disabled={submissions.length === 0}
-                    className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-slate-950/35 px-4 py-4 text-[11px] font-black uppercase tracking-[0.14em] text-slate-100 hover:bg-white/[0.06] disabled:opacity-40"
-                  >
-                    <Icon size={16} className={isExporting === format ? 'animate-pulse' : ''} />
-                    Export {label}
-                  </button>
-                ))}
-              </div>
-            </section>
-          ) : null}
+                  {dataTab === 'reports' ? (
+                    <div className="space-y-5 p-5">
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+                        {([
+                          ['Soumissions', submissions.length, ClipboardCheck],
+                          ['Completes', submissions.filter((item) => item.status === 'submitted' || item.status === 'validated').length, CheckCircle2],
+                          ['Brouillons', submissions.filter((item) => item.status === 'draft').length, FileJson],
+                          ['Medias', galleryAttachments.length, Image],
+                        ] as const).map(([label, value, Icon]) => (
+                          <div key={String(label)} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                            <div className="flex items-center justify-between gap-3">
+                              <p className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">{label}</p>
+                              <Icon size={17} className="text-blue-700" />
+                            </div>
+                            <p className="mt-3 text-2xl font-black text-slate-950">{value}</p>
+                          </div>
+                        ))}
+                      </div>
 
-          {mainTab === 'data' && dataTab === 'map' ? (
-            <section className="rounded-3xl border border-white/10 bg-slate-900/45 p-4">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-[11px] font-black uppercase tracking-[0.16em] text-blue-100">Carte</p>
-                  <p className="mt-1 text-xs font-semibold text-slate-500">Apercu geographique des soumissions chargees.</p>
+                      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                        {reportBuckets.map((group) => (
+                          <div key={group.title} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                            <div className="flex items-center justify-between gap-3">
+                              <p className="text-[11px] font-black uppercase tracking-[0.12em] text-slate-500">{group.title}</p>
+                              <span className="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-black text-slate-600">
+                                {group.rows.length}
+                              </span>
+                            </div>
+                            <div className="mt-4 space-y-3">
+                              {group.rows.slice(0, 8).map((row) => {
+                                const percent = submissions.length ? Math.round((row.value / submissions.length) * 100) : 0;
+                                return (
+                                  <div key={row.key}>
+                                    <div className="flex items-center justify-between gap-3 text-sm">
+                                      <span className="truncate font-black text-slate-900">{row.label}</span>
+                                      <span className="font-black text-slate-500">{row.value}</span>
+                                    </div>
+                                    <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
+                                      <div className="h-full rounded-full bg-cyan-500" style={{ width: `${percent}%` }} />
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                              {group.rows.length === 0 ? (
+                                <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm font-semibold text-slate-500">
+                                  Aucun indicateur disponible pour cette rubrique.
+                                </p>
+                              ) : null}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {dataTab === 'gallery' ? (
+                    <div className="space-y-5 p-5">
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                        {[
+                          ['Photos', imageGalleryAttachments.length],
+                          ['Pieces jointes', galleryAttachments.length],
+                          ['Volume VPS', formatBytes(globalDiagnostics?.mediaStats?.totalStoredBytes)],
+                        ].map(([label, value]) => (
+                          <div key={String(label)} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                            <p className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">{label}</p>
+                            <p className="mt-2 text-xl font-black text-slate-950">{value}</p>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+                        {galleryAttachments.map(({ attachment, submission, key }) => (
+                          <a
+                            key={key}
+                            href={attachment.url || attachment.dataUrl || '#'}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:border-blue-300 hover:shadow-md"
+                          >
+                            {String(attachment.mimeType || '').startsWith('image/') && (attachment.url || attachment.dataUrl) ? (
+                              <img src={attachment.url || attachment.dataUrl} alt={attachment.fileName || attachment.fieldName} className="h-44 w-full object-cover" />
+                            ) : (
+                              <div className="grid h-44 place-items-center bg-slate-100 text-slate-400">
+                                <FileSpreadsheet size={34} />
+                              </div>
+                            )}
+                            <div className="p-3">
+                              <p className="truncate text-sm font-black text-slate-950">{attachment.fileName || attachment.fieldName}</p>
+                              <p className="mt-1 truncate text-xs font-semibold text-slate-500">
+                                {submission.household?.name || `Menage ${submission.numeroOrdre || '-'}`}
+                              </p>
+                              <p className="mt-2 rounded-full bg-slate-100 px-2 py-1 text-[10px] font-black text-slate-500">
+                                {attachment.fieldName || 'media'} - {formatBytes(attachment.storedBytes || attachment.originalBytes)}
+                              </p>
+                            </div>
+                          </a>
+                        ))}
+                        {galleryAttachments.length === 0 ? (
+                          <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-8 text-sm font-semibold text-slate-500">
+                            Aucun media dans la selection actuelle.
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {dataTab === 'downloads' ? (
+                    <div className="space-y-5 p-5">
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                        {([
+                          ['CSV', 'Tableur leger pour controle rapide', 'csv', FileSpreadsheet],
+                          ['JSON', 'Archive complete avec valeurs et metadonnees', 'json', FileJson],
+                          ['XLSX', 'Export audit conforme reporting', 'xlsx', FileSpreadsheet],
+                        ] as const).map(([label, description, format, Icon]) => (
+                          <button
+                            key={format}
+                            type="button"
+                            onClick={() => exportFromServer(format)}
+                            disabled={submissions.length === 0}
+                            className="rounded-2xl border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:border-blue-300 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-40"
+                          >
+                            <div className="flex items-center justify-between gap-3">
+                              <Icon size={24} className={isExporting === format ? 'animate-pulse text-blue-700' : 'text-blue-700'} />
+                              <Download size={16} className="text-slate-400" />
+                            </div>
+                            <p className="mt-4 text-xl font-black text-slate-950">{label}</p>
+                            <p className="mt-2 text-sm font-semibold leading-relaxed text-slate-500">{description}</p>
+                            <p className="mt-4 rounded-full bg-slate-100 px-3 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-slate-600">
+                              {submissions.length} ligne(s)
+                            </p>
+                          </button>
+                        ))}
+                      </div>
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                        <p className="text-[11px] font-black uppercase tracking-[0.12em] text-slate-500">Paquet export actuel</p>
+                        <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-4">
+                          {[
+                            ['Projet', selectedProjectForm?.title || 'Tous projets deployes'],
+                            ['Derniere fiche', formatDateTime(globalDiagnostics?.latestSavedAt || selectedSubmission?.savedAt || null)],
+                            ['Medias', String(galleryAttachments.length)],
+                            ['Version', selectedProjectForm?.formVersion || globalDiagnostics?.serverFormVersion || '-'],
+                          ].map(([label, value]) => (
+                            <div key={label} className="rounded-xl border border-slate-200 bg-white p-3">
+                              <p className="text-[9px] font-black uppercase tracking-[0.12em] text-slate-400">{label}</p>
+                              <p className="mt-1 truncate text-sm font-black text-slate-900">{value}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {dataTab === 'map' ? (
+                    <div className="space-y-5 p-5">
+                      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_360px]">
+                        <div className="relative min-h-[420px] overflow-hidden rounded-2xl border border-slate-200 bg-slate-100">
+                          <div className="absolute inset-0 opacity-80 [background-image:linear-gradient(#cbd5e1_1px,transparent_1px),linear-gradient(90deg,#cbd5e1_1px,transparent_1px)] [background-size:42px_42px]" />
+                          <div className="absolute left-5 top-5 rounded-2xl border border-white bg-white/90 px-4 py-3 shadow-sm">
+                            <p className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">Carte des soumissions</p>
+                            <p className="mt-1 text-sm font-black text-slate-950">{mappedSubmissions.length} point(s) GPS</p>
+                          </div>
+                          {mappedSubmissions.map(({ submission, coordinates }) => {
+                            const left = mapBounds ? ((coordinates.lon - mapBounds.minLon) / mapBounds.lonSpan) * 82 + 9 : 50;
+                            const top = mapBounds ? (1 - (coordinates.lat - mapBounds.minLat) / mapBounds.latSpan) * 76 + 12 : 50;
+                            return (
+                              <button
+                                key={submission.id}
+                                type="button"
+                                onClick={() => setSelectedId(submission.id)}
+                                title={submission.household?.name || `Menage ${submission.numeroOrdre || '-'}`}
+                                className={`absolute grid h-8 w-8 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border-2 shadow-lg transition ${
+                                  selectedSubmission?.id === submission.id
+                                    ? 'border-blue-700 bg-blue-600 text-white'
+                                    : 'border-white bg-cyan-500 text-white hover:bg-blue-600'
+                                }`}
+                                style={{ left: `${left}%`, top: `${top}%` }}
+                              >
+                                <MapPin size={16} />
+                              </button>
+                            );
+                          })}
+                          {mappedSubmissions.length === 0 ? (
+                            <div className="absolute inset-0 grid place-items-center">
+                              <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center">
+                                <MapPin size={28} className="mx-auto text-slate-400" />
+                                <p className="mt-3 text-sm font-black text-slate-700">Aucune coordonnee GPS exploitable</p>
+                                <p className="mt-1 text-xs font-semibold text-slate-500">Les champs latitude/longitude ou geopoint seront affiches ici.</p>
+                              </div>
+                            </div>
+                          ) : null}
+                        </div>
+
+                        <div className="space-y-3">
+                          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                            <p className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">Couverture</p>
+                            <div className="mt-3 grid grid-cols-2 gap-2">
+                              {[
+                                ['Avec GPS', mappedSubmissions.length],
+                                ['Sans GPS', Math.max(0, submissions.length - mappedSubmissions.length)],
+                              ].map(([label, value]) => (
+                                <div key={String(label)} className="rounded-xl border border-slate-200 bg-white p-3">
+                                  <p className="text-[9px] font-black uppercase tracking-[0.1em] text-slate-400">{label}</p>
+                                  <p className="mt-1 text-lg font-black text-slate-950">{value}</p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                          <div className="max-h-[300px] space-y-2 overflow-y-auto pr-1 custom-scrollbar">
+                            {mappedSubmissions.slice(0, 30).map(({ submission, coordinates }) => (
+                              <button
+                                key={submission.id}
+                                type="button"
+                                onClick={() => setSelectedId(submission.id)}
+                                className={`w-full rounded-2xl border p-3 text-left transition ${
+                                  selectedSubmission?.id === submission.id
+                                    ? 'border-blue-300 bg-blue-50'
+                                    : 'border-slate-200 bg-white hover:border-blue-200'
+                                }`}
+                              >
+                                <p className="truncate text-sm font-black text-slate-950">{submission.household?.name || `Menage ${submission.numeroOrdre || '-'}`}</p>
+                                <p className="mt-1 text-xs font-semibold text-slate-500">
+                                  {coordinates.lat.toFixed(6)}, {coordinates.lon.toFixed(6)}
+                                </p>
+                                <a
+                                  href={`https://www.google.com/maps?q=${coordinates.lat},${coordinates.lon}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  onClick={(event) => event.stopPropagation()}
+                                  className="mt-2 inline-flex rounded-full bg-slate-100 px-3 py-1 text-[10px] font-black uppercase tracking-[0.08em] text-blue-800 hover:bg-blue-100"
+                                >
+                                  Ouvrir carte
+                                </a>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
-                <Map size={18} className="text-blue-200" />
-              </div>
-              <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-                {submissions.slice(0, 30).map((submission) => (
-                  <div key={submission.id} className="rounded-2xl border border-white/10 bg-slate-950/30 p-4">
-                    <p className="truncate text-sm font-black text-white">{submission.household?.name || `Menage ${submission.numeroOrdre || '-'}`}</p>
-                    <p className="mt-1 text-[11px] font-semibold text-slate-500">
-                      {submission.household?.region || (submission.values as any)?.region_key || 'Region non renseignee'}
-                    </p>
-                    <p className="mt-3 rounded-xl border border-blue-200/10 bg-blue-400/[0.06] px-3 py-2 text-[10px] font-bold text-blue-100">
-                      GPS: {String((submission.values as any)?.LOCALISATION_CLIENT || (submission.values as any)?.gps || 'Non renseigne')}
-                    </p>
-                  </div>
-                ))}
-                {submissions.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-white/12 bg-slate-950/30 p-6 text-sm font-semibold text-slate-500">
-                    Aucune fiche chargee pour la carte.
-                  </div>
-                ) : null}
               </div>
             </section>
           ) : null}
