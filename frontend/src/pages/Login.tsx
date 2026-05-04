@@ -225,25 +225,9 @@ export default function Login() {
           <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent" />
           <div className="absolute -left-[100%] top-0 w-full h-full bg-gradient-to-r from-transparent via-white/[0.03] to-transparent -skew-x-12 animate-[shimmer_8s_infinite]" />
           
-          {/* Toggle Branding Button */}
-          <button 
-            onClick={() => setShowBranding(!showBranding)}
-            className="hidden md:flex absolute top-1/2 z-30 w-10 h-10 items-center justify-center bg-indigo-600 text-white rounded-full border border-white/20 shadow-xl hover:bg-indigo-500 transition-all duration-700 hover:scale-110 active:scale-90"
-            style={{ 
-              left: showBranding ? '38%' : '20px', 
-              transform: `translate(-50%, -50%) rotate(${showBranding ? '0' : '180'}deg)`,
-              opacity: 0.8
-            }}
-            title={showBranding ? "Masquer le panneau latéral" : "Afficher le panneau latéral"}
-          >
-            <ChevronLeft size={18} />
-          </button>
-
-          {/* Left Panel: Branding (Foldable) */}
-          <div className={`hidden md:flex flex-col justify-between p-14 bg-indigo-500/[0.01] border-r border-white/10 relative transition-all duration-700 ease-in-out ${
-            showBranding ? 'w-[38%] opacity-100' : 'w-0 opacity-0 p-0 border-0'
-          }`}>
-            <div className={`relative z-10 transition-all duration-500 ${showBranding ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'}`}>
+          {/* Left Panel: Branding (Fixed & Premium) */}
+          <div className="hidden md:flex flex-col justify-between w-[38%] p-14 bg-indigo-500/[0.01] border-r border-white/10 relative">
+            <div className="relative z-10">
               <div className="w-14 h-14 bg-indigo-500/10 rounded-2xl flex items-center justify-center border border-indigo-500/20 mb-10 shadow-[inset_0_0_20px_rgba(99,102,241,0.1)]">
                 <ShieldCheck size={28} className="text-indigo-400" />
               </div>
@@ -256,7 +240,7 @@ export default function Login() {
               </p>
             </div>
 
-            <div className={`relative z-10 pt-10 transition-opacity duration-500 ${showBranding ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+            <div className="relative z-10 pt-10">
               <div className="flex items-center gap-4 text-[9px] font-black text-slate-600 uppercase tracking-[0.3em]">
                 <span className="text-indigo-500/50">V.3.0</span>
                 <span className="w-1 h-1 bg-slate-800 rounded-full" />
