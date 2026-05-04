@@ -83,7 +83,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       : 'relative min-h-full px-3 py-4 sm:px-4 sm:py-5 lg:px-6 lg:py-6';
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-[linear-gradient(135deg,#020817_0%,#071226_38%,#0a1833_72%,#0d2041_100%)] text-[#E8F0FF] md:flex-row">
+    <div className="gem-app-shell flex flex-col overflow-hidden bg-[linear-gradient(135deg,#020817_0%,#071226_38%,#0a1833_72%,#0d2041_100%)] text-[#E8F0FF] md:flex-row">
       <CommandPalette />
       <Sidebar />
 

@@ -5,6 +5,19 @@ import toast from 'react-hot-toast';
 
 import { useTerrainUIStore } from '../../store/terrainUIStore';
 
+const safeRemovePopup = (popup: maplibregl.Popup | null) => {
+  if (!popup) return;
+
+  try {
+    popup.remove();
+  } catch (error) {
+    const name = error instanceof DOMException ? error.name : '';
+    if (name !== 'NotFoundError') {
+      throw error;
+    }
+  }
+};
+
 export const useMapInteractions = (
   readOnly: boolean,
   householdsRef: React.MutableRefObject<any[]>,
@@ -25,7 +38,7 @@ export const useMapInteractions = (
   useEffect(() => {
     return () => {
       if (popupRef.current) {
-        popupRef.current.remove();
+        safeRemovePopup(popupRef.current);
       }
     };
   }, []);
@@ -50,7 +63,7 @@ export const useMapInteractions = (
         const hId = e.detail;
         if (hId) {
           setSelectedHouseholdId(hId);
-          popupRef.current?.remove();
+          safeRemovePopup(popupRef.current);
         }
       };
 

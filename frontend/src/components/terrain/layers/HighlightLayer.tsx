@@ -6,6 +6,19 @@ interface HighlightLayerProps {
   map: maplibregl.Map | null;
 }
 
+const safeRemoveMarker = (marker: maplibregl.Marker | null) => {
+  if (!marker) return;
+
+  try {
+    marker.remove();
+  } catch (error) {
+    const name = error instanceof DOMException ? error.name : '';
+    if (name !== 'NotFoundError') {
+      throw error;
+    }
+  }
+};
+
 const HighlightLayer: React.FC<HighlightLayerProps> = ({ map }) => {
   const highlightedLocation = useTerrainUIStore((s) => s.highlightedLocation);
   const setHighlightedLocation = useTerrainUIStore((s) => s.setHighlightedLocation);
@@ -14,7 +27,7 @@ const HighlightLayer: React.FC<HighlightLayerProps> = ({ map }) => {
   useEffect(() => {
     if (!map || !highlightedLocation) {
         if (markerRef.current) {
-            markerRef.current.remove();
+            safeRemoveMarker(markerRef.current);
             markerRef.current = null;
         }
         return;
@@ -87,7 +100,7 @@ const HighlightLayer: React.FC<HighlightLayerProps> = ({ map }) => {
 
     return () => {
         clearTimeout(timeout);
-        if (marker) marker.remove();
+        safeRemoveMarker(marker);
     };
   }, [map, highlightedLocation, setHighlightedLocation]);
 

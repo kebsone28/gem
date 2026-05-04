@@ -28,6 +28,24 @@ import { startBackgroundSync } from './services/sync/backgroundSyncService';
 import { initOfflineListener } from './services/offline/offlineService';
 import logger from './utils/logger';
 
+function initMobileViewportSizing() {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  const setViewportHeight = () => {
+    const height = window.visualViewport?.height || window.innerHeight;
+    if (height > 0) {
+      document.documentElement.style.setProperty('--gem-vh', `${height}px`);
+    }
+  };
+
+  setViewportHeight();
+  window.addEventListener('resize', setViewportHeight, { passive: true });
+  window.addEventListener('orientationchange', setViewportHeight, { passive: true });
+  window.visualViewport?.addEventListener('resize', setViewportHeight, { passive: true });
+}
+
 async function cleanupDevServiceWorkers() {
   if (!import.meta.env.DEV || typeof window === 'undefined' || !('serviceWorker' in navigator)) {
     return;
@@ -53,6 +71,7 @@ async function cleanupDevServiceWorkers() {
 }
 
 // Start services before React mounts — they run for the full app lifetime
+initMobileViewportSizing();
 void cleanupDevServiceWorkers();
 initOfflineListener();
 startBackgroundSync();

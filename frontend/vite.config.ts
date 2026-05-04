@@ -12,6 +12,12 @@ import { fileURLToPath } from 'node:url';
 const dirname =
   typeof __dirname !== 'undefined' ? __dirname : path.dirname(fileURLToPath(import.meta.url));
 
+const apiProxyTarget = (
+  process.env.VITE_API_PROXY_TARGET ||
+  process.env.GEM_API_PROXY_TARGET ||
+  `http://localhost:${process.env.GEM_API_PORT || process.env.PORT || '5008'}`
+).replace(/\/$/, '');
+
 // More info at: https://storybook.js.org/docs/next/writing-tests/integrations/vitest-addon
 export default defineConfig({
   root: dirname,
@@ -51,8 +57,11 @@ export default defineConfig({
         ],
       },
       workbox: {
+        cleanupOutdatedCaches: true,
+        clientsClaim: true,
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
         maximumFileSizeToCacheInBytes: 20 * 1024 * 1024,
+        skipWaiting: true,
         navigateFallbackDenylist: [
           /^\/api\//,
           /^\/@vite\//,
@@ -136,7 +145,7 @@ export default defineConfig({
     proxy: {
       // Proxy all /api calls to the backend → eliminates CORS
       '/api': {
-        target: 'http://localhost:5008',
+        target: apiProxyTarget,
         changeOrigin: true,
         secure: false,
         cookieDomainRewrite: '',
@@ -158,7 +167,7 @@ export default defineConfig({
       },
       // Proxy WebSocket connections for Socket.io
       '/socket.io': {
-        target: 'http://localhost:5008',
+        target: apiProxyTarget,
         changeOrigin: true,
         secure: false,
         ws: true, // Enable WebSocket proxying
@@ -177,12 +186,12 @@ export default defineConfig({
     allowedHosts: true,
     proxy: {
       '/api': {
-        target: 'http://localhost:5008',
+        target: apiProxyTarget,
         changeOrigin: true,
         secure: false,
       },
       '/socket.io': {
-        target: 'http://localhost:5008',
+        target: apiProxyTarget,
         changeOrigin: true,
         secure: false,
         ws: true,
@@ -190,6 +199,8 @@ export default defineConfig({
     },
   },
   build: {
+    target: ['es2020', 'chrome90', 'edge90', 'firefox88', 'safari14'],
+    cssTarget: ['chrome90', 'edge90', 'firefox88', 'safari14'],
     // Raise the chunk size warning threshold (MapLibre is unavoidably large)
     chunkSizeWarningLimit: 2500,
     rollupOptions: {

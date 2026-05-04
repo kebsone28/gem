@@ -116,6 +116,24 @@ const getCurrentStyleSource = (map: maplibregl.Map | null): string | null => {
   return ((map.getStyle() as unknown as { metadata?: { source?: string } })?.metadata?.source || null);
 };
 
+const isDomNotFoundError = (error: unknown) =>
+  error instanceof DOMException && error.name === 'NotFoundError';
+
+const safeRemoveMap = (map: maplibregl.Map, context: string) => {
+  if ((map as any)._removed) return;
+
+  try {
+    map.remove();
+  } catch (error: any) {
+    if (error?.name === 'AbortError' || isDomNotFoundError(error)) {
+      logger.debug(`[Terrain] Map cleanup skipped after ${context}:`, error);
+      return;
+    }
+
+    logger.warn(`[Terrain] Map remove failed during ${context}:`, error);
+  }
+};
+
 const MapLibreVectorMap: React.FC<any> = ({
   households,
   selectedHouseholdId,
@@ -482,7 +500,9 @@ const MapLibreVectorMap: React.FC<any> = ({
       const container = mapHostRef.current;
       if (!container) return () => undefined;
 
-      container.innerHTML = '';
+      if (!container.firstChild) {
+        container.textContent = '';
+      }
 
       const mapOptions: maplibregl.MapOptions = {
         container,
@@ -582,15 +602,7 @@ const MapLibreVectorMap: React.FC<any> = ({
 
       if (!isMounted || isDestroyingRef.current) {
         isDestroyingRef.current = true;
-        if (!(map as any)._removed) {
-          try {
-            map.remove();
-          } catch (error: any) {
-            if (error?.name !== 'AbortError') {
-              logger.warn('[Terrain] Map remove aborted during strict cleanup:', error);
-            }
-          }
-        }
+        safeRemoveMap(map, 'strict cleanup');
         hasInitialized.current = false;
         mapInstanceRef.current = null;
         setMapForChildren(null);
@@ -746,15 +758,7 @@ const MapLibreVectorMap: React.FC<any> = ({
         resizeObserver?.disconnect();
         frameIds.forEach((id) => cancelAnimationFrame(id));
         timeoutIds.forEach((id) => clearTimeout(id));
-        if (!(map as any)._removed) {
-          try {
-            map.remove();
-          } catch (error: any) {
-            if (error?.name !== 'AbortError') {
-              logger.warn('[Terrain] Map remove aborted during cleanup:', error);
-            }
-          }
-        }
+        safeRemoveMap(map, 'cleanup');
         hasInitialized.current = false;
         mapInstanceRef.current = null;
         setMapForChildren(null);

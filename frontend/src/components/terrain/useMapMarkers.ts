@@ -8,6 +8,19 @@
 import { useEffect, useRef } from 'react';
 import maplibregl from 'maplibre-gl';
 
+const safeRemoveMarker = (marker: maplibregl.Marker | null) => {
+  if (!marker) return;
+
+  try {
+    marker.remove();
+  } catch (error) {
+    const name = error instanceof DOMException ? error.name : '';
+    if (name !== 'NotFoundError') {
+      throw error;
+    }
+  }
+};
+
 export const useMapMarkers = (userLocation: [number, number] | null) => {
   const userMarkerRef = useRef<maplibregl.Marker | null>(null);
 
@@ -19,7 +32,7 @@ export const useMapMarkers = (userLocation: [number, number] | null) => {
   const setupUserMarker = (map: maplibregl.Map, location: [number, number] | null) => {
     if (!location || !location.length) {
       if (userMarkerRef.current) {
-        userMarkerRef.current.remove();
+        safeRemoveMarker(userMarkerRef.current);
         userMarkerRef.current = null;
       }
       return;
@@ -46,7 +59,7 @@ export const useMapMarkers = (userLocation: [number, number] | null) => {
 
   const cleanup = () => {
     if (userMarkerRef.current) {
-      userMarkerRef.current.remove();
+      safeRemoveMarker(userMarkerRef.current);
       userMarkerRef.current = null;
     }
   };

@@ -19,6 +19,27 @@ console.log('🔍 JWT Secrets from env:', process.env.JWT_SECRET ? 'PRESENT' : '
 // eslint-disable-next-line no-console
 console.log('🔍 Current Working Directory:', process.cwd());
 
+const localCorsOrigins = [
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'http://0.0.0.0:5173',
+    'http://localhost:4173',
+    'http://127.0.0.1:4173',
+    'http://localhost:3000',
+    'http://127.0.0.1:3000'
+];
+
+const isLoopbackOrigin = (origin) => {
+    if (!origin) return true;
+
+    try {
+        const { hostname } = new URL(origin);
+        return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '0.0.0.0' || hostname === '::1';
+    } catch {
+        return false;
+    }
+};
+
 export const config = {
     env: process.env.NODE_ENV || 'development',
     port: parsePort(process.env.PORT, 5005),
@@ -39,10 +60,10 @@ export const config = {
                 : ['https://gem.proquelec.sn'];
                 
             if (isDev) {
-                allowedOrigins.push('http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:3000');
+                allowedOrigins.push(...localCorsOrigins);
             }
             
-            if (isDev || !origin || allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+            if (isDev || isLoopbackOrigin(origin) || allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
                 callback(null, true);
             } else {
                 callback(new Error('CORS blocked by PROQUELEC Policy for ' + origin));

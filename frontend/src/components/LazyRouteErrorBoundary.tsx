@@ -7,6 +7,7 @@ interface Props {
 
 interface State {
   error: Error | null;
+  isRecovering: boolean;
 }
 
 function isDynamicImportFailure(error: Error | null) {
@@ -22,10 +23,11 @@ function isDynamicImportFailure(error: Error | null) {
 export class LazyRouteErrorBoundary extends Component<Props, State> {
   state: State = {
     error: null,
+    isRecovering: false,
   };
 
   static getDerivedStateFromError(error: Error): State {
-    return { error };
+    return { error, isRecovering: false };
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
@@ -49,8 +51,30 @@ export class LazyRouteErrorBoundary extends Component<Props, State> {
     keysToClear.forEach((key) => window.sessionStorage.removeItem(key));
   }
 
-  private handleReload = () => {
+  private async clearBrowserRuntimeCache() {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    try {
+      if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(registrations.map((registration) => registration.unregister()));
+      }
+
+      if ('caches' in window) {
+        const cacheKeys = await caches.keys();
+        await Promise.all(cacheKeys.map((key) => caches.delete(key)));
+      }
+    } catch (error) {
+      logger.warn('[LazyRouteErrorBoundary] Cache cleanup failed during recovery', error);
+    }
+  }
+
+  private handleReload = async () => {
+    this.setState({ isRecovering: true });
     this.clearLazyRetryFlags();
+    await this.clearBrowserRuntimeCache();
     window.location.reload();
   };
 
@@ -95,9 +119,10 @@ export class LazyRouteErrorBoundary extends Component<Props, State> {
             <div className="mt-6 flex flex-wrap gap-3">
               <button
                 onClick={this.handleReload}
+                disabled={this.state.isRecovering}
                 className="rounded-xl bg-amber-400 px-5 py-3 text-sm font-bold text-slate-950 transition hover:bg-amber-300"
               >
-                Recharger l&apos;application
+                {this.state.isRecovering ? 'Nettoyage...' : "Recharger l'application"}
               </button>
               <button
                 onClick={this.handleGoToDashboard}
