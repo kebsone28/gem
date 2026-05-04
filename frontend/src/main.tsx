@@ -28,6 +28,39 @@ import { startBackgroundSync } from './services/sync/backgroundSyncService';
 import { initOfflineListener } from './services/offline/offlineService';
 import logger from './utils/logger';
 
+function hardenDomRemoveChild() {
+  if (typeof window === 'undefined' || typeof Node === 'undefined') {
+    return;
+  }
+
+  const originalRemoveChild = Node.prototype.removeChild;
+  if ((originalRemoveChild as any).__gemSafeRemoveChild) {
+    return;
+  }
+
+  const safeRemoveChild = function <T extends Node>(this: Node, child: T): T {
+    try {
+      return originalRemoveChild.call(this, child) as T;
+    } catch (error) {
+      const isDetachedChild =
+        error instanceof DOMException &&
+        error.name === 'NotFoundError' &&
+        child &&
+        child.parentNode !== this;
+
+      if (isDetachedChild) {
+        logger.warn('[DOM] removeChild ignored because the node was already detached');
+        return child;
+      }
+
+      throw error;
+    }
+  };
+
+  (safeRemoveChild as any).__gemSafeRemoveChild = true;
+  Node.prototype.removeChild = safeRemoveChild as typeof Node.prototype.removeChild;
+}
+
 function initMobileViewportSizing() {
   if (typeof window === 'undefined') {
     return;
@@ -71,6 +104,7 @@ async function cleanupDevServiceWorkers() {
 }
 
 // Start services before React mounts — they run for the full app lifetime
+hardenDomRemoveChild();
 initMobileViewportSizing();
 void cleanupDevServiceWorkers();
 initOfflineListener();
