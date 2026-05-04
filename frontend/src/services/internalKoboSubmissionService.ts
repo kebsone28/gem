@@ -130,6 +130,9 @@ export interface InternalKoboSubmissionDiagnostics {
   health?: 'ok' | 'warning' | 'critical' | string;
   total?: number;
   count?: number;
+  pageCount?: number;
+  offset?: number;
+  limit?: number;
   receivedLast24h?: number;
   sampleSize?: number;
   byStatus?: Record<string, number>;
@@ -180,12 +183,16 @@ export interface InternalKoboSubmissionFilters {
   from?: string;
   to?: string;
   limit?: number;
+  offset?: number;
 }
 
 export interface InternalKoboSubmissionsReport {
   submissions: InternalKoboSubmissionRecord[];
   diagnostics: InternalKoboSubmissionDiagnostics | null;
   count: number;
+  pageCount?: number;
+  offset?: number;
+  limit?: number;
 }
 
 export interface InternalKoboQueuedSubmission {
@@ -457,6 +464,9 @@ export async function fetchInternalKoboSubmissionsReport(
   const response = await apiClient.get<{
     success: boolean;
     count?: number;
+    pageCount?: number;
+    offset?: number;
+    limit?: number;
     submissions?: InternalKoboSubmissionRecord[];
     diagnostics?: InternalKoboSubmissionDiagnostics;
   }>(INTERNAL_KOBO_SUBMISSION_ENDPOINT, { params });
@@ -465,6 +475,9 @@ export async function fetchInternalKoboSubmissionsReport(
     submissions: response.data.submissions || [],
     diagnostics: response.data.diagnostics || null,
     count: response.data.count ?? response.data.submissions?.length ?? 0,
+    pageCount: response.data.pageCount ?? response.data.submissions?.length ?? 0,
+    offset: response.data.offset ?? params.offset ?? 0,
+    limit: response.data.limit ?? params.limit,
   };
 }
 

@@ -1723,9 +1723,11 @@ export const listInternalKoboSubmissions = async (req, res) => {
             q,
             from,
             to,
-            limit = '100'
+            limit = '100',
+            offset = '0'
         } = req.query;
         const take = Math.min(Math.max(parseInt(limit, 10) || 100, 1), 500);
+        const skip = Math.min(Math.max(parseInt(offset, 10) || 0, 0), 100000);
         const numeroVariants = normalizeNumeroVariants(numeroOrdre);
         const filters = [{ organizationId }];
 
@@ -1792,32 +1794,36 @@ export const listInternalKoboSubmissions = async (req, res) => {
 
         const where = filters.length === 1 ? filters[0] : { AND: filters };
 
-        const submissions = await prisma.internalKoboSubmission.findMany({
-            where,
-            include: {
-                household: {
-                    select: {
-                        id: true,
-                        numeroordre: true,
-                        name: true,
-                        phone: true,
-                        status: true,
-                        region: true,
-                        village: true,
-                        updatedAt: true
+        const [submissions, totalCount] = await Promise.all([
+            prisma.internalKoboSubmission.findMany({
+                where,
+                include: {
+                    household: {
+                        select: {
+                            id: true,
+                            numeroordre: true,
+                            name: true,
+                            phone: true,
+                            status: true,
+                            region: true,
+                            village: true,
+                            updatedAt: true
+                        }
+                    },
+                    submittedBy: {
+                        select: {
+                            id: true,
+                            name: true,
+                            email: true
+                        }
                     }
                 },
-                submittedBy: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true
-                    }
-                }
-            },
-            orderBy: { savedAt: 'desc' },
-            take
-        });
+                orderBy: { savedAt: 'desc' },
+                skip,
+                take
+            }),
+            prisma.internalKoboSubmission.count({ where })
+        ]);
 
         const countBy = (key) =>
             submissions.reduce((acc, submission) => {
@@ -1843,7 +1849,10 @@ export const listInternalKoboSubmissions = async (req, res) => {
 
         const diagnostics = {
             scope: 'filtered',
-            count: submissions.length,
+            count: totalCount,
+            pageCount: submissions.length,
+            offset: skip,
+            limit: take,
             byStatus: countBy('status'),
             byRole: countBy('role'),
             bySyncStatus: countBy('syncStatus'),
@@ -1862,7 +1871,10 @@ export const listInternalKoboSubmissions = async (req, res) => {
 
         return res.json({
             success: true,
-            count: submissions.length,
+            count: totalCount,
+            pageCount: submissions.length,
+            offset: skip,
+            limit: take,
             diagnostics,
             submissions: sanitizeBigIntForJson(submissions)
         });

@@ -92,6 +92,7 @@ type Filters = {
   syncStatus: string;
   formKey: string;
   limit: number;
+  offset: number;
 };
 
 type MainTab = 'summary' | 'form' | 'data' | 'settings';
@@ -166,6 +167,13 @@ type ProjectDraft = {
   allowOffline: boolean;
   requireLatestVersion: boolean;
   draftMigrationMode: 'preserve' | 'migrate' | 'block';
+};
+
+type BuilderAuditIssue = {
+  level: 'error' | 'warning';
+  title: string;
+  detail: string;
+  questionId?: string;
 };
 
 type SavedDataFilter = {
@@ -524,6 +532,261 @@ const createBuilderQuestion = (type: BuilderQuestionType, index: number): Builde
     appearance: paletteItem?.appearance,
     required: false,
   };
+};
+
+const cloneBuilderQuestion = (
+  question: BuilderQuestion,
+  options: { preserveId?: boolean; name?: string; label?: string } = {}
+): BuilderQuestion => ({
+  ...question,
+  id: options.preserveId ? question.id : makeQuestionId(),
+  name: options.name ?? question.name,
+  label: options.label ?? question.label,
+  labels: question.labels ? { ...question.labels } : undefined,
+  hints: question.hints ? { ...question.hints } : undefined,
+  choices: question.choices?.map((choice) => ({ ...choice })),
+});
+
+const cloneBuilderQuestions = (questions: BuilderQuestion[]) =>
+  questions.map((question) => cloneBuilderQuestion(question, { preserveId: true }));
+
+const getUniqueBuilderQuestionName = (baseName: string, questions: BuilderQuestion[]) => {
+  const normalizedBase = normalizeBuilderName(baseName, 'question');
+  let candidate = normalizedBase;
+  let index = 2;
+  while (questions.some((question) => question.name === candidate)) {
+    candidate = normalizeBuilderName(`${normalizedBase}_${index}`, `question_${index}`);
+    index += 1;
+  }
+  return candidate;
+};
+
+const builderChoiceTypes = new Set<BuilderQuestionType>([
+  'select_one',
+  'select_multiple',
+  'select_one_from_file',
+  'select_multiple_from_file',
+  'rank',
+]);
+
+const builderInlineChoiceTypes = new Set<BuilderQuestionType>(['select_one', 'select_multiple', 'rank']);
+
+const auditBuilderProject = (projectDraft: ProjectDraft, questions: BuilderQuestion[]): BuilderAuditIssue[] => {
+  const issues: BuilderAuditIssue[] = [];
+  const names = questions.map((question) => question.name.trim()).filter(Boolean);
+  const duplicateNames = names.filter((name, index) => names.indexOf(name) !== index);
+  const normalizedRoleNames = new Set(INTERNAL_KOBO_CHOICES.roles.map((role) => role.name));
+
+  if (!projectDraft.title.trim()) {
+    issues.push({
+      level: 'error',
+      title: 'Nom du projet manquant',
+      detail: 'Kobo exige un titre avant de sauvegarder ou deployer un formulaire.',
+    });
+  }
+
+  if (!questions.length) {
+    issues.push({
+      level: 'error',
+      title: 'Aucun champ dans le formulaire',
+      detail: 'Ajoutez au moins une question avant de creer un brouillon VPS.',
+    });
+  }
+
+  if (!projectDraft.allowedRoles.length) {
+    issues.push({
+      level: 'error',
+      title: 'Aucun role autorise',
+      detail: 'Definissez les roles ou equipes autorises avant la collecte terrain.',
+    });
+  }
+
+  if (!projectDraft.languages.includes(projectDraft.defaultLanguage)) {
+    issues.push({
+      level: 'error',
+      title: 'Langue par defaut inactive',
+      detail: 'La langue par defaut doit faire partie des langues XLSForm activees.',
+    });
+  }
+
+  Array.from(new Set(duplicateNames)).forEach((name) => {
+    issues.push({
+      level: 'error',
+      title: `Champ duplique: ${name}`,
+      detail: 'Chaque colonne XLSForm doit avoir un nom unique pour eviter les collisions de soumission.',
+    });
+  });
+
+  questions.forEach((question, index) => {
+    const label = question.label.trim();
+    const name = question.name.trim();
+
+    if (!name) {
+      issues.push({
+        level: 'error',
+        title: `Champ ${index + 1}: nom vide`,
+        detail: 'Le nom technique est obligatoire dans la feuille survey.',
+        questionId: question.id,
+      });
+    }
+
+    if (!label && question.type !== 'hidden' && question.type !== 'xml_external') {
+      issues.push({
+        level: 'error',
+        title: `Champ ${name || index + 1}: libelle vide`,
+        detail: 'Un libelle lisible est requis pour les agents terrain.',
+        questionId: question.id,
+      });
+    }
+
+    if (builderChoiceTypes.has(question.type) && !question.listName?.trim()) {
+      issues.push({
+        level: 'error',
+        title: `Liste de choix manquante: ${name || label}`,
+        detail: 'Les questions de choix doivent pointer vers une liste XLSForm.',
+        questionId: question.id,
+      });
+    }
+
+    if (builderInlineChoiceTypes.has(question.type)) {
+      const choices = question.choices || [];
+      if (!choices.length) {
+        issues.push({
+          level: 'error',
+          title: `Choix vides: ${name || label}`,
+          detail: 'Ajoutez les options possibles ou utilisez un choix depuis fichier CSV.',
+          questionId: question.id,
+        });
+      }
+      const choiceNames = choices.map((choice) => choice.name.trim()).filter(Boolean);
+      const duplicateChoices = choiceNames.filter((choiceName, choiceIndex) => choiceNames.indexOf(choiceName) !== choiceIndex);
+      if (duplicateChoices.length) {
+        issues.push({
+          level: 'error',
+          title: `Valeur de choix dupliquee: ${name || label}`,
+          detail: 'Deux choix ne peuvent pas avoir la meme valeur technique.',
+          questionId: question.id,
+        });
+      }
+      if (question.type === 'rank' && choices.length < 2) {
+        issues.push({
+          level: 'warning',
+          title: `Classement trop court: ${name || label}`,
+          detail: 'Un champ rank est utile avec au moins deux options a ordonner.',
+          questionId: question.id,
+        });
+      }
+    }
+
+    if ((question.type === 'select_one_from_file' || question.type === 'select_multiple_from_file') && !String(question.listName || '').includes('.csv')) {
+      issues.push({
+        level: 'warning',
+        title: `CSV externe a verifier: ${name || label}`,
+        detail: 'Kobo attend generalement le nom du fichier externe, par exemple choix.csv.',
+        questionId: question.id,
+      });
+    }
+
+    if (question.type === 'calculate' && !question.calculation?.trim()) {
+      issues.push({
+        level: 'warning',
+        title: `Calcul vide: ${name || label}`,
+        detail: 'Un champ calculate doit contenir une expression XLSForm.',
+        questionId: question.id,
+      });
+    }
+
+    if (question.type === 'hidden' && !question.defaultValue?.trim() && !question.calculation?.trim()) {
+      issues.push({
+        level: 'warning',
+        title: `Champ cache sans valeur: ${name || label}`,
+        detail: 'Definissez une valeur par defaut ou un calcul pour que le champ cache soit utile.',
+        questionId: question.id,
+      });
+    }
+
+    if (question.type === 'range' && !question.parameters?.trim()) {
+      issues.push({
+        level: 'warning',
+        title: `Curseur sans bornes: ${name || label}`,
+        detail: 'Ajoutez des parametres start/end/step pour cadrer la saisie terrain.',
+        questionId: question.id,
+      });
+    }
+
+    projectDraft.languages.forEach((language) => {
+      if (language === projectDraft.defaultLanguage) return;
+      if (!question.labels?.[language]?.trim() && label) {
+        issues.push({
+          level: 'warning',
+          title: `Traduction ${getBuilderLanguageMeta(language).label} manquante`,
+          detail: `${label} utilisera le libelle principal si la langue est activee.`,
+          questionId: question.id,
+        });
+      }
+    });
+  });
+
+  const numeroQuestion = questions.find((question) => question.name === 'Numero_ordre');
+  if (!numeroQuestion) {
+    issues.push({
+      level: 'error',
+      title: 'Numero ordre absent',
+      detail: 'Le rattachement menage VPS ne peut pas fonctionner sans ce champ.',
+    });
+  } else if (!numeroQuestion.required) {
+    issues.push({
+      level: 'warning',
+      title: 'Numero ordre non obligatoire',
+      detail: 'Il devrait rester requis pour garantir la liaison avec la base menage.',
+      questionId: numeroQuestion.id,
+    });
+  }
+
+  const roleQuestion = questions.find((question) => question.name === 'role');
+  if (!roleQuestion) {
+    issues.push({
+      level: 'error',
+      title: 'Passage role absent',
+      detail: 'La logique metier GEM/Kobo depend du champ role pour ouvrir les etapes.',
+    });
+  } else {
+    if (roleQuestion.type !== 'select_one' || roleQuestion.listName !== 'roles') {
+      issues.push({
+        level: 'warning',
+        title: 'Role non aligne sur la liste officielle',
+        detail: 'Utilisez select_one roles pour conserver les branchements existants.',
+        questionId: roleQuestion.id,
+      });
+    }
+    const roleChoices = (roleQuestion.choices || INTERNAL_KOBO_CHOICES.roles).map((choice) => choice.name);
+    if (!roleChoices.some((role) => normalizedRoleNames.has(role))) {
+      issues.push({
+        level: 'warning',
+        title: 'Choix role non reconnus',
+        detail: 'Les raccourcis metier attendent les roles Livreur, Macon, Reseau, Installateur, Controleur.',
+        questionId: roleQuestion.id,
+      });
+    }
+  }
+
+  if (!questions.some((question) => ['image', 'signature', 'file', 'audio', 'video'].includes(question.type))) {
+    issues.push({
+      level: 'warning',
+      title: 'Aucune preuve media',
+      detail: 'Ajoutez photo, signature ou fichier pour rapprocher la collecte de KoboCollect.',
+    });
+  }
+
+  if (projectDraft.requireLatestVersion && projectDraft.draftMigrationMode === 'preserve') {
+    issues.push({
+      level: 'warning',
+      title: 'Politique version contradictoire',
+      detail: 'Version recente requise et preservation ancienne version peuvent bloquer certains brouillons.',
+    });
+  }
+
+  return issues.slice(0, 40);
 };
 
 const statusLabels: Record<string, string> = {
@@ -927,6 +1190,9 @@ export default function InternalKoboSubmissions() {
     draftMigrationMode: 'migrate',
   });
   const [builderQuestions, setBuilderQuestions] = useState<BuilderQuestion[]>(getTemplateBuilderQuestions);
+  const [builderHistory, setBuilderHistory] = useState<BuilderQuestion[][]>([]);
+  const [builderFuture, setBuilderFuture] = useState<BuilderQuestion[][]>([]);
+  const [builderClipboard, setBuilderClipboard] = useState<BuilderQuestion | null>(null);
   const [selectedBuilderQuestionId, setSelectedBuilderQuestionId] = useState('');
   const [builderSettingsTab, setBuilderSettingsTab] = useState<BuilderSettingsTab>('options');
   const [builderLanguage, setBuilderLanguage] = useState<BuilderLanguage>('fr');
@@ -950,8 +1216,10 @@ export default function InternalKoboSubmissions() {
     syncStatus: '',
     formKey: '',
     limit: 100,
+    offset: 0,
   });
   const [submissions, setSubmissions] = useState<InternalKoboSubmissionRecord[]>([]);
+  const [submissionTotalCount, setSubmissionTotalCount] = useState(0);
   const [listDiagnostics, setListDiagnostics] = useState<InternalKoboSubmissionDiagnostics | null>(null);
   const [globalDiagnostics, setGlobalDiagnostics] = useState<InternalKoboSubmissionDiagnostics | null>(null);
   const [selectedId, setSelectedId] = useState('');
@@ -1005,12 +1273,14 @@ export default function InternalKoboSubmissions() {
         syncStatus: filters.syncStatus || undefined,
         formKey: selectedProjectFormKey || filters.formKey || undefined,
         limit: filters.limit,
+        offset: filters.offset,
       };
       const [report, diagnostics] = await Promise.all([
         fetchInternalKoboSubmissionsReport(cleanFilters),
         fetchInternalKoboDiagnostics(),
       ]);
       setSubmissions(report.submissions);
+      setSubmissionTotalCount(report.count || report.submissions.length);
       setListDiagnostics(report.diagnostics);
       setGlobalDiagnostics(diagnostics);
       setSelectedId((current) =>
@@ -1062,6 +1332,12 @@ export default function InternalKoboSubmissions() {
     setReviewNote('');
   }, [selectedSubmission?.id]);
 
+  useEffect(() => {
+    setSelectedTableRows((current) =>
+      current.filter((id) => submissions.some((submission) => submission.id === id))
+    );
+  }, [submissions]);
+
   const saveCurrentDataFilter = () => {
     const name = savedDataFilterName.trim();
     if (!name) {
@@ -1083,7 +1359,7 @@ export default function InternalKoboSubmissions() {
   };
 
   const applySavedDataFilter = (savedFilter: SavedDataFilter) => {
-    setFilters(savedFilter.filters);
+    setFilters({ ...savedFilter.filters, offset: savedFilter.filters.offset || 0 });
     setTableColumnFilters(savedFilter.tableColumnFilters || {});
     setHiddenTableColumns(savedFilter.hiddenTableColumns || []);
     setSelectedProjectFormKey(savedFilter.selectedProjectFormKey || '');
@@ -1196,15 +1472,70 @@ export default function InternalKoboSubmissions() {
     }
     if (section === 'deployed') {
       setMainTab('form');
-      setFilters((current) => ({ ...current, status: '', syncStatus: '', role: '' }));
+      setFilters((current) => ({ ...current, status: '', syncStatus: '', role: '', offset: 0 }));
       return;
     }
     if (section === 'drafts') {
       setMainTab('form');
-      setFilters((current) => ({ ...current, status: '', syncStatus: '', role: '' }));
+      setFilters((current) => ({ ...current, status: '', syncStatus: '', role: '', offset: 0 }));
       return;
     }
     setMainTab('form');
+  };
+
+  const snapshotBuilderQuestions = useCallback(() => {
+    setBuilderHistory((current) => [...current.slice(-19), cloneBuilderQuestions(builderQuestions)]);
+    setBuilderFuture([]);
+  }, [builderQuestions]);
+
+  const resetBuilderHistory = () => {
+    setBuilderHistory([]);
+    setBuilderFuture([]);
+    setBuilderClipboard(null);
+  };
+
+  const undoBuilderChange = () => {
+    const previous = builderHistory[builderHistory.length - 1];
+    if (!previous) return;
+    setBuilderFuture((current) => [cloneBuilderQuestions(builderQuestions), ...current].slice(0, 20));
+    setBuilderHistory((current) => current.slice(0, -1));
+    setBuilderQuestions(cloneBuilderQuestions(previous));
+    setSelectedBuilderQuestionId((current) =>
+      previous.some((question) => question.id === current) ? current : previous[0]?.id || ''
+    );
+  };
+
+  const redoBuilderChange = () => {
+    const next = builderFuture[0];
+    if (!next) return;
+    setBuilderHistory((current) => [...current.slice(-19), cloneBuilderQuestions(builderQuestions)]);
+    setBuilderFuture((current) => current.slice(1));
+    setBuilderQuestions(cloneBuilderQuestions(next));
+    setSelectedBuilderQuestionId((current) =>
+      next.some((question) => question.id === current) ? current : next[0]?.id || ''
+    );
+  };
+
+  const copyBuilderQuestionToClipboard = (questionId = selectedBuilderQuestionId) => {
+    const question = builderQuestions.find((entry) => entry.id === questionId);
+    if (!question) return;
+    setBuilderClipboard(cloneBuilderQuestion(question, { preserveId: true }));
+    setFormManagerMessage(`Question copiee: ${question.label || question.name}`);
+  };
+
+  const pasteBuilderQuestionFromClipboard = (afterId = selectedBuilderQuestionId) => {
+    if (!builderClipboard) return;
+    snapshotBuilderQuestions();
+    setBuilderQuestions((current) => {
+      const insertIndex = afterId ? current.findIndex((entry) => entry.id === afterId) : -1;
+      const name = getUniqueBuilderQuestionName(`${builderClipboard.name}_copie`, current);
+      const clone = cloneBuilderQuestion(builderClipboard, {
+        name,
+        label: `${builderClipboard.label || builderClipboard.name} copie`,
+      });
+      if (insertIndex < 0) return [...current, clone];
+      return [...current.slice(0, insertIndex + 1), clone, ...current.slice(insertIndex + 1)];
+    });
   };
 
   const startProjectFromSource = (mode: BuilderMode) => {
@@ -1217,6 +1548,7 @@ export default function InternalKoboSubmissions() {
       setNewProjectStep('details');
       return;
     }
+    resetBuilderHistory();
     setBuilderQuestions(mode === 'blank' ? getBlankBuilderQuestions() : getTemplateBuilderQuestions());
     setSelectedBuilderQuestionId('');
     setProjectDraft((current) => ({
@@ -1228,6 +1560,7 @@ export default function InternalKoboSubmissions() {
   };
 
   const updateBuilderQuestion = (id: string, patch: Partial<BuilderQuestion>) => {
+    snapshotBuilderQuestions();
     setBuilderQuestions((current) =>
       current.map((question) => {
         if (question.id !== id) return question;
@@ -1248,6 +1581,7 @@ export default function InternalKoboSubmissions() {
   };
 
   const addBuilderQuestion = (afterId?: string, type: BuilderQuestionType = 'text') => {
+    snapshotBuilderQuestions();
     const question = createBuilderQuestion(type, builderQuestions.length + 1);
     setBuilderQuestions((current) => {
       const index = afterId ? current.findIndex((entry) => entry.id === afterId) : -1;
@@ -1259,26 +1593,27 @@ export default function InternalKoboSubmissions() {
   };
 
   const duplicateBuilderQuestion = (id: string) => {
+    snapshotBuilderQuestions();
     setBuilderQuestions((current) => {
       const index = current.findIndex((question) => question.id === id);
       if (index < 0) return current;
-      const clone = {
-        ...current[index],
-        id: makeQuestionId(),
-        name: `${current[index].name}_copie`.slice(0, 48),
+      const clone = cloneBuilderQuestion(current[index], {
+        name: getUniqueBuilderQuestionName(`${current[index].name}_copie`, current),
         label: `${current[index].label} copie`,
-      };
+      });
       return [...current.slice(0, index + 1), clone, ...current.slice(index + 1)];
     });
   };
 
   const deleteBuilderQuestion = (id: string) => {
+    snapshotBuilderQuestions();
     setBuilderQuestions((current) => current.filter((question) => question.id !== id));
     setSelectedBuilderQuestionId((current) => (current === id ? '' : current));
   };
 
   const moveBuilderQuestion = (sourceId: string, targetId: string, position: BuilderDropPosition) => {
     if (!sourceId || !targetId || sourceId === targetId) return;
+    snapshotBuilderQuestions();
     setBuilderQuestions((current) => {
       const source = current.find((question) => question.id === sourceId);
       if (!source) return current;
@@ -1295,6 +1630,7 @@ export default function InternalKoboSubmissions() {
   };
 
   const moveBuilderQuestionByOffset = (id: string, offset: number) => {
+    snapshotBuilderQuestions();
     setBuilderQuestions((current) => {
       const index = current.findIndex((question) => question.id === id);
       const nextIndex = index + offset;
@@ -1307,6 +1643,7 @@ export default function InternalKoboSubmissions() {
   };
 
   const addBuilderChoice = (questionId: string) => {
+    snapshotBuilderQuestions();
     setBuilderQuestions((current) =>
       current.map((question) => {
         if (question.id !== questionId) return question;
@@ -1327,6 +1664,7 @@ export default function InternalKoboSubmissions() {
     choiceIndex: number,
     patch: Partial<{ name: string; label: string }>
   ) => {
+    snapshotBuilderQuestions();
     setBuilderQuestions((current) =>
       current.map((question) => {
         if (question.id !== questionId) return question;
@@ -1347,6 +1685,7 @@ export default function InternalKoboSubmissions() {
   };
 
   const deleteBuilderChoice = (questionId: string, choiceIndex: number) => {
+    snapshotBuilderQuestions();
     setBuilderQuestions((current) =>
       current.map((question) =>
         question.id === questionId
@@ -1359,6 +1698,7 @@ export default function InternalKoboSubmissions() {
   const insertBuilderLibraryBlock = (blockKey: string) => {
     const block = builderQuestionLibrary.find((entry) => entry.key === blockKey);
     if (!block) return;
+    snapshotBuilderQuestions();
     const questions = block.questions.map((question, index) => ({
       ...question,
       id: makeQuestionId(),
@@ -1426,6 +1766,7 @@ export default function InternalKoboSubmissions() {
     if (sourceQuestionId) {
       moveBuilderQuestion(sourceQuestionId, targetId, position);
     } else if (sourceType) {
+      snapshotBuilderQuestions();
       const question = createBuilderQuestion(sourceType, builderQuestions.length + 1);
       setBuilderQuestions((current) => {
         const targetIndex = current.findIndex((entry) => entry.id === targetId);
@@ -1532,6 +1873,11 @@ export default function InternalKoboSubmissions() {
     if (!projectDraft.title.trim()) {
       setError('Le nom du projet est obligatoire');
       setNewProjectStep('details');
+      return;
+    }
+    if (builderAuditErrors.length) {
+      setError(`Audit Kobo bloquant: ${builderAuditErrors[0].title}. Corrigez les erreurs avant sauvegarde.`);
+      setSelectedBuilderQuestionId(builderAuditErrors.find((issue) => issue.questionId)?.questionId || selectedBuilderQuestionId);
       return;
     }
     setIsSavingBuilder(true);
@@ -1644,6 +1990,7 @@ export default function InternalKoboSubmissions() {
         draftMigrationMode: 'migrate',
       });
       setBuilderMode('template');
+      resetBuilderHistory();
       setBuilderQuestions(questions.length ? questions : getBlankBuilderQuestions());
       setSelectedBuilderQuestionId(questions[0]?.id || '');
       setBuilderSettingsTab('options');
@@ -1854,6 +2201,26 @@ export default function InternalKoboSubmissions() {
   const draftFormCount = importedForms.filter((form) => getProjectStatus(form) === 'draft').length;
   const inactiveFormCount = importedForms.filter((form) => getProjectStatus(form) === 'archived').length;
   const selectedBuilderQuestion = builderQuestions.find((question) => question.id === selectedBuilderQuestionId) || null;
+  const builderAuditIssues = useMemo(
+    () => auditBuilderProject(projectDraft, builderQuestions),
+    [builderQuestions, projectDraft]
+  );
+  const builderAuditErrors = useMemo(
+    () => builderAuditIssues.filter((issue) => issue.level === 'error'),
+    [builderAuditIssues]
+  );
+  const builderAuditWarnings = useMemo(
+    () => builderAuditIssues.filter((issue) => issue.level === 'warning'),
+    [builderAuditIssues]
+  );
+  const selectedBuilderAuditIssues = useMemo(
+    () => builderAuditIssues.filter((issue) => issue.questionId === selectedBuilderQuestionId),
+    [builderAuditIssues, selectedBuilderQuestionId]
+  );
+  const builderAuditScore = Math.max(
+    0,
+    Math.min(100, Math.round(100 - builderAuditErrors.length * 18 - builderAuditWarnings.length * 5))
+  );
   const filteredQuestionLibrary = useMemo(() => {
     const query = questionLibraryQuery.trim().toLowerCase();
     if (!query) return builderQuestionLibrary;
@@ -1906,6 +2273,10 @@ export default function InternalKoboSubmissions() {
   );
   const allVisibleRowsSelected = filteredTableSubmissions.length > 0 &&
     filteredTableSubmissions.every((submission) => selectedTableRows.includes(submission.id));
+  const serverPageStart = submissionTotalCount && submissions.length ? filters.offset + 1 : 0;
+  const serverPageEnd = Math.min(filters.offset + submissions.length, submissionTotalCount);
+  const canLoadPreviousPage = filters.offset > 0;
+  const canLoadNextPage = filters.offset + submissions.length < submissionTotalCount;
 
   const health = globalDiagnostics?.health || 'ok';
   const healthClass =
@@ -2106,7 +2477,8 @@ export default function InternalKoboSubmissions() {
                         masquer les champs
                       </button>
                       <span className="text-sm font-semibold text-slate-500">
-                        {filteredTableSubmissions.length} resultat(s) sur {submissions.length}
+                        {serverPageStart} - {serverPageEnd} sur {submissionTotalCount} serveur
+                        {filteredTableSubmissions.length !== submissions.length ? ` (${filteredTableSubmissions.length} apres filtres colonnes)` : ''}
                       </span>
                       {deployedProjectForms.length > 0 ? (
                         <label className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.08em] text-slate-500">
@@ -2115,7 +2487,7 @@ export default function InternalKoboSubmissions() {
                             value={selectedProjectFormKey}
                             onChange={(event) => {
                               setSelectedProjectFormKey(event.target.value);
-                              setFilters((current) => ({ ...current, formKey: event.target.value }));
+                              setFilters((current) => ({ ...current, formKey: event.target.value, offset: 0 }));
                             }}
                             className="h-10 min-w-[260px] rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold normal-case tracking-normal text-slate-900 outline-none focus:border-cyan-400"
                           >
@@ -2136,7 +2508,49 @@ export default function InternalKoboSubmissions() {
                     <div className="flex flex-wrap items-center gap-2">
                       <button
                         type="button"
-                        onClick={() => setTableColumnFilters({})}
+                        onClick={() =>
+                          setFilters((current) => ({
+                            ...current,
+                            offset: Math.max(0, current.offset - current.limit),
+                          }))
+                        }
+                        disabled={!canLoadPreviousPage}
+                        className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-black uppercase tracking-[0.08em] text-slate-700 hover:bg-slate-50 disabled:opacity-35"
+                      >
+                        <ArrowLeft size={14} />
+                        precedent
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setFilters((current) => ({
+                            ...current,
+                            offset: current.offset + current.limit,
+                          }))
+                        }
+                        disabled={!canLoadNextPage}
+                        className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-black uppercase tracking-[0.08em] text-slate-700 hover:bg-slate-50 disabled:opacity-35"
+                      >
+                        suivant
+                        <ArrowRight size={14} />
+                      </button>
+                      <select
+                        value={filters.limit}
+                        onChange={(event) => setFilters((current) => ({ ...current, limit: Number(event.target.value), offset: 0 }))}
+                        className="h-9 rounded-lg border border-slate-200 bg-white px-2 text-xs font-black uppercase tracking-[0.08em] text-slate-700 outline-none"
+                        aria-label="Taille de page"
+                      >
+                        <option value={50}>50</option>
+                        <option value={100}>100</option>
+                        <option value={250}>250</option>
+                        <option value={500}>500</option>
+                      </select>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTableColumnFilters({});
+                          setFilters((current) => ({ ...current, offset: 0 }));
+                        }}
                         className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-black uppercase tracking-[0.08em] text-slate-700 hover:bg-slate-50"
                       >
                         <RefreshCw size={14} />
@@ -2252,9 +2666,9 @@ export default function InternalKoboSubmissions() {
                         <tr className="bg-slate-100 text-slate-800">
                           <th className="sticky left-0 z-10 w-[116px] border-b border-r border-slate-200 bg-slate-100 px-3 py-2 align-top">
                             <div className="text-sm font-semibold leading-tight">
-                              1 - {filteredTableSubmissions.length}
+                              {serverPageStart} - {serverPageEnd}
                               <br />
-                              <span className="font-black">{filteredTableSubmissions.length} resultats</span>
+                              <span className="font-black">{submissionTotalCount} resultats</span>
                             </div>
                           </th>
                           {visibleTableColumns.map((column) => (
@@ -2436,14 +2850,14 @@ export default function InternalKoboSubmissions() {
               <Search size={16} className="text-slate-500" />
               <input
                 value={filters.q}
-                onChange={(event) => setFilters((current) => ({ ...current, q: event.target.value }))}
+                onChange={(event) => setFilters((current) => ({ ...current, q: event.target.value, offset: 0 }))}
                 placeholder="Numero, menage, telephone, ID recu..."
                 className="min-w-0 flex-1 bg-transparent text-sm font-semibold text-white outline-none placeholder:text-slate-500"
               />
             </label>
             <select
               value={filters.status}
-              onChange={(event) => setFilters((current) => ({ ...current, status: event.target.value as Filters['status'] }))}
+              onChange={(event) => setFilters((current) => ({ ...current, status: event.target.value as Filters['status'], offset: 0 }))}
               className="h-12 rounded-2xl border border-white/10 bg-slate-900 px-4 text-xs font-black uppercase tracking-[0.1em] text-white outline-none"
             >
               <option value="">Tous statuts</option>
@@ -2454,7 +2868,7 @@ export default function InternalKoboSubmissions() {
             </select>
             <select
               value={filters.role}
-              onChange={(event) => setFilters((current) => ({ ...current, role: event.target.value }))}
+              onChange={(event) => setFilters((current) => ({ ...current, role: event.target.value, offset: 0 }))}
               className="h-12 rounded-2xl border border-white/10 bg-slate-900 px-4 text-xs font-black uppercase tracking-[0.1em] text-white outline-none"
             >
               <option value="">Tous roles</option>
@@ -2466,7 +2880,7 @@ export default function InternalKoboSubmissions() {
             </select>
             <select
               value={filters.syncStatus}
-              onChange={(event) => setFilters((current) => ({ ...current, syncStatus: event.target.value }))}
+              onChange={(event) => setFilters((current) => ({ ...current, syncStatus: event.target.value, offset: 0 }))}
               className="h-12 rounded-2xl border border-white/10 bg-slate-900 px-4 text-xs font-black uppercase tracking-[0.1em] text-white outline-none"
             >
               <option value="">Sync tous</option>
@@ -2476,7 +2890,7 @@ export default function InternalKoboSubmissions() {
             </select>
             <select
               value={filters.limit}
-              onChange={(event) => setFilters((current) => ({ ...current, limit: Number(event.target.value) }))}
+              onChange={(event) => setFilters((current) => ({ ...current, limit: Number(event.target.value), offset: 0 }))}
               className="h-12 rounded-2xl border border-white/10 bg-slate-900 px-4 text-xs font-black uppercase tracking-[0.1em] text-white outline-none"
             >
               <option value={50}>50</option>
@@ -2758,6 +3172,46 @@ export default function InternalKoboSubmissions() {
                   <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
+                      onClick={undoBuilderChange}
+                      disabled={builderHistory.length === 0}
+                      className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-3 text-[10px] font-black uppercase tracking-[0.12em] text-slate-700 hover:bg-slate-50 disabled:opacity-35"
+                      title="Annuler la derniere modification"
+                    >
+                      <CornerUpLeft size={14} />
+                      Annuler
+                    </button>
+                    <button
+                      type="button"
+                      onClick={redoBuilderChange}
+                      disabled={builderFuture.length === 0}
+                      className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-3 text-[10px] font-black uppercase tracking-[0.12em] text-slate-700 hover:bg-slate-50 disabled:opacity-35"
+                      title="Retablir la modification"
+                    >
+                      <ArrowRight size={14} />
+                      Retablir
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => copyBuilderQuestionToClipboard()}
+                      disabled={!selectedBuilderQuestion}
+                      className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-3 text-[10px] font-black uppercase tracking-[0.12em] text-slate-700 hover:bg-slate-50 disabled:opacity-35"
+                      title="Copier la question active"
+                    >
+                      <Copy size={14} />
+                      Copier
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => pasteBuilderQuestionFromClipboard()}
+                      disabled={!builderClipboard}
+                      className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-3 text-[10px] font-black uppercase tracking-[0.12em] text-slate-700 hover:bg-slate-50 disabled:opacity-35"
+                      title="Coller apres la question active"
+                    >
+                      <ClipboardCheck size={14} />
+                      Coller
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => addBuilderQuestion(undefined, 'text')}
                       className="inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-[10px] font-black uppercase tracking-[0.12em] text-blue-800 hover:bg-blue-100"
                     >
@@ -2773,6 +3227,70 @@ export default function InternalKoboSubmissions() {
                       <Save size={14} className={isSavingBuilder ? 'animate-pulse' : ''} />
                       Sauvegarder brouillon
                     </button>
+                  </div>
+                </div>
+
+                <div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-[260px_1fr]">
+                  <div className={`rounded-2xl border p-4 ${
+                    builderAuditErrors.length
+                      ? 'border-rose-200 bg-rose-50'
+                      : builderAuditWarnings.length
+                        ? 'border-amber-200 bg-amber-50'
+                        : 'border-emerald-200 bg-emerald-50'
+                  }`}>
+                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Audit Kobo</p>
+                    <div className="mt-2 flex items-end justify-between gap-3">
+                      <span className="text-3xl font-black text-slate-950">{builderAuditScore}%</span>
+                      <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.1em] ${
+                        builderAuditErrors.length
+                          ? 'bg-rose-100 text-rose-800'
+                          : builderAuditWarnings.length
+                            ? 'bg-amber-100 text-amber-800'
+                            : 'bg-emerald-100 text-emerald-800'
+                      }`}>
+                        {builderAuditErrors.length ? `${builderAuditErrors.length} erreur(s)` : builderAuditWarnings.length ? `${builderAuditWarnings.length} alerte(s)` : 'Pret'}
+                      </span>
+                    </div>
+                    <p className="mt-2 text-[11px] font-semibold leading-relaxed text-slate-600">
+                      Controle structure XLSForm, roles, langues, choix, version et collecte offline avant sauvegarde VPS.
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Points a traiter</p>
+                        <p className="mt-1 text-xs font-semibold text-slate-500">
+                          Les erreurs bloquent la sauvegarde. Les alertes indiquent les ecarts Kobo a surveiller.
+                        </p>
+                      </div>
+                      <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-slate-600">
+                        {builderAuditErrors.length} bloquant(s) / {builderAuditWarnings.length} alerte(s)
+                      </span>
+                    </div>
+                    <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2">
+                      {builderAuditIssues.length ? builderAuditIssues.slice(0, 6).map((issue) => (
+                        <button
+                          key={`${issue.level}-${issue.title}-${issue.questionId || 'project'}`}
+                          type="button"
+                          onClick={() => issue.questionId && setSelectedBuilderQuestionId(issue.questionId)}
+                          className={`rounded-xl border px-3 py-2 text-left ${
+                            issue.level === 'error'
+                              ? 'border-rose-200 bg-white text-rose-900'
+                              : 'border-amber-200 bg-white text-amber-900'
+                          }`}
+                        >
+                          <span className="block text-[10px] font-black uppercase tracking-[0.12em]">
+                            {issue.level === 'error' ? 'Erreur' : 'Alerte'}
+                          </span>
+                          <span className="mt-1 block text-xs font-black">{issue.title}</span>
+                          <span className="mt-1 block text-[11px] font-semibold leading-snug text-slate-600">{issue.detail}</span>
+                        </button>
+                      )) : (
+                        <div className="rounded-xl border border-emerald-200 bg-white px-3 py-3 text-sm font-bold text-emerald-800">
+                          Aucun blocage detecte. Le brouillon peut etre cree sur le VPS.
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -3122,6 +3640,27 @@ export default function InternalKoboSubmissions() {
                       <p className="mt-1 truncate text-[11px] font-semibold text-slate-500">
                         {selectedBuilderQuestion.name} - {builderQuestionTypeLabel[selectedBuilderQuestion.type]}
                       </p>
+                    </div>
+                  ) : null}
+
+                  {selectedBuilderAuditIssues.length ? (
+                    <div className="mt-3 space-y-2">
+                      {selectedBuilderAuditIssues.map((issue) => (
+                        <div
+                          key={`${issue.level}-${issue.title}`}
+                          className={`rounded-xl border px-3 py-2 ${
+                            issue.level === 'error'
+                              ? 'border-rose-200 bg-rose-50 text-rose-900'
+                              : 'border-amber-200 bg-amber-50 text-amber-900'
+                          }`}
+                        >
+                          <p className="text-[10px] font-black uppercase tracking-[0.12em]">
+                            {issue.level === 'error' ? 'Erreur Kobo' : 'Alerte Kobo'}
+                          </p>
+                          <p className="mt-1 text-xs font-black">{issue.title}</p>
+                          <p className="mt-1 text-[11px] font-semibold leading-snug text-slate-600">{issue.detail}</p>
+                        </div>
+                      ))}
                     </div>
                   ) : null}
 
@@ -3548,7 +4087,7 @@ export default function InternalKoboSubmissions() {
                             onChange={() => {
                               if (status !== 'deployed') return;
                               setSelectedProjectFormKey(form.formKey);
-                              setFilters((current) => ({ ...current, formKey: form.formKey, status: '' }));
+                              setFilters((current) => ({ ...current, formKey: form.formKey, status: '', offset: 0 }));
                             }}
                             className="h-5 w-5 rounded border-slate-300 accent-blue-600 disabled:cursor-not-allowed disabled:opacity-35"
                           />
@@ -3607,7 +4146,7 @@ export default function InternalKoboSubmissions() {
                                 title="Utiliser dans l'enquete"
                                 onClick={() => {
                                   setSelectedProjectFormKey(form.formKey);
-                                  setFilters((current) => ({ ...current, formKey: form.formKey, status: '' }));
+                                  setFilters((current) => ({ ...current, formKey: form.formKey, status: '', offset: 0 }));
                                   setMainTab('data');
                                   setDataTab('table');
                                 }}
