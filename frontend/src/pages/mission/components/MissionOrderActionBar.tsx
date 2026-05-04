@@ -24,13 +24,15 @@ const Dropdown = ({ icon, label, isOpen, onToggle, children }: any) => {
     <div className="relative">
       <button
         onClick={onToggle}
-        className={`flex items-center justify-center gap-1 px-2.5 py-2 rounded-xl transition-colors text-[10px] font-black uppercase tracking-[0.12em] sm:text-xs sm:tracking-normal ${
-          isOpen ? 'bg-white/10 text-white' : 'text-slate-300 hover:bg-white/5'
+        className={`flex items-center justify-center gap-2 px-3 py-2 rounded-xl transition-all text-[10px] font-black uppercase tracking-[0.12em] border ${
+          isOpen 
+            ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30' 
+            : 'text-slate-400 hover:text-white border-white/5 hover:bg-white/5'
         }`}
       >
         {icon}
         {label && <span className="hidden sm:inline">{label}</span>}
-        <ChevronDown size={12} className={`transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+        <ChevronDown size={12} className={`transition-transform duration-300 opacity-50 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
       {isOpen && (
@@ -194,135 +196,138 @@ export const MissionOrderActionBar = (props: any) => {
           </div>
 
           {/* 🧰 ACTIONS SECONDAIRES */}
-          <div className="flex flex-wrap items-center gap-1 sm:gap-1.5" ref={containerRef}>
-
-            {/* Création */}
-            <button onClick={onNewMission} className="p-2.5 text-slate-400 hover:text-white hover:bg-white/5 rounded-xl transition-all" title="Nouveau">
-              <Plus size={16}/>
-            </button>
-
-            <button onClick={onDuplicate} disabled={!currentMissionId} className="p-2.5 text-slate-400 hover:text-white hover:bg-white/5 rounded-xl disabled:opacity-20 transition-all" title="Dupliquer">
-              <Copy size={16}/>
-            </button>
-
-          {/* Templates */}
-          <Dropdown
-            icon={<Sparkles size={14} className="text-purple-400" />}
-            label="MODÈLES"
-            isOpen={activeDropdown === 'templates'}
-            onToggle={() => toggleDropdown('templates')}
-          >
-            <h4 className="px-2 py-1.5 mb-1 text-[9px] font-black text-slate-500 uppercase tracking-widest">Modèles disponibles</h4>
-            {getTemplates().map((t: any) => (
-              <button
-                key={t.id}
-                onClick={() => {
-                  onTemplateSelect(t.id);
-                  setActiveDropdown(null);
-                }}
-                className="w-full text-left p-2.5 text-[10px] font-bold text-slate-300 hover:bg-white/5 rounded-lg transition-colors group"
-              >
-                <span className="group-hover:text-purple-400">{t.name}</span>
+          {/* 🧰 TOOLS & UTILITIES */}
+          <div className="flex items-center gap-1 bg-slate-900/50 p-1 rounded-2xl border border-white/5" ref={containerRef}>
+            
+            <div className="flex items-center pr-1 border-r border-white/5">
+              <button onClick={onNewMission} className="p-2.5 text-slate-400 hover:text-white hover:bg-white/5 rounded-xl transition-all" title="Nouveau">
+                <Plus size={16}/>
               </button>
-            ))}
-          </Dropdown>
+              <button onClick={onDuplicate} disabled={!currentMissionId} className="p-2.5 text-slate-400 hover:text-white hover:bg-white/5 rounded-xl disabled:opacity-20 transition-all" title="Dupliquer">
+                <Copy size={16}/>
+              </button>
+            </div>
 
-          {/* Config */}
-          <Dropdown
-            icon={<Settings size={14} className="text-slate-400" />}
-            label="CONFIG"
-            isOpen={activeDropdown === 'config'}
-            onToggle={() => toggleDropdown('config')}
-          >
-            <div className="p-1 space-y-1">
-              <h4 className="px-2 py-1 text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5 mb-1">Modules d'expertise</h4>
-              
-              {[
-                { id: 'map', label: 'Carte SIG / GPS', icon: MapIcon, color: 'text-indigo-400' },
-                { id: 'expenses', label: 'Frais & Indemnités', icon: DollarSign, color: 'text-emerald-400' },
-                { id: 'inventory', label: 'Inventaire Matériel', icon: ListChecks, color: 'text-amber-400' },
-              ].map((f) => {
-                const isActive = !!formData.features?.[f.id];
-                return (
+            <div className="flex items-center gap-0.5 px-1">
+              {/* Templates */}
+              <Dropdown
+                icon={<Sparkles size={14} className="text-purple-400" />}
+                label="MODÈLES"
+                isOpen={activeDropdown === 'templates'}
+                onToggle={() => toggleDropdown('templates')}
+              >
+                <h4 className="px-2 py-1.5 mb-1 text-[9px] font-black text-slate-500 uppercase tracking-widest">Modèles disponibles</h4>
+                {getTemplates().map((t: any) => (
+                  <button
+                    key={t.id}
+                    onClick={() => {
+                      onTemplateSelect(t.id);
+                      setActiveDropdown(null);
+                    }}
+                    className="w-full text-left p-2.5 text-[10px] font-bold text-slate-300 hover:bg-white/5 rounded-lg transition-colors group"
+                  >
+                    <span className="group-hover:text-purple-400">{t.name}</span>
+                  </button>
+                ))}
+              </Dropdown>
+
+              {/* Config */}
+              <Dropdown
+                icon={<Settings size={14} className="text-slate-400" />}
+                label="CONFIG"
+                isOpen={activeDropdown === 'config'}
+                onToggle={() => toggleDropdown('config')}
+              >
+                <div className="p-1 space-y-1">
+                  <h4 className="px-2 py-1 text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5 mb-1">Modules d'expertise</h4>
+                  
+                  {[
+                    { id: 'map', label: 'Carte SIG / GPS', icon: MapIcon, color: 'text-indigo-400' },
+                    { id: 'expenses', label: 'Frais & Indemnités', icon: DollarSign, color: 'text-emerald-400' },
+                    { id: 'inventory', label: 'Inventaire Matériel', icon: ListChecks, color: 'text-amber-400' },
+                  ].map((f) => {
+                    const isActive = !!formData.features?.[f.id];
+                    return (
+                      <div
+                        key={f.id}
+                        onPointerDown={(e) => { e.stopPropagation(); onToggleFeature(f.id); }}
+                        className="w-full flex items-center justify-between p-2.5 hover:bg-white/10 rounded-xl transition-all group cursor-pointer"
+                      >
+                        <div className="flex items-center gap-2.5 pointer-events-none">
+                          <f.icon size={14} className={`${f.color} ${isActive ? 'opacity-100' : 'opacity-40'} transition-opacity`} />
+                          <span className={`text-[11px] font-bold ${isActive ? 'text-white' : 'text-slate-400'} transition-colors`}>{f.label}</span>
+                        </div>
+                        <div className={`w-8 h-4 rounded-full relative transition-all duration-300 ${isActive ? 'bg-indigo-500 shadow-lg shadow-indigo-500/20' : 'bg-slate-800'}`}>
+                          <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow-md transition-all duration-300 ${isActive ? 'left-4.5' : 'left-0.5'}`} />
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  <div className="h-px bg-white/5 my-1.5" />
+                  
                   <div
-                    key={f.id}
-                    onPointerDown={(e) => { e.stopPropagation(); onToggleFeature(f.id); }}
+                    onPointerDown={(e) => { e.stopPropagation(); onToggleSimplifiedMode(!isSimplifiedMode); }}
                     className="w-full flex items-center justify-between p-2.5 hover:bg-white/10 rounded-xl transition-all group cursor-pointer"
                   >
                     <div className="flex items-center gap-2.5 pointer-events-none">
-                      <f.icon size={14} className={`${f.color} ${isActive ? 'opacity-100' : 'opacity-40'} transition-opacity`} />
-                      <span className={`text-[11px] font-bold ${isActive ? 'text-white' : 'text-slate-400'} transition-colors`}>{f.label}</span>
+                      <Smartphone size={14} className={`text-blue-400 ${isSimplifiedMode ? 'opacity-100' : 'opacity-40'} transition-opacity`} />
+                      <span className={`text-[11px] font-bold ${isSimplifiedMode ? 'text-white' : 'text-slate-400'} transition-colors`}>Mode Terrain (Simplifié)</span>
                     </div>
-                    <div className={`w-8 h-4 rounded-full relative transition-all duration-300 ${isActive ? 'bg-indigo-500 shadow-lg shadow-indigo-500/20' : 'bg-slate-800'}`}>
-                      <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow-md transition-all duration-300 ${isActive ? 'left-4.5' : 'left-0.5'}`} />
+                    <div className={`w-8 h-4 rounded-full relative transition-all duration-300 ${isSimplifiedMode ? 'bg-blue-500 shadow-lg shadow-blue-500/20' : 'bg-slate-800'}`}>
+                      <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow-md transition-all duration-300 ${isSimplifiedMode ? 'left-4.5' : 'left-0.5'}`} />
                     </div>
                   </div>
-                );
-              })}
+                </div>
+              </Dropdown>
 
-              <div className="h-px bg-white/5 my-1.5" />
-              
-              <div
-                onPointerDown={(e) => { e.stopPropagation(); onToggleSimplifiedMode(!isSimplifiedMode); }}
-                className="w-full flex items-center justify-between p-2.5 hover:bg-white/10 rounded-xl transition-all group cursor-pointer"
+              {/* Export */}
+              <Dropdown
+                icon={<Download size={14} className="text-blue-400" />}
+                label="EXPORT"
+                isOpen={activeDropdown === 'export'}
+                onToggle={() => toggleDropdown('export')}
               >
-                <div className="flex items-center gap-2.5 pointer-events-none">
-                  <Smartphone size={14} className={`text-blue-400 ${isSimplifiedMode ? 'opacity-100' : 'opacity-40'} transition-opacity`} />
-                  <span className={`text-[11px] font-bold ${isSimplifiedMode ? 'text-white' : 'text-slate-400'} transition-colors`}>Mode Terrain (Simplifié)</span>
-                </div>
-                <div className={`w-8 h-4 rounded-full relative transition-all duration-300 ${isSimplifiedMode ? 'bg-blue-500 shadow-lg shadow-blue-500/20' : 'bg-slate-800'}`}>
-                  <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow-md transition-all duration-300 ${isSimplifiedMode ? 'left-4.5' : 'left-0.5'}`} />
-                </div>
-              </div>
+                <button
+                  onClick={() => { onExportExcel(); setActiveDropdown(null); }}
+                  className="w-full flex items-center gap-2 p-2.5 text-[10px] font-bold text-slate-300 hover:bg-white/5 rounded-lg"
+                >
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Excel
+                </button>
+                <button
+                  onClick={() => { onExportWord(); setActiveDropdown(null); }}
+                  className="w-full flex items-center gap-2 p-2.5 text-[10px] font-bold text-slate-300 hover:bg-white/5 rounded-lg"
+                >
+                  <div className="w-1.5 h-1.5 rounded-full bg-blue-500" /> Word
+                </button>
+                <button
+                  onClick={() => { onExportPDF(); setActiveDropdown(null); }}
+                  className="w-full flex items-center gap-2 p-2.5 text-[10px] font-bold text-slate-300 hover:bg-white/5 rounded-lg"
+                >
+                  <div className="w-1.5 h-1.5 rounded-full bg-rose-500" /> PDF
+                </button>
+              </Dropdown>
             </div>
-          </Dropdown>
 
-          {/* Export */}
-          <Dropdown
-            icon={<Download size={14} className="text-blue-400" />}
-            label="EXPORT"
-            isOpen={activeDropdown === 'export'}
-            onToggle={() => toggleDropdown('export')}
-          >
-            <button
-              onClick={() => { onExportExcel(); setActiveDropdown(null); }}
-              className="w-full flex items-center gap-2 p-2.5 text-[10px] font-bold text-slate-300 hover:bg-white/5 rounded-lg"
-            >
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Excel
-            </button>
-            <button
-              onClick={() => { onExportWord(); setActiveDropdown(null); }}
-              className="w-full flex items-center gap-2 p-2.5 text-[10px] font-bold text-slate-300 hover:bg-white/5 rounded-lg"
-            >
-              <div className="w-1.5 h-1.5 rounded-full bg-blue-500" /> Word
-            </button>
-            <button
-              onClick={() => { onExportPDF(); setActiveDropdown(null); }}
-              className="w-full flex items-center gap-2 p-2.5 text-[10px] font-bold text-slate-300 hover:bg-white/5 rounded-lg"
-            >
-              <div className="w-1.5 h-1.5 rounded-full bg-rose-500" /> PDF
-            </button>
-          </Dropdown>
+            <div className="flex items-center pl-1 border-l border-white/5">
+              {/* Sync */}
+              <button onClick={onSyncFromServer} className="p-2.5 text-slate-400 hover:text-white hover:bg-white/5 rounded-xl transition-all" title="Synchroniser">
+                <RefreshCw size={16} className={isSyncingServer ? 'animate-spin text-blue-400' : ''}/>
+              </button>
 
-            <div className="hidden sm:block w-px h-4 bg-white/10 mx-1" />
+              {/* Notifications */}
+              <button onClick={onNotificationsToggle} className="relative p-2.5 text-slate-400 hover:text-white hover:bg-white/5 rounded-xl transition-all" title="Notifications">
+                <Bell size={16}/>
+                {unreadCount > 0 && (
+                  <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-red-500 border border-slate-900 rounded-full"/>
+                )}
+              </button>
 
-          {/* Sync */}
-            <button onClick={onSyncFromServer} className="p-2.5 text-slate-400 hover:text-white hover:bg-white/5 rounded-xl transition-all" title="Synchroniser">
-              <RefreshCw size={16} className={isSyncingServer ? 'animate-spin text-blue-400' : ''}/>
-            </button>
-
-          {/* Notifications */}
-            <button onClick={onNotificationsToggle} className="relative p-2.5 text-slate-400 hover:text-white hover:bg-white/5 rounded-xl transition-all" title="Notifications">
-              <Bell size={16}/>
-              {unreadCount > 0 && (
-                <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 border border-slate-900 rounded-full"/>
-              )}
-            </button>
-
-          {/* Audit */}
-            <button onClick={onAuditToggle} className={`p-2.5 transition-all rounded-xl ${showAudit ? 'text-indigo-400 bg-indigo-500/10' : 'text-slate-400 hover:text-white hover:bg-white/5'}`} title="Piste d'audit">
-              <Fingerprint size={16}/>
-            </button>
+              {/* Audit */}
+              <button onClick={onAuditToggle} className={`p-2.5 transition-all rounded-xl ${showAudit ? 'text-indigo-400 bg-indigo-500/10' : 'text-slate-400 hover:text-white hover:bg-white/5'}`} title="Piste d'audit">
+                <Fingerprint size={16}/>
+              </button>
+            </div>
 
           </div>
         </div>

@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React from 'react';
+import { ClipboardList } from 'lucide-react';
 import type { MissionOrderData } from '../core/missionTypes';
 
 interface MissionInfoSectionProps {
@@ -18,46 +19,58 @@ export const MissionInfoSection: React.FC<MissionInfoSectionProps> = ({
   onUpdateField,
 }) => {
   const isLocked = isReadOnly || formData.isCertified || formData.isSubmitted;
+  
   const officialOrderNumber =
     formData.orderNumber && !String(formData.orderNumber).startsWith('TEMP-')
       ? formData.orderNumber
       : (formData as any).officialNumber || '';
+
   const inputClass = (locked: boolean) =>
-    `w-full ${locked ? 'bg-slate-900/40 dark:bg-white/5 cursor-not-allowed opacity-80 font-black text-slate-400' : 'bg-slate-950/40 dark:bg-white/5 text-white dark:text-indigo-100'} border border-white/10 dark:border-white/10 rounded-xl px-3 py-2 text-[11px] font-bold focus:ring-2 ring-indigo-500/20 transition-all outline-none`;
+    `w-full ${locked 
+      ? 'bg-slate-900/40 cursor-not-allowed opacity-80 font-black text-slate-400' 
+      : 'bg-slate-950/40 text-white dark:text-indigo-100'
+    } border border-white/10 rounded-xl px-3 py-2.5 text-[11px] font-bold focus:ring-2 ring-indigo-500/20 transition-all outline-none shadow-inner`;
+
   return (
-    <section className="glass-card !p-4 sm:!p-5 !rounded-[1.6rem] sm:!rounded-[2rem] space-y-4">
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-        {/* N° Ordre */}
-        <div className="space-y-1.5">
-          <label
-            htmlFor="mission-number"
-            className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1"
-          >
+    <section className="glass-card !p-5 sm:!p-8 !rounded-[2rem] space-y-6">
+      {/* Header Section */}
+      <div className="flex items-center justify-between pb-6 border-b border-white/5 relative z-10">
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-indigo-500/10 rounded-2xl shadow-inner border border-indigo-500/20">
+            <ClipboardList className="text-indigo-400" size={20} />
+          </div>
+          <div>
+            <h2 className="!text-[11px] font-black text-white uppercase tracking-[0.2em] text-clamp-title">
+              Configuration Officielle
+            </h2>
+            <p className="text-[9px] font-bold text-slate-400 uppercase mt-1 tracking-widest">
+              Détails administratifs et logistiques
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 relative z-10">
+        {/* N° ORDRE */}
+        <div className="relative group">
+          <label className="block text-[9px] font-black text-slate-300 uppercase tracking-widest mb-2 ml-1 opacity-70">
             N° Ordre
           </label>
-          <div className="relative group">
+          <div className="relative">
             <input
               id="mission-number"
               type="text"
               readOnly
               value={officialOrderNumber}
-              placeholder="Génération après validation..."
-              className="w-full bg-slate-900/50 dark:bg-white/5 border border-white/10 dark:border-white/10 rounded-xl px-3 py-2 text-[11px] font-black text-indigo-400 dark:text-indigo-400 focus:ring-0 transition-all outline-none cursor-not-allowed group-hover:border-indigo-500/30"
+              placeholder="Auto-généré à la validation"
+              className="w-full bg-slate-950/50 border border-white/10 rounded-xl px-3 py-2.5 text-[11px] font-black text-indigo-400 focus:ring-0 transition-all outline-none cursor-not-allowed group-hover:border-indigo-500/30 shadow-inner"
             />
-            {!officialOrderNumber && (
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[8px] font-black text-slate-400 uppercase tracking-wider animate-pulse">
-                En attente
-              </span>
-            )}
           </div>
         </div>
 
-        {/* Destination */}
-        <div className="space-y-1.5">
-          <label
-            htmlFor="mission-region"
-            className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1"
-          >
+        {/* DESTINATION */}
+        <div className="relative group">
+          <label className="block text-[9px] font-black text-slate-300 uppercase tracking-widest mb-2 ml-1 opacity-70">
             Destination
           </label>
           <input
@@ -71,123 +84,95 @@ export const MissionInfoSection: React.FC<MissionInfoSectionProps> = ({
           />
         </div>
 
-        {/* Date Début */}
-        <div className="space-y-1.5">
-          <label
-            htmlFor="mission-start"
-            className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1"
-          >
+        {/* DATES */}
+        <div className="relative group">
+          <label className="block text-[9px] font-black text-slate-300 uppercase tracking-widest mb-2 ml-1 opacity-70">
             Début
           </label>
           <input
-            id="mission-start"
-            type="text"
+            type="date"
+            readOnly={isReadOnly}
             value={formData.startDate || ''}
             onChange={(e) => onUpdateField('startDate', e.target.value)}
-            readOnly={isReadOnly}
-            placeholder="JJ/MM/AAAA"
             className={inputClass(!!isLocked)}
           />
         </div>
 
-        {/* Date Fin */}
-        <div className="space-y-1.5">
-          <label
-            htmlFor="mission-end"
-            className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1"
-          >
-            Fin Estimée
+        <div className="relative group">
+          <label className="block text-[9px] font-black text-slate-300 uppercase tracking-widest mb-2 ml-1 opacity-70">
+            Fin estimée
           </label>
           <input
-            id="mission-end"
-            type="text"
+            type="date"
+            readOnly={isReadOnly}
             value={formData.endDate || ''}
             onChange={(e) => onUpdateField('endDate', e.target.value)}
-            readOnly={isReadOnly}
-            placeholder="JJ/MM/AAAA"
             className={inputClass(!!isLocked)}
           />
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 pt-2 border-t border-white/10 dark:border-white/5">
-        {/* Objet de la mission */}
-        <div className="space-y-1.5 md:col-span-2">
-          <label
-            htmlFor="mission-purpose"
-            className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1"
-          >
+      <div className="space-y-6 pt-4 border-t border-white/5">
+        {/* OBJET DE LA MISSION */}
+        <div className="relative group z-10">
+          <label className="block text-[9px] font-black text-slate-300 uppercase tracking-widest mb-2 ml-1 opacity-70">
             Objet de la mission
           </label>
           <input
-            id="mission-purpose"
             type="text"
+            readOnly={isReadOnly}
             value={formData.purpose || ''}
-            onChange={(e) => onUpdateField('purpose', e.target.value)}
-            readOnly={isReadOnly}
+            onChange={(e) => onUpdateField('purpose', e.target.value.toUpperCase())}
             placeholder="But de la mission..."
-            className={inputClass(!!isLocked)}
+            className="w-full bg-slate-950/40 border border-white/5 rounded-2xl px-4 py-3 text-[12px] font-black text-white placeholder:text-slate-600 focus:border-indigo-500/50 transition-all outline-none shadow-inner"
           />
         </div>
 
-        {/* Moyen de transport */}
-        <div className="space-y-1.5">
-          <label
-            htmlFor="mission-transport"
-            className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1"
-          >
-            Moyen de transport
-          </label>
-          <input
-            id="mission-transport"
-            type="text"
-            value={formData.transport || ''}
-            onChange={(e) => onUpdateField('transport', e.target.value)}
-            readOnly={isReadOnly}
-            placeholder="Véhicule, avion, etc."
-            className={inputClass(!!isLocked)}
-          />
-        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* MOYEN DE TRANSPORT */}
+          <div className="relative group z-10">
+            <label className="block text-[9px] font-black text-slate-300 uppercase tracking-widest mb-2 ml-1 opacity-70">
+              Moyen de transport
+            </label>
+            <input
+              type="text"
+              value={formData.transport || ''}
+              onChange={(e) => onUpdateField('transport', e.target.value)}
+              readOnly={isReadOnly}
+              placeholder="Véhicule, avion, etc."
+              className={inputClass(!!isLocked)}
+            />
+          </div>
 
-        {/* Placeholder pour alignement */}
-        <div className="hidden md:block" />
+          {/* ITINÉRAIRE ALLER */}
+          <div className="relative group z-10">
+            <label className="block text-[9px] font-black text-slate-300 uppercase tracking-widest mb-2 ml-1 opacity-70">
+              Itinéraire Aller
+            </label>
+            <input
+              type="text"
+              value={formData.itineraryAller || ''}
+              onChange={(e) => onUpdateField('itineraryAller', e.target.value)}
+              readOnly={isReadOnly}
+              placeholder="Dakar -> Lieu..."
+              className={inputClass(!!isLocked)}
+            />
+          </div>
 
-        {/* Itinéraire Aller */}
-        <div className="space-y-1.5">
-          <label
-            htmlFor="mission-itinerary-aller"
-            className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1"
-          >
-            Itinéraire Aller
-          </label>
-          <input
-            id="mission-itinerary-aller"
-            type="text"
-            value={formData.itineraryAller || ''}
-            onChange={(e) => onUpdateField('itineraryAller', e.target.value)}
-            readOnly={isReadOnly}
-            placeholder="Dakar -> Lieu..."
-            className={inputClass(!!isLocked)}
-          />
-        </div>
-
-        {/* Itinéraire Retour */}
-        <div className="space-y-1.5">
-          <label
-            htmlFor="mission-itinerary-retour"
-            className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1"
-          >
-            Itinéraire Retour
-          </label>
-          <input
-            id="mission-itinerary-retour"
-            type="text"
-            value={formData.itineraryRetour || ''}
-            onChange={(e) => onUpdateField('itineraryRetour', e.target.value)}
-            readOnly={isReadOnly}
-            placeholder="Lieu -> Dakar..."
-            className={inputClass(!!isLocked)}
-          />
+          {/* ITINÉRAIRE RETOUR */}
+          <div className="relative group z-10">
+            <label className="block text-[9px] font-black text-slate-300 uppercase tracking-widest mb-2 ml-1 opacity-70">
+              Itinéraire Retour
+            </label>
+            <input
+              type="text"
+              value={formData.itineraryRetour || ''}
+              onChange={(e) => onUpdateField('itineraryRetour', e.target.value)}
+              readOnly={isReadOnly}
+              placeholder="Lieu -> Dakar..."
+              className={inputClass(!!isLocked)}
+            />
+          </div>
         </div>
       </div>
     </section>
