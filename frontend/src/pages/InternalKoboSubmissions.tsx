@@ -710,6 +710,7 @@ export default function InternalKoboSubmissions() {
   const [builderDropTarget, setBuilderDropTarget] = useState<{ id: string; position: BuilderDropPosition } | null>(null);
   const [builderDraggingLabel, setBuilderDraggingLabel] = useState('');
   const [selectedRubricTitle, setSelectedRubricTitle] = useState('Menage');
+  const [showKoboRubricAudit, setShowKoboRubricAudit] = useState(false);
   const [selectedTableRows, setSelectedTableRows] = useState<string[]>([]);
   const [hiddenTableColumns, setHiddenTableColumns] = useState<string[]>([]);
   const [tableColumnFilters, setTableColumnFilters] = useState<Record<string, string>>({});
@@ -2217,68 +2218,78 @@ export default function InternalKoboSubmissions() {
 
           {mainTab === 'form' ? (
           <>
-          <section className="rounded-3xl border border-white/10 bg-slate-900/55 p-4">
+          <section className="rounded-2xl border border-white/10 bg-slate-900/40 p-3">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-[11px] font-black uppercase tracking-[0.16em] text-blue-100">Rubriques Kobo reprises</p>
-                <p className="mt-1 text-xs font-semibold text-slate-400">
-                  Disposition extraite du formulaire Kobo actif, reorganisee pour la saisie terrain GEM.
+              <div className="min-w-0">
+                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-blue-100">Structure Kobo reprise</p>
+                <p className="mt-1 text-xs font-semibold text-slate-500">
+                  {KOBO_SOURCE_RUBRICS.length} rubriques de reference masquees pour liberer l'espace de travail.
                 </p>
               </div>
-              <span className="rounded-full border border-cyan-300/25 bg-cyan-400/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-cyan-100">
-                {KOBO_SOURCE_RUBRICS.length} rubriques
-              </span>
+              <button
+                type="button"
+                onClick={() => setShowKoboRubricAudit((current) => !current)}
+                className="inline-flex items-center justify-center gap-2 rounded-full border border-cyan-300/25 bg-cyan-400/10 px-4 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-cyan-100 hover:bg-cyan-400/15"
+              >
+                <BookOpen size={13} />
+                {showKoboRubricAudit ? 'Masquer audit' : 'Voir audit'}
+              </button>
             </div>
-            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {KOBO_SOURCE_RUBRICS.map((rubric, index) => {
-                const active = selectedRubricTitle === rubric.title;
-                return (
-                <button
-                  key={rubric.title}
-                  type="button"
-                  onClick={() => setSelectedRubricTitle(rubric.title)}
-                  className={`rounded-2xl border p-4 text-left transition-all ${
-                    active
-                      ? 'border-cyan-300/40 bg-cyan-400/10 shadow-lg shadow-cyan-950/15'
-                      : 'border-white/10 bg-slate-950/30 hover:border-blue-300/25 hover:bg-blue-400/[0.06]'
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="text-[10px] font-black uppercase tracking-[0.14em] text-blue-100">Etape {index + 1}</p>
-                      <h3 className="mt-2 truncate text-sm font-black text-white">{rubric.title}</h3>
-                    </div>
-                    <span className="shrink-0 rounded-full bg-white/[0.06] px-2 py-1 text-[10px] font-black text-slate-300">
-                      {rubric.fields}
-                    </span>
-                  </div>
-                  <p className="mt-3 text-xs font-semibold leading-relaxed text-slate-400">{rubric.subtitle}</p>
-                </button>
-              );
-              })}
-            </div>
-            {selectedRubric ? (
-              <div className="mt-4 rounded-3xl border border-cyan-300/20 bg-cyan-500/[0.055] p-4">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-100">Rubrique ouverte</p>
-                    <h3 className="mt-1 text-lg font-black text-white">{selectedRubric.title}</h3>
-                    <p className="mt-1 max-w-3xl text-xs font-semibold leading-relaxed text-slate-400">{selectedRubric.subtitle}</p>
-                  </div>
-                  <span className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-200">
-                    {selectedRubric.fields} champs Kobo
-                  </span>
+
+            {showKoboRubricAudit ? (
+              <div className="mt-4 border-t border-white/10 pt-4">
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+                  {KOBO_SOURCE_RUBRICS.map((rubric, index) => {
+                    const active = selectedRubricTitle === rubric.title;
+                    return (
+                      <button
+                        key={rubric.title}
+                        type="button"
+                        onClick={() => setSelectedRubricTitle(rubric.title)}
+                        className={`rounded-2xl border p-4 text-left transition-all ${
+                          active
+                            ? 'border-cyan-300/40 bg-cyan-400/10 shadow-lg shadow-cyan-950/15'
+                            : 'border-white/10 bg-slate-950/30 hover:border-blue-300/25 hover:bg-blue-400/[0.06]'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-blue-100">Etape {index + 1}</p>
+                            <h3 className="mt-2 truncate text-sm font-black text-white">{rubric.title}</h3>
+                          </div>
+                          <span className="shrink-0 rounded-full bg-white/[0.06] px-2 py-1 text-[10px] font-black text-slate-300">
+                            {rubric.fields}
+                          </span>
+                        </div>
+                        <p className="mt-3 text-xs font-semibold leading-relaxed text-slate-400">{rubric.subtitle}</p>
+                      </button>
+                    );
+                  })}
                 </div>
-                <div className="mt-4 grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-4">
-                  {selectedRubricColumns.map((column, index) => (
-                    <div key={`${selectedRubric.title}-${column}`} className="rounded-2xl border border-white/8 bg-slate-950/30 p-3">
-                      <p className="text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">Champ {index + 1}</p>
-                      <p className="mt-1 truncate text-[12px] font-black text-white" title={column}>
-                        {formatKoboSourceColumnLabel(column)}
-                      </p>
+                {selectedRubric ? (
+                  <div className="mt-4 rounded-3xl border border-cyan-300/20 bg-cyan-500/[0.055] p-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-100">Rubrique ouverte</p>
+                        <h3 className="mt-1 text-lg font-black text-white">{selectedRubric.title}</h3>
+                        <p className="mt-1 max-w-3xl text-xs font-semibold leading-relaxed text-slate-400">{selectedRubric.subtitle}</p>
+                      </div>
+                      <span className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-200">
+                        {selectedRubric.fields} champs Kobo
+                      </span>
                     </div>
-                  ))}
-                </div>
+                    <div className="mt-4 grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-4">
+                      {selectedRubricColumns.map((column, index) => (
+                        <div key={`${selectedRubric.title}-${column}`} className="rounded-2xl border border-white/8 bg-slate-950/30 p-3">
+                          <p className="text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">Champ {index + 1}</p>
+                          <p className="mt-1 truncate text-[12px] font-black text-white" title={column}>
+                            {formatKoboSourceColumnLabel(column)}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
               </div>
             ) : null}
           </section>
