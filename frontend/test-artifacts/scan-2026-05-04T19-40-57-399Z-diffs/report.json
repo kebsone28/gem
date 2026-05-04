@@ -1,0 +1,60 @@
+{
+  "previous": "scan-2026-05-04T19-08-22-386Z",
+  "latest": "scan-2026-05-04T19-40-57-399Z",
+  "items": [
+    {
+      "file": "chromium--home.png",
+      "status": "identical",
+      "diff": "C:\\Mes-Sites-Web\\GEM_SAAS\\frontend\\test-artifacts\\scan-2026-05-04T19-40-57-399Z-diffs\\chromium--home--diff.png",
+      "pixels": 0
+    },
+    {
+      "file": "chromium--login.png",
+      "status": "identical",
+      "diff": "C:\\Mes-Sites-Web\\GEM_SAAS\\frontend\\test-artifacts\\scan-2026-05-04T19-40-57-399Z-diffs\\chromium--login--diff.png",
+      "pixels": 0
+    },
+    {
+      "file": "chromium--terrain.png",
+      "status": "identical",
+      "diff": "C:\\Mes-Sites-Web\\GEM_SAAS\\frontend\\test-artifacts\\scan-2026-05-04T19-40-57-399Z-diffs\\chromium--terrain--diff.png",
+      "pixels": 0
+    },
+    {
+      "file": "firefox--home.png",
+      "status": "identical",
+      "diff": "C:\\Mes-Sites-Web\\GEM_SAAS\\frontend\\test-artifacts\\scan-2026-05-04T19-40-57-399Z-diffs\\firefox--home--diff.png",
+      "pixels": 0
+    },
+    {
+      "file": "firefox--login.png",
+      "status": "identical",
+      "diff": "C:\\Mes-Sites-Web\\GEM_SAAS\\frontend\\test-artifacts\\scan-2026-05-04T19-40-57-399Z-diffs\\firefox--login--diff.png",
+      "pixels": 0
+    },
+    {
+      "file": "firefox--terrain.png",
+      "status": "identical",
+      "diff": "C:\\Mes-Sites-Web\\GEM_SAAS\\frontend\\test-artifacts\\scan-2026-05-04T19-40-57-399Z-diffs\\firefox--terrain--diff.png",
+      "pixels": 0
+    },
+    {
+      "file": "webkit--home.png",
+      "status": "identical",
+      "diff": "C:\\Mes-Sites-Web\\GEM_SAAS\\frontend\\test-artifacts\\scan-2026-05-04T19-40-57-399Z-diffs\\webkit--home--diff.png",
+      "pixels": 0
+    },
+    {
+      "file": "webkit--login.png",
+      "status": "identical",
+      "diff": "C:\\Mes-Sites-Web\\GEM_SAAS\\frontend\\test-artifacts\\scan-2026-05-04T19-40-57-399Z-diffs\\webkit--login--diff.png",
+      "pixels": 0
+    },
+    {
+      "file": "webkit--terrain.png",
+      "status": "identical",
+      "diff": "C:\\Mes-Sites-Web\\GEM_SAAS\\frontend\\test-artifacts\\scan-2026-05-04T19-40-57-399Z-diffs\\webkit--terrain--diff.png",
+      "pixels": 0
+    }
+  ]
+}
