@@ -1,11 +1,19 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useRef, type FormEvent } from 'react';
-import logger from '../utils/logger';
 import { useNavigate } from 'react-router-dom';
-import { LogIn, User, Lock, ShieldCheck, Eye, EyeOff, AlertCircle, ChevronLeft } from 'lucide-react';
+import { 
+  User, 
+  Lock, 
+  ShieldCheck, 
+  Eye, 
+  EyeOff, 
+  AlertCircle, 
+  ArrowRight,
+  Loader2
+} from 'lucide-react';
+import { motion, AnimatePresence, useSpring, useMotionValue, useTransform } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import apiClient from '../api/client';
-import { PageContainer } from '../components';
 import type { User as DBUser } from '../utils/types';
 
 type LoginStep = 'credentials' | '2fa' | 'recovery';
@@ -42,10 +50,26 @@ export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  // -- Mouse Follow Logic --
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  // -- Advanced Animation Logic (Framer Motion) --
+  const mouseX = useMotionValue(window.innerWidth / 2);
+  const mouseY = useMotionValue(window.innerHeight / 2);
+
+  // Smooth springs for parallax
+  const springConfig = { damping: 30, stiffness: 100 };
+  const smoothX = useSpring(mouseX, springConfig);
+  const smoothY = useSpring(mouseY, springConfig);
+
+  // Background Parallax Transforms
+  const watermarkX = useTransform(smoothX, [0, window.innerWidth], [-15, 15]);
+  const watermarkY = useTransform(smoothY, [0, window.innerHeight], [-15, 15]);
+  const gridX = useTransform(smoothX, [0, window.innerWidth], [-30, 30]);
+  const gridY = useTransform(smoothY, [0, window.innerHeight], [-30, 30]);
+  const haloX = useTransform(smoothX, [0, window.innerWidth], [-80, 80]);
+  const haloY = useTransform(smoothY, [0, window.innerHeight], [-80, 80]);
+
   const handleMouseMove = (e: React.MouseEvent) => {
-    setMousePos({ x: e.clientX, y: e.clientY });
+    mouseX.set(e.clientX);
+    mouseY.set(e.clientY);
   };
 
   // -- Recovery state --
@@ -157,58 +181,79 @@ export default function Login() {
       onMouseMove={handleMouseMove}
       className="fixed inset-0 w-full h-full overflow-hidden bg-[#020617] font-outfit z-0"
     >
-      {/* Interactive Cursor Glow */}
-      <div 
-        className="pointer-events-none absolute z-10 w-[600px] h-[600px] bg-indigo-500/10 blur-[120px] rounded-full transition-opacity duration-500"
-        style={{
-          left: mousePos.x - 300 + 'px',
-          top: mousePos.y - 300 + 'px',
-          opacity: 1
-        }}
-      />
+      {/* 1. INTERACTIVE PARALLAX BACKGROUND */}
+      <div className="absolute inset-0 z-0 pointer-events-none">
+        {/* Parallax Halo Follower */}
+        <motion.div 
+          style={{ x: haloX, y: haloY }}
+          className="absolute inset-0 flex items-center justify-center opacity-30"
+        >
+          <div className="w-[800px] h-[800px] bg-indigo-500/5 blur-[120px] rounded-full" />
+        </motion.div>
 
-      {/* Ultra-Premium Dynamic Background */}
-      <div className="absolute inset-0 z-0">
-        {/* Tech Grid */}
-        <div className="absolute inset-0 opacity-[0.12]" style={{ backgroundImage: 'radial-gradient(circle, rgba(99, 102, 241, 0.2) 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
+        {/* Parallax Tech Grid */}
+        <motion.div 
+          style={{ 
+            backgroundImage: 'radial-gradient(circle, rgba(99, 102, 241, 0.2) 1px, transparent 1px)', 
+            backgroundSize: '40px 40px',
+            x: gridX,
+            y: gridY
+          }} 
+          className="absolute inset-[-10%] opacity-[0.12]" 
+        />
         
         {/* Floating Particles */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-           {[...Array(20)].map((_, i) => (
-             <div 
+        <div className="absolute inset-0 overflow-hidden">
+           {[...Array(15)].map((_, i) => (
+             <motion.div 
                key={i}
-               className="absolute bg-indigo-500/20 rounded-full blur-[1px] animate-float"
+               initial={{ opacity: 0 }}
+               animate={{ opacity: [0, 1, 0] }}
+               transition={{ duration: 5 + Math.random() * 5, repeat: Infinity, delay: Math.random() * 5 }}
+               className="absolute bg-indigo-400/20 rounded-full blur-[1px]"
                style={{
-                 width: Math.random() * 4 + 1 + 'px',
-                 height: Math.random() * 4 + 1 + 'px',
+                 width: Math.random() * 3 + 1 + 'px',
+                 height: Math.random() * 3 + 1 + 'px',
                  top: Math.random() * 100 + '%',
                  left: Math.random() * 100 + '%',
-                 animationDuration: Math.random() * 10 + 10 + 's',
-                 animationDelay: Math.random() * 5 + 's'
+                 animationDuration: Math.random() * 10 + 15 + 's',
                }}
              />
            ))}
         </div>
 
-        {/* Giant Watermark Phrase - NOW MORE VISIBLE & PREMIUM */}
-        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none select-none overflow-hidden">
+        {/* Giant Parallax Watermark */}
+        <motion.div 
+          style={{ x: watermarkX, y: watermarkY }}
+          className="absolute inset-0 flex flex-col items-center justify-center select-none overflow-hidden"
+        >
           <h2 className="text-[14vw] font-black leading-none uppercase tracking-tighter text-center bg-gradient-to-b from-white/[0.06] to-transparent bg-clip-text text-transparent">
             SÉCURITÉ<br />ÉLECTRIQUE
           </h2>
-          <p className="text-[1.5vw] font-black text-indigo-500/[0.08] tracking-[1.5em] uppercase mt-8 animate-pulse">
+          <motion.p 
+            animate={{ opacity: [0.03, 0.08, 0.03] }}
+            transition={{ duration: 4, repeat: Infinity }}
+            className="text-[1.5vw] font-black text-indigo-500 tracking-[1.5em] uppercase mt-8"
+          >
             Expertise Terrain
-          </p>
-        </div>
+          </motion.p>
+        </motion.div>
         
-        {/* Interlaced Mesh - REINFORCED */}
-        <svg className="absolute inset-0 w-full h-full opacity-[0.25] pointer-events-none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M-100,300 C200,100 800,500 1200,200 T2200,400" fill="none" stroke="rgba(99, 102, 241, 0.4)" strokeWidth="1" />
-          <path d="M-100,700 C400,500 900,900 1400,600 T2400,800" fill="none" stroke="rgba(99, 102, 241, 0.4)" strokeWidth="1" />
+        {/* Interlaced Mesh */}
+        <svg className="absolute inset-0 w-full h-full opacity-[0.20] pointer-events-none" xmlns="http://www.w3.org/2000/svg">
+          <motion.path 
+            initial={{ pathLength: 0, opacity: 0 }}
+            animate={{ pathLength: 1, opacity: 1 }}
+            transition={{ duration: 2, ease: "easeInOut" }}
+            d="M-100,300 C200,100 800,500 1200,200 T2200,400" 
+            fill="none" 
+            stroke="rgba(99, 102, 241, 0.4)" 
+            strokeWidth="1" 
+          />
         </svg>
 
-        {/* Halo Accents */}
-        <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] bg-indigo-600/15 blur-[160px] rounded-full" />
-        <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] bg-blue-600/15 blur-[160px] rounded-full" />
+        <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] bg-indigo-600/10 blur-[150px] rounded-full" />
+        <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] bg-blue-600/10 blur-[150px] rounded-full" />
       </div>
 
       <div className="relative z-10 flex flex-col items-center justify-center min-h-screen px-4 py-12">
@@ -220,20 +265,64 @@ export default function Login() {
           </p>
         </div>
 
-        <div className="w-full max-w-[940px] flex flex-col md:flex-row bg-white/[0.01] backdrop-blur-3xl rounded-[3rem] border border-white/10 shadow-[0_0_100px_rgba(0,0,0,0.5)] overflow-hidden animate-in fade-in zoom-in duration-700 relative">
-          {/* Glass Shine Effect */}
+        {/* 3. THE MAIN LOGIN CARD */}
+        <motion.div 
+          animate={error ? { x: [-2, 2, -2, 2, 0] } : {}}
+          transition={{ duration: 0.4 }}
+          className="w-full max-w-[940px] flex flex-col md:flex-row bg-white/[0.01] backdrop-blur-3xl rounded-[3rem] border border-white/10 shadow-[0_0_100px_rgba(0,0,0,0.5)] overflow-hidden relative group"
+        >
+          {/* SCANNER EFFECT (Visible when loading) */}
+          <AnimatePresence>
+            {loading && (
+              <motion.div 
+                initial={{ top: "-100%" }}
+                animate={{ top: "100%" }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+                className="absolute left-0 w-full h-1/2 bg-gradient-to-b from-transparent via-indigo-500/10 to-transparent z-40 pointer-events-none"
+              />
+            )}
+          </AnimatePresence>
+
+          {/* Glass Shine Animation */}
           <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent" />
-          <div className="absolute -left-[100%] top-0 w-full h-full bg-gradient-to-r from-transparent via-white/[0.03] to-transparent -skew-x-12 animate-[shimmer_8s_infinite]" />
+          <motion.div 
+            animate={{ left: ["-100%", "200%"] }}
+            transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+            className="absolute top-0 w-full h-full bg-gradient-to-r from-transparent via-white/[0.03] to-transparent -skew-x-12" 
+          />
           
           {/* Left Panel: Branding (Fixed & Premium) */}
-          <div className="hidden md:flex flex-col justify-between w-[38%] p-14 bg-indigo-500/[0.01] border-r border-white/10 relative">
+          <div className="hidden md:flex flex-col justify-between w-[38%] p-14 bg-indigo-500/[0.01] border-r border-white/10 relative overflow-hidden">
             <div className="relative z-10">
-              <div className="w-14 h-14 bg-indigo-500/10 rounded-2xl flex items-center justify-center border border-indigo-500/20 mb-10 shadow-[inset_0_0_20px_rgba(99,102,241,0.1)]">
-                <ShieldCheck size={28} className="text-indigo-400" />
-              </div>
-              <h1 className="text-5xl font-black tracking-tighter text-white mb-6 italic leading-tight uppercase">
-                GEM<span className="text-indigo-500">SAAS</span>
-              </h1>
+              {/* SHIELD PULSE */}
+              <motion.div 
+                whileHover={{ scale: 1.05 }}
+                className="relative w-14 h-14 bg-indigo-500/10 rounded-2xl flex items-center justify-center border border-indigo-500/20 mb-10 group"
+              >
+                <motion.div 
+                  animate={{ scale: [1, 1.4, 1], opacity: [0.2, 0, 0.2] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                  className="absolute inset-0 bg-indigo-500 rounded-2xl blur-md"
+                />
+                <ShieldCheck size={28} className="text-indigo-400 relative z-10" />
+              </motion.div>
+
+              {/* LOGO GLITCH EFFECT ON HOVER */}
+              <motion.div 
+                whileHover="hover"
+                className="relative cursor-default"
+              >
+                <motion.h1 
+                  variants={{
+                    hover: { x: [-1, 1, -1, 0], textShadow: "2px 0 #6366f1, -2px 0 #3b82f6" }
+                  }}
+                  className="text-5xl font-black tracking-tighter text-white mb-6 italic leading-tight uppercase select-none"
+                >
+                  GEM<span className="text-indigo-500">SAAS</span>
+                </motion.h1>
+              </motion.div>
+
               <div className="h-1 w-12 bg-indigo-500 rounded-full mb-6" />
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] leading-relaxed">
                 Pilotage Stratégique &<br />Intelligence Terrain
@@ -321,23 +410,33 @@ export default function Login() {
                     </div>
                   </div>
 
-                  <button
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                     type="submit"
                     disabled={loading}
-                    className="w-full py-4.5 bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white rounded-2xl font-black text-[11px] uppercase tracking-[0.25em] shadow-xl shadow-indigo-600/20 transition-all disabled:opacity-50 flex items-center justify-center gap-3 mt-4"
+                    className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-black text-[11px] uppercase tracking-[0.25em] shadow-xl shadow-indigo-600/20 transition-all disabled:opacity-50 flex items-center justify-center gap-3 mt-4 group relative overflow-hidden"
                   >
                     {loading ? (
-                      <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                      <Loader2 size={18} className="animate-spin text-white" />
                     ) : (
-                      <>ACCÉDER <LogIn size={14} /></>
+                      <>
+                        ACCÉDER 
+                        <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+                      </>
                     )}
-                  </button>
+                  </motion.button>
                 </form>
               )}
 
-              {/* Other steps simplified for brevity but styled same way */}
+              {/* 2FA Step */}
               {step === '2fa' && (
-                <form onSubmit={handle2FA} className="space-y-6 animate-in slide-in-from-right-4 duration-300">
+                <motion.form 
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  onSubmit={handle2FA} 
+                  className="space-y-6"
+                >
                   <div className="space-y-2">
                     <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Réponse de sécurité</label>
                     <input
@@ -346,31 +445,52 @@ export default function Login() {
                       value={twoFAAnswer}
                       onChange={(e) => setTwoFAAnswer(e.target.value)}
                       autoFocus
-                      className="w-full bg-slate-950/40 border border-white/5 rounded-2xl px-5 py-4 text-[13px] font-bold text-white outline-none focus:border-indigo-500/40 focus:ring-4 focus:ring-indigo-500/5 transition-all"
+                      className="w-full bg-white/[0.03] border border-white/5 rounded-2xl px-5 py-4 text-[13px] font-bold text-white outline-none focus:border-indigo-500/40 focus:ring-4 focus:ring-indigo-500/5 transition-all"
                     />
                   </div>
-                  <button type="submit" disabled={loading} className="w-full py-4.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-black text-[11px] uppercase tracking-widest shadow-xl shadow-indigo-600/20 transition-all">
-                    VÉRIFIER
-                  </button>
+                  <motion.button 
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    type="submit" 
+                    disabled={loading} 
+                    className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-black text-[11px] uppercase tracking-widest shadow-xl shadow-indigo-600/20 transition-all"
+                  >
+                    {loading ? <Loader2 size={18} className="animate-spin mx-auto text-white" /> : 'VÉRIFIER'}
+                  </motion.button>
                   <button type="button" onClick={() => setStep('credentials')} className="w-full flex items-center justify-center gap-2 text-[9px] font-black text-slate-500 hover:text-white uppercase tracking-widest transition-colors">
                     <ChevronLeft size={14} /> Retour
                   </button>
-                </form>
+                </motion.form>
               )}
 
               {step === 'recovery' && (
-                <form onSubmit={handleRecStep2} className="space-y-6 animate-in slide-in-from-right-4 duration-300">
+                <motion.form 
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  onSubmit={handleRecStep2} 
+                  className="space-y-6"
+                >
                    {recStep === 1 ? (
-                     <div className="space-y-2">
-                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Réponse de sécurité</label>
-                        <input
-                          type="text"
-                          required
-                          value={recSecAns}
-                          onChange={(e) => setRecSecAns(e.target.value)}
-                          className="w-full bg-slate-950/40 border border-white/5 rounded-2xl px-5 py-4 text-[13px] font-bold text-white outline-none focus:border-indigo-500/40 transition-all"
-                        />
-                        <button type="button" onClick={() => setRecStep(2)} className="w-full py-4.5 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl font-black text-[11px] uppercase tracking-widest mt-4">SUIVANT</button>
+                     <div className="space-y-4">
+                        <div className="space-y-2">
+                          <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Réponse de sécurité</label>
+                          <input
+                            type="text"
+                            required
+                            value={recSecAns}
+                            onChange={(e) => setRecSecAns(e.target.value)}
+                            className="w-full bg-white/[0.03] border border-white/5 rounded-2xl px-5 py-4 text-[13px] font-bold text-white outline-none focus:border-indigo-500/40 transition-all"
+                          />
+                        </div>
+                        <motion.button 
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          type="button" 
+                          onClick={() => setRecStep(2)} 
+                          className="w-full py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl font-black text-[11px] uppercase tracking-widest transition-all"
+                        >
+                          SUIVANT
+                        </motion.button>
                      </div>
                    ) : (
                     <div className="space-y-4">
@@ -381,16 +501,24 @@ export default function Login() {
                           required
                           value={recNewPw}
                           onChange={(e) => setRecNewPw(e.target.value)}
-                          className="w-full bg-slate-950/40 border border-white/5 rounded-2xl px-5 py-4 text-[13px] font-bold text-white outline-none focus:border-indigo-500/40 transition-all"
+                          className="w-full bg-white/[0.03] border border-white/5 rounded-2xl px-5 py-4 text-[13px] font-bold text-white outline-none focus:border-indigo-500/40 transition-all"
                         />
                       </div>
-                      <button type="submit" disabled={loading} className="w-full py-4.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-black text-[11px] uppercase tracking-widest">RÉINITIALISER</button>
+                      <motion.button 
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        type="submit" 
+                        disabled={loading} 
+                        className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-black text-[11px] uppercase tracking-widest transition-all"
+                      >
+                        {loading ? <Loader2 size={18} className="animate-spin mx-auto" /> : 'RÉINITIALISER'}
+                      </motion.button>
                     </div>
                    )}
                    <button type="button" onClick={() => setStep('credentials')} className="w-full flex items-center justify-center gap-2 text-[9px] font-black text-slate-500 hover:text-white uppercase tracking-widest transition-colors">
                     <ChevronLeft size={14} /> Retour
                   </button>
-                </form>
+                </motion.form>
               )}
 
             </div>
