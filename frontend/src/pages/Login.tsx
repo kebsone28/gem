@@ -41,6 +41,12 @@ export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
 
+  // -- Mouse Follow Logic --
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const handleMouseMove = (e: React.MouseEvent) => {
+    setMousePos({ x: e.clientX, y: e.clientY });
+  };
+
   // -- Recovery state --
   const [recInput, setRecInput] = useState('');
   const [recStep, setRecStep] = useState<1 | 2>(1);
@@ -146,7 +152,20 @@ export default function Login() {
   };
 
   return (
-    <div className="fixed inset-0 w-full h-full overflow-hidden bg-[#020617] font-outfit z-0">
+    <div 
+      onMouseMove={handleMouseMove}
+      className="fixed inset-0 w-full h-full overflow-hidden bg-[#020617] font-outfit z-0"
+    >
+      {/* Interactive Cursor Glow */}
+      <div 
+        className="pointer-events-none absolute z-10 w-[600px] h-[600px] bg-indigo-500/10 blur-[120px] rounded-full transition-opacity duration-500"
+        style={{
+          left: mousePos.x - 300 + 'px',
+          top: mousePos.y - 300 + 'px',
+          opacity: 1
+        }}
+      />
+
       {/* Ultra-Premium Dynamic Background */}
       <div className="absolute inset-0 z-0">
         {/* Tech Grid */}
@@ -199,13 +218,13 @@ export default function Login() {
           </p>
         </div>
 
-        <div className="w-full max-w-[940px] flex flex-col md:flex-row bg-white/[0.02] backdrop-blur-2xl rounded-[3rem] border border-white/10 shadow-[0_0_100px_rgba(0,0,0,0.5)] overflow-hidden animate-in fade-in zoom-in duration-700 relative">
+        <div className="w-full max-w-[940px] flex flex-col md:flex-row bg-white/[0.01] backdrop-blur-3xl rounded-[3rem] border border-white/10 shadow-[0_0_100px_rgba(0,0,0,0.5)] overflow-hidden animate-in fade-in zoom-in duration-700 relative">
           {/* Glass Shine Effect */}
           <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent" />
           <div className="absolute -left-[100%] top-0 w-full h-full bg-gradient-to-r from-transparent via-white/[0.03] to-transparent -skew-x-12 animate-[shimmer_8s_infinite]" />
           
           {/* Left Panel: Branding (Now More Translucent) */}
-          <div className="hidden md:flex flex-col justify-between w-[38%] p-14 bg-indigo-500/[0.03] border-r border-white/10 relative">
+          <div className="hidden md:flex flex-col justify-between w-[38%] p-14 bg-indigo-500/[0.01] border-r border-white/10 relative">
             <div className="relative z-10">
               <div className="w-14 h-14 bg-indigo-500/10 rounded-2xl flex items-center justify-center border border-indigo-500/20 mb-10 shadow-[inset_0_0_20px_rgba(99,102,241,0.1)]">
                 <ShieldCheck size={28} className="text-indigo-400" />
@@ -267,7 +286,7 @@ export default function Login() {
                         required
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
-                        className="w-full bg-slate-950/40 border border-white/5 rounded-2xl pl-11 pr-4 py-4 text-[13px] font-bold text-white placeholder:text-slate-700 focus:border-indigo-500/40 focus:ring-4 focus:ring-indigo-500/5 transition-all outline-none"
+                        className="w-full bg-white/[0.03] border border-white/5 rounded-2xl pl-11 pr-4 py-4 text-[13px] font-bold text-white placeholder:text-slate-700 focus:border-indigo-500/40 focus:ring-4 focus:ring-indigo-500/5 transition-all outline-none"
                         placeholder="admin@proquelec.com"
                       />
                     </div>
@@ -287,7 +306,7 @@ export default function Login() {
                         required
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        className="w-full bg-slate-950/40 border border-white/5 rounded-2xl pl-11 pr-12 py-4 text-[13px] font-bold text-white placeholder:text-slate-700 focus:border-indigo-500/40 focus:ring-4 focus:ring-indigo-500/5 transition-all outline-none"
+                        className="w-full bg-white/[0.03] border border-white/5 rounded-2xl pl-11 pr-12 py-4 text-[13px] font-bold text-white placeholder:text-slate-700 focus:border-indigo-500/40 focus:ring-4 focus:ring-indigo-500/5 transition-all outline-none"
                         placeholder="••••••••"
                       />
                       <button
