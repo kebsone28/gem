@@ -1,6 +1,6 @@
 import { Trash2, Search, FileText, Calendar, MapPin, ChevronRight, CheckCircle2, Clock, FileCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import MissionList, { Mission as UMission } from '../../../components/MissionList';
+import MissionList from '../../../components/MissionList';
 
 interface MissionListSidebarProps {
   savedMissions: any[];
