@@ -100,13 +100,20 @@ type WorkspaceSection = 'new' | 'deployed' | 'drafts' | 'archives';
 type NewProjectStep = 'source' | 'details' | null;
 type BuilderMode = 'blank' | 'template' | 'import' | 'url';
 type BuilderQuestionType =
+  | 'begin_group'
+  | 'begin_repeat'
   | 'integer'
   | 'decimal'
   | 'text'
   | 'select_one'
   | 'select_multiple'
+  | 'select_one_from_file'
+  | 'select_multiple_from_file'
+  | 'rank'
   | 'note'
   | 'geopoint'
+  | 'geotrace'
+  | 'geoshape'
   | 'image'
   | 'signature'
   | 'file'
@@ -115,11 +122,15 @@ type BuilderQuestionType =
   | 'date'
   | 'time'
   | 'datetime'
+  | 'range'
   | 'barcode'
   | 'calculate'
+  | 'hidden'
+  | 'xml_external'
   | 'acknowledge';
 type BuilderDropPosition = 'before' | 'after';
-type BuilderSettingsTab = 'options' | 'branching' | 'validation';
+type BuilderSettingsTab = 'options' | 'languages' | 'branching' | 'validation';
+type BuilderLanguage = 'fr' | 'en' | 'wo';
 
 type BuilderQuestion = {
   id: string;
@@ -127,6 +138,8 @@ type BuilderQuestion = {
   name: string;
   label: string;
   hint?: string;
+  labels?: Partial<Record<BuilderLanguage, string>>;
+  hints?: Partial<Record<BuilderLanguage, string>>;
   required?: boolean;
   listName?: string;
   choices?: Array<{ name: string; label: string }>;
@@ -136,6 +149,8 @@ type BuilderQuestion = {
   constraintMessage?: string;
   defaultValue?: string;
   appearance?: string;
+  parameters?: string;
+  choiceFilter?: string;
   readOnly?: boolean;
 };
 
@@ -144,6 +159,23 @@ type ProjectDraft = {
   description: string;
   sector: string;
   country: string;
+  defaultLanguage: BuilderLanguage;
+  languages: BuilderLanguage[];
+  ownerTeam: string;
+  allowedRoles: string[];
+  allowOffline: boolean;
+  requireLatestVersion: boolean;
+  draftMigrationMode: 'preserve' | 'migrate' | 'block';
+};
+
+type SavedDataFilter = {
+  id: string;
+  name: string;
+  filters: Filters;
+  tableColumnFilters: Record<string, string>;
+  hiddenTableColumns: string[];
+  selectedProjectFormKey: string;
+  createdAt: string;
 };
 
 type KoboTableColumn = {
@@ -182,6 +214,22 @@ const koboTableColumns: KoboTableColumn[] = [
 
 const projectSectors = ['Energie', 'Eau et assainissement', 'Sante', 'Education', 'Infrastructure', 'Autre'];
 const projectCountries = ['Senegal', 'Gambie', 'Mali', 'Guinee', 'Autre'];
+const savedDataFiltersStorageKey = 'gem-internal-kobo-saved-data-filters:v1';
+
+const builderLanguages: Array<{ id: BuilderLanguage; label: string; xlsLabel: string }> = [
+  { id: 'fr', label: 'Francais', xlsLabel: 'Francais (fr)' },
+  { id: 'en', label: 'English', xlsLabel: 'English (en)' },
+  { id: 'wo', label: 'Wolof', xlsLabel: 'Wolof (wo)' },
+];
+
+const getBuilderLanguageMeta = (language: BuilderLanguage) =>
+  builderLanguages.find((item) => item.id === language) || builderLanguages[0];
+
+const getBuilderQuestionLabel = (question: BuilderQuestion, language: BuilderLanguage) =>
+  question.labels?.[language] || question.label || question.name;
+
+const getBuilderQuestionHint = (question: BuilderQuestion, language: BuilderLanguage) =>
+  question.hints?.[language] || question.hint || '';
 
 const builderFieldPalette: Array<{
   type: BuilderQuestionType;
@@ -192,9 +240,12 @@ const builderFieldPalette: Array<{
   defaultChoices?: Array<{ name: string; label: string }>;
   appearance?: string;
 }> = [
+  { type: 'begin_group', label: 'Groupe', description: 'Section ou page', icon: Layers, appearance: 'field-list' },
+  { type: 'begin_repeat', label: 'Repeat', description: 'Lignes repetables', icon: Layers, appearance: 'field-list' },
   { type: 'text', label: 'Texte', description: 'Saisie libre ou observation', icon: Type },
   { type: 'integer', label: 'Nombre entier', description: 'Compteur, quantite, ordre', icon: Hash },
   { type: 'decimal', label: 'Decimal', description: 'Mesure ou montant', icon: Calculator },
+  { type: 'range', label: 'Curseur', description: 'Intervalle numerique', icon: Calculator, appearance: 'horizontal' },
   {
     type: 'select_one',
     label: 'Choix unique',
@@ -207,6 +258,13 @@ const builderFieldPalette: Array<{
     ],
   },
   {
+    type: 'select_one_from_file',
+    label: 'Choix fichier',
+    description: 'Liste externe CSV',
+    icon: FileSpreadsheet,
+    defaultListName: 'external_choices.csv',
+  },
+  {
     type: 'select_multiple',
     label: 'Choix multiple',
     description: 'Plusieurs reponses',
@@ -217,8 +275,28 @@ const builderFieldPalette: Array<{
       { name: 'option_2', label: 'Option 2' },
     ],
   },
+  {
+    type: 'select_multiple_from_file',
+    label: 'Multi fichier',
+    description: 'Choix multiples CSV',
+    icon: FileSpreadsheet,
+    defaultListName: 'external_choices.csv',
+  },
+  {
+    type: 'rank',
+    label: 'Classement',
+    description: 'Ordonner des choix',
+    icon: CheckSquare,
+    defaultListName: 'rank_options',
+    defaultChoices: [
+      { name: 'priorite_1', label: 'Priorite 1' },
+      { name: 'priorite_2', label: 'Priorite 2' },
+    ],
+  },
   { type: 'note', label: 'Note', description: 'Texte informatif non saisi', icon: FileText },
   { type: 'geopoint', label: 'GPS', description: 'Position terrain', icon: MapPin },
+  { type: 'geotrace', label: 'Trace GPS', description: 'Ligne de parcours', icon: Map },
+  { type: 'geoshape', label: 'Polygone GPS', description: 'Zone fermee', icon: Map },
   { type: 'image', label: 'Photo', description: 'Camera ou galerie', icon: Camera },
   { type: 'signature', label: 'Signature', description: 'Signature tactile', icon: PenLine },
   { type: 'file', label: 'Fichier', description: 'Piece jointe', icon: File },
@@ -229,7 +307,106 @@ const builderFieldPalette: Array<{
   { type: 'datetime', label: 'Date + heure', description: 'Horodatage', icon: CalendarDays },
   { type: 'barcode', label: 'Code-barres', description: 'Reference scannee', icon: Hash },
   { type: 'calculate', label: 'Calcul', description: 'Valeur auto XLSForm', icon: Calculator },
+  { type: 'hidden', label: 'Cache', description: 'Champ non affiche', icon: EyeOff },
+  { type: 'xml_external', label: 'XML externe', description: 'Source XML jointe', icon: FileJson },
   { type: 'acknowledge', label: 'Confirmation', description: 'Case de validation', icon: CheckSquare },
+];
+
+const builderQuestionLibrary: Array<{
+  key: string;
+  title: string;
+  description: string;
+  questions: BuilderQuestion[];
+}> = [
+  {
+    key: 'household_identity',
+    title: 'Identification menage',
+    description: 'Numero ordre, nom, telephone, region et GPS depuis la base VPS.',
+    questions: [
+      {
+        id: '',
+        type: 'integer',
+        name: 'Numero_ordre',
+        label: 'Numero ordre',
+        hint: 'Identifiant menage relie a la base VPS',
+        required: true,
+      },
+      {
+        id: '',
+        type: 'text',
+        name: 'nom_key',
+        label: 'Prenom et Nom',
+        calculation: "pulldata('Thies','nom','code_key',${Numero_ordre})",
+        readOnly: true,
+      },
+      {
+        id: '',
+        type: 'text',
+        name: 'telephone_key',
+        label: 'Telephone',
+        calculation: "pulldata('Thies','telephone','code_key',${Numero_ordre})",
+        readOnly: true,
+      },
+      {
+        id: '',
+        type: 'geopoint',
+        name: 'LOCALISATION_CLIENT',
+        label: 'Coordonnees GPS du menage',
+        calculation: "concat(${latitude_key}, ' ', ${longitude_key})",
+        readOnly: true,
+      },
+    ],
+  },
+  {
+    key: 'role_gate',
+    title: 'Passage role obligatoire',
+    description: 'Choix role qui active les formulaires metier.',
+    questions: [
+      {
+        id: '',
+        type: 'select_one',
+        name: 'role',
+        label: 'Votre role',
+        listName: 'roles',
+        required: true,
+      },
+    ],
+  },
+  {
+    key: 'proof_media',
+    title: 'Preuves terrain',
+    description: 'Photo, signature, fichier et GPS actuel.',
+    questions: [
+      { id: '', type: 'image', name: 'photo_preuve', label: 'Photo preuve', required: true },
+      { id: '', type: 'signature', name: 'signature_agent', label: 'Signature agent' },
+      { id: '', type: 'file', name: 'piece_jointe', label: 'Piece jointe' },
+      { id: '', type: 'geopoint', name: 'gps_passage', label: 'GPS du passage' },
+    ],
+  },
+  {
+    key: 'validation_terre',
+    title: 'Controle terre bloquant',
+    description: 'Valeur de terre obligatoire avant cloture.',
+    questions: [
+      {
+        id: '',
+        type: 'decimal',
+        name: 'terre',
+        label: 'Valeur terre',
+        required: true,
+        constraint: '. > 0',
+        constraintMessage: 'La valeur de terre est obligatoire et doit etre superieure a 0.',
+      },
+      {
+        id: '',
+        type: 'text',
+        name: 'OBSERVATIONS__007',
+        label: 'Observations terre',
+        relevant: '${terre} != ""',
+        required: true,
+      },
+    ],
+  },
 ];
 
 const makeQuestionId = () => `q_${Date.now()}_${Math.random().toString(16).slice(2)}`;
@@ -291,13 +468,21 @@ const getTemplateBuilderQuestions = (): BuilderQuestion[] => [
 ];
 
 const builderQuestionTypeLabel: Record<BuilderQuestionType, string> = {
+  begin_group: 'grp',
+  begin_repeat: 'rep',
   integer: '123',
   decimal: '1.2',
+  range: 'rng',
   text: 'abc',
   select_one: 'one',
   select_multiple: 'multi',
+  select_one_from_file: 'csv',
+  select_multiple_from_file: 'csv+',
+  rank: 'rank',
   note: 'i',
   geopoint: 'gps',
+  geotrace: 'line',
+  geoshape: 'poly',
   image: 'img',
   signature: 'sign',
   file: 'file',
@@ -308,12 +493,18 @@ const builderQuestionTypeLabel: Record<BuilderQuestionType, string> = {
   datetime: 'date+',
   barcode: 'code',
   calculate: 'calc',
+  hidden: 'hide',
+  xml_external: 'xml',
   acknowledge: 'ok',
 };
 
 const getBuilderTypeForSurvey = (question: BuilderQuestion) => {
   if (question.type === 'select_one') return `select_one ${question.listName || 'oui_non'}`;
   if (question.type === 'select_multiple') return `select_multiple ${question.listName || 'oui_non'}`;
+  if (question.type === 'select_one_from_file') return `select_one_from_file ${question.listName || 'external_choices.csv'}`;
+  if (question.type === 'select_multiple_from_file') return `select_multiple_from_file ${question.listName || 'external_choices.csv'}`;
+  if (question.type === 'rank') return `rank ${question.listName || 'rank_options'}`;
+  if (question.type === 'xml_external') return 'xml-external';
   return question.type;
 };
 
@@ -326,6 +517,8 @@ const createBuilderQuestion = (type: BuilderQuestionType, index: number): Builde
     name: baseName,
     label: paletteItem?.label || `Question ${index}`,
     hint: paletteItem?.description || '',
+    labels: { fr: paletteItem?.label || `Question ${index}` },
+    hints: paletteItem?.description ? { fr: paletteItem.description } : undefined,
     listName: paletteItem?.defaultListName,
     choices: paletteItem?.defaultChoices,
     appearance: paletteItem?.appearance,
@@ -567,11 +760,29 @@ const getDefinitionLabel = (row: Record<string, unknown>) => {
   return asString(label || row.name, 'Question');
 };
 
+const getDefinitionTranslations = (row: Record<string, unknown>, baseKey: 'label' | 'hint') => {
+  const source = baseKey === 'label' ? row.labels : row.hints;
+  if (source && typeof source === 'object' && !Array.isArray(source)) {
+    const translations = source as Record<string, unknown>;
+    return builderLanguages.reduce<Partial<Record<BuilderLanguage, string>>>((acc, language) => {
+      const value = asString(translations[language.xlsLabel] || translations[language.id]);
+      if (value) acc[language.id] = value;
+      return acc;
+    }, {});
+  }
+  return builderLanguages.reduce<Partial<Record<BuilderLanguage, string>>>((acc, language) => {
+    const value = asString(row[`${baseKey}::${language.xlsLabel}`] || row[`${baseKey}::${language.id}`]);
+    if (value) acc[language.id] = value;
+    return acc;
+  }, {});
+};
+
 const getBuilderTypeFromDefinitionRow = (row: Record<string, unknown>): BuilderQuestionType => {
   const base = getRowTypeBase(row);
-  if (base === 'select_one_from_file') return 'select_one';
+  if (base === 'xml_external') return 'xml_external';
+  if (base === 'select_one_from_file' || (base === 'select_one' && row.external)) return 'select_one_from_file';
+  if (base === 'select_multiple_from_file' || (base === 'select_multiple' && row.external)) return 'select_multiple_from_file';
   if (base === 'select_one' || base === 'select_multiple') return base;
-  if (base === 'geotrace' || base === 'geoshape') return 'geopoint';
   if (base in builderQuestionTypeLabel) return base as BuilderQuestionType;
   return 'text';
 };
@@ -595,6 +806,8 @@ const convertDefinitionToBuilderQuestions = (definition: Record<string, unknown>
       name,
       label: getDefinitionLabel(field),
       hint: asString(field.hint || field.guidance_hint),
+      labels: getDefinitionTranslations(field, 'label'),
+      hints: getDefinitionTranslations(field, 'hint'),
       required: field.required === true || asString(field.required).toLowerCase() === 'yes',
       listName: listName || undefined,
       choices,
@@ -604,6 +817,8 @@ const convertDefinitionToBuilderQuestions = (definition: Record<string, unknown>
       constraintMessage: asString(field.constraintMessage || field.constraint_message),
       defaultValue: asString(field.defaultValue || field.default),
       appearance: asString(field.appearance),
+      parameters: asString(field.parameters),
+      choiceFilter: asString(field.choiceFilter || field.choice_filter),
       readOnly: field.readOnly === true || asString(field.readonly || field.readOnly).toLowerCase() === 'yes',
     };
   });
@@ -703,10 +918,19 @@ export default function InternalKoboSubmissions() {
     description: '',
     sector: 'Energie',
     country: 'Senegal',
+    defaultLanguage: 'fr',
+    languages: ['fr'],
+    ownerTeam: 'terrain',
+    allowedRoles: INTERNAL_KOBO_CHOICES.roles.map((role) => role.name),
+    allowOffline: true,
+    requireLatestVersion: true,
+    draftMigrationMode: 'migrate',
   });
   const [builderQuestions, setBuilderQuestions] = useState<BuilderQuestion[]>(getTemplateBuilderQuestions);
   const [selectedBuilderQuestionId, setSelectedBuilderQuestionId] = useState('');
   const [builderSettingsTab, setBuilderSettingsTab] = useState<BuilderSettingsTab>('options');
+  const [builderLanguage, setBuilderLanguage] = useState<BuilderLanguage>('fr');
+  const [questionLibraryQuery, setQuestionLibraryQuery] = useState('');
   const [builderDropTarget, setBuilderDropTarget] = useState<{ id: string; position: BuilderDropPosition } | null>(null);
   const [builderDraggingLabel, setBuilderDraggingLabel] = useState('');
   const [selectedRubricTitle, setSelectedRubricTitle] = useState('Menage');
@@ -714,6 +938,8 @@ export default function InternalKoboSubmissions() {
   const [selectedTableRows, setSelectedTableRows] = useState<string[]>([]);
   const [hiddenTableColumns, setHiddenTableColumns] = useState<string[]>([]);
   const [tableColumnFilters, setTableColumnFilters] = useState<Record<string, string>>({});
+  const [savedDataFilters, setSavedDataFilters] = useState<SavedDataFilter[]>([]);
+  const [savedDataFilterName, setSavedDataFilterName] = useState('');
   const [showTableFieldsPanel, setShowTableFieldsPanel] = useState(false);
   const [isSavingBuilder, setIsSavingBuilder] = useState(false);
   const [importUrl, setImportUrl] = useState('');
@@ -808,6 +1034,22 @@ export default function InternalKoboSubmissions() {
   }, [loadFormDefinitions]);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = window.localStorage.getItem(savedDataFiltersStorageKey);
+      const parsed = raw ? JSON.parse(raw) : [];
+      if (Array.isArray(parsed)) setSavedDataFilters(parsed);
+    } catch {
+      setSavedDataFilters([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(savedDataFiltersStorageKey, JSON.stringify(savedDataFilters.slice(0, 30)));
+  }, [savedDataFilters]);
+
+  useEffect(() => {
     setSelectedProjectFormKey((current) => {
       if (current && importedForms.some((form) => form.formKey === current && getProjectStatus(form) === 'deployed')) {
         return current;
@@ -819,6 +1061,38 @@ export default function InternalKoboSubmissions() {
   useEffect(() => {
     setReviewNote('');
   }, [selectedSubmission?.id]);
+
+  const saveCurrentDataFilter = () => {
+    const name = savedDataFilterName.trim();
+    if (!name) {
+      setFormManagerMessage('Donnez un nom au filtre avant de le sauvegarder.');
+      return;
+    }
+    const nextFilter: SavedDataFilter = {
+      id: `filter_${Date.now()}`,
+      name,
+      filters,
+      tableColumnFilters,
+      hiddenTableColumns,
+      selectedProjectFormKey,
+      createdAt: new Date().toISOString(),
+    };
+    setSavedDataFilters((current) => [nextFilter, ...current.filter((item) => item.name.toLowerCase() !== name.toLowerCase())].slice(0, 30));
+    setSavedDataFilterName('');
+    setFormManagerMessage(`Filtre sauvegarde: ${name}`);
+  };
+
+  const applySavedDataFilter = (savedFilter: SavedDataFilter) => {
+    setFilters(savedFilter.filters);
+    setTableColumnFilters(savedFilter.tableColumnFilters || {});
+    setHiddenTableColumns(savedFilter.hiddenTableColumns || []);
+    setSelectedProjectFormKey(savedFilter.selectedProjectFormKey || '');
+    setFormManagerMessage(`Filtre charge: ${savedFilter.name}`);
+  };
+
+  const deleteSavedDataFilter = (id: string) => {
+    setSavedDataFilters((current) => current.filter((item) => item.id !== id));
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -961,7 +1235,7 @@ export default function InternalKoboSubmissions() {
         if (patch.label !== undefined && (!question.name || question.name.startsWith('question_'))) {
           next.name = normalizeBuilderName(String(patch.label || ''), question.name || 'question');
         }
-        if ((patch.type === 'select_one' || patch.type === 'select_multiple') && !next.listName) {
+        if ((['select_one', 'select_multiple', 'select_one_from_file', 'select_multiple_from_file', 'rank'] as BuilderQuestionType[]).includes(patch.type as BuilderQuestionType) && !next.listName) {
           next.listName = `${next.name || 'question'}_choices`;
           next.choices = next.choices?.length ? next.choices : [
             { name: 'option_1', label: 'Option 1' },
@@ -1082,6 +1356,48 @@ export default function InternalKoboSubmissions() {
     );
   };
 
+  const insertBuilderLibraryBlock = (blockKey: string) => {
+    const block = builderQuestionLibrary.find((entry) => entry.key === blockKey);
+    if (!block) return;
+    const questions = block.questions.map((question, index) => ({
+      ...question,
+      id: makeQuestionId(),
+      name: normalizeBuilderName(question.name, `${block.key}_${index + 1}`),
+      labels: question.labels || { fr: question.label },
+      hints: question.hints || (question.hint ? { fr: question.hint } : undefined),
+    }));
+    setBuilderQuestions((current) => [...current, ...questions]);
+    setSelectedBuilderQuestionId(questions[0]?.id || '');
+    setBuilderSettingsTab('options');
+  };
+
+  const toggleProjectLanguage = (language: BuilderLanguage) => {
+    setProjectDraft((current) => {
+      const enabled = current.languages.includes(language);
+      const languages = enabled
+        ? current.languages.filter((item) => item !== language)
+        : [...current.languages, language];
+      const nextLanguages = languages.length ? languages : [current.defaultLanguage];
+      return {
+        ...current,
+        languages: nextLanguages,
+        defaultLanguage: nextLanguages.includes(current.defaultLanguage) ? current.defaultLanguage : nextLanguages[0],
+      };
+    });
+  };
+
+  const toggleProjectRole = (roleName: string) => {
+    setProjectDraft((current) => {
+      const enabled = current.allowedRoles.includes(roleName);
+      return {
+        ...current,
+        allowedRoles: enabled
+          ? current.allowedRoles.filter((role) => role !== roleName)
+          : [...current.allowedRoles, roleName],
+      };
+    });
+  };
+
   const handleBuilderPaletteDragStart = (event: DragEvent<HTMLElement>, type: BuilderQuestionType, label: string) => {
     event.dataTransfer.setData('application/x-gem-builder-type', type);
     event.dataTransfer.effectAllowed = 'copy';
@@ -1132,15 +1448,12 @@ export default function InternalKoboSubmissions() {
     setBuilderDraggingLabel('');
   };
 
-  const buildBuilderSurvey = () => [
-    { type: 'start', name: 'start' },
-    { type: 'end', name: 'end' },
-    { type: 'begin_group', name: 'TYPE_DE_VISITE', label: 'Menage' },
-    ...builderQuestions.map((question) => ({
+  const buildSurveyRowFromQuestion = (question: BuilderQuestion) => {
+    const row: Record<string, unknown> = {
       type: getBuilderTypeForSurvey(question),
       name: normalizeBuilderName(question.name || question.label, 'question'),
-      label: question.label,
-      hint: question.hint || '',
+      label: getBuilderQuestionLabel(question, projectDraft.defaultLanguage),
+      hint: getBuilderQuestionHint(question, projectDraft.defaultLanguage),
       required: question.required ? 'yes' : '',
       relevant: question.relevant || '',
       calculation: question.calculation || '',
@@ -1149,9 +1462,57 @@ export default function InternalKoboSubmissions() {
       default: question.defaultValue || '',
       appearance: question.appearance || '',
       readonly: question.readOnly ? 'yes' : '',
-    })),
-    { type: 'end_group', name: 'TYPE_DE_VISITE_end' },
-  ];
+      parameters: question.parameters || '',
+      choice_filter: question.choiceFilter || '',
+    };
+
+    projectDraft.languages.forEach((language) => {
+      const languageMeta = getBuilderLanguageMeta(language);
+      const label = question.labels?.[language] || (language === projectDraft.defaultLanguage ? question.label : '');
+      const hint = question.hints?.[language] || (language === projectDraft.defaultLanguage ? question.hint : '');
+      if (label) row[`label::${languageMeta.xlsLabel}`] = label;
+      if (hint) row[`hint::${languageMeta.xlsLabel}`] = hint;
+      if (question.constraintMessage) row[`constraint_message::${languageMeta.xlsLabel}`] = question.constraintMessage;
+    });
+
+    return row;
+  };
+
+  const buildBuilderSurvey = () => {
+    const rows: Array<Record<string, unknown>> = [
+      { type: 'start', name: 'start' },
+      { type: 'end', name: 'end' },
+      { type: 'begin_group', name: 'TYPE_DE_VISITE', label: 'Menage' },
+    ];
+    let openSection = null as { type: 'begin_group' | 'begin_repeat'; name: string } | null;
+
+    builderQuestions.forEach((question) => {
+      if (question.type === 'begin_group' || question.type === 'begin_repeat') {
+        if (openSection) {
+          rows.push({
+            type: openSection.type === 'begin_group' ? 'end_group' : 'end_repeat',
+            name: `${openSection.name}_end`,
+          });
+        }
+        rows.push(buildSurveyRowFromQuestion(question));
+        openSection = {
+          type: question.type,
+          name: normalizeBuilderName(question.name || question.label, 'section'),
+        };
+        return;
+      }
+      rows.push(buildSurveyRowFromQuestion(question));
+    });
+
+    if (openSection) {
+      rows.push({
+        type: openSection.type === 'begin_group' ? 'end_group' : 'end_repeat',
+        name: `${openSection.name}_end`,
+      });
+    }
+    rows.push({ type: 'end_group', name: 'TYPE_DE_VISITE_end' });
+    return rows;
+  };
 
   const buildBuilderChoices = () =>
     builderQuestions.flatMap((question) =>
@@ -1159,6 +1520,11 @@ export default function InternalKoboSubmissions() {
         list_name: question.listName || `${question.name}_choices`,
         name: normalizeBuilderName(choice.name || choice.label, 'choice'),
         label: choice.label,
+        ...projectDraft.languages.reduce<Record<string, string>>((acc, language) => {
+          const languageMeta = getBuilderLanguageMeta(language);
+          acc[`label::${languageMeta.xlsLabel}`] = choice.label;
+          return acc;
+        }, {}),
       }))
     );
 
@@ -1181,6 +1547,24 @@ export default function InternalKoboSubmissions() {
         activate: false,
         survey: buildBuilderSurvey(),
         choices: buildBuilderChoices(),
+        defaultLanguage: getBuilderLanguageMeta(projectDraft.defaultLanguage).xlsLabel,
+        settings: {
+          default_language: getBuilderLanguageMeta(projectDraft.defaultLanguage).xlsLabel,
+          style: 'pages',
+          languages: projectDraft.languages.map((language) => getBuilderLanguageMeta(language).xlsLabel),
+          gem_permissions: {
+            ownerTeam: projectDraft.ownerTeam,
+            allowedRoles: projectDraft.allowedRoles,
+            allowOffline: projectDraft.allowOffline,
+            requireLatestVersion: projectDraft.requireLatestVersion,
+            draftMigrationMode: projectDraft.draftMigrationMode,
+          },
+          gem_sync_policy: {
+            retry: 'exponential-backoff',
+            duplicateControl: 'clientSubmissionId+mediaHash',
+            preserveDraftsOnVersionChange: projectDraft.draftMigrationMode !== 'block',
+          },
+        },
       });
       setFormManagerMessage(`Projet cree en brouillon: ${result.form?.title || result.form?.formKey || projectDraft.title}`);
       setNewProjectStep(null);
@@ -1251,6 +1635,13 @@ export default function InternalKoboSubmissions() {
         description: 'Copie creee depuis la definition XLSForm active pour modification dans GEM.',
         sector: 'Energie',
         country: 'Senegal',
+        defaultLanguage: 'fr',
+        languages: ['fr', 'en'],
+        ownerTeam: 'terrain',
+        allowedRoles: INTERNAL_KOBO_CHOICES.roles.map((role) => role.name),
+        allowOffline: true,
+        requireLatestVersion: true,
+        draftMigrationMode: 'migrate',
       });
       setBuilderMode('template');
       setBuilderQuestions(questions.length ? questions : getBlankBuilderQuestions());
@@ -1463,6 +1854,13 @@ export default function InternalKoboSubmissions() {
   const draftFormCount = importedForms.filter((form) => getProjectStatus(form) === 'draft').length;
   const inactiveFormCount = importedForms.filter((form) => getProjectStatus(form) === 'archived').length;
   const selectedBuilderQuestion = builderQuestions.find((question) => question.id === selectedBuilderQuestionId) || null;
+  const filteredQuestionLibrary = useMemo(() => {
+    const query = questionLibraryQuery.trim().toLowerCase();
+    if (!query) return builderQuestionLibrary;
+    return builderQuestionLibrary.filter((block) =>
+      `${block.title} ${block.description}`.toLowerCase().includes(query)
+    );
+  }, [questionLibraryQuery]);
   const selectedRubric = KOBO_SOURCE_RUBRICS.find((rubric) => rubric.title === selectedRubricTitle) || KOBO_SOURCE_RUBRICS[0];
   const selectedRubricColumns = useMemo(() => {
     const title = selectedRubric?.title.toLowerCase() || '';
@@ -1774,6 +2172,53 @@ export default function InternalKoboSubmissions() {
 
                   {showTableFieldsPanel ? (
                     <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
+                      <div className="mb-4 rounded-2xl border border-slate-200 bg-white p-3">
+                        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                          <div>
+                            <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-500">Filtres sauvegardes</p>
+                            <p className="mt-1 text-xs font-semibold text-slate-500">Memorise projet, colonnes visibles, recherches et filtres de table pour les exports massifs.</p>
+                          </div>
+                          <div className="flex flex-col gap-2 sm:flex-row">
+                            <input
+                              value={savedDataFilterName}
+                              onChange={(event) => setSavedDataFilterName(event.target.value)}
+                              placeholder="Nom du filtre..."
+                              className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-900 outline-none focus:border-cyan-400"
+                            />
+                            <button
+                              type="button"
+                              onClick={saveCurrentDataFilter}
+                              className="inline-flex items-center justify-center gap-2 rounded-xl bg-cyan-600 px-3 py-2 text-xs font-black uppercase tracking-[0.08em] text-white hover:bg-cyan-700"
+                            >
+                              <Save size={14} />
+                              Sauvegarder
+                            </button>
+                          </div>
+                        </div>
+                        {savedDataFilters.length ? (
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {savedDataFilters.map((savedFilter) => (
+                              <span key={savedFilter.id} className="inline-flex items-center overflow-hidden rounded-full border border-slate-200 bg-slate-50">
+                                <button
+                                  type="button"
+                                  onClick={() => applySavedDataFilter(savedFilter)}
+                                  className="px-3 py-1.5 text-[10px] font-black text-slate-700 hover:bg-cyan-50 hover:text-cyan-800"
+                                >
+                                  {savedFilter.name}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => deleteSavedDataFilter(savedFilter.id)}
+                                  className="border-l border-slate-200 px-2 py-1.5 text-rose-500 hover:bg-rose-50"
+                                  aria-label={`Supprimer ${savedFilter.name}`}
+                                >
+                                  <X size={12} />
+                                </button>
+                              </span>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
                       <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-500">Champs visibles</p>
                       <div className="mt-3 flex flex-wrap gap-2">
                         {koboTableColumns.map((column) => {
@@ -2359,6 +2804,137 @@ export default function InternalKoboSubmissions() {
                     );
                   })}
                 </div>
+
+                <div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-[1.15fr_0.85fr]">
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Bibliotheque de questions</p>
+                        <p className="mt-1 text-[11px] font-semibold text-slate-500">Blocs reutilisables comme Kobo Library, inseres dans la pile drag/drop.</p>
+                      </div>
+                      <div className="relative">
+                        <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <input
+                          value={questionLibraryQuery}
+                          onChange={(event) => setQuestionLibraryQuery(event.target.value)}
+                          placeholder="Chercher un bloc..."
+                          className="h-9 w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3 text-xs font-bold text-slate-900 outline-none focus:border-blue-400 sm:w-56"
+                        />
+                      </div>
+                    </div>
+                    <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2">
+                      {filteredQuestionLibrary.map((block) => (
+                        <button
+                          key={block.key}
+                          type="button"
+                          onClick={() => insertBuilderLibraryBlock(block.key)}
+                          className="rounded-xl border border-slate-200 bg-white p-3 text-left transition hover:border-blue-300 hover:bg-blue-50"
+                        >
+                          <span className="inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.1em] text-blue-800">
+                            <BookOpen size={14} />
+                            {block.title}
+                          </span>
+                          <span className="mt-1 block text-[11px] font-semibold leading-snug text-slate-500">{block.description}</span>
+                          <span className="mt-2 inline-flex rounded-full bg-slate-100 px-2 py-1 text-[9px] font-black text-slate-500">
+                            +{block.questions.length} champ(s)
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                    <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Langues et permissions</p>
+                    <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      <label className="block">
+                        <span className="text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">Langue active</span>
+                        <select
+                          value={builderLanguage}
+                          onChange={(event) => setBuilderLanguage(event.target.value as BuilderLanguage)}
+                          className="mt-1 h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-900 outline-none focus:border-blue-400"
+                        >
+                          {builderLanguages.map((language) => (
+                            <option key={language.id} value={language.id}>{language.label}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="block">
+                        <span className="text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">Equipe proprietaire</span>
+                        <input
+                          value={projectDraft.ownerTeam}
+                          onChange={(event) => setProjectDraft((current) => ({ ...current, ownerTeam: event.target.value }))}
+                          className="mt-1 h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-900 outline-none focus:border-blue-400"
+                        />
+                      </label>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {builderLanguages.map((language) => {
+                        const enabled = projectDraft.languages.includes(language.id);
+                        return (
+                          <button
+                            key={language.id}
+                            type="button"
+                            onClick={() => toggleProjectLanguage(language.id)}
+                            className={`rounded-full border px-3 py-1.5 text-[10px] font-black ${
+                              enabled ? 'border-cyan-200 bg-cyan-50 text-cyan-800' : 'border-slate-200 bg-white text-slate-500'
+                            }`}
+                          >
+                            {enabled ? '✓ ' : '+ '}{language.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {INTERNAL_KOBO_CHOICES.roles.map((role) => {
+                        const enabled = projectDraft.allowedRoles.includes(role.name);
+                        return (
+                          <button
+                            key={role.name}
+                            type="button"
+                            onClick={() => toggleProjectRole(role.name)}
+                            className={`rounded-full border px-3 py-1.5 text-[10px] font-black ${
+                              enabled ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-slate-200 bg-white text-slate-500'
+                            }`}
+                          >
+                            {role.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      <label className="flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2">
+                        <span className="text-[10px] font-black text-slate-600">Offline autorise</span>
+                        <input
+                          type="checkbox"
+                          checked={projectDraft.allowOffline}
+                          onChange={(event) => setProjectDraft((current) => ({ ...current, allowOffline: event.target.checked }))}
+                          className="h-4 w-4 accent-blue-600"
+                        />
+                      </label>
+                      <label className="flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2">
+                        <span className="text-[10px] font-black text-slate-600">Version recente requise</span>
+                        <input
+                          type="checkbox"
+                          checked={projectDraft.requireLatestVersion}
+                          onChange={(event) => setProjectDraft((current) => ({ ...current, requireLatestVersion: event.target.checked }))}
+                          className="h-4 w-4 accent-blue-600"
+                        />
+                      </label>
+                    </div>
+                    <label className="mt-3 block">
+                      <span className="text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">Migration brouillons</span>
+                      <select
+                        value={projectDraft.draftMigrationMode}
+                        onChange={(event) => setProjectDraft((current) => ({ ...current, draftMigrationMode: event.target.value as ProjectDraft['draftMigrationMode'] }))}
+                        className="mt-1 h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-900 outline-none focus:border-blue-400"
+                      >
+                        <option value="migrate">Migrer si compatible</option>
+                        <option value="preserve">Preserver en ancienne version</option>
+                        <option value="block">Bloquer anciennes versions</option>
+                      </select>
+                    </label>
+                  </div>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 gap-4 p-4 xl:grid-cols-[1fr_380px]">
@@ -2442,7 +3018,7 @@ export default function InternalKoboSubmissions() {
                                 <span className="flex flex-wrap items-center gap-2">
                                   <span className="rounded bg-slate-100 px-2 py-1 text-[10px] font-black text-slate-500">#{index + 1}</span>
                                   <span className="text-sm font-black text-slate-950">
-                                    {question.required ? '* ' : ''}{question.label || `Question ${index + 1}`}
+                                    {question.required ? '* ' : ''}{getBuilderQuestionLabel(question, builderLanguage) || `Question ${index + 1}`}
                                   </span>
                                   <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-[9px] font-black uppercase tracking-[0.1em] text-slate-500">
                                     {builderQuestionTypeLabel[question.type]}
@@ -2459,7 +3035,7 @@ export default function InternalKoboSubmissions() {
                                   ) : null}
                                 </span>
                                 <span className="mt-1 block truncate text-[11px] font-semibold text-slate-500">
-                                  {question.name} {question.hint ? `- ${question.hint}` : ''}
+                                  {question.name} {getBuilderQuestionHint(question, builderLanguage) ? `- ${getBuilderQuestionHint(question, builderLanguage)}` : ''}
                                 </span>
                               </span>
                               <span className="flex items-center gap-1 pr-3">
@@ -2542,7 +3118,7 @@ export default function InternalKoboSubmissions() {
                   {selectedBuilderQuestion ? (
                     <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50 px-3 py-3">
                       <p className="text-[10px] font-black uppercase tracking-[0.12em] text-blue-700">Question active</p>
-                      <p className="mt-1 truncate text-sm font-black text-slate-950">{selectedBuilderQuestion.label || selectedBuilderQuestion.name}</p>
+                      <p className="mt-1 truncate text-sm font-black text-slate-950">{getBuilderQuestionLabel(selectedBuilderQuestion, builderLanguage) || selectedBuilderQuestion.name}</p>
                       <p className="mt-1 truncate text-[11px] font-semibold text-slate-500">
                         {selectedBuilderQuestion.name} - {builderQuestionTypeLabel[selectedBuilderQuestion.type]}
                       </p>
@@ -2552,6 +3128,7 @@ export default function InternalKoboSubmissions() {
                   <div className="mt-4 space-y-1 rounded-xl bg-slate-100 p-1">
                     {[
                       ['options', 'Options des questions', 'Nom, libelle, type, choix et valeur par defaut'],
+                      ['languages', 'Traductions', 'Libelles et aides par langue XLSForm'],
                       ['branching', 'Branchement conditionnel', 'Afficher uniquement selon une expression XLSForm'],
                       ['validation', 'Criteres de validation', 'Contraintes, message d erreur et calculs'],
                     ].map(([id, label]) => (
@@ -2568,7 +3145,7 @@ export default function InternalKoboSubmissions() {
                         }`} />
                         <span className="min-w-0">
                           <span className="block text-[11px] font-black uppercase tracking-[0.08em]">{label}</span>
-                          <span className="mt-0.5 block text-[10px] font-semibold leading-snug text-slate-500">{label === 'Options des questions' ? 'Nom, type, choix, defaut.' : id === 'branching' ? 'Conditions de passage.' : 'Contraintes et calculs.'}</span>
+                          <span className="mt-0.5 block text-[10px] font-semibold leading-snug text-slate-500">{label === 'Options des questions' ? 'Nom, type, choix, defaut.' : id === 'languages' ? 'Multilingue Kobo.' : id === 'branching' ? 'Conditions de passage.' : 'Contraintes et calculs.'}</span>
                         </span>
                       </button>
                     ))}
@@ -2582,7 +3159,13 @@ export default function InternalKoboSubmissions() {
                             <span className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">Libelle</span>
                             <input
                               value={selectedBuilderQuestion.label}
-                              onChange={(event) => updateBuilderQuestion(selectedBuilderQuestion.id, { label: event.target.value })}
+                              onChange={(event) => updateBuilderQuestion(selectedBuilderQuestion.id, {
+                                label: event.target.value,
+                                labels: {
+                                  ...(selectedBuilderQuestion.labels || {}),
+                                  [builderLanguage]: event.target.value,
+                                },
+                              })}
                               className="mt-1 h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-bold text-slate-950 outline-none focus:border-blue-500"
                             />
                           </label>
@@ -2601,12 +3184,13 @@ export default function InternalKoboSubmissions() {
                               onChange={(event) => {
                                 const nextType = event.target.value as BuilderQuestionType;
                                 const paletteItem = builderFieldPalette.find((item) => item.type === nextType);
+                                const needsChoices = (['select_one', 'select_multiple', 'select_one_from_file', 'select_multiple_from_file', 'rank'] as BuilderQuestionType[]).includes(nextType);
                                 updateBuilderQuestion(selectedBuilderQuestion.id, {
                                   type: nextType,
-                                  listName: nextType === 'select_one' || nextType === 'select_multiple'
+                                  listName: needsChoices
                                     ? selectedBuilderQuestion.listName || paletteItem?.defaultListName || `${selectedBuilderQuestion.name}_choices`
                                     : undefined,
-                                  choices: nextType === 'select_one' || nextType === 'select_multiple'
+                                  choices: needsChoices
                                     ? selectedBuilderQuestion.choices?.length
                                       ? selectedBuilderQuestion.choices
                                       : paletteItem?.defaultChoices
@@ -2624,7 +3208,13 @@ export default function InternalKoboSubmissions() {
                             <span className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">Instruction supplementaire</span>
                             <textarea
                               value={selectedBuilderQuestion.hint || ''}
-                              onChange={(event) => updateBuilderQuestion(selectedBuilderQuestion.id, { hint: event.target.value })}
+                              onChange={(event) => updateBuilderQuestion(selectedBuilderQuestion.id, {
+                                hint: event.target.value,
+                                hints: {
+                                  ...(selectedBuilderQuestion.hints || {}),
+                                  [builderLanguage]: event.target.value,
+                                },
+                              })}
                               rows={3}
                               className="mt-1 w-full resize-none rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-900 outline-none focus:border-blue-500"
                             />
@@ -2669,7 +3259,7 @@ export default function InternalKoboSubmissions() {
                             </label>
                           </div>
 
-                          {(selectedBuilderQuestion.type === 'select_one' || selectedBuilderQuestion.type === 'select_multiple') ? (
+                          {(['select_one', 'select_multiple', 'select_one_from_file', 'select_multiple_from_file', 'rank'] as BuilderQuestionType[]).includes(selectedBuilderQuestion.type) ? (
                             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
                               <div className="flex items-center justify-between gap-2">
                                 <label className="min-w-0 flex-1">
@@ -2690,6 +3280,11 @@ export default function InternalKoboSubmissions() {
                                 </button>
                               </div>
                               <div className="mt-3 space-y-2">
+                                {selectedBuilderQuestion.type === 'select_one_from_file' || selectedBuilderQuestion.type === 'select_multiple_from_file' ? (
+                                  <p className="rounded-lg border border-cyan-200 bg-cyan-50 px-3 py-2 text-[10px] font-bold leading-relaxed text-cyan-900">
+                                    Liste externe: indiquez le nom du fichier CSV dans la liste de choix. Les options seront resolues par le moteur XLSForm au runtime.
+                                  </p>
+                                ) : null}
                                 {(selectedBuilderQuestion.choices || []).map((choice, choiceIndex) => (
                                   <div key={`${selectedBuilderQuestion.id}-${choiceIndex}`} className="grid grid-cols-[1fr_1fr_auto] gap-2">
                                     <input
@@ -2720,6 +3315,66 @@ export default function InternalKoboSubmissions() {
                         </>
                       ) : null}
 
+                      {builderSettingsTab === 'languages' ? (
+                        <div className="space-y-3">
+                          <div className="rounded-xl border border-cyan-200 bg-cyan-50 p-3 text-[11px] font-semibold leading-relaxed text-cyan-900">
+                            Ces traductions sont exportees en colonnes XLSForm <strong>label::Langue</strong> et <strong>hint::Langue</strong>. La langue active de saisie est {getBuilderLanguageMeta(builderLanguage).label}.
+                          </div>
+                          {projectDraft.languages.map((language) => {
+                            const languageMeta = getBuilderLanguageMeta(language);
+                            return (
+                              <div key={language} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                                <div className="flex items-center justify-between gap-2">
+                                  <p className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">{languageMeta.label}</p>
+                                  <button
+                                    type="button"
+                                    onClick={() => setProjectDraft((current) => ({ ...current, defaultLanguage: language }))}
+                                    className={`rounded-full px-2 py-1 text-[9px] font-black ${
+                                      projectDraft.defaultLanguage === language ? 'bg-blue-600 text-white' : 'bg-white text-slate-500'
+                                    }`}
+                                  >
+                                    {projectDraft.defaultLanguage === language ? 'Defaut' : 'Definir par defaut'}
+                                  </button>
+                                </div>
+                                <label className="mt-2 block">
+                                  <span className="text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">Libelle</span>
+                                  <input
+                                    value={selectedBuilderQuestion.labels?.[language] || (language === 'fr' ? selectedBuilderQuestion.label : '')}
+                                    onChange={(event) =>
+                                      updateBuilderQuestion(selectedBuilderQuestion.id, {
+                                        labels: {
+                                          ...(selectedBuilderQuestion.labels || {}),
+                                          [language]: event.target.value,
+                                        },
+                                        ...(language === projectDraft.defaultLanguage ? { label: event.target.value } : {}),
+                                      })
+                                    }
+                                    className="mt-1 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold text-slate-950 outline-none focus:border-blue-500"
+                                  />
+                                </label>
+                                <label className="mt-2 block">
+                                  <span className="text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">Instruction</span>
+                                  <textarea
+                                    value={selectedBuilderQuestion.hints?.[language] || (language === 'fr' ? selectedBuilderQuestion.hint || '' : '')}
+                                    onChange={(event) =>
+                                      updateBuilderQuestion(selectedBuilderQuestion.id, {
+                                        hints: {
+                                          ...(selectedBuilderQuestion.hints || {}),
+                                          [language]: event.target.value,
+                                        },
+                                        ...(language === projectDraft.defaultLanguage ? { hint: event.target.value } : {}),
+                                      })
+                                    }
+                                    rows={2}
+                                    className="mt-1 w-full resize-none rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-950 outline-none focus:border-blue-500"
+                                  />
+                                </label>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : null}
+
                       {builderSettingsTab === 'branching' ? (
                         <>
                           <label className="block">
@@ -2730,6 +3385,24 @@ export default function InternalKoboSubmissions() {
                               placeholder="${role} = 'macon'"
                               rows={4}
                               className="mt-1 w-full resize-none rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-950 outline-none focus:border-blue-500"
+                            />
+                          </label>
+                          <label className="block">
+                            <span className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">Filtre de choix</span>
+                            <input
+                              value={selectedBuilderQuestion.choiceFilter || ''}
+                              onChange={(event) => updateBuilderQuestion(selectedBuilderQuestion.id, { choiceFilter: event.target.value })}
+                              placeholder="region=${region_key}"
+                              className="mt-1 h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-bold text-slate-950 outline-none focus:border-blue-500"
+                            />
+                          </label>
+                          <label className="block">
+                            <span className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">Parametres XLSForm</span>
+                            <input
+                              value={selectedBuilderQuestion.parameters || ''}
+                              onChange={(event) => updateBuilderQuestion(selectedBuilderQuestion.id, { parameters: event.target.value })}
+                              placeholder="start=0 end=100 step=5 max-pixels=1280"
+                              className="mt-1 h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-bold text-slate-950 outline-none focus:border-blue-500"
                             />
                           </label>
                           <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">

@@ -768,7 +768,10 @@ export function buildXlsFormDefinition({ survey = [], choices = [], settings = {
             'text',
             'integer',
             'decimal',
+            'range',
             'geopoint',
+            'geotrace',
+            'geoshape',
             'image',
             'signature',
             'file',
@@ -780,7 +783,11 @@ export function buildXlsFormDefinition({ survey = [], choices = [], settings = {
             'select_one',
             'select_multiple',
             'acknowledge',
+            'rank',
             'barcode',
+            'hidden',
+            'xml-external',
+            'xml_external',
             'start',
             'end',
             'today',
@@ -843,7 +850,9 @@ export function buildXlsFormDefinition({ survey = [], choices = [], settings = {
             'choice_filter',
             'groups',
             'repeats',
-            'media'
+            'media',
+            'multilingual',
+            'rare-types'
         ],
         diagnostics,
         source

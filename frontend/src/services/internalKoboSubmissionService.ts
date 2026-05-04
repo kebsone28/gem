@@ -551,6 +551,7 @@ export async function createInternalKoboFormDefinition(payload: {
   country?: string;
   sourceType?: string;
   activate?: boolean;
+  defaultLanguage?: string;
   survey?: Array<Record<string, unknown>>;
   choices?: Array<Record<string, unknown>>;
   settings?: Record<string, unknown>;

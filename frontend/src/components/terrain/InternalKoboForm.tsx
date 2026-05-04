@@ -168,6 +168,9 @@ const XLS_RUNTIME_MEDIA_TYPES = new Set(['image', 'signature', 'file', 'audio', 
 const XLS_RUNTIME_FILLABLE_SKIP_TYPES = new Set([
   'note',
   'calculate',
+  'hidden',
+  'xml-external',
+  'xml_external',
   'start',
   'end',
   'today',
@@ -192,7 +195,7 @@ const pickActiveImportedForm = (forms: InternalKoboImportedFormSummary[] = []) =
   forms.find(isDeployedImportedForm) || null;
 
 const getRuntimeFieldInputType = (field: XlsFormField) => {
-  if (field.type === 'integer' || field.type === 'decimal') return 'number';
+  if (field.type === 'integer' || field.type === 'decimal' || field.type === 'range') return 'number';
   if (field.type === 'date') return 'date';
   if (field.type === 'time') return 'time';
   if (field.type === 'datetime') return 'datetime-local';
@@ -1294,7 +1297,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
 
   const setRuntimeOption = (field: XlsFormField, optionName: string, repeatContext?: RepeatContext) => {
     const value = getXlsFormRuntimeFieldValue(field, runtimeValues, repeatContext?.instance);
-    if (field.type === 'select_multiple') {
+    if (field.type === 'select_multiple' || field.type === 'rank') {
       const current = new Set(asArray(value));
       if (current.has(optionName)) current.delete(optionName);
       else current.add(optionName);
@@ -1422,9 +1425,17 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
         const latitude = position.coords.latitude.toFixed(7);
         const longitude = position.coords.longitude.toFixed(7);
         const capturedAt = new Date(position.timestamp || Date.now()).toISOString();
+        const pointValue = `${latitude} ${longitude}`;
+        const shouldAppendPoint = field.type === 'geotrace' || field.type === 'geoshape';
+        const currentValue = repeatContext
+          ? getXlsFormRuntimeFieldValue(field as XlsFormField, runtimeValues, repeatContext.instance)
+          : values[field.name];
+        const nextValue = shouldAppendPoint && String(currentValue || '').trim()
+          ? `${String(currentValue).trim()}; ${pointValue}`
+          : pointValue;
 
-        if (repeatContext) updateRuntimeField(field as XlsFormField, `${latitude} ${longitude}`, repeatContext);
-        else onChange(field.name, `${latitude} ${longitude}`);
+        if (repeatContext) updateRuntimeField(field as XlsFormField, nextValue, repeatContext);
+        else onChange(field.name, nextValue);
         if (field.name === 'LOCALISATION_CLIENT') {
           onChange('latitude_key', latitude);
           onChange('longitude_key', longitude);
@@ -1678,18 +1689,29 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
           />
         ) : null}
 
-        {['integer', 'decimal', 'date', 'time', 'datetime', 'geopoint'].includes(field.type) && !readOnly ? (
+        {['integer', 'decimal', 'range', 'date', 'time', 'datetime', 'geopoint', 'geotrace', 'geoshape'].includes(field.type) && !readOnly ? (
           <div className="space-y-2">
+            {field.type === 'range' ? (
+              <input
+                type="range"
+                min={field.parameters?.match(/start\s*=\s*(-?\d+)/i)?.[1] || '0'}
+                max={field.parameters?.match(/end\s*=\s*(-?\d+)/i)?.[1] || '100'}
+                step={field.parameters?.match(/step\s*=\s*([0-9.]+)/i)?.[1] || '1'}
+                value={String(value || '')}
+                onChange={(event) => updateRuntimeField(field, event.target.value, repeatContext)}
+                className="w-full accent-blue-400"
+              />
+            ) : null}
             <div className="flex gap-2">
               <input
                 type={getRuntimeFieldInputType(field)}
-                inputMode={field.type === 'integer' || field.type === 'decimal' ? 'decimal' : undefined}
+                inputMode={field.type === 'integer' || field.type === 'decimal' || field.type === 'range' ? 'decimal' : undefined}
                 value={String(value || '')}
                 onChange={(event) => updateRuntimeField(field, event.target.value, repeatContext)}
-                placeholder={field.type === 'geopoint' ? 'lat lon' : 'Saisir la valeur...'}
+                placeholder={['geopoint', 'geotrace', 'geoshape'].includes(field.type) ? 'lat lon; lat lon' : 'Saisir la valeur...'}
                 className="h-12 min-w-0 flex-1 rounded-2xl border border-white/10 bg-slate-900/50 px-4 text-sm font-bold text-white outline-none transition-colors placeholder:text-slate-500 focus:border-blue-400/50"
               />
-              {field.type === 'geopoint' ? (
+              {['geopoint', 'geotrace', 'geoshape'].includes(field.type) ? (
                 <button
                   type="button"
                   onClick={() => captureLocation(field, repeatContext)}
@@ -1702,7 +1724,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
                 </button>
               ) : null}
             </div>
-            {field.type === 'geopoint' && locationError ? (
+              {['geopoint', 'geotrace', 'geoshape'].includes(field.type) && locationError ? (
               <p className="rounded-xl border border-rose-300/20 bg-rose-400/10 px-3 py-2 text-[10px] font-bold text-rose-100">
                 {locationError}
               </p>
@@ -1710,10 +1732,10 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
           </div>
         ) : null}
 
-        {(field.type === 'select_one' || field.type === 'select_multiple') && field.listName && !readOnly ? (
+        {(field.type === 'select_one' || field.type === 'select_multiple' || field.type === 'rank') && field.listName && !readOnly ? (
           <div className={`grid grid-cols-1 gap-2 ${field.appearance === 'minimal' ? '' : 'sm:grid-cols-2'}`}>
             {getFilteredXlsFormRuntimeChoices(xlsFormDefinition!, field, runtimeValues, repeatContext?.instance).map((option) => {
-              const active = field.type === 'select_multiple'
+              const active = field.type === 'select_multiple' || field.type === 'rank'
                 ? asArray(value).includes(option.name)
                 : value === option.name;
 

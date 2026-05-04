@@ -64,9 +64,12 @@ export type XlsFormRuntimeIssue = {
   repeatIndex?: number;
 };
 
-const CONTROL_TYPES = new Set(['note', 'calculate', 'start', 'end', 'today', 'username', 'phonenumber']);
+const CONTROL_TYPES = new Set(['note', 'calculate', 'hidden', 'xml-external', 'xml_external', 'start', 'end', 'today', 'username', 'phonenumber']);
 const HIDDEN_RUNTIME_TYPES = new Set([
   'calculate',
+  'hidden',
+  'xml-external',
+  'xml_external',
   'start',
   'end',
   'today',
@@ -613,9 +616,24 @@ const getConstraintIssue = (
     }
   }
 
-  if ((field.type === 'select_one' || field.type === 'select_multiple') && field.listName) {
+  if (field.type === 'geotrace' || field.type === 'geoshape') {
+    const points = String(value).split(';').map((part) => part.trim()).filter(Boolean);
+    const minPoints = field.type === 'geoshape' ? 3 : 2;
+    if (points.length < minPoints) return field.type === 'geoshape'
+      ? 'Le polygone GPS doit contenir au moins 3 points.'
+      : 'La trace GPS doit contenir au moins 2 points.';
+    const invalidPoint = points.some((point) => {
+      const parts = point.split(/[,\s]+/).filter(Boolean);
+      const latitude = parseNumber(parts[0]);
+      const longitude = parseNumber(parts[1]);
+      return latitude === null || longitude === null || latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180;
+    });
+    if (invalidPoint) return 'Chaque point doit etre au format latitude longitude; latitude longitude.';
+  }
+
+  if ((field.type === 'select_one' || field.type === 'select_multiple' || field.type === 'rank') && field.listName) {
     const validNames = new Set(getFilteredXlsFormRuntimeChoices(definition, field, values, repeatValues).map((choice) => String(choice.name)));
-    const selectedValues = field.type === 'select_multiple' ? asValueList(value) : [String(value)];
+    const selectedValues = field.type === 'select_multiple' || field.type === 'rank' ? asValueList(value) : [String(value)];
     const invalidValues = selectedValues.filter((entry) => !validNames.has(entry));
     if (invalidValues.length > 0) return `Choix non autorise: ${invalidValues.join(', ')}.`;
   }

@@ -1064,7 +1064,7 @@ function normalizeBuilderSurveyRows(rawSurvey) {
         .map((row, index) => {
             const type = String(row.type || 'text').trim() || 'text';
             const name = normalizeBuilderKey(row.name || row.label || `question_${index + 1}`, `question_${index + 1}`);
-            return {
+            const normalized = {
                 type,
                 name,
                 label: String(row.label || name).trim(),
@@ -1082,6 +1082,12 @@ function normalizeBuilderSurveyRows(rawSurvey) {
                 parameters: String(row.parameters || '').trim(),
                 choice_filter: String(row.choiceFilter || row.choice_filter || '').trim()
             };
+            Object.entries(row).forEach(([key, value]) => {
+                if (/^(label|hint|constraint_message|media::image)::/i.test(key)) {
+                    normalized[key] = String(value || '').trim();
+                }
+            });
+            return normalized;
         });
 }
 
@@ -1098,6 +1104,11 @@ function normalizeBuilderChoices(rawChoices) {
                 list_name: listName,
                 name,
                 label: String(choice.label || name).trim()
+            });
+            Object.entries(choice).forEach(([key, value]) => {
+                if (/^(label|media::image)::/i.test(key)) {
+                    choices[choices.length - 1][key] = String(value || '').trim();
+                }
             });
         });
     return choices;
