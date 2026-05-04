@@ -213,6 +213,7 @@ export interface InternalKoboLocalDraft {
   key: string;
   householdId?: string | null;
   numeroOrdre?: string | null;
+  formKey?: string | null;
   role?: string | null;
   formVersion: string;
   values: Record<string, unknown>;
@@ -296,15 +297,73 @@ function canUseLocalStorage(): boolean {
 function getInternalKoboDraftKeys(params: {
   householdId?: string | null;
   numeroOrdre?: string | null;
+  formKey?: string | null;
+  role?: string | null;
+  includeLegacy?: boolean;
 }): string[] {
   const keys: string[] = [];
   const householdId = String(params.householdId || '').trim();
   const numeroOrdre = String(params.numeroOrdre || '').trim();
+  const formKey = String(params.formKey || '').trim();
+  const role = String(params.role || '').trim();
+  const scopeParts = [
+    formKey ? `form:${formKey}` : '',
+    role ? `role:${role}` : '',
+  ].filter(Boolean);
+  const scopedSuffix = scopeParts.length ? `:${scopeParts.join(':')}` : '';
 
-  if (householdId) keys.push(`${INTERNAL_KOBO_DRAFT_PREFIX}household:${householdId}`);
-  if (numeroOrdre) keys.push(`${INTERNAL_KOBO_DRAFT_PREFIX}numero:${numeroOrdre}`);
+  if (householdId) keys.push(`${INTERNAL_KOBO_DRAFT_PREFIX}household:${householdId}${scopedSuffix}`);
+  if (numeroOrdre) keys.push(`${INTERNAL_KOBO_DRAFT_PREFIX}numero:${numeroOrdre}${scopedSuffix}`);
+
+  if (scopedSuffix && params.includeLegacy !== false) {
+    if (householdId) keys.push(`${INTERNAL_KOBO_DRAFT_PREFIX}household:${householdId}`);
+    if (numeroOrdre) keys.push(`${INTERNAL_KOBO_DRAFT_PREFIX}numero:${numeroOrdre}`);
+  }
 
   return keys;
+}
+
+function findInternalKoboLocalDraftFallback(params: {
+  householdId?: string | null;
+  numeroOrdre?: string | null;
+  formKey?: string | null;
+  role?: string | null;
+}): InternalKoboLocalDraft | null {
+  if (!canUseLocalStorage()) return null;
+
+  const householdId = String(params.householdId || '').trim();
+  const numeroOrdre = String(params.numeroOrdre || '').trim();
+  const formKey = String(params.formKey || '').trim();
+  const role = String(params.role || '').trim();
+  const matches: InternalKoboLocalDraft[] = [];
+
+  for (let index = 0; index < window.localStorage.length; index += 1) {
+    const key = window.localStorage.key(index) || '';
+    if (!key.startsWith(INTERNAL_KOBO_DRAFT_PREFIX)) continue;
+
+    try {
+      const draft = JSON.parse(window.localStorage.getItem(key) || '') as InternalKoboLocalDraft;
+      if (!draft?.values || typeof draft.values !== 'object') continue;
+      const draftHouseholdId = String(draft.householdId || '').trim();
+      const draftNumeroOrdre = String(draft.numeroOrdre || '').trim();
+      const draftFormKey = String(draft.formKey || draft.values?._gem_runtime_form_key || '').trim();
+      const draftRole = String(draft.role || draft.values?.role || '').trim();
+
+      const sameTarget = Boolean(
+        (householdId && draftHouseholdId === householdId) ||
+        (numeroOrdre && draftNumeroOrdre === numeroOrdre)
+      );
+      if (!sameTarget) continue;
+      if (formKey && draftFormKey && draftFormKey !== formKey) continue;
+      if (role && draftRole && draftRole !== role) continue;
+
+      matches.push({ ...draft, key, formKey: draftFormKey || draft.formKey, role: draftRole || draft.role });
+    } catch {
+      window.localStorage.removeItem(key);
+    }
+  }
+
+  return matches.sort((a, b) => Date.parse(b.updatedAt || '') - Date.parse(a.updatedAt || ''))[0] || null;
 }
 
 function compactDraftValues(value: unknown, key = ''): unknown {
@@ -641,6 +700,7 @@ export async function getInternalKoboQueueCount(): Promise<number> {
 export function saveInternalKoboLocalDraft(params: {
   householdId?: string | null;
   numeroOrdre?: string | null;
+  formKey?: string | null;
   role?: string | null;
   formVersion: string;
   values: Record<string, unknown>;
@@ -654,6 +714,7 @@ export function saveInternalKoboLocalDraft(params: {
     key,
     householdId: params.householdId,
     numeroOrdre: params.numeroOrdre,
+    formKey: params.formKey,
     role: params.role,
     formVersion: params.formVersion,
     values: params.values,
@@ -680,6 +741,8 @@ export function saveInternalKoboLocalDraft(params: {
 export function loadInternalKoboLocalDraft(params: {
   householdId?: string | null;
   numeroOrdre?: string | null;
+  formKey?: string | null;
+  role?: string | null;
 }): InternalKoboLocalDraft | null {
   if (!canUseLocalStorage()) return null;
 
@@ -697,18 +760,25 @@ export function loadInternalKoboLocalDraft(params: {
     }
   }
 
-  return null;
+  return findInternalKoboLocalDraftFallback(params);
 }
 
 export function clearInternalKoboLocalDraft(params: {
   householdId?: string | null;
   numeroOrdre?: string | null;
+  formKey?: string | null;
+  role?: string | null;
 }): void {
   if (!canUseLocalStorage()) return;
 
   getInternalKoboDraftKeys(params).forEach((key) => {
     window.localStorage.removeItem(key);
   });
+
+  const fallback = findInternalKoboLocalDraftFallback(params);
+  if (fallback?.key) {
+    window.localStorage.removeItem(fallback.key);
+  }
 }
 
 export async function reportInternalKoboClientQueue(): Promise<void> {

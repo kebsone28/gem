@@ -6,6 +6,7 @@ import {
   Archive,
   ArrowDown,
   ArrowLeft,
+  ArrowRight,
   ArrowUp,
   BarChart3,
   BookOpen,
@@ -17,6 +18,7 @@ import {
   ClipboardCheck,
   Clock3,
   Copy,
+  CornerUpLeft,
   Database,
   Download,
   Eye,
@@ -32,6 +34,7 @@ import {
   Image,
   Layers,
   Link,
+  Menu,
   Map,
   MapPin,
   MoreHorizontal,
@@ -39,6 +42,7 @@ import {
   Pencil,
   PenLine,
   Plus,
+  Printer,
   RefreshCw,
   Save,
   Search,
@@ -55,6 +59,7 @@ import {
 import { PageContainer, PageHeader, ContentArea } from '../components';
 import {
   fetchInternalKoboFormDefinitions,
+  fetchInternalKoboImportedFormDefinition,
   fetchInternalKoboDiagnostics,
   fetchInternalKoboSubmissionsReport,
   createInternalKoboFormDefinition,
@@ -85,6 +90,7 @@ type Filters = {
   status: '' | InternalKoboSubmissionStatus;
   role: string;
   syncStatus: string;
+  formKey: string;
   limit: number;
 };
 
@@ -188,11 +194,11 @@ const builderFieldPalette: Array<{
 }> = [
   { type: 'text', label: 'Texte', description: 'Saisie libre ou observation', icon: Type },
   { type: 'integer', label: 'Nombre entier', description: 'Compteur, quantite, ordre', icon: Hash },
-  { type: 'decimal', label: 'Decimal', description: 'Valeur terre, mesure, montant', icon: Calculator },
+  { type: 'decimal', label: 'Decimal', description: 'Mesure ou montant', icon: Calculator },
   {
     type: 'select_one',
     label: 'Choix unique',
-    description: 'Une seule reponse possible',
+    description: 'Une reponse',
     icon: CheckCircle2,
     defaultListName: 'oui_non',
     defaultChoices: [
@@ -203,7 +209,7 @@ const builderFieldPalette: Array<{
   {
     type: 'select_multiple',
     label: 'Choix multiple',
-    description: 'Plusieurs reponses possibles',
+    description: 'Plusieurs reponses',
     icon: CheckSquare,
     defaultListName: 'options_multiples',
     defaultChoices: [
@@ -220,7 +226,7 @@ const builderFieldPalette: Array<{
   { type: 'video', label: 'Video', description: 'Capture video', icon: Video },
   { type: 'date', label: 'Date', description: 'Jour de passage', icon: CalendarDays },
   { type: 'time', label: 'Heure', description: 'Heure terrain', icon: Clock3 },
-  { type: 'datetime', label: 'Date + heure', description: 'Horodatage complet', icon: CalendarDays },
+  { type: 'datetime', label: 'Date + heure', description: 'Horodatage', icon: CalendarDays },
   { type: 'barcode', label: 'Code-barres', description: 'Reference scannee', icon: Hash },
   { type: 'calculate', label: 'Calcul', description: 'Valeur auto XLSForm', icon: Calculator },
   { type: 'acknowledge', label: 'Confirmation', description: 'Case de validation', icon: CheckSquare },
@@ -409,6 +415,221 @@ const formatKoboTableCellValue = (submission: InternalKoboSubmissionRecord, colu
   return String(value ?? '');
 };
 
+const XLSFORM_CONTROL_TYPES = new Set([
+  'start',
+  'end',
+  'deviceid',
+  'subscriberid',
+  'simserial',
+  'phonenumber',
+  'username',
+  'email',
+  'audit',
+  'begin_group',
+  'end_group',
+  'begin_repeat',
+  'end_repeat',
+]);
+
+const asPlainRecord = (value: unknown): Record<string, unknown> =>
+  value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
+
+const asRecordArray = (value: unknown): Record<string, unknown>[] =>
+  Array.isArray(value)
+    ? value.filter((entry) => entry && typeof entry === 'object' && !Array.isArray(entry)) as Record<string, unknown>[]
+    : [];
+
+const asString = (value: unknown, fallback = '') => {
+  if (value === undefined || value === null) return fallback;
+  return String(value);
+};
+
+const getRowTypeBase = (row: Record<string, unknown>) =>
+  asString(row.type)
+    .trim()
+    .split(/\s+/)[0]
+    .replace(/-/g, '_')
+    .toLowerCase();
+
+const getDefinitionRows = (definition: Record<string, unknown> | null) => {
+  if (!definition) return [];
+  const rows = asRecordArray(definition.rows);
+  return rows.length ? rows : asRecordArray(definition.fields);
+};
+
+const getDefinitionFields = (definition: Record<string, unknown> | null) => {
+  if (!definition) return [];
+  const fields = asRecordArray(definition.fields);
+  const source = fields.length ? fields : getDefinitionRows(definition);
+  return source.filter((row) => {
+    const type = getRowTypeBase(row);
+    return Boolean(asString(row.name).trim()) && !XLSFORM_CONTROL_TYPES.has(type);
+  });
+};
+
+const getDefinitionChoiceRows = (definition: Record<string, unknown> | null): Record<string, unknown>[] => {
+  if (!definition) return [];
+  const rawChoices = definition.choices;
+  const directRows = asRecordArray(rawChoices);
+  if (directRows.length) return directRows;
+  const groupedChoices = asPlainRecord(rawChoices);
+  return Object.entries(groupedChoices).flatMap(([listName, entries]) =>
+    asRecordArray(entries).map((entry) => ({
+      list_name: listName,
+      ...entry,
+    }))
+  );
+};
+
+const getDefinitionChoicesForList = (definition: Record<string, unknown> | null, listName: string) =>
+  getDefinitionChoiceRows(definition).filter((choice) =>
+    asString(choice.list_name || choice.listName).trim() === listName
+  );
+
+const getDefinitionTitle = (form: InternalKoboImportedFormSummary | null, definition: Record<string, unknown> | null) =>
+  asString(definition?.title || definition?.form_title || form?.title || form?.formKey || KOBO_SOURCE_SNAPSHOT.name);
+
+const getDefinitionListName = (row: Record<string, unknown>) => {
+  const explicit = asString(row.listName || row.list_name).trim();
+  if (explicit) return explicit;
+  const [, listName] = asString(row.type).trim().split(/\s+/);
+  return listName || '';
+};
+
+const getDefinitionLabel = (row: Record<string, unknown>) => {
+  const label = row.label;
+  if (label && typeof label === 'object' && !Array.isArray(label)) {
+    const record = label as Record<string, unknown>;
+    return asString(record.default || Object.values(record)[0] || row.name, asString(row.name));
+  }
+  return asString(label || row.name, 'Question');
+};
+
+const getBuilderTypeFromDefinitionRow = (row: Record<string, unknown>): BuilderQuestionType => {
+  const base = getRowTypeBase(row);
+  if (base === 'select_one_from_file') return 'select_one';
+  if (base === 'select_one' || base === 'select_multiple') return base;
+  if (base === 'geotrace' || base === 'geoshape') return 'geopoint';
+  if (base in builderQuestionTypeLabel) return base as BuilderQuestionType;
+  return 'text';
+};
+
+const convertDefinitionToBuilderQuestions = (definition: Record<string, unknown>): BuilderQuestion[] => {
+  const fields = getDefinitionFields(definition);
+  return fields.map((field, index) => {
+    const type = getBuilderTypeFromDefinitionRow(field);
+    const name = normalizeBuilderName(asString(field.name), `question_${index + 1}`);
+    const listName = getDefinitionListName(field);
+    const choices = listName
+      ? getDefinitionChoicesForList(definition, listName).map((choice, choiceIndex) => ({
+          name: normalizeBuilderName(asString(choice.name), `option_${choiceIndex + 1}`),
+          label: getDefinitionLabel(choice),
+        }))
+      : undefined;
+
+    return {
+      id: makeQuestionId(),
+      type,
+      name,
+      label: getDefinitionLabel(field),
+      hint: asString(field.hint || field.guidance_hint),
+      required: field.required === true || asString(field.required).toLowerCase() === 'yes',
+      listName: listName || undefined,
+      choices,
+      relevant: asString(field.relevant),
+      calculation: asString(field.calculation),
+      constraint: asString(field.constraint),
+      constraintMessage: asString(field.constraintMessage || field.constraint_message),
+      defaultValue: asString(field.defaultValue || field.default),
+      appearance: asString(field.appearance),
+      readOnly: field.readOnly === true || asString(field.readonly || field.readOnly).toLowerCase() === 'yes',
+    };
+  });
+};
+
+const escapeXml = (value: unknown) =>
+  asString(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+
+const getCellValue = (value: unknown) => {
+  if (value === undefined || value === null) return '';
+  if (typeof value === 'object') return JSON.stringify(value);
+  return String(value);
+};
+
+const buildSpreadsheetSheetXml = (sheetName: string, rows: Record<string, unknown>[]) => {
+  const headers = Array.from(new Set(rows.flatMap((row) => Object.keys(row))));
+  const safeHeaders = headers.length ? headers : ['type', 'name', 'label'];
+  const rowXml = [
+    safeHeaders,
+    ...rows.map((row) => safeHeaders.map((header) => getCellValue(row[header]))),
+  ].map((cells) => (
+    `<Row>${cells.map((cell) => `<Cell><Data ss:Type="String">${escapeXml(cell)}</Data></Cell>`).join('')}</Row>`
+  ));
+
+  return `<Worksheet ss:Name="${escapeXml(sheetName)}"><Table>${rowXml.join('')}</Table></Worksheet>`;
+};
+
+const buildXlsFormSpreadsheetXml = (form: InternalKoboImportedFormSummary, definition: Record<string, unknown>) => {
+  const settings = {
+    form_title: getDefinitionTitle(form, definition),
+    form_id: asString(definition.formKey || form.formKey),
+    version: asString(definition.formVersion || form.formVersion),
+    ...asPlainRecord(definition.settings),
+  };
+  return [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<?mso-application progid="Excel.Sheet"?>',
+    '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">',
+    buildSpreadsheetSheetXml('survey', getDefinitionRows(definition)),
+    buildSpreadsheetSheetXml('choices', getDefinitionChoiceRows(definition)),
+    buildSpreadsheetSheetXml('settings', [settings]),
+    '</Workbook>',
+  ].join('');
+};
+
+const buildXFormXml = (form: InternalKoboImportedFormSummary, definition: Record<string, unknown>) => {
+  const fields = getDefinitionFields(definition);
+  return [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    `<xform id="${escapeXml(definition.formKey || form.formKey)}" version="${escapeXml(definition.formVersion || form.formVersion)}">`,
+    `  <title>${escapeXml(getDefinitionTitle(form, definition))}</title>`,
+    '  <survey>',
+    ...fields.map((field) => (
+      `    <field name="${escapeXml(field.name)}" type="${escapeXml(field.type)}" required="${escapeXml(field.required)}">${escapeXml(getDefinitionLabel(field))}</field>`
+    )),
+    '  </survey>',
+    '</xform>',
+  ].join('\n');
+};
+
+type ProjectStatus = 'deployed' | 'draft' | 'archived';
+
+const getProjectStatus = (form: InternalKoboImportedFormSummary): ProjectStatus => {
+  if (form.status === 'draft') return 'draft';
+  if (form.active === false || form.status === 'inactive') return 'archived';
+  return 'deployed';
+};
+
+const projectStatusMeta: Record<ProjectStatus, { label: string; className: string }> = {
+  deployed: {
+    label: 'deploye',
+    className: 'bg-blue-100 text-blue-800',
+  },
+  draft: {
+    label: 'brouillon',
+    className: 'bg-cyan-100 text-cyan-800',
+  },
+  archived: {
+    label: 'archive',
+    className: 'bg-slate-200 text-slate-600',
+  },
+};
+
 export default function InternalKoboSubmissions() {
   const [mainTab, setMainTab] = useState<MainTab>('data');
   const [dataTab, setDataTab] = useState<DataTab>('table');
@@ -438,6 +659,7 @@ export default function InternalKoboSubmissions() {
     status: '',
     role: '',
     syncStatus: '',
+    formKey: '',
     limit: 100,
   });
   const [submissions, setSubmissions] = useState<InternalKoboSubmissionRecord[]>([]);
@@ -457,6 +679,12 @@ export default function InternalKoboSubmissions() {
   const [isLoadingForms, setIsLoadingForms] = useState(false);
   const [formManagerMessage, setFormManagerMessage] = useState('');
   const [formStatusUpdating, setFormStatusUpdating] = useState('');
+  const [formToolsMenuKey, setFormToolsMenuKey] = useState('');
+  const [formToolBusyKey, setFormToolBusyKey] = useState('');
+  const [previewForm, setPreviewForm] = useState<InternalKoboImportedFormSummary | null>(null);
+  const [previewDefinition, setPreviewDefinition] = useState<Record<string, unknown> | null>(null);
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+  const [selectedProjectFormKey, setSelectedProjectFormKey] = useState('');
   const importFileInputRef = useRef<HTMLInputElement | null>(null);
   const showLegacyKoboTable = typeof window !== 'undefined' && window.location.search.includes('legacyKoboTable=1');
 
@@ -486,6 +714,7 @@ export default function InternalKoboSubmissions() {
         status: filters.status || undefined,
         role: filters.role || undefined,
         syncStatus: filters.syncStatus || undefined,
+        formKey: selectedProjectFormKey || filters.formKey || undefined,
         limit: filters.limit,
       };
       const [report, diagnostics] = await Promise.all([
@@ -505,7 +734,7 @@ export default function InternalKoboSubmissions() {
     } finally {
       setIsLoading(false);
     }
-  }, [filters]);
+  }, [filters, selectedProjectFormKey]);
 
   useEffect(() => {
     loadSubmissions();
@@ -514,6 +743,15 @@ export default function InternalKoboSubmissions() {
   useEffect(() => {
     loadFormDefinitions();
   }, [loadFormDefinitions]);
+
+  useEffect(() => {
+    setSelectedProjectFormKey((current) => {
+      if (current && importedForms.some((form) => form.formKey === current && getProjectStatus(form) === 'deployed')) {
+        return current;
+      }
+      return importedForms.find((form) => getProjectStatus(form) === 'deployed')?.formKey || '';
+    });
+  }, [importedForms]);
 
   useEffect(() => {
     setReviewNote('');
@@ -555,6 +793,7 @@ export default function InternalKoboSubmissions() {
         status: filters.status || undefined,
         role: filters.role || undefined,
         syncStatus: filters.syncStatus || undefined,
+        formKey: selectedProjectFormKey || undefined,
         limit: Math.max(filters.limit, 500),
       };
       const { blob, filename } = await downloadInternalKoboSubmissionsExport(cleanFilters, format);
@@ -624,9 +863,8 @@ export default function InternalKoboSubmissions() {
       return;
     }
     if (section === 'drafts') {
-      setMainTab('data');
-      setDataTab('table');
-      setFilters((current) => ({ ...current, status: 'draft' }));
+      setMainTab('form');
+      setFilters((current) => ({ ...current, status: '', syncStatus: '', role: '' }));
       return;
     }
     setMainTab('form');
@@ -914,6 +1152,149 @@ export default function InternalKoboSubmissions() {
     }
   };
 
+  const loadFullFormDefinition = async (form: InternalKoboImportedFormSummary) => {
+    const definition = await fetchInternalKoboImportedFormDefinition(form.formKey);
+    if (!definition) throw new Error('Definition XLSForm introuvable sur le VPS');
+    return definition;
+  };
+
+  const handleOpenFormPreview = async (form: InternalKoboImportedFormSummary) => {
+    setPreviewForm(form);
+    setPreviewDefinition(null);
+    setIsPreviewLoading(true);
+    setFormToolsMenuKey('');
+    setError('');
+    try {
+      const definition = await loadFullFormDefinition(form);
+      setPreviewDefinition(definition);
+    } catch (previewError) {
+      setError(previewError instanceof Error ? previewError.message : 'Apercu du formulaire impossible');
+      setPreviewForm(null);
+    } finally {
+      setIsPreviewLoading(false);
+    }
+  };
+
+  const handleEditFormInBuilder = async (form: InternalKoboImportedFormSummary) => {
+    const busyKey = `${form.formKey}:edit`;
+    setFormToolBusyKey(busyKey);
+    setFormToolsMenuKey('');
+    setError('');
+    try {
+      const definition = await loadFullFormDefinition(form);
+      const questions = convertDefinitionToBuilderQuestions(definition);
+      setProjectDraft({
+        title: `${form.title || form.formKey} - copie editable`,
+        description: 'Copie creee depuis la definition XLSForm active pour modification dans GEM.',
+        sector: 'Energie',
+        country: 'Senegal',
+      });
+      setBuilderMode('template');
+      setBuilderQuestions(questions.length ? questions : getBlankBuilderQuestions());
+      setSelectedBuilderQuestionId(questions[0]?.id || '');
+      setBuilderSettingsTab('options');
+      setNewProjectStep(null);
+      setWorkspaceSection('new');
+      setMainTab('form');
+      setFormManagerMessage('Definition chargee dans le builder. Sauvegardez pour creer un nouveau brouillon VPS.');
+    } catch (editError) {
+      setError(editError instanceof Error ? editError.message : 'Edition du formulaire impossible');
+    } finally {
+      setFormToolBusyKey('');
+    }
+  };
+
+  const handleDownloadFormDefinition = async (form: InternalKoboImportedFormSummary, format: 'xls' | 'xml') => {
+    const busyKey = `${form.formKey}:${format}`;
+    setFormToolBusyKey(busyKey);
+    setFormToolsMenuKey('');
+    setError('');
+    try {
+      const definition = await loadFullFormDefinition(form);
+      const fileBase = normalizeBuilderName(form.title || form.formKey, form.formKey || 'formulaire');
+      if (format === 'xls') {
+        saveBlob(
+          new Blob([buildXlsFormSpreadsheetXml(form, definition)], {
+            type: 'application/vnd.ms-excel;charset=utf-8',
+          }),
+          `${fileBase}.xls`
+        );
+      } else {
+        saveBlob(
+          new Blob([buildXFormXml(form, definition)], {
+            type: 'application/xml;charset=utf-8',
+          }),
+          `${fileBase}.xml`
+        );
+      }
+      setFormManagerMessage(`${format.toUpperCase()} genere depuis la definition VPS.`);
+    } catch (downloadError) {
+      setError(downloadError instanceof Error ? downloadError.message : `Telechargement ${format.toUpperCase()} impossible`);
+    } finally {
+      setFormToolBusyKey('');
+    }
+  };
+
+  const handleShareForm = async (form: InternalKoboImportedFormSummary) => {
+    const shareUrl = `${window.location.origin}${window.location.pathname}?koboForm=${encodeURIComponent(form.formKey)}`;
+    setFormToolsMenuKey('');
+    try {
+      await navigator.clipboard?.writeText(shareUrl);
+      setFormManagerMessage('Lien du projet copie dans le presse-papiers.');
+    } catch {
+      setFormManagerMessage(`Lien projet: ${shareUrl}`);
+    }
+  };
+
+  const handleCloneForm = async (form: InternalKoboImportedFormSummary, mode: 'clone' | 'template') => {
+    const busyKey = `${form.formKey}:${mode}`;
+    setFormToolBusyKey(busyKey);
+    setFormToolsMenuKey('');
+    setError('');
+    setFormManagerMessage('');
+    try {
+      const definition = await loadFullFormDefinition(form);
+      const titlePrefix = mode === 'template' ? 'Modele' : 'Clone';
+      const title = `${titlePrefix} de ${getDefinitionTitle(form, definition)}`;
+      const formId = normalizeBuilderName(`${title}_${Date.now()}`, 'formulaire_clone');
+      const result = await createInternalKoboFormDefinition({
+        title,
+        description: mode === 'template'
+          ? 'Modele cree depuis la definition Kobo active.'
+          : 'Clone cree depuis la definition Kobo active.',
+        sector: 'Energie',
+        country: 'Senegal',
+        sourceType: mode,
+        activate: false,
+        survey: getDefinitionRows(definition),
+        choices: getDefinitionChoiceRows(definition),
+        settings: {
+          ...asPlainRecord(definition.settings),
+          form_title: title,
+          form_id: formId,
+          version: new Date().toISOString(),
+        },
+      });
+      setFormManagerMessage(`${mode === 'template' ? 'Modele' : 'Clone'} cree: ${result.form?.title || title}`);
+      await loadFormDefinitions();
+      setWorkspaceSection('drafts');
+      setMainTab('form');
+    } catch (cloneError) {
+      setError(cloneError instanceof Error ? cloneError.message : 'Creation de la copie impossible');
+    } finally {
+      setFormToolBusyKey('');
+    }
+  };
+
+  const handleRedeployForm = async (form: InternalKoboImportedFormSummary) => {
+    setFormToolsMenuKey('');
+    if (form.active !== false) {
+      setFormManagerMessage(`${form.title || form.formKey} est deja deploye.`);
+      return;
+    }
+    await handleToggleFormStatus(form);
+  };
+
   const handleReview = async (status: Exclude<InternalKoboSubmissionStatus, 'draft'>) => {
     if (!selectedSubmission) return;
     setIsReviewing(true);
@@ -959,6 +1340,7 @@ export default function InternalKoboSubmissions() {
     return Array.isArray(issues) ? issues : [];
   }, [selectedSubmission]);
   const selectedAttachments = useMemo(() => getSubmissionAttachments(selectedSubmission), [selectedSubmission]);
+  const previewFields = useMemo(() => getDefinitionFields(previewDefinition).slice(0, 12), [previewDefinition]);
   const galleryAttachments = useMemo(
     () =>
       submissions.flatMap((submission) =>
@@ -970,9 +1352,10 @@ export default function InternalKoboSubmissions() {
       ),
     [submissions]
   );
-  const activeFormCount = importedForms.filter((form) => form.active !== false).length;
-  const draftFormCount = importedForms.filter((form) => form.status === 'draft').length;
-  const inactiveFormCount = importedForms.filter((form) => form.active === false && form.status !== 'draft').length;
+  const deployedProjectForms = importedForms.filter((form) => getProjectStatus(form) === 'deployed');
+  const activeFormCount = deployedProjectForms.length;
+  const draftFormCount = importedForms.filter((form) => getProjectStatus(form) === 'draft').length;
+  const inactiveFormCount = importedForms.filter((form) => getProjectStatus(form) === 'archived').length;
   const selectedBuilderQuestion = builderQuestions.find((question) => question.id === selectedBuilderQuestionId) || null;
   const selectedRubric = KOBO_SOURCE_RUBRICS.find((rubric) => rubric.title === selectedRubricTitle) || KOBO_SOURCE_RUBRICS[0];
   const selectedRubricColumns = useMemo(() => {
@@ -992,9 +1375,10 @@ export default function InternalKoboSubmissions() {
     return candidates.slice(0, Math.max(4, Math.min(selectedRubric?.fields || 8, 16)));
   }, [selectedRubric]);
   const visibleForms = importedForms.filter((form) => {
-    if (workspaceSection === 'deployed') return form.active !== false;
-    if (workspaceSection === 'drafts') return form.status === 'draft';
-    if (workspaceSection === 'archives') return form.active === false && form.status !== 'draft';
+    const status = getProjectStatus(form);
+    if (workspaceSection === 'deployed') return status === 'deployed';
+    if (workspaceSection === 'drafts') return status === 'draft';
+    if (workspaceSection === 'archives') return status === 'archived';
     return true;
   });
   const visibleTableColumns = useMemo(
@@ -1220,6 +1604,25 @@ export default function InternalKoboSubmissions() {
                       <span className="text-sm font-semibold text-slate-500">
                         {filteredTableSubmissions.length} resultat(s) sur {submissions.length}
                       </span>
+                      {deployedProjectForms.length > 0 ? (
+                        <label className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.08em] text-slate-500">
+                          Projet
+                          <select
+                            value={selectedProjectFormKey}
+                            onChange={(event) => {
+                              setSelectedProjectFormKey(event.target.value);
+                              setFilters((current) => ({ ...current, formKey: event.target.value }));
+                            }}
+                            className="h-10 min-w-[260px] rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold normal-case tracking-normal text-slate-900 outline-none focus:border-cyan-400"
+                          >
+                            {deployedProjectForms.map((form) => (
+                              <option key={form.formKey} value={form.formKey}>
+                                {form.title || form.formKey}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      ) : null}
                       {selectedTableRows.length > 0 ? (
                         <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-black text-blue-800">
                           {selectedTableRows.length} selectionnee(s)
@@ -1826,15 +2229,15 @@ export default function InternalKoboSubmissions() {
                           setBuilderDraggingLabel('');
                         }}
                         onClick={() => addBuilderQuestion(undefined, item.type)}
-                        className="group flex min-h-16 items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-left transition-all hover:border-blue-300 hover:bg-blue-50"
+                        className="group flex min-h-[62px] items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-left transition-all hover:border-blue-300 hover:bg-blue-50"
                         title="Glisser dans le formulaire ou cliquer pour ajouter"
                       >
-                        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-white text-blue-700 shadow-sm ring-1 ring-slate-200 group-hover:ring-blue-200">
+                        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-white text-blue-700 shadow-sm ring-1 ring-slate-200 group-hover:ring-blue-200">
                           <Icon size={17} />
                         </span>
                         <span className="min-w-0">
-                          <span className="block truncate text-[12px] font-black text-slate-900">{item.label}</span>
-                          <span className="mt-0.5 block truncate text-[10px] font-semibold text-slate-500">{item.description}</span>
+                          <span className="block text-[12px] font-black leading-tight text-slate-900">{item.label}</span>
+                          <span className="mt-1 block text-[10px] font-semibold leading-snug text-slate-500">{item.description}</span>
                         </span>
                       </button>
                     );
@@ -2020,21 +2423,37 @@ export default function InternalKoboSubmissions() {
                     <MoreHorizontal size={16} className="text-slate-400" />
                   </div>
 
-                  <div className="mt-4 grid grid-cols-3 gap-1 rounded-xl bg-slate-100 p-1">
+                  {selectedBuilderQuestion ? (
+                    <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50 px-3 py-3">
+                      <p className="text-[10px] font-black uppercase tracking-[0.12em] text-blue-700">Question active</p>
+                      <p className="mt-1 truncate text-sm font-black text-slate-950">{selectedBuilderQuestion.label || selectedBuilderQuestion.name}</p>
+                      <p className="mt-1 truncate text-[11px] font-semibold text-slate-500">
+                        {selectedBuilderQuestion.name} - {builderQuestionTypeLabel[selectedBuilderQuestion.type]}
+                      </p>
+                    </div>
+                  ) : null}
+
+                  <div className="mt-4 space-y-1 rounded-xl bg-slate-100 p-1">
                     {[
-                      ['options', 'Options'],
-                      ['branching', 'Branchement'],
-                      ['validation', 'Validation'],
+                      ['options', 'Options des questions', 'Nom, libelle, type, choix et valeur par defaut'],
+                      ['branching', 'Branchement conditionnel', 'Afficher uniquement selon une expression XLSForm'],
+                      ['validation', 'Criteres de validation', 'Contraintes, message d erreur et calculs'],
                     ].map(([id, label]) => (
                       <button
                         key={id}
                         type="button"
                         onClick={() => setBuilderSettingsTab(id as BuilderSettingsTab)}
-                        className={`rounded-lg px-2 py-2 text-[10px] font-black uppercase tracking-[0.08em] transition-colors ${
-                          builderSettingsTab === id ? 'bg-white text-blue-800 shadow-sm' : 'text-slate-500 hover:text-slate-900'
+                        className={`flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left transition-colors ${
+                          builderSettingsTab === id ? 'bg-white text-blue-800 shadow-sm' : 'text-slate-500 hover:bg-white/50 hover:text-slate-900'
                         }`}
                       >
-                        {label}
+                        <span className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${
+                          builderSettingsTab === id ? 'bg-blue-600' : 'bg-slate-300'
+                        }`} />
+                        <span className="min-w-0">
+                          <span className="block text-[11px] font-black uppercase tracking-[0.08em]">{label}</span>
+                          <span className="mt-0.5 block text-[10px] font-semibold leading-snug text-slate-500">{label === 'Options des questions' ? 'Nom, type, choix, defaut.' : id === 'branching' ? 'Conditions de passage.' : 'Contraintes et calculs.'}</span>
+                        </span>
                       </button>
                     ))}
                   </div>
@@ -2265,102 +2684,197 @@ export default function InternalKoboSubmissions() {
             </section>
           ) : null}
 
-          <section className="rounded-3xl border border-blue-300/15 bg-slate-900/55 p-4 shadow-xl shadow-blue-950/15">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white text-slate-900 shadow-xl shadow-slate-200/70">
+            <div className="flex flex-col gap-3 border-b border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-[11px] font-black uppercase tracking-[0.16em] text-blue-100">Gestionnaire XLSForm</p>
-                <p className="mt-1 text-xs font-semibold text-slate-400">
-                  {importedForms.length} formulaire(s), {activeFormCount} deploye(s), {draftFormCount} brouillon(s), {inactiveFormCount} archive(s)
+                <h3 className="text-xl font-black text-slate-900">Mes Projets</h3>
+                <p className="mt-1 text-xs font-semibold text-slate-500">
+                  {importedForms.length} projet(s), {activeFormCount} deploye(s), {draftFormCount} brouillon(s), {inactiveFormCount} archive(s).
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={loadFormDefinitions}
-                disabled={isLoadingForms}
-                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-slate-100 hover:bg-white/[0.08] disabled:opacity-50"
-              >
-                <RefreshCw size={13} className={isLoadingForms ? 'animate-spin' : ''} />
-                Recharger
-              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={loadFormDefinitions}
+                  disabled={isLoadingForms}
+                  className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-black uppercase tracking-[0.08em] text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                >
+                  <RefreshCw size={14} className={isLoadingForms ? 'animate-spin' : ''} />
+                  Actualiser
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openWorkspaceSection('new')}
+                  className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-xs font-black uppercase tracking-[0.08em] text-white hover:bg-blue-700"
+                >
+                  <Plus size={14} />
+                  Nouveau
+                </button>
+              </div>
             </div>
 
-            <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2 2xl:grid-cols-3">
-              {visibleForms.length === 0 && !isLoadingForms ? (
-                <div className="rounded-2xl border border-dashed border-white/12 bg-slate-950/30 p-4 text-sm font-semibold text-slate-400">
-                  Aucun formulaire dans cette rubrique. Utilisez Nouveau pour creer ou importer un formulaire.
-                </div>
-              ) : null}
-              {visibleForms.map((form) => {
-                const diagnostics = form.diagnostics || {};
-                const active = form.active !== false;
-                return (
-                  <article
-                    key={form.formKey}
-                    className={`rounded-2xl border p-4 transition-colors ${
-                      active
-                        ? 'border-emerald-300/20 bg-emerald-500/[0.06]'
-                        : 'border-white/10 bg-slate-950/45 opacity-75'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-black text-white">{form.title || form.formKey}</p>
-                        <p className="mt-1 truncate text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">
-                          {form.formKey} - v{form.formVersion || 'non versionne'}
-                        </p>
-                      </div>
-                      <span
-                        className={`shrink-0 rounded-full border px-3 py-1 text-[9px] font-black uppercase tracking-[0.12em] ${
-                          active
-                            ? 'border-emerald-300/25 bg-emerald-400/10 text-emerald-100'
-                            : 'border-slate-300/15 bg-slate-500/10 text-slate-300'
-                        }`}
-                      >
-                        {active ? 'Actif' : 'Inactif'}
-                      </span>
-                    </div>
-                    <div className="mt-4 grid grid-cols-3 gap-2">
-                      {([
-                        ['Champs', diagnostics.fieldCount],
-                        ['Requis', diagnostics.requiredCount],
-                        ['Historique', form.historyCount || 0],
-                      ] as Array<[string, unknown]>).map(([label, value]) => (
-                        <div key={String(label)} className="rounded-xl border border-white/8 bg-slate-950/30 p-2">
-                          <p className="text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">{label}</p>
-                          <p className="mt-1 text-sm font-black text-white">{Number(value ?? 0)}</p>
-                        </div>
-                      ))}
-                    </div>
-                    <p className="mt-3 text-[10px] font-semibold text-slate-500">
-                      Dernier import: {formatDateTime(form.importedAt || form.updatedAt || null)}
-                    </p>
-                    {form.previousComparisonSummary ? (
-                      <p className="mt-2 rounded-xl border border-amber-200/10 bg-amber-400/[0.06] px-3 py-2 text-[10px] font-bold text-amber-50">
-                        Delta precedent: {Number((form.previousComparisonSummary as any).fieldsAdded || 0)} ajout(s),{' '}
-                        {Number((form.previousComparisonSummary as any).fieldsChanged || 0)} changement(s),{' '}
-                        {Number((form.previousComparisonSummary as any).fieldsRemoved || 0)} retrait(s).
-                      </p>
-                    ) : null}
-                    <button
-                      type="button"
-                      onClick={() => handleToggleFormStatus(form)}
-                      disabled={formStatusUpdating === form.formKey}
-                      className={`mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl border px-4 py-2 text-[10px] font-black uppercase tracking-[0.12em] transition-colors disabled:opacity-50 ${
-                        active
-                          ? 'border-rose-300/20 bg-rose-500/10 text-rose-100 hover:bg-rose-500/18'
-                          : 'border-emerald-300/20 bg-emerald-500/10 text-emerald-100 hover:bg-emerald-500/18'
-                      }`}
-                    >
-                      <ShieldCheck size={13} />
-                      {formStatusUpdating === form.formKey
-                        ? 'Mise a jour...'
-                        : active
-                          ? 'Desactiver les soumissions'
-                          : 'Activer pour collecte'}
-                    </button>
-                  </article>
-                );
-              })}
+            <div className="overflow-x-auto">
+              <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
+                <thead>
+                  <tr className="bg-slate-50 text-slate-600">
+                    <th className="w-12 border-b border-slate-200 px-4 py-3">
+                      <input type="checkbox" disabled className="h-5 w-5 rounded border-slate-300" />
+                    </th>
+                    {['Nom du projet', 'Statut', 'Date de la modification', 'Date du deploiement', 'Soumissions', 'Actions'].map((header) => (
+                      <th key={header} className="border-b border-slate-200 px-4 py-3 text-xs font-black text-slate-600">
+                        {header}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {visibleForms.length === 0 && !isLoadingForms ? (
+                    <tr>
+                      <td colSpan={7} className="px-6 py-12 text-center text-sm font-semibold text-slate-500">
+                        Aucun projet dans cette rubrique. Utilisez Nouveau pour creer ou importer un formulaire.
+                      </td>
+                    </tr>
+                  ) : null}
+                  {visibleForms.map((form) => {
+                    const status = getProjectStatus(form);
+                    const statusMeta = projectStatusMeta[status];
+                    const diagnostics = form.diagnostics || {};
+                    const submissionCount = Number((globalDiagnostics?.byFormKey || {})[form.formKey] || 0);
+                    const latestImport = (form.latestImport || {}) as Record<string, unknown>;
+                    const deployedAt = String(
+                      latestImport.importedAt ||
+                      form.lastValidated ||
+                      form.importedAt ||
+                      form.updatedAt ||
+                      ''
+                    );
+                    const isSelectedForCollection = status === 'deployed' && selectedProjectFormKey === form.formKey;
+                    return (
+                      <tr key={form.formKey} className={`${isSelectedForCollection ? 'bg-blue-50' : 'bg-white'} hover:bg-slate-50`}>
+                        <td className="border-b border-slate-200 px-4 py-4 align-middle">
+                          <input
+                            type="checkbox"
+                            checked={isSelectedForCollection}
+                            disabled={status !== 'deployed'}
+                            onChange={() => {
+                              if (status !== 'deployed') return;
+                              setSelectedProjectFormKey(form.formKey);
+                              setFilters((current) => ({ ...current, formKey: form.formKey, status: '' }));
+                            }}
+                            className="h-5 w-5 rounded border-slate-300 accent-blue-600 disabled:cursor-not-allowed disabled:opacity-35"
+                          />
+                        </td>
+                        <td className="min-w-[320px] border-b border-slate-200 px-4 py-4 align-middle">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenFormPreview(form)}
+                            className="block text-left text-sm font-black text-blue-800 hover:underline"
+                          >
+                            {form.title || form.formKey}
+                          </button>
+                          <p className="mt-1 text-[11px] font-semibold text-slate-500">
+                            {form.formKey} - v{form.formVersion || 'non versionne'} - {Number(diagnostics.fieldCount || 0)} champ(s)
+                          </p>
+                        </td>
+                        <td className="border-b border-slate-200 px-4 py-4 align-middle">
+                          <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${statusMeta.className}`}>
+                            {statusMeta.label}
+                          </span>
+                        </td>
+                        <td className="border-b border-slate-200 px-4 py-4 align-middle text-slate-600">
+                          {formatDateTime(form.updatedAt || form.importedAt || null)}
+                        </td>
+                        <td className="border-b border-slate-200 px-4 py-4 align-middle text-slate-600">
+                          {status === 'deployed' ? formatDateTime(deployedAt || null) : '-'}
+                        </td>
+                        <td className="border-b border-slate-200 px-4 py-4 align-middle">
+                          <span className="inline-flex min-w-10 justify-center rounded-full bg-slate-100 px-3 py-1 text-sm font-black text-slate-700">
+                            {submissionCount}
+                          </span>
+                        </td>
+                        <td className="border-b border-slate-200 px-4 py-4 align-middle">
+                          <div className="relative flex items-center gap-1">
+                            <button
+                              type="button"
+                              title="Modifier dans le builder"
+                              onClick={() => handleEditFormInBuilder(form)}
+                              disabled={Boolean(formToolBusyKey)}
+                              className="grid h-9 w-9 place-items-center rounded-lg text-blue-800 hover:bg-blue-50 disabled:opacity-50"
+                            >
+                              <Pencil size={18} />
+                            </button>
+                            <button
+                              type="button"
+                              title="Apercu du formulaire"
+                              onClick={() => handleOpenFormPreview(form)}
+                              disabled={Boolean(formToolBusyKey)}
+                              className="grid h-9 w-9 place-items-center rounded-lg text-blue-800 hover:bg-blue-50 disabled:opacity-50"
+                            >
+                              <Eye size={19} />
+                            </button>
+                            {status === 'deployed' ? (
+                              <button
+                                type="button"
+                                title="Utiliser dans l'enquete"
+                                onClick={() => {
+                                  setSelectedProjectFormKey(form.formKey);
+                                  setFilters((current) => ({ ...current, formKey: form.formKey, status: '' }));
+                                  setMainTab('data');
+                                  setDataTab('table');
+                                }}
+                                className="grid h-9 w-9 place-items-center rounded-lg text-cyan-700 hover:bg-cyan-50"
+                              >
+                                <Table2 size={18} />
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                title="Deployer ce projet"
+                                onClick={() => handleRedeployForm(form)}
+                                disabled={formStatusUpdating === form.formKey}
+                                className="grid h-9 w-9 place-items-center rounded-lg text-emerald-700 hover:bg-emerald-50 disabled:opacity-50"
+                              >
+                                <FileUp size={18} />
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              title="Plus d'outils"
+                              onClick={() => setFormToolsMenuKey((current) => (current === form.formKey ? '' : form.formKey))}
+                              className="grid h-9 w-9 place-items-center rounded-lg text-blue-800 hover:bg-blue-50"
+                            >
+                              <MoreHorizontal size={20} />
+                            </button>
+                            {formToolsMenuKey === form.formKey ? (
+                              <div className="absolute right-0 top-10 z-30 w-64 overflow-hidden rounded-xl border border-slate-200 bg-white text-slate-900 shadow-2xl shadow-slate-300/70">
+                                {([
+                                  ['Telecharger XLS', FileSpreadsheet, () => handleDownloadFormDefinition(form, 'xls')],
+                                  ['Telecharger XML', FileJson, () => handleDownloadFormDefinition(form, 'xml')],
+                                  ['Partager ce projet', Link, () => handleShareForm(form)],
+                                  ['Cloner ce projet', Copy, () => handleCloneForm(form, 'clone')],
+                                  ['Creer un modele', Type, () => handleCloneForm(form, 'template')],
+                                  [status === 'deployed' ? 'Archiver ce projet' : 'Deployer ce projet', ShieldCheck, () => handleToggleFormStatus(form)],
+                                ] as Array<[string, typeof FileSpreadsheet, () => void]>).map(([label, Icon, action]) => (
+                                  <button
+                                    key={label}
+                                    type="button"
+                                    onClick={action}
+                                    disabled={Boolean(formToolBusyKey) || formStatusUpdating === form.formKey}
+                                    className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-bold text-blue-900 hover:bg-blue-50 disabled:opacity-50"
+                                  >
+                                    <Icon size={19} className="text-blue-700" />
+                                    {label}
+                                  </button>
+                                ))}
+                              </div>
+                            ) : null}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           </section>
           </>
@@ -3004,6 +3518,129 @@ export default function InternalKoboSubmissions() {
           ) : null}
         </div>
       </ContentArea>
+
+      {previewForm ? (
+        <div className="fixed inset-0 z-50 bg-slate-950/65 p-2 backdrop-blur-sm sm:p-5">
+          <div className="mx-auto flex h-full max-w-6xl flex-col overflow-hidden rounded-2xl bg-slate-100 shadow-2xl shadow-slate-950/40">
+            <div className="flex items-center justify-between bg-[#2494e8] px-5 py-4 text-white">
+              <h2 className="text-lg font-semibold">Apercu du formulaire</h2>
+              <button
+                type="button"
+                onClick={() => {
+                  setPreviewForm(null);
+                  setPreviewDefinition(null);
+                }}
+                className="grid h-10 w-10 place-items-center rounded-full text-white hover:bg-white/15"
+                aria-label="Fermer l'apercu"
+              >
+                <X size={28} />
+              </button>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-8">
+              <div className="mx-auto max-w-4xl">
+                <div className="mb-8 flex items-center justify-between gap-4 px-1">
+                  <div className="inline-flex items-center gap-2 text-xl font-semibold text-slate-500">
+                    <span className="grid h-5 w-5 place-items-center rounded-md border-2 border-[#2494e8] text-[10px] font-black text-[#2494e8]">K</span>
+                    <span>Kobo<span className="text-[#2494e8]">Toolbox</span></span>
+                  </div>
+                  <div className="flex items-center gap-6 text-slate-950">
+                    <button type="button" onClick={() => window.print()} title="Imprimer" className="hover:text-blue-700">
+                      <Printer size={32} />
+                    </button>
+                    <button type="button" title="Menu de l'apercu" className="hover:text-blue-700">
+                      <Menu size={36} />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="min-h-[430px] bg-white px-6 py-10 shadow-sm sm:px-12">
+                  {isPreviewLoading ? (
+                    <div className="grid min-h-[300px] place-items-center text-center">
+                      <div>
+                        <RefreshCw className="mx-auto animate-spin text-blue-600" size={34} />
+                        <p className="mt-4 text-sm font-bold text-slate-600">Chargement de la definition XLSForm...</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <h1 className="text-center text-3xl font-black text-[#3f78ad]">
+                        {getDefinitionTitle(previewForm, previewDefinition)}
+                      </h1>
+                      <div className="mt-8 space-y-6">
+                        {previewFields.length ? previewFields.map((field, index) => {
+                          const type = getRowTypeBase(field);
+                          const listName = getDefinitionListName(field);
+                          const choices = listName ? getDefinitionChoicesForList(previewDefinition, listName).slice(0, 8) : [];
+                          const required = field.required === true || asString(field.required).toLowerCase() === 'yes';
+                          const label = getDefinitionLabel(field);
+                          return (
+                            <div key={`${asString(field.name)}-${index}`} className="max-w-xl">
+                              <label className="block text-lg font-black text-slate-900">
+                                {required ? <span className="mr-1 text-[#2f6fa7]">*</span> : null}
+                                {label}
+                              </label>
+                              {asString(field.hint) ? (
+                                <p className="mt-1 text-sm italic text-slate-500">{asString(field.hint)}</p>
+                              ) : null}
+
+                              {type === 'select_one' || type === 'select_multiple' ? (
+                                <div className="mt-3 space-y-2">
+                                  {choices.length ? choices.map((choice) => (
+                                    <label key={`${asString(field.name)}-${asString(choice.name)}`} className="flex items-center gap-3 rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700">
+                                      <span className={`h-4 w-4 border border-slate-400 ${type === 'select_one' ? 'rounded-full' : 'rounded-sm'}`} />
+                                      {getDefinitionLabel(choice)}
+                                    </label>
+                                  )) : (
+                                    <select className="mt-3 h-11 w-full rounded border border-slate-300 px-3 text-slate-600">
+                                      <option>Selectionner...</option>
+                                    </select>
+                                  )}
+                                </div>
+                              ) : ['image', 'signature', 'file', 'audio', 'video'].includes(type) ? (
+                                <button type="button" className="mt-3 inline-flex items-center gap-2 rounded border border-dashed border-slate-300 px-4 py-3 text-sm font-bold text-slate-600">
+                                  <Upload size={16} />
+                                  Ajouter un media
+                                </button>
+                              ) : type === 'note' ? (
+                                <p className="mt-3 rounded bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-900">{label}</p>
+                              ) : (
+                                <input className="mt-3 h-11 w-full rounded border border-slate-300 px-3 text-slate-900 outline-none focus:border-[#2494e8]" />
+                              )}
+                            </div>
+                          );
+                        }) : (
+                          <div className="rounded border border-dashed border-slate-300 p-6 text-center text-sm font-bold text-slate-500">
+                            Aucun champ visible dans cette definition.
+                          </div>
+                        )}
+                      </div>
+                      <div className="mt-10 flex justify-center">
+                        <button type="button" className="inline-flex items-center gap-2 rounded bg-[#3f7fb4] px-14 py-4 text-lg font-semibold text-white shadow-sm hover:bg-[#336fa1]">
+                          <ArrowRight size={22} />
+                          Suivant
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-3 bg-blue-100 text-[#5d8db7]">
+                  <button type="button" className="inline-flex items-center gap-3 px-4 py-4 text-left text-base font-semibold hover:bg-blue-200/70">
+                    <CornerUpLeft size={24} className="text-slate-700" />
+                    Retourner au debut
+                  </button>
+                  <div />
+                  <button type="button" className="inline-flex items-center justify-end gap-3 px-4 py-4 text-right text-base font-semibold hover:bg-blue-200/70">
+                    Aller a la fin
+                    <ArrowRight size={26} className="text-slate-700" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </PageContainer>
   );
 }

@@ -185,8 +185,11 @@ const isRuntimeDefinition = (value: unknown): value is XlsFormDefinition =>
   typeof value.formKey === 'string' &&
   typeof value.formVersion === 'string';
 
+const isDeployedImportedForm = (form: InternalKoboImportedFormSummary) =>
+  form.active !== false && form.status !== 'draft' && form.status !== 'inactive';
+
 const pickActiveImportedForm = (forms: InternalKoboImportedFormSummary[] = []) =>
-  forms.find((form) => form.active !== false && form.status !== 'inactive') || null;
+  forms.find(isDeployedImportedForm) || null;
 
 const getRuntimeFieldInputType = (field: XlsFormField) => {
   if (field.type === 'integer' || field.type === 'decimal') return 'number';
@@ -366,6 +369,12 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
   const [pendingRuntimeDefinition, setPendingRuntimeDefinition] = useState<XlsFormDefinition | null>(null);
   const [activeRuntimePageId, setActiveRuntimePageId] = useState('');
   const [activeRepeatIndexByPage, setActiveRepeatIndexByPage] = useState<Record<string, number>>({});
+  const [availableRuntimeForms, setAvailableRuntimeForms] = useState<InternalKoboImportedFormSummary[]>([]);
+  const [selectedRuntimeFormKey, setSelectedRuntimeFormKey] = useState(() => {
+    const runtimeKey = String(values._gem_runtime_form_key || '').trim();
+    return runtimeKey && runtimeKey !== 'terrain_internal' ? runtimeKey : '';
+  });
+  const [isRuntimeFormListLoading, setIsRuntimeFormListLoading] = useState(false);
   const [signatureTarget, setSignatureTarget] = useState<SignatureTarget | null>(null);
   const [receiptSubmission, setReceiptSubmission] = useState<InternalKoboSubmissionRecord | null>(null);
   const [copiedReceiptId, setCopiedReceiptId] = useState('');
@@ -546,6 +555,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
     }
 
     let cancelled = false;
+    setIsRuntimeFormListLoading(true);
     setServerFormStatus((current) => current.status === 'ok' ? current : { status: 'loading' });
 
     (async () => {
@@ -553,33 +563,24 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
         const form = await fetchInternalKoboFormDefinition();
         if (cancelled) return;
         if (!form) {
+          setAvailableRuntimeForms([]);
+          setSelectedRuntimeFormKey('');
           setServerFormStatus({ status: 'error', message: 'Definition VPS indisponible' });
           return;
         }
 
-        const activeImportedForm = pickActiveImportedForm(form.universalEngine?.importedForms || []);
-        if (activeImportedForm?.formKey) {
-          const importedDefinition = await fetchInternalKoboImportedFormDefinition(activeImportedForm.formKey);
-          if (cancelled) return;
-          if (!isRuntimeDefinition(importedDefinition)) {
-            throw new Error('Definition XLSForm active invalide');
-          }
+        const deployedForms = (form.universalEngine?.importedForms || []).filter(isDeployedImportedForm);
+        setAvailableRuntimeForms(deployedForms);
 
-          if (isDifferentRuntimeVersion(importedDefinition) && progressFilledRef.current > 0) {
-            setPendingRuntimeDefinition(importedDefinition);
-            setServerFormStatus({
-              status: 'mismatch',
-              version: importedDefinition.formVersion,
-              message: `Nouvelle version disponible: ${importedDefinition.title || importedDefinition.formKey}`,
-              checkedAt: new Date().toISOString(),
-            });
-            return;
-          }
-
-          applyRuntimeDefinition(importedDefinition, activeImportedForm.title);
+        if (deployedForms.length > 0) {
+          setSelectedRuntimeFormKey((current) => {
+            if (current && deployedForms.some((item) => item.formKey === current)) return current;
+            return deployedForms[0]?.formKey || '';
+          });
           return;
         }
 
+        setSelectedRuntimeFormKey('');
         setXlsFormDefinition(null);
         onChangeRef.current('_gem_runtime_form_key', 'terrain_internal');
         onChangeRef.current('_gem_runtime_form_version', INTERNAL_KOBO_FORM_SETTINGS.version);
@@ -596,6 +597,54 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
         });
       } catch (error) {
         if (cancelled) return;
+        setAvailableRuntimeForms([]);
+        setSelectedRuntimeFormKey('');
+        setXlsFormDefinition(null);
+        setServerFormStatus({
+          status: 'error',
+          message: error instanceof Error ? error.message : 'Definition VPS indisponible',
+        });
+      } finally {
+        if (!cancelled) setIsRuntimeFormListLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isOnline]);
+
+  useEffect(() => {
+    if (!isOnline || !selectedRuntimeFormKey) return undefined;
+
+    const selectedSummary = availableRuntimeForms.find((form) => form.formKey === selectedRuntimeFormKey);
+    if (!selectedSummary) return undefined;
+
+    let cancelled = false;
+    setServerFormStatus((current) => current.status === 'mismatch' ? current : { status: 'loading' });
+
+    (async () => {
+      try {
+        const importedDefinition = await fetchInternalKoboImportedFormDefinition(selectedRuntimeFormKey);
+        if (cancelled) return;
+        if (!isRuntimeDefinition(importedDefinition)) {
+          throw new Error('Definition XLSForm active invalide');
+        }
+
+        if (isDifferentRuntimeVersion(importedDefinition) && progressFilledRef.current > 0) {
+          setPendingRuntimeDefinition(importedDefinition);
+          setServerFormStatus({
+            status: 'mismatch',
+            version: importedDefinition.formVersion,
+            message: `Nouvelle version disponible: ${importedDefinition.title || importedDefinition.formKey}`,
+            checkedAt: new Date().toISOString(),
+          });
+          return;
+        }
+
+        applyRuntimeDefinition(importedDefinition, selectedSummary.title);
+      } catch (error) {
+        if (cancelled) return;
         setXlsFormDefinition(null);
         setServerFormStatus({
           status: 'error',
@@ -607,7 +656,13 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [applyRuntimeDefinition, isDifferentRuntimeVersion, isOnline]);
+  }, [
+    applyRuntimeDefinition,
+    availableRuntimeForms,
+    isDifferentRuntimeVersion,
+    isOnline,
+    selectedRuntimeFormKey,
+  ]);
 
   useEffect(() => {
     if (!isOnline) return undefined;
@@ -617,7 +672,10 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
       try {
         const form = await fetchInternalKoboFormDefinition();
         if (cancelled) return;
-        const activeImportedForm = pickActiveImportedForm(form?.universalEngine?.importedForms || []);
+        const deployedForms = form?.universalEngine?.importedForms || [];
+        const activeImportedForm =
+          deployedForms.find((entry) => entry.formKey === selectedRuntimeFormKey && isDeployedImportedForm(entry)) ||
+          pickActiveImportedForm(deployedForms);
         if (!activeImportedForm?.formKey) return;
         const importedDefinition = await fetchInternalKoboImportedFormDefinition(activeImportedForm.formKey);
         if (cancelled || !isRuntimeDefinition(importedDefinition)) return;
@@ -658,7 +716,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
       window.clearInterval(intervalId);
       window.removeEventListener('focus', handleFocus);
     };
-  }, [isDifferentRuntimeVersion, isOnline]);
+  }, [isDifferentRuntimeVersion, isOnline, selectedRuntimeFormKey]);
 
   useEffect(() => {
     const now = new Date();
@@ -2756,6 +2814,40 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
                 <X size={18} />
               </button>
             </div>
+
+            {availableRuntimeForms.length > 0 ? (
+              <div className="mt-3 rounded-2xl border border-blue-300/15 bg-slate-950/35 p-3">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <label className="min-w-0 flex-1">
+                    <span className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.16em] text-blue-200">
+                      <ClipboardList size={13} />
+                      Projet deploye pour cette enquete
+                    </span>
+                    <select
+                      value={selectedRuntimeFormKey}
+                      onChange={(event) => {
+                        setSelectedRuntimeFormKey(event.target.value);
+                        setPendingRuntimeDefinition(null);
+                      }}
+                      disabled={isRuntimeFormListLoading || availableRuntimeForms.length < 2}
+                      className="mt-2 h-11 w-full rounded-xl border border-blue-300/20 bg-[#081323] px-3 text-[12px] font-black text-white outline-none transition focus:border-blue-300 disabled:cursor-not-allowed disabled:opacity-75"
+                    >
+                      {availableRuntimeForms.map((form) => (
+                        <option key={form.formKey} value={form.formKey}>
+                          {form.title || form.formKey}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <div className="rounded-xl border border-emerald-300/20 bg-emerald-400/10 px-3 py-2 text-[10px] font-black uppercase tracking-[0.1em] text-emerald-100">
+                    {availableRuntimeForms.length} deploye(s)
+                  </div>
+                </div>
+                <p className="mt-2 text-[10px] font-semibold leading-relaxed text-slate-400">
+                  Seuls les projets deployes apparaissent ici; les brouillons restent dans le workspace et ne peuvent pas etre utilises pour collecter.
+                </p>
+              </div>
+            ) : null}
 
             <div className="mt-3 hidden grid-cols-1 gap-3 sm:mt-4 sm:grid sm:grid-cols-[1fr_auto_auto]">
               <div className="hidden h-12 items-center gap-2 rounded-2xl border border-white/10 bg-slate-950/45 px-3 sm:flex">

@@ -350,6 +350,8 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
     const localDraft = loadInternalKoboLocalDraft({
       householdId: String(household.id || ''),
       numeroOrdre: String(nextForm.Numero_ordre || household.numeroordre || ''),
+      formKey: String(nextForm._gem_runtime_form_key || 'terrain_internal'),
+      role: nextForm.role ? String(nextForm.role) : null,
     });
 
     if (localDraft?.values) {
@@ -383,8 +385,9 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
       const draft = saveInternalKoboLocalDraft({
         householdId,
         numeroOrdre,
+        formKey: String(nativeKoboAuditForm._gem_runtime_form_key || 'terrain_internal'),
         role: nativeKoboAuditForm.role ? String(nativeKoboAuditForm.role) : null,
-        formVersion: INTERNAL_KOBO_FORM_SETTINGS.version,
+        formVersion: String(nativeKoboAuditForm._gem_runtime_form_version || INTERNAL_KOBO_FORM_SETTINGS.version),
         values: nativeKoboAuditForm,
       });
       if (draft) setInternalKoboLocalDraft(draft);
@@ -398,9 +401,17 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
     clearInternalKoboLocalDraft({
       householdId: targetHousehold?.id ? String(targetHousehold.id) : String(household.id || ''),
       numeroOrdre: String(numeroOverride || nativeKoboAuditForm.Numero_ordre || targetHousehold?.numeroordre || household.numeroordre || ''),
+      formKey: String(nativeKoboAuditForm._gem_runtime_form_key || 'terrain_internal'),
+      role: nativeKoboAuditForm.role ? String(nativeKoboAuditForm.role) : null,
     });
     setInternalKoboLocalDraft(null);
-  }, [household, nativeKoboAuditForm.Numero_ordre, nativeKoboTargetHousehold]);
+  }, [
+    household,
+    nativeKoboAuditForm.Numero_ordre,
+    nativeKoboAuditForm._gem_runtime_form_key,
+    nativeKoboAuditForm.role,
+    nativeKoboTargetHousehold,
+  ]);
 
   const handleClearInternalKoboDraft = useCallback(() => {
     clearInternalKoboDraftForTarget();
@@ -828,6 +839,8 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
       const restoredDraft = loadInternalKoboLocalDraft({
         householdId: String(resolvedHousehold.id),
         numeroOrdre: String(resolvedHousehold.numeroordre || nativeKoboAuditForm.Numero_ordre || ''),
+        formKey: String(nativeKoboAuditForm._gem_runtime_form_key || 'terrain_internal'),
+        role: nativeKoboAuditForm.role ? String(nativeKoboAuditForm.role) : null,
       });
 
       if (restoredDraft?.values) {
