@@ -1254,18 +1254,30 @@ export const deleteMission = async (req, res) => {
         const { id } = req.params;
         const { organizationId, id: userId } = req.user;
 
-        // 🔒 Ownership check
+        // 🔒 Ownership & Status check
+        const { role: rawUserRole } = req.user;
+        const userRole = (rawUserRole || '').toUpperCase();
+        const isAdmin = ['ADMIN_PROQUELEC', 'ADMIN'].includes(userRole);
+
         const mission = await prisma.mission.findFirst({
             where: {
                 id,
                 organizationId,
                 deletedAt: null,
-                ...(req.user.email !== 'admingem' ? { createdBy: userId } : {})
+                // Si pas admin, on doit être le créateur
+                ...(!isAdmin && req.user.email !== 'admingem' ? { createdBy: userId } : {})
             }
         });
 
         if (!mission) {
             return res.status(404).json({ error: 'Mission introuvable ou accès refusé' });
+        }
+
+        // 🛡️ Protection: Un non-admin ne peut supprimer qu'un BROUILLON
+        if (!isAdmin && mission.status !== 'draft') {
+            return res.status(403).json({ 
+                error: 'Seul un administrateur peut supprimer une mission déjà soumise ou approuvée.' 
+            });
         }
 
         await prisma.mission.update({

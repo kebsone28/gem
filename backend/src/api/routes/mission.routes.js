@@ -57,7 +57,7 @@ router.post('/', authorize('ADMIN_PROQUELEC', 'DIRECTEUR', 'CHEF_PROJET', 'COMPT
 
 router.patch('/:id', authorize('ADMIN_PROQUELEC', 'DIRECTEUR', 'CHEF_PROJET', 'COMPTABLE'), updateMission);
 router.put('/:id',   authorize('ADMIN_PROQUELEC', 'DIRECTEUR', 'CHEF_PROJET', 'COMPTABLE'), updateMission);
-router.delete('/:id', authorize('ADMIN_PROQUELEC'), deleteMission);
+router.delete('/:id', authorize('ADMIN_PROQUELEC', 'DIRECTEUR', 'CHEF_PROJET', 'COMPTABLE'), deleteMission);
 router.post('/:id/duplicate', authorize('ADMIN_PROQUELEC', 'DIRECTEUR', 'CHEF_PROJET'), duplicateMission);
 
 // Workflow d'approbation - validation finale par Direction ou Administration
