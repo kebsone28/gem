@@ -1,6 +1,8 @@
 import { Trash2, Search, FileText, Calendar, MapPin, Clock, FileCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo } from 'react';
+
+const START_TS = Date.now();
 
 interface MissionListSidebarProps {
   savedMissions: any[];
@@ -63,7 +65,6 @@ export const MissionListSidebar: React.FC<MissionListSidebarProps> = ({
     return Array.from(r);
   }, [savedMissions]);
 
-  const nowRef = useRef<number>(Date.now());
 
   const groupedMissions = useMemo(() => {
     const filtered = savedMissions
@@ -96,7 +97,7 @@ export const MissionListSidebar: React.FC<MissionListSidebarProps> = ({
     // Grouping by Month/Year for traceability and annual tracking
     const groups: Record<string, any[]> = {};
     filtered.forEach(m => {
-      const date = new Date(m.updatedAt || m.createdAt || nowRef.current);
+      const date = new Date(m.updatedAt || m.createdAt || START_TS);
       const key = date.toLocaleString('fr-FR', { month: 'long', year: 'numeric' });
       if (!groups[key]) groups[key] = [];
       groups[key].push(m);
