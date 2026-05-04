@@ -14,35 +14,46 @@ import {
   Download,
   ChevronDown,
   MapIcon,
-  DollarSign
+  DollarSign,
+  Loader2
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { ActionBar } from '../../../components';
 import { getTemplates } from '../../../services/missionTemplates';
 
 const Dropdown = ({ icon, label, isOpen, onToggle, children }: any) => {
   return (
     <div className="relative">
-      <button
+      <motion.button
+        whileHover={{ scale: 1.05, backgroundColor: "rgba(255, 255, 255, 0.08)" }}
+        whileTap={{ scale: 0.95 }}
         onClick={onToggle}
-        className={`flex items-center justify-center gap-2 px-3 py-2 rounded-xl transition-all text-[10px] font-black uppercase tracking-[0.12em] border ${
+        className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl transition-all text-[10px] font-black uppercase tracking-[0.15em] border ${
           isOpen 
-            ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30' 
-            : 'text-slate-400 hover:text-white border-white/5 hover:bg-white/5'
+            ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40 shadow-[0_0_15px_rgba(99,102,241,0.2)]' 
+            : 'text-slate-300 hover:text-white border-white/10 bg-white/[0.02]'
         }`}
       >
-        {icon}
-        {label && <span className="hidden sm:inline">{label}</span>}
+        <span className="relative flex items-center gap-2">
+          {icon}
+          {label && <span className="hidden sm:inline">{label}</span>}
+        </span>
         <ChevronDown size={12} className={`transition-transform duration-300 opacity-50 ${isOpen ? 'rotate-180' : ''}`} />
-      </button>
+      </motion.button>
 
-      {isOpen && (
-        <div
-          onClick={(e) => e.stopPropagation()}
-          className="absolute top-full right-0 mt-2 w-[min(16rem,calc(100vw-2rem))] bg-slate-900 border border-white/10 rounded-xl shadow-2xl p-2 z-50 animate-in fade-in slide-in-from-top-2 origin-top-right"
-        >
-          {children}
-        </div>
-      )}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+            onClick={(e) => e.stopPropagation()}
+            className="absolute top-full right-0 mt-3 w-[min(18rem,calc(100vw-2rem))] bg-slate-900/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] p-2 z-50 origin-top-right"
+          >
+            {children}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
@@ -117,80 +128,90 @@ export const MissionOrderActionBar = (props: any) => {
   })();
 
   return (
-    <ActionBar className="no-print !bg-slate-950/90 backdrop-blur-xl border-t border-white/5 px-3 py-3 sm:px-4 sm:py-2 shadow-2xl">
+    <ActionBar className="no-print !bg-slate-950/80 backdrop-blur-2xl border-t border-white/10 px-3 py-3 sm:px-4 sm:py-3 shadow-[0_-10px_40px_rgba(0,0,0,0.4)]">
 
-      <div className="flex w-full flex-col gap-3 sm:gap-4">
+      <div className="flex w-full flex-col gap-4">
 
         {/* 📝 TITRE & INFOS */}
         <div className="flex flex-col min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-3">
             {!isCertified && !isSubmitted ? (
                <input
                  type="text"
                  value={formData.purpose || ''}
                  onChange={(e) => onUpdateField('purpose', e.target.value.toUpperCase())}
                  placeholder="OBJET DE LA MISSION..."
-                 className="bg-transparent border-none outline-none text-[10px] sm:text-[9px] font-extrabold text-white/70 placeholder:text-slate-600 w-full sm:max-w-[280px] focus:ring-0 p-0 tracking-tight"
+                 className="bg-transparent border-none outline-none text-[11px] sm:text-[10px] font-black text-white/90 placeholder:text-slate-600 w-full sm:max-w-[320px] focus:ring-0 p-0 tracking-tight"
                />
             ) : (
-              <h4 className="text-[10px] sm:text-[9px] font-extrabold text-white/70 truncate uppercase tracking-tight sm:max-w-[280px]">
+              <h4 className="text-[11px] sm:text-[10px] font-black text-white/90 truncate uppercase tracking-tight sm:max-w-[320px]">
                 {formData.purpose || 'Mission Sans Titre'}
               </h4>
             )}
-            <div className={`px-1.5 py-0.5 rounded-full text-[8px] font-bold flex items-center gap-1 ${
-              isCertified ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 
-              isSubmitted ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' :
-              'bg-slate-500/10 text-slate-400 border border-slate-500/20'
+            <div className={`px-2.5 py-1 rounded-full text-[9px] font-black flex items-center gap-1.5 shadow-sm ${
+              isCertified ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 
+              isSubmitted ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
+              'bg-slate-500/20 text-slate-300 border border-white/10'
             }`}>
-              <div className={`w-1 h-1 rounded-full ${
-                isCertified ? 'bg-emerald-400 animate-pulse' : 
-                isSubmitted ? 'bg-blue-400' : 
-                'bg-slate-400'
-              }`} />
+              <motion.div 
+                animate={isCertified ? { scale: [1, 1.4, 1], opacity: [1, 0.6, 1] } : {}}
+                transition={{ duration: 2, repeat: Infinity }}
+                className={`w-1.5 h-1.5 rounded-full ${
+                  isCertified ? 'bg-emerald-400' : 
+                  isSubmitted ? 'bg-blue-400' : 
+                  'bg-slate-400'
+                }`} 
+              />
               {isCertified ? 'SIGNÉE' : isSubmitted ? 'ATTENTE' : 'BROUILLON'}
             </div>
           </div>
-          <span className="text-[10px] sm:text-[9px] text-slate-500 font-medium truncate">
+          <span className="text-[10px] sm:text-[9px] text-slate-500 font-bold truncate mt-1 tracking-wide">
             {formData.orderNumber && !formData.orderNumber.startsWith('TEMP-') ? `${formData.orderNumber} • ` : ''}
             {formData.date || 'Date non définie'} • {formData.region || 'Localisation à préciser'}
           </span>
         </div>
 
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           {/* ⚡ ACTIONS PRINCIPALES */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
 
-            <button
+            <motion.button
+              whileHover={{ scale: 1.02, y: -1 }}
+              whileTap={{ scale: 0.98 }}
               onClick={onSave}
               disabled={isSyncing || isSyncingServer || isSubmitted || isCertified}
-              className={`flex min-h-12 items-center justify-center gap-2 px-4 py-2 rounded-xl text-[11px] font-black tracking-[0.14em] sm:tracking-widest transition-all shadow-lg active:scale-95 ${
+              className={`flex min-h-12 items-center justify-center gap-2.5 px-5 py-2.5 rounded-2xl text-[11px] font-black tracking-widest transition-all shadow-xl ${
                 isSubmitted || isCertified
                   ? 'bg-slate-800 text-slate-600'
                   : isDirty
-                  ? 'bg-orange-500 text-white shadow-orange-500/20'
-                  : 'bg-blue-600 text-white shadow-blue-500/20'
+                  ? 'bg-gradient-to-r from-orange-600 to-amber-500 text-white shadow-orange-500/20 border-t border-white/20'
+                  : 'bg-gradient-to-r from-blue-700 to-indigo-600 text-white shadow-blue-500/20 border-t border-white/20'
               }`}
             >
-              <Save size={14} className={isSyncing ? 'animate-spin' : ''} />
+              {isSyncing ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
               {saveLabel}
-            </button>
+            </motion.button>
 
             {!isSubmitted && !isCertified && (
-              <button
+              <motion.button
+                whileHover={{ scale: 1.02, y: -1, boxShadow: "0 10px 25px rgba(99, 102, 241, 0.4)" }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => window.confirm('Soumettre la mission ?') && onSubmit()}
-                className="flex min-h-12 items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-[11px] font-black tracking-[0.14em] sm:tracking-widest shadow-lg shadow-indigo-600/20 active:scale-95 transition-all"
+                className="flex min-h-12 items-center justify-center gap-2.5 px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-2xl text-[11px] font-black tracking-widest shadow-xl shadow-indigo-600/30 border-t border-white/20 transition-all"
               >
-                <ListChecks size={14}/> SOUMETTRE
-              </button>
+                <ListChecks size={16}/> SOUMETTRE
+              </motion.button>
             )}
 
             {isValidator && isSubmitted && !isCertified && (
-              <button
+              <motion.button
+                whileHover={{ scale: 1.02, y: -1, boxShadow: "0 10px 25px rgba(16, 185, 129, 0.4)" }}
+                whileTap={{ scale: 0.98 }}
                 onClick={onValidate}
-                className="flex min-h-12 items-center justify-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl text-[11px] font-black tracking-[0.14em] sm:tracking-widest shadow-lg shadow-emerald-600/20 active:scale-95 transition-all"
+                className="flex min-h-12 items-center justify-center gap-2.5 px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-500 text-white rounded-2xl text-[11px] font-black tracking-widest shadow-xl shadow-emerald-600/30 border-t border-white/20 transition-all"
               >
-                <Fingerprint size={14}/> VALIDER
-              </button>
+                <Fingerprint size={16}/> VALIDER
+              </motion.button>
             )}
 
           </div>

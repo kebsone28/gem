@@ -423,18 +423,25 @@ export default function Login() {
                   </div>
 
                   <motion.button
-                    whileHover={{ scale: 1.02 }}
+                    whileHover={{ scale: 1.02, boxShadow: "0 0 25px rgba(99, 102, 241, 0.4)" }}
                     whileTap={{ scale: 0.98 }}
                     type="submit"
                     disabled={loading}
-                    className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-black text-[11px] uppercase tracking-[0.25em] shadow-xl shadow-indigo-600/20 transition-all disabled:opacity-50 flex items-center justify-center gap-3 mt-4 group relative overflow-hidden"
+                    className="w-full py-4.5 bg-gradient-to-r from-indigo-600 via-indigo-500 to-blue-600 text-white rounded-2xl font-black text-[12px] uppercase tracking-[0.3em] shadow-[0_0_20px_rgba(79,70,229,0.3)] transition-all disabled:opacity-50 flex items-center justify-center gap-3 mt-4 group relative overflow-hidden border-t border-white/20"
                   >
+                    {/* Animated Shine Sweep */}
+                    <motion.div 
+                      animate={{ left: ["-100%", "200%"] }}
+                      transition={{ duration: 3, repeat: Infinity, ease: "easeInOut", repeatDelay: 1 }}
+                      className="absolute top-0 w-1/2 h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12" 
+                    />
+
                     {loading ? (
-                      <Loader2 size={18} className="animate-spin text-white" />
+                      <Loader2 size={20} className="animate-spin text-white" />
                     ) : (
                       <>
-                        ACCÉDER 
-                        <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+                        <span className="relative z-10 drop-shadow-md">Accéder au Système</span>
+                        <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform relative z-10" />
                       </>
                     )}
                   </motion.button>
