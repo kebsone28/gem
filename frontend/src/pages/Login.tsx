@@ -9,7 +9,8 @@ import {
   EyeOff, 
   AlertCircle, 
   ArrowRight,
-  Loader2
+  Loader2,
+  ChevronLeft
 } from 'lucide-react';
 import { motion, AnimatePresence, useSpring, useMotionValue, useTransform } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
@@ -523,7 +524,7 @@ export default function Login() {
 
             </div>
           </div>
-        </div>
+        </motion.div>
       </div>
       
       {/* Footer Branding */}
