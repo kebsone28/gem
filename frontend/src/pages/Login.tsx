@@ -189,24 +189,25 @@ export default function Login() {
            ))}
         </div>
 
-        {/* Giant Watermark Phrase */}
+        {/* Giant Watermark Phrase - NOW MORE VISIBLE & PREMIUM */}
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none select-none overflow-hidden">
-          <h2 className="text-[12vw] font-black text-white/[0.02] leading-none uppercase tracking-tighter text-center">
+          <h2 className="text-[14vw] font-black leading-none uppercase tracking-tighter text-center bg-gradient-to-b from-white/[0.06] to-transparent bg-clip-text text-transparent">
             SÉCURITÉ<br />ÉLECTRIQUE
           </h2>
-          <p className="text-[1.5vw] font-light text-indigo-400/[0.05] tracking-[1em] uppercase mt-4">
-            Accessibilité Universelle
+          <p className="text-[1.5vw] font-black text-indigo-500/[0.08] tracking-[1.5em] uppercase mt-8 animate-pulse">
+            Expertise Terrain
           </p>
         </div>
         
-        {/* Interlaced Mesh */}
-        <svg className="absolute inset-0 w-full h-full opacity-[0.15] pointer-events-none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M-100,300 C200,100 800,500 1200,200 T2200,400" fill="none" stroke="rgba(99, 102, 241, 0.4)" strokeWidth="0.5" />
-          <path d="M-100,700 C400,500 900,900 1400,600 T2400,800" fill="none" stroke="rgba(99, 102, 241, 0.4)" strokeWidth="0.5" />
+        {/* Interlaced Mesh - REINFORCED */}
+        <svg className="absolute inset-0 w-full h-full opacity-[0.25] pointer-events-none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M-100,300 C200,100 800,500 1200,200 T2200,400" fill="none" stroke="rgba(99, 102, 241, 0.4)" strokeWidth="1" />
+          <path d="M-100,700 C400,500 900,900 1400,600 T2400,800" fill="none" stroke="rgba(99, 102, 241, 0.4)" strokeWidth="1" />
         </svg>
 
-        <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] bg-indigo-600/10 blur-[150px] rounded-full" />
-        <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] bg-blue-600/10 blur-[150px] rounded-full" />
+        {/* Halo Accents */}
+        <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] bg-indigo-600/15 blur-[160px] rounded-full" />
+        <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] bg-blue-600/15 blur-[160px] rounded-full" />
       </div>
 
       <div className="relative z-10 flex flex-col items-center justify-center min-h-screen px-4 py-12">
