@@ -146,54 +146,84 @@ export default function Login() {
   };
 
   return (
-    <PageContainer maxWidth="full" className="min-h-screen p-0 m-0 overflow-hidden bg-slate-950 font-outfit">
-      {/* Dynamic Background with Patterns */}
+    <PageContainer maxWidth="full" className="min-h-screen p-0 m-0 overflow-hidden bg-[#020617] font-outfit">
+      {/* Ultra-Premium Dynamic Background */}
       <div className="absolute inset-0 z-0">
-        {/* Tech Grid Pattern */}
-        <div className="absolute inset-0 opacity-[0.15]" style={{ backgroundImage: 'radial-gradient(circle, rgba(99, 102, 241, 0.15) 1px, transparent 1px)', backgroundSize: '30px 30px' }} />
+        {/* Tech Grid */}
+        <div className="absolute inset-0 opacity-[0.12]" style={{ backgroundImage: 'radial-gradient(circle, rgba(99, 102, 241, 0.2) 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
         
-        {/* Interlaced Lines SVG */}
-        <svg className="absolute inset-0 w-full h-full opacity-20 pointer-events-none" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <linearGradient id="line-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="rgba(99, 102, 241, 0)" />
-              <stop offset="50%" stopColor="rgba(99, 102, 241, 0.3)" />
-              <stop offset="100%" stopColor="rgba(99, 102, 241, 0)" />
-            </linearGradient>
-          </defs>
-          <path d="M-100,200 Q400,100 900,400 T1900,200" fill="none" stroke="url(#line-grad)" strokeWidth="1" />
-          <path d="M-100,600 Q600,400 1100,700 T2100,500" fill="none" stroke="url(#line-grad)" strokeWidth="1" />
-          <path d="M200,-100 Q400,500 100,1100" fill="none" stroke="url(#line-grad)" strokeWidth="0.5" />
-          <path d="M600,-100 Q800,600 500,1200" fill="none" stroke="url(#line-grad)" strokeWidth="0.5" />
+        {/* Floating Particles */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+           {[...Array(20)].map((_, i) => (
+             <div 
+               key={i}
+               className="absolute bg-indigo-500/20 rounded-full blur-[1px] animate-float"
+               style={{
+                 width: Math.random() * 4 + 1 + 'px',
+                 height: Math.random() * 4 + 1 + 'px',
+                 top: Math.random() * 100 + '%',
+                 left: Math.random() * 100 + '%',
+                 animationDuration: Math.random() * 10 + 10 + 's',
+                 animationDelay: Math.random() * 5 + 's'
+               }}
+             />
+           ))}
+        </div>
+
+        {/* Giant Watermark Phrase */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none select-none overflow-hidden">
+          <h2 className="text-[12vw] font-black text-white/[0.02] leading-none uppercase tracking-tighter text-center">
+            SÉCURITÉ<br />ÉLECTRIQUE
+          </h2>
+          <p className="text-[1.5vw] font-light text-indigo-400/[0.05] tracking-[1em] uppercase mt-4">
+            Accessibilité Universelle
+          </p>
+        </div>
+        
+        {/* Interlaced Mesh */}
+        <svg className="absolute inset-0 w-full h-full opacity-[0.15] pointer-events-none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M-100,300 C200,100 800,500 1200,200 T2200,400" fill="none" stroke="rgba(99, 102, 241, 0.4)" strokeWidth="0.5" />
+          <path d="M-100,700 C400,500 900,900 1400,600 T2400,800" fill="none" stroke="rgba(99, 102, 241, 0.4)" strokeWidth="0.5" />
         </svg>
 
-        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-indigo-600/15 blur-[120px] rounded-full animate-pulse" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-600/10 blur-[120px] rounded-full animate-pulse" style={{ animationDelay: '2s' }} />
+        <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] bg-indigo-600/10 blur-[150px] rounded-full" />
+        <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] bg-blue-600/10 blur-[150px] rounded-full" />
       </div>
 
-      <div className="relative z-10 flex items-center justify-center min-h-screen px-4 py-12">
-        <div className="w-full max-w-[900px] flex flex-col md:flex-row bg-slate-900/40 backdrop-blur-3xl rounded-[2.5rem] border border-white/5 shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-700">
+      <div className="relative z-10 flex flex-col items-center justify-center min-h-screen px-4 py-12">
+        {/* Integrated Safety Mission Phrase (Subtle but readable) */}
+        <div className="mb-12 text-center animate-in fade-in slide-in-from-bottom-4 duration-1000">
+          <p className="text-[10px] font-black text-indigo-400/40 uppercase tracking-[0.6em] mb-3">Manifeste Opérationnel</p>
+          <p className="text-sm sm:text-lg font-light text-slate-300 italic tracking-wide max-w-2xl px-6">
+            "L'expertise de la <span className="text-white font-bold not-italic">sécurité électrique</span>, l'accessibilité d'une solution <span className="text-indigo-400 font-bold not-italic">universelle</span>."
+          </p>
+        </div>
+
+        <div className="w-full max-w-[940px] flex flex-col md:flex-row bg-slate-900/30 backdrop-blur-3xl rounded-[3rem] border border-white/10 shadow-[0_0_100px_rgba(0,0,0,0.5)] overflow-hidden animate-in fade-in zoom-in duration-700 relative">
+          {/* Glass Shine Effect */}
+          <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+          <div className="absolute -left-[100%] top-0 w-full h-full bg-gradient-to-r from-transparent via-white/[0.03] to-transparent -skew-x-12 animate-[shimmer_8s_infinite]" />
           
           {/* Left Panel: Branding */}
-          <div className="hidden md:flex flex-col justify-between w-[40%] p-12 bg-gradient-to-br from-indigo-600/20 to-transparent border-r border-white/5">
-            <div>
-              <div className="w-12 h-12 bg-indigo-500/20 rounded-2xl flex items-center justify-center border border-indigo-500/30 mb-8 shadow-inner">
-                <ShieldCheck size={24} className="text-indigo-400" />
+          <div className="hidden md:flex flex-col justify-between w-[38%] p-14 bg-gradient-to-b from-indigo-600/10 to-transparent border-r border-white/10 relative">
+            <div className="relative z-10">
+              <div className="w-14 h-14 bg-indigo-500/10 rounded-2xl flex items-center justify-center border border-indigo-500/20 mb-10 shadow-[inset_0_0_20px_rgba(99,102,241,0.1)]">
+                <ShieldCheck size={28} className="text-indigo-400" />
               </div>
-              <h1 className="text-4xl font-black tracking-tighter text-white mb-4 italic leading-tight uppercase">
+              <h1 className="text-5xl font-black tracking-tighter text-white mb-6 italic leading-tight uppercase">
                 GEM<span className="text-indigo-500">SAAS</span>
               </h1>
-              <p className="text-[11px] font-medium text-slate-400 uppercase tracking-widest leading-relaxed max-w-[200px]">
-                Plateforme intelligente de pilotage opérationnel terrain.
+              <div className="h-1 w-12 bg-indigo-500 rounded-full mb-6" />
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] leading-relaxed">
+                Pilotage Stratégique &<br />Intelligence Terrain
               </p>
             </div>
 
-            <div className="space-y-4">
-              <div className="h-[1px] w-full bg-gradient-to-r from-white/10 to-transparent" />
-              <div className="flex items-center gap-4 text-[8px] font-black text-slate-500 uppercase tracking-[0.2em]">
-                <span>Vers. 3.0.4</span>
-                <span className="w-1 h-1 bg-indigo-500 rounded-full" />
-                <span>Sécurisé TLS 1.3</span>
+            <div className="relative z-10 pt-10">
+              <div className="flex items-center gap-4 text-[9px] font-black text-slate-600 uppercase tracking-[0.3em]">
+                <span className="text-indigo-500/50">V.3.0</span>
+                <span className="w-1 h-1 bg-slate-800 rounded-full" />
+                <span>Encrypted Node</span>
               </div>
             </div>
           </div>
