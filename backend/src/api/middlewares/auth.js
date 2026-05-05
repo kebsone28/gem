@@ -55,6 +55,14 @@ export const authProtect = async (req, res, next) => {
             });
         }
 
+        // Debug log: reveal whether token carries permissions and how we interpret them
+        try {
+            logger.info(`[AUTH] Token decoded: id=${decoded.id} org=${decoded.organizationId} role=${decoded.role} permissionsPresent=${Array.isArray(decoded.permissions)} permissionsCount=${(Array.isArray(decoded.permissions) && decoded.permissions.length) || 0}`);
+        } catch (e) {
+            // best-effort logging
+            logger.debug('[AUTH] Token decoded but logging failed', e?.message || e);
+        }
+
         // Inject user info into request object
         req.user = {
             ...decoded,
