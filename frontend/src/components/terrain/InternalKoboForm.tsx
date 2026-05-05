@@ -88,6 +88,7 @@ type InternalKoboFormProps = {
   onRefreshHistory?: () => void;
   initialFormKey?: string;
   hideFormSelector?: boolean;
+  inline?: boolean;
 };
 
 type RuntimeIssueView = {
@@ -365,6 +366,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
   onRefreshHistory,
   initialFormKey,
   hideFormSelector = false,
+  inline = false,
 }) => {
   const [activeSectionId, setActiveSectionId] = useState(INTERNAL_GEM_SECTIONS[0]?.id || '');
   const [query, setQuery] = useState('');
@@ -2649,9 +2651,9 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[3000] flex items-end justify-center bg-slate-950/75 p-0 backdrop-blur-md sm:items-center sm:p-4">
-      <div className="relative grid h-[100dvh] w-full max-w-7xl overflow-hidden rounded-t-[1.5rem] border border-blue-200/10 bg-[#0B1728] shadow-2xl sm:h-[92vh] sm:rounded-[1.75rem] md:grid-cols-[310px_1fr]">
-        <aside className="hidden border-r border-white/10 bg-slate-950/35 p-4 md:block">
+    <div className={inline ? "flex flex-col h-full w-full bg-transparent" : "fixed inset-0 z-[3000] flex items-end justify-center bg-slate-950/75 p-0 backdrop-blur-md sm:items-center sm:p-4"}>
+      <div className={`relative grid w-full overflow-hidden shadow-2xl ${inline ? 'h-full flex-1 bg-transparent md:grid-cols-[310px_1fr]' : 'h-[100dvh] max-w-7xl rounded-t-[1.5rem] border border-blue-200/10 bg-[#0B1728] sm:h-[92vh] sm:rounded-[1.75rem] md:grid-cols-[310px_1fr]'}`}>
+        <aside className="hidden border-r border-white/10 bg-slate-950/35 p-4 md:flex md:flex-col">
           <div className="mb-5 rounded-2xl border border-blue-400/20 bg-blue-500/[0.08] p-4">
             <div className="flex items-center gap-2 text-blue-100">
               <ClipboardList size={17} />

@@ -3,6 +3,7 @@ import { authProtect } from '../middlewares/auth.js';
 import { verifierPermission } from '../../middleware/verifierPermission.js';
 import { PERMISSIONS } from '../../core/config/permissions.js';
 import prisma from '../../core/utils/prisma.js';
+import { tracerAction } from '../../services/audit.service.js';
 
 const router = express.Router();
 
@@ -63,6 +64,10 @@ router.post('/role-permissions/:role', verifierPermission(PERMISSIONS.GERER_UTIL
         const role = await prisma.role.findFirst({ where: { name: { equals: roleName, mode: 'insensitive' } } });
         if (!role) return res.status(404).json({ error: 'Role not found' });
 
+        // Read current permissions (before) for audit
+        const beforeRows = await prisma.rolePermission.findMany({ where: { roleId: role.id }, include: { permission: true } });
+        const beforeKeys = beforeRows.map(r => r.permission.key);
+
         // Ensure permission records exist for provided keys
         const existing = await prisma.permission.findMany({ where: { key: { in: permissions } } });
         const existingKeys = existing.map(p => p.key);
@@ -83,6 +88,20 @@ router.post('/role-permissions/:role', verifierPermission(PERMISSIONS.GERER_UTIL
                 await tx.rolePermission.createMany({ data, skipDuplicates: true });
             }
         });
+
+        // Audit: tracerAction (non-blocking)
+        try {
+            tracerAction({
+                organizationId: req.user.organizationId,
+                userId: req.user.id,
+                action: 'MODIFICATION_MATRICE_PERMISSIONS',
+                resource: 'role-permissions',
+                resourceId: role.name,
+                details: { before: beforeKeys, after: permissions }
+            }, null);
+        } catch (auditErr) {
+            console.error('Audit logging failed for role-permissions update', auditErr);
+        }
 
         return res.json({ ok: true, role: role.name, permissions });
     } catch (err) {

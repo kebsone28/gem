@@ -980,7 +980,7 @@ export default function Planning() {
                 <p className="text-[11px] sm:text-xs text-indigo-200/70">Calcul dynamique des ressources necessaires par zone.</p>
               </div>
 
-              <div className="grid w-full grid-cols-1 gap-2 rounded-2xl border border-white/5 bg-slate-950/50 p-3 sm:grid-cols-[auto,1fr,auto,auto] sm:items-center sm:gap-3 xl:min-w-[31rem]">
+              <div className="grid w-full grid-cols-1 gap-2 rounded-2xl border border-white/5 bg-slate-950/50 p-3 sm:grid-cols-[auto,1fr,auto,auto] sm:items-center sm:gap-3 min-w-0 xl:min-w-[31rem]">
                 <span className="text-[10px] font-semibold text-slate-400 sm:ml-2">Region</span>
                 <select
                   value={selectedRegion} // selectedRegion est déjà 'ALL' par défaut
@@ -1699,7 +1699,7 @@ export default function Planning() {
                   ))}
                 </div>
                 <div className="hidden md:block overflow-x-auto">
-                  <table className="w-full min-w-[980px]">
+                  <table className="w-full min-w-full sm:min-w-[980px]">
                     <thead className="bg-slate-950/46">
                       <tr>
                         <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-500 uppercase">Corps métier</th>
@@ -1823,7 +1823,7 @@ export default function Planning() {
                   </div>
                 ) : (
                   <div className="overflow-auto">
-                    <div className="min-w-[1240px]">
+                    <div className="min-w-full sm:min-w-[1240px]">
                       <div className="flex border-b border-white/5 bg-slate-950/40">
                         <div className="w-[320px] shrink-0 border-r border-white/5 px-4 py-3">
                           <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">
@@ -2035,7 +2035,7 @@ export default function Planning() {
                 </div>
 
                 <div className="overflow-x-auto">
-                <div className="grid min-w-[420px] grid-cols-7 gap-1 sm:gap-2">
+                <div className="grid min-w-0 sm:min-w-[420px] grid-cols-7 gap-1 sm:gap-2">
                   {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map(day => (
                     <div key={day} className="text-center text-[10px] font-medium text-slate-500 uppercase py-2">
                       {day}

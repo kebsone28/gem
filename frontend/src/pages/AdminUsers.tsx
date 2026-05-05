@@ -34,6 +34,9 @@ import {
   normalizeRole,
   type UserRole as PermissionUserRole,
 } from '../utils/permissions';
+import adminPermissionsService from '../services/adminPermissionsService';
+import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { userService } from '../services/userService';
 import { organizationService } from '../services/organizationService';
 import { auditService } from '../services/auditService';
@@ -164,6 +167,8 @@ let _toastId = 0;
 
 // ─── Composant principal ─────────────────────────────────────────────────────
 export default function AdminUsers() {
+  const navigate = useNavigate();
+  const [applyingRoleDefaults, setApplyingRoleDefaults] = useState(false);
   const { user, impersonate } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [teams, setTeams] = useState<any[]>([]);
@@ -1374,8 +1379,8 @@ export default function AdminUsers() {
                               </span>
                             </h4>
                           </div>
-                          {!(form.role === 'ADMIN_PROQUELEC' || form.email === 'admingem') && (
-                            <div className="flex items-center gap-3">
+                              {!(form.role === 'ADMIN_PROQUELEC' || form.email === 'admingem') && (
+                                <div className="flex items-center gap-3">
                               {(form.permissions === null || form.permissions === undefined) ? (
                                 <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 shadow-[0_0_15px_-5px_rgba(16,185,129,0.3)]">
                                   <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -1391,14 +1396,55 @@ export default function AdminUsers() {
                                   </span>
                                 </div>
                               )}
-                              <button
-                                type="button"
-                                onClick={applyDefaultPermissions}
-                                className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-bold uppercase tracking-wider border border-slate-700 transition-all hover:scale-105 active:scale-95 flex items-center gap-2"
-                              >
-                                <RefreshCcw size={12} className="text-slate-400" />
-                                Réinitialiser
-                              </button>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => navigate('/admin/permissions')}
+                                  className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[12px] font-bold uppercase tracking-wider border border-blue-600 transition-all active:scale-95"
+                                >
+                                  Ouvrir matrice
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    if (!form.role) return toast.error('Rôle manquant');
+                                    const confirmMsg = `Vous êtes sur le point d'écraser la configuration par défaut du rôle "${form.role}". Continuer ?`;
+                                    if (!window.confirm(confirmMsg)) return;
+                                    try {
+                                      setApplyingRoleDefaults(true);
+                                      const currentRole = normalizeRole(form.role) || (form.role as PermissionUserRole);
+                                      const allValues = Object.values(PERMISSIONS) as string[];
+                                      const perms = allValues.filter((value) => {
+                                        const isChecked = (form.permissions === null || form.permissions === undefined)
+                                          ? (ROLE_PERMISSIONS[currentRole] || []).includes(value)
+                                          : (form.permissions || []).includes(value);
+                                        return isChecked;
+                                      });
+                                      await adminPermissionsService.updateRolePermissions(form.role, perms);
+                                      toast.success('Matrice mise à jour pour le rôle');
+                                    } catch (err: any) {
+                                      logger.error('Apply role defaults failed', err);
+                                      toast.error('Erreur lors de la mise à jour de la matrice');
+                                    } finally {
+                                      setApplyingRoleDefaults(false);
+                                    }
+                                  }}
+                                  disabled={applyingRoleDefaults}
+                                  className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[12px] font-bold uppercase tracking-wider border border-emerald-600 transition-all disabled:opacity-50"
+                                >
+                                  Appliquer au rôle
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={applyDefaultPermissions}
+                                  className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-bold uppercase tracking-wider border border-slate-700 transition-all hover:scale-105 active:scale-95 flex items-center gap-2"
+                                >
+                                  <RefreshCcw size={12} className="text-slate-400" />
+                                  Réinitialiser
+                                </button>
+                              </div>
                             </div>
                           )}
                         </div>

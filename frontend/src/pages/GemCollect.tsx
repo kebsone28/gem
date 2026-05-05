@@ -88,8 +88,8 @@ const GemCollectPage: React.FC = () => {
 
   if (selectedFormKey && selectedForm) {
     return (
-      <PageContainer className="min-h-screen bg-slate-950">
-        <div className="max-w-6xl mx-auto px-4 py-6">
+      <PageContainer className="min-h-screen bg-slate-950 flex flex-col">
+        <div className="max-w-6xl mx-auto px-4 py-6 flex-1 flex flex-col w-full h-full">
           <button 
             onClick={handleClose}
             className="group mb-6 flex items-center gap-2 text-slate-400 hover:text-white transition-colors"
@@ -100,19 +100,18 @@ const GemCollectPage: React.FC = () => {
             <span className="text-sm font-black uppercase tracking-[0.1em]">Retour au catalogue</span>
           </button>
 
-          <div className="bg-slate-900/50 rounded-[2.5rem] border border-white/10 overflow-hidden shadow-2xl backdrop-blur-md">
-            <div className="p-1 sm:p-4">
-              <InternalKoboForm
-                initialFormKey={selectedFormKey}
-                hideFormSelector={true}
-                values={values}
-                onChange={handleChange}
-                onSave={handleSave}
-                onClose={handleClose}
-                isSaving={isSaving}
-                isOnline={navigator.onLine}
-              />
-            </div>
+          <div className="flex-1 w-full bg-slate-900/50 rounded-[2.5rem] border border-white/10 overflow-hidden shadow-2xl backdrop-blur-md relative min-h-[750px]">
+            <InternalKoboForm
+              initialFormKey={selectedFormKey}
+              hideFormSelector={true}
+              values={values}
+              onChange={handleChange}
+              onSave={handleSave}
+              onClose={handleClose}
+              isSaving={isSaving}
+              isOnline={navigator.onLine}
+              inline={true}
+            />
           </div>
         </div>
       </PageContainer>
