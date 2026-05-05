@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, no-empty */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, no-empty */ 
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { db } from '../store/db';
@@ -22,6 +22,7 @@ import {
   Briefcase,
   Calculator,
   Award,
+  RefreshCcw,
 } from 'lucide-react';
 import { appSecurity } from '../services/appSecurity';
 import { useAuth } from '../contexts/AuthContext';
@@ -288,18 +289,20 @@ export default function AdminUsers() {
       teamId: u.teamId,
       active: u.active ?? true,
       requires2FA: !!u.requires2FA,
-      permissions: u.permissions || [],
+      permissions: u.permissions ?? undefined,
     });
     setShowForm(true);
     setShowPass(false);
   };
 
   const togglePermission = (p: string) => {
-    setForm((f: UserForm) => {
-      // Obtenir l'état actuel : si undefined (auto), on commence par les droits du rôle
+    setForm((f: any) => {
       const currentRole = normalizeRole(f.role) || (f.role as PermissionUserRole);
-      const current =
-        f.permissions !== undefined ? f.permissions : ROLE_PERMISSIONS[currentRole] || [];
+      
+      // Si on est en mode Auto (null ou undefined), on part de la base du rôle
+      const isAuto = f.permissions === null || f.permissions === undefined;
+      const current = isAuto ? (ROLE_PERMISSIONS[currentRole] || []) : f.permissions;
+
       if (current.includes(p)) {
         return { ...f, permissions: current.filter((x: string) => x !== p) };
       } else {
@@ -311,7 +314,7 @@ export default function AdminUsers() {
   const applyDefaultPermissions = () => {
     // En mettant permissions à undefined, le système repasse automatiquement
     // sur le fallback du RÔLE (comportement par défaut)
-    setForm((f: any) => ({ ...f, permissions: undefined }));
+    setForm((f: any) => ({ ...f, permissions: null })); // null tells the server to reset to role defaults
     addToast(`✅ Compte synchronisé sur les droits par défaut du rôle ${form.role}`, 'info');
   };
 
@@ -1329,97 +1332,152 @@ export default function AdminUsers() {
 
                 {/* 🔐 Permissions Editor */}
                 <div className="col-span-1 mt-6 pt-6 border-t border-slate-200 dark:border-slate-800">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                      <ShieldCheck size={20} className="text-emerald-500" />
-                      <h4 className="text-lg font-bold text-slate-800 dark:text-white">
-                        Droits d'accès granulaires
-                      </h4>
-                    </div>
-                    {!(form.role === 'ADMIN_PROQUELEC' || form.email === 'admingem') && (
-                      <div className="flex items-center gap-2">
-                        {form.permissions === undefined ? (
-                          <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest bg-emerald-500/10 px-2 py-1 rounded">
-                            Mode Automatique (Rôle)
-                          </span>
-                        ) : (
-                          <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest bg-amber-500/10 px-2 py-1 rounded">
-                            Mode Personnalisé
-                          </span>
-                        )}
-                        <button
-                          type="button"
-                          onClick={applyDefaultPermissions}
-                          title="Repasser en mode automatique (basé sur le rôle)"
-                          className="text-xs font-semibold text-indigo-500 hover:text-indigo-400 bg-indigo-500/10 px-3 py-1.5 rounded-lg border border-indigo-500/20 transition-all font-black uppercase tracking-widest"
-                        >
-                          Réinitialiser
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                  {(() => {
+                    const permissionGroups = [
+                      { title: '🛡️ Administration & Sécurité', keys: ['GERER_UTILISATEURS', 'GERER_PARAMETRES', 'VOIR_AUDIT_LOGS', 'EXPORTER_AUDIT_LOGS', 'ACCES_GOD_MODE', 'VOIR_DIAGNOSTIC', 'MODIFIER_TEMPLATES', 'DIFFUSER_MESSAGE_SYSTEME', 'GENERER_CLES_API', 'GERER_WEBHOOKS'] },
+                      { title: '🚀 Missions (Ordres de Mission)', keys: ['VOIR_MISSIONS', 'CREER_MISSION', 'MODIFIER_MISSION', 'VALIDER_MISSION', 'APPROUVER_MISSION', 'SUPPRIMER_MISSION', 'ARCHIVER_MISSION', 'PURGER_MISSIONS', 'CONFIGURER_WORKFLOW'] },
+                      { title: '👥 Équipes & Organisation', keys: ['VOIR_EQUIPES', 'CREER_EQUIPE', 'MODIFIER_EQUIPE', 'SUPPRIMER_EQUIPE'] },
+                      { title: '💰 Finances & Budgets', keys: ['VOIR_FINANCES', 'GERER_BUDGETS', 'VOIR_PAIEMENTS', 'EXPORTER_COMPTABILITE', 'REINITIALISER_STATISTIQUES'] },
+                      { title: '🗺️ Terrain & Cartographie', keys: ['VOIR_CARTE', 'MODIFIER_CARTE', 'GERER_ZONES', 'GERER_MENAGES', 'VALIDER_INSTALLATION', 'REJETER_DOSSIER'] },
+                      { title: '📁 Projets & Planning', keys: ['VOIR_PROJETS', 'CREER_PROJET', 'MODIFIER_PROJET', 'SUPPRIMER_PROJET', 'ARCHIVER_PROJET', 'GERER_PLANNING', 'MODIFIER_VUES_TABLEAUX_BORD'] },
+                      { title: '📦 Logistique & Kobo', keys: ['VOIR_LOGISTIQUE', 'GERER_STOCK', 'ACCES_TERMINAL_KOBO', 'CONFIGURER_KOBO'] },
+                      { title: '📊 Rapports & Documents', keys: ['VOIR_RAPPORTS_TERRAIN', 'VOIR_RAPPORTS_FINANCIERS', 'GERER_PV', 'EXPORTER_DONNEES', 'VOIR_DOCUMENTS_CONFIDENTIELS', 'SUPPRIMER_DOCUMENTS'] },
+                      { title: '🎓 Formations', keys: ['VOIR_FORMATIONS', 'GERER_FORMATIONS'] },
+                      { title: '💬 Communication', keys: ['ACCES_CHAT', 'MODERER_CHAT', 'ENVOYER_SMS_MASSIF'] },
+                      { title: '🔔 Alertes & Notifications', keys: ['VOIR_ALERTES', 'CONFIGURER_ALERTES'] },
+                      { title: '🔄 Synchronisation & Offline', keys: ['VOIR_SYNCHRO', 'GERER_CONFLITS'] },
+                      { title: '🤖 Intelligence Artificielle', keys: ['UTILISER_IA', 'GERER_MEMOIRE_IA', 'VOIR_METRIQUES_IA'] },
+                      { title: '🧪 Simulation', keys: ['VOIR_SIMULATION', 'LANCER_SIMULATION'] },
+                    ];
+                    const totalPermissions = permissionGroups.reduce((acc, g) => acc + g.keys.length, 0);
 
-                  {form.role === 'ADMIN_PROQUELEC' || form.email === 'admingem' ? (
-                    <div className="p-6 rounded-[2rem] bg-indigo-500/10 border border-indigo-500/30 flex flex-col items-center text-center gap-3">
-                      <div className="w-12 h-12 rounded-2xl bg-indigo-500 flex items-center justify-center text-white shadow-lg shadow-indigo-500/40">
-                        <Award size={24} />
-                      </div>
-                      <div>
-                        <p className="text-indigo-400 font-black uppercase tracking-widest text-xs">
-                          Accès Universel Détecté
-                        </p>
-                        <p className="text-slate-400 text-xs mt-1 font-medium italic">
-                          Ce compte est un Administrateur Système. <br />
-                          Toutes les permissions sont déverrouillées par défaut au niveau du noyau
-                          de sécurité Wanekoo.
-                        </p>
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="grid grid-cols-1 gap-3 max-h-60 overflow-y-auto pr-2 custom-scrollbar bg-slate-950/50 p-2 rounded-2xl border border-slate-800">
-                        {Object.entries(PERMISSIONS).map(([key, value]) => {
-                          const currentRole =
-                            normalizeRole(form.role) || (form.role as PermissionUserRole);
-                          const isChecked =
-                            form.permissions !== undefined
-                              ? form.permissions.includes(value)
-                              : (ROLE_PERMISSIONS[currentRole] || []).includes(value);
+                    // Calcul dynamique du nombre de permissions réellement cochées
+                    const currentRole = normalizeRole(form.role) || (form.role as PermissionUserRole);
+                    const checkedPermissionsCount = permissionGroups.flatMap(g => g.keys).filter(key => {
+                      const value = (PERMISSIONS as any)[key];
+                      if (!value) return false;
+                      if (form.role === 'ADMIN_PROQUELEC' || form.email === 'admingem') return true;
+                      return (form.permissions === null || form.permissions === undefined)
+                        ? (ROLE_PERMISSIONS[currentRole] || []).includes(value)
+                        : form.permissions.includes(value);
+                    }).length;
 
-                          const label = PERMISSION_LABELS[value] || value;
-                          return (
-                            <label
-                              key={key}
-                              className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
-                                isChecked
-                                  ? 'bg-emerald-500/10 border-emerald-500/30'
-                                  : 'bg-slate-950 border-slate-800 hover:border-slate-700'
-                              }`}
-                            >
-                              <input
-                                type="checkbox"
-                                className="hidden"
-                                checked={isChecked}
-                                onChange={() => togglePermission(value)}
-                              />
-                              <div
-                                className={`w-5 h-5 flex items-center justify-center rounded-md border transition-all ${
-                                  isChecked
-                                    ? 'bg-emerald-500 border-emerald-500 text-white'
-                                    : 'border-slate-400 dark:border-slate-600'
-                                }`}
-                              >
-                                {isChecked && <CheckCircle2 size={14} />}
-                              </div>
-                              <span
-                                className={`text-sm font-medium ${isChecked ? 'text-emerald-400' : 'text-slate-400'}`}
-                              >
-                                {label}
+                    return (
+                      <>
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center gap-2">
+                            <ShieldCheck size={20} className="text-emerald-500" />
+                            <h4 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                              Droits d'accès granulaires
+                              <span className="text-[10px] bg-slate-800 text-emerald-400 px-2 py-0.5 rounded-full border border-slate-700 font-bold">
+                                {permissionGroups.length} Modules &bull; {checkedPermissionsCount}/{totalPermissions} Actives
                               </span>
-                            </label>
-                          );
-                        })}
-                      </div>
+                            </h4>
+                          </div>
+                          {!(form.role === 'ADMIN_PROQUELEC' || form.email === 'admingem') && (
+                            <div className="flex items-center gap-3">
+                              {(form.permissions === null || form.permissions === undefined) ? (
+                                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 shadow-[0_0_15px_-5px_rgba(16,185,129,0.3)]">
+                                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                  <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">
+                                    Mode Automatique
+                                  </span>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 shadow-[0_0_15px_-5px_rgba(245,158,11,0.3)]">
+                                  <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                                  <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider">
+                                    Mode Personnalisé
+                                  </span>
+                                </div>
+                              )}
+                              <button
+                                type="button"
+                                onClick={applyDefaultPermissions}
+                                className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-bold uppercase tracking-wider border border-slate-700 transition-all hover:scale-105 active:scale-95 flex items-center gap-2"
+                              >
+                                <RefreshCcw size={12} className="text-slate-400" />
+                                Réinitialiser
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                        {form.role === 'ADMIN_PROQUELEC' || form.email === 'admingem' ? (
+                          <div className="p-6 rounded-[2rem] bg-indigo-500/10 border border-indigo-500/30 flex flex-col items-center text-center gap-3">
+                            <div className="w-12 h-12 rounded-2xl bg-indigo-500 flex items-center justify-center text-white shadow-lg shadow-indigo-500/40">
+                              <Award size={24} />
+                            </div>
+                            <div>
+                              <p className="text-indigo-400 font-black uppercase tracking-widest text-xs">
+                                Accès Universel Détecté
+                              </p>
+                              <p className="text-slate-400 text-xs mt-1 font-medium italic">
+                                Ce compte est un Administrateur Système. <br />
+                                Toutes les permissions sont déverrouillées par défaut au niveau du noyau
+                                de sécurité Wanekoo.
+                              </p>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-1 gap-6 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar bg-slate-950/50 p-4 rounded-2xl border border-slate-800">
+                            {permissionGroups.map((group) => (
+                              <div key={group.title} className="space-y-3">
+                                <h5 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] pl-1 border-l-2 border-slate-700 leading-none">
+                                  {group.title}
+                                </h5>
+                                <div className="grid grid-cols-1 gap-2">
+                                  {group.keys.map((key) => {
+                                    const value = (PERMISSIONS as any)[key];
+                                    if (!value) return null;
+                                    
+                                    const currentRole = normalizeRole(form.role) || (form.role as PermissionUserRole);
+                                    const isChecked =
+                                      (form.permissions === null || form.permissions === undefined)
+                                        ? (ROLE_PERMISSIONS[currentRole] || []).includes(value)
+                                        : form.permissions.includes(value);
+
+                                    const label = PERMISSION_LABELS[value] || value;
+                                    return (
+                                      <label
+                                        key={key}
+                                        className={`flex items-center gap-3 p-2.5 rounded-xl border cursor-pointer transition-all ${
+                                          isChecked
+                                            ? 'bg-emerald-500/10 border-emerald-500/30'
+                                            : 'bg-slate-900/50 border-slate-800/50 hover:border-slate-700'
+                                        }`}
+                                      >
+                                        <input
+                                          type="checkbox"
+                                          className="hidden"
+                                          checked={isChecked}
+                                          onChange={() => togglePermission(value)}
+                                        />
+                                        <div
+                                          className={`w-4 h-4 flex items-center justify-center rounded border transition-all ${
+                                            isChecked
+                                              ? 'bg-emerald-500 border-emerald-500 text-white'
+                                              : 'border-slate-600'
+                                          }`}
+                                        >
+                                          {isChecked && <CheckCircle2 size={12} />}
+                                        </div>
+                                        <span
+                                          className={`text-xs font-medium ${isChecked ? 'text-emerald-400' : (form.permissions === null || form.permissions === undefined) ? 'text-slate-500 italic' : 'text-slate-400'}`}
+                                        >
+                                          {label}
+                                        </span>
+                                      </label>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
                       <p className="mt-3 text-[10px] text-slate-500 flex items-start gap-2 italic">
                         <AlertTriangle size={12} className="mt-0.5 text-amber-500" />
                         <span>
@@ -1427,8 +1485,6 @@ export default function AdminUsers() {
                           individuellement.
                         </span>
                       </p>
-                    </>
-                  )}
                 </div>
 
                 {/* Active toggle */}

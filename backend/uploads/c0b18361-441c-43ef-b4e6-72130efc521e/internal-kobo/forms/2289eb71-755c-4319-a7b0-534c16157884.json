@@ -1,0 +1,2526 @@
+{
+  "engine": "gem-xlsform-universal",
+  "engineVersion": "1.0.0",
+  "formKey": "gem_collect_natif_dynamique",
+  "formVersion": "draft-2026-05-05T04-57-03-222Z",
+  "title": "GEM Collect Natif Dynamique",
+  "defaultLanguage": "fr",
+  "importedAt": "2026-05-05T04:57:03.244Z",
+  "settings": {
+    "default_language": "fr",
+    "style": "pages",
+    "languages": [
+      "Francais (fr)"
+    ],
+    "gem_permissions": {
+      "ownerTeam": "admin",
+      "allowedRoles": [
+        "livreur",
+        "macon",
+        "reseau",
+        "interieur",
+        "controleur",
+        "__pr_parateur"
+      ],
+      "allowOffline": true,
+      "requireLatestVersion": true,
+      "draftMigrationMode": "block"
+    },
+    "form_title": "GEM Collect Natif Dynamique",
+    "form_id": "gem_collect_natif_dynamique",
+    "version": "draft-2026-05-05T04-57-03-222Z"
+  },
+  "fields": [
+    {
+      "index": 0,
+      "rowNumber": 2,
+      "name": "start",
+      "type": "start",
+      "rawType": "start",
+      "label": "start",
+      "labels": {},
+      "hint": "",
+      "hints": {},
+      "relevant": "",
+      "parentRelevant": [],
+      "constraint": "",
+      "constraintMessage": "",
+      "constraintMessages": {},
+      "required": false,
+      "requiredExpression": "",
+      "defaultValue": "",
+      "calculation": "",
+      "appearance": "",
+      "parameters": "",
+      "choiceFilter": "",
+      "listName": "",
+      "external": false,
+      "readOnly": false,
+      "groupPath": "",
+      "repeatPath": "",
+      "bind": {
+        "required": "",
+        "readonly": "",
+        "relevant": "",
+        "constraint": ""
+      }
+    },
+    {
+      "index": 1,
+      "rowNumber": 3,
+      "name": "end",
+      "type": "end",
+      "rawType": "end",
+      "label": "end",
+      "labels": {},
+      "hint": "",
+      "hints": {},
+      "relevant": "",
+      "parentRelevant": [],
+      "constraint": "",
+      "constraintMessage": "",
+      "constraintMessages": {},
+      "required": false,
+      "requiredExpression": "",
+      "defaultValue": "",
+      "calculation": "",
+      "appearance": "",
+      "parameters": "",
+      "choiceFilter": "",
+      "listName": "",
+      "external": false,
+      "readOnly": false,
+      "groupPath": "",
+      "repeatPath": "",
+      "bind": {
+        "required": "",
+        "readonly": "",
+        "relevant": "",
+        "constraint": ""
+      }
+    },
+    {
+      "index": 3,
+      "rowNumber": 5,
+      "name": "numero_ordre",
+      "type": "integer",
+      "rawType": "integer",
+      "label": "Numero ordre",
+      "labels": {
+        "Francais (fr)": "Numero ordre"
+      },
+      "hint": "Identifiant menage relie a la base VPS",
+      "hints": {
+        "Francais (fr)": "Identifiant menage relie a la base VPS"
+      },
+      "relevant": "",
+      "parentRelevant": [],
+      "constraint": "",
+      "constraintMessage": "",
+      "constraintMessages": {},
+      "required": true,
+      "requiredExpression": "",
+      "defaultValue": "",
+      "calculation": "",
+      "appearance": "",
+      "parameters": "",
+      "choiceFilter": "",
+      "listName": "",
+      "external": false,
+      "readOnly": false,
+      "groupPath": "type_de_visite",
+      "repeatPath": "",
+      "bind": {
+        "required": "yes",
+        "readonly": "",
+        "relevant": "",
+        "constraint": ""
+      }
+    },
+    {
+      "index": 4,
+      "rowNumber": 6,
+      "name": "nom_key",
+      "type": "text",
+      "rawType": "text",
+      "label": "Prenom et Nom",
+      "labels": {
+        "Francais (fr)": "Prenom et Nom"
+      },
+      "hint": "",
+      "hints": {},
+      "relevant": "",
+      "parentRelevant": [],
+      "constraint": "",
+      "constraintMessage": "",
+      "constraintMessages": {},
+      "required": true,
+      "requiredExpression": "",
+      "defaultValue": "",
+      "calculation": "pulldata('Thies','nom','code_key',${Numero_ordre})",
+      "appearance": "",
+      "parameters": "",
+      "choiceFilter": "",
+      "listName": "",
+      "external": false,
+      "readOnly": true,
+      "groupPath": "type_de_visite",
+      "repeatPath": "",
+      "bind": {
+        "required": "yes",
+        "readonly": "",
+        "relevant": "",
+        "constraint": ""
+      }
+    },
+    {
+      "index": 5,
+      "rowNumber": 7,
+      "name": "role",
+      "type": "select_one",
+      "rawType": "select_one roles",
+      "label": "Votre role",
+      "labels": {
+        "Francais (fr)": "Votre role"
+      },
+      "hint": "",
+      "hints": {},
+      "relevant": "",
+      "parentRelevant": [],
+      "constraint": "",
+      "constraintMessage": "",
+      "constraintMessages": {},
+      "required": true,
+      "requiredExpression": "",
+      "defaultValue": "",
+      "calculation": "",
+      "appearance": "",
+      "parameters": "",
+      "choiceFilter": "",
+      "listName": "roles",
+      "external": false,
+      "readOnly": false,
+      "groupPath": "type_de_visite",
+      "repeatPath": "",
+      "bind": {
+        "required": "yes",
+        "readonly": "",
+        "relevant": "",
+        "constraint": ""
+      }
+    },
+    {
+      "index": 6,
+      "rowNumber": 8,
+      "name": "kit_disponible_macon",
+      "type": "select_one",
+      "rawType": "select_one oui_non",
+      "label": "Le kit est-il disponible et complet ?",
+      "labels": {
+        "Francais (fr)": "Le kit est-il disponible et complet ?"
+      },
+      "hint": "",
+      "hints": {},
+      "relevant": "${role} = 'macon'",
+      "parentRelevant": [],
+      "constraint": "",
+      "constraintMessage": "",
+      "constraintMessages": {},
+      "required": true,
+      "requiredExpression": "",
+      "defaultValue": "",
+      "calculation": "",
+      "appearance": "",
+      "parameters": "",
+      "choiceFilter": "",
+      "listName": "oui_non",
+      "external": false,
+      "readOnly": false,
+      "groupPath": "type_de_visite",
+      "repeatPath": "",
+      "bind": {
+        "required": "yes",
+        "readonly": "",
+        "relevant": "${role} = 'macon'",
+        "constraint": ""
+      }
+    },
+    {
+      "index": 7,
+      "rowNumber": 9,
+      "name": "notes_generales",
+      "type": "text",
+      "rawType": "text",
+      "label": "Notes generales",
+      "labels": {
+        "Francais (fr)": "Notes generales"
+      },
+      "hint": "",
+      "hints": {},
+      "relevant": "",
+      "parentRelevant": [],
+      "constraint": "",
+      "constraintMessage": "",
+      "constraintMessages": {},
+      "required": true,
+      "requiredExpression": "",
+      "defaultValue": "",
+      "calculation": "",
+      "appearance": "",
+      "parameters": "",
+      "choiceFilter": "",
+      "listName": "",
+      "external": false,
+      "readOnly": false,
+      "groupPath": "type_de_visite",
+      "repeatPath": "",
+      "bind": {
+        "required": "yes",
+        "readonly": "",
+        "relevant": "",
+        "constraint": ""
+      }
+    }
+  ],
+  "rows": [
+    {
+      "index": 0,
+      "rowNumber": 2,
+      "name": "start",
+      "type": "start",
+      "rawType": "start",
+      "label": "start",
+      "labels": {},
+      "hint": "",
+      "hints": {},
+      "relevant": "",
+      "parentRelevant": [],
+      "constraint": "",
+      "constraintMessage": "",
+      "constraintMessages": {},
+      "required": false,
+      "requiredExpression": "",
+      "defaultValue": "",
+      "calculation": "",
+      "appearance": "",
+      "parameters": "",
+      "choiceFilter": "",
+      "listName": "",
+      "external": false,
+      "readOnly": false,
+      "groupPath": "",
+      "repeatPath": "",
+      "bind": {
+        "required": "",
+        "readonly": "",
+        "relevant": "",
+        "constraint": ""
+      }
+    },
+    {
+      "index": 1,
+      "rowNumber": 3,
+      "name": "end",
+      "type": "end",
+      "rawType": "end",
+      "label": "end",
+      "labels": {},
+      "hint": "",
+      "hints": {},
+      "relevant": "",
+      "parentRelevant": [],
+      "constraint": "",
+      "constraintMessage": "",
+      "constraintMessages": {},
+      "required": false,
+      "requiredExpression": "",
+      "defaultValue": "",
+      "calculation": "",
+      "appearance": "",
+      "parameters": "",
+      "choiceFilter": "",
+      "listName": "",
+      "external": false,
+      "readOnly": false,
+      "groupPath": "",
+      "repeatPath": "",
+      "bind": {
+        "required": "",
+        "readonly": "",
+        "relevant": "",
+        "constraint": ""
+      }
+    },
+    {
+      "index": 2,
+      "rowNumber": 4,
+      "name": "type_de_visite",
+      "type": "begin_group",
+      "rawType": "begin_group",
+      "label": "Menage",
+      "labels": {},
+      "hint": "",
+      "hints": {},
+      "relevant": "",
+      "parentRelevant": [],
+      "constraint": "",
+      "constraintMessage": "",
+      "constraintMessages": {},
+      "required": false,
+      "requiredExpression": "",
+      "defaultValue": "",
+      "calculation": "",
+      "appearance": "",
+      "parameters": "",
+      "choiceFilter": "",
+      "listName": "",
+      "external": false,
+      "readOnly": false,
+      "groupPath": "",
+      "repeatPath": "",
+      "bind": {
+        "required": "",
+        "readonly": "",
+        "relevant": "",
+        "constraint": ""
+      }
+    },
+    {
+      "index": 3,
+      "rowNumber": 5,
+      "name": "numero_ordre",
+      "type": "integer",
+      "rawType": "integer",
+      "label": "Numero ordre",
+      "labels": {
+        "Francais (fr)": "Numero ordre"
+      },
+      "hint": "Identifiant menage relie a la base VPS",
+      "hints": {
+        "Francais (fr)": "Identifiant menage relie a la base VPS"
+      },
+      "relevant": "",
+      "parentRelevant": [],
+      "constraint": "",
+      "constraintMessage": "",
+      "constraintMessages": {},
+      "required": true,
+      "requiredExpression": "",
+      "defaultValue": "",
+      "calculation": "",
+      "appearance": "",
+      "parameters": "",
+      "choiceFilter": "",
+      "listName": "",
+      "external": false,
+      "readOnly": false,
+      "groupPath": "type_de_visite",
+      "repeatPath": "",
+      "bind": {
+        "required": "yes",
+        "readonly": "",
+        "relevant": "",
+        "constraint": ""
+      }
+    },
+    {
+      "index": 4,
+      "rowNumber": 6,
+      "name": "nom_key",
+      "type": "text",
+      "rawType": "text",
+      "label": "Prenom et Nom",
+      "labels": {
+        "Francais (fr)": "Prenom et Nom"
+      },
+      "hint": "",
+      "hints": {},
+      "relevant": "",
+      "parentRelevant": [],
+      "constraint": "",
+      "constraintMessage": "",
+      "constraintMessages": {},
+      "required": true,
+      "requiredExpression": "",
+      "defaultValue": "",
+      "calculation": "pulldata('Thies','nom','code_key',${Numero_ordre})",
+      "appearance": "",
+      "parameters": "",
+      "choiceFilter": "",
+      "listName": "",
+      "external": false,
+      "readOnly": true,
+      "groupPath": "type_de_visite",
+      "repeatPath": "",
+      "bind": {
+        "required": "yes",
+        "readonly": "",
+        "relevant": "",
+        "constraint": ""
+      }
+    },
+    {
+      "index": 5,
+      "rowNumber": 7,
+      "name": "role",
+      "type": "select_one",
+      "rawType": "select_one roles",
+      "label": "Votre role",
+      "labels": {
+        "Francais (fr)": "Votre role"
+      },
+      "hint": "",
+      "hints": {},
+      "relevant": "",
+      "parentRelevant": [],
+      "constraint": "",
+      "constraintMessage": "",
+      "constraintMessages": {},
+      "required": true,
+      "requiredExpression": "",
+      "defaultValue": "",
+      "calculation": "",
+      "appearance": "",
+      "parameters": "",
+      "choiceFilter": "",
+      "listName": "roles",
+      "external": false,
+      "readOnly": false,
+      "groupPath": "type_de_visite",
+      "repeatPath": "",
+      "bind": {
+        "required": "yes",
+        "readonly": "",
+        "relevant": "",
+        "constraint": ""
+      }
+    },
+    {
+      "index": 6,
+      "rowNumber": 8,
+      "name": "kit_disponible_macon",
+      "type": "select_one",
+      "rawType": "select_one oui_non",
+      "label": "Le kit est-il disponible et complet ?",
+      "labels": {
+        "Francais (fr)": "Le kit est-il disponible et complet ?"
+      },
+      "hint": "",
+      "hints": {},
+      "relevant": "${role} = 'macon'",
+      "parentRelevant": [],
+      "constraint": "",
+      "constraintMessage": "",
+      "constraintMessages": {},
+      "required": true,
+      "requiredExpression": "",
+      "defaultValue": "",
+      "calculation": "",
+      "appearance": "",
+      "parameters": "",
+      "choiceFilter": "",
+      "listName": "oui_non",
+      "external": false,
+      "readOnly": false,
+      "groupPath": "type_de_visite",
+      "repeatPath": "",
+      "bind": {
+        "required": "yes",
+        "readonly": "",
+        "relevant": "${role} = 'macon'",
+        "constraint": ""
+      }
+    },
+    {
+      "index": 7,
+      "rowNumber": 9,
+      "name": "notes_generales",
+      "type": "text",
+      "rawType": "text",
+      "label": "Notes generales",
+      "labels": {
+        "Francais (fr)": "Notes generales"
+      },
+      "hint": "",
+      "hints": {},
+      "relevant": "",
+      "parentRelevant": [],
+      "constraint": "",
+      "constraintMessage": "",
+      "constraintMessages": {},
+      "required": true,
+      "requiredExpression": "",
+      "defaultValue": "",
+      "calculation": "",
+      "appearance": "",
+      "parameters": "",
+      "choiceFilter": "",
+      "listName": "",
+      "external": false,
+      "readOnly": false,
+      "groupPath": "type_de_visite",
+      "repeatPath": "",
+      "bind": {
+        "required": "yes",
+        "readonly": "",
+        "relevant": "",
+        "constraint": ""
+      }
+    },
+    {
+      "index": 8,
+      "rowNumber": 10,
+      "name": "question_9",
+      "type": "end_group",
+      "rawType": "end_group",
+      "label": "question_9",
+      "labels": {},
+      "hint": "",
+      "hints": {},
+      "relevant": "",
+      "parentRelevant": [],
+      "constraint": "",
+      "constraintMessage": "",
+      "constraintMessages": {},
+      "required": false,
+      "requiredExpression": "",
+      "defaultValue": "",
+      "calculation": "",
+      "appearance": "",
+      "parameters": "",
+      "choiceFilter": "",
+      "listName": "",
+      "external": false,
+      "readOnly": false,
+      "groupPath": "type_de_visite",
+      "repeatPath": "",
+      "bind": {
+        "required": "",
+        "readonly": "",
+        "relevant": "",
+        "constraint": ""
+      }
+    }
+  ],
+  "groups": [
+    {
+      "index": 2,
+      "rowNumber": 4,
+      "name": "type_de_visite",
+      "type": "begin_group",
+      "rawType": "begin_group",
+      "label": "Menage",
+      "labels": {},
+      "hint": "",
+      "hints": {},
+      "relevant": "",
+      "parentRelevant": [],
+      "constraint": "",
+      "constraintMessage": "",
+      "constraintMessages": {},
+      "required": false,
+      "requiredExpression": "",
+      "defaultValue": "",
+      "calculation": "",
+      "appearance": "",
+      "parameters": "",
+      "choiceFilter": "",
+      "listName": "",
+      "external": false,
+      "readOnly": false,
+      "groupPath": "",
+      "repeatPath": "",
+      "bind": {
+        "required": "",
+        "readonly": "",
+        "relevant": "",
+        "constraint": ""
+      },
+      "path": "type_de_visite",
+      "depth": 0
+    }
+  ],
+  "repeats": [],
+  "choices": {
+    "roles": [
+      {
+        "index": 0,
+        "name": "livreur",
+        "label": "Livreur",
+        "labels": {},
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 1,
+        "name": "macon",
+        "label": "Macon",
+        "labels": {},
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 2,
+        "name": "reseau",
+        "label": "Equipe reseau",
+        "labels": {},
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 3,
+        "name": "interieur",
+        "label": "Equipe installateur",
+        "labels": {},
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 4,
+        "name": "controleur",
+        "label": "Controleur",
+        "labels": {},
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 5,
+        "name": "__pr_parateur",
+        "label": "Preparateur",
+        "labels": {},
+        "mediaImage": "",
+        "mediaImages": {}
+      }
+    ],
+    "oui_non": [
+      {
+        "index": 6,
+        "name": "oui",
+        "label": "Oui",
+        "labels": {},
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 1,
+        "name": "non",
+        "label": "Non",
+        "labels": {},
+        "mediaImage": "",
+        "mediaImages": {}
+      }
+    ],
+    "cj3rh91": [
+      {
+        "index": 8,
+        "name": "menage_eligible",
+        "label": "Menage eligible",
+        "labels": {
+          "Francais (fr)": "Menage eligible"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 1,
+        "name": "menage_non_eligible",
+        "label": "Menage non eligible",
+        "labels": {
+          "Francais (fr)": "Menage non eligible"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 2,
+        "name": "menage_injoignable",
+        "label": "Menage injoignable",
+        "labels": {
+          "Francais (fr)": "Menage injoignable"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      }
+    ],
+    "pr4rq21": [
+      {
+        "index": 11,
+        "name": "desistement_du_menage",
+        "label": "Desistement du menage",
+        "labels": {
+          "Francais (fr)": "Desistement du menage"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 1,
+        "name": "probleme_technique_d_installation",
+        "label": "Probleme technique d'installation",
+        "labels": {
+          "Francais (fr)": "Probleme technique d'installation"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 2,
+        "name": "maison_en_paille",
+        "label": "Maison en paille",
+        "labels": {
+          "Francais (fr)": "Maison en paille"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 3,
+        "name": "probleme_de_fixation_coffret",
+        "label": "Probleme de fixation coffret",
+        "labels": {
+          "Francais (fr)": "Probleme de fixation coffret"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      }
+    ],
+    "pg7bi79": [
+      {
+        "index": 15,
+        "name": "menage_sans_mur",
+        "label": "Menage sans mur",
+        "labels": {
+          "Francais (fr)": "Menage sans mur"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 1,
+        "name": "menage_avec_mur",
+        "label": "Menage avec mur",
+        "labels": {
+          "Francais (fr)": "Menage avec mur"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      }
+    ],
+    "kit_disponible": [
+      {
+        "index": 17,
+        "name": "oui",
+        "label": "Oui - Kit macon disponible",
+        "labels": {
+          "Francais (fr)": "Oui - Kit macon disponible"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 1,
+        "name": "non",
+        "label": "Non - Kit macon non disponible",
+        "labels": {
+          "Francais (fr)": "Non - Kit macon non disponible"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      }
+    ],
+    "problemes_kit_macon": [
+      {
+        "index": 19,
+        "name": "pas_de_kit",
+        "label": "Kit non livre",
+        "labels": {
+          "Francais (fr)": "Kit non livre"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 1,
+        "name": "kit_incomplet",
+        "label": "Kit incomplet",
+        "labels": {
+          "Francais (fr)": "Kit incomplet"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 2,
+        "name": "pas_de_potelet",
+        "label": "Pas de potelet",
+        "labels": {
+          "Francais (fr)": "Pas de potelet"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 3,
+        "name": "autres_problemes_kit",
+        "label": "Autres problemes",
+        "labels": {
+          "Francais (fr)": "Autres problemes"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      }
+    ],
+    "type_mur": [
+      {
+        "index": 23,
+        "name": "mur_standard",
+        "label": "Mur standard (2 poteaux)",
+        "labels": {
+          "Francais (fr)": "Mur standard (2 poteaux)"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 1,
+        "name": "mur_en_chemine",
+        "label": "Mur en forme de cheminee",
+        "labels": {
+          "Francais (fr)": "Mur en forme de cheminee"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      }
+    ],
+    "problemes_travail_macon": [
+      {
+        "index": 25,
+        "name": "terrain_probleme",
+        "label": "Probleme avec le terrain",
+        "labels": {
+          "Francais (fr)": "Probleme avec le terrain"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 1,
+        "name": "meteo_probleme",
+        "label": "Probleme meteo",
+        "labels": {
+          "Francais (fr)": "Probleme meteo"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 2,
+        "name": "materiel_manquant",
+        "label": "Materiel manquant",
+        "labels": {
+          "Francais (fr)": "Materiel manquant"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 3,
+        "name": "autres_problemes_travail",
+        "label": "Autres problemes",
+        "labels": {
+          "Francais (fr)": "Autres problemes"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      }
+    ],
+    "verification_mur": [
+      {
+        "index": 29,
+        "name": "oui",
+        "label": "Oui - Mur conforme",
+        "labels": {
+          "Francais (fr)": "Oui - Mur conforme"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 1,
+        "name": "non",
+        "label": "Non - Mur non conforme",
+        "labels": {
+          "Francais (fr)": "Non - Mur non conforme"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      }
+    ],
+    "problemes_mur_reseau": [
+      {
+        "index": 31,
+        "name": "mur_non_realise",
+        "label": "Mur non realise",
+        "labels": {
+          "Francais (fr)": "Mur non realise"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 1,
+        "name": "mur_non_conforme",
+        "label": "Mur non conforme",
+        "labels": {
+          "Francais (fr)": "Mur non conforme"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 2,
+        "name": "autre_probleme_mur",
+        "label": "Autre probleme avec le mur",
+        "labels": {
+          "Francais (fr)": "Autre probleme avec le mur"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      }
+    ],
+    "etat_branchement": [
+      {
+        "index": 34,
+        "name": "termine",
+        "label": "Branchement termine",
+        "labels": {
+          "Francais (fr)": "Branchement termine"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 1,
+        "name": "probleme",
+        "label": "Probleme lors du branchement",
+        "labels": {
+          "Francais (fr)": "Probleme lors du branchement"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      }
+    ],
+    "problemes_branchement_reseau": [
+      {
+        "index": 36,
+        "name": "pas_de_materiel_reseau",
+        "label": "Pas de materiel disponible",
+        "labels": {
+          "Francais (fr)": "Pas de materiel disponible"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 1,
+        "name": "probleme_technique_reseau",
+        "label": "Probleme technique",
+        "labels": {
+          "Francais (fr)": "Probleme technique"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 2,
+        "name": "autres_problemes_reseau",
+        "label": "Autres problemes",
+        "labels": {
+          "Francais (fr)": "Autres problemes"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      }
+    ],
+    "verification_branchement": [
+      {
+        "index": 39,
+        "name": "oui",
+        "label": "Oui - Branchement conforme",
+        "labels": {
+          "Francais (fr)": "Oui - Branchement conforme"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 1,
+        "name": "non",
+        "label": "Non - Branchement non conforme",
+        "labels": {
+          "Francais (fr)": "Non - Branchement non conforme"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      }
+    ],
+    "problemes_branchement_interieur": [
+      {
+        "index": 41,
+        "name": "branchement_non_realise",
+        "label": "Branchement non realise",
+        "labels": {
+          "Francais (fr)": "Branchement non realise"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 1,
+        "name": "branchement_non_conforme",
+        "label": "Branchement non conforme",
+        "labels": {
+          "Francais (fr)": "Branchement non conforme"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 2,
+        "name": "autre_probleme_branchement",
+        "label": "Autre probleme avec le branchement",
+        "labels": {
+          "Francais (fr)": "Autre probleme avec le branchement"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      }
+    ],
+    "etat_installation": [
+      {
+        "index": 44,
+        "name": "termine",
+        "label": "Installation terminee",
+        "labels": {
+          "Francais (fr)": "Installation terminee"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 1,
+        "name": "probleme",
+        "label": "Probleme lors de l'installation",
+        "labels": {
+          "Francais (fr)": "Probleme lors de l'installation"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      }
+    ],
+    "problemes_installation_interieur": [
+      {
+        "index": 46,
+        "name": "pas_de_materiel_interieur",
+        "label": "Pas de materiel disponible",
+        "labels": {
+          "Francais (fr)": "Pas de materiel disponible"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 1,
+        "name": "probleme_technique_interieur",
+        "label": "Probleme technique",
+        "labels": {
+          "Francais (fr)": "Probleme technique"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 2,
+        "name": "autres_problemes_interieur",
+        "label": "Autres problemes",
+        "labels": {
+          "Francais (fr)": "Autres problemes"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      }
+    ],
+    "rr4dg37": [
+      {
+        "index": 49,
+        "name": "terminee",
+        "label": "Terminee",
+        "labels": {
+          "Francais (fr)": "Terminee"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 1,
+        "name": "non_terminee",
+        "label": "Non terminee",
+        "labels": {
+          "Francais (fr)": "Non terminee"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 2,
+        "name": "non_encore_instalee",
+        "label": "Non encore installee",
+        "labels": {
+          "Francais (fr)": "Non encore installee"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 3,
+        "name": "probleme_a_signaler",
+        "label": "Probleme a signaler",
+        "labels": {
+          "Francais (fr)": "Probleme a signaler"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      }
+    ],
+    "oo84j36": [
+      {
+        "index": 53,
+        "name": "demande_extension",
+        "label": "Demande une extension reseau",
+        "labels": {
+          "Francais (fr)": "Demande une extension reseau"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 1,
+        "name": "menage_ineligible2",
+        "label": "Menage ineligible",
+        "labels": {
+          "Francais (fr)": "Menage ineligible"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 2,
+        "name": "menage_no_disponible",
+        "label": "Menage non disponible",
+        "labels": {
+          "Francais (fr)": "Menage non disponible"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 3,
+        "name": "confusio_de_menage",
+        "label": "Confusion de menage",
+        "labels": {
+          "Francais (fr)": "Confusion de menage"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 4,
+        "name": "__maison_inaccessible",
+        "label": "Maison inaccessible",
+        "labels": {
+          "Francais (fr)": "Maison inaccessible"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      }
+    ],
+    "ga7rh54": [
+      {
+        "index": 58,
+        "name": "visite_1",
+        "label": "Premier controle",
+        "labels": {
+          "Francais (fr)": "Premier controle"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 1,
+        "name": "visite_2",
+        "label": "Mise en conformite",
+        "labels": {
+          "Francais (fr)": "Mise en conformite"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 2,
+        "name": "visite_renouvelee",
+        "label": "Visite renouvelee",
+        "labels": {
+          "Francais (fr)": "Visite renouvelee"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      }
+    ],
+    "sv3tg34": [
+      {
+        "index": 61,
+        "name": "realise",
+        "label": "Realise",
+        "labels": {
+          "Francais (fr)": "Realise"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 1,
+        "name": "non_realise",
+        "label": "Non encore realise",
+        "labels": {
+          "Francais (fr)": "Non encore realise"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 2,
+        "name": "non_termine",
+        "label": "Non termine",
+        "labels": {
+          "Francais (fr)": "Non termine"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      }
+    ],
+    "kx9fr02": [
+      {
+        "index": 64,
+        "name": "coffret_compteur_non_encore_pos",
+        "label": "Coffret compteur non encore pose",
+        "labels": {
+          "Francais (fr)": "Coffret compteur non encore pose"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 1,
+        "name": "potelet_non_encore_pos",
+        "label": "Potelet non encore pose",
+        "labels": {
+          "Francais (fr)": "Potelet non encore pose"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 2,
+        "name": "cable_preassemble_non_encore_tire",
+        "label": "Cable preassemble non encore tire",
+        "labels": {
+          "Francais (fr)": "Cable preassemble non encore tire"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 3,
+        "name": "necessite_une_extension",
+        "label": "Necessite une extension",
+        "labels": {
+          "Francais (fr)": "Necessite une extension"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 4,
+        "name": "pas_de_pince_d_encrages",
+        "label": "Pas de pince d'encrages",
+        "labels": {
+          "Francais (fr)": "Pas de pince d'encrages"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 5,
+        "name": "pas_de_connecteurs",
+        "label": "Pas de connecteurs",
+        "labels": {
+          "Francais (fr)": "Pas de connecteurs"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 6,
+        "name": "pas_de_queue_de_cochon",
+        "label": "Pas de queue de cochon",
+        "labels": {
+          "Francais (fr)": "Pas de queue de cochon"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      }
+    ],
+    "lo9ia24": [
+      {
+        "index": 71,
+        "name": "conforme",
+        "label": "Conforme",
+        "labels": {
+          "Francais (fr)": "Conforme"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 1,
+        "name": "non_conforme",
+        "label": "Non conforme",
+        "labels": {
+          "Francais (fr)": "Non conforme"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      }
+    ],
+    "la7vc77": [
+      {
+        "index": 73,
+        "name": "plus_de_2_positions__zone_urbaine",
+        "label": "Depasse la position 2 en zone urbaine",
+        "labels": {
+          "Francais (fr)": "Depasse la position 2 en zone urbaine"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 1,
+        "name": "plus_de_3_positions__zone_rurale",
+        "label": "Depasse la position 3 en zone rurale",
+        "labels": {
+          "Francais (fr)": "Depasse la position 3 en zone rurale"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 2,
+        "name": "longueur_branchement_sup_rieure___40m__z",
+        "label": "Longueur superieure a 40 m en zone urbaine",
+        "labels": {
+          "Francais (fr)": "Longueur superieure a 40 m en zone urbaine"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 3,
+        "name": "longueur_branchement_sup_rieure___50m__z",
+        "label": "Longueur superieure a 50 m en zone rurale",
+        "labels": {
+          "Francais (fr)": "Longueur superieure a 50 m en zone rurale"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 4,
+        "name": "necessite_une_extension",
+        "label": "Necessite une extension",
+        "labels": {
+          "Francais (fr)": "Necessite une extension"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      }
+    ],
+    "nk1mo89": [
+      {
+        "index": 78,
+        "name": "conforme",
+        "label": "Conforme",
+        "labels": {
+          "Francais (fr)": "Conforme"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 1,
+        "name": "non_conforme",
+        "label": "Non conforme",
+        "labels": {
+          "Francais (fr)": "Non conforme"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      }
+    ],
+    "ur9iq73": [
+      {
+        "index": 80,
+        "name": "c",
+        "label": "Conforme",
+        "labels": {
+          "Francais (fr)": "Conforme"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 1,
+        "name": "nc",
+        "label": "Non conforme",
+        "labels": {
+          "Francais (fr)": "Non conforme"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      }
+    ],
+    "rz78v01": [
+      {
+        "index": 82,
+        "name": "pas_de_coupe_circuit__cc",
+        "label": "Pas de coupe circuit",
+        "labels": {
+          "Francais (fr)": "Pas de coupe circuit"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 1,
+        "name": "coupe_circuit_deteriore",
+        "label": "Coupe-circuit deteriore",
+        "labels": {
+          "Francais (fr)": "Coupe-circuit deteriore"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 2,
+        "name": "calibre_fusible_superieur_25a",
+        "label": "Calibre fusible superieur a 25A",
+        "labels": {
+          "Francais (fr)": "Calibre fusible superieur a 25A"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      }
+    ],
+    "fv5uq33": [
+      {
+        "index": 85,
+        "name": "pas_de_tube_pvc",
+        "label": "Pas de tube PVC",
+        "labels": {
+          "Francais (fr)": "Pas de tube PVC"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 1,
+        "name": "protection_mecanique_non_assure_sur_tou",
+        "label": "Protection mecanique non assuree sur toute la longueur",
+        "labels": {
+          "Francais (fr)": "Protection mecanique non assuree sur toute la longueur"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 2,
+        "name": "coffret_compteur_perce",
+        "label": "Coffret compteur perce",
+        "labels": {
+          "Francais (fr)": "Coffret compteur perce"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      }
+    ],
+    "ey6uw71": [
+      {
+        "index": 88,
+        "name": "mode_de_pose_non_conforme",
+        "label": "Mode de pose non conforme",
+        "labels": {
+          "Francais (fr)": "Mode de pose non conforme"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 1,
+        "name": "potelet_trop_inclin",
+        "label": "Potelet trop incline",
+        "labels": {
+          "Francais (fr)": "Potelet trop incline"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 2,
+        "name": "pas_de_pince_d_encrage",
+        "label": "Pas de pince d'encrage",
+        "labels": {
+          "Francais (fr)": "Pas de pince d'encrage"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 3,
+        "name": "pas_de_queue_de_cochon",
+        "label": "Pas de queue de cochon",
+        "labels": {
+          "Francais (fr)": "Pas de queue de cochon"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 4,
+        "name": "hauteur_coffret_compteur_trop_bas___inf",
+        "label": "Hauteur coffret inferieure a 1,20 m",
+        "labels": {
+          "Francais (fr)": "Hauteur coffret inferieure a 1,20 m"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 5,
+        "name": "le_c_ble_pr_assembl__est_jonctionn",
+        "label": "Cable preassemble jonctionne",
+        "labels": {
+          "Francais (fr)": "Cable preassemble jonctionne"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 6,
+        "name": "le_coffret_est_place_interieure_de",
+        "label": "Coffret place a l interieur de la propriete",
+        "labels": {
+          "Francais (fr)": "Coffret place a l interieur de la propriete"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 7,
+        "name": "hauteur_coffret_compteur__hublot___sol",
+        "label": "Hauteur coffret superieure a 1,60 m",
+        "labels": {
+          "Francais (fr)": "Hauteur coffret superieure a 1,60 m"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      }
+    ],
+    "el0wa18": [
+      {
+        "index": 96,
+        "name": "conforme",
+        "label": "Conforme",
+        "labels": {
+          "Francais (fr)": "Conforme"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 1,
+        "name": "non_conforme",
+        "label": "Non conforme",
+        "labels": {
+          "Francais (fr)": "Non conforme"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      }
+    ],
+    "zs4mw04": [
+      {
+        "index": 98,
+        "name": "absence_de_disjoncteur_general",
+        "label": "Absence de disjoncteur general",
+        "labels": {
+          "Francais (fr)": "Absence de disjoncteur general"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 1,
+        "name": "disjoncteur_general_non_fix",
+        "label": "Disjoncteur general non fixe",
+        "labels": {
+          "Francais (fr)": "Disjoncteur general non fixe"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 2,
+        "name": "disjoncteur_general_deterior",
+        "label": "Disjoncteur general deteriore",
+        "labels": {
+          "Francais (fr)": "Disjoncteur general deteriore"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 3,
+        "name": "disjoncteur_general_non_adapt",
+        "label": "Disjoncteur general non adapte",
+        "labels": {
+          "Francais (fr)": "Disjoncteur general non adapte"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 4,
+        "name": "emplacement_tgbt_non_adequate",
+        "label": "Emplacement TGBT non adequat",
+        "labels": {
+          "Francais (fr)": "Emplacement TGBT non adequat"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      }
+    ],
+    "nr78z46": [
+      {
+        "index": 103,
+        "name": "differentiel",
+        "label": "Differentiel",
+        "labels": {
+          "Francais (fr)": "Differentiel"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 1,
+        "name": "non_differentiel",
+        "label": "Non differentiel",
+        "labels": {
+          "Francais (fr)": "Non differentiel"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      }
+    ],
+    "gk2qz88": [
+      {
+        "index": 105,
+        "name": "conforme",
+        "label": "Conforme",
+        "labels": {
+          "Francais (fr)": "Conforme"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 1,
+        "name": "non_conforme",
+        "label": "Non conforme",
+        "labels": {
+          "Francais (fr)": "Non conforme"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      }
+    ],
+    "py9cc56": [
+      {
+        "index": 107,
+        "name": "differentiel_30ma_d_t_rior",
+        "label": "Differentiel 30mA deteriore",
+        "labels": {
+          "Francais (fr)": "Differentiel 30mA deteriore"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 1,
+        "name": "differentiel_30ma_mal_positionn",
+        "label": "Differentiel 30mA mal positionne",
+        "labels": {
+          "Francais (fr)": "Differentiel 30mA mal positionne"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 2,
+        "name": "pas_de_differentiel_30ma",
+        "label": "Pas de differentiel 30mA",
+        "labels": {
+          "Francais (fr)": "Pas de differentiel 30mA"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      }
+    ],
+    "nm4md59": [
+      {
+        "index": 110,
+        "name": "conforme",
+        "label": "Conforme",
+        "labels": {
+          "Francais (fr)": "Conforme"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 1,
+        "name": "non_conforme",
+        "label": "Non conforme",
+        "labels": {
+          "Francais (fr)": "Non conforme"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      }
+    ],
+    "nr8tv95": [
+      {
+        "index": 112,
+        "name": "absence_de_modulaire_lumiere",
+        "label": "Absence de modulaire lumiere",
+        "labels": {
+          "Francais (fr)": "Absence de modulaire lumiere"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 1,
+        "name": "absence_de_modulaire_prise",
+        "label": "Absence de modulaire prise",
+        "labels": {
+          "Francais (fr)": "Absence de modulaire prise"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 2,
+        "name": "calibre_modulaire_non_adapt",
+        "label": "Calibre modulaire non adapte",
+        "labels": {
+          "Francais (fr)": "Calibre modulaire non adapte"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      }
+    ],
+    "bm2rn03": [
+      {
+        "index": 115,
+        "name": "conforme",
+        "label": "Conforme",
+        "labels": {
+          "Francais (fr)": "Conforme"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 1,
+        "name": "non_conforme",
+        "label": "Non conforme",
+        "labels": {
+          "Francais (fr)": "Non conforme"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      }
+    ],
+    "ps4nb23": [
+      {
+        "index": 117,
+        "name": "boite_de_derivation_sans_couvercle",
+        "label": "Boite de derivation sans couvercle",
+        "labels": {
+          "Francais (fr)": "Boite de derivation sans couvercle"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 1,
+        "name": "coffret_trou",
+        "label": "Coffret disjoncteur troue",
+        "labels": {
+          "Francais (fr)": "Coffret disjoncteur troue"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 2,
+        "name": "option_1",
+        "label": "PNST accessible sur douille",
+        "labels": {
+          "Francais (fr)": "PNST accessible sur douille"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 3,
+        "name": "option_2",
+        "label": "PNST accessible sur prise",
+        "labels": {
+          "Francais (fr)": "PNST accessible sur prise"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 4,
+        "name": "pnst_accessible_sur_c_ble",
+        "label": "PNST accessible sur cable",
+        "labels": {
+          "Francais (fr)": "PNST accessible sur cable"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 5,
+        "name": "pnst_accessible_sur_interrupteur",
+        "label": "PNST accessible sur interrupteur",
+        "labels": {
+          "Francais (fr)": "PNST accessible sur interrupteur"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 6,
+        "name": "prise_sans_obturateur",
+        "label": "Prise sans obturateur",
+        "labels": {
+          "Francais (fr)": "Prise sans obturateur"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      }
+    ],
+    "jm8qy41": [
+      {
+        "index": 124,
+        "name": "absence_de_douille",
+        "label": "Absence de douille",
+        "labels": {
+          "Francais (fr)": "Absence de douille"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 1,
+        "name": "absence_de_prise",
+        "label": "Absence de prise",
+        "labels": {
+          "Francais (fr)": "Absence de prise"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 2,
+        "name": "boite_de_d_rivation_mal_fix_e",
+        "label": "Boite de derivation mal fixee",
+        "labels": {
+          "Francais (fr)": "Boite de derivation mal fixee"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 3,
+        "name": "c_blage__lumi_re_interrupteur__mal_effec",
+        "label": "Cablage lumiere/interrupteur mal effectue",
+        "labels": {
+          "Francais (fr)": "Cablage lumiere/interrupteur mal effectue"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 4,
+        "name": "c_blage___refaire_c_blage_prise_mal_effe",
+        "label": "Cablage prise mal effectue",
+        "labels": {
+          "Francais (fr)": "Cablage prise mal effectue"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 5,
+        "name": "cable_1_5mm__jonctionn__par__pissure",
+        "label": "Cable 1,5mm2 jonctionne par epissure",
+        "labels": {
+          "Francais (fr)": "Cable 1,5mm2 jonctionne par epissure"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 6,
+        "name": "cable_2_5mm__jonctionn__par__pissure",
+        "label": "Cable 2,5mm2 jonctionne par epissure",
+        "labels": {
+          "Francais (fr)": "Cable 2,5mm2 jonctionne par epissure"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 7,
+        "name": "c_ble_arm__non_enterr",
+        "label": "Cable alimentation mal enterre",
+        "labels": {
+          "Francais (fr)": "Cable alimentation mal enterre"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 8,
+        "name": "cable_d_alimentation_non_adapt",
+        "label": "Cable alimentation non adapte",
+        "labels": {
+          "Francais (fr)": "Cable alimentation non adapte"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 9,
+        "name": "cable_mal_fix",
+        "label": "Cablage interieur mal fixe",
+        "labels": {
+          "Francais (fr)": "Cablage interieur mal fixe"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 10,
+        "name": "coffret_disjoncteur___d_placer_en_lieu_c",
+        "label": "Coffret disjoncteur a deplacer en lieu couvert",
+        "labels": {
+          "Francais (fr)": "Coffret disjoncteur a deplacer en lieu couvert"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 11,
+        "name": "code_de_couleur__conducteur__non_respect",
+        "label": "Code couleur conducteur non respecte",
+        "labels": {
+          "Francais (fr)": "Code couleur conducteur non respecte"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 12,
+        "name": "coffret_disjoncteur_mal_fix",
+        "label": "Coffret disjoncteur mal fixe",
+        "labels": {
+          "Francais (fr)": "Coffret disjoncteur mal fixe"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 13,
+        "name": "cable_d_alimentation_4mm__mal_fix",
+        "label": "Cable alimentation 4mm2 mal fixe",
+        "labels": {
+          "Francais (fr)": "Cable alimentation 4mm2 mal fixe"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 14,
+        "name": "c_blage_pass__en_a_rien",
+        "label": "Cablage passe en aerien",
+        "labels": {
+          "Francais (fr)": "Cablage passe en aerien"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 15,
+        "name": "d_faut_connexion_lumi_re",
+        "label": "Defaut connexion lumiere",
+        "labels": {
+          "Francais (fr)": "Defaut connexion lumiere"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 16,
+        "name": "douille___remplacer",
+        "label": "Douille a remplacer",
+        "labels": {
+          "Francais (fr)": "Douille a remplacer"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 17,
+        "name": "douille_mal_fix",
+        "label": "Douille mal fixee",
+        "labels": {
+          "Francais (fr)": "Douille mal fixee"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 18,
+        "name": "d_faut_connexion_prise__mal_c_bl",
+        "label": "Defaut connexion prise",
+        "labels": {
+          "Francais (fr)": "Defaut connexion prise"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 19,
+        "name": "interrupteur___d_placer_en_lieu_couvert",
+        "label": "Interrupteur a deplacer en lieu couvert",
+        "labels": {
+          "Francais (fr)": "Interrupteur a deplacer en lieu couvert"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 20,
+        "name": "interrupteur___remplacer",
+        "label": "Interrupteur a remplacer",
+        "labels": {
+          "Francais (fr)": "Interrupteur a remplacer"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 21,
+        "name": "interrupteur_mal_fix",
+        "label": "Interrupteur mal fixe",
+        "labels": {
+          "Francais (fr)": "Interrupteur mal fixe"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 22,
+        "name": "prise___remplacer",
+        "label": "Prise a remplacer",
+        "labels": {
+          "Francais (fr)": "Prise a remplacer"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 23,
+        "name": "pas_de_boite_de_d_rivation",
+        "label": "Pas de boite de derivation",
+        "labels": {
+          "Francais (fr)": "Pas de boite de derivation"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 24,
+        "name": "prise_mal_fix_e",
+        "label": "Prise mal fixee",
+        "labels": {
+          "Francais (fr)": "Prise mal fixee"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 25,
+        "name": "profondeur_tranch_e_non_ad_quate__minimu",
+        "label": "Profondeur tranchee non adequate",
+        "labels": {
+          "Francais (fr)": "Profondeur tranchee non adequate"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 26,
+        "name": "pas_de_domino_au_niveau_de_la_boite_de_d",
+        "label": "Pas de domino dans la boite de derivation",
+        "labels": {
+          "Francais (fr)": "Pas de domino dans la boite de derivation"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 27,
+        "name": "section_2_5mm__non_adapt_e_pour_les_lamp",
+        "label": "Section 2,5mm2 non adaptee pour lampes",
+        "labels": {
+          "Francais (fr)": "Section 2,5mm2 non adaptee pour lampes"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 28,
+        "name": "section_cable_d_alimentation_non_respect",
+        "label": "Section cable alimentation non respectee",
+        "labels": {
+          "Francais (fr)": "Section cable alimentation non respectee"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      }
+    ],
+    "vo5kj15": [
+      {
+        "index": 153,
+        "name": "conducteurs_visibles_sur_c_ble_1_5mm",
+        "label": "Conducteurs visibles cable 1,5mm2",
+        "labels": {
+          "Francais (fr)": "Conducteurs visibles cable 1,5mm2"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 1,
+        "name": "conducteurs_visibles_sur_c_ble_2_5mm",
+        "label": "Conducteurs visibles cable 2,5mm2",
+        "labels": {
+          "Francais (fr)": "Conducteurs visibles cable 2,5mm2"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 2,
+        "name": "conducteurs_visibles_sur_c_ble_4mm",
+        "label": "Conducteurs visibles cable 4mm2",
+        "labels": {
+          "Francais (fr)": "Conducteurs visibles cable 4mm2"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 3,
+        "name": "conducteur_principal_de_protection_vert",
+        "label": "Conducteur vert/jaune sans gaine",
+        "labels": {
+          "Francais (fr)": "Conducteur vert/jaune sans gaine"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      }
+    ],
+    "pi0xx78": [
+      {
+        "index": 157,
+        "name": "absence_de_piquet_de_terre",
+        "label": "Absence de piquet de terre",
+        "labels": {
+          "Francais (fr)": "Absence de piquet de terre"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 1,
+        "name": "terre_non_raccord__sur_boite_de_d_rivati",
+        "label": "Terre non raccordee boite derivation",
+        "labels": {
+          "Francais (fr)": "Terre non raccordee boite derivation"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 2,
+        "name": "terre_non_raccord__au_niveau_du_coffret",
+        "label": "Terre non raccordee coffret disjoncteur",
+        "labels": {
+          "Francais (fr)": "Terre non raccordee coffret disjoncteur"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 3,
+        "name": "d_placer_la_barrette_de_terre___l_endroi",
+        "label": "Deplacer la barrette de terre",
+        "labels": {
+          "Francais (fr)": "Deplacer la barrette de terre"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 4,
+        "name": "pas_de_barrette_de_terre",
+        "label": "Pas de barrette de terre",
+        "labels": {
+          "Francais (fr)": "Pas de barrette de terre"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 5,
+        "name": "pas_de_continuit__du_conducteur_de_prote",
+        "label": "Pas de continuite conducteur de protection",
+        "labels": {
+          "Francais (fr)": "Pas de continuite conducteur de protection"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 6,
+        "name": "pas_de_domino_sur_circuit_de_terre__coff",
+        "label": "Pas de domino terre coffret",
+        "labels": {
+          "Francais (fr)": "Pas de domino terre coffret"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 7,
+        "name": "pas_de_domino_sur_circuit_de_terre__boit",
+        "label": "Pas de domino terre boite",
+        "labels": {
+          "Francais (fr)": "Pas de domino terre boite"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 8,
+        "name": "piquet_de_terre_d_connect",
+        "label": "Piquet de terre deconnecte",
+        "labels": {
+          "Francais (fr)": "Piquet de terre deconnecte"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 9,
+        "name": "pas_de_protection_m_canique_du_conducteu",
+        "label": "Pas de protection mecanique conducteur principal",
+        "labels": {
+          "Francais (fr)": "Pas de protection mecanique conducteur principal"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 10,
+        "name": "r_seau_de_terre_non_raccord",
+        "label": "Reseau de terre non raccorde",
+        "labels": {
+          "Francais (fr)": "Reseau de terre non raccorde"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 11,
+        "name": "r_seau_terre_en_cours_de_pose",
+        "label": "Reseau terre en cours de pose",
+        "labels": {
+          "Francais (fr)": "Reseau terre en cours de pose"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      }
+    ],
+    "lk4xz51": [
+      {
+        "index": 169,
+        "name": "barrette_conforme",
+        "label": "Barrette conforme",
+        "labels": {
+          "Francais (fr)": "Barrette conforme"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      },
+      {
+        "index": 1,
+        "name": "barrette_rouill_e",
+        "label": "Barrette rouillee",
+        "labels": {
+          "Francais (fr)": "Barrette rouillee"
+        },
+        "mediaImage": "",
+        "mediaImages": {}
+      }
+    ]
+  },
+  "fieldNames": [
+    "start",
+    "end",
+    "numero_ordre",
+    "nom_key",
+    "role",
+    "kit_disponible_macon",
+    "notes_generales"
+  ],
+  "capabilities": [
+    "survey",
+    "choices",
+    "settings",
+    "relevant",
+    "required",
+    "constraint",
+    "calculate-basic",
+    "choice_filter",
+    "groups",
+    "repeats",
+    "media",
+    "multilingual",
+    "rare-types"
+  ],
+  "diagnostics": {
+    "fieldCount": 7,
+    "rowCount": 9,
+    "questionCount": 7,
+    "choiceCount": 171,
+    "choiceListCount": 42,
+    "requiredCount": 5,
+    "relevantCount": 1,
+    "constraintCount": 0,
+    "calculateCount": 1,
+    "choiceFilterCount": 0,
+    "groupCount": 1,
+    "repeatCount": 0,
+    "imageCount": 0,
+    "mediaCount": 0,
+    "externalChoiceCount": 0,
+    "languages": [
+      "Francais (fr)"
+    ],
+    "unsupportedTypes": []
+  },
+  "source": {
+    "sourceType": "internal_gem",
+    "description": "Structure native GEM migree en definition dynamique.",
+    "sector": "Energie",
+    "country": "Senegal",
+    "fileName": "gem_collect_natif_dynamique.json",
+    "storageKey": "c0b18361-441c-43ef-b4e6-72130efc521e/internal-kobo/forms/2289eb71-755c-4319-a7b0-534c16157884.json",
+    "definitionStorageKey": "c0b18361-441c-43ef-b4e6-72130efc521e/internal-kobo/forms/2289eb71-755c-4319-a7b0-534c16157884.json",
+    "sourceHash": "3ede9f60fede47798815c8852d0a6e8056ed8ec0302b2ab71564a7f7538ece6f"
+  },
+  "lifecycle": {
+    "active": true,
+    "status": "active",
+    "importedAt": "2026-05-05T04:57:03.244Z",
+    "importedById": "020b9eba-55ca-4c54-8e55-605d54993ce2",
+    "activatedAt": "2026-05-05T04:57:03.282Z",
+    "activatedById": "020b9eba-55ca-4c54-8e55-605d54993ce2",
+    "previousVersion": null
+  },
+  "importHistory": [
+    {
+      "importId": "2289eb71-755c-4319-a7b0-534c16157884",
+      "formKey": "gem_collect_natif_dynamique",
+      "formVersion": "draft-2026-05-05T04-57-03-222Z",
+      "title": "GEM Collect Natif Dynamique",
+      "importedAt": "2026-05-05T04:57:03.244Z",
+      "importedById": "020b9eba-55ca-4c54-8e55-605d54993ce2",
+      "fileName": "gem_collect_natif_dynamique.json",
+      "storageKey": "c0b18361-441c-43ef-b4e6-72130efc521e/internal-kobo/forms/2289eb71-755c-4319-a7b0-534c16157884.json",
+      "sourceHash": "3ede9f60fede47798815c8852d0a6e8056ed8ec0302b2ab71564a7f7538ece6f",
+      "engine": "gem-xlsform-universal",
+      "engineVersion": "1.0.0",
+      "diagnostics": {
+        "fieldCount": 7,
+        "rowCount": 9,
+        "questionCount": 7,
+        "choiceCount": 171,
+        "choiceListCount": 42,
+        "requiredCount": 5,
+        "relevantCount": 1,
+        "constraintCount": 0,
+        "calculateCount": 1,
+        "choiceFilterCount": 0,
+        "groupCount": 1,
+        "repeatCount": 0,
+        "imageCount": 0,
+        "mediaCount": 0,
+        "externalChoiceCount": 0,
+        "languages": [
+          "Francais (fr)"
+        ],
+        "unsupportedTypes": []
+      }
+    }
+  ],
+  "previousDefinitionSummary": null,
+  "previousComparisonSummary": null
+}

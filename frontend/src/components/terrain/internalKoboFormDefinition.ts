@@ -1,4 +1,4 @@
-export type InternalKoboFieldType =
+export type InternalGemFieldType =
   | 'integer'
   | 'text'
   | 'geopoint'
@@ -8,14 +8,14 @@ export type InternalKoboFieldType =
   | 'note'
   | 'image';
 
-export type InternalKoboChoice = {
+export type InternalGemChoice = {
   name: string;
   label: string;
 };
 
-export type InternalKoboField = {
+export type InternalGemField = {
   name: string;
-  type: InternalKoboFieldType;
+  type: InternalGemFieldType;
   label: string;
   listName?: string;
   required?: boolean;
@@ -30,27 +30,27 @@ export type InternalKoboField = {
   readOnly?: boolean;
 };
 
-export type InternalKoboValidationIssue = {
-  field: InternalKoboField;
+export type InternalGemValidationIssue = {
+  field: InternalGemField;
   type: 'required' | 'constraint';
   message: string;
 };
 
-export type InternalKoboSection = {
+export type InternalGemSection = {
   id: string;
   title: string;
   subtitle: string;
   role?: string;
-  fields: InternalKoboField[];
+  fields: InternalGemField[];
 };
 
-export const INTERNAL_KOBO_FORM_SETTINGS = {
+export const INTERNAL_GEM_FORM_SETTINGS = {
   style: 'pages',
-  version: '8 (2021-07-24 19:48:35)',
-  defaultLanguage: 'Francais (fr)',
+  version: '10 (GEM Native)',
+  defaultLanguage: 'Français (fr)',
 } as const;
 
-export const INTERNAL_KOBO_SYSTEM_FIELD_NAMES = [
+export const INTERNAL_GEM_SYSTEM_FIELD_NAMES = [
   'start',
   'end',
   'today',
@@ -63,7 +63,7 @@ export const INTERNAL_KOBO_SYSTEM_FIELD_NAMES = [
   'C5',
 ];
 
-export const INTERNAL_KOBO_CHOICES: Record<string, InternalKoboChoice[]> = {
+export const INTERNAL_GEM_CHOICES: Record<string, InternalGemChoice[]> = {
   roles: [
     { name: 'livreur', label: 'Livreur' },
     { name: 'macon', label: 'Macon' },
@@ -317,7 +317,7 @@ export const INTERNAL_KOBO_CHOICES: Record<string, InternalKoboChoice[]> = {
   ],
 };
 
-export const INTERNAL_KOBO_SECTIONS: InternalKoboSection[] = [
+export const INTERNAL_GEM_SECTIONS: InternalGemSection[] = [
   {
     id: 'menage',
     title: 'Menage',
@@ -463,11 +463,11 @@ export const INTERNAL_KOBO_SECTIONS: InternalKoboSection[] = [
   },
 ];
 
-export const INTERNAL_KOBO_FIELD_NAMES = Array.from(
-  new Set(INTERNAL_KOBO_SECTIONS.flatMap((section) => section.fields.map((field) => field.name)))
+export const INTERNAL_GEM_FIELD_NAMES = Array.from(
+  new Set(INTERNAL_GEM_SECTIONS.flatMap((section) => section.fields.map((field) => field.name)))
 );
 
-export const INTERNAL_KOBO_CONTROL_FIELD_NAMES = [
+export const INTERNAL_GEM_CONTROL_FIELD_NAMES = [
   'DISJONCTEUR_GENERAL_EN_TETE_D_',
   'ENSEMBLE_DE_L_INSTALLATION_PRO',
   'PROTECTION_L_ORIGINE_DE_CHAQ',
@@ -479,21 +479,90 @@ export const INTERNAL_KOBO_CONTROL_FIELD_NAMES = [
   'VALEUR_DE_LA_RESISTANCE_DE_TER',
 ];
 
-const INTERNAL_KOBO_FIELD_ALIASES: Record<string, string[]> = {
-  Longueur_Cable_2_5mm_Int_rieure: ['Longueur_c\u00e2ble_2_5mm_Int_rieure'],
-  Longueur_Cable_1_5mm_Int_rieure: ['Longueur_c\u00e2ble_1_5mm_Int_rieure'],
-  Longueur_Tranch_e_Cable_arm_4mm: ['Longueur_Tranch_e_c\u00e2ble_arm_4mm'],
-  Presence_de_Mur: ['New_Question'],
-  Je_confirme_le_marqu_coffrets_lectriques: ['Je_confirme_le_marqu_s_coffret_lectrique'],
+const INTERNAL_GEM_FIELD_ALIASES: Record<string, string[]> = {
+  Longueur_Cable_2_5mm_Int_rieure: ["Longueur_c\u00e2ble_2_5mm_Int_rieure","group_wu8kv54/group_sy9vj14/Longueur_Cable_2_5mm_Int_rieure"],
+  Longueur_Cable_1_5mm_Int_rieure: ["Longueur_c\u00e2ble_1_5mm_Int_rieure","group_wu8kv54/group_sy9vj14/Longueur_Cable_1_5mm_Int_rieure"],
+  Longueur_Tranch_e_Cable_arm_4mm: ["Longueur_Tranch_e_c\u00e2ble_arm_4mm","group_wu8kv54/group_sy9vj14/Longueur_Tranch_e_Cable_arm_4mm"],
+  Presence_de_Mur: ["New_Question"],
+  Je_confirme_le_marqu_coffrets_lectriques: ["Je_confirme_le_marqu_s_coffret_lectrique"],
+  nom_key: ["TYPE_DE_VISITE/nom_key"],
+  telephone_key: ["TYPE_DE_VISITE/telephone_key"],
+  latitude_key: ["TYPE_DE_VISITE/latitude_key"],
+  longitude_key: ["TYPE_DE_VISITE/longitude_key"],
+  region_key: ["TYPE_DE_VISITE/region_key"],
+  LOCALISATION_CLIENT: ["TYPE_DE_VISITE/LOCALISATION_CLIENT"],
+  role: ["TYPE_DE_VISITE/role"],
+  note_Livreur: ["group_wu8kv54/note_Livreur"],
+  Situation_du_M_nage: ["group_wu8kv54/Situation_du_M_nage"],
+  Longueur_Tranch_e_C_ble_arm_1_5mm: ["group_wu8kv54/group_sy9vj14/Longueur_Tranch_e_C_ble_arm_1_5mm"],
+  note_macon_1: ["etape_macon/note_macon_1"],
+  kit_disponible_macon: ["etape_macon/kit_disponible_macon"],
+  problemes_kit_macon: ["etape_macon/problemes_kit_macon"],
+  type_mur_realise_macon: ["etape_macon/type_mur_realise_macon"],
+  problemes_travail_macon: ["etape_macon/problemes_travail_macon"],
+  validation_macon_final: ["etape_macon/validation_macon_final"],
+  note_reseau_1: ["etape_reseau/note_reseau_1"],
+  verification_mur_reseau: ["etape_reseau/verification_mur_reseau"],
+  problemes_mur_reseau: ["etape_reseau/problemes_mur_reseau"],
+  etat_branchement_reseau: ["etape_reseau/etat_branchement_reseau"],
+  problemes_branchement_reseau: ["etape_reseau/problemes_branchement_reseau"],
+  validation_reseau_final: ["etape_reseau/validation_reseau_final"],
+  note_interieur_1: ["etape_interieur/note_interieur_1"],
+  verification_branchement_interieur: ["etape_interieur/verification_branchement_interieur"],
+  problemes_branchement_interieur: ["etape_interieur/problemes_branchement_interieur"],
+  etat_installation_interieur: ["etape_interieur/etat_installation_interieur"],
+  problemes_installation_interieur: ["etape_interieur/problemes_installation_interieur"],
+  validation_interieur_final: ["etape_interieur/validation_interieur_final"],
+  ETAT_DE_L_INSTALLATION: ["etape_controleur/ETAT_DE_L_INSTALLATION"],
+  controleurPROB: ["etape_controleur/controleurPROB"],
+  Phase_de_controle: ["etape_controleur/Phase_de_controle"],
+  ETAT_BRANCHEMENT: ["etape_controleur/group_zw7xz94/ETAT_BRANCHEMENT"],
+  OBSERVATION: ["etape_controleur/group_zw7xz94/OBSERVATION"],
+  Position_du_branchement: ["etape_controleur/group_zw7xz94/group_wr05k35/Position_du_branchement"],
+  Observations_sur_la_ition_du_branchement: ["etape_controleur/group_zw7xz94/group_wr05k35/Observations_sur_la_ition_du_branchement"],
+  Hauteur_branchement: ["etape_controleur/group_zw7xz94/group_wr05k35/Hauteur_branchement"],
+  Observations: ["etape_controleur/group_zw7xz94/group_wr05k35/Observations"],
+  Hauteur_coffret: ["etape_controleur/group_zw7xz94/group_wr05k35/Hauteur_coffret"],
+  Observations_001: ["etape_controleur/group_zw7xz94/group_wr05k35/Observations_001"],
+  Etat_du_coupe_circuit: ["etape_controleur/group_zw7xz94/group_wr05k35/Etat_du_coupe_circuit"],
+  OBSERVATION_001: ["etape_controleur/group_zw7xz94/group_wr05k35/OBSERVATION_001"],
+  Continuit_PVC: ["etape_controleur/group_zw7xz94/group_wr05k35/Continuit_PVC"],
+  OBSERVATION_002: ["etape_controleur/group_zw7xz94/group_wr05k35/OBSERVATION_002"],
+  Mise_en_oeuvre: ["etape_controleur/group_zw7xz94/group_wr05k35/Mise_en_oeuvre"],
+  OBSERVATION_003: ["etape_controleur/group_zw7xz94/group_wr05k35/OBSERVATION_003"],
+  _1_photo_anomalie_si_possible: ["etape_controleur/group_zw7xz94/group_wr05k35/_1_photo_anomalie_si_possible"],
+  DISJONCTEUR_GENERAL_EN_TETE_D_: ["etape_controleur/group_hx7ae46/DISJONCTEUR_GENERAL_EN_TETE_D_"],
+  OBSERVATIONS_: ["etape_controleur/group_hx7ae46/OBSERVATIONS_"],
+  TYPE_DE_DISJONCTEUR_GENERAL: ["etape_controleur/group_hx7ae46/TYPE_DE_DISJONCTEUR_GENERAL"],
+  ENSEMBLE_DE_L_INSTALLATION_PRO: ["etape_controleur/group_hx7ae46/ENSEMBLE_DE_L_INSTALLATION_PRO"],
+  OBSERVATIONS__001: ["etape_controleur/group_hx7ae46/OBSERVATIONS__001"],
+  PROTECTION_L_ORIGINE_DE_CHAQ: ["etape_controleur/group_hx7ae46/PROTECTION_L_ORIGINE_DE_CHAQ"],
+  OBSERVATIONS_002: ["etape_controleur/group_hx7ae46/OBSERVATIONS_002"],
+  S_PARATION_DES_CIRCUITS_Lumi_: ["etape_controleur/group_hx7ae46/S_PARATION_DES_CIRCUITS_Lumi_"],
+  OBSERVATIONS__002: ["etape_controleur/group_hx7ae46/OBSERVATIONS__002"],
+  PROTECTION_CONTACT_D_TOUTE_L_INSTALLATION: ["etape_controleur/group_hx7ae46/PROTECTION_CONTACT_D_TOUTE_L_INSTALLATION"],
+  PROTECTION_CONTRE_LES_CONTACTS: ["etape_controleur/group_hx7ae46/PROTECTION_CONTRE_LES_CONTACTS"],
+  OBSERVATIONS__003: ["etape_controleur/group_hx7ae46/OBSERVATIONS__003"],
+  MISE_EN_OEUVRE_MAT_RIEL_ET_APP: ["etape_controleur/group_hx7ae46/MISE_EN_OEUVRE_MAT_RIEL_ET_APP"],
+  OBSERVATIONS__004: ["etape_controleur/group_hx7ae46/OBSERVATIONS__004"],
+  CONTINUITE_DE_LA_PROTECTION_ME: ["etape_controleur/group_hx7ae46/CONTINUITE_DE_LA_PROTECTION_ME"],
+  OBSERVATIONS__005: ["etape_controleur/group_hx7ae46/OBSERVATIONS__005"],
+  RESEAU_DE_TERRE_A_VE_TOUTE_L_INSTALLATION: ["etape_controleur/group_hx7ae46/RESEAU_DE_TERRE_A_VE_TOUTE_L_INSTALLATION"],
+  MISE_EN_UVRE_DU_R_SEAU_DE_TER: ["etape_controleur/group_hx7ae46/MISE_EN_UVRE_DU_R_SEAU_DE_TER"],
+  OBSERVATIONS__006: ["etape_controleur/group_hx7ae46/OBSERVATIONS__006"],
+  ETAT_DE_LA_BARRETTE_DE_TERRE: ["etape_controleur/group_hx7ae46/ETAT_DE_LA_BARRETTE_DE_TERRE"],
+  VALEUR_DE_LA_RESISTANCE_DE_TER: ["etape_controleur/group_hx7ae46/VALEUR_DE_LA_RESISTANCE_DE_TER"],
+  OBSERVATIONS__007: ["etape_controleur/group_hx7ae46/OBSERVATIONS__007"],
+  validation_controleur_final: ["etape_controleur/validation_controleur_final"]
 };
 
 const NON_NEGATIVE_INTEGER_FIELDS = new Set(
-  INTERNAL_KOBO_SECTIONS.flatMap((section) =>
+  INTERNAL_GEM_SECTIONS.flatMap((section) =>
     section.fields.filter((field) => field.type === 'integer').map((field) => field.name)
   )
 );
 
-const parseKoboNumber = (value: unknown) => {
+const parseGemNumber = (value: unknown) => {
   if (typeof value === 'number') return Number.isFinite(value) ? value : null;
   const normalized = String(value ?? '').trim().replace(',', '.');
   if (!normalized) return null;
@@ -502,12 +571,12 @@ const parseKoboNumber = (value: unknown) => {
 };
 
 const isValidLatitude = (value: unknown) => {
-  const number = parseKoboNumber(value);
+  const number = parseGemNumber(value);
   return number !== null && number >= -90 && number <= 90;
 };
 
 const isValidLongitude = (value: unknown) => {
-  const number = parseKoboNumber(value);
+  const number = parseGemNumber(value);
   return number !== null && number >= -180 && number <= 180;
 };
 
@@ -518,17 +587,17 @@ const parseGeopoint = (value: unknown) => {
     .filter(Boolean);
   if (parts.length < 2) return null;
   return {
-    latitude: parseKoboNumber(parts[0]),
-    longitude: parseKoboNumber(parts[1]),
+    latitude: parseGemNumber(parts[0]),
+    longitude: parseGemNumber(parts[1]),
   };
 };
 
-const getInternalKoboConstraintMessage = (field: InternalKoboField, values: Record<string, unknown>) => {
-  const value = getInternalKoboFieldValue(field, values);
-  if (!hasInternalKoboValue(value)) return '';
+const getInternalGemConstraintMessage = (field: InternalGemField, values: Record<string, unknown>) => {
+  const value = getInternalGemFieldValue(field, values);
+  if (!hasInternalGemValue(value)) return '';
 
   if (field.name === 'Numero_ordre') {
-    const number = parseKoboNumber(value);
+    const number = parseGemNumber(value);
     return number !== null && Number.isInteger(number) && number > 0
       ? ''
       : 'Le numero ordre doit etre un entier positif.';
@@ -550,7 +619,7 @@ const getInternalKoboConstraintMessage = (field: InternalKoboField, values: Reco
   }
 
   if (NON_NEGATIVE_INTEGER_FIELDS.has(field.name)) {
-    const number = parseKoboNumber(value);
+    const number = parseGemNumber(value);
     return number !== null && Number.isInteger(number) && number >= 0
       ? ''
       : 'La valeur doit etre un entier positif ou nul.';
@@ -559,40 +628,40 @@ const getInternalKoboConstraintMessage = (field: InternalKoboField, values: Reco
   return '';
 };
 
-export const isTruthyKoboValue = (value: unknown) =>
+export const isTruthyGemValue = (value: unknown) =>
   value === true || value === 'true' || value === 'yes' || value === 'oui' || value === '1';
 
-export const hasInternalKoboValue = (value: unknown) => {
+export const hasInternalGemValue = (value: unknown) => {
   if (Array.isArray(value)) return value.length > 0;
   return value !== undefined && value !== null && String(value).trim() !== '';
 };
 
-export const getInternalKoboFieldValue = (
-  field: InternalKoboField,
+export const getInternalGemFieldValue = (
+  field: InternalGemField,
   values: Record<string, unknown>
 ) => {
   const value = values[field.name];
-  return hasInternalKoboValue(value) ? value : field.defaultValue;
+  return hasInternalGemValue(value) ? value : field.defaultValue;
 };
 
-export const hasInternalKoboRequiredValue = (
-  field: InternalKoboField,
+export const hasInternalGemRequiredValue = (
+  field: InternalGemField,
   values: Record<string, unknown>
 ) => {
-  const value = getInternalKoboFieldValue(field, values);
-  if (field.type === 'acknowledge') return isTruthyKoboValue(value);
-  return hasInternalKoboValue(value);
+  const value = getInternalGemFieldValue(field, values);
+  if (field.type === 'acknowledge') return isTruthyGemValue(value);
+  return hasInternalGemValue(value);
 };
 
-export const getInternalKoboSubmissionValues = (values: Record<string, unknown>) => {
+export const getInternalGemSubmissionValues = (values: Record<string, unknown>) => {
   const submissionValues: Record<string, unknown> = {};
 
-  getVisibleInternalKoboFields(values).forEach((field) => {
+  getVisibleInternalGemFields(values).forEach((field) => {
     if (field.type === 'note') return;
-    const value = getInternalKoboFieldValue(field, values);
-    if (hasInternalKoboValue(value)) {
+    const value = getInternalGemFieldValue(field, values);
+    if (hasInternalGemValue(value)) {
       submissionValues[field.name] = value;
-      INTERNAL_KOBO_FIELD_ALIASES[field.name]?.forEach((alias) => {
+      INTERNAL_GEM_FIELD_ALIASES[field.name]?.forEach((alias) => {
         submissionValues[alias] = value;
       });
     }
@@ -617,13 +686,13 @@ const evaluateAtomicRelevant = (expression: string, values: Record<string, unkno
   }
 
   const presence = cleaned.match(/^\$\{([^}]+)\}$/);
-  if (presence) return hasInternalKoboValue(getValue(values, presence[1]));
+  if (presence) return hasInternalGemValue(getValue(values, presence[1]));
 
   return true;
 };
 
-export const isInternalKoboFieldVisible = (
-  field: InternalKoboField,
+export const isInternalGemFieldVisible = (
+  field: InternalGemField,
   values: Record<string, unknown>
 ) => {
   if (!field.relevant) return true;
@@ -637,7 +706,7 @@ export const isInternalKoboFieldVisible = (
     );
 };
 
-const dedupeFieldsByName = (fields: InternalKoboField[]) => {
+const dedupeFieldsByName = (fields: InternalGemField[]) => {
   const seen = new Set<string>();
   return fields.filter((field) => {
     if (seen.has(field.name)) return false;
@@ -646,48 +715,48 @@ const dedupeFieldsByName = (fields: InternalKoboField[]) => {
   });
 };
 
-export const getVisibleInternalKoboFields = (values: Record<string, unknown>) =>
+export const getVisibleInternalGemFields = (values: Record<string, unknown>) =>
   dedupeFieldsByName(
-    INTERNAL_KOBO_SECTIONS.flatMap((section) =>
-      section.fields.filter((field) => isInternalKoboFieldVisible(field, values))
+    INTERNAL_GEM_SECTIONS.flatMap((section) =>
+      section.fields.filter((field) => isInternalGemFieldVisible(field, values))
     )
   );
 
-export const validateInternalKoboRequiredFields = (values: Record<string, unknown>) =>
-  getVisibleInternalKoboFields(values).filter(
-    (field) => field.type !== 'note' && field.required && !hasInternalKoboRequiredValue(field, values)
+export const validateInternalGemRequiredFields = (values: Record<string, unknown>) =>
+  getVisibleInternalGemFields(values).filter(
+    (field) => field.type !== 'note' && field.required && !hasInternalGemRequiredValue(field, values)
   );
 
-export const validateInternalKoboConstraintFields = (
+export const validateInternalGemConstraintFields = (
   values: Record<string, unknown>
-): InternalKoboValidationIssue[] =>
-  getVisibleInternalKoboFields(values)
+): InternalGemValidationIssue[] =>
+  getVisibleInternalGemFields(values)
     .filter((field) => field.type !== 'note')
     .map((field) => ({
       field,
       type: 'constraint' as const,
-      message: field.constraintMessage || getInternalKoboConstraintMessage(field, values),
+      message: field.constraintMessage || getInternalGemConstraintMessage(field, values),
     }))
     .filter((issue) => Boolean(issue.message));
 
-export const validateInternalKoboFields = (
+export const validateInternalGemFields = (
   values: Record<string, unknown>
-): InternalKoboValidationIssue[] => [
-  ...validateInternalKoboRequiredFields(values).map((field) => ({
+): InternalGemValidationIssue[] => [
+  ...validateInternalGemRequiredFields(values).map((field) => ({
     field,
     type: 'required' as const,
-    message: 'Champ obligatoire pour cette branche Kobo.',
+    message: 'Champ obligatoire pour cette branche GEM.',
   })),
-  ...validateInternalKoboConstraintFields(values),
+  ...validateInternalGemConstraintFields(values),
 ];
 
-export const formatInternalKoboValue = (value: unknown, listName?: string): string => {
+export const formatInternalGemValue = (value: unknown, listName?: string): string => {
   if (Array.isArray(value)) {
-    return value.map((item): string => formatInternalKoboValue(item, listName)).join(', ');
+    return value.map((item): string => formatInternalGemValue(item, listName)).join(', ');
   }
   if (typeof value === 'boolean') return value ? 'Oui' : 'Non';
   const raw = String(value ?? '');
   if (!raw) return '';
-  const option = listName ? INTERNAL_KOBO_CHOICES[listName]?.find((choice) => choice.name === raw) : null;
+  const option = listName ? INTERNAL_GEM_CHOICES[listName]?.find((choice) => choice.name === raw) : null;
   return option?.label || raw.replace(/_/g, ' ');
 };

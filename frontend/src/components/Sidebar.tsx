@@ -36,7 +36,6 @@ import {
   normalizeRole,
   ROLES,
   isMasterAdmin,
-  getMissionLabel,
   type UserRole,
 } from '../utils/permissions';
 import { useProject } from '../contexts/ProjectContext';
@@ -68,7 +67,7 @@ export default function Sidebar() {
     () => isMaster || nRole === ROLES.ADMIN || nRole === ROLES.DG || nRole === ROLES.COMPTABLE,
     [isMaster, nRole]
   );
-  const missionLabel = getMissionLabel(user);
+  const missionLabel = 'Missions';
   const roleLabels = useMemo<Partial<Record<UserRole, string>>>(() => ({
     [ROLES.ADMIN]: 'Admin',
     [ROLES.ADMIN_ALT]: 'Admin',
@@ -112,7 +111,7 @@ export default function Sidebar() {
     icon: any;
     label: string;
     title: string; // Plain explanation for hover
-    permission?: string;
+    permission?: string | string[];
     visible?: boolean;
     category: 'PILOTAGE' | 'OPÉRATIONS' | 'SYSTÈME';
   }
@@ -139,7 +138,7 @@ export default function Sidebar() {
         icon: BarChart3,
         label: 'Charge',
         title: 'Renseignez les budgets prévus, coûts réels et écarts financiers',
-        permission: PERMISSIONS.VOIR_FINANCES,
+        permission: [PERMISSIONS.VOIR_FINANCES, PERMISSIONS.VOIR_PAIEMENTS],
         visible: canAccessCharges,
         category: 'PILOTAGE',
       },
@@ -156,7 +155,7 @@ export default function Sidebar() {
         icon: FileText,
         label: 'Cahier de Charge',
         title: 'Consultez les spécifications techniques et les rapports détaillés',
-        permission: PERMISSIONS.VOIR_RAPPORTS,
+        permission: [PERMISSIONS.VOIR_RAPPORTS_TERRAIN, PERMISSIONS.VOIR_RAPPORTS_FINANCIERS],
         category: 'PILOTAGE',
       },
       {
@@ -241,17 +240,25 @@ export default function Sidebar() {
       {
         to: '/admin/kobo-terminal',
         icon: Terminal,
-        label: 'Terminal Kobo',
-        title: 'Interface de commande directe pour la sync KoboToolbox',
+        label: 'Terminal KoboToolbox',
+        title: 'API officielle KoboCollect pour la synchronisation',
         permission: PERMISSIONS.ACCES_TERMINAL_KOBO,
         category: 'SYSTÈME',
       },
       {
         to: '/admin/internal-kobo',
         icon: ClipboardCheck,
-        label: 'Soumissions Kobo',
-        title: 'Auditez les fiches terrain natives soumises au serveur VPS',
+        label: 'GEM Toolbox',
+        title: 'GEM Toolbox - Fiches terrain natives soumises directement au VPS',
         permission: PERMISSIONS.ACCES_TERMINAL_KOBO,
+        category: 'SYSTÈME',
+      },
+      {
+        to: '/admin/gem-collect',
+        icon: Activity,
+        label: 'GEM Collect',
+        title: 'GEM Collect - Moteur de saisie terrain universel GEM',
+        permission: PERMISSIONS.VOIR_CARTE,
         category: 'SYSTÈME',
       },
       {

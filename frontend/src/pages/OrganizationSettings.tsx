@@ -53,7 +53,7 @@ interface OrgConfig {
     household?: { singular: string; plural: string };
     zone?: { singular: string; plural: string };
   };
-  features?: { koboTerminal?: boolean };
+  features?: { koboTerminal?: boolean; useGemCollect?: boolean };
   terrainFeatures?: TerrainFeatureConfig;
 }
 
@@ -807,9 +807,16 @@ export default function OrganizationSettings() {
                         {
                           key: 'koboTerminal' as const,
                           title: 'Terminal KoboToolbox',
-                          desc: 'Accès au terminal de synchronisation brute pour les agents habilités.',
+                          desc: 'Activer la synchronisation avec l\'API KoboCollect (Serveurs KoboToolbox externes).',
                           color: 'blue',
                           icon: <Globe size={18} className="text-blue-400" />,
+                        },
+                        {
+                          key: 'useGemCollect' as const,
+                          title: 'Saisie Terrain VPS (GEM Toolbox)',
+                          desc: 'Activer le module d\'application terrain natif et indépendant avec soumission directe sur notre serveur.',
+                          color: 'emerald',
+                          icon: <Zap size={18} className="text-emerald-400" />,
                         },
                       ].map((feat) => (
                         <div
@@ -893,6 +900,10 @@ export default function OrganizationSettings() {
                             {
                               name: 'Synchronisation Kobo',
                               active: !!config.features?.koboTerminal,
+                            },
+                            {
+                              name: 'App GEM Collect',
+                              active: !!config.features?.useGemCollect,
                             },
                             { name: 'Bordereau de Paiement', active: true },
                             { name: 'Ordres de Mission', active: true },

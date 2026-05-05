@@ -1,4 +1,4 @@
-﻿ 
+ 
 import React, { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
@@ -68,6 +68,10 @@ const InternalKoboSubmissions = lazyWithRetry(
   () => import('./pages/InternalKoboSubmissions'),
   'lazy:internal-kobo-submissions'
 );
+const GemCollect = lazyWithRetry(
+  () => import('./pages/GemCollect'),
+  'lazy:gem-collect'
+);
 const KoboMappingMaster = lazyWithRetry(
   () => import('./pages/KoboMappingMaster'),
   'lazy:kobo-mapping'
@@ -103,7 +107,7 @@ const PermissionRoute = ({
   permission,
 }: {
   children: React.ReactNode;
-  permission: string;
+  permission: string | string[];
 }) => {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
@@ -167,7 +171,7 @@ function App() {
               path="/cahier"
               element={
                 <ProtectedRoute>
-                  <PermissionRoute permission={PERMISSIONS.VOIR_RAPPORTS}>
+                  <PermissionRoute permission={[PERMISSIONS.VOIR_RAPPORTS_TERRAIN, PERMISSIONS.VOIR_RAPPORTS_FINANCIERS]}>
                     <Cahier />
                   </PermissionRoute>
                 </ProtectedRoute>
@@ -324,6 +328,17 @@ function App() {
                 <ProtectedRoute>
                   <PermissionRoute permission={PERMISSIONS.ACCES_TERMINAL_KOBO}>
                     <InternalKoboSubmissions />
+                  </PermissionRoute>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/admin/gem-collect"
+              element={
+                <ProtectedRoute>
+                  <PermissionRoute permission={PERMISSIONS.VOIR_CARTE}>
+                    <GemCollect />
                   </PermissionRoute>
                 </ProtectedRoute>
               }

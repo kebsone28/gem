@@ -5,9 +5,21 @@ import { tracerAction } from '../../services/audit.service.js';
 import logger from '../../utils/logger.js';
 
 const resolveMergedPermissions = (user) => {
+    // 1. Récupérer les permissions du rôle (si disponible)
     const rolePermissions = user.role?.permissions?.map(p => p.permission.key) || [];
-    const userOverrides = Array.isArray(user.permissions) ? user.permissions : [];
-    return userOverrides.length > 0 ? userOverrides : rolePermissions;
+    
+    // 2. Vérifier les surcharges (Overrides)
+    // Si user.permissions est NULL ou UNDEFINED -> On utilise le comportement par défaut (Rôle)
+    if (user.permissions === null || user.permissions === undefined) {
+        return rolePermissions;
+    }
+    
+    // 3. Si c'est un tableau (même vide []), c'est une surcharge explicite
+    if (Array.isArray(user.permissions)) {
+        return user.permissions;
+    }
+    
+    return rolePermissions;
 };
 
 const buildSessionUser = (user) => ({

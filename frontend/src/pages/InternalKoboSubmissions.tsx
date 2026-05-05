@@ -17,6 +17,7 @@ import {
   CheckSquare,
   ClipboardCheck,
   Clock3,
+  Cloud,
   Copy,
   CornerUpLeft,
   Database,
@@ -75,9 +76,10 @@ import {
   type InternalKoboSubmissionStatus,
 } from '../services/internalKoboSubmissionService';
 import {
-  formatInternalKoboValue,
-  INTERNAL_KOBO_CHOICES,
-  INTERNAL_KOBO_FORM_SETTINGS,
+  formatInternalGemValue,
+  INTERNAL_GEM_CHOICES,
+  INTERNAL_GEM_FORM_SETTINGS,
+  INTERNAL_GEM_SECTIONS,
 } from '../components/terrain/internalKoboFormDefinition';
 import {
   formatKoboSourceColumnLabel,
@@ -99,7 +101,7 @@ type MainTab = 'summary' | 'form' | 'data' | 'settings';
 type DataTab = 'table' | 'reports' | 'gallery' | 'downloads' | 'map';
 type WorkspaceSection = 'new' | 'deployed' | 'drafts' | 'archives';
 type NewProjectStep = 'source' | 'details' | null;
-type BuilderMode = 'blank' | 'template' | 'import' | 'url';
+type BuilderMode = 'blank' | 'template' | 'import' | 'url' | 'internal_gem';
 type BuilderQuestionType =
   | 'begin_group'
   | 'begin_repeat'
@@ -419,14 +421,16 @@ const builderQuestionLibrary: Array<{
 
 const makeQuestionId = () => `q_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 
-const normalizeBuilderName = (value: string, fallback: string) =>
-  (value || fallback)
+const normalizeBuilderName = (value: string, fallback: string) => {
+  if (!value) return fallback;
+  const normalized = value
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '')
-    .slice(0, 48) || fallback;
+    .replace(/[^a-z0-9_]+/g, '_')
+    .replace(/_+$/g, '');
+  return (normalized || fallback).slice(0, 48);
+};
 
 const getBlankBuilderQuestions = (): BuilderQuestion[] => [
   {
@@ -475,6 +479,44 @@ const getTemplateBuilderQuestions = (): BuilderQuestion[] => [
   },
 ];
 
+const getInternalGemBuilderQuestions = (): BuilderQuestion[] => {
+  const questions: BuilderQuestion[] = [];
+  const usedNames = new Set<string>();
+
+  INTERNAL_GEM_SECTIONS.forEach((section) => {
+    section.fields.forEach((field) => {
+      const typePart = field.type.split(' ')[0];
+      const type = (typePart === 'select_one' || typePart === 'select_multiple' || typePart === 'rank' || typePart === 'text' || typePart === 'integer' || typePart === 'decimal' || typePart === 'note' || typePart === 'geopoint' || typePart === 'image' || typePart === 'signature' || typePart === 'file' || typePart === 'date' || typePart === 'datetime' || typePart === 'calculate' || typePart === 'hidden' ? typePart : 'text') as BuilderQuestionType;
+      
+      let name = field.name;
+      if (usedNames.has(name) && !['Numero_ordre', 'nom_key', 'telephone_key', 'latitude_key', 'longitude_key', 'region_key', 'role'].includes(name)) {
+        name = `${name}_${section.id}`;
+      }
+      usedNames.add(name);
+
+      const listName = field.listName || (field.type.includes(' ') ? field.type.split(' ')[1] : undefined);
+      
+      const choices = listName && (INTERNAL_GEM_CHOICES as any)[listName]
+        ? (INTERNAL_GEM_CHOICES as any)[listName].map((c: any) => ({ name: c.name, label: c.label }))
+        : undefined;
+
+      questions.push({
+        id: makeQuestionId(),
+        type,
+        name,
+        label: field.label,
+        hint: field.hint,
+        required: field.required,
+        listName,
+        choices,
+        relevant: field.relevant,
+        readOnly: field.readOnly,
+      });
+    });
+  });
+  return questions;
+};
+
 const builderQuestionTypeLabel: Record<BuilderQuestionType, string> = {
   begin_group: 'grp',
   begin_repeat: 'rep',
@@ -511,7 +553,8 @@ const getBuilderTypeForSurvey = (question: BuilderQuestion) => {
   if (question.type === 'select_multiple') return `select_multiple ${question.listName || 'oui_non'}`;
   if (question.type === 'select_one_from_file') return `select_one_from_file ${question.listName || 'external_choices.csv'}`;
   if (question.type === 'select_multiple_from_file') return `select_multiple_from_file ${question.listName || 'external_choices.csv'}`;
-  if (question.type === 'rank') return `rank ${question.listName || 'rank_options'}`;
+  if (question.type === 'rank') return 'text'; // Rank is often problematic, fallback to text
+  if (question.type === 'acknowledge') return 'trigger'; // trigger is standard XLSForm for acknowledge
   if (question.type === 'xml_external') return 'xml-external';
   return question.type;
 };
@@ -575,7 +618,7 @@ const auditBuilderProject = (projectDraft: ProjectDraft, questions: BuilderQuest
   const issues: BuilderAuditIssue[] = [];
   const names = questions.map((question) => question.name.trim()).filter(Boolean);
   const duplicateNames = names.filter((name, index) => names.indexOf(name) !== index);
-  const normalizedRoleNames = new Set(INTERNAL_KOBO_CHOICES.roles.map((role) => role.name));
+  const normalizedRoleNames = new Set(INTERNAL_GEM_CHOICES.roles.map((role) => role.name));
 
   if (!projectDraft.title.trim()) {
     issues.push({
@@ -759,7 +802,7 @@ const auditBuilderProject = (projectDraft: ProjectDraft, questions: BuilderQuest
         questionId: roleQuestion.id,
       });
     }
-    const roleChoices = (roleQuestion.choices || INTERNAL_KOBO_CHOICES.roles).map((choice) => choice.name);
+    const roleChoices = (roleQuestion.choices || INTERNAL_GEM_CHOICES.roles).map((choice) => choice.name);
     if (!roleChoices.some((role) => normalizedRoleNames.has(role))) {
       issues.push({
         level: 'warning',
@@ -866,14 +909,14 @@ const getKoboTableValue = (submission: InternalKoboSubmissionRecord, column: Kob
 const formatKoboTableCellValue = (submission: InternalKoboSubmissionRecord, column: KoboTableColumn) => {
   const value = getKoboTableValue(submission, column);
   if (column.kind === 'date') return formatDateTime(String(value || ''));
-  if (column.listName) return formatInternalKoboValue(String(value || ''), column.listName) || String(value || '');
+  if (column.listName) return formatInternalGemValue(String(value || ''), column.listName) || String(value || '');
   if (Array.isArray(value)) return value.join(', ');
   return String(value ?? '');
 };
 
 const normalizeBucketLabel = (bucket: 'status' | 'role' | 'sync' | 'version', value: string) => {
   if (bucket === 'status') return statusLabels[value] || value || 'Non defini';
-  if (bucket === 'role') return formatInternalKoboValue(value, 'roles') || value || 'Role non defini';
+  if (bucket === 'role') return formatInternalGemValue(value, 'roles') || value || 'Role non defini';
   if (bucket === 'sync') return value || 'Non synchronise';
   return value ? `v${value}` : 'Version inconnue';
 };
@@ -1184,7 +1227,7 @@ export default function InternalKoboSubmissions() {
     defaultLanguage: 'fr',
     languages: ['fr'],
     ownerTeam: 'terrain',
-    allowedRoles: INTERNAL_KOBO_CHOICES.roles.map((role) => role.name),
+    allowedRoles: INTERNAL_GEM_CHOICES.roles.map((role) => role.name),
     allowOffline: true,
     requireLatestVersion: true,
     draftMigrationMode: 'migrate',
@@ -1276,8 +1319,14 @@ export default function InternalKoboSubmissions() {
         offset: filters.offset,
       };
       const [report, diagnostics] = await Promise.all([
-        fetchInternalKoboSubmissionsReport(cleanFilters),
-        fetchInternalKoboDiagnostics(),
+        fetchInternalKoboSubmissionsReport(cleanFilters).catch((err) => {
+          console.error('Error fetching submissions report:', err);
+          return { submissions: [], count: 0, diagnostics: null };
+        }),
+        fetchInternalKoboDiagnostics().catch((err) => {
+          console.error('Error fetching diagnostics:', err);
+          return null;
+        }),
       ]);
       setSubmissions(report.submissions);
       setSubmissionTotalCount(report.count || report.submissions.length);
@@ -1289,7 +1338,7 @@ export default function InternalKoboSubmissions() {
           : report.submissions[0]?.id || ''
       );
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Impossible de charger les soumissions Kobo internes');
+      setError(loadError instanceof Error ? loadError.message : 'Impossible de charger les soumissions GEM');
     } finally {
       setIsLoading(false);
     }
@@ -1549,12 +1598,20 @@ export default function InternalKoboSubmissions() {
       return;
     }
     resetBuilderHistory();
-    setBuilderQuestions(mode === 'blank' ? getBlankBuilderQuestions() : getTemplateBuilderQuestions());
+    let questions: BuilderQuestion[] = [];
+    if (mode === 'blank') {
+      questions = getBlankBuilderQuestions();
+    } else if (mode === 'internal_gem') {
+      questions = getInternalGemBuilderQuestions();
+    } else {
+      questions = getTemplateBuilderQuestions();
+    }
+    setBuilderQuestions(questions);
     setSelectedBuilderQuestionId('');
     setProjectDraft((current) => ({
       ...current,
-      title: current.title || (mode === 'template' ? 'Copie de Suivi Electrification menages V2' : ''),
-      description: current.description || (mode === 'template' ? 'Formulaire cree a partir de la structure Kobo active.' : ''),
+      title: current.title || (mode === 'internal_gem' ? 'GEM Collect Natif' : mode === 'template' ? 'Copie de Suivi Electrification menages V2' : ''),
+      description: current.description || (mode === 'internal_gem' ? 'Structure native du moteur de saisie terrain GEM.' : mode === 'template' ? 'Formulaire cree a partir de la structure Kobo active.' : ''),
     }));
     setNewProjectStep('details');
   };
@@ -1816,10 +1873,17 @@ export default function InternalKoboSubmissions() {
       if (question.constraintMessage) row[`constraint_message::${languageMeta.xlsLabel}`] = question.constraintMessage;
     });
 
-    return row;
+    const cleanRow: Record<string, unknown> = {};
+    Object.entries(row).forEach(([key, val]) => {
+      if (val !== undefined && val !== null && val !== '') {
+        cleanRow[key] = val;
+      }
+    });
+
+    return cleanRow;
   };
 
-  const buildBuilderSurvey = () => {
+  const buildBuilderSurvey = (questions: BuilderQuestion[] = builderQuestions) => {
     const rows: Array<Record<string, unknown>> = [
       { type: 'start', name: 'start' },
       { type: 'end', name: 'end' },
@@ -1832,7 +1896,6 @@ export default function InternalKoboSubmissions() {
         if (openSection) {
           rows.push({
             type: openSection.type === 'begin_group' ? 'end_group' : 'end_repeat',
-            name: `${openSection.name}_end`,
           });
         }
         rows.push(buildSurveyRowFromQuestion(question));
@@ -1848,26 +1911,50 @@ export default function InternalKoboSubmissions() {
     if (openSection) {
       rows.push({
         type: openSection.type === 'begin_group' ? 'end_group' : 'end_repeat',
-        name: `${openSection.name}_end`,
       });
     }
-    rows.push({ type: 'end_group', name: 'TYPE_DE_VISITE_end' });
+    rows.push({ type: 'end_group' });
     return rows;
   };
 
-  const buildBuilderChoices = () =>
-    builderQuestions.flatMap((question) =>
-      (question.choices || []).map((choice) => ({
-        list_name: question.listName || `${question.name}_choices`,
-        name: normalizeBuilderName(choice.name || choice.label, 'choice'),
-        label: choice.label,
-        ...projectDraft.languages.reduce<Record<string, string>>((acc, language) => {
-          const languageMeta = getBuilderLanguageMeta(language);
-          acc[`label::${languageMeta.xlsLabel}`] = choice.label;
-          return acc;
-        }, {}),
-      }))
-    );
+  const buildBuilderChoices = (questions: BuilderQuestion[] = builderQuestions) => {
+    const choices: Array<Record<string, string>> = [];
+    const seen = new Set<string>();
+    
+    // IMPORTANT: The backend already injects these base lists via getBuilderBaseChoices().
+    // Sending them again causes duplicate list_name/name entries → XLSForm parser crash → 500.
+    const BACKEND_MANAGED_LISTS = new Set(['roles', 'oui_non']);
+
+    questions.forEach((question) => {
+      (question.choices || []).forEach((choice) => {
+        const listName = question.listName || `${question.name}_choices`;
+        
+        // Skip any list the backend already manages
+        if (BACKEND_MANAGED_LISTS.has(listName)) return;
+
+        const name = normalizeBuilderName(choice.name || choice.label, 'choice');
+        const key = `${listName}|${name}`;
+        
+        if (!seen.has(key)) {
+          seen.add(key);
+          const row: Record<string, string> = {
+            list_name: listName,
+            name: name,
+            label: choice.label,
+          };
+          
+          projectDraft.languages.forEach((language) => {
+            const languageMeta = getBuilderLanguageMeta(language);
+            row[`label::${languageMeta.xlsLabel}`] = choice.label;
+          });
+          
+          choices.push(row);
+        }
+      });
+    });
+    
+    return choices;
+  };
 
   const handleSaveBuilderProject = async () => {
     if (!projectDraft.title.trim()) {
@@ -1984,7 +2071,7 @@ export default function InternalKoboSubmissions() {
         defaultLanguage: 'fr',
         languages: ['fr', 'en'],
         ownerTeam: 'terrain',
-        allowedRoles: INTERNAL_KOBO_CHOICES.roles.map((role) => role.name),
+        allowedRoles: INTERNAL_GEM_CHOICES.roles.map((role) => role.name),
         allowOffline: true,
         requireLatestVersion: true,
         draftMigrationMode: 'migrate',
@@ -2061,8 +2148,8 @@ export default function InternalKoboSubmissions() {
       const result = await createInternalKoboFormDefinition({
         title,
         description: mode === 'template'
-          ? 'Modele cree depuis la definition Kobo active.'
-          : 'Clone cree depuis la definition Kobo active.',
+          ? 'Modèle créé depuis la définition GEM active.'
+          : 'Clone créé depuis la définition GEM active.',
         sector: 'Energie',
         country: 'Senegal',
         sourceType: mode,
@@ -2084,6 +2171,49 @@ export default function InternalKoboSubmissions() {
       setError(cloneError instanceof Error ? cloneError.message : 'Creation de la copie impossible');
     } finally {
       setFormToolBusyKey('');
+    }
+  };
+
+  const handleDeployInternalGemForm = async () => {
+    setIsSavingBuilder(true);
+    setError('');
+    setFormManagerMessage('');
+    try {
+      const questions = getInternalGemBuilderQuestions();
+      const title = 'GEM Collect Natif Dynamique';
+      const formId = normalizeBuilderName(`${title}_${Date.now()}`, 'gem_collect_natif');
+      
+      const result = await createInternalKoboFormDefinition({
+        title,
+        description: 'Structure native GEM migree en definition dynamique.',
+        sector: 'Energie',
+        country: 'Senegal',
+        sourceType: 'internal_gem',
+        activate: true,
+        survey: buildBuilderSurvey(questions),
+        choices: buildBuilderChoices(questions),
+        defaultLanguage: projectDraft.defaultLanguage,
+        settings: {
+          default_language: getBuilderLanguageMeta(projectDraft.defaultLanguage).xlsLabel,
+          style: 'pages',
+          languages: projectDraft.languages.map(l => getBuilderLanguageMeta(l).xlsLabel),
+          gem_permissions: {
+            ownerTeam: 'admin',
+            allowedRoles: INTERNAL_GEM_CHOICES.roles.map(r => r.name),
+            allowOffline: true,
+            requireLatestVersion: true,
+            draftMigrationMode: 'block',
+          },
+        },
+      });
+      
+      setFormManagerMessage(`Formulaire natif deploye: ${result.form?.title || title}`);
+      await loadFormDefinitions();
+      setWorkspaceSection('deployed');
+    } catch (deployError) {
+      setError(deployError instanceof Error ? deployError.message : 'Deploiement du formulaire natif impossible');
+    } finally {
+      setIsSavingBuilder(false);
     }
   };
 
@@ -2264,7 +2394,7 @@ export default function InternalKoboSubmissions() {
           if (!filter) return true;
           const rawValue = getKoboTableValue(submission, column);
           const displayValue = column.listName
-            ? formatInternalKoboValue(String(rawValue || ''), column.listName) || rawValue
+            ? formatInternalGemValue(String(rawValue || ''), column.listName) || rawValue
             : rawValue;
           return String(displayValue || '').toLowerCase().includes(filter);
         })
@@ -2293,8 +2423,8 @@ export default function InternalKoboSubmissions() {
   return (
     <PageContainer className="min-h-screen bg-slate-950 py-8">
       <PageHeader
-        title="Soumissions Kobo interne"
-        subtitle="Console VPS pour verifier, exporter et auditer les fiches terrain natives GEM"
+        title="GEM Toolbox"
+        subtitle="Console d'administration pour vérifier, exporter et auditer les fiches terrain GEM"
         icon={<ClipboardCheck size={24} />}
         actions={
           <div className="flex flex-wrap gap-2">
@@ -2372,7 +2502,7 @@ export default function InternalKoboSubmissions() {
           <section className="overflow-hidden rounded-3xl border border-white/10 bg-slate-900/55">
             <div className="grid grid-cols-1 xl:grid-cols-[260px_1fr]">
               <aside className="border-b border-white/10 bg-slate-950/35 p-4 xl:border-b-0 xl:border-r">
-                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-100">Kobo workspace</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-100">Workspace GEM Toolbox</p>
                 <h2 className="mt-2 text-lg font-black text-white">{KOBO_SOURCE_SNAPSHOT.name}</h2>
                 <p className="mt-1 text-[11px] font-semibold text-slate-500">
                   Miroir interne GEM, soumission directe au VPS.
@@ -2717,7 +2847,7 @@ export default function InternalKoboSubmissions() {
                                   className="h-9 w-full rounded border border-slate-200 bg-white px-2 text-sm font-medium text-slate-900 outline-none"
                                 >
                                   <option value="">Afficher tout</option>
-                                  {(column.listName ? INTERNAL_KOBO_CHOICES[column.listName] || [] : []).map((choice) => (
+                                  {(column.listName ? INTERNAL_GEM_CHOICES[column.listName] || [] : []).map((choice) => (
                                     <option key={choice.name} value={choice.label}>{choice.label}</option>
                                   ))}
                                 </select>
@@ -2818,7 +2948,7 @@ export default function InternalKoboSubmissions() {
                             {selectedSubmission.household?.name || `Menage ${selectedSubmission.numeroOrdre || '-'}`}
                           </h3>
                           <p className="mt-1 text-sm font-semibold text-slate-600">
-                            {formatInternalKoboValue(selectedSubmission.role || '', 'roles')} - {formatDateTime(selectedSubmission.savedAt)}
+                            {formatInternalGemValue(selectedSubmission.role || '', 'roles')} - {formatDateTime(selectedSubmission.savedAt)}
                           </p>
                           <button
                             type="button"
@@ -2881,7 +3011,7 @@ export default function InternalKoboSubmissions() {
               className="h-12 rounded-2xl border border-white/10 bg-slate-900 px-4 text-xs font-black uppercase tracking-[0.1em] text-white outline-none"
             >
               <option value="">Tous roles</option>
-              {INTERNAL_KOBO_CHOICES.roles.map((role) => (
+              {INTERNAL_GEM_CHOICES.roles.map((role) => (
                 <option key={role.name} value={role.name}>
                   {role.label}
                 </option>
@@ -2961,6 +3091,7 @@ export default function InternalKoboSubmissions() {
                     <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
                       {[
                         { id: 'blank' as BuilderMode, label: 'Construction du formulaire', icon: Pencil, help: 'Creer les questions une par une dans le builder GEM.' },
+                        { id: 'internal_gem' as BuilderMode, label: 'GEM Collect Natif', icon: Activity, help: 'Importer la structure native du moteur de saisie terrain.' },
                         { id: 'template' as BuilderMode, label: 'Utiliser un modele', icon: BookOpen, help: 'Reprendre la logique terrain et les champs menage VPS.' },
                         { id: 'import' as BuilderMode, label: 'Importer un XLSForm', icon: FileUp, help: 'Charger un fichier .xlsx ou .xls comme dans Kobo.' },
                         { id: 'url' as BuilderMode, label: "Importer depuis une URL", icon: Link, help: 'Importer une source XLSForm distante.' },
@@ -3105,6 +3236,15 @@ export default function InternalKoboSubmissions() {
               >
                 <BookOpen size={13} />
                 {showKoboRubricAudit ? 'Masquer audit' : 'Voir audit'}
+              </button>
+              <button
+                type="button"
+                onClick={handleDeployInternalGemForm}
+                disabled={isSavingBuilder}
+                className="inline-flex items-center justify-center gap-2 rounded-full border border-emerald-300/25 bg-emerald-400/10 px-4 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-100 hover:bg-emerald-400/15 disabled:opacity-50"
+              >
+                <Cloud size={13} className={isSavingBuilder ? 'animate-spin' : ''} />
+                Déployer ce formulaire
               </button>
             </div>
 
@@ -3416,7 +3556,7 @@ export default function InternalKoboSubmissions() {
                       })}
                     </div>
                     <div className="mt-3 flex flex-wrap gap-2">
-                      {INTERNAL_KOBO_CHOICES.roles.map((role) => {
+                      {INTERNAL_GEM_CHOICES.roles.map((role) => {
                         const enabled = projectDraft.allowedRoles.includes(role.name);
                         return (
                           <button
@@ -3960,7 +4100,7 @@ export default function InternalKoboSubmissions() {
                           <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
                             <p className="text-[10px] font-black uppercase tracking-[0.12em] text-amber-800">Raccourcis role</p>
                             <div className="mt-2 flex flex-wrap gap-2">
-                              {INTERNAL_KOBO_CHOICES.roles.map((role) => (
+                              {INTERNAL_GEM_CHOICES.roles.map((role) => (
                                 <button
                                   key={role.name}
                                   type="button"
@@ -4325,6 +4465,67 @@ export default function InternalKoboSubmissions() {
             </div>
           </section>
 
+          <section className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+            <div className="rounded-3xl border border-white/10 bg-slate-900/45 p-6">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-lg font-black text-white">Migration Formulaire Natif</h3>
+                  <p className="mt-1 text-sm font-semibold text-slate-400">
+                    Transformer la structure GEM Collect codée en dur en une définition dynamique éditable.
+                  </p>
+                </div>
+                <div className="grid h-12 w-12 place-items-center rounded-2xl bg-blue-500/20 text-blue-300">
+                  <Pencil size={24} />
+                </div>
+              </div>
+              <div className="mt-6">
+                <button
+                  type="button"
+                  onClick={() => startProjectFromSource('internal_gem')}
+                  className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-6 py-3 text-xs font-black uppercase tracking-[0.12em] text-white hover:bg-blue-700 shadow-lg shadow-blue-900/20 transition-all hover:scale-[1.02]"
+                >
+                  <Pencil size={14} />
+                  Editer le formulaire natif
+                </button>
+                <p className="mt-4 text-[11px] font-medium leading-relaxed text-slate-500">
+                  Cette action chargera toutes les rubriques (Ménage, Maçon, Réseau, etc.) et les choix natifs dans le builder. Une fois sauvegardé, vous pourrez déployer des mises à jour dynamiques sans modifier le code source.
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-3xl border border-white/10 bg-slate-900/45 p-6">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-lg font-black text-white">Import Rapide Kobo</h3>
+                  <p className="mt-1 text-sm font-semibold text-slate-400">
+                    Charger un fichier XLSForm existant pour le porter sur l'infrastructure GEM.
+                  </p>
+                </div>
+                <div className="grid h-12 w-12 place-items-center rounded-2xl bg-emerald-500/20 text-emerald-300">
+                  <FileUp size={24} />
+                </div>
+              </div>
+              <div className="mt-6 flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={() => startProjectFromSource('import')}
+                  className="inline-flex items-center gap-2 rounded-2xl bg-emerald-600 px-6 py-3 text-xs font-black uppercase tracking-[0.12em] text-white hover:bg-emerald-700 shadow-lg shadow-emerald-900/20 transition-all hover:scale-[1.02]"
+                >
+                  <Upload size={14} />
+                  Choisir un fichier
+                </button>
+                <button
+                  type="button"
+                  onClick={() => startProjectFromSource('url')}
+                  className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-6 py-3 text-xs font-black uppercase tracking-[0.12em] text-slate-200 hover:bg-white/[0.08]"
+                >
+                  <Link size={14} />
+                  Depuis URL
+                </button>
+              </div>
+            </div>
+          </section>
+
           {globalDiagnostics?.warnings?.length ? (
             <div className="rounded-2xl border border-amber-300/20 bg-amber-400/10 p-4">
               <p className="text-[11px] font-black uppercase tracking-[0.16em] text-amber-100">Points a surveiller</p>
@@ -4661,7 +4862,7 @@ export default function InternalKoboSubmissions() {
                     ['Soumission', 'VPS GEM'],
                     ['Colonnes table Kobo', KOBO_SOURCE_SNAPSHOT.selectedColumns.length],
                     ['Champs export Kobo', KOBO_SOURCE_SNAPSHOT.exportFieldCount],
-                    ['Version serveur', globalDiagnostics?.serverFormVersion || INTERNAL_KOBO_FORM_SETTINGS.version],
+                    ['Version serveur', globalDiagnostics?.serverFormVersion || INTERNAL_GEM_FORM_SETTINGS.version],
                   ].map(([label, value]) => (
                     <div key={label} className="flex items-center justify-between gap-3 rounded-2xl border border-white/8 bg-slate-950/30 px-3 py-2">
                       <span className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">{label}</span>
@@ -4749,7 +4950,7 @@ export default function InternalKoboSubmissions() {
                 <div>
                   <p className="text-[11px] font-black uppercase tracking-[0.16em] text-blue-100">Journal des fiches</p>
                   <p className="mt-1 text-[11px] font-semibold text-slate-500">
-                    Version serveur: {globalDiagnostics?.serverFormVersion || INTERNAL_KOBO_FORM_SETTINGS.version}
+                    Version serveur: {globalDiagnostics?.serverFormVersion || INTERNAL_GEM_FORM_SETTINGS.version}
                   </p>
                 </div>
                 <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] font-black text-slate-300">
@@ -4796,7 +4997,7 @@ export default function InternalKoboSubmissions() {
                           ) : null}
                         </div>
                         <p className="mt-1 truncate text-[11px] font-semibold text-slate-400">
-                          Numero {submission.numeroOrdre || submission.household?.numeroordre || '-'} - {formatInternalKoboValue(submission.role || '', 'roles') || 'Role non renseigne'}
+                          Numero {submission.numeroOrdre || submission.household?.numeroordre || '-'} - {formatInternalGemValue(submission.role || '', 'roles') || 'Role non renseigne'}
                         </p>
                         <p className="mt-1 truncate text-[10px] font-semibold text-slate-600">
                           {submission.clientSubmissionId}
@@ -4823,7 +5024,7 @@ export default function InternalKoboSubmissions() {
                           {selectedSubmission.household?.name || `Menage ${selectedSubmission.numeroOrdre || '-'}`}
                         </h3>
                         <p className="mt-1 text-[11px] font-semibold text-slate-400">
-                          {formatInternalKoboValue(selectedSubmission.role || '', 'roles')} - {formatDateTime(selectedSubmission.savedAt)}
+                          {formatInternalGemValue(selectedSubmission.role || '', 'roles')} - {formatDateTime(selectedSubmission.savedAt)}
                         </p>
                       </div>
                       <button

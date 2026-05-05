@@ -37,20 +37,20 @@ import type {
 import { compressImage } from '../../utils/imageUtils';
 import { stringifyHouseholdValue } from '../../utils/householdDisplay';
 import {
-  formatInternalKoboValue,
-  getInternalKoboFieldValue,
-  getVisibleInternalKoboFields,
-  hasInternalKoboRequiredValue,
-  hasInternalKoboValue,
-  INTERNAL_KOBO_CHOICES,
-  INTERNAL_KOBO_FORM_SETTINGS,
-  INTERNAL_KOBO_SECTIONS,
-  isInternalKoboFieldVisible,
-  isTruthyKoboValue,
-  validateInternalKoboFields,
-  validateInternalKoboRequiredFields,
+  formatInternalGemValue,
+  getInternalGemFieldValue,
+  getVisibleInternalGemFields,
+  hasInternalGemRequiredValue,
+  hasInternalGemValue,
+  INTERNAL_GEM_CHOICES,
+  INTERNAL_GEM_FORM_SETTINGS,
+  INTERNAL_GEM_SECTIONS,
+  isInternalGemFieldVisible,
+  isTruthyGemValue,
+  validateInternalGemFields,
+  validateInternalGemRequiredFields,
 } from './internalKoboFormDefinition';
-import type { InternalKoboField } from './internalKoboFormDefinition';
+import type { InternalGemField } from './internalKoboFormDefinition';
 import {
   applyXlsFormRuntimeCalculations,
   buildXlsFormRuntimePages,
@@ -86,10 +86,12 @@ type InternalKoboFormProps = {
   isHistoryLoading?: boolean;
   historyError?: string;
   onRefreshHistory?: () => void;
+  initialFormKey?: string;
+  hideFormSelector?: boolean;
 };
 
 type RuntimeIssueView = {
-  field: InternalKoboField;
+  field: InternalGemField;
   type: 'required' | 'constraint';
   message: string;
   runtimeIssue?: XlsFormRuntimeIssue;
@@ -128,11 +130,11 @@ const asArray = (value: unknown): string[] => {
 };
 
 const progressFor = (values: Record<string, unknown>): ProgressSummary => {
-  const visibleFields = getVisibleInternalKoboFields(values).filter((field) => !field.readOnly && field.type !== 'note');
+  const visibleFields = getVisibleInternalGemFields(values).filter((field) => !field.readOnly && field.type !== 'note');
   const items = visibleFields.map((field) => ({
     name: field.name,
     label: field.label || field.name,
-    filled: hasInternalKoboRequiredValue(field, values),
+    filled: hasInternalGemRequiredValue(field, values),
   }));
   const filled = items.filter((item) => item.filled).length;
   return {
@@ -361,8 +363,10 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
   isHistoryLoading = false,
   historyError = '',
   onRefreshHistory,
+  initialFormKey,
+  hideFormSelector = false,
 }) => {
-  const [activeSectionId, setActiveSectionId] = useState(INTERNAL_KOBO_SECTIONS[0]?.id || '');
+  const [activeSectionId, setActiveSectionId] = useState(INTERNAL_GEM_SECTIONS[0]?.id || '');
   const [query, setQuery] = useState('');
   const [uploadingField, setUploadingField] = useState<string | null>(null);
   const [locatingField, setLocatingField] = useState<string | null>(null);
@@ -374,6 +378,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
   const [activeRepeatIndexByPage, setActiveRepeatIndexByPage] = useState<Record<string, number>>({});
   const [availableRuntimeForms, setAvailableRuntimeForms] = useState<InternalKoboImportedFormSummary[]>([]);
   const [selectedRuntimeFormKey, setSelectedRuntimeFormKey] = useState(() => {
+    if (initialFormKey) return initialFormKey;
     const runtimeKey = String(values._gem_runtime_form_key || '').trim();
     return runtimeKey && runtimeKey !== 'terrain_internal' ? runtimeKey : '';
   });
@@ -398,16 +403,16 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
   const resolveHouseholdByNumeroRef = useRef(resolveHouseholdByNumero);
   const collectionMetadata = useMemo(() => getClientCollectionMetadata(isOnline), [isOnline]);
   const normalizedQuery = query.trim().toLowerCase();
-  const numeroOrdre = String(values.Numero_ordre || '').trim();
-  const selectedRole = String(values.role || '').trim();
-  const selectedRoleSectionId = ROLE_SECTION_BY_VALUE[selectedRole] || '';
-  const lastAutoActivatedRoleRef = useRef('');
   const fieldLabelByName = useMemo(() => {
-    const entries = INTERNAL_KOBO_SECTIONS.flatMap((section) =>
+    const entries = INTERNAL_GEM_SECTIONS.flatMap((section) =>
       section.fields.map((field) => [field.name, field.label] as const)
     );
     return new Map(entries);
   }, []);
+  const numeroOrdre = String(values.Numero_ordre || '').trim();
+  const selectedRole = String(values.role || '').trim();
+  const selectedRoleSectionId = ROLE_SECTION_BY_VALUE[selectedRole] || '';
+  const lastAutoActivatedRoleRef = useRef('');
   const progressFilledRef = useRef(0);
   const applyRuntimeDefinition = useCallback((definition: XlsFormDefinition, title?: string) => {
     setXlsFormDefinition(definition);
@@ -465,32 +470,25 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
     [runtimeAllPages, runtimeValues, xlsFormDefinition]
   );
   const validationIssues = useMemo<RuntimeIssueView[]>(() => {
-    if (!runtimeValidation) return validateInternalKoboFields(values);
+    if (!runtimeValidation) return validateInternalGemFields(values);
     return runtimeValidation.issues.map((issue) => ({
       field: {
         name: issue.field.name,
         type: issue.field.type === 'note' ? 'note' : 'text',
         label: issue.field.label || issue.field.name,
         required: issue.type === 'required',
-      } as InternalKoboField,
+      } as InternalGemField,
       type: issue.type,
       message: issue.message,
       runtimeIssue: issue,
     }));
   }, [runtimeValidation, values]);
-  const missingRequired = useMemo(() => {
-    if (!runtimeValidation) return validateInternalKoboRequiredFields(values);
-    return runtimeValidation.issues
-      .filter((issue) => issue.type === 'required')
-      .map((issue) => ({
-        name: issue.field.name,
-        type: issue.field.type === 'note' ? 'note' : 'text',
-        label: issue.field.label || issue.field.name,
-        required: true,
-      } as InternalKoboField));
-  }, [runtimeValidation, values]);
   const constraintIssues = useMemo(
     () => validationIssues.filter((issue) => issue.type === 'constraint'),
+    [validationIssues]
+  );
+  const missingRequired = useMemo(
+    () => validationIssues.filter((issue) => issue.type === 'required'),
     [validationIssues]
   );
   const progress = useMemo(() => {
@@ -586,14 +584,14 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
         setSelectedRuntimeFormKey('');
         setXlsFormDefinition(null);
         onChangeRef.current('_gem_runtime_form_key', 'terrain_internal');
-        onChangeRef.current('_gem_runtime_form_version', INTERNAL_KOBO_FORM_SETTINGS.version);
+        onChangeRef.current('_gem_runtime_form_version', INTERNAL_GEM_FORM_SETTINGS.version);
         onChangeRef.current('_gem_runtime_engine', 'gem-internal-kobo');
         onChangeRef.current('_gem_runtime_title', 'Formulaire terrain interne');
         setServerFormStatus({
-          status: form.formVersion === INTERNAL_KOBO_FORM_SETTINGS.version ? 'ok' : 'mismatch',
+          status: form.formVersion === INTERNAL_GEM_FORM_SETTINGS.version ? 'ok' : 'mismatch',
           version: form.formVersion,
           message:
-            form.formVersion === INTERNAL_KOBO_FORM_SETTINGS.version
+            form.formVersion === INTERNAL_GEM_FORM_SETTINGS.version
               ? 'Version VPS verifiee'
               : `Version VPS ${form.formVersion}`,
           checkedAt: new Date().toISOString(),
@@ -918,31 +916,24 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
     }
   }, [selectedRole, selectedRoleSectionId]);
 
-  const visibleSections = INTERNAL_KOBO_SECTIONS.map((section) => ({
-    ...section,
-    activeFields: section.fields.filter((field) => isInternalKoboFieldVisible(field, values)),
-  })).map((section) => ({
-    ...section,
-    fields: section.activeFields.filter((field) => {
-      const visible = isInternalKoboFieldVisible(field, values);
-      if (!visible) return false;
-      if (!normalizedQuery) return true;
-      return `${field.label} ${field.name}`.toLowerCase().includes(normalizedQuery);
-    }),
-  })).filter((section) => {
-    if (!selectedRole) return section.id === 'menage' && section.fields.length > 0;
-    if (!normalizedQuery) return true;
-    return section.fields.length > 0 || `${section.title} ${section.subtitle}`.toLowerCase().includes(normalizedQuery);
-  });
+  const navigableSections = useMemo(
+    () =>
+      INTERNAL_GEM_SECTIONS.map((section) => {
+        const activeFields = section.fields.filter((field) => isInternalGemFieldVisible(field, values));
+        const missingFields = activeFields.filter(
+          (field) => field.required && !hasInternalGemRequiredValue(field, values)
+        );
+        return {
+          ...section,
+          activeFields,
+          missingFields,
+        };
+      }),
+    [values]
+  );
 
   let previousBlockingSectionId = '';
-  const navigableSections = visibleSections.map((section) => {
-    const missingFields = section.activeFields.filter(
-      (field) =>
-        field.type !== 'note' &&
-        field.required &&
-        !hasInternalKoboValue(getInternalKoboFieldValue(field, values))
-    );
+  const sectionsWithLocks = navigableSections.map((section) => {
     const roleLocked = Boolean(
       selectedRole &&
       section.role &&
@@ -954,7 +945,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
     const lockedReason = roleLocked ? 'role' : sequenceLocked ? 'sequence' : '';
     const blockedBySectionId = sequenceLocked ? previousBlockingSectionId : '';
 
-    if (!roleLocked && !sequenceLocked && missingFields.length > 0) {
+    if (!roleLocked && !sequenceLocked && section.missingFields.length > 0) {
       previousBlockingSectionId = section.id;
     }
 
@@ -963,16 +954,15 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
       locked,
       lockedReason,
       blockedBySectionId,
-      missingFields,
     };
   });
 
   const activeSection =
-    navigableSections.find((section) => section.id === activeSectionId && !section.locked) ||
-    navigableSections.find((section) => section.id === selectedRoleSectionId && !section.locked) ||
-    navigableSections.find((section) => !section.locked) ||
-    navigableSections[0];
-  const mobileSectionOptions = navigableSections.filter((section) => !section.locked);
+    sectionsWithLocks.find((section) => section.id === activeSectionId && !section.locked) ||
+    sectionsWithLocks.find((section) => section.id === selectedRoleSectionId && !section.locked) ||
+    sectionsWithLocks.find((section) => !section.locked) ||
+    sectionsWithLocks[0];
+  const mobileSectionOptions = sectionsWithLocks.filter((section) => !section.locked);
   let previousBlockingRuntimePageId = '';
   const runtimePageStates = runtimeAllPages.map((page) => {
     const activeFields = page.allFields.filter((field) => {
@@ -1018,7 +1008,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
       return { ...issue, section: undefined, runtimePage };
     }
 
-    const section = navigableSections.find((item) =>
+    const section = sectionsWithLocks.find((item) =>
       item.activeFields.some((sectionField) => sectionField.name === issue.field.name)
     );
     return { ...issue, section, runtimePage: undefined };
@@ -1034,19 +1024,19 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
   const progressHiddenMissingCount = Math.max(0, progress.missingItems.length - progressMissingPreview.length);
 
   const blockedByTitle = (sectionId: string) =>
-    navigableSections.find((section) => section.id === sectionId)?.title || 'l etape precedente';
+    sectionsWithLocks.find((section) => section.id === sectionId)?.title || 'l etape precedente';
 
   const blockedByRuntimeTitle = (pageId: string) =>
     runtimeNavigablePages.find((page) => page.id === pageId)?.title || 'l etape precedente';
 
-  const getSectionStatus = (section: typeof navigableSections[number]) => {
+  const getSectionStatus = (section: typeof sectionsWithLocks[number]) => {
     const fillableCount = section.activeFields.filter((field) => field.type !== 'note' && !field.readOnly).length;
     if (section.locked) {
       const isRoleLock = section.lockedReason === 'role';
       return {
         label: isRoleLock ? 'Non concerne' : 'Verrouille',
         detail: isRoleLock
-          ? `Role actif: ${formatInternalKoboValue(selectedRole, 'roles')}`
+          ? `Role actif: ${formatInternalGemValue(selectedRole, 'roles')}`
           : `Terminer ${blockedByTitle(section.blockedBySectionId)}`,
         className: 'border-white/5 bg-white/[0.02] text-slate-600',
         icon: <LockKeyhole size={13} />,
@@ -1183,7 +1173,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
     window.URL.revokeObjectURL(url);
   };
 
-  const setOption = (field: InternalKoboField, optionName: string) => {
+  const setOption = (field: InternalGemField, optionName: string) => {
     if (field.type === 'select_multiple') {
       const current = new Set(asArray(values[field.name]));
       if (current.has(optionName)) current.delete(optionName);
@@ -1202,7 +1192,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
     }
   };
 
-  const handleFile = async (field: InternalKoboField, file?: File) => {
+  const handleFile = async (field: InternalGemField, file?: File) => {
     if (!file) return;
     setUploadingField(field.name);
     try {
@@ -1263,7 +1253,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
     }
   };
 
-  const clearFile = (field: InternalKoboField) => {
+  const clearFile = (field: InternalGemField) => {
     onChange(field.name, '');
     onChange(`_gem_attachment_${field.name}`, '');
     onChange(`_gem_photo_${field.name}_original_name`, '');
@@ -1412,7 +1402,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
     }));
   };
 
-  const captureLocation = (field: InternalKoboField | XlsFormField, repeatContext?: RepeatContext) => {
+  const captureLocation = (field: InternalGemField | XlsFormField, repeatContext?: RepeatContext) => {
     if (typeof navigator === 'undefined' || !navigator.geolocation) {
       setLocationError("GPS indisponible sur cet appareil ou ce navigateur.");
       return;
@@ -1615,7 +1605,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
     if (!isXlsFormRuntimeFieldVisible(field, runtimeValues, repeatContext?.instance)) return null;
 
     if (field.type === 'acknowledge') {
-      const checked = isTruthyKoboValue(value);
+      const checked = isTruthyGemValue(value);
       return (
         <button
           key={fieldId}
@@ -1956,8 +1946,8 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
     setSignatureTarget(null);
   };
 
-  const renderField = (field: InternalKoboField) => {
-    const value = getInternalKoboFieldValue(field, values);
+  const renderField = (field: InternalGemField) => {
+    const value = getInternalGemFieldValue(field, values);
     const fieldIssues = validationIssues.filter((issue) => issue.field.name === field.name);
     const missing = fieldIssues.some((issue) => issue.type === 'required');
     const invalid = fieldIssues.some((issue) => issue.type === 'constraint');
@@ -1977,7 +1967,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
     }
 
     if (field.type === 'acknowledge') {
-      const checked = isTruthyKoboValue(value);
+      const checked = isTruthyGemValue(value);
       return (
         <button
           key={field.name}
@@ -2082,7 +2072,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
 
         {(field.type === 'select_one' || field.type === 'select_multiple') && field.listName ? (
           <div className={`grid grid-cols-1 gap-2 ${field.appearance === 'minimal' ? '' : 'sm:grid-cols-2'}`}>
-            {(INTERNAL_KOBO_CHOICES[field.listName] || []).map((option) => {
+            {(INTERNAL_GEM_CHOICES[field.listName] || []).map((option) => {
               const active = field.type === 'select_multiple'
                 ? asArray(value).includes(option.name)
                 : value === option.name;
@@ -2115,6 +2105,9 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
           const attachment = getAttachmentMeta(values, field.name);
           const previewSource = getImagePreviewSource(value, attachment);
           const isQueuedPhoto = attachment?.status === 'queued' || attachment?.storage?.startsWith('embedded');
+          const current = String(values[field.name] || '');
+          const hasVal = hasInternalGemValue(current);
+          const isReq = field.required && !hasVal;
 
           return (
             <div className="rounded-2xl border border-dashed border-white/12 bg-slate-900/45 p-3">
@@ -2132,12 +2125,12 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
                     className="hidden"
                     onChange={(event) => handleFile(field, event.target.files?.[0])}
                   />
-                  {hasInternalKoboValue(value) ? <Camera size={18} /> : <ImagePlus size={18} />}
+                  {hasVal ? <Camera size={18} /> : <ImagePlus size={18} />}
                   <span className="text-[10px] font-black uppercase tracking-[0.14em]">
-                    {uploadingField === field.name ? 'Traitement photo...' : hasInternalKoboValue(value) ? 'Remplacer la photo' : 'Ajouter une photo'}
+                    {uploadingField === field.name ? 'Traitement photo...' : hasVal ? 'Remplacer la photo' : 'Ajouter une photo'}
                   </span>
                 </label>
-                {hasInternalKoboValue(value) ? (
+                {hasVal ? (
                   <button
                     type="button"
                     onClick={() => clearFile(field)}
@@ -2148,7 +2141,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
                   </button>
                 ) : null}
               </div>
-              {hasInternalKoboValue(value) ? (
+              {hasVal ? (
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   <span className={`rounded-full border px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.12em] ${
                     isQueuedPhoto
@@ -2171,9 +2164,9 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
           );
         })() : null}
 
-        {hasInternalKoboValue(value) && field.type !== 'image' && !field.readOnly ? (
+        {hasInternalGemValue(value) && field.type !== 'image' && !field.readOnly ? (
           <p className="text-[10px] font-bold text-slate-500">
-            Valeur Kobo: <span className="text-slate-300">{formatInternalKoboValue(value, field.listName)}</span>
+            Valeur Kobo: <span className="text-slate-300">{formatInternalGemValue(value, field.listName)}</span>
           </p>
         ) : null}
       </div>
@@ -2202,7 +2195,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
               type="button"
               onClick={downloadSubmissionHistoryJson}
               className="grid h-8 w-8 place-items-center rounded-xl border border-white/10 bg-slate-950/35 text-slate-300 transition-colors hover:text-white"
-              aria-label="Exporter l'historique Kobo"
+              aria-label="Exporter l'historique GEM Collect"
               title="Exporter l'historique JSON"
             >
               <Download size={14} />
@@ -2253,7 +2246,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="truncate text-[11px] font-black text-white">
-                    {formatInternalKoboValue(submission.role || 'role non defini', 'roles')}
+                    {formatInternalGemValue(submission.role || 'role non defini', 'roles')}
                   </p>
                   <p className="mt-1 text-[9px] font-semibold text-slate-500">
                     {formatHistoryDate(submission.savedAt)} - v{submission.formVersion}
@@ -2342,7 +2335,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
                     {item.numeroOrdre ? `Menage ${item.numeroOrdre}` : 'Menage non renseigne'}
                   </p>
                   <p className="mt-1 text-[9px] font-semibold text-slate-500">
-                    {formatInternalKoboValue(item.role || 'role non defini', 'roles')} - {formatHistoryDate(new Date(item.timestamp).toISOString())}
+                    {formatInternalGemValue(item.role || 'role non defini', 'roles')} - {formatHistoryDate(new Date(item.timestamp).toISOString())}
                   </p>
                 </div>
                 <span className={`shrink-0 rounded-full border px-2 py-1 text-[8px] font-black uppercase tracking-[0.1em] ${queueStatusClass(item.status)}`}>
@@ -2393,7 +2386,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
               <CheckCircle2 size={18} />
             </span>
             <div className="min-w-0">
-              <p className="text-[12px] font-black uppercase tracking-[0.14em] text-emerald-100">Validation Kobo prete</p>
+              <p className="text-[12px] font-black uppercase tracking-[0.14em] text-emerald-100">Validation GEM Collect prête</p>
               <p className="mt-1 text-[11px] font-semibold text-slate-300">
                 Tous les champs visibles requis sont remplis. La prochaine action soumettra la fiche au serveur VPS.
               </p>
@@ -2407,7 +2400,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
       <div className="mb-4 rounded-2xl border border-amber-300/25 bg-amber-400/[0.08] p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-[12px] font-black uppercase tracking-[0.14em] text-amber-100">Validation Kobo incomplete</p>
+            <p className="text-[12px] font-black uppercase tracking-[0.14em] text-amber-100">Validation GEM Collect incomplète</p>
             <p className="mt-1 text-[11px] font-semibold text-slate-300">
               {missingRequired.length} requis et {constraintIssues.length} valeur(s) a corriger avant la soumission finale.
             </p>
@@ -2498,7 +2491,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
           <div className="shrink-0 border-b border-white/10 p-5">
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
-                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-200">Recu Kobo interne</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-200">Reçu GEM Collect</p>
                 <h4 className="mt-2 truncate text-xl font-black uppercase tracking-tight text-white">
                   {receiptSubmission.numeroOrdre ? `Menage ${receiptSubmission.numeroOrdre}` : 'Soumission terrain'}
                 </h4>
@@ -2548,7 +2541,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
               </div>
               <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-3">
                 <p className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Role</p>
-                <p className="mt-1 truncate text-sm font-black text-white">{formatInternalKoboValue(receiptSubmission.role || '', 'roles') || 'Non defini'}</p>
+                <p className="mt-1 truncate text-sm font-black text-white">{formatInternalGemValue(receiptSubmission.role || '', 'roles') || 'Non defini'}</p>
               </div>
               <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-3">
                 <p className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Date</p>
@@ -2584,7 +2577,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
                       {fieldLabelByName.get(key) || key}
                     </p>
                     <p className="mt-1 line-clamp-2 text-[11px] font-bold leading-snug text-slate-100">
-                      {formatInternalKoboValue(value)}
+                      {formatInternalGemValue(value)}
                     </p>
                   </div>
                 ))}
@@ -2765,7 +2758,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
                 );
               })
             ) : (
-              navigableSections.map((section) => {
+              sectionsWithLocks.map((section) => {
                 const status = getSectionStatus(section);
                 const isActive = activeSection?.id === section.id;
                 const inactiveStatusClass = section.locked
@@ -2814,13 +2807,13 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
           <header className="shrink-0 border-b border-blue-300/15 bg-[#0A1830] p-4 shadow-[inset_0_-1px_0_rgba(96,165,250,0.08)] sm:p-5">
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
-                <p className="text-[10px] font-black uppercase tracking-[0.22em] text-blue-300">Saisie terrain VPS</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.22em] text-blue-300">GEM Collect</p>
                 <h3 className="mt-1 truncate text-xl font-black uppercase tracking-tight text-white sm:text-2xl">
                   {xlsFormDefinition?.title || 'Formulaire du menage'}
                 </h3>
                 <div className="mt-1 flex min-w-0 items-center gap-2">
                   <p className="min-w-0 truncate text-[12px] font-semibold text-slate-300">
-                    {numeroOrdre ? `Numero ordre ${numeroOrdre}` : 'Renseignez le numero ordre'}{selectedRole ? ` - ${formatInternalKoboValue(selectedRole, 'roles')}` : ''}
+                    {numeroOrdre ? `Numero ordre ${numeroOrdre}` : 'Renseignez le numero ordre'}{selectedRole ? ` - ${formatInternalGemValue(selectedRole, 'roles')}` : ''}
                   </p>
                   <span className={`inline-flex shrink-0 rounded-full border px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.1em] sm:hidden ${requiredStatusClass}`}>
                     {requiredStatusText}
@@ -2836,13 +2829,13 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
                 type="button"
                 onClick={onClose}
                 className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-400 hover:text-white"
-                aria-label="Fermer le formulaire Kobo interne"
+                aria-label="Fermer GEM Collect"
               >
                 <X size={18} />
               </button>
             </div>
 
-            {availableRuntimeForms.length > 0 ? (
+            {!hideFormSelector && availableRuntimeForms.length > 0 ? (
               <div className="mt-3 rounded-2xl border border-blue-300/15 bg-slate-950/35 p-3">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <label className="min-w-0 flex-1">
@@ -2910,7 +2903,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
                       Nouvelle version XLSForm detectee
                     </p>
                     <p className="mt-1 leading-relaxed">
-                      Locale v{xlsFormDefinition?.formVersion || String(values._gem_runtime_form_version || INTERNAL_KOBO_FORM_SETTINGS.version)} - VPS v{pendingRuntimeDefinition.formVersion}. Les valeurs deja saisies seront preservees par nom de champ.
+                      Locale v{xlsFormDefinition?.formVersion || String(values._gem_runtime_form_version || INTERNAL_GEM_FORM_SETTINGS.version)} - VPS v{pendingRuntimeDefinition.formVersion}. Les valeurs deja saisies seront preservees par nom de champ.
                     </p>
                   </div>
                   <button
@@ -2924,7 +2917,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
               </div>
             ) : serverFormStatus.status === 'mismatch' ? (
               <div className="mt-3 hidden rounded-2xl border border-amber-400/25 bg-amber-500/10 px-4 py-3 text-[11px] font-bold text-amber-100 sm:block">
-                Version XLSForm a verifier: locale {xlsFormDefinition?.formVersion || INTERNAL_KOBO_FORM_SETTINGS.version}, VPS {serverFormStatus.version || 'inconnue'}.
+                Version XLSForm a verifier: locale {xlsFormDefinition?.formVersion || INTERNAL_GEM_FORM_SETTINGS.version}, VPS {serverFormStatus.version || 'inconnue'}.
               </div>
             ) : null}
 
@@ -3089,7 +3082,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
                 </div>
                 <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-3">
                   <p className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Role</p>
-                  <p className="mt-1 truncate text-sm font-black text-white">{formatInternalKoboValue(selectedRole || 'role non defini', 'roles')}</p>
+                  <p className="mt-1 truncate text-sm font-black text-white">{formatInternalGemValue(selectedRole || 'role non defini', 'roles')}</p>
                 </div>
                 <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-3">
                   <p className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Progression</p>
@@ -3098,7 +3091,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
                 <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-3">
                   <p className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Version XLSForm</p>
                   <p className="mt-1 truncate text-sm font-black text-white">
-                    v{xlsFormDefinition?.formVersion || INTERNAL_KOBO_FORM_SETTINGS.version}
+                    v{xlsFormDefinition?.formVersion || INTERNAL_GEM_FORM_SETTINGS.version}
                   </p>
                   {serverFormStatus.version ? (
                     <p className={`mt-1 truncate text-[10px] font-bold ${
@@ -3113,7 +3106,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
               <div className="mt-4 rounded-2xl border border-emerald-300/18 bg-emerald-400/[0.07] p-3">
                 <p className="text-[10px] font-black uppercase tracking-[0.14em] text-emerald-100">Sections pretes</p>
                 <div className="mt-2 flex flex-wrap gap-2">
-                  {(xlsFormDefinition ? runtimeNavigablePages : navigableSections)
+                  {(xlsFormDefinition ? runtimeNavigablePages : sectionsWithLocks)
                     .filter((section) => !section.locked && section.activeFields.length > 0)
                     .map((section) => (
                       <span key={section.id} className="rounded-full border border-emerald-200/20 bg-emerald-200/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.1em] text-emerald-50">

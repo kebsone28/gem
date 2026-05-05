@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps */
+/* eslint-disable @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps */
 import { useState, useMemo } from 'react';
 import {
   FileText,
@@ -67,7 +67,7 @@ export default function Reports() {
   const { getLabel } = useLabels();
   const isLSE = user?.role === 'CLIENT_LSE';
   const canViewFinances = peut(PERMISSIONS.VOIR_FINANCES);
-  const canManageFinances = peut(PERMISSIONS.GERER_FINANCES);
+  const canManageFinances = peut(PERMISSIONS.GERER_BUDGETS);
   const isAdmin = user?.role === 'ADMIN_PROQUELEC' || user?.role === 'DG_PROQUELEC';
   const finances = useFinances();
   const [exportFormat, setExportFormat] = useState('PDF');

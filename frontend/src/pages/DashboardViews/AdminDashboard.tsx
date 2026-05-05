@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useCallback, useState } from 'react';
 import toast from 'react-hot-toast';
 import { ShieldCheck, BarChart3, Users, AlertTriangle, Activity, CheckCircle2 } from 'lucide-react';
@@ -54,7 +54,7 @@ export default function AdminDashboard() {
   const [consoleSettings, setConsoleSettings] = useState<ConsoleSettingsConfig>(DEFAULT_CONSOLE_SETTINGS);
   useConsoleLayout(consoleSettings);
 
-  const canViewReports = peut(PERMISSIONS.VOIR_RAPPORTS);
+  const canViewReports = peut(PERMISSIONS.VOIR_RAPPORTS_TERRAIN) || peut(PERMISSIONS.VOIR_RAPPORTS_FINANCIERS);
   const projectId = project?.id || '';
 
   // ── BUSINESS HOOKS ──

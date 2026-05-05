@@ -15,6 +15,7 @@ import { recalculateProjectGrappes } from './project_config.service.js';
 import { transformRowToHousehold } from './kobo.mapping.js';
 import { tracerAction } from './audit.service.js';
 import { normalizeLegacyHousehold } from '../modules/household/household.compat.js';
+import { v4 as uuidv4 } from 'uuid';
 
 const KOBO_API_URL = process.env.KOBO_API_URL || 'https://kf.kobotoolbox.org';
 const KOBO_TOKEN = process.env.KOBO_TOKEN || '';
@@ -83,6 +84,9 @@ export async function fetchKoboSubmissions(token, assetUid, since = null) {
     const limit = 5000;
     let hasMore = true;
 
+    // Fonction de délai pour le backoff
+    const delay = (ms) => new Promise(res => setTimeout(res, ms));
+
     while (hasMore) {
         // Build query — Kobo supports ?query= with MongoDB-style JSON filter
         let url = `${KOBO_API_URL}/api/v2/assets/${finalAssetUid}/data/?format=json&limit=${limit}&start=${start}`;
@@ -92,19 +96,37 @@ export async function fetchKoboSubmissions(token, assetUid, since = null) {
             url += `&query={"_submission_time":{"$gte":"${sinceDate}"}}`;
         }
 
-        const response = await fetch(url, {
-            headers: {
-                Authorization: `Token ${finalToken}`,
-                'Content-Type': 'application/json'
-            }
-        });
+        let retries = 3;
+        let success = false;
+        let response;
+        let data;
 
-        if (!response.ok) {
-            const text = await response.text();
-            throw new Error(`KoboToolbox API error ${response.status}: ${text}`);
+        while (retries > 0 && !success) {
+            try {
+                response = await fetch(url, {
+                    headers: {
+                        Authorization: `Token ${finalToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`KoboToolbox API error ${response.status}`);
+                }
+
+                data = await response.json();
+                success = true;
+            } catch (error) {
+                retries--;
+                console.warn(`[KOBO-SYNC] ⚠️ Échec du téléchargement Kobo (reste ${retries} tentatives) : ${error.message}`);
+                if (retries === 0) {
+                    throw new Error(`KoboToolbox API error après 3 tentatives : ${error.message}`);
+                }
+                // Attente exponentielle (2s, 4s...)
+                await delay((3 - retries) * 2000);
+            }
         }
 
-        const data = await response.json();
         const results = data.results || [];
         allResults = allResults.concat(results);
 
@@ -513,7 +535,6 @@ export async function syncKoboToDatabase(organizationId, fallbackZoneId, since =
                 });
             }
 
-            const { v4: uuidv4 } = await import('uuid');
             const newHouseholdId = uuidv4();
 
             // 🔑 PROTECTION DES DONNÉES LOCALES (Anti-Overwriting Admin)

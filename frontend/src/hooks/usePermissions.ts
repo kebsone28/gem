@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useAuth } from '../contexts/AuthContext';
 import { PERMISSIONS, hasPermission } from '../utils/permissions';
 
@@ -12,7 +12,7 @@ export const usePermissions = () => {
    * Vérifie si l'utilisateur possède une permission spécifique.
    * @param permission - La permission à vérifier (extraite de PERMISSIONS)
    */
-  const peut = (permission: string): boolean => {
+  const peut = (permission: string | string[]): boolean => {
     return hasPermission(user, permission);
   };
 

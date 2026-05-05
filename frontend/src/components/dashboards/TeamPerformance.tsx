@@ -1,4 +1,4 @@
-﻿ 
+ 
 import React from 'react';
 import { Target, TrendingUp, Users, Zap } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -44,8 +44,9 @@ export const TeamPerformance: React.FC<TeamPerformanceProps> = ({
       <div className="grid grid-cols-1 gap-6">
         {teamStats.map((team, idx) => {
           const target = team.trade ? productionRates[team.trade] || 0 : 0;
+          const yieldValue = team.yield || 0;
           const efficiency =
-            target > 0 ? Math.min(100, Math.round((team.yield / target) * 100)) : 0;
+            target > 0 ? Math.min(100, Math.round((yieldValue / target) * 100)) : 0;
 
           return (
             <div key={idx} className="group relative">
@@ -66,7 +67,7 @@ export const TeamPerformance: React.FC<TeamPerformanceProps> = ({
                       <Users size={10} className="text-gray-400" /> {team.leader}
                     </span>
                     <span className="flex items-center gap-1">
-                      <Zap size={10} className="text-amber-400" /> {team.yield} / jour
+                      <Zap size={10} className="text-amber-400" /> {team.yield || 0} / jour
                     </span>
                     {target > 0 && (
                       <span className="flex items-center gap-1">
@@ -112,8 +113,9 @@ export const TeamPerformance: React.FC<TeamPerformanceProps> = ({
         </div>
         <div className="bg-gray-50/50 p-4 rounded-xl border border-gray-100 text-center">
           <p className="text-2xl font-black text-gray-900">
-            {Math.round((teamStats.reduce((acc, t) => acc + t.yield, 0) / teamStats.length) * 10) /
-              10}
+            {teamStats.length > 0 
+              ? Math.round((teamStats.reduce((acc, t) => acc + (t.yield || 0), 0) / teamStats.length) * 10) / 10
+              : 0}
           </p>
           <p className="text-[11px] sm:text-xs font-bold text-gray-500 uppercase tracking-[0.08em] sm:tracking-widest">
             Moyenne Rendement

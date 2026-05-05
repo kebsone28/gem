@@ -525,6 +525,159 @@ export default function Aide() {
         </ContentArea>
       </Section>
 
+      <Section title="🔐 Architecture des Nouvelles Permissions">
+        <ContentArea>
+          <div className="space-y-4">
+            <div className={`${COMMON_CLASSES.card} p-4`}>
+              <h4 className="font-bold mb-2">🟢 ADMINISTRATION & SÉCURITÉ</h4>
+              <ul className="list-disc pl-5 space-y-1">
+                <li>GERER_UTILISATEURS : Création, modification et désactivation des comptes.</li>
+                <li>GERER_PARAMETRES : Configuration globale de l'organisation.</li>
+                <li>VOIR_AUDIT_LOGS : Accès à la traçabilité complète (Qui a fait quoi ?).</li>
+                <li>ACCES_GOD_MODE : Capacité de simuler d'autres utilisateurs (Impersonation).</li>
+              </ul>
+            </div>
+
+            <div className={`${COMMON_CLASSES.card} p-4`}>
+              <h4 className="font-bold mb-2">🔵 MODULE MISSIONS (ORDRES DE MISSION)</h4>
+              <ul className="list-disc pl-5 space-y-1">
+                <li>VOIR_MISSIONS : Accès au registre et à la liste.</li>
+                <li>CREER_MISSION : Initialisation d'une nouvelle demande.</li>
+                <li>MODIFIER_MISSION : Édition des détails techniques et itinéraires.</li>
+                <li>VALIDER_MISSION : Validation de premier niveau (Opérationnelle).</li>
+                <li>APPROUVER_MISSION : Approbation finale et signature (Direction).</li>
+                <li>SUPPRIMER_MISSION : Suppression définitive d'une mission.</li>
+                <li>PURGER_MISSIONS : [CRITIQUE] Réinitialisation massive du serveur.</li>
+              </ul>
+            </div>
+
+            <div className={`${COMMON_CLASSES.card} p-4`}>
+              <h4 className="font-bold mb-2">💰 FINANCES & COMPTABILITÉ</h4>
+              <ul className="list-disc pl-5 space-y-1">
+                <li>VOIR_FINANCES : Consultation des tableaux de bord financiers.</li>
+                <li>GERER_BUDGETS : Modification des enveloppes budgétaires des projets.</li>
+                <li>VOIR_PAIEMENTS : Suivi détaillé des décaissements.</li>
+                <li>EXPORTER_COMPTABILITE : Génération des exports pour les logiciels comptables.</li>
+              </ul>
+            </div>
+
+            <div className={`${COMMON_CLASSES.card} p-4`}>
+              <h4 className="font-bold mb-2">🗺️ TERRAIN & CARTOGRAPHIE</h4>
+              <ul className="list-disc pl-5 space-y-1">
+                <li>VOIR_CARTE : Consultation de la carte interactive.</li>
+                <li>MODIFIER_CARTE : Modification des tracés et des points GPS.</li>
+                <li>GERER_ZONES : Découpage des zones et des grappes.</li>
+                <li>GERER_MENAGES : Gestion des données des bénéficiaires (Ménages).</li>
+              </ul>
+            </div>
+
+            <div className={`${COMMON_CLASSES.card} p-4`}>
+              <h4 className="font-bold mb-2">📅 PROJETS & PLANNING</h4>
+              <ul className="list-disc pl-5 space-y-1">
+                <li>VOIR_PROJETS : Consultation du catalogue des projets.</li>
+                <li>CREER_PROJET : Lancement d'un nouveau projet.</li>
+                <li>MODIFIER_PROJET : Paramétrage des objectifs et durées.</li>
+                <li>GERER_PLANNING : Gestion du calendrier Gantt et affectation des équipes.</li>
+              </ul>
+            </div>
+
+            <div className={`${COMMON_CLASSES.card} p-4`}>
+              <h4 className="font-bold mb-2">📦 LOGISTIQUE & SYNC (KOBO)</h4>
+              <ul className="list-disc pl-5 space-y-1">
+                <li>VOIR_LOGISTIQUE : Consultation de l'état des stocks.</li>
+                <li>GERER_STOCK : Enregistrement des entrées/sorties de matériel.</li>
+                <li>ACCES_TERMINAL_KOBO : Utilisation de l'interface de collecte Kobo.</li>
+                <li>CONFIGURER_KOBO : Paramétrage des formulaires et des mappings.</li>
+              </ul>
+            </div>
+
+            <div className={`${COMMON_CLASSES.card} p-4`}>
+              <h4 className="font-bold mb-2">📊 RAPPORTS & AUTOMATISATION</h4>
+              <ul className="list-disc pl-5 space-y-1">
+                <li>VOIR_RAPPORTS_TERRAIN : Rapports d'avancement technique.</li>
+                <li>VOIR_RAPPORTS_FINANCIERS : Rapports de rentabilité.</li>
+                <li>GERER_PV : Génération et signature des Procès-Verbaux (PV).</li>
+              </ul>
+            </div>
+
+            <div className={`${COMMON_CLASSES.card} p-4`}>
+              <h4 className="font-bold mb-2">1. Module FORMATIONS (Nouveau)</h4>
+              <ul className="list-disc pl-5 space-y-1">
+                <li>VOIR_FORMATIONS : Consulter le catalogue des modules et les sessions.</li>
+                <li>GERER_FORMATIONS : Créer des sessions, inscrire des participants et valider les présences.</li>
+              </ul>
+            </div>
+
+            <div className={`${COMMON_CLASSES.card} p-4`}>
+              <h4 className="font-bold mb-2">2. Module MESSAGERIE (Chat)</h4>
+              <ul className="list-disc pl-5 space-y-1">
+                <li>ACCES_CHAT : Utiliser la messagerie.</li>
+                <li>MODERER_CHAT : Pouvoir archiver ou supprimer des échanges (Admin).</li>
+              </ul>
+            </div>
+
+            <div className={`${COMMON_CLASSES.card} p-4`}>
+              <h4 className="font-bold mb-2">3. Module ALERTES & NOTIFICATIONS</h4>
+              <ul className="list-disc pl-5 space-y-1">
+                <li>VOIR_ALERTES : Recevoir les notifications de retards ou d'erreurs techniques.</li>
+                <li>CONFIGURER_ALERTES : Régler les seuils de déclenchement (ex: alerter si stock &lt; 5%).</li>
+              </ul>
+            </div>
+
+            <div className={`${COMMON_CLASSES.card} p-4`}>
+              <h4 className="font-bold mb-2">4. Module SYNCHRONISATION (Offline)</h4>
+              <ul className="list-disc pl-5 space-y-1">
+                <li>VOIR_SYNCHRO : Consulter les logs de synchronisation.</li>
+                <li>GERER_CONFLITS : Résoudre manuellement les conflits offline.</li>
+              </ul>
+            </div>
+
+            <div className={`${COMMON_CLASSES.card} p-4`}>
+              <h4 className="font-bold mb-2">5. Module IA & ASSISTANT (Wanekoo AI)</h4>
+              <ul className="list-disc pl-5 space-y-1">
+                <li>UTILISER_IA : Accès à l'assistant intelligent.</li>
+                <li>GERER_MEMOIRE_IA : Gérer les préférences et la "mémoire" de l'assistant pour l'organisation.</li>
+              </ul>
+            </div>
+
+            <div className={`${COMMON_CLASSES.card} p-4`}>
+              <h4 className="font-bold mb-2">Module ÉQUIPES & Validation</h4>
+              <ul className="list-disc pl-5 space-y-1">
+                <li>CREER_EQUIPE : Former une nouvelle équipe terrain.</li>
+                <li>MODIFIER_EQUIPE : Changer le leader ou les membres.</li>
+                <li>SUPPRIMER_EQUIPE : Dissoudre une équipe.</li>
+                <li>VALIDER_INSTALLATION : Droit pour marquer une installation comme "Conforme".</li>
+                <li>REJETER_DOSSIER : Rejeter une fiche Kobo pour erreur.</li>
+              </ul>
+            </div>
+
+            <div className={`${COMMON_CLASSES.card} p-4`}>
+              <h4 className="font-bold mb-2">Exports, Communication & Workflows</h4>
+              <ul className="list-disc pl-5 space-y-1">
+                <li>EXPORTER_DONNEES : Extraire des fichiers Excel massifs.</li>
+                <li>MODIFIER_TEMPLATES : Changer les logos et textes des modèles PDF.</li>
+                <li>ENVOYER_SMS_MASSIF : Envoyer des alertes SMS à tous les chefs d'équipe.</li>
+                <li>DIFFUSER_MESSAGE_SYSTEME : Afficher un bandeau d'alerte global.</li>
+                <li>CONFIGURER_WORKFLOW : Modifier les étapes d'approbation des missions.</li>
+              </ul>
+            </div>
+
+            <div className={`${COMMON_CLASSES.card} p-4`}>
+              <h4 className="font-bold mb-2">Sécurité Avancée, Archivage & Maintenance</h4>
+              <ul className="list-disc pl-5 space-y-1">
+                <li>EXPORTER_AUDIT_LOGS : Télécharger l'historique des actions.</li>
+                <li>GENERER_CLES_API : Générer des clés API pour intégrations externes.</li>
+                <li>MODIFIER_VUES_TABLEAUX_BORD : Personnaliser les graphiques d'accueil.</li>
+                <li>ARCHIVER_PROJET / ARCHIVER_MISSION : Archivage sans suppression.</li>
+                <li>VOIR_DOCUMENTS_CONFIDENTIELS / SUPPRIMER_DOCUMENTS : Gestion des pièces jointes sensibles.</li>
+                <li>REINITIALISER_STATISTIQUES / GERER_WEBHOOKS : Maintenance système.</li>
+                <li>VOIR_METRIQUES_IA : Voir usage et coût de l'IA analytique.</li>
+              </ul>
+            </div>
+          </div>
+        </ContentArea>
+      </Section>
+
       <Section title="📸 Aperçu de l'Interface">
         <ScreenshotGallery />
       </Section>

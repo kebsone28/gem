@@ -1,0 +1,541 @@
+[
+  {
+    "type": "start",
+    "originalName": "start",
+    "fullName": "start"
+  },
+  {
+    "type": "end",
+    "originalName": "end",
+    "fullName": "end"
+  },
+  {
+    "type": "today",
+    "originalName": "today",
+    "fullName": "today"
+  },
+  {
+    "type": "username",
+    "originalName": "username",
+    "fullName": "username"
+  },
+  {
+    "type": "phonenumber",
+    "originalName": "phonenumber",
+    "fullName": "phonenumber"
+  },
+  {
+    "type": "integer",
+    "originalName": "Numero_ordre",
+    "fullName": "Numero_ordre",
+    "label": "Numero ordre"
+  },
+  {
+    "type": "calculate",
+    "originalName": "C1",
+    "fullName": "C1"
+  },
+  {
+    "type": "calculate",
+    "originalName": "C3",
+    "fullName": "C3"
+  },
+  {
+    "type": "calculate",
+    "originalName": "C2",
+    "fullName": "C2"
+  },
+  {
+    "type": "calculate",
+    "originalName": "C4",
+    "fullName": "C4"
+  },
+  {
+    "type": "calculate",
+    "originalName": "C5",
+    "fullName": "C5"
+  },
+  {
+    "type": "text",
+    "originalName": "nom_key",
+    "fullName": "TYPE_DE_VISITE/nom_key",
+    "label": "Prénom et Nom"
+  },
+  {
+    "type": "text",
+    "originalName": "telephone_key",
+    "fullName": "TYPE_DE_VISITE/telephone_key",
+    "label": "Telephone"
+  },
+  {
+    "type": "text",
+    "originalName": "latitude_key",
+    "fullName": "TYPE_DE_VISITE/latitude_key",
+    "label": "Latitude"
+  },
+  {
+    "type": "text",
+    "originalName": "longitude_key",
+    "fullName": "TYPE_DE_VISITE/longitude_key",
+    "label": "Longitude"
+  },
+  {
+    "type": "text",
+    "originalName": "region_key",
+    "fullName": "TYPE_DE_VISITE/region_key",
+    "label": "Region"
+  },
+  {
+    "type": "geopoint",
+    "originalName": "LOCALISATION_CLIENT",
+    "fullName": "TYPE_DE_VISITE/LOCALISATION_CLIENT",
+    "label": "GPS du Ménage"
+  },
+  {
+    "type": "select_one",
+    "originalName": "role",
+    "fullName": "TYPE_DE_VISITE/role",
+    "label": "Votre Role"
+  },
+  {
+    "type": "note",
+    "fullName": "group_ue42j94/undefined",
+    "label": " PREPARATION DES KITS"
+  },
+  {
+    "type": "integer",
+    "fullName": "group_ue42j94/undefined",
+    "label": "Nombre de KIT préparé"
+  },
+  {
+    "type": "integer",
+    "fullName": "group_ue42j94/undefined",
+    "label": "Nombre de KIT Chargé pour livraison"
+  },
+  {
+    "type": "note",
+    "originalName": "note_Livreur",
+    "fullName": "group_wu8kv54/note_Livreur",
+    "label": "ÉTAPE 1/4: LIVREUR"
+  },
+  {
+    "type": "select_one",
+    "originalName": "Situation_du_M_nage",
+    "fullName": "group_wu8kv54/Situation_du_M_nage",
+    "label": "Situation du Ménage"
+  },
+  {
+    "type": "select_multiple",
+    "fullName": "group_wu8kv54/undefined",
+    "label": "justificatif"
+  },
+  {
+    "type": "integer",
+    "originalName": "Longueur_Cable_2_5mm_Int_rieure",
+    "fullName": "group_wu8kv54/group_sy9vj14/Longueur_Cable_2_5mm_Int_rieure",
+    "label": "Longueur Cable 2,5mm² Intérieure"
+  },
+  {
+    "type": "integer",
+    "originalName": "Longueur_Cable_1_5mm_Int_rieure",
+    "fullName": "group_wu8kv54/group_sy9vj14/Longueur_Cable_1_5mm_Int_rieure",
+    "label": "Longueur Cable 1,5mm² Intérieure"
+  },
+  {
+    "type": "integer",
+    "originalName": "Longueur_Tranch_e_Cable_arm_4mm",
+    "fullName": "group_wu8kv54/group_sy9vj14/Longueur_Tranch_e_Cable_arm_4mm",
+    "label": "Longueur Tranchée (Cable armé 4mm²)"
+  },
+  {
+    "type": "integer",
+    "originalName": "Longueur_Tranch_e_C_ble_arm_1_5mm",
+    "fullName": "group_wu8kv54/group_sy9vj14/Longueur_Tranch_e_C_ble_arm_1_5mm",
+    "label": "Longueur Tranchée Câble armé 1,5mm²)"
+  },
+  {
+    "type": "acknowledge",
+    "fullName": "group_wu8kv54/group_sy9vj14/undefined",
+    "label": "Je confirme la remise du materiel au ménage"
+  },
+  {
+    "type": "acknowledge",
+    "fullName": "group_wu8kv54/group_sy9vj14/undefined",
+    "label": "Je confirme le marquage de la position du Mur et position des coffrets"
+  },
+  {
+    "type": "select_one",
+    "fullName": "group_wu8kv54/group_sy9vj14/undefined",
+    "label": "Presence de Mur"
+  },
+  {
+    "type": "acknowledge",
+    "fullName": "group_wu8kv54/group_sy9vj14/undefined",
+    "label": "Je confirme le marquage de l'emplacement des coffrets électriques"
+  },
+  {
+    "type": "image",
+    "fullName": "group_wu8kv54/group_sy9vj14/undefined",
+    "label": "Photo"
+  },
+  {
+    "type": "note",
+    "originalName": "note_macon_1",
+    "fullName": "etape_macon/note_macon_1",
+    "label": "ÉTAPE 2/4: RÉALISATION DU MUR"
+  },
+  {
+    "type": "select_one",
+    "originalName": "kit_disponible_macon",
+    "fullName": "etape_macon/kit_disponible_macon",
+    "label": "Le kit est-il disponible et complet ?"
+  },
+  {
+    "type": "select_multiple",
+    "originalName": "problemes_kit_macon",
+    "fullName": "etape_macon/problemes_kit_macon",
+    "label": "POURQUOI?"
+  },
+  {
+    "type": "select_one",
+    "originalName": "type_mur_realise_macon",
+    "fullName": "etape_macon/type_mur_realise_macon",
+    "label": "Type de Mur"
+  },
+  {
+    "type": "select_multiple",
+    "originalName": "problemes_travail_macon",
+    "fullName": "etape_macon/problemes_travail_macon",
+    "label": "PROBLEME"
+  },
+  {
+    "type": "acknowledge",
+    "originalName": "validation_macon_final",
+    "fullName": "etape_macon/validation_macon_final",
+    "label": "✅ Je valide que le mur est terminé et conforme"
+  },
+  {
+    "type": "note",
+    "originalName": "note_reseau_1",
+    "fullName": "etape_reseau/note_reseau_1",
+    "label": "ÉTAPE 3/4: BRANCHEMENT"
+  },
+  {
+    "type": "select_one",
+    "originalName": "verification_mur_reseau",
+    "fullName": "etape_reseau/verification_mur_reseau",
+    "label": "Le mur est-il réalisé et conforme ?"
+  },
+  {
+    "type": "select_multiple",
+    "originalName": "problemes_mur_reseau",
+    "fullName": "etape_reseau/problemes_mur_reseau",
+    "label": "Problèmes avec le mur"
+  },
+  {
+    "type": "select_one",
+    "originalName": "etat_branchement_reseau",
+    "fullName": "etape_reseau/etat_branchement_reseau",
+    "label": "État du branchement"
+  },
+  {
+    "type": "select_multiple",
+    "originalName": "problemes_branchement_reseau",
+    "fullName": "etape_reseau/problemes_branchement_reseau",
+    "label": "Problèmes lors du branchement"
+  },
+  {
+    "type": "acknowledge",
+    "originalName": "validation_reseau_final",
+    "fullName": "etape_reseau/validation_reseau_final",
+    "label": "✅ Je valide que le branchement est terminé et conforme"
+  },
+  {
+    "type": "note",
+    "originalName": "note_interieur_1",
+    "fullName": "etape_interieur/note_interieur_1",
+    "label": "ÉTAPE 4/4: INSTALLATION INTÉRIEURE"
+  },
+  {
+    "type": "select_one",
+    "originalName": "verification_branchement_interieur",
+    "fullName": "etape_interieur/verification_branchement_interieur",
+    "label": "Le branchement est-il réalisé et conforme ?"
+  },
+  {
+    "type": "select_multiple",
+    "originalName": "problemes_branchement_interieur",
+    "fullName": "etape_interieur/problemes_branchement_interieur",
+    "label": "Problèmes avec le branchement"
+  },
+  {
+    "type": "select_one",
+    "originalName": "etat_installation_interieur",
+    "fullName": "etape_interieur/etat_installation_interieur",
+    "label": "État de l'installation intérieure réalisée"
+  },
+  {
+    "type": "select_multiple",
+    "originalName": "problemes_installation_interieur",
+    "fullName": "etape_interieur/problemes_installation_interieur",
+    "label": "Problèmes lors de l'installation intérieure"
+  },
+  {
+    "type": "acknowledge",
+    "originalName": "validation_interieur_final",
+    "fullName": "etape_interieur/validation_interieur_final",
+    "label": "✅ Je valide que l'installation intérieure est terminée et conforme"
+  },
+  {
+    "type": "select_one",
+    "originalName": "ETAT_DE_L_INSTALLATION",
+    "fullName": "etape_controleur/ETAT_DE_L_INSTALLATION",
+    "label": "Controle préalable"
+  },
+  {
+    "type": "select_multiple",
+    "originalName": "controleurPROB",
+    "fullName": "etape_controleur/controleurPROB",
+    "label": "Quel est le probleme ?"
+  },
+  {
+    "type": "select_one",
+    "originalName": "Phase_de_controle",
+    "fullName": "etape_controleur/Phase_de_controle",
+    "label": "Phase du contrôle"
+  },
+  {
+    "type": "select_one",
+    "originalName": "ETAT_BRANCHEMENT",
+    "fullName": "etape_controleur/group_zw7xz94/ETAT_BRANCHEMENT",
+    "label": "ETAT DU BRANCHEMENT"
+  },
+  {
+    "type": "select_multiple",
+    "originalName": "OBSERVATION",
+    "fullName": "etape_controleur/group_zw7xz94/OBSERVATION",
+    "label": "OBSERVATION???"
+  },
+  {
+    "type": "select_one",
+    "originalName": "Position_du_branchement",
+    "fullName": "etape_controleur/group_zw7xz94/group_wr05k35/Position_du_branchement",
+    "label": "Position et longueur du branchement sur le réseau"
+  },
+  {
+    "type": "select_multiple",
+    "originalName": "Observations_sur_la_ition_du_branchement",
+    "fullName": "etape_controleur/group_zw7xz94/group_wr05k35/Observations_sur_la_ition_du_branchement",
+    "label": "Observations sur la position du branchement"
+  },
+  {
+    "type": "select_one",
+    "originalName": "Hauteur_branchement",
+    "fullName": "etape_controleur/group_zw7xz94/group_wr05k35/Hauteur_branchement",
+    "label": "Hauteur branchement"
+  },
+  {
+    "type": "text",
+    "originalName": "Observations",
+    "fullName": "etape_controleur/group_zw7xz94/group_wr05k35/Observations",
+    "label": "Observations"
+  },
+  {
+    "type": "select_one",
+    "originalName": "Hauteur_coffret",
+    "fullName": "etape_controleur/group_zw7xz94/group_wr05k35/Hauteur_coffret",
+    "label": "Hauteur du coffret"
+  },
+  {
+    "type": "text",
+    "originalName": "Observations_001",
+    "fullName": "etape_controleur/group_zw7xz94/group_wr05k35/Observations_001",
+    "label": "Observations"
+  },
+  {
+    "type": "select_one",
+    "originalName": "Etat_du_coupe_circuit",
+    "fullName": "etape_controleur/group_zw7xz94/group_wr05k35/Etat_du_coupe_circuit",
+    "label": "Etat du coupe circuit?"
+  },
+  {
+    "type": "select_multiple",
+    "originalName": "OBSERVATION_001",
+    "fullName": "etape_controleur/group_zw7xz94/group_wr05k35/OBSERVATION_001",
+    "label": "OBSERVATION???"
+  },
+  {
+    "type": "select_one",
+    "originalName": "Continuit_PVC",
+    "fullName": "etape_controleur/group_zw7xz94/group_wr05k35/Continuit_PVC",
+    "label": "Isolation coffret et protection descente câble"
+  },
+  {
+    "type": "select_multiple",
+    "originalName": "OBSERVATION_002",
+    "fullName": "etape_controleur/group_zw7xz94/group_wr05k35/OBSERVATION_002",
+    "label": "OBSERVATION???"
+  },
+  {
+    "type": "select_one",
+    "originalName": "Mise_en_oeuvre",
+    "fullName": "etape_controleur/group_zw7xz94/group_wr05k35/Mise_en_oeuvre",
+    "label": "Mise en œuvre du Branchement"
+  },
+  {
+    "type": "select_multiple",
+    "originalName": "OBSERVATION_003",
+    "fullName": "etape_controleur/group_zw7xz94/group_wr05k35/OBSERVATION_003",
+    "label": "OBSERVATION???"
+  },
+  {
+    "type": "image",
+    "originalName": "_1_photo_anomalie_si_possible",
+    "fullName": "etape_controleur/group_zw7xz94/group_wr05k35/_1_photo_anomalie_si_possible",
+    "label": "1 photo anomalie si existant"
+  },
+  {
+    "type": "select_one",
+    "originalName": "DISJONCTEUR_GENERAL_EN_TETE_D_",
+    "fullName": "etape_controleur/group_hx7ae46/DISJONCTEUR_GENERAL_EN_TETE_D_",
+    "label": "DISJONCTEUR GENERAL EN TETE D'INSTALLATION"
+  },
+  {
+    "type": "select_multiple",
+    "originalName": "OBSERVATIONS_",
+    "fullName": "etape_controleur/group_hx7ae46/OBSERVATIONS_",
+    "label": "OBSERVATIONS ???"
+  },
+  {
+    "type": "select_one",
+    "originalName": "TYPE_DE_DISJONCTEUR_GENERAL",
+    "fullName": "etape_controleur/group_hx7ae46/TYPE_DE_DISJONCTEUR_GENERAL",
+    "label": "TYPE DE DISJONCTEUR GENERAL"
+  },
+  {
+    "type": "select_one",
+    "originalName": "ENSEMBLE_DE_L_INSTALLATION_PRO",
+    "fullName": "etape_controleur/group_hx7ae46/ENSEMBLE_DE_L_INSTALLATION_PRO",
+    "label": "ENSEMBLE DE L'INSTALLATION PROTÉGÉ PAR DDR 30mA"
+  },
+  {
+    "type": "select_multiple",
+    "originalName": "OBSERVATIONS__001",
+    "fullName": "etape_controleur/group_hx7ae46/OBSERVATIONS__001",
+    "label": "OBSERVATIONS ???"
+  },
+  {
+    "type": "select_one",
+    "originalName": "PROTECTION_L_ORIGINE_DE_CHAQ",
+    "fullName": "etape_controleur/group_hx7ae46/PROTECTION_L_ORIGINE_DE_CHAQ",
+    "label": "PROTECTION À L'ORIGINE DE CHAQUE CIRCUIT (Modulaire et conducteur)"
+  },
+  {
+    "type": "select_multiple",
+    "originalName": "OBSERVATIONS_002",
+    "fullName": "etape_controleur/group_hx7ae46/OBSERVATIONS_002",
+    "label": "OBSERVATIONS???"
+  },
+  {
+    "type": "select_one",
+    "originalName": "S_PARATION_DES_CIRCUITS_Lumi_",
+    "fullName": "etape_controleur/group_hx7ae46/S_PARATION_DES_CIRCUITS_Lumi_",
+    "label": "SÉPARATION DES CIRCUITS (Lumière et Prise)"
+  },
+  {
+    "type": "text",
+    "originalName": "OBSERVATIONS__002",
+    "fullName": "etape_controleur/group_hx7ae46/OBSERVATIONS__002",
+    "label": "OBSERVATIONS ???"
+  },
+  {
+    "type": "note",
+    "originalName": "PROTECTION_CONTACT_D_TOUTE_L_INSTALLATION",
+    "fullName": "etape_controleur/group_hx7ae46/PROTECTION_CONTACT_D_TOUTE_L_INSTALLATION",
+    "label": "PROTECTION CONTACT DIRECT A VERIFIER SUR TOUTE L'INSTALLATION"
+  },
+  {
+    "type": "select_one",
+    "originalName": "PROTECTION_CONTRE_LES_CONTACTS",
+    "fullName": "etape_controleur/group_hx7ae46/PROTECTION_CONTRE_LES_CONTACTS",
+    "label": "PROTECTION CONTRE LES CONTACTS DIRECTS"
+  },
+  {
+    "type": "select_multiple",
+    "originalName": "OBSERVATIONS__003",
+    "fullName": "etape_controleur/group_hx7ae46/OBSERVATIONS__003",
+    "label": "OBSERVATIONS ???"
+  },
+  {
+    "type": "select_one",
+    "originalName": "MISE_EN_OEUVRE_MAT_RIEL_ET_APP",
+    "fullName": "etape_controleur/group_hx7ae46/MISE_EN_OEUVRE_MAT_RIEL_ET_APP",
+    "label": "MISE EN OEUVRE MATÉRIEL ET APPAREILLAGE (Coffret, Prise, Interrupteur, Boite, Câble...)"
+  },
+  {
+    "type": "select_multiple",
+    "originalName": "OBSERVATIONS__004",
+    "fullName": "etape_controleur/group_hx7ae46/OBSERVATIONS__004",
+    "label": "OBSERVATIONS ???"
+  },
+  {
+    "type": "select_one",
+    "originalName": "CONTINUITE_DE_LA_PROTECTION_ME",
+    "fullName": "etape_controleur/group_hx7ae46/CONTINUITE_DE_LA_PROTECTION_ME",
+    "label": "CONTINUITE DE LA PROTECTION MECANIQUE DES FILS CONDUCTEURS (Phase /neutre/Terre)"
+  },
+  {
+    "type": "select_multiple",
+    "originalName": "OBSERVATIONS__005",
+    "fullName": "etape_controleur/group_hx7ae46/OBSERVATIONS__005",
+    "label": "OBSERVATIONS ???"
+  },
+  {
+    "type": "note",
+    "originalName": "RESEAU_DE_TERRE_A_VE_TOUTE_L_INSTALLATION",
+    "fullName": "etape_controleur/group_hx7ae46/RESEAU_DE_TERRE_A_VE_TOUTE_L_INSTALLATION",
+    "label": "RESEAU DE TERRE A VERIFIER SUR TOUTE L'INSTALLATION"
+  },
+  {
+    "type": "select_one",
+    "originalName": "MISE_EN_UVRE_DU_R_SEAU_DE_TER",
+    "fullName": "etape_controleur/group_hx7ae46/MISE_EN_UVRE_DU_R_SEAU_DE_TER",
+    "label": "MISE EN ŒUVRE DU RÉSEAU DE TERRE et CONTINUITE"
+  },
+  {
+    "type": "select_multiple",
+    "originalName": "OBSERVATIONS__006",
+    "fullName": "etape_controleur/group_hx7ae46/OBSERVATIONS__006",
+    "label": "OBSERVATIONS ???"
+  },
+  {
+    "type": "select_one",
+    "originalName": "ETAT_DE_LA_BARRETTE_DE_TERRE",
+    "fullName": "etape_controleur/group_hx7ae46/ETAT_DE_LA_BARRETTE_DE_TERRE",
+    "label": "ETAT DE LA BARRETTE DE TERRE"
+  },
+  {
+    "type": "select_one",
+    "originalName": "VALEUR_DE_LA_RESISTANCE_DE_TER",
+    "fullName": "etape_controleur/group_hx7ae46/VALEUR_DE_LA_RESISTANCE_DE_TER",
+    "label": "VALEUR DE LA RESISTANCE DE TERRE OU DE BOUCLE"
+  },
+  {
+    "type": "integer",
+    "originalName": "OBSERVATIONS__007",
+    "fullName": "etape_controleur/group_hx7ae46/OBSERVATIONS__007",
+    "label": "OBSERVATIONS ???"
+  },
+  {
+    "type": "acknowledge",
+    "originalName": "validation_controleur_final",
+    "fullName": "etape_controleur/validation_controleur_final",
+    "label": "✅ Je confirme avoir tout contrôlé"
+  },
+  {
+    "type": "text",
+    "originalName": "notes_generales",
+    "fullName": "notes_generales",
+    "label": "Notes générales"
+  }
+]

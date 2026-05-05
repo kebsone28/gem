@@ -122,8 +122,8 @@ function normalizeBuilderKey(value, fallback = 'gem_form') {
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '')
         .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '_')
-        .replace(/^_+|_+$/g, '')
+        .replace(/[^a-z0-9_]+/g, '_') // Allow underscores
+        // .replace(/^_+|_+$/g, '') // Preserve leading/trailing underscores
         .slice(0, 72);
     return normalized || `${fallback}_${crypto.randomUUID().slice(0, 8)}`;
 }
@@ -135,12 +135,10 @@ function makeHttpError(statusCode, message) {
 }
 
 async function findUniversalXlsFormDefinition(organizationId, formKey) {
-    const mapping = await prisma.koboFormMapping.findUnique({
+    const mapping = await prisma.koboFormMapping.findFirst({
         where: {
-            organizationId_koboAssetId: {
-                organizationId,
-                koboAssetId: formKey
-            }
+            organizationId,
+            koboAssetId: formKey
         }
     });
 
@@ -760,7 +758,7 @@ export const submitInternalKoboSubmission = async (req, res) => {
             household: updatedHousehold ? sanitizeBigIntForJson(updatedHousehold) : null
         });
     } catch (err) {
-        console.error('[INTERNAL-KOBO] submit error:', err);
+        console.error('[INTERNAL-KOBO] submit error:', err?.message || err, err?.stack || 'no-stack');
         const statusCode = err.statusCode || 500;
         return res.status(statusCode).json({
             success: false,
@@ -814,7 +812,7 @@ export const getInternalKoboFormDefinition = async (req, res) => {
             }
         });
     } catch (err) {
-        console.error('[INTERNAL-KOBO] form-definition error:', err);
+        console.error('[INTERNAL-KOBO] form-definition error:', err?.message || err, err?.stack || 'no-stack');
         return res.status(500).json({
             success: false,
             message: 'Server error while loading internal Kobo form definition'
@@ -923,12 +921,10 @@ export const updateInternalKoboFormDefinitionStatus = async (req, res) => {
             });
         }
 
-        const mapping = await prisma.koboFormMapping.findUnique({
+        const mapping = await prisma.koboFormMapping.findFirst({
             where: {
-                organizationId_koboAssetId: {
-                    organizationId,
-                    koboAssetId: formKey
-                }
+                organizationId,
+                koboAssetId: formKey
             }
         });
 
@@ -954,12 +950,7 @@ export const updateInternalKoboFormDefinitionStatus = async (req, res) => {
         };
 
         const updatedMapping = await prisma.koboFormMapping.update({
-            where: {
-                organizationId_koboAssetId: {
-                    organizationId,
-                    koboAssetId: formKey
-                }
-            },
+            where: { id: mapping.id },
             data: {
                 mapping: nextDefinition,
                 lastValidated: new Date()
@@ -1190,12 +1181,10 @@ export const createInternalKoboFormDefinition = async (req, res) => {
             }
         });
 
-        const existingMapping = await prisma.koboFormMapping.findUnique({
+        const existingMapping = await prisma.koboFormMapping.findFirst({
             where: {
-                organizationId_koboAssetId: {
-                    organizationId,
-                    koboAssetId: parsedDefinition.formKey
-                }
+                organizationId,
+                koboAssetId: parsedDefinition.formKey
             }
         });
         const existingDefinition = isPlainObject(existingMapping?.mapping) ? existingMapping.mapping : null;
@@ -1220,25 +1209,26 @@ export const createInternalKoboFormDefinition = async (req, res) => {
             'application/json'
         );
 
-        const storedMapping = await prisma.koboFormMapping.upsert({
-            where: {
-                organizationId_koboAssetId: {
-                    organizationId,
-                    koboAssetId: nextDefinition.formKey
+        let storedMapping;
+        if (existingMapping) {
+            storedMapping = await prisma.koboFormMapping.update({
+                where: { id: existingMapping.id },
+                data: {
+                    version: nextDefinition.formVersion,
+                    mapping: nextDefinition,
+                    lastValidated: new Date()
                 }
-            },
-            create: {
-                organizationId,
-                koboAssetId: nextDefinition.formKey,
-                version: nextDefinition.formVersion,
-                mapping: nextDefinition
-            },
-            update: {
-                version: nextDefinition.formVersion,
-                mapping: nextDefinition,
-                lastValidated: new Date()
-            }
-        });
+            });
+        } else {
+            storedMapping = await prisma.koboFormMapping.create({
+                data: {
+                    organizationId,
+                    koboAssetId: nextDefinition.formKey,
+                    version: nextDefinition.formVersion,
+                    mapping: nextDefinition
+                }
+            });
+        }
 
         await prisma.syncLog.create({
             data: {
@@ -1266,7 +1256,7 @@ export const createInternalKoboFormDefinition = async (req, res) => {
             form: summarizeUniversalXlsFormMapping(storedMapping)
         });
     } catch (err) {
-        console.error('[INTERNAL-KOBO] form builder create error:', err);
+        console.error('[INTERNAL-KOBO] form builder create error:', err?.message || err, err?.stack || 'no-stack');
         return res.status(500).json({
             success: false,
             message: 'Server error while creating internal Kobo form'
@@ -1306,7 +1296,7 @@ export const importInternalKoboXlsFormFromUrl = async (req, res) => {
         req.body = { ...req.body, sourceUrl: url };
         return importInternalKoboXlsForm(req, res);
     } catch (err) {
-        console.error('[INTERNAL-KOBO] XLSForm URL import error:', err);
+        console.error('[INTERNAL-KOBO] XLSForm URL import error:', err?.message || err, err?.stack || 'no-stack');
         return res.status(500).json({
             success: false,
             message: 'Server error while importing XLSForm URL'
@@ -1330,12 +1320,10 @@ export const importInternalKoboXlsForm = async (req, res) => {
             sourceHash,
             storageKey: `${baseKey}.xlsx`
         });
-        const existingMapping = await prisma.koboFormMapping.findUnique({
+        const existingMapping = await prisma.koboFormMapping.findFirst({
             where: {
-                organizationId_koboAssetId: {
-                    organizationId,
-                    koboAssetId: parsedDefinition.formKey
-                }
+                organizationId,
+                koboAssetId: parsedDefinition.formKey
             }
         });
         const existingDefinition = isPlainObject(existingMapping?.mapping) ? existingMapping.mapping : null;
@@ -1379,25 +1367,26 @@ export const importInternalKoboXlsForm = async (req, res) => {
             'application/json'
         );
 
-        const storedMapping = await prisma.koboFormMapping.upsert({
-            where: {
-                organizationId_koboAssetId: {
-                    organizationId,
-                    koboAssetId: parsedDefinition.formKey
+        let storedMapping;
+        if (existingMapping) {
+            storedMapping = await prisma.koboFormMapping.update({
+                where: { id: existingMapping.id },
+                data: {
+                    version: importedDefinition.formVersion,
+                    mapping: importedDefinition,
+                    lastValidated: new Date()
                 }
-            },
-            create: {
-                organizationId,
-                koboAssetId: parsedDefinition.formKey,
-                version: importedDefinition.formVersion,
-                mapping: importedDefinition
-            },
-            update: {
-                version: importedDefinition.formVersion,
-                mapping: importedDefinition,
-                lastValidated: new Date()
-            }
-        });
+            });
+        } else {
+            storedMapping = await prisma.koboFormMapping.create({
+                data: {
+                    organizationId,
+                    koboAssetId: parsedDefinition.formKey,
+                    version: importedDefinition.formVersion,
+                    mapping: importedDefinition
+                }
+            });
+        }
 
         await prisma.syncLog.create({
             data: {
@@ -1829,6 +1818,7 @@ export const listInternalKoboSubmissions = async (req, res) => {
 
 export const getInternalKoboDiagnostics = async (req, res) => {
     try {
+        const { organizationId } = req.user; // ← was missing — caused 500 on koboFormMapping queries
         const where = buildSubmissionWhere(req.user, req.query);
 
         const last24hDate = new Date(Date.now() - 24 * 60 * 60 * 1000);

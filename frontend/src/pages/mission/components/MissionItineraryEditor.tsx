@@ -68,23 +68,21 @@ export const MissionItineraryEditor: React.FC<MissionItineraryEditorProps> = ({
           const firstLine = lines[0] || 'Nouvelle journée de mission';
 
           return (
-            <div 
-              key={i} 
-              className={`flex flex-col rounded-[1.8rem] transition-all duration-300 border ${
-                isExpanded 
-                  ? 'bg-slate-900/90 border-indigo-500/40 ring-4 ring-indigo-500/5 md:col-span-2 lg:col-span-2' 
+            <div
+              key={i}
+              className={`flex flex-col rounded-[1.8rem] transition-all duration-300 border ${isExpanded
+                  ? 'bg-slate-900/90 border-indigo-500/40 ring-4 ring-indigo-500/5 md:col-span-2 lg:col-span-2'
                   : 'bg-slate-900/40 border-white/5 hover:border-white/20 hover:bg-slate-900/60'
-              }`}
+                }`}
             >
               {/* Card Header (Pliable) */}
-              <div 
+              <div
                 onClick={() => toggleExpand(i)}
                 className="p-4 cursor-pointer flex items-start gap-3"
               >
                 {/* Badge Jour */}
-                <div className={`shrink-0 w-12 h-12 rounded-2xl flex flex-col items-center justify-center shadow-lg transition-colors ${
-                  isExpanded ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400 border border-white/5'
-                }`}>
+                <div className={`shrink-0 w-12 h-12 rounded-2xl flex flex-col items-center justify-center shadow-lg transition-colors ${isExpanded ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400 border border-white/5'
+                  }`}>
                   <span className="text-[8px] font-black uppercase leading-none opacity-60">Jour</span>
                   <span className="text-[16px] font-black leading-none mt-1">{i + 1}</span>
                 </div>
@@ -147,12 +145,12 @@ export const MissionItineraryEditor: React.FC<MissionItineraryEditorProps> = ({
                       Appuyez sur l'en-tête pour réduire
                     </span>
                     {!isReadOnly && (
-                       <button 
-                         onClick={() => toggleExpand(i)}
-                         className="text-[9px] font-black text-indigo-400 hover:text-indigo-300 uppercase tracking-widest"
-                       >
-                         Valider & Fermer
-                       </button>
+                      <button
+                        onClick={() => toggleExpand(i)}
+                        className="text-[9px] font-black text-indigo-400 hover:text-indigo-300 uppercase tracking-widest"
+                      >
+                        Valider & Fermer
+                      </button>
                     )}
                   </div>
                 </div>

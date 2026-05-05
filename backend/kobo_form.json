@@ -1,0 +1,4394 @@
+{
+  "url": "https://kf.kobotoolbox.org/api/v2/assets/aEYZwPujJiFBTNb6mxMGCB/",
+  "owner": "https://kf.kobotoolbox.org/api/v2/users/pokebe/",
+  "owner__username": "pokebe",
+  "parent": null,
+  "settings": {
+    "sector": {
+      "label": "Autre",
+      "value": "Other"
+    },
+    "country": [
+      {
+        "label": "Senegal",
+        "value": "SEN"
+      }
+    ],
+    "data-table": {
+      "show-hxl-tags": false,
+      "show-group-name": false,
+      "selected-columns": [
+        "Num_ro_d_ordre",
+        "TYPE_DE_VISITE/POSITION_CLIENT",
+        "TYPE_DE_VISITE/TYPE_DE_VISITE_001",
+        "TYPE_DE_VISITE/NOMBRE_DE_PIECE_INSTALLEE",
+        "TYPE_DE_VISITE/PRENOM",
+        "TYPE_DE_VISITE/NOM",
+        "TYPE_DE_VISITE/ADRESSE_ou_NUMERO_D_ORDRE",
+        "TYPE_DE_VISITE/TELEPHONE",
+        "group_hx7ae46/PROTECTION_CONTRE_LES_CONTACT_001",
+        "group_hx7ae46/_OBJET_DE_NON_CONFORMITE_",
+        "group_hx7ae46/CALIBRE_DISJONCTEUR_GENERAL",
+        "group_hx7ae46/PROTECTION_CONTRE_LES_CONTACT_",
+        "group_hx7ae46/_OBJET_DE_NON_CONFORMITE__001",
+        "group_hx7ae46/ENSEMBLE_DE_L_INSTALLATION_PRO",
+        "group_hx7ae46/_OBJET_DE_NON_CONFORMITE__002",
+        "group_hx7ae46/MISE_EN_UVRE_DU_R_SEAU_DE_TER",
+        "group_hx7ae46/_OBJET_DE_NON_CONFORMITE__003",
+        "group_hx7ae46/MISE_EN_UVRE_DU_R_SEAU_DE_TER_001",
+        "group_hx7ae46/VALEUR_DE_LA_RESISTANCE_DE_TERRE",
+        "group_hx7ae46/MISE_EN_UVRE_DU_R_SEAU_DE_TER_",
+        "group_hx7ae46/_OBJET_DE_NON_CONFORMITE__004",
+        "group_hx7ae46/MISE_EN_UVRE_DU_R_SEAU_DE_TER_002",
+        "group_hx7ae46/_OBJET_DE_NON_CONFORMITE__005",
+        "group_hx7ae46/MISE_EN_UVRE_DU_R_SEAU_DE_TER__001",
+        "group_hx7ae46/OBSERVATION_SEPARATION_DES_CIR",
+        "group_hx7ae46/MISE_EN_UVRE_DU_R_SEAU_DE_TER__002",
+        "group_hx7ae46/_OBJET_DE_NON_CONFORMITE__006",
+        "POSE_DU_BRANCHEMENT/Observations_sur_position_",
+        "POSE_DU_BRANCHEMENT/POSE_DU_BRANCHEMENT_header",
+        "POSE_DU_BRANCHEMENT/minimum_4m_ou_6_m_en_fonction_",
+        "POSE_DU_BRANCHEMENT/Observations",
+        "POSE_DU_BRANCHEMENT/maximum_1_6m_au_milieu_du_hubl",
+        "POSE_DU_BRANCHEMENT/Observations_001",
+        "POSE_DU_BRANCHEMENT/Pr_sence_de_coupe_ci_uit_avec_Fusible_25A",
+        "POSE_DU_BRANCHEMENT/Observations_002",
+        "POSE_DU_BRANCHEMENT/pvc_et_couses_entre_la_descent",
+        "POSE_DU_BRANCHEMENT/Observations_003",
+        "POSE_DU_BRANCHEMENT/MISE_EN_UVRE_POSE_ONS_ET_RACCORDEMENTS",
+        "POSE_DU_BRANCHEMENT/Observations_004",
+        "Nom_du_repr_sentant_Cogelec_",
+        "ETAT_DE_L_INSTALLATION",
+        "group_hx7ae46/VALEUR_DE_LA_RESISTANCE_DE_TER",
+        "ETAT_BRANCHEMENT",
+        "POSE_DU_BRANCHEMENT/Position_du_branchement",
+        "POSE_DU_BRANCHEMENT/_1_photo_anomalie_si_possible",
+        "start",
+        "meta/audit",
+        "__SubmissionLinks",
+        "Numero_ordre",
+        "TYPE_DE_VISITE/nom_key",
+        "TYPE_DE_VISITE/region_key",
+        "group_wu8kv54/Situation_du_M_nage",
+        "etape_macon/validation_macon_final",
+        "etape_reseau/validation_reseau_final",
+        "etape_interieur/validation_interieur_final",
+        "etape_controleur/validation_controleur_final",
+        "notes_generales",
+        "username",
+        "TYPE_DE_VISITE/role",
+        "group_wu8kv54/group_sy9vj14/Photo"
+      ],
+      "translation-index": 0
+    },
+    "description": "Aide aux ménages à faible revenu",
+    "organization": "",
+    "country_codes": [
+      "SEN"
+    ]
+  },
+  "asset_type": "survey",
+  "files": [
+    {
+      "uid": "afUcSTXXF3mhwYaw5tzTngQ",
+      "url": "https://kf.kobotoolbox.org/api/v2/assets/aEYZwPujJiFBTNb6mxMGCB/files/afUcSTXXF3mhwYaw5tzTngQ/",
+      "asset": "https://kf.kobotoolbox.org/api/v2/assets/aEYZwPujJiFBTNb6mxMGCB/",
+      "user": "https://kf.kobotoolbox.org/api/v2/users/pokebe/",
+      "user__username": "pokebe",
+      "file_type": "form_media",
+      "description": "default",
+      "date_created": "2025-12-07T03:39:44.535877Z",
+      "content": "https://kf.kobotoolbox.org/api/v2/assets/aEYZwPujJiFBTNb6mxMGCB/files/afUcSTXXF3mhwYaw5tzTngQ/content/",
+      "metadata": {
+        "hash": "md5:35d9a87192360e0ef6ecb16de911ac49",
+        "filename": "Thies.csv",
+        "mimetype": "text/csv"
+      }
+    }
+  ],
+  "summary": {
+    "geo": true,
+    "labels": [
+      "Numero ordre",
+      "Prénom et Nom",
+      "Telephone",
+      "Latitude",
+      "Longitude"
+    ],
+    "columns": [
+      "name",
+      "type",
+      "label",
+      "required",
+      "calculation",
+      "appearance",
+      "hint",
+      "parameters",
+      "select_from_list_name",
+      "relevant",
+      "default",
+      "constraint_message",
+      "guidance_hint"
+    ],
+    "lock_all": false,
+    "lock_any": false,
+    "languages": [
+      "Français (fr)"
+    ],
+    "row_count": 81,
+    "name_quality": {
+      "ok": 8,
+      "bad": 0,
+      "good": 73,
+      "total": 81,
+      "firsts": {
+        "ok": {
+          "name": "Nombre_de_KIT_pr_par",
+          "index": 14,
+          "label": [
+            "Nombre de KIT préparé"
+          ]
+        }
+      }
+    },
+    "default_translation": "Français (fr)"
+  },
+  "date_created": "2021-09-11T10:14:50.067970Z",
+  "date_modified": "2026-05-03T04:01:36.373433Z",
+  "date_deployed": "2026-05-03T04:01:36.372814Z",
+  "version_id": "vTCfrZAhqHk4NJCDeaULmx",
+  "version__content_hash": "b09bc8e23bc8af50b810cdd02c59d52d0769ca83",
+  "version_count": 198,
+  "has_deployment": true,
+  "deployed_version_id": "vTCfrZAhqHk4NJCDeaULmx",
+  "deployed_versions": {
+    "count": 17,
+    "next": null,
+    "previous": null,
+    "results": [
+      {
+        "uid": "vTCfrZAhqHk4NJCDeaULmx",
+        "url": "https://kf.kobotoolbox.org/api/v2/assets/aEYZwPujJiFBTNb6mxMGCB/versions/vTCfrZAhqHk4NJCDeaULmx/",
+        "content_hash": "b09bc8e23bc8af50b810cdd02c59d52d0769ca83",
+        "date_deployed": "2026-05-03T04:01:36.365126Z",
+        "date_modified": "2026-05-03T04:01:36.365126Z"
+      },
+      {
+        "uid": "vQskSRqbSxethka9amDU4g",
+        "url": "https://kf.kobotoolbox.org/api/v2/assets/aEYZwPujJiFBTNb6mxMGCB/versions/vQskSRqbSxethka9amDU4g/",
+        "content_hash": "9523e620052bfeebde8123e02ec99c98b4be312a",
+        "date_deployed": "2026-03-21T03:13:07.158222Z",
+        "date_modified": "2026-03-21T03:13:07.158222Z"
+      },
+      {
+        "uid": "vZ53xZFuJJ2hyz5xUErdNp",
+        "url": "https://kf.kobotoolbox.org/api/v2/assets/aEYZwPujJiFBTNb6mxMGCB/versions/vZ53xZFuJJ2hyz5xUErdNp/",
+        "content_hash": "a512f3109f79895a7b854c36de6655c08bc5d261",
+        "date_deployed": "2025-12-07T02:15:01.590047Z",
+        "date_modified": "2025-12-07T02:15:01.590047Z"
+      },
+      {
+        "uid": "vpVDizrwzVZ93oYKDTKbnU",
+        "url": "https://kf.kobotoolbox.org/api/v2/assets/aEYZwPujJiFBTNb6mxMGCB/versions/vpVDizrwzVZ93oYKDTKbnU/",
+        "content_hash": "a512f3109f79895a7b854c36de6655c08bc5d261",
+        "date_deployed": "2025-12-06T07:45:00.904158Z",
+        "date_modified": "2025-12-06T07:45:00.904158Z"
+      },
+      {
+        "uid": "vv3GDuoNGWKA2nQqnsZXWw",
+        "url": "https://kf.kobotoolbox.org/api/v2/assets/aEYZwPujJiFBTNb6mxMGCB/versions/vv3GDuoNGWKA2nQqnsZXWw/",
+        "content_hash": "d7fc67882a662db2847383478d33718a86bda8a1",
+        "date_deployed": "2025-12-03T13:04:35.295172Z",
+        "date_modified": "2025-12-03T13:04:35.295172Z"
+      },
+      {
+        "uid": "vmnR6ZqsVVSbTzAguCcreP",
+        "url": "https://kf.kobotoolbox.org/api/v2/assets/aEYZwPujJiFBTNb6mxMGCB/versions/vmnR6ZqsVVSbTzAguCcreP/",
+        "content_hash": "31d9db623fe4465232d7139ae816e6c47dc0be3d",
+        "date_deployed": "2025-12-02T21:12:22.769072Z",
+        "date_modified": "2025-12-02T21:12:22.769072Z"
+      },
+      {
+        "uid": "vmR65Y3vurNZAksHGbJH2u",
+        "url": "https://kf.kobotoolbox.org/api/v2/assets/aEYZwPujJiFBTNb6mxMGCB/versions/vmR65Y3vurNZAksHGbJH2u/",
+        "content_hash": "dc77dd0f1974345567e4fed37730efe3626bf4d3",
+        "date_deployed": "2025-12-02T19:36:34.403116Z",
+        "date_modified": "2025-12-02T19:36:34.403116Z"
+      },
+      {
+        "uid": "vygwkScgN6dBS449GxUBZg",
+        "url": "https://kf.kobotoolbox.org/api/v2/assets/aEYZwPujJiFBTNb6mxMGCB/versions/vygwkScgN6dBS449GxUBZg/",
+        "content_hash": "fbb16c80c610f8489f16cc3a210a085a99075b47",
+        "date_deployed": "2025-12-02T19:11:07.704386Z",
+        "date_modified": "2025-12-02T19:11:07.704386Z"
+      },
+      {
+        "uid": "vnHtrXT8HkjtcTfgV8RUnr",
+        "url": "https://kf.kobotoolbox.org/api/v2/assets/aEYZwPujJiFBTNb6mxMGCB/versions/vnHtrXT8HkjtcTfgV8RUnr/",
+        "content_hash": "f48b1a6d0cf15aece543576605f7deb0dd52f37b",
+        "date_deployed": "2025-12-01T07:02:28.425237Z",
+        "date_modified": "2025-12-01T07:02:28.425237Z"
+      },
+      {
+        "uid": "vkUSD8cjxiTEdqHpaAs4eX",
+        "url": "https://kf.kobotoolbox.org/api/v2/assets/aEYZwPujJiFBTNb6mxMGCB/versions/vkUSD8cjxiTEdqHpaAs4eX/",
+        "content_hash": "9be8c9091f9337842fddb769246ebf1ecac70632",
+        "date_deployed": "2025-11-30T22:36:10.096424Z",
+        "date_modified": "2025-11-30T22:36:10.096424Z"
+      },
+      {
+        "uid": "vmQjaRd6aSWWgueMDs4hnX",
+        "url": "https://kf.kobotoolbox.org/api/v2/assets/aEYZwPujJiFBTNb6mxMGCB/versions/vmQjaRd6aSWWgueMDs4hnX/",
+        "content_hash": "6e4ad7d945431e09dd083f897e979385877595dc",
+        "date_deployed": "2025-11-30T19:31:06.587894Z",
+        "date_modified": "2025-11-30T19:31:06.587894Z"
+      },
+      {
+        "uid": "v3unrXvpTh9m8ByfT6qQXJ",
+        "url": "https://kf.kobotoolbox.org/api/v2/assets/aEYZwPujJiFBTNb6mxMGCB/versions/v3unrXvpTh9m8ByfT6qQXJ/",
+        "content_hash": "e22872470ee1cef959bc064d43e3cfa317dfd461",
+        "date_deployed": "2025-11-30T01:47:50.940221Z",
+        "date_modified": "2025-11-30T01:47:50.940221Z"
+      },
+      {
+        "uid": "vMERWj3jfJFKJAbHZeWmHg",
+        "url": "https://kf.kobotoolbox.org/api/v2/assets/aEYZwPujJiFBTNb6mxMGCB/versions/vMERWj3jfJFKJAbHZeWmHg/",
+        "content_hash": "90396e7443500094d0e3742b9f7f3a6243052c7e",
+        "date_deployed": "2025-11-29T23:48:31.013631Z",
+        "date_modified": "2025-11-29T23:48:31.013631Z"
+      },
+      {
+        "uid": "vMcWC2M8DdNLmeiidrTK6f",
+        "url": "https://kf.kobotoolbox.org/api/v2/assets/aEYZwPujJiFBTNb6mxMGCB/versions/vMcWC2M8DdNLmeiidrTK6f/",
+        "content_hash": "d329837e846f2b511160ff755952d14de886f1b7",
+        "date_deployed": "2022-01-17T15:05:21.143722Z",
+        "date_modified": "2022-01-17T15:05:21.143722Z"
+      },
+      {
+        "uid": "visBTYunNdkfcnjt5yfe3K",
+        "url": "https://kf.kobotoolbox.org/api/v2/assets/aEYZwPujJiFBTNb6mxMGCB/versions/visBTYunNdkfcnjt5yfe3K/",
+        "content_hash": "a39745fcab0b28dbddde485c8a80eef8668a390f",
+        "date_deployed": "2021-11-10T01:58:50.685665Z",
+        "date_modified": "2021-11-10T01:58:50.685665Z"
+      },
+      {
+        "uid": "vVx8fes4wREzyvUF7h7rnu",
+        "url": "https://kf.kobotoolbox.org/api/v2/assets/aEYZwPujJiFBTNb6mxMGCB/versions/vVx8fes4wREzyvUF7h7rnu/",
+        "content_hash": "5276c58bceac430c6afd913ad6ff85c991650ea2",
+        "date_deployed": "2021-11-05T03:44:10.548703Z",
+        "date_modified": "2021-11-05T03:44:10.548703Z"
+      },
+      {
+        "uid": "vEL3Z2angtZTiFgEEbDvpM",
+        "url": "https://kf.kobotoolbox.org/api/v2/assets/aEYZwPujJiFBTNb6mxMGCB/versions/vEL3Z2angtZTiFgEEbDvpM/",
+        "content_hash": "314bd04f538b6c5eb5ed176667bd5fce16873bee",
+        "date_deployed": "2021-09-11T10:15:17.017018Z",
+        "date_modified": "2021-09-11T10:15:17.017018Z"
+      }
+    ]
+  },
+  "deployment__links": {
+    "url": "https://ee.kobotoolbox.org/bfVy1nud",
+    "single_url": "https://ee.kobotoolbox.org/single/bfVy1nud",
+    "single_once_url": "https://ee.kobotoolbox.org/single/6c5daa866061fc3d88f429d1f90e88be",
+    "offline_url": "https://ee.kobotoolbox.org/x/bfVy1nud",
+    "preview_url": "https://ee.kobotoolbox.org/preview/bfVy1nud",
+    "iframe_url": "https://ee.kobotoolbox.org/i/bfVy1nud",
+    "single_iframe_url": "https://ee.kobotoolbox.org/single/i/bfVy1nud",
+    "single_once_iframe_url": "https://ee.kobotoolbox.org/single/i/6c5daa866061fc3d88f429d1f90e88be"
+  },
+  "deployment__active": true,
+  "deployment__data_download_links": {
+    "xls_legacy": "https://kc.kobotoolbox.org/pokebe/exports/aEYZwPujJiFBTNb6mxMGCB/xls/",
+    "csv_legacy": "https://kc.kobotoolbox.org/pokebe/exports/aEYZwPujJiFBTNb6mxMGCB/csv/",
+    "zip_legacy": "https://kc.kobotoolbox.org/pokebe/exports/aEYZwPujJiFBTNb6mxMGCB/zip/",
+    "kml_legacy": "https://kc.kobotoolbox.org/pokebe/exports/aEYZwPujJiFBTNb6mxMGCB/kml/",
+    "xls": "https://kc.kobotoolbox.org/pokebe/reports/aEYZwPujJiFBTNb6mxMGCB/export.xlsx",
+    "csv": "https://kc.kobotoolbox.org/pokebe/reports/aEYZwPujJiFBTNb6mxMGCB/export.csv"
+  },
+  "deployment__submission_count": 2,
+  "deployment__last_submission_time": "2026-05-03T00:35:27.641754Z",
+  "deployment__encrypted": false,
+  "deployment__uuid": "3b9da2e9e7ec41e28d28a9c1f460f6c9",
+  "deployment_status": "deployed",
+  "report_styles": {
+    "default": {},
+    "specified": {
+      "C1": {},
+      "C2": {},
+      "C3": {},
+      "C4": {},
+      "C5": {},
+      "NOM": {},
+      "end": {},
+      "role": {},
+      "audit": {},
+      "start": {},
+      "today": {},
+      "C2_001": {},
+      "C4_001": {},
+      "PRENOM": {},
+      "CIN_key": {},
+      "Nom_key": {},
+      "aj4tl94": {},
+      "ao0kc93": {},
+      "bd5cf19": {},
+      "da0ne28": {},
+      "dj8wg07": {},
+      "dl0gp22": {},
+      "ee24c62": {},
+      "eq4tj51": {},
+      "ew6ha71": {},
+      "fu3eu09": {},
+      "fy7xw06": {},
+      "gr7ao52": {},
+      "id9nb31": {},
+      "il3mr55": {},
+      "kk4fx96": {},
+      "lg8oy42": {},
+      "mc86m07": {},
+      "nc2gx72": {},
+      "nom_key": {},
+      "oh06r63": {},
+      "op6qf89": {},
+      "ot9bd54": {},
+      "rj7iw23": {},
+      "tk2vc94": {},
+      "tm91g17": {},
+      "ui9hv47": {},
+      "us1fm61": {},
+      "vk6fs21": {},
+      "vs3gk25": {},
+      "wg3bx16": {},
+      "wm59f12": {},
+      "wv5gh84": {},
+      "xb42b47": {},
+      "yk9nj01": {},
+      "ym5yp96": {},
+      "yt03p19": {},
+      "zb8zy03": {},
+      "/bm48o00": {},
+      "/dx0me89": {},
+      "/ei6vg84": {},
+      "/oy2zb99": {},
+      "/qt9gq52": {},
+      "/th5av66": {},
+      "/xb42b47": {},
+      "/yt03p19": {},
+      "ETAT_MUR": {},
+      "Etat_Mur": {},
+      "QUESTION": {},
+      "TYPE_MUR": {},
+      "username": {},
+      "3BL7IWUYW": {},
+      "6b6GKRr4G": {},
+      "CCRd2dFed": {},
+      "EUDLsDSp3": {},
+      "ILUiKI2w0": {},
+      "IVcqAY4kY": {},
+      "Jyd25Tvz8": {},
+      "OYBS5rPsC": {},
+      "P0wEWpMM4": {},
+      "QUESTION_": {},
+      "QphK4s79u": {},
+      "RQTQUszlF": {},
+      "TELEPHONE": {},
+      "TXxXL4WsP": {},
+      "V73OxIlqE": {},
+      "W3iMZxiMK": {},
+      "XVVA0kRYs": {},
+      "bLQtbtpDQ": {},
+      "er1usPtyh": {},
+      "gSsiFkAhB": {},
+      "lfhAuhOYq": {},
+      "mQSGmazwA": {},
+      "maconPROB": {},
+      "problem_C": {},
+      "r7aCYh56I": {},
+      "rImw9CvdF": {},
+      "rz3RIClpU": {},
+      "sJO17qDzH": {},
+      "vFr5m90Uo": {},
+      "xHNwN53Ia": {},
+      "zn5kICQdC": {},
+      "/0A7MlMjPr": {},
+      "/1PF04dVYB": {},
+      "/49Zd3hIBG": {},
+      "/6J65oaQEQ": {},
+      "/6nOrodfiz": {},
+      "/7CBJ8xKQr": {},
+      "/9f3HYlmpK": {},
+      "/9tvty4R9v": {},
+      "/CPioKj6Cj": {},
+      "/FZMRR665O": {},
+      "/FaAhCl1tG": {},
+      "/Lp9xWOoJf": {},
+      "/QHAcy2lay": {},
+      "/Qol9mv2rW": {},
+      "/Wsu6WXJZ0": {},
+      "/ZhW2b8xIk": {},
+      "/bEBDRRIfj": {},
+      "/bJx41pmEO": {},
+      "/dljNfai35": {},
+      "/fXitTuvNR": {},
+      "/fzBucnXJb": {},
+      "/hMS6WtlKr": {},
+      "/hXdGoDmwD": {},
+      "/iM3l5IfV1": {},
+      "/kEFyVl7NT": {},
+      "/llXnY9MUs": {},
+      "/mfgl8RXc3": {},
+      "/u1lM5XMuP": {},
+      "/vJwEWnFXf": {},
+      "/z1olUJQuy": {},
+      "Prenom_key": {},
+      "prenom_key": {},
+      "region_key": {},
+      "reseauPROB": {},
+      "Branchement": {},
+      "OBSERVATION": {},
+      "etape_macon": {},
+      "phonenumber": {},
+      "ETAT_MUR_001": {},
+      "Numero_ordre": {},
+      "Observations": {},
+      "Quartier_key": {},
+      "etape_reseau": {},
+      "group_reseau": {},
+      "latitude_key": {},
+      "mur_conforme": {},
+      "note_Livreur": {},
+      "note_macon_1": {},
+      "Continuit_PVC": {},
+      "OBSERVATIONS_": {},
+      "Telephone_key": {},
+      "group_ed3yt17": {},
+      "group_hx7ae46": {},
+      "group_ls9ja19": {},
+      "group_sy9vj14": {},
+      "group_ue42j94": {},
+      "group_wr05k35": {},
+      "group_wu8kv54": {},
+      "group_zw7xz94": {},
+      "longitude_key": {},
+      "note_reseau_1": {},
+      "telephone_key": {},
+      "Mise_en_oeuvre": {},
+      "Num_ro_d_ordre": {},
+      "TYPE_DE_VISITE": {},
+      "controleurPROB": {},
+      "probleme_macon": {},
+      "Hauteur_coffret": {},
+      "Information_Mur": {},
+      "Nom_intervenant": {},
+      "OBSERVATION_001": {},
+      "OBSERVATION_002": {},
+      "OBSERVATION_003": {},
+      "REALISATION_Mur": {},
+      "etape_interieur": {},
+      "notes_generales": {},
+      "probleme_reseau": {},
+      "tranch_e_et_mur": {},
+      "ETAT_BRANCHEMENT": {},
+      "ETAT_MUR_001_001": {},
+      "OBSERVATIONS_002": {},
+      "Observations_001": {},
+      "Observations_002": {},
+      "Observations_003": {},
+      "Observations_004": {},
+      "Verification_Mur": {},
+      "confirmation_mur": {},
+      "etape_controleur": {},
+      "installateurPROB": {},
+      "note_interieur_1": {},
+      "validation_macon": {},
+      "OBSERVATIONS__001": {},
+      "OBSERVATIONS__002": {},
+      "OBSERVATIONS__003": {},
+      "OBSERVATIONS__004": {},
+      "OBSERVATIONS__005": {},
+      "OBSERVATIONS__006": {},
+      "OBSERVATIONS__007": {},
+      "Phase_de_controle": {},
+      "Branchement_reseau": {},
+      "NOTE_SUPLEMENTAIRE": {},
+      "TYPE_DE_VISITE_001": {},
+      "group_installateur": {},
+      "Confirmation_reseau": {},
+      "Hauteur_branchement": {},
+      "LOCALISATION_CLIENT": {},
+      "POSE_DU_BRANCHEMENT": {},
+      "Preciser_le_problem": {},
+      "REALISATION_Mur_001": {},
+      "Situation_du_M_nage": {},
+      "interieure_conforme": {},
+      "probleme_reseau_001": {},
+      "problemes_kit_macon": {},
+      "tranch_e_et_mur_001": {},
+      "Quel_est_le_probleme": {},
+      "REALISATION_TRANCHEE": {},
+      "branchement_conforme": {},
+      "kit_disponible_macon": {},
+      "problemes_mur_reseau": {},
+      "Etat_du_coupe_circuit": {},
+      "Information_Mur_macon": {},
+      "mur_finalise_conforme": {},
+      "ETAT_DE_L_INSTALLATION": {},
+      "Information_sur_le_Mur": {},
+      "type_mur_realise_macon": {},
+      "validation_macon_final": {},
+      "Position_du_branchement": {},
+      "Preciser_problem_reseau": {},
+      "REALISATION_SUPPORT_MUR": {},
+      "confirmation_reseau_mur": {},
+      "etat_branchement_reseau": {},
+      "problemes_travail_macon": {},
+      "validation_reseau_final": {},
+      "verification_mur_reseau": {},
+      "Quel_est_le_probleme_001": {},
+      "REALISATION_TRANCHEE_001": {},
+      "Verification_Branchement": {},
+      "ADRESSE_ou_NUMERO_D_ORDRE": {},
+      "NOMBRE_DE_PIECE_INSTALLEE": {},
+      "_OBJET_DE_NON_CONFORMITE_": {},
+      "Observations_sur_position_": {},
+      "POSE_DU_BRANCHEMENT_header": {},
+      "REALISATION_TRANCHEE_label": {},
+      "validation_interieur_final": {},
+      "CALIBRE_DISJONCTEUR_GENERAL": {},
+      "REALISATION_SUPPORT_MUR_001": {},
+      "TYPE_DE_DISJONCTEUR_GENERAL": {},
+      "etat_installation_interieur": {},
+      "validation_controleur_final": {},
+      "ETAT_DE_LA_BARRETTE_DE_TERRE": {},
+      "Nom_du_repr_sentant_Cogelec_": {},
+      "PROTECTION_L_ORIGINE_DE_CHAQ": {},
+      "problemes_branchement_reseau": {},
+      "MISE_EN_UVRE_DU_R_SEAU_DE_TER": {},
+      "REALISATION_SUPPORT_MUR_label": {},
+      "S_PARATION_DES_CIRCUITS_Lumi_": {},
+      "_1_photo_anomalie_si_possible": {},
+      "_OBJET_DE_NON_CONFORMITE__001": {},
+      "_OBJET_DE_NON_CONFORMITE__002": {},
+      "_OBJET_DE_NON_CONFORMITE__003": {},
+      "_OBJET_DE_NON_CONFORMITE__004": {},
+      "_OBJET_DE_NON_CONFORMITE__005": {},
+      "_OBJET_DE_NON_CONFORMITE__006": {},
+      "confirmation_reseau_interieur": {},
+      "CONTINUITE_DE_LA_PROTECTION_ME": {},
+      "Confirmation_installation_inte": {},
+      "DISJONCTEUR_GENERAL_EN_TETE_D_": {},
+      "ENSEMBLE_DE_L_INSTALLATION_PRO": {},
+      "MISE_EN_OEUVRE_MAT_RIEL_ET_APP": {},
+      "MISE_EN_UVRE_DU_R_SEAU_DE_TER_": {},
+      "OBSERVATION_SEPARATION_DES_CIR": {},
+      "PROTECTION_CONTRE_LES_CONTACTS": {},
+      "PROTECTION_CONTRE_LES_CONTACT_": {},
+      "REALISATION_TRANCHEE_001_label": {},
+      "VALEUR_DE_LA_RESISTANCE_DE_TER": {},
+      "maximum_1_6m_au_milieu_du_hubl": {},
+      "minimum_4m_ou_6_m_en_fonction_": {},
+      "pvc_et_couses_entre_la_descent": {},
+      "Longueur_Cable_1_5mm_Int_rieure": {},
+      "Longueur_Cable_2_5mm_Int_rieure": {},
+      "Longueur_Tranch_e_Cable_arm_4mm": {},
+      "problemes_branchement_interieur": {},
+      "VALEUR_DE_LA_RESISTANCE_DE_TERRE": {},
+      "problemes_installation_interieur": {},
+      "Longueur_Tranch_e_C_ble_arm_1_5mm": {},
+      "MISE_EN_UVRE_DU_R_SEAU_DE_TER_001": {},
+      "MISE_EN_UVRE_DU_R_SEAU_DE_TER_002": {},
+      "PROTECTION_CONTRE_LES_CONTACT_001": {},
+      "REALISATION_SUPPORT_MUR_001_label": {},
+      "MISE_EN_UVRE_DU_R_SEAU_DE_TER__001": {},
+      "MISE_EN_UVRE_DU_R_SEAU_DE_TER__002": {},
+      "verification_branchement_interieur": {},
+      "MISE_EN_UVRE_POSE_ONS_ET_RACCORDEMENTS": {},
+      "Observations_sur_la_ition_du_branchement": {},
+      "PROTECTION_CONTACT_D_TOUTE_L_INSTALLATION": {},
+      "Pr_sence_de_coupe_ci_uit_avec_Fusible_25A": {},
+      "RESEAU_DE_TERRE_A_VE_TOUTE_L_INSTALLATION": {}
+    },
+    "kuid_names": {
+      "C1": "1OJlEmtwX",
+      "C2": "owLTx3GQY",
+      "C3": "rdP6yYxYd",
+      "C4": "k0w9C4RYH",
+      "C5": "OBSxhGX2J",
+      "NOM": "2l693cJSN",
+      "end": "MRhERfzc3",
+      "role": "UaO5RMior",
+      "audit": "nNPYVbLvj",
+      "start": "C6x93Oja6",
+      "today": "qVB1SnDQ2",
+      "C2_001": "CSXSiyv66",
+      "C4_001": "DEJXsJdw9",
+      "PRENOM": "ssM630Moe",
+      "CIN_key": "GYD3JH5Os",
+      "Nom_key": "5PJflhwNP",
+      "aj4tl94": "aj4tl94",
+      "ao0kc93": "ao0kc93",
+      "bd5cf19": "bd5cf19",
+      "da0ne28": "da0ne28",
+      "dj8wg07": "dj8wg07",
+      "dl0gp22": "dl0gp22",
+      "ee24c62": "ee24c62",
+      "eq4tj51": "eq4tj51",
+      "ew6ha71": "ew6ha71",
+      "fu3eu09": "fu3eu09",
+      "fy7xw06": "fy7xw06",
+      "gr7ao52": "gr7ao52",
+      "id9nb31": "id9nb31",
+      "il3mr55": "il3mr55",
+      "kk4fx96": "kk4fx96",
+      "lg8oy42": "lg8oy42",
+      "mc86m07": "mc86m07",
+      "nc2gx72": "nc2gx72",
+      "nom_key": "0ZXBFMjKp",
+      "oh06r63": "oh06r63",
+      "op6qf89": "op6qf89",
+      "ot9bd54": "ot9bd54",
+      "rj7iw23": "rj7iw23",
+      "tk2vc94": "tk2vc94",
+      "tm91g17": "tm91g17",
+      "ui9hv47": "ui9hv47",
+      "us1fm61": "us1fm61",
+      "vk6fs21": "vk6fs21",
+      "vs3gk25": "vs3gk25",
+      "wg3bx16": "wg3bx16",
+      "wm59f12": "wm59f12",
+      "wv5gh84": "wv5gh84",
+      "xb42b47": "xb42b47",
+      "yk9nj01": "yk9nj01",
+      "ym5yp96": "ym5yp96",
+      "yt03p19": "yt03p19",
+      "zb8zy03": "zb8zy03",
+      "/bm48o00": "/bm48o00",
+      "/dx0me89": "/dx0me89",
+      "/ei6vg84": "/ei6vg84",
+      "/oy2zb99": "/oy2zb99",
+      "/qt9gq52": "/qt9gq52",
+      "/th5av66": "/th5av66",
+      "/xb42b47": "/xb42b47",
+      "/yt03p19": "/yt03p19",
+      "ETAT_MUR": "BZts2uayt",
+      "Etat_Mur": "BZts2uayt",
+      "QUESTION": "cRAT7ap3d",
+      "TYPE_MUR": "OgbMvcwuE",
+      "username": "DG4OmihE4",
+      "3BL7IWUYW": "3BL7IWUYW",
+      "6b6GKRr4G": "6b6GKRr4G",
+      "CCRd2dFed": "CCRd2dFed",
+      "EUDLsDSp3": "EUDLsDSp3",
+      "ILUiKI2w0": "ILUiKI2w0",
+      "IVcqAY4kY": "IVcqAY4kY",
+      "Jyd25Tvz8": "Jyd25Tvz8",
+      "OYBS5rPsC": "OYBS5rPsC",
+      "P0wEWpMM4": "P0wEWpMM4",
+      "QUESTION_": "cRAT7ap3d",
+      "QphK4s79u": "QphK4s79u",
+      "RQTQUszlF": "RQTQUszlF",
+      "TELEPHONE": "CkhHEbq1N",
+      "TXxXL4WsP": "TXxXL4WsP",
+      "V73OxIlqE": "V73OxIlqE",
+      "W3iMZxiMK": "W3iMZxiMK",
+      "XVVA0kRYs": "XVVA0kRYs",
+      "bLQtbtpDQ": "bLQtbtpDQ",
+      "er1usPtyh": "er1usPtyh",
+      "gSsiFkAhB": "gSsiFkAhB",
+      "lfhAuhOYq": "lfhAuhOYq",
+      "mQSGmazwA": "mQSGmazwA",
+      "maconPROB": "WZjpwG2E9",
+      "problem_C": "cRAT7ap3d",
+      "r7aCYh56I": "r7aCYh56I",
+      "rImw9CvdF": "rImw9CvdF",
+      "rz3RIClpU": "rz3RIClpU",
+      "sJO17qDzH": "sJO17qDzH",
+      "vFr5m90Uo": "vFr5m90Uo",
+      "xHNwN53Ia": "xHNwN53Ia",
+      "zn5kICQdC": "zn5kICQdC",
+      "/0A7MlMjPr": "/0A7MlMjPr",
+      "/1PF04dVYB": "/1PF04dVYB",
+      "/49Zd3hIBG": "/49Zd3hIBG",
+      "/6J65oaQEQ": "/6J65oaQEQ",
+      "/6nOrodfiz": "/6nOrodfiz",
+      "/7CBJ8xKQr": "/7CBJ8xKQr",
+      "/9f3HYlmpK": "/9f3HYlmpK",
+      "/9tvty4R9v": "/9tvty4R9v",
+      "/CPioKj6Cj": "/CPioKj6Cj",
+      "/FZMRR665O": "/FZMRR665O",
+      "/FaAhCl1tG": "/FaAhCl1tG",
+      "/Lp9xWOoJf": "/Lp9xWOoJf",
+      "/QHAcy2lay": "/QHAcy2lay",
+      "/Qol9mv2rW": "/Qol9mv2rW",
+      "/Wsu6WXJZ0": "/Wsu6WXJZ0",
+      "/ZhW2b8xIk": "/ZhW2b8xIk",
+      "/bEBDRRIfj": "/bEBDRRIfj",
+      "/bJx41pmEO": "/bJx41pmEO",
+      "/dljNfai35": "/dljNfai35",
+      "/fXitTuvNR": "/fXitTuvNR",
+      "/fzBucnXJb": "/fzBucnXJb",
+      "/hMS6WtlKr": "/hMS6WtlKr",
+      "/hXdGoDmwD": "/hXdGoDmwD",
+      "/iM3l5IfV1": "/iM3l5IfV1",
+      "/kEFyVl7NT": "/kEFyVl7NT",
+      "/llXnY9MUs": "/llXnY9MUs",
+      "/mfgl8RXc3": "/mfgl8RXc3",
+      "/u1lM5XMuP": "/u1lM5XMuP",
+      "/vJwEWnFXf": "/vJwEWnFXf",
+      "/z1olUJQuy": "/z1olUJQuy",
+      "Prenom_key": "ISf4QqXRE",
+      "prenom_key": "6Fc1JmUU7",
+      "region_key": "mHoQ1cfgd",
+      "reseauPROB": "Ude2VvTHx",
+      "Branchement": "BZts2uayt",
+      "OBSERVATION": "SUjuPsIhz",
+      "etape_macon": "u1lM5XMuP",
+      "phonenumber": "EkjRCxez1",
+      "ETAT_MUR_001": "BZts2uayt",
+      "Numero_ordre": "SogYiiTMe",
+      "Observations": "MnOLb6QsP",
+      "Quartier_key": "aahavRrlr",
+      "etape_reseau": "Wsu6WXJZ0",
+      "group_reseau": "z1olUJQuy",
+      "latitude_key": "Do11KcyZV",
+      "mur_conforme": "PGS6d8p1r",
+      "note_Livreur": "WwwxwWiyE",
+      "note_macon_1": "WwwxwWiyE",
+      "Continuit_PVC": "FlS9fYu6z",
+      "OBSERVATIONS_": "aoXHILNzQ",
+      "Telephone_key": "BZMi8S4ef",
+      "group_ed3yt17": "yt03p19",
+      "group_hx7ae46": "FZMRR665O",
+      "group_ls9ja19": "fzBucnXJb",
+      "group_sy9vj14": "bm48o00",
+      "group_ue42j94": "yt03p19",
+      "group_wr05k35": "mfgl8RXc3",
+      "group_wu8kv54": "th5av66",
+      "group_zw7xz94": "Lp9xWOoJf",
+      "longitude_key": "dEFYwuaxy",
+      "note_reseau_1": "6cEyRqXGG",
+      "telephone_key": "h0w3gr6lv",
+      "Mise_en_oeuvre": "2r2OJnoQ5",
+      "Num_ro_d_ordre": "QPBbi4SBE",
+      "TYPE_DE_VISITE": "QHAcy2lay",
+      "controleurPROB": "SKI8tIXLd",
+      "probleme_macon": "cRAT7ap3d",
+      "Hauteur_coffret": "vkY6ikLzm",
+      "Information_Mur": "BZts2uayt",
+      "Nom_intervenant": "B1YnKEFOH",
+      "OBSERVATION_001": "TsyFwlVej",
+      "OBSERVATION_002": "sKVVWlQNn",
+      "OBSERVATION_003": "pC07ReQvr",
+      "REALISATION_Mur": "RDp2gWW0n",
+      "etape_interieur": "6nOrodfiz",
+      "notes_generales": "GWAM4Fzrs",
+      "probleme_reseau": "cRAT7ap3d",
+      "tranch_e_et_mur": "8t5wF4ktU",
+      "ETAT_BRANCHEMENT": "qrwDvIINA",
+      "ETAT_MUR_001_001": "BZts2uayt",
+      "OBSERVATIONS_002": "sUy48lnHP",
+      "Observations_001": "I9HrEhX8j",
+      "Observations_002": "5CVvK1KK7",
+      "Observations_003": "xCdm8YK8y",
+      "Observations_004": "zebVpUKSY",
+      "Verification_Mur": "BZts2uayt",
+      "confirmation_mur": "BZts2uayt",
+      "etape_controleur": "iM3l5IfV1",
+      "installateurPROB": "YwasVHA4K",
+      "note_interieur_1": "xpIcURQ2S",
+      "validation_macon": "ruCHf27S2",
+      "OBSERVATIONS__001": "xfTYgGRfE",
+      "OBSERVATIONS__002": "Qclrr2I6j",
+      "OBSERVATIONS__003": "1p6oW1q38",
+      "OBSERVATIONS__004": "bkJfIcCfO",
+      "OBSERVATIONS__005": "LwkM7PHIH",
+      "OBSERVATIONS__006": "lOEQcZcbg",
+      "OBSERVATIONS__007": "nQMMHUZp5",
+      "Phase_de_controle": "3V1FPYQQO",
+      "Branchement_reseau": "B3rKTIGgZ",
+      "NOTE_SUPLEMENTAIRE": "NlZBd2sRr",
+      "TYPE_DE_VISITE_001": "aDe4dTrBg",
+      "group_installateur": "1PF04dVYB",
+      "Confirmation_reseau": "fz2fq00",
+      "Hauteur_branchement": "jfM1rEH77",
+      "LOCALISATION_CLIENT": "ZhyqEhQiA",
+      "POSE_DU_BRANCHEMENT": "fXitTuvNR",
+      "Preciser_le_problem": "ic85y84",
+      "REALISATION_Mur_001": "l9fyRRJOP",
+      "Situation_du_M_nage": "zb8zy03",
+      "interieure_conforme": "ST1iacOHX",
+      "probleme_reseau_001": "cRAT7ap3d",
+      "problemes_kit_macon": "ehgrCD88m",
+      "tranch_e_et_mur_001": "UlFyMrnpM",
+      "Quel_est_le_probleme": "cRAT7ap3d",
+      "REALISATION_TRANCHEE": "llXnY9MUs",
+      "branchement_conforme": "sl5H0ibsd",
+      "kit_disponible_macon": "yHtdWdJFY",
+      "problemes_mur_reseau": "nznN6v1jb",
+      "Etat_du_coupe_circuit": "kf0iqJlkV",
+      "Information_Mur_macon": "hkBJ7jCOc",
+      "mur_finalise_conforme": "ot9bd54",
+      "ETAT_DE_L_INSTALLATION": "Q9qZgrHzp",
+      "Information_sur_le_Mur": "BZts2uayt",
+      "type_mur_realise_macon": "glEUiadNI",
+      "validation_macon_final": "sX13ROfCQ",
+      "Position_du_branchement": "4aAljlvQX",
+      "Preciser_problem_reseau": "ic85y84",
+      "REALISATION_SUPPORT_MUR": "dljNfai35",
+      "confirmation_reseau_mur": "BZts2uayt",
+      "etat_branchement_reseau": "FstqVlfik",
+      "problemes_travail_macon": "rXvVLIZ8R",
+      "validation_reseau_final": "pAr2TDpeD",
+      "verification_mur_reseau": "5sF8Edg5n",
+      "Quel_est_le_probleme_001": "cRAT7ap3d",
+      "REALISATION_TRANCHEE_001": "Qol9mv2rW",
+      "Verification_Branchement": "BZts2uayt",
+      "ADRESSE_ou_NUMERO_D_ORDRE": "zoNMZhnIc",
+      "NOMBRE_DE_PIECE_INSTALLEE": "PhTzAHpuJ",
+      "_OBJET_DE_NON_CONFORMITE_": "ZpjPTAazW",
+      "Observations_sur_position_": "OwAMwwbiu",
+      "POSE_DU_BRANCHEMENT_header": "JIwhKpEWH",
+      "REALISATION_TRANCHEE_label": "3y96KkBgS",
+      "validation_interieur_final": "97PN8bkww",
+      "CALIBRE_DISJONCTEUR_GENERAL": "c8Fyh98h0",
+      "REALISATION_SUPPORT_MUR_001": "hXdGoDmwD",
+      "TYPE_DE_DISJONCTEUR_GENERAL": "MwkXlGdsa",
+      "etat_installation_interieur": "aJvU1pEMd",
+      "validation_controleur_final": "eXdGcuSDZ",
+      "ETAT_DE_LA_BARRETTE_DE_TERRE": "nTFp0oPdO",
+      "Nom_du_repr_sentant_Cogelec_": "Nf5RN4yKH",
+      "PROTECTION_L_ORIGINE_DE_CHAQ": "HijYbsnOL",
+      "problemes_branchement_reseau": "p26X2PHXr",
+      "MISE_EN_UVRE_DU_R_SEAU_DE_TER": "L0iQTAbKw",
+      "REALISATION_SUPPORT_MUR_label": "HehvrPTB6",
+      "S_PARATION_DES_CIRCUITS_Lumi_": "nx9BobfeK",
+      "_1_photo_anomalie_si_possible": "dsWWlZewz",
+      "_OBJET_DE_NON_CONFORMITE__001": "hen27AVDv",
+      "_OBJET_DE_NON_CONFORMITE__002": "VGgDTtA1N",
+      "_OBJET_DE_NON_CONFORMITE__003": "GR03BALcL",
+      "_OBJET_DE_NON_CONFORMITE__004": "FFalV3Gik",
+      "_OBJET_DE_NON_CONFORMITE__005": "L3PCIxNFh",
+      "_OBJET_DE_NON_CONFORMITE__006": "H9txuyVe3",
+      "confirmation_reseau_interieur": "0aGyW0nCY",
+      "CONTINUITE_DE_LA_PROTECTION_ME": "F43EQO8pY",
+      "Confirmation_installation_inte": "fz2fq00",
+      "DISJONCTEUR_GENERAL_EN_TETE_D_": "jJumaaSKJ",
+      "ENSEMBLE_DE_L_INSTALLATION_PRO": "CVHGyQbqp",
+      "MISE_EN_OEUVRE_MAT_RIEL_ET_APP": "QNpQ0UiQH",
+      "MISE_EN_UVRE_DU_R_SEAU_DE_TER_": "rQbQn08NV",
+      "OBSERVATION_SEPARATION_DES_CIR": "XVVA0kRYs",
+      "PROTECTION_CONTRE_LES_CONTACTS": "wXN0Fappv",
+      "PROTECTION_CONTRE_LES_CONTACT_": "IrRGrSyTZ",
+      "REALISATION_TRANCHEE_001_label": "3IPkW5QPu",
+      "VALEUR_DE_LA_RESISTANCE_DE_TER": "qdroZidc6",
+      "maximum_1_6m_au_milieu_du_hubl": "IJ94WUsax",
+      "minimum_4m_ou_6_m_en_fonction_": "rPpDmBZJ4",
+      "pvc_et_couses_entre_la_descent": "WOA9VPwPC",
+      "Longueur_Cable_1_5mm_Int_rieure": "5Tz1vgEqu",
+      "Longueur_Cable_2_5mm_Int_rieure": "46avV9uJ1",
+      "Longueur_Tranch_e_Cable_arm_4mm": "uQd1dEFK7",
+      "problemes_branchement_interieur": "uOdzjuqGJ",
+      "VALEUR_DE_LA_RESISTANCE_DE_TERRE": "6wyaevMpR",
+      "problemes_installation_interieur": "4l3omQrfl",
+      "Longueur_Tranch_e_C_ble_arm_1_5mm": "TcsAdBAcE",
+      "MISE_EN_UVRE_DU_R_SEAU_DE_TER_001": "RsrN8sCGP",
+      "MISE_EN_UVRE_DU_R_SEAU_DE_TER_002": "MYNfiLitT",
+      "PROTECTION_CONTRE_LES_CONTACT_001": "uLVFYhMCp",
+      "REALISATION_SUPPORT_MUR_001_label": "DetBLwlCV",
+      "MISE_EN_UVRE_DU_R_SEAU_DE_TER__001": "2wpeZO1PZ",
+      "MISE_EN_UVRE_DU_R_SEAU_DE_TER__002": "v9cBr5g2I",
+      "verification_branchement_interieur": "1j275ROrF",
+      "MISE_EN_UVRE_POSE_ONS_ET_RACCORDEMENTS": "ETNoWaMNT",
+      "Observations_sur_la_ition_du_branchement": "RJIfUveDI",
+      "PROTECTION_CONTACT_D_TOUTE_L_INSTALLATION": "XvvcRT2yu",
+      "Pr_sence_de_coupe_ci_uit_avec_Fusible_25A": "gAfp6qdsG",
+      "RESEAU_DE_TERRE_A_VE_TOUTE_L_INSTALLATION": "1ThudmZ1g"
+    }
+  },
+  "report_custom": {
+    "kz6yz90": {
+      "crid": "kz6yz90",
+      "name": "",
+      "questions": [
+        "ETAT_BRANCHEMENT",
+        "ETAT_DE_L_INSTALLATION"
+      ]
+    }
+  },
+  "advanced_features": {
+    "_version": "20250820"
+  },
+  "map_styles": {},
+  "map_custom": {},
+  "content": {
+    "schema": "1",
+    "survey": [
+      {
+        "name": "start",
+        "type": "start",
+        "$kuid": "C6x93Oja6",
+        "$xpath": "start",
+        "$autoname": "start"
+      },
+      {
+        "name": "end",
+        "type": "end",
+        "$kuid": "MRhERfzc3",
+        "$xpath": "end",
+        "$autoname": "end"
+      },
+      {
+        "name": "today",
+        "type": "today",
+        "$kuid": "qVB1SnDQ2",
+        "$xpath": "today",
+        "$autoname": "today"
+      },
+      {
+        "name": "username",
+        "type": "username",
+        "$kuid": "DG4OmihE4",
+        "$xpath": "username",
+        "$autoname": "username"
+      },
+      {
+        "name": "phonenumber",
+        "type": "phonenumber",
+        "$kuid": "EkjRCxez1",
+        "$xpath": "phonenumber",
+        "$autoname": "phonenumber"
+      },
+      {
+        "name": "Numero_ordre",
+        "type": "integer",
+        "$kuid": "SogYiiTMe",
+        "label": [
+          "Numero ordre"
+        ],
+        "$xpath": "Numero_ordre",
+        "required": true,
+        "$autoname": "Numero_ordre"
+      },
+      {
+        "name": "C1",
+        "type": "calculate",
+        "$kuid": "1OJlEmtwX",
+        "$xpath": "C1",
+        "required": true,
+        "$autoname": "C1",
+        "calculation": "pulldata('Thies','nom','code_key',${Numero_ordre})"
+      },
+      {
+        "name": "C3",
+        "type": "calculate",
+        "$kuid": "rdP6yYxYd",
+        "$xpath": "C3",
+        "required": true,
+        "$autoname": "C3",
+        "calculation": "pulldata('Thies','telephone','code_key',${Numero_ordre})"
+      },
+      {
+        "name": "C2",
+        "type": "calculate",
+        "$kuid": "owLTx3GQY",
+        "$xpath": "C2",
+        "required": true,
+        "$autoname": "C2",
+        "calculation": "pulldata('Thies','latitude','code_key',${Numero_ordre})"
+      },
+      {
+        "name": "C4",
+        "type": "calculate",
+        "$kuid": "k0w9C4RYH",
+        "$xpath": "C4",
+        "required": false,
+        "$autoname": "C4",
+        "calculation": "pulldata('Thies','longitude','code_key',${Numero_ordre})"
+      },
+      {
+        "name": "C5",
+        "type": "calculate",
+        "$kuid": "OBSxhGX2J",
+        "$xpath": "C5",
+        "required": false,
+        "$autoname": "C5",
+        "calculation": "pulldata('Thies','region','code_key',${Numero_ordre})"
+      },
+      {
+        "name": "TYPE_DE_VISITE",
+        "type": "begin_group",
+        "$kuid": "QHAcy2lay",
+        "label": [
+          "Menage"
+        ],
+        "$xpath": "TYPE_DE_VISITE",
+        "required": false,
+        "$autoname": "TYPE_DE_VISITE",
+        "appearance": "field-list"
+      },
+      {
+        "name": "nom_key",
+        "type": "text",
+        "$kuid": "0ZXBFMjKp",
+        "label": [
+          "Prénom et Nom"
+        ],
+        "$xpath": "TYPE_DE_VISITE/nom_key",
+        "required": true,
+        "$autoname": "nom_key",
+        "calculation": "${C1}"
+      },
+      {
+        "name": "telephone_key",
+        "type": "text",
+        "$kuid": "h0w3gr6lv",
+        "label": [
+          "Telephone"
+        ],
+        "$xpath": "TYPE_DE_VISITE/telephone_key",
+        "required": true,
+        "$autoname": "telephone_key",
+        "calculation": "${C3}"
+      },
+      {
+        "name": "latitude_key",
+        "type": "text",
+        "$kuid": "Do11KcyZV",
+        "label": [
+          "Latitude"
+        ],
+        "$xpath": "TYPE_DE_VISITE/latitude_key",
+        "required": true,
+        "$autoname": "latitude_key",
+        "appearance": "numbers",
+        "calculation": "${C2}"
+      },
+      {
+        "name": "longitude_key",
+        "type": "text",
+        "$kuid": "dEFYwuaxy",
+        "label": [
+          "Longitude"
+        ],
+        "$xpath": "TYPE_DE_VISITE/longitude_key",
+        "required": true,
+        "$autoname": "longitude_key",
+        "calculation": "${C4}"
+      },
+      {
+        "name": "region_key",
+        "type": "text",
+        "$kuid": "mHoQ1cfgd",
+        "label": [
+          "Region"
+        ],
+        "$xpath": "TYPE_DE_VISITE/region_key",
+        "required": true,
+        "$autoname": "region_key",
+        "calculation": "${C5}"
+      },
+      {
+        "hint": [
+          "Prendre un peu de temps pour marquer les coordonnées GPS du ménage"
+        ],
+        "name": "LOCALISATION_CLIENT",
+        "type": "geopoint",
+        "$kuid": "ZhyqEhQiA",
+        "label": [
+          "GPS du Ménage"
+        ],
+        "$xpath": "TYPE_DE_VISITE/LOCALISATION_CLIENT",
+        "required": true,
+        "$autoname": "LOCALISATION_CLIENT"
+      },
+      {
+        "name": "role",
+        "type": "select_one",
+        "$kuid": "UaO5RMior",
+        "label": [
+          "Votre Role"
+        ],
+        "$xpath": "TYPE_DE_VISITE/role",
+        "required": true,
+        "$autoname": "role",
+        "appearance": "likert",
+        "parameters": "randomize=true",
+        "select_from_list_name": "roles"
+      },
+      {
+        "type": "end_group",
+        "$kuid": "/QHAcy2lay"
+      },
+      {
+        "name": "group_ue42j94",
+        "type": "begin_group",
+        "$kuid": "yt03p19",
+        "label": [
+          "👷PREPARATEUR KIT"
+        ],
+        "$xpath": "group_ue42j94",
+        "relevant": "${role} = '__pr_parateur'",
+        "required": false,
+        "$autoname": "group_ue42j94"
+      },
+      {
+        "type": "note",
+        "$kuid": "bd5cf19",
+        "label": [
+          " PREPARATION DES KITS"
+        ],
+        "$xpath": "group_ue42j94/PREPARATION_DES_KITS",
+        "required": false,
+        "$autoname": "PREPARATION_DES_KITS"
+      },
+      {
+        "hint": [
+          "Nombre de coffret précablé = nombre des autres accessoire (piquet, barette, lampe, douille...)"
+        ],
+        "type": "integer",
+        "$kuid": "dj8wg07",
+        "label": [
+          "Nombre de KIT préparé"
+        ],
+        "$xpath": "group_ue42j94/Nombre_de_KIT_pr_par",
+        "relevant": "${role} = '__pr_parateur'",
+        "required": false,
+        "$autoname": "Nombre_de_KIT_pr_par"
+      },
+      {
+        "hint": [
+          "Exemple: 100 kit complet pour 100 ménages"
+        ],
+        "type": "integer",
+        "$kuid": "dj8wg07",
+        "label": [
+          "Nombre de KIT Chargé pour livraison"
+        ],
+        "$xpath": "group_ue42j94/Nombre_de_KIT_Charg_pour_livraison",
+        "required": false,
+        "$autoname": "Nombre_de_KIT_Charg_pour_livraison"
+      },
+      {
+        "type": "end_group",
+        "$kuid": "/yt03p19"
+      },
+      {
+        "name": "group_wu8kv54",
+        "type": "begin_group",
+        "$kuid": "th5av66",
+        "label": [
+          "👷LIVREUR"
+        ],
+        "$xpath": "group_wu8kv54",
+        "relevant": "${role} = 'livreur'",
+        "required": false,
+        "$autoname": "group_wu8kv54"
+      },
+      {
+        "name": "note_Livreur",
+        "type": "note",
+        "$kuid": "WwwxwWiyE",
+        "label": [
+          "ÉTAPE 1/4: LIVREUR"
+        ],
+        "$xpath": "group_wu8kv54/note_Livreur",
+        "required": false,
+        "$autoname": "note_Livreur"
+      },
+      {
+        "name": "Situation_du_M_nage",
+        "type": "select_one",
+        "$kuid": "zb8zy03",
+        "label": [
+          "Situation du Ménage"
+        ],
+        "$xpath": "group_wu8kv54/Situation_du_M_nage",
+        "relevant": "${role} = 'livreur'",
+        "required": false,
+        "$autoname": "Situation_du_M_nage",
+        "select_from_list_name": "cj3rh91"
+      },
+      {
+        "type": "select_multiple",
+        "$kuid": "fy7xw06",
+        "label": [
+          "justificatif"
+        ],
+        "$xpath": "group_wu8kv54/justificatif",
+        "relevant": "${Situation_du_M_nage} = 'menage_non_eligible'",
+        "required": false,
+        "$autoname": "justificatif",
+        "select_from_list_name": "pr4rq21"
+      },
+      {
+        "name": "group_sy9vj14",
+        "type": "begin_group",
+        "$kuid": "bm48o00",
+        "label": [
+          "formulaire"
+        ],
+        "$xpath": "group_wu8kv54/group_sy9vj14",
+        "relevant": "${Situation_du_M_nage} = 'menage_eligible'",
+        "required": false,
+        "$autoname": "group_sy9vj14"
+      },
+      {
+        "name": "Longueur_Cable_2_5mm_Int_rieure",
+        "type": "integer",
+        "$kuid": "46avV9uJ1",
+        "label": [
+          "Longueur Cable 2,5mm² Intérieure"
+        ],
+        "$xpath": "group_wu8kv54/group_sy9vj14/Longueur_Cable_2_5mm_Int_rieure",
+        "relevant": "${Situation_du_M_nage} = 'menage_eligible'",
+        "required": true,
+        "$autoname": "Longueur_Cable_2_5mm_Int_rieure"
+      },
+      {
+        "name": "Longueur_Cable_1_5mm_Int_rieure",
+        "type": "integer",
+        "$kuid": "5Tz1vgEqu",
+        "label": [
+          "Longueur Cable 1,5mm² Intérieure"
+        ],
+        "$xpath": "group_wu8kv54/group_sy9vj14/Longueur_Cable_1_5mm_Int_rieure",
+        "relevant": "${Situation_du_M_nage} = 'menage_eligible'",
+        "required": true,
+        "$autoname": "Longueur_Cable_1_5mm_Int_rieure"
+      },
+      {
+        "name": "Longueur_Tranch_e_Cable_arm_4mm",
+        "type": "integer",
+        "$kuid": "uQd1dEFK7",
+        "label": [
+          "Longueur Tranchée (Cable armé 4mm²)"
+        ],
+        "$xpath": "group_wu8kv54/group_sy9vj14/Longueur_Tranch_e_Cable_arm_4mm",
+        "relevant": "${Situation_du_M_nage} = 'menage_eligible'",
+        "required": true,
+        "$autoname": "Longueur_Tranch_e_Cable_arm_4mm"
+      },
+      {
+        "name": "Longueur_Tranch_e_C_ble_arm_1_5mm",
+        "type": "integer",
+        "$kuid": "TcsAdBAcE",
+        "label": [
+          "Longueur Tranchée Câble armé 1,5mm²)"
+        ],
+        "$xpath": "group_wu8kv54/group_sy9vj14/Longueur_Tranch_e_C_ble_arm_1_5mm",
+        "relevant": "${Situation_du_M_nage} = 'menage_eligible'",
+        "required": true,
+        "$autoname": "Longueur_Tranch_e_C_ble_arm_1_5mm"
+      },
+      {
+        "type": "acknowledge",
+        "$kuid": "il3mr55",
+        "label": [
+          "Je confirme la remise du materiel au ménage"
+        ],
+        "$xpath": "group_wu8kv54/group_sy9vj14/Je_confirme_la_remis_u_materiel_au_m_nage",
+        "relevant": "${Situation_du_M_nage} = 'menage_eligible'",
+        "required": true,
+        "$autoname": "Je_confirme_la_remis_u_materiel_au_m_nage"
+      },
+      {
+        "hint": [
+          "Approbation du livreur "
+        ],
+        "type": "acknowledge",
+        "$kuid": "il3mr55",
+        "label": [
+          "Je confirme le marquage de la position du Mur et position des coffrets"
+        ],
+        "$xpath": "group_wu8kv54/group_sy9vj14/Je_confirme_le_marqu_osition_des_coffrets",
+        "relevant": "${Situation_du_M_nage} = 'menage_eligible'",
+        "required": true,
+        "$autoname": "Je_confirme_le_marqu_osition_des_coffrets"
+      },
+      {
+        "type": "select_one",
+        "$kuid": "gr7ao52",
+        "label": [
+          "Presence de Mur"
+        ],
+        "$xpath": "group_wu8kv54/group_sy9vj14/Presence_de_Mur",
+        "required": false,
+        "$autoname": "Presence_de_Mur",
+        "select_from_list_name": "pg7bi79"
+      },
+      {
+        "hint": [
+          "Approbation du livreur "
+        ],
+        "type": "acknowledge",
+        "$kuid": "il3mr55",
+        "label": [
+          "Je confirme le marquage de l'emplacement des coffrets électriques"
+        ],
+        "$xpath": "group_wu8kv54/group_sy9vj14/Je_confirme_le_marqu_coffrets_lectriques",
+        "relevant": "${Situation_du_M_nage} = 'menage_eligible'",
+        "required": true,
+        "$autoname": "Je_confirme_le_marqu_coffrets_lectriques"
+      },
+      {
+        "type": "image",
+        "$kuid": "wm59f12",
+        "label": [
+          "Photo"
+        ],
+        "$xpath": "group_wu8kv54/group_sy9vj14/Photo",
+        "required": false,
+        "$autoname": "Photo",
+        "parameters": "max-pixels=1024"
+      },
+      {
+        "type": "end_group",
+        "$kuid": "/bm48o00"
+      },
+      {
+        "type": "end_group",
+        "$kuid": "/th5av66"
+      },
+      {
+        "name": "etape_macon",
+        "type": "begin_group",
+        "$kuid": "u1lM5XMuP",
+        "label": [
+          "👷 ÉTAPE MAÇON - RÉALISATION DU MUR"
+        ],
+        "$xpath": "etape_macon",
+        "relevant": "${role} = 'macon'",
+        "required": false,
+        "$autoname": "etape_macon",
+        "appearance": "field-list"
+      },
+      {
+        "name": "note_macon_1",
+        "type": "note",
+        "$kuid": "WwwxwWiyE",
+        "label": [
+          "ÉTAPE 2/4: RÉALISATION DU MUR"
+        ],
+        "$xpath": "etape_macon/note_macon_1",
+        "required": false,
+        "$autoname": "note_macon_1"
+      },
+      {
+        "name": "kit_disponible_macon",
+        "type": "select_one",
+        "$kuid": "yHtdWdJFY",
+        "label": [
+          "Le kit est-il disponible et complet ?"
+        ],
+        "$xpath": "etape_macon/kit_disponible_macon",
+        "relevant": "${role} = 'macon'",
+        "required": true,
+        "$autoname": "kit_disponible_macon",
+        "select_from_list_name": "kit_disponible"
+      },
+      {
+        "hint": [
+          "Si kit non disponible, préciser le(s) problème(s)"
+        ],
+        "name": "problemes_kit_macon",
+        "type": "select_multiple",
+        "$kuid": "ehgrCD88m",
+        "label": [
+          "POURQUOI?"
+        ],
+        "$xpath": "etape_macon/problemes_kit_macon",
+        "relevant": "${kit_disponible_macon} and ${kit_disponible_macon} = 'non'",
+        "required": false,
+        "$autoname": "problemes_kit_macon",
+        "select_from_list_name": "problemes_kit_macon"
+      },
+      {
+        "hint": [
+          "Type de Mur réalisé"
+        ],
+        "name": "type_mur_realise_macon",
+        "type": "select_one",
+        "$kuid": "glEUiadNI",
+        "label": [
+          "Type de Mur"
+        ],
+        "$xpath": "etape_macon/type_mur_realise_macon",
+        "relevant": "${kit_disponible_macon} and ${kit_disponible_macon} = 'oui'",
+        "required": true,
+        "$autoname": "type_mur_realise_macon",
+        "select_from_list_name": "type_mur"
+      },
+      {
+        "hint": [
+          "Problèmes rencontrés lors de la réalisation"
+        ],
+        "name": "problemes_travail_macon",
+        "type": "select_multiple",
+        "$kuid": "rXvVLIZ8R",
+        "label": [
+          "PROBLEME"
+        ],
+        "$xpath": "etape_macon/problemes_travail_macon",
+        "relevant": "${kit_disponible_macon} and ${kit_disponible_macon} = 'oui'",
+        "required": false,
+        "$autoname": "problemes_travail_macon",
+        "select_from_list_name": "problemes_travail_macon"
+      },
+      {
+        "name": "validation_macon_final",
+        "type": "acknowledge",
+        "$kuid": "sX13ROfCQ",
+        "label": [
+          "✅ Je valide que le mur est terminé et conforme"
+        ],
+        "$xpath": "etape_macon/validation_macon_final",
+        "relevant": "${kit_disponible_macon} and ${kit_disponible_macon} = 'oui' and ${type_mur_realise_macon} != ''",
+        "required": true,
+        "$autoname": "validation_macon_final"
+      },
+      {
+        "type": "end_group",
+        "$kuid": "/u1lM5XMuP"
+      },
+      {
+        "name": "etape_reseau",
+        "type": "begin_group",
+        "$kuid": "Wsu6WXJZ0",
+        "label": [
+          "🔌 ÉTAPE RÉSEAU - BRANCHEMENT"
+        ],
+        "$xpath": "etape_reseau",
+        "relevant": "${role} = 'reseau'",
+        "required": false,
+        "$autoname": "etape_reseau",
+        "appearance": "field-list"
+      },
+      {
+        "hint": [
+          "-Vérification du travail du maçon et Confirmation travaux branchement"
+        ],
+        "name": "note_reseau_1",
+        "type": "note",
+        "$kuid": "6cEyRqXGG",
+        "label": [
+          "ÉTAPE 3/4: BRANCHEMENT"
+        ],
+        "$xpath": "etape_reseau/note_reseau_1",
+        "required": false,
+        "$autoname": "note_reseau_1"
+      },
+      {
+        "name": "verification_mur_reseau",
+        "type": "select_one",
+        "$kuid": "5sF8Edg5n",
+        "label": [
+          "Le mur est-il réalisé et conforme ?"
+        ],
+        "$xpath": "etape_reseau/verification_mur_reseau",
+        "relevant": "${role} = 'reseau'",
+        "required": true,
+        "$autoname": "verification_mur_reseau",
+        "select_from_list_name": "verification_mur"
+      },
+      {
+        "hint": [
+          " (À signaler)"
+        ],
+        "name": "problemes_mur_reseau",
+        "type": "select_multiple",
+        "$kuid": "nznN6v1jb",
+        "label": [
+          "Problèmes avec le mur"
+        ],
+        "$xpath": "etape_reseau/problemes_mur_reseau",
+        "relevant": "${verification_mur_reseau} and ${verification_mur_reseau} = 'non'",
+        "required": true,
+        "$autoname": "problemes_mur_reseau",
+        "select_from_list_name": "problemes_mur_reseau"
+      },
+      {
+        "hint": [
+          "Est-ce que le branchement est tiré et finalisé (cable jusqu'au coffret compteur ?"
+        ],
+        "name": "etat_branchement_reseau",
+        "type": "select_one",
+        "$kuid": "FstqVlfik",
+        "label": [
+          "État du branchement"
+        ],
+        "$xpath": "etape_reseau/etat_branchement_reseau",
+        "relevant": "${verification_mur_reseau} and ${verification_mur_reseau} = 'oui'",
+        "required": true,
+        "$autoname": "etat_branchement_reseau",
+        "select_from_list_name": "etat_branchement"
+      },
+      {
+        "name": "problemes_branchement_reseau",
+        "type": "select_multiple",
+        "$kuid": "p26X2PHXr",
+        "label": [
+          "Problèmes lors du branchement"
+        ],
+        "$xpath": "etape_reseau/problemes_branchement_reseau",
+        "relevant": "${etat_branchement_reseau} and ${etat_branchement_reseau} = 'probleme'",
+        "required": false,
+        "$autoname": "problemes_branchement_reseau",
+        "select_from_list_name": "problemes_branchement_reseau"
+      },
+      {
+        "name": "validation_reseau_final",
+        "type": "acknowledge",
+        "$kuid": "pAr2TDpeD",
+        "label": [
+          "✅ Je valide que le branchement est terminé et conforme"
+        ],
+        "$xpath": "etape_reseau/validation_reseau_final",
+        "relevant": "${verification_mur_reseau} and ${verification_mur_reseau} = 'oui' and ${etat_branchement_reseau} and ${etat_branchement_reseau} = 'termine'",
+        "required": true,
+        "$autoname": "validation_reseau_final"
+      },
+      {
+        "type": "end_group",
+        "$kuid": "/Wsu6WXJZ0"
+      },
+      {
+        "name": "etape_interieur",
+        "type": "begin_group",
+        "$kuid": "6nOrodfiz",
+        "label": [
+          "💡 ÉTAPE INTÉRIEUR - INSTALLATION"
+        ],
+        "$xpath": "etape_interieur",
+        "relevant": "${role} = 'interieur'",
+        "required": false,
+        "$autoname": "etape_interieur",
+        "appearance": "field-list"
+      },
+      {
+        "hint": [
+          "Vérification du branchement et Confirmation finalisation de l'instalaltion"
+        ],
+        "name": "note_interieur_1",
+        "type": "note",
+        "$kuid": "xpIcURQ2S",
+        "label": [
+          "ÉTAPE 4/4: INSTALLATION INTÉRIEURE"
+        ],
+        "$xpath": "etape_interieur/note_interieur_1",
+        "required": false,
+        "$autoname": "note_interieur_1"
+      },
+      {
+        "name": "verification_branchement_interieur",
+        "type": "select_one",
+        "$kuid": "1j275ROrF",
+        "label": [
+          "Le branchement est-il réalisé et conforme ?"
+        ],
+        "$xpath": "etape_interieur/verification_branchement_interieur",
+        "relevant": "${role} = 'interieur'",
+        "required": true,
+        "$autoname": "verification_branchement_interieur",
+        "select_from_list_name": "verification_branchement"
+      },
+      {
+        "hint": [
+          " (À signaler)"
+        ],
+        "name": "problemes_branchement_interieur",
+        "type": "select_multiple",
+        "$kuid": "uOdzjuqGJ",
+        "label": [
+          "Problèmes avec le branchement"
+        ],
+        "$xpath": "etape_interieur/problemes_branchement_interieur",
+        "relevant": "${verification_branchement_interieur} and ${verification_branchement_interieur} = 'non'",
+        "required": false,
+        "$autoname": "problemes_branchement_interieur",
+        "select_from_list_name": "problemes_branchement_interieur"
+      },
+      {
+        "name": "etat_installation_interieur",
+        "type": "select_one",
+        "$kuid": "aJvU1pEMd",
+        "label": [
+          "État de l'installation intérieure réalisée"
+        ],
+        "$xpath": "etape_interieur/etat_installation_interieur",
+        "relevant": "${verification_branchement_interieur} and ${verification_branchement_interieur} = 'oui'",
+        "required": true,
+        "$autoname": "etat_installation_interieur",
+        "select_from_list_name": "etat_installation"
+      },
+      {
+        "name": "problemes_installation_interieur",
+        "type": "select_multiple",
+        "$kuid": "4l3omQrfl",
+        "label": [
+          "Problèmes lors de l'installation intérieure"
+        ],
+        "$xpath": "etape_interieur/problemes_installation_interieur",
+        "relevant": "${etat_installation_interieur} and ${etat_installation_interieur} = 'probleme'",
+        "required": false,
+        "$autoname": "problemes_installation_interieur",
+        "select_from_list_name": "problemes_installation_interieur"
+      },
+      {
+        "name": "validation_interieur_final",
+        "type": "acknowledge",
+        "$kuid": "97PN8bkww",
+        "label": [
+          "✅ Je valide que l'installation intérieure est terminée et conforme"
+        ],
+        "$xpath": "etape_interieur/validation_interieur_final",
+        "relevant": "${verification_branchement_interieur} and ${verification_branchement_interieur} = 'oui' and ${etat_installation_interieur} and ${etat_installation_interieur} = 'termine'",
+        "required": true,
+        "$autoname": "validation_interieur_final"
+      },
+      {
+        "type": "end_group",
+        "$kuid": "/6nOrodfiz"
+      },
+      {
+        "name": "etape_controleur",
+        "type": "begin_group",
+        "$kuid": "iM3l5IfV1",
+        "label": [
+          "🔍 ÉTAPE CONTRÔLEUR - VÉRIFICATION FINALE"
+        ],
+        "$xpath": "etape_controleur",
+        "relevant": "${role} = 'controleur'",
+        "required": false,
+        "$autoname": "etape_controleur",
+        "appearance": "field-list"
+      },
+      {
+        "hint": [
+          "de l'installation"
+        ],
+        "name": "ETAT_DE_L_INSTALLATION",
+        "type": "select_one",
+        "$kuid": "Q9qZgrHzp",
+        "label": [
+          "Controle préalable"
+        ],
+        "$xpath": "etape_controleur/ETAT_DE_L_INSTALLATION",
+        "default": "randomize=false",
+        "required": true,
+        "$autoname": "ETAT_DE_L_INSTALLATION",
+        "select_from_list_name": "rr4dg37"
+      },
+      {
+        "name": "controleurPROB",
+        "type": "select_multiple",
+        "$kuid": "SKI8tIXLd",
+        "label": [
+          "Quel est le probleme ?"
+        ],
+        "$xpath": "etape_controleur/controleurPROB",
+        "relevant": "${ETAT_DE_L_INSTALLATION} = 'probleme_a_signaler'",
+        "required": true,
+        "$autoname": "controleurPROB",
+        "select_from_list_name": "oo84j36"
+      },
+      {
+        "hint": [
+          "Première contrôle ou mise en conformité"
+        ],
+        "name": "Phase_de_controle",
+        "type": "select_one",
+        "$kuid": "3V1FPYQQO",
+        "label": [
+          "Phase du contrôle"
+        ],
+        "$xpath": "etape_controleur/Phase_de_controle",
+        "relevant": "${ETAT_DE_L_INSTALLATION} = 'terminee'",
+        "required": true,
+        "$autoname": "Phase_de_controle",
+        "appearance": "minimal",
+        "constraint_message": "Les éléments ne peuvent pas être sélectionnés plus d'une fois",
+        "select_from_list_name": "ga7rh54"
+      },
+      {
+        "name": "group_zw7xz94",
+        "type": "begin_group",
+        "$kuid": "Lp9xWOoJf",
+        "label": [
+          "👷Controle Branchement"
+        ],
+        "$xpath": "etape_controleur/group_zw7xz94",
+        "relevant": "${ETAT_DE_L_INSTALLATION} = 'terminee'",
+        "required": false,
+        "$autoname": "group_zw7xz94"
+      },
+      {
+        "hint": [
+          "Ensemble du réseau de branchement (Coffret + Potelet + Câble préassemblé + PVC + Accessoires)"
+        ],
+        "name": "ETAT_BRANCHEMENT",
+        "type": "select_one",
+        "$kuid": "qrwDvIINA",
+        "label": [
+          "ETAT DU BRANCHEMENT"
+        ],
+        "$xpath": "etape_controleur/group_zw7xz94/ETAT_BRANCHEMENT",
+        "relevant": "${ETAT_DE_L_INSTALLATION} = 'terminee' or ${ETAT_DE_L_INSTALLATION} = 'non_terminee'",
+        "required": true,
+        "$autoname": "ETAT_BRANCHEMENT",
+        "select_from_list_name": "sv3tg34"
+      },
+      {
+        "hint": [
+          "Qu'est ce qui n'est par encore fait sur le branchement?"
+        ],
+        "name": "OBSERVATION",
+        "type": "select_multiple",
+        "$kuid": "SUjuPsIhz",
+        "label": [
+          "OBSERVATION???"
+        ],
+        "$xpath": "etape_controleur/group_zw7xz94/OBSERVATION",
+        "relevant": "${ETAT_BRANCHEMENT} = 'non_termine'",
+        "required": true,
+        "$autoname": "OBSERVATION",
+        "select_from_list_name": "kx9fr02"
+      },
+      {
+        "name": "group_wr05k35",
+        "type": "begin_group",
+        "$kuid": "mfgl8RXc3",
+        "label": [
+          "Installation extérieure (Branchement)"
+        ],
+        "$xpath": "etape_controleur/group_zw7xz94/group_wr05k35",
+        "relevant": "${ETAT_BRANCHEMENT} = 'realise'",
+        "required": false,
+        "$autoname": "group_wr05k35"
+      },
+      {
+        "hint": [
+          "Vérifier la position du ménage (Position 1 /Position 2 /Position 3 / dépassement ?)"
+        ],
+        "name": "Position_du_branchement",
+        "type": "select_one",
+        "$kuid": "4aAljlvQX",
+        "label": [
+          "Position et longueur du branchement sur le réseau"
+        ],
+        "$xpath": "etape_controleur/group_zw7xz94/group_wr05k35/Position_du_branchement",
+        "required": true,
+        "$autoname": "Position_du_branchement",
+        "select_from_list_name": "lo9ia24"
+      },
+      {
+        "name": "Observations_sur_la_ition_du_branchement",
+        "type": "select_multiple",
+        "$kuid": "RJIfUveDI",
+        "label": [
+          "Observations sur la position du branchement"
+        ],
+        "$xpath": "etape_controleur/group_zw7xz94/group_wr05k35/Observations_sur_la_ition_du_branchement",
+        "relevant": "${Position_du_branchement} = 'non_conforme'",
+        "required": true,
+        "$autoname": "Observations_sur_la_ition_du_branchement",
+        "select_from_list_name": "la7vc77"
+      },
+      {
+        "hint": [
+          "minimum 4m ou 6m en fonction de l'emplacement"
+        ],
+        "name": "Hauteur_branchement",
+        "type": "select_one",
+        "$kuid": "jfM1rEH77",
+        "label": [
+          "Hauteur branchement"
+        ],
+        "$xpath": "etape_controleur/group_zw7xz94/group_wr05k35/Hauteur_branchement",
+        "required": true,
+        "$autoname": "Hauteur_branchement",
+        "select_from_list_name": "nk1mo89"
+      },
+      {
+        "hint": [
+          "Hauteur de pose du potelet et du câble préassemblé?"
+        ],
+        "name": "Observations",
+        "type": "text",
+        "$kuid": "MnOLb6QsP",
+        "label": [
+          "Observations"
+        ],
+        "$xpath": "etape_controleur/group_zw7xz94/group_wr05k35/Observations",
+        "default": "La Hauteur du branchement est inférieure à la norme",
+        "relevant": "${Hauteur_branchement} = 'non_conforme'",
+        "required": true,
+        "$autoname": "Observations"
+      },
+      {
+        "hint": [
+          "Doit être placé entre 1,20m Mini et 1,60m Maxi (Hublot - Sol)"
+        ],
+        "name": "Hauteur_coffret",
+        "type": "select_one",
+        "$kuid": "vkY6ikLzm",
+        "label": [
+          "Hauteur du coffret"
+        ],
+        "$xpath": "etape_controleur/group_zw7xz94/group_wr05k35/Hauteur_coffret",
+        "required": true,
+        "$autoname": "Hauteur_coffret",
+        "select_from_list_name": "nk1mo89"
+      },
+      {
+        "hint": [
+          "Anomalie sur hauteur coffret compteur?"
+        ],
+        "name": "Observations_001",
+        "type": "text",
+        "$kuid": "I9HrEhX8j",
+        "label": [
+          "Observations"
+        ],
+        "$xpath": "etape_controleur/group_zw7xz94/group_wr05k35/Observations_001",
+        "default": "Coffret placé à l'extérieur des deux limites fixées 1,20m Mini ET 1,60m Maxi",
+        "relevant": "${Hauteur_coffret} = 'non_conforme'",
+        "required": true,
+        "$autoname": "Observations_001"
+      },
+      {
+        "hint": [
+          "Calibre 16 ou 25A / Fixation / Etat"
+        ],
+        "name": "Etat_du_coupe_circuit",
+        "type": "select_one",
+        "$kuid": "kf0iqJlkV",
+        "label": [
+          "Etat du coupe circuit?"
+        ],
+        "$xpath": "etape_controleur/group_zw7xz94/group_wr05k35/Etat_du_coupe_circuit",
+        "required": false,
+        "$autoname": "Etat_du_coupe_circuit",
+        "select_from_list_name": "ur9iq73"
+      },
+      {
+        "hint": [
+          "Calibre 16 ou 25A / Fixation / Etat"
+        ],
+        "name": "OBSERVATION_001",
+        "type": "select_multiple",
+        "$kuid": "TsyFwlVej",
+        "label": [
+          "OBSERVATION???"
+        ],
+        "$xpath": "etape_controleur/group_zw7xz94/group_wr05k35/OBSERVATION_001",
+        "relevant": "${Etat_du_coupe_circuit} = 'nc'",
+        "required": true,
+        "$autoname": "OBSERVATION_001",
+        "select_from_list_name": "rz78v01"
+      },
+      {
+        "hint": [
+          "Etat coffret / tube PVC et COUDES"
+        ],
+        "name": "Continuit_PVC",
+        "type": "select_one",
+        "$kuid": "FlS9fYu6z",
+        "label": [
+          "Isolation coffret et protection descente câble"
+        ],
+        "$xpath": "etape_controleur/group_zw7xz94/group_wr05k35/Continuit_PVC",
+        "required": true,
+        "$autoname": "Continuit_PVC",
+        "select_from_list_name": "nk1mo89"
+      },
+      {
+        "hint": [
+          "Protection mécanique descente câble préassemblé"
+        ],
+        "name": "OBSERVATION_002",
+        "type": "select_multiple",
+        "$kuid": "sKVVWlQNn",
+        "label": [
+          "OBSERVATION???"
+        ],
+        "$xpath": "etape_controleur/group_zw7xz94/group_wr05k35/OBSERVATION_002",
+        "relevant": "${Continuit_PVC} = 'non_conforme'",
+        "required": true,
+        "$autoname": "OBSERVATION_002",
+        "select_from_list_name": "fv5uq33"
+      },
+      {
+        "hint": [
+          "Connexion, esthétique, pose, emplacement..."
+        ],
+        "name": "Mise_en_oeuvre",
+        "type": "select_one",
+        "$kuid": "2r2OJnoQ5",
+        "label": [
+          "Mise en œuvre du Branchement"
+        ],
+        "$xpath": "etape_controleur/group_zw7xz94/group_wr05k35/Mise_en_oeuvre",
+        "required": true,
+        "$autoname": "Mise_en_oeuvre",
+        "select_from_list_name": "nk1mo89"
+      },
+      {
+        "hint": [
+          "Anomalies sur la mise en œuvre"
+        ],
+        "name": "OBSERVATION_003",
+        "type": "select_multiple",
+        "$kuid": "pC07ReQvr",
+        "label": [
+          "OBSERVATION???"
+        ],
+        "$xpath": "etape_controleur/group_zw7xz94/group_wr05k35/OBSERVATION_003",
+        "relevant": "${Mise_en_oeuvre} = 'non_conforme'",
+        "required": true,
+        "$autoname": "OBSERVATION_003",
+        "select_from_list_name": "ey6uw71"
+      },
+      {
+        "hint": [
+          "Prendre une photo d'anomalie"
+        ],
+        "name": "_1_photo_anomalie_si_possible",
+        "type": "image",
+        "$kuid": "dsWWlZewz",
+        "label": [
+          "1 photo anomalie si existant"
+        ],
+        "$xpath": "etape_controleur/group_zw7xz94/group_wr05k35/_1_photo_anomalie_si_possible",
+        "default": "max-pixels=1024",
+        "required": false,
+        "$autoname": "_1_photo_anomalie_si_possible"
+      },
+      {
+        "type": "end_group",
+        "$kuid": "/mfgl8RXc3"
+      },
+      {
+        "type": "end_group",
+        "$kuid": "/Lp9xWOoJf"
+      },
+      {
+        "name": "group_hx7ae46",
+        "type": "begin_group",
+        "$kuid": "FZMRR665O",
+        "label": [
+          "👷Controle installation Intérieure"
+        ],
+        "$xpath": "etape_controleur/group_hx7ae46",
+        "relevant": "${ETAT_DE_L_INSTALLATION} = 'terminee'",
+        "required": false,
+        "$autoname": "group_hx7ae46"
+      },
+      {
+        "hint": [
+          "VERIFIER : la Conformité matériel/ la Mise en œuvre/ la Coupure générale/ le Calibre/ l'Emplacement du coffret"
+        ],
+        "name": "DISJONCTEUR_GENERAL_EN_TETE_D_",
+        "type": "select_one",
+        "$kuid": "jJumaaSKJ",
+        "label": [
+          "DISJONCTEUR GENERAL EN TETE D'INSTALLATION"
+        ],
+        "$xpath": "etape_controleur/group_hx7ae46/DISJONCTEUR_GENERAL_EN_TETE_D_",
+        "required": true,
+        "$autoname": "DISJONCTEUR_GENERAL_EN_TETE_D_",
+        "select_from_list_name": "el0wa18"
+      },
+      {
+        "hint": [
+          "Anomalies sur Disjoncteur Général"
+        ],
+        "name": "OBSERVATIONS_",
+        "type": "select_multiple",
+        "$kuid": "aoXHILNzQ",
+        "label": [
+          "OBSERVATIONS ???"
+        ],
+        "$xpath": "etape_controleur/group_hx7ae46/OBSERVATIONS_",
+        "relevant": "${DISJONCTEUR_GENERAL_EN_TETE_D_} = 'non_conforme'",
+        "required": true,
+        "$autoname": "OBSERVATIONS_",
+        "select_from_list_name": "zs4mw04"
+      },
+      {
+        "hint": [
+          "Disjoncteur Général Différentiel ou non différentiel?"
+        ],
+        "name": "TYPE_DE_DISJONCTEUR_GENERAL",
+        "type": "select_one",
+        "$kuid": "MwkXlGdsa",
+        "label": [
+          "TYPE DE DISJONCTEUR GENERAL"
+        ],
+        "$xpath": "etape_controleur/group_hx7ae46/TYPE_DE_DISJONCTEUR_GENERAL",
+        "relevant": "${DISJONCTEUR_GENERAL_EN_TETE_D_} = 'conforme'",
+        "required": true,
+        "$autoname": "TYPE_DE_DISJONCTEUR_GENERAL",
+        "select_from_list_name": "nr78z46"
+      },
+      {
+        "hint": [
+          "modulaire 30mA placé sous le disjoncteur général?"
+        ],
+        "name": "ENSEMBLE_DE_L_INSTALLATION_PRO",
+        "type": "select_one",
+        "$kuid": "CVHGyQbqp",
+        "label": [
+          "ENSEMBLE DE L'INSTALLATION PROTÉGÉ PAR DDR 30mA"
+        ],
+        "$xpath": "etape_controleur/group_hx7ae46/ENSEMBLE_DE_L_INSTALLATION_PRO",
+        "default": "randomize=false",
+        "required": true,
+        "$autoname": "ENSEMBLE_DE_L_INSTALLATION_PRO",
+        "appearance": "quick",
+        "select_from_list_name": "gk2qz88"
+      },
+      {
+        "hint": [
+          "Protection 30mA"
+        ],
+        "name": "OBSERVATIONS__001",
+        "type": "select_multiple",
+        "$kuid": "xfTYgGRfE",
+        "label": [
+          "OBSERVATIONS ???"
+        ],
+        "$xpath": "etape_controleur/group_hx7ae46/OBSERVATIONS__001",
+        "relevant": "${ENSEMBLE_DE_L_INSTALLATION_PRO} = 'non_conforme'",
+        "required": true,
+        "$autoname": "OBSERVATIONS__001",
+        "select_from_list_name": "py9cc56"
+      },
+      {
+        "hint": [
+          "Calibre MAX : 20A pour section 2,5mm² et 16A pour section 1,5mm²"
+        ],
+        "name": "PROTECTION_L_ORIGINE_DE_CHAQ",
+        "type": "select_one",
+        "$kuid": "HijYbsnOL",
+        "label": [
+          "PROTECTION À L'ORIGINE DE CHAQUE CIRCUIT (Modulaire et conducteur)"
+        ],
+        "$xpath": "etape_controleur/group_hx7ae46/PROTECTION_L_ORIGINE_DE_CHAQ",
+        "default": "randomize=false",
+        "required": true,
+        "$autoname": "PROTECTION_L_ORIGINE_DE_CHAQ",
+        "appearance": "quick",
+        "select_from_list_name": "nm4md59"
+      },
+      {
+        "hint": [
+          "Protection à l'origine : Quel est l'anomalie sur le circuit?"
+        ],
+        "name": "OBSERVATIONS_002",
+        "type": "select_multiple",
+        "$kuid": "sUy48lnHP",
+        "label": [
+          "OBSERVATIONS???"
+        ],
+        "$xpath": "etape_controleur/group_hx7ae46/OBSERVATIONS_002",
+        "relevant": "${PROTECTION_L_ORIGINE_DE_CHAQ} = 'non_conforme'",
+        "required": true,
+        "$autoname": "OBSERVATIONS_002",
+        "select_from_list_name": "nr8tv95"
+      },
+      {
+        "hint": [
+          "Séparation Lumière et prise"
+        ],
+        "name": "S_PARATION_DES_CIRCUITS_Lumi_",
+        "type": "select_one",
+        "$kuid": "nx9BobfeK",
+        "label": [
+          "SÉPARATION DES CIRCUITS (Lumière et Prise)"
+        ],
+        "$xpath": "etape_controleur/group_hx7ae46/S_PARATION_DES_CIRCUITS_Lumi_",
+        "default": "randomize=false",
+        "required": true,
+        "$autoname": "S_PARATION_DES_CIRCUITS_Lumi_",
+        "appearance": "quick",
+        "guidance_hint": "Circuit prise et lumière non séparé",
+        "select_from_list_name": "nm4md59"
+      },
+      {
+        "hint": [
+          "Séparation des 2 circuits?"
+        ],
+        "name": "OBSERVATIONS__002",
+        "type": "text",
+        "$kuid": "Qclrr2I6j",
+        "label": [
+          "OBSERVATIONS ???"
+        ],
+        "$xpath": "etape_controleur/group_hx7ae46/OBSERVATIONS__002",
+        "default": "Circuits prise et lumière non séparés",
+        "relevant": "${S_PARATION_DES_CIRCUITS_Lumi_} = 'non_conforme'",
+        "required": true,
+        "$autoname": "OBSERVATIONS__002"
+      },
+      {
+        "hint": [
+          "Vérifier si des conducteurs nus sont visibles ou accessibles (Ame conducteurs)"
+        ],
+        "name": "PROTECTION_CONTACT_D_TOUTE_L_INSTALLATION",
+        "type": "note",
+        "$kuid": "XvvcRT2yu",
+        "label": [
+          "PROTECTION CONTACT DIRECT A VERIFIER SUR TOUTE L'INSTALLATION"
+        ],
+        "$xpath": "etape_controleur/group_hx7ae46/PROTECTION_CONTACT_D_TOUTE_L_INSTALLATION",
+        "required": false,
+        "$autoname": "PROTECTION_CONTACT_D_TOUTE_L_INSTALLATION"
+      },
+      {
+        "hint": [
+          "Piece Nue Sous Tension (PNST) non accessible sur ( interrupteur, prise, câble...)"
+        ],
+        "name": "PROTECTION_CONTRE_LES_CONTACTS",
+        "type": "select_one",
+        "$kuid": "wXN0Fappv",
+        "label": [
+          "PROTECTION CONTRE LES CONTACTS DIRECTS"
+        ],
+        "$xpath": "etape_controleur/group_hx7ae46/PROTECTION_CONTRE_LES_CONTACTS",
+        "required": true,
+        "$autoname": "PROTECTION_CONTRE_LES_CONTACTS",
+        "select_from_list_name": "bm2rn03"
+      },
+      {
+        "hint": [
+          "Contact direct possible avec Pièce nue sous tension"
+        ],
+        "name": "OBSERVATIONS__003",
+        "type": "select_multiple",
+        "$kuid": "1p6oW1q38",
+        "label": [
+          "OBSERVATIONS ???"
+        ],
+        "$xpath": "etape_controleur/group_hx7ae46/OBSERVATIONS__003",
+        "relevant": "${PROTECTION_CONTRE_LES_CONTACTS} = 'non_conforme'",
+        "required": true,
+        "$autoname": "OBSERVATIONS__003",
+        "select_from_list_name": "ps4nb23"
+      },
+      {
+        "hint": [
+          "Section conducteurs/ Mode de pose/ Esthétique /Fixation /Emplacement"
+        ],
+        "name": "MISE_EN_OEUVRE_MAT_RIEL_ET_APP",
+        "type": "select_one",
+        "$kuid": "QNpQ0UiQH",
+        "label": [
+          "MISE EN OEUVRE MATÉRIEL ET APPAREILLAGE (Coffret, Prise, Interrupteur, Boite, Câble...)"
+        ],
+        "$xpath": "etape_controleur/group_hx7ae46/MISE_EN_OEUVRE_MAT_RIEL_ET_APP",
+        "default": "randomize=false",
+        "required": true,
+        "$autoname": "MISE_EN_OEUVRE_MAT_RIEL_ET_APP",
+        "appearance": "quick",
+        "select_from_list_name": "nm4md59"
+      },
+      {
+        "hint": [
+          "Mise en Œuvre matériel: Section conducteurs/ Mode de pose/ Esthétique /Fixation /Emplacement"
+        ],
+        "name": "OBSERVATIONS__004",
+        "type": "select_multiple",
+        "$kuid": "bkJfIcCfO",
+        "label": [
+          "OBSERVATIONS ???"
+        ],
+        "$xpath": "etape_controleur/group_hx7ae46/OBSERVATIONS__004",
+        "relevant": "${MISE_EN_OEUVRE_MAT_RIEL_ET_APP} = 'non_conforme'",
+        "required": true,
+        "$autoname": "OBSERVATIONS__004",
+        "select_from_list_name": "jm8qy41"
+      },
+      {
+        "hint": [
+          "Les Fils Conducteurs sur les câbles ne doivent pas être visibles"
+        ],
+        "name": "CONTINUITE_DE_LA_PROTECTION_ME",
+        "type": "select_one",
+        "$kuid": "F43EQO8pY",
+        "label": [
+          "CONTINUITE DE LA PROTECTION MECANIQUE DES FILS CONDUCTEURS (Phase /neutre/Terre)"
+        ],
+        "$xpath": "etape_controleur/group_hx7ae46/CONTINUITE_DE_LA_PROTECTION_ME",
+        "default": "randomize=false",
+        "required": true,
+        "$autoname": "CONTINUITE_DE_LA_PROTECTION_ME",
+        "appearance": "quick",
+        "select_from_list_name": "nm4md59"
+      },
+      {
+        "hint": [
+          "Protection mécanique des fils conducteurs (Phase ,neutre, terre)?"
+        ],
+        "name": "OBSERVATIONS__005",
+        "type": "select_multiple",
+        "$kuid": "LwkM7PHIH",
+        "label": [
+          "OBSERVATIONS ???"
+        ],
+        "$xpath": "etape_controleur/group_hx7ae46/OBSERVATIONS__005",
+        "relevant": "${CONTINUITE_DE_LA_PROTECTION_ME} = 'non_conforme'",
+        "required": true,
+        "$autoname": "OBSERVATIONS__005",
+        "select_from_list_name": "vo5kj15"
+      },
+      {
+        "name": "RESEAU_DE_TERRE_A_VE_TOUTE_L_INSTALLATION",
+        "type": "note",
+        "$kuid": "1ThudmZ1g",
+        "label": [
+          "RESEAU DE TERRE A VERIFIER SUR TOUTE L'INSTALLATION"
+        ],
+        "$xpath": "etape_controleur/group_hx7ae46/RESEAU_DE_TERRE_A_VE_TOUTE_L_INSTALLATION",
+        "required": false,
+        "$autoname": "RESEAU_DE_TERRE_A_VE_TOUTE_L_INSTALLATION"
+      },
+      {
+        "hint": [
+          "Barrette de terre /Piquet/Connexion/Couleur/section 6mm²/Emplacement, continuité, Protection mécanique"
+        ],
+        "name": "MISE_EN_UVRE_DU_R_SEAU_DE_TER",
+        "type": "select_one",
+        "$kuid": "L0iQTAbKw",
+        "label": [
+          "MISE EN ŒUVRE DU RÉSEAU DE TERRE et CONTINUITE"
+        ],
+        "$xpath": "etape_controleur/group_hx7ae46/MISE_EN_UVRE_DU_R_SEAU_DE_TER",
+        "default": "randomize=false",
+        "required": true,
+        "$autoname": "MISE_EN_UVRE_DU_R_SEAU_DE_TER",
+        "appearance": "quick",
+        "select_from_list_name": "nm4md59"
+      },
+      {
+        "hint": [
+          "Sélectionner attentivement les anomalies trouver sur le Réseau de terre"
+        ],
+        "name": "OBSERVATIONS__006",
+        "type": "select_multiple",
+        "$kuid": "lOEQcZcbg",
+        "label": [
+          "OBSERVATIONS ???"
+        ],
+        "$xpath": "etape_controleur/group_hx7ae46/OBSERVATIONS__006",
+        "relevant": "${MISE_EN_UVRE_DU_R_SEAU_DE_TER} = 'non_conforme'",
+        "required": true,
+        "$autoname": "OBSERVATIONS__006",
+        "select_from_list_name": "pi0xx78"
+      },
+      {
+        "hint": [
+          "Barette de terre Rouillée ou Conforme?"
+        ],
+        "name": "ETAT_DE_LA_BARRETTE_DE_TERRE",
+        "type": "select_one",
+        "$kuid": "nTFp0oPdO",
+        "label": [
+          "ETAT DE LA BARRETTE DE TERRE"
+        ],
+        "$xpath": "etape_controleur/group_hx7ae46/ETAT_DE_LA_BARRETTE_DE_TERRE",
+        "required": false,
+        "$autoname": "ETAT_DE_LA_BARRETTE_DE_TERRE",
+        "select_from_list_name": "lk4xz51"
+      },
+      {
+        "hint": [
+          "La valeur de la résistance mesurée doit être inférieure à 1500 Ohm pour être conforme"
+        ],
+        "name": "VALEUR_DE_LA_RESISTANCE_DE_TER",
+        "type": "select_one",
+        "$kuid": "qdroZidc6",
+        "label": [
+          "VALEUR DE LA RESISTANCE DE TERRE OU DE BOUCLE"
+        ],
+        "$xpath": "etape_controleur/group_hx7ae46/VALEUR_DE_LA_RESISTANCE_DE_TER",
+        "default": "randomize=false",
+        "required": true,
+        "$autoname": "VALEUR_DE_LA_RESISTANCE_DE_TER",
+        "appearance": "quick",
+        "select_from_list_name": "nm4md59"
+      },
+      {
+        "hint": [
+          "Valeur de terre mesurée en Ohm?"
+        ],
+        "name": "OBSERVATIONS__007",
+        "type": "integer",
+        "$kuid": "nQMMHUZp5",
+        "label": [
+          "OBSERVATIONS ???"
+        ],
+        "$xpath": "etape_controleur/group_hx7ae46/OBSERVATIONS__007",
+        "relevant": "${VALEUR_DE_LA_RESISTANCE_DE_TER} = 'conforme' and ${VALEUR_DE_LA_RESISTANCE_DE_TER} = 'non_conforme'",
+        "required": true,
+        "$autoname": "OBSERVATIONS__007"
+      },
+      {
+        "type": "end_group",
+        "$kuid": "/FZMRR665O"
+      },
+      {
+        "name": "validation_controleur_final",
+        "type": "acknowledge",
+        "$kuid": "eXdGcuSDZ",
+        "label": [
+          "✅ Je confirme avoir tout contrôlé"
+        ],
+        "$xpath": "etape_controleur/validation_controleur_final",
+        "relevant": "${OBSERVATIONS__007} != ''",
+        "required": true,
+        "$autoname": "validation_controleur_final"
+      },
+      {
+        "type": "end_group",
+        "$kuid": "/iM3l5IfV1"
+      },
+      {
+        "name": "notes_generales",
+        "type": "text",
+        "$kuid": "GWAM4Fzrs",
+        "label": [
+          "Notes générales"
+        ],
+        "$xpath": "notes_generales",
+        "required": true,
+        "$autoname": "notes_generales",
+        "appearance": "multiline"
+      }
+    ],
+    "choices": [
+      {
+        "name": "livreur",
+        "$kuid": "pgrN5v0uA",
+        "label": [
+          "🛠️ Livreur"
+        ],
+        "order": 0,
+        "list_name": "roles",
+        "$autovalue": "livreur"
+      },
+      {
+        "name": "macon",
+        "$kuid": "MfnVwmHrU",
+        "label": [
+          "👷 Maçon"
+        ],
+        "order": 1,
+        "list_name": "roles",
+        "$autovalue": "macon"
+      },
+      {
+        "name": "reseau",
+        "$kuid": "KLw3jfDZH",
+        "label": [
+          "🔌 Équipe Réseau"
+        ],
+        "order": 2,
+        "list_name": "roles",
+        "$autovalue": "reseau"
+      },
+      {
+        "name": "interieur",
+        "$kuid": "6IJ9Da7Fx",
+        "label": [
+          "💡 Équipe Installateur"
+        ],
+        "order": 3,
+        "list_name": "roles",
+        "$autovalue": "interieur"
+      },
+      {
+        "name": "controleur",
+        "$kuid": "B0z6osKk5",
+        "label": [
+          "🔍 Contrôleur"
+        ],
+        "order": 4,
+        "list_name": "roles",
+        "$autovalue": "controleur"
+      },
+      {
+        "name": "__pr_parateur",
+        "$kuid": "30BNqmH4e",
+        "label": [
+          "👷 Préparateur"
+        ],
+        "list_name": "roles",
+        "$autovalue": "__pr_parateur"
+      },
+      {
+        "name": "menage_eligible",
+        "$kuid": "OPUDXO0DC",
+        "label": [
+          "Ménage éligible"
+        ],
+        "order": 0,
+        "list_name": "cj3rh91",
+        "$autovalue": "menage_eligible"
+      },
+      {
+        "name": "menage_non_eligible",
+        "$kuid": "CYhs3rAag",
+        "label": [
+          "Ménage non éligible"
+        ],
+        "order": 2,
+        "list_name": "cj3rh91",
+        "$autovalue": "menage_non_eligible"
+      },
+      {
+        "name": "menage_injoignable",
+        "$kuid": "buldoTlR5",
+        "label": [
+          "Ménage injoignable"
+        ],
+        "order": 3,
+        "list_name": "cj3rh91",
+        "$autovalue": "menage_injoignable"
+      },
+      {
+        "name": "desistement_du_menage",
+        "$kuid": "EvmMW9L35",
+        "label": [
+          "Désistement du ménage/"
+        ],
+        "list_name": "pr4rq21",
+        "$autovalue": "desistement_du_menage"
+      },
+      {
+        "name": "probleme_technique_d_installation",
+        "$kuid": "YxqaFwi3J",
+        "label": [
+          "Probleme technique d'installation/"
+        ],
+        "list_name": "pr4rq21",
+        "$autovalue": "probleme_technique_d_installation"
+      },
+      {
+        "name": "maison_en_paille",
+        "$kuid": "Eth9ZjnQg",
+        "label": [
+          "Maison en paille/"
+        ],
+        "list_name": "pr4rq21",
+        "$autovalue": "maison_en_paille"
+      },
+      {
+        "name": "probleme_de_fixation_coffret",
+        "$kuid": "96Q2QvDBP",
+        "label": [
+          "Probleme de fixation coffret/"
+        ],
+        "list_name": "pr4rq21",
+        "$autovalue": "probleme_de_fixation_coffret"
+      },
+      {
+        "name": "menage_sans_mur",
+        "$kuid": "DURECZpK4",
+        "label": [
+          "Ménage sans Mur"
+        ],
+        "list_name": "pg7bi79",
+        "$autovalue": "menage_sans_mur"
+      },
+      {
+        "name": "menage_avec_mur",
+        "$kuid": "vhBcKDpMx",
+        "label": [
+          "Ménage avec Mur"
+        ],
+        "list_name": "pg7bi79",
+        "$autovalue": "menage_avec_mur"
+      },
+      {
+        "name": "oui",
+        "$kuid": "kv1VbIYOC",
+        "label": [
+          "✅ Oui - Kit maçon disponible"
+        ],
+        "order": "1",
+        "list_name": "kit_disponible",
+        "$autovalue": "oui"
+      },
+      {
+        "name": "non",
+        "$kuid": "4DKJc4IdL",
+        "label": [
+          "❌ Non - Kit maçon non disponible"
+        ],
+        "order": "2",
+        "list_name": "kit_disponible",
+        "$autovalue": "non"
+      },
+      {
+        "name": "pas_de_kit",
+        "$kuid": "ebvAqFXWL",
+        "label": [
+          "❌ Kit non livré/"
+        ],
+        "order": "1",
+        "list_name": "problemes_kit_macon",
+        "$autovalue": "pas_de_kit"
+      },
+      {
+        "name": "kit_incomplet",
+        "$kuid": "vBSz8jmbs",
+        "label": [
+          "❌ Kit incomplet/"
+        ],
+        "order": "2",
+        "list_name": "problemes_kit_macon",
+        "$autovalue": "kit_incomplet"
+      },
+      {
+        "name": "pas_de_potelet",
+        "$kuid": "csyBpTxf9",
+        "label": [
+          "❌ Pas de potelet/"
+        ],
+        "order": "3",
+        "list_name": "problemes_kit_macon",
+        "$autovalue": "pas_de_potelet"
+      },
+      {
+        "name": "autres_problemes_kit",
+        "$kuid": "GzRb6xrnO",
+        "label": [
+          "❌ Autres problèmes/"
+        ],
+        "order": "4",
+        "list_name": "problemes_kit_macon",
+        "$autovalue": "autres_problemes_kit"
+      },
+      {
+        "name": "mur-standard",
+        "$kuid": "nYQfuHYQJ",
+        "label": [
+          "🧱 Mur standard (2 poteaux)"
+        ],
+        "order": "1",
+        "list_name": "type_mur",
+        "$autovalue": "mur-standard"
+      },
+      {
+        "name": "mur_en_chemine",
+        "$kuid": "GvaJNO9a5",
+        "label": [
+          "🚪 Mur en forme de cheminée"
+        ],
+        "order": "2",
+        "list_name": "type_mur",
+        "$autovalue": "mur_en_chemine"
+      },
+      {
+        "name": "terrain_probleme",
+        "$kuid": "OlR4sOZcT",
+        "label": [
+          "Problème avec le terrain/"
+        ],
+        "order": "1",
+        "list_name": "problemes_travail_macon",
+        "$autovalue": "terrain_probleme"
+      },
+      {
+        "name": "meteo_probleme",
+        "$kuid": "1sNXblNRw",
+        "label": [
+          "Problème météo/"
+        ],
+        "order": "2",
+        "list_name": "problemes_travail_macon",
+        "$autovalue": "meteo_probleme"
+      },
+      {
+        "name": "materiel_manquant",
+        "$kuid": "6zB0YuXxH",
+        "label": [
+          "Matériel manquant/"
+        ],
+        "order": "3",
+        "list_name": "problemes_travail_macon",
+        "$autovalue": "materiel_manquant"
+      },
+      {
+        "name": "autres_problemes_travail",
+        "$kuid": "262rmYPJM",
+        "label": [
+          "Autres problèmes/"
+        ],
+        "order": "4",
+        "list_name": "problemes_travail_macon",
+        "$autovalue": "autres_problemes_travail"
+      },
+      {
+        "name": "oui",
+        "$kuid": "DneYXKfJZ",
+        "label": [
+          "✅ Oui - Mur conforme"
+        ],
+        "order": "1",
+        "list_name": "verification_mur",
+        "$autovalue": "oui"
+      },
+      {
+        "name": "non",
+        "$kuid": "JWYO7m8P0",
+        "label": [
+          "❌ Non - Mur non conforme"
+        ],
+        "order": "2",
+        "list_name": "verification_mur",
+        "$autovalue": "non"
+      },
+      {
+        "name": "mur_non_realise",
+        "$kuid": "POgTIwUeZ",
+        "label": [
+          "Mur non réalisé/"
+        ],
+        "order": "1",
+        "list_name": "problemes_mur_reseau",
+        "$autovalue": "mur_non_realise"
+      },
+      {
+        "name": "mur_non_conforme",
+        "$kuid": "P0rIcRUGE",
+        "label": [
+          "Mur non conforme/"
+        ],
+        "order": "2",
+        "list_name": "problemes_mur_reseau",
+        "$autovalue": "mur_non_conforme"
+      },
+      {
+        "name": "autre_probleme_mur",
+        "$kuid": "joTXt8nRY",
+        "label": [
+          "Autre problème avec le mur/"
+        ],
+        "order": "3",
+        "list_name": "problemes_mur_reseau",
+        "$autovalue": "autre_probleme_mur"
+      },
+      {
+        "name": "termine",
+        "$kuid": "1nALdqiSY",
+        "label": [
+          "✅ Branchement terminé"
+        ],
+        "order": "1",
+        "list_name": "etat_branchement",
+        "$autovalue": "termine"
+      },
+      {
+        "name": "probleme",
+        "$kuid": "SEEQ2FT3f",
+        "label": [
+          "❌ Problème lors du branchement"
+        ],
+        "order": "2",
+        "list_name": "etat_branchement",
+        "$autovalue": "probleme"
+      },
+      {
+        "name": "pas_de_materiel_reseau",
+        "$kuid": "zvqAkYkIe",
+        "label": [
+          "Pas de matériel disponible/"
+        ],
+        "order": "1",
+        "list_name": "problemes_branchement_reseau",
+        "$autovalue": "pas_de_materiel_reseau"
+      },
+      {
+        "name": "probleme_technique_reseau",
+        "$kuid": "O7HAATldW",
+        "label": [
+          "Problème technique/"
+        ],
+        "order": "2",
+        "list_name": "problemes_branchement_reseau",
+        "$autovalue": "probleme_technique_reseau"
+      },
+      {
+        "name": "autres_problemes_reseau",
+        "$kuid": "rNuhQ7rwz",
+        "label": [
+          "Autres problèmes/"
+        ],
+        "order": "3",
+        "list_name": "problemes_branchement_reseau",
+        "$autovalue": "autres_problemes_reseau"
+      },
+      {
+        "name": "oui",
+        "$kuid": "LnBpZ3Z0W",
+        "label": [
+          "✅ Oui - Branchement conforme"
+        ],
+        "order": "1",
+        "list_name": "verification_branchement",
+        "$autovalue": "oui"
+      },
+      {
+        "name": "non",
+        "$kuid": "q1a8GV6d2",
+        "label": [
+          "❌ Non - Branchement non conforme"
+        ],
+        "order": "2",
+        "list_name": "verification_branchement",
+        "$autovalue": "non"
+      },
+      {
+        "name": "branchement_non_realise",
+        "$kuid": "ikazVfQ57",
+        "label": [
+          "Branchement non réalisé/"
+        ],
+        "order": "1",
+        "list_name": "problemes_branchement_interieur",
+        "$autovalue": "branchement_non_realise"
+      },
+      {
+        "name": "branchement_non_conforme",
+        "$kuid": "1FAdFGHj6",
+        "label": [
+          "Branchement non conforme/"
+        ],
+        "order": "2",
+        "list_name": "problemes_branchement_interieur",
+        "$autovalue": "branchement_non_conforme"
+      },
+      {
+        "name": "autre_probleme_branchement",
+        "$kuid": "IDmLFXDVk",
+        "label": [
+          "Autre problème avec le branchement/"
+        ],
+        "order": "3",
+        "list_name": "problemes_branchement_interieur",
+        "$autovalue": "autre_probleme_branchement"
+      },
+      {
+        "name": "termine",
+        "$kuid": "niVh3pbYB",
+        "label": [
+          "✅ Installation terminée"
+        ],
+        "order": "1",
+        "list_name": "etat_installation",
+        "$autovalue": "termine"
+      },
+      {
+        "name": "probleme",
+        "$kuid": "N88g9ilCn",
+        "label": [
+          "❌ Problème lors de l'installation"
+        ],
+        "order": "2",
+        "list_name": "etat_installation",
+        "$autovalue": "probleme"
+      },
+      {
+        "name": "pas_de_materiel_interieur",
+        "$kuid": "KjhbYPkOJ",
+        "label": [
+          "Pas de matériel disponible/"
+        ],
+        "order": "1",
+        "list_name": "problemes_installation_interieur",
+        "$autovalue": "pas_de_materiel_interieur"
+      },
+      {
+        "name": "probleme_technique_interieur",
+        "$kuid": "ubvKFjJqX",
+        "label": [
+          "Problème technique/"
+        ],
+        "order": "2",
+        "list_name": "problemes_installation_interieur",
+        "$autovalue": "probleme_technique_interieur"
+      },
+      {
+        "name": "autres_problemes_interieur",
+        "$kuid": "ng1ZRwZZ0",
+        "label": [
+          "Autres problèmes/"
+        ],
+        "order": "3",
+        "list_name": "problemes_installation_interieur",
+        "$autovalue": "autres_problemes_interieur"
+      },
+      {
+        "name": "terminee",
+        "$kuid": "kvlVfNxcW",
+        "label": [
+          "Terminée"
+        ],
+        "list_name": "rr4dg37",
+        "$autovalue": "terminee"
+      },
+      {
+        "name": "non_terminee",
+        "$kuid": "c9g1DlQDd",
+        "label": [
+          "Non terminée"
+        ],
+        "order": "1",
+        "list_name": "rr4dg37",
+        "$autovalue": "non_terminee"
+      },
+      {
+        "name": "non_encore_instalee",
+        "$kuid": "ZANtMlSOs",
+        "label": [
+          "Non encore installée"
+        ],
+        "order": "2",
+        "list_name": "rr4dg37",
+        "$autovalue": "non_encore_instalee"
+      },
+      {
+        "name": "probleme_a_signaler",
+        "$kuid": "fHd96Pkve",
+        "label": [
+          "❌ Probleme à signaler"
+        ],
+        "order": "4",
+        "list_name": "rr4dg37",
+        "$autovalue": "probleme_a_signaler"
+      },
+      {
+        "name": "demande_extension",
+        "$kuid": "DJM3wYaZi",
+        "label": [
+          "❌ Demande une extension réseau/"
+        ],
+        "list_name": "oo84j36",
+        "$autovalue": "demande_extension"
+      },
+      {
+        "name": "menage_ineligible2",
+        "$kuid": "SCVEweDru",
+        "label": [
+          "❌ Ménage inéligible/"
+        ],
+        "order": "1",
+        "list_name": "oo84j36",
+        "$autovalue": "menage_ineligible2"
+      },
+      {
+        "name": "menage_no_disponible",
+        "$kuid": "WEP3JzOrg",
+        "label": [
+          "❌ Ménage non disponible (injoignable)/"
+        ],
+        "order": "2",
+        "list_name": "oo84j36",
+        "$autovalue": "menage_no_disponible"
+      },
+      {
+        "name": "confusio_de_menage",
+        "$kuid": "iaZdb5zIg",
+        "label": [
+          "❌ Confusion de ménage/"
+        ],
+        "order": "3",
+        "list_name": "oo84j36",
+        "$autovalue": "confusio_de_menage"
+      },
+      {
+        "name": "__maison_inaccessible",
+        "$kuid": "EGmHWbhoH",
+        "label": [
+          "❌ Maison inaccessible/"
+        ],
+        "list_name": "oo84j36",
+        "$autovalue": "__maison_inaccessible"
+      },
+      {
+        "name": "visite_1",
+        "$kuid": "qRRf3fFd0",
+        "label": [
+          "Première Contrôle"
+        ],
+        "list_name": "ga7rh54",
+        "$autovalue": "visite_1"
+      },
+      {
+        "name": "visite_2",
+        "$kuid": "pfGWmW24H",
+        "label": [
+          "Mise en conformité"
+        ],
+        "list_name": "ga7rh54",
+        "$autovalue": "visite_2"
+      },
+      {
+        "name": "visite_renouvelee",
+        "$kuid": "hyIcuD8XO",
+        "label": [
+          "Visite renouvelée (sans objet)"
+        ],
+        "list_name": "ga7rh54",
+        "$autovalue": "visite_renouvelee"
+      },
+      {
+        "name": "realise",
+        "$kuid": "p8eXCbzwY",
+        "label": [
+          "Réalisé"
+        ],
+        "list_name": "sv3tg34",
+        "$autovalue": "realise"
+      },
+      {
+        "name": "non_realise",
+        "$kuid": "8Nc9kfSll",
+        "label": [
+          "Non encore réalisé"
+        ],
+        "list_name": "sv3tg34",
+        "$autovalue": "non_realise"
+      },
+      {
+        "name": "non_termine",
+        "$kuid": "OCoiUdP6n",
+        "label": [
+          "Non terminé"
+        ],
+        "list_name": "sv3tg34",
+        "$autovalue": "non_termine"
+      },
+      {
+        "name": "coffret_compteur_non_encore_pos",
+        "$kuid": "zDLZFQPwG",
+        "label": [
+          "Coffret compteur non encore posé/"
+        ],
+        "list_name": "kx9fr02",
+        "$autovalue": "coffret_compteur_non_encore_pos"
+      },
+      {
+        "name": "potelet_non_encore_pos",
+        "$kuid": "TMV7RiqD6",
+        "label": [
+          "Potelet non encore posé/"
+        ],
+        "list_name": "kx9fr02",
+        "$autovalue": "potelet_non_encore_pos"
+      },
+      {
+        "name": "cable_preassemble_non_encore_tire",
+        "$kuid": "l4rO2ej50",
+        "label": [
+          "Câble préassemblé non encore tiré/"
+        ],
+        "list_name": "kx9fr02",
+        "$autovalue": "cable_preassemble_non_encore_tire"
+      },
+      {
+        "name": "necessite_une_extension",
+        "$kuid": "MRKMfQIS9",
+        "label": [
+          "Nécessite une Extension/"
+        ],
+        "list_name": "kx9fr02",
+        "$autovalue": "necessite_une_extension"
+      },
+      {
+        "name": "pas_de_pince_d_encrages",
+        "$kuid": "Ix9Ac6NLq",
+        "label": [
+          "Pas de pince d'encrages/"
+        ],
+        "list_name": "kx9fr02",
+        "$autovalue": "pas_de_pince_d_encrages"
+      },
+      {
+        "name": "pas_de_connecteurs",
+        "$kuid": "4cS8LsQMj",
+        "label": [
+          "Pas de Connecteurs/"
+        ],
+        "list_name": "kx9fr02",
+        "$autovalue": "pas_de_connecteurs"
+      },
+      {
+        "name": "pas_de_queue_de_cochon",
+        "$kuid": "r0LcDP7xC",
+        "label": [
+          "Pas de queue de cochon/"
+        ],
+        "list_name": "kx9fr02",
+        "$autovalue": "pas_de_queue_de_cochon"
+      },
+      {
+        "name": "conforme",
+        "$kuid": "0G6y5t5hO",
+        "label": [
+          "Conforme"
+        ],
+        "list_name": "lo9ia24",
+        "$autovalue": "conforme"
+      },
+      {
+        "name": "non_conforme",
+        "$kuid": "8EVH8GArR",
+        "label": [
+          "Non conforme"
+        ],
+        "list_name": "lo9ia24",
+        "$autovalue": "non_conforme"
+      },
+      {
+        "name": "plus_de_2_positions__zone_urbaine",
+        "$kuid": "GpVvYVgFu",
+        "label": [
+          "Le Branchement dépasse la position 2 (Zone Urbaine)/"
+        ],
+        "list_name": "la7vc77",
+        "$autovalue": "plus_de_2_positions__zone_urbaine"
+      },
+      {
+        "name": "plus_de_3_positions__zone_rurale",
+        "$kuid": "JsWmxQijK",
+        "label": [
+          "Le Branchement dépasse la position 3 (Zone Rurale)/"
+        ],
+        "list_name": "la7vc77",
+        "$autovalue": "plus_de_3_positions__zone_rurale"
+      },
+      {
+        "name": "longueur_branchement_sup_rieure___40m__z",
+        "$kuid": "hqfSsRGCf",
+        "label": [
+          "Longueur du branchement supérieure à 40m (Zone Urbaine)/"
+        ],
+        "list_name": "la7vc77",
+        "$autovalue": "longueur_branchement_sup_rieure___40m__z"
+      },
+      {
+        "name": "longueur_branchement_sup_rieure___50m__z",
+        "$kuid": "yzBnL8GN8",
+        "label": [
+          "Longueur du branchement supérieure à 50m (Zone Rurale)/"
+        ],
+        "list_name": "la7vc77",
+        "$autovalue": "longueur_branchement_sup_rieure___50m__z"
+      },
+      {
+        "name": "necessite_une_extension",
+        "$kuid": "B3raJPgvR",
+        "label": [
+          "Nécessite une Extension/"
+        ],
+        "list_name": "la7vc77",
+        "$autovalue": "necessite_une_extension"
+      },
+      {
+        "name": "conforme",
+        "$kuid": "86idjkiPk",
+        "label": [
+          "C"
+        ],
+        "list_name": "nk1mo89",
+        "$autovalue": "conforme"
+      },
+      {
+        "name": "non_conforme",
+        "$kuid": "gGpmCRBcc",
+        "label": [
+          "NC"
+        ],
+        "order": "1",
+        "list_name": "nk1mo89",
+        "$autovalue": "non_conforme"
+      },
+      {
+        "name": "c",
+        "$kuid": "CwROpW9Qw",
+        "label": [
+          "C"
+        ],
+        "list_name": "ur9iq73",
+        "$autovalue": "c"
+      },
+      {
+        "name": "nc",
+        "$kuid": "yCV3fhQJi",
+        "label": [
+          "NC"
+        ],
+        "list_name": "ur9iq73",
+        "$autovalue": "nc"
+      },
+      {
+        "name": "pas_de_coupe_circuit__cc",
+        "$kuid": "hUwNqkKKh",
+        "label": [
+          "Pas de coupe circuit (CC)/"
+        ],
+        "list_name": "rz78v01",
+        "$autovalue": "pas_de_coupe_circuit__cc"
+      },
+      {
+        "name": "coupe_circuit_deteriore",
+        "$kuid": "NRnzAscK4",
+        "label": [
+          "Coupe-circuit détérioré/"
+        ],
+        "list_name": "rz78v01",
+        "$autovalue": "coupe_circuit_deteriore"
+      },
+      {
+        "name": "calibre_fusible_superieur_25a",
+        "$kuid": "gmXgtPHnq",
+        "label": [
+          "Calibre fusible Supérieur à 25A/"
+        ],
+        "list_name": "rz78v01",
+        "$autovalue": "calibre_fusible_superieur_25a"
+      },
+      {
+        "name": "pas_de_tube_pvc",
+        "$kuid": "VpfZ7871f",
+        "label": [
+          "Pas de tube PVC/"
+        ],
+        "list_name": "fv5uq33",
+        "$autovalue": "pas_de_tube_pvc"
+      },
+      {
+        "name": "protection_mecanique_non_assure_sur_tou",
+        "$kuid": "ThLZKaWgu",
+        "label": [
+          "Protection mécanique non assurée sur toute la longueur (descente câble préassemblé)/"
+        ],
+        "list_name": "fv5uq33",
+        "$autovalue": "protection_mecanique_non_assure_sur_tou"
+      },
+      {
+        "name": "coffret_compteur_perce",
+        "$kuid": "mcdcDQsOu",
+        "label": [
+          "Le Coffret compteur est percé/Troué/"
+        ],
+        "list_name": "fv5uq33",
+        "$autovalue": "coffret_compteur_perce"
+      },
+      {
+        "name": "mode_de_pose_non_conforme",
+        "$kuid": "pZm3lN8zh",
+        "label": [
+          "Mode de pose non conforme (Installation Anarchique)/"
+        ],
+        "list_name": "ey6uw71",
+        "$autovalue": "mode_de_pose_non_conforme"
+      },
+      {
+        "name": "potelet_trop_inclin",
+        "$kuid": "FQNU52BQD",
+        "label": [
+          "Potelet trop incliné du sens vertical/"
+        ],
+        "list_name": "ey6uw71",
+        "$autovalue": "potelet_trop_inclin"
+      },
+      {
+        "name": "pas_de_pince_d_encrage",
+        "$kuid": "STwZHe8k5",
+        "label": [
+          "Pas de pince d'encrage/"
+        ],
+        "list_name": "ey6uw71",
+        "$autovalue": "pas_de_pince_d_encrage"
+      },
+      {
+        "name": "pas_de_queue_de_cochon",
+        "$kuid": "P5ZYVZxoJ",
+        "label": [
+          "Pas de queue de cochon/"
+        ],
+        "list_name": "ey6uw71",
+        "$autovalue": "pas_de_queue_de_cochon"
+      },
+      {
+        "name": "hauteur_coffret_compteur_trop_bas___inf_",
+        "$kuid": "ts4idjAbe",
+        "label": [
+          "Hauteur Coffret compteur (Hublot - Sol) INFERIEURE à 1,20m /"
+        ],
+        "list_name": "ey6uw71",
+        "$autovalue": "hauteur_coffret_compteur_trop_bas___inf_"
+      },
+      {
+        "name": "le_c_ble_pr_assembl__est_jonctionn",
+        "$kuid": "slDW4i34l",
+        "label": [
+          "Le Câble préassemblé est Jonctionné/"
+        ],
+        "list_name": "ey6uw71",
+        "$autovalue": "le_c_ble_pr_assembl__est_jonctionn"
+      },
+      {
+        "name": "le_coffret_est_place_interieure_de",
+        "$kuid": "HJalmhNdB",
+        "label": [
+          "Le Coffret compteur est placé à l'intérieure de la limite de propriété de la maison/"
+        ],
+        "list_name": "ey6uw71",
+        "$autovalue": "le_coffret_est_place_interieure_de"
+      },
+      {
+        "name": "hauteur_coffret_compteur__hublot___sol__",
+        "$kuid": "LksprOcvh",
+        "label": [
+          "Hauteur Coffret compteur (Hublot - Sol) Supérieur à 1,60m/"
+        ],
+        "list_name": "ey6uw71",
+        "$autovalue": "hauteur_coffret_compteur__hublot___sol__"
+      },
+      {
+        "name": "conforme",
+        "$kuid": "bVA2pmWO7",
+        "label": [
+          "Conforme"
+        ],
+        "list_name": "el0wa18",
+        "$autovalue": "conforme"
+      },
+      {
+        "name": "non_conforme",
+        "$kuid": "VUu9LZlef",
+        "label": [
+          "Non conforme"
+        ],
+        "list_name": "el0wa18",
+        "$autovalue": "non_conforme"
+      },
+      {
+        "name": "absence_de_disjoncteur_general",
+        "$kuid": "qco7tra5p",
+        "label": [
+          "Absence de disjoncteur Général/"
+        ],
+        "list_name": "zs4mw04",
+        "$autovalue": "absence_de_disjoncteur_general"
+      },
+      {
+        "name": "disjoncteur_general_non_fix",
+        "$kuid": "k5HhYVnki",
+        "label": [
+          "Disjoncteur Général Non fixé/"
+        ],
+        "list_name": "zs4mw04",
+        "$autovalue": "disjoncteur_general_non_fix"
+      },
+      {
+        "name": "disjoncteur_general_deterior",
+        "$kuid": "WsmVlhUQs",
+        "label": [
+          "Disjoncteur Général détérioré/"
+        ],
+        "list_name": "zs4mw04",
+        "$autovalue": "disjoncteur_general_deterior"
+      },
+      {
+        "name": "disjoncteur_general_non_adapt",
+        "$kuid": "RIUdPClNw",
+        "label": [
+          "Disjoncteur Général non adapté/"
+        ],
+        "list_name": "zs4mw04",
+        "$autovalue": "disjoncteur_general_non_adapt"
+      },
+      {
+        "name": "emplacement_tgbt_non_adequate",
+        "$kuid": "1emR8B41f",
+        "label": [
+          "Emplacement TGBT non adéquate/"
+        ],
+        "list_name": "zs4mw04",
+        "$autovalue": "emplacement_tgbt_non_adequate"
+      },
+      {
+        "name": "differentiel",
+        "$kuid": "VGEldni9s",
+        "label": [
+          "Differentiel"
+        ],
+        "list_name": "nr78z46",
+        "$autovalue": "differentiel"
+      },
+      {
+        "name": "non_differentiel",
+        "$kuid": "5VBBIXPx1",
+        "label": [
+          "Non differentiel"
+        ],
+        "list_name": "nr78z46",
+        "$autovalue": "non_differentiel"
+      },
+      {
+        "name": "conforme",
+        "$kuid": "ENpsp49oW",
+        "label": [
+          "Conforme"
+        ],
+        "list_name": "gk2qz88",
+        "$autovalue": "conforme"
+      },
+      {
+        "name": "non_conforme",
+        "$kuid": "JsbZgrKNl",
+        "label": [
+          "Non Conforme"
+        ],
+        "list_name": "gk2qz88",
+        "$autovalue": "non_conforme"
+      },
+      {
+        "name": "differentiel_30ma_d_t_rior",
+        "$kuid": "H9igZd27k",
+        "label": [
+          "Différentiel 30mA Détérioré/"
+        ],
+        "list_name": "py9cc56",
+        "$autovalue": "differentiel_30ma_d_t_rior"
+      },
+      {
+        "name": "differentiel_30ma_mal_positionn",
+        "$kuid": "TktHnXI06",
+        "label": [
+          "Différentiel 30mA mal positionné/"
+        ],
+        "order": "1",
+        "list_name": "py9cc56",
+        "$autovalue": "differentiel_30ma_mal_positionn"
+      },
+      {
+        "name": "pas_de_differentiel_30ma",
+        "$kuid": "ZsJnVPwzK",
+        "label": [
+          "Pas de différentiel 30mA/"
+        ],
+        "order": "2",
+        "list_name": "py9cc56",
+        "$autovalue": "pas_de_differentiel_30ma"
+      },
+      {
+        "name": "conforme",
+        "$kuid": "GQMJr06Gq",
+        "label": [
+          "Conforme"
+        ],
+        "list_name": "nm4md59",
+        "$autovalue": "conforme"
+      },
+      {
+        "name": "non_conforme",
+        "$kuid": "cWFp04bLw",
+        "label": [
+          "Non conforme"
+        ],
+        "list_name": "nm4md59",
+        "$autovalue": "non_conforme"
+      },
+      {
+        "name": "absence_de_modulaire_lumiere",
+        "$kuid": "Jx98GIQ0X",
+        "label": [
+          "Absence de modulaire LUMIERE (C10/C16)/"
+        ],
+        "list_name": "nr8tv95",
+        "$autovalue": "absence_de_modulaire_lumiere"
+      },
+      {
+        "name": "absence_de_modulaire_prise",
+        "$kuid": "aU3a1rwGi",
+        "label": [
+          "Absence de modulaire PRISE( C10/C16/C20)/"
+        ],
+        "list_name": "nr8tv95",
+        "$autovalue": "absence_de_modulaire_prise"
+      },
+      {
+        "name": "calibre_modulaire_non_adapt",
+        "$kuid": "IWrMDWuwN",
+        "label": [
+          "Calibre modulaire non adapté/"
+        ],
+        "list_name": "nr8tv95",
+        "$autovalue": "calibre_modulaire_non_adapt"
+      },
+      {
+        "name": "conforme",
+        "$kuid": "Gi53dJPFp",
+        "label": [
+          "Conforme"
+        ],
+        "list_name": "bm2rn03",
+        "$autovalue": "conforme"
+      },
+      {
+        "name": "non_conforme",
+        "$kuid": "Su4cepxXf",
+        "label": [
+          "Non conforme"
+        ],
+        "list_name": "bm2rn03",
+        "$autovalue": "non_conforme"
+      },
+      {
+        "name": "boite_de_derivation_sans_couvercle",
+        "$kuid": "JLJVjZ767",
+        "label": [
+          "Boite de dérivation sans couvercle/"
+        ],
+        "list_name": "ps4nb23",
+        "$autovalue": "boite_de_derivation_sans_couvercle"
+      },
+      {
+        "name": "coffret_trou",
+        "$kuid": "sI82SYWRc",
+        "label": [
+          "Coffret Disjoncteur troué/"
+        ],
+        "order": "1",
+        "list_name": "ps4nb23",
+        "$autovalue": "coffret_trou"
+      },
+      {
+        "name": "option_1",
+        "$kuid": "rla5txYlm",
+        "label": [
+          "PNST accessible sur Douille/"
+        ],
+        "order": "2",
+        "list_name": "ps4nb23",
+        "$autovalue": "option_1"
+      },
+      {
+        "name": "option_2",
+        "$kuid": "jjLjMr8Mk",
+        "label": [
+          "PNST accessible sur Prise/"
+        ],
+        "order": "3",
+        "list_name": "ps4nb23",
+        "$autovalue": "option_2"
+      },
+      {
+        "name": "pnst_accessible_sur_c_ble",
+        "$kuid": "6jtFlfq1h",
+        "label": [
+          "PNST accessible sur Câble/"
+        ],
+        "order": "4",
+        "list_name": "ps4nb23",
+        "$autovalue": "pnst_accessible_sur_c_ble"
+      },
+      {
+        "name": "pnst_accessible_sur_interrupteur",
+        "$kuid": "c6p4VLZ1Z",
+        "label": [
+          "PNST accessible sur Interrupteur/"
+        ],
+        "order": "5",
+        "list_name": "ps4nb23",
+        "$autovalue": "pnst_accessible_sur_interrupteur"
+      },
+      {
+        "name": "prise_sans_obturateur",
+        "$kuid": "fdewLAAhv",
+        "label": [
+          "Prise sans obturateur/"
+        ],
+        "order": "6",
+        "list_name": "ps4nb23",
+        "$autovalue": "prise_sans_obturateur"
+      },
+      {
+        "name": "absence_de_douille",
+        "$kuid": "Cc33mipvc",
+        "label": [
+          "Absence de Douille/"
+        ],
+        "list_name": "jm8qy41",
+        "$autovalue": "absence_de_douille"
+      },
+      {
+        "name": "absence_de_prise",
+        "$kuid": "dvt5YCNyV",
+        "label": [
+          "Absence de Prise/"
+        ],
+        "order": "1",
+        "list_name": "jm8qy41",
+        "$autovalue": "absence_de_prise"
+      },
+      {
+        "name": "boite_de_d_rivation_mal_fix_e",
+        "$kuid": "0Bn1HwTZn",
+        "label": [
+          "Boite de dérivation mal fixée/"
+        ],
+        "order": "2",
+        "list_name": "jm8qy41",
+        "$autovalue": "boite_de_d_rivation_mal_fix_e"
+      },
+      {
+        "name": "c_blage__lumi_re_interrupteur__mal_effec",
+        "$kuid": "keUu659RY",
+        "label": [
+          "Câblage (lumière/interrupteur) mal effectué/"
+        ],
+        "order": "3",
+        "list_name": "jm8qy41",
+        "$autovalue": "c_blage__lumi_re_interrupteur__mal_effec"
+      },
+      {
+        "name": "c_blage___refaire_c_blage_prise_mal_effe",
+        "$kuid": "KgYOKPqlQ",
+        "label": [
+          "Câblage Prise mal effectué/"
+        ],
+        "order": "4",
+        "list_name": "jm8qy41",
+        "$autovalue": "c_blage___refaire_c_blage_prise_mal_effe"
+      },
+      {
+        "name": "cable_1_5mm__jonctionn__par__pissure",
+        "$kuid": "djESIfZMS",
+        "label": [
+          "Câble 1,5mm² Jonctionné par épissure/"
+        ],
+        "order": "5",
+        "list_name": "jm8qy41",
+        "$autovalue": "cable_1_5mm__jonctionn__par__pissure"
+      },
+      {
+        "name": "cable_2_5mm__jonctionn__par__pissure",
+        "$kuid": "dej7e15iu",
+        "label": [
+          "Câble 2,5mm² Jonctionné par épissure/"
+        ],
+        "order": "6",
+        "list_name": "jm8qy41",
+        "$autovalue": "cable_2_5mm__jonctionn__par__pissure"
+      },
+      {
+        "name": "c_ble_arm__non_enterr",
+        "$kuid": "swwLdxB5z",
+        "label": [
+          "Câble d'alimentation mal enterré/"
+        ],
+        "order": "7",
+        "list_name": "jm8qy41",
+        "$autovalue": "c_ble_arm__non_enterr"
+      },
+      {
+        "name": "cable_d_alimentation_non_adapt",
+        "$kuid": "tL8pudIgZ",
+        "label": [
+          "Câble d'alimentation non adapté pour être enterré/"
+        ],
+        "order": "8",
+        "list_name": "jm8qy41",
+        "$autovalue": "cable_d_alimentation_non_adapt"
+      },
+      {
+        "name": "cable_mal_fix",
+        "$kuid": "8GKWIfN3U",
+        "label": [
+          "Câblage intérieur mal fixé sur parois/"
+        ],
+        "order": "9",
+        "list_name": "jm8qy41",
+        "$autovalue": "cable_mal_fix"
+      },
+      {
+        "name": "coffret_disjoncteur___d_placer_en_lieu_c",
+        "$kuid": "6gEkJIMRF",
+        "label": [
+          "Coffret disjoncteur à déplacer en lieu couvert /"
+        ],
+        "order": "10",
+        "list_name": "jm8qy41",
+        "$autovalue": "coffret_disjoncteur___d_placer_en_lieu_c"
+      },
+      {
+        "name": "code_de_couleur__conducteur__non_respect",
+        "$kuid": "yeDP98Upb",
+        "label": [
+          "Code de couleur (conducteur) non respecté/"
+        ],
+        "order": "11",
+        "list_name": "jm8qy41",
+        "$autovalue": "code_de_couleur__conducteur__non_respect"
+      },
+      {
+        "name": "coffret_disjoncteur_mal_fix",
+        "$kuid": "1MzhyWNc9",
+        "label": [
+          "Coffret disjoncteur mal fixé/"
+        ],
+        "order": "12",
+        "list_name": "jm8qy41",
+        "$autovalue": "coffret_disjoncteur_mal_fix"
+      },
+      {
+        "name": "cable_d_alimentation_4mm__mal_fix",
+        "$kuid": "8RIPTkl8W",
+        "label": [
+          "Câble d'alimentation 4mm² mal fixé sur parois/"
+        ],
+        "order": "13",
+        "list_name": "jm8qy41",
+        "$autovalue": "cable_d_alimentation_4mm__mal_fix"
+      },
+      {
+        "name": "c_blage_pass__en_a_rien",
+        "$kuid": "5fz449lJ9",
+        "label": [
+          "Câblage passé en aérien et non enterré/"
+        ],
+        "order": "14",
+        "list_name": "jm8qy41",
+        "$autovalue": "c_blage_pass__en_a_rien"
+      },
+      {
+        "name": "d_faut_connexion_lumi_re",
+        "$kuid": "dtQxhrEYe",
+        "label": [
+          "Défaut connexion lumière(mal câblé)/"
+        ],
+        "order": "15",
+        "list_name": "jm8qy41",
+        "$autovalue": "d_faut_connexion_lumi_re"
+      },
+      {
+        "name": "douille___remplacer",
+        "$kuid": "Wc6svwZLl",
+        "label": [
+          "Douille à remplacer (détériorée)/"
+        ],
+        "order": "16",
+        "list_name": "jm8qy41",
+        "$autovalue": "douille___remplacer"
+      },
+      {
+        "name": "douille_mal_fix",
+        "$kuid": "yW3Yz266p",
+        "label": [
+          "Douille mal fixé sur parois/"
+        ],
+        "order": "17",
+        "list_name": "jm8qy41",
+        "$autovalue": "douille_mal_fix"
+      },
+      {
+        "name": "d_faut_connexion_prise__mal_c_bl",
+        "$kuid": "EYEBece69",
+        "label": [
+          "Défaut connexion Prise (mal câblé)/"
+        ],
+        "order": "18",
+        "list_name": "jm8qy41",
+        "$autovalue": "d_faut_connexion_prise__mal_c_bl"
+      },
+      {
+        "name": "interrupteur___d_placer_en_lieu_couvert_",
+        "$kuid": "RUna460jC",
+        "label": [
+          "Interrupteur à déplacer en lieu couvert /"
+        ],
+        "order": "19",
+        "list_name": "jm8qy41",
+        "$autovalue": "interrupteur___d_placer_en_lieu_couvert_"
+      },
+      {
+        "name": "interrupteur___remplacer",
+        "$kuid": "k2HV86Ca3",
+        "label": [
+          "Interrupteur à remplacer (détérioré)/"
+        ],
+        "order": "20",
+        "list_name": "jm8qy41",
+        "$autovalue": "interrupteur___remplacer"
+      },
+      {
+        "name": "interrupteur_mal_fix",
+        "$kuid": "XB5UtzEqY",
+        "label": [
+          "Interrupteur mal fixé/"
+        ],
+        "order": "21",
+        "list_name": "jm8qy41",
+        "$autovalue": "interrupteur_mal_fix"
+      },
+      {
+        "name": "prise___remplacer",
+        "$kuid": "XE08Ot3ep",
+        "label": [
+          "Prise à remplacer(détériorée)/"
+        ],
+        "order": "22",
+        "list_name": "jm8qy41",
+        "$autovalue": "prise___remplacer"
+      },
+      {
+        "name": "pas_de_boite_de_d_rivation",
+        "$kuid": "pvxpcmHOI",
+        "label": [
+          "Pas de boite de dérivation/"
+        ],
+        "order": "23",
+        "list_name": "jm8qy41",
+        "$autovalue": "pas_de_boite_de_d_rivation"
+      },
+      {
+        "name": "prise_mal_fix_e",
+        "$kuid": "7DaeCDubD",
+        "label": [
+          "Prise mal fixée sur parois/"
+        ],
+        "order": "24",
+        "list_name": "jm8qy41",
+        "$autovalue": "prise_mal_fix_e"
+      },
+      {
+        "name": "profondeur_tranch_e_non_ad_quate__minimu",
+        "$kuid": "StJ6XGdEh",
+        "label": [
+          "Profondeur de la tranchée non adéquate (minimum 30cm à creuser)/"
+        ],
+        "order": "25",
+        "list_name": "jm8qy41",
+        "$autovalue": "profondeur_tranch_e_non_ad_quate__minimu"
+      },
+      {
+        "name": "pas_de_domino_au_niveau_de_la_boite_de_d",
+        "$kuid": "nzT2hnhUm",
+        "label": [
+          "Pas de dominos au niveau de la boite de dérivation/"
+        ],
+        "order": "26",
+        "list_name": "jm8qy41",
+        "$autovalue": "pas_de_domino_au_niveau_de_la_boite_de_d"
+      },
+      {
+        "name": "section_2_5mm__non_adapt_e_pour_les_lamp",
+        "$kuid": "DWpnOXBkC",
+        "label": [
+          "Section câble 2,5mm² non adaptée pour les lampes/"
+        ],
+        "order": "27",
+        "list_name": "jm8qy41",
+        "$autovalue": "section_2_5mm__non_adapt_e_pour_les_lamp"
+      },
+      {
+        "name": "section_cable_d_alimentation_non_respect",
+        "$kuid": "0XvKkyxC1",
+        "label": [
+          "Section Cable d'alimentation non respectée (minimum 4mm²)/"
+        ],
+        "order": "28",
+        "list_name": "jm8qy41",
+        "$autovalue": "section_cable_d_alimentation_non_respect"
+      },
+      {
+        "name": "conducteurs_visibles_sur_c_ble_1_5mm",
+        "$kuid": "Rjlke9Jn0",
+        "label": [
+          "Conducteurs visibles sur câble 1,5mm²/"
+        ],
+        "list_name": "vo5kj15",
+        "$autovalue": "conducteurs_visibles_sur_c_ble_1_5mm"
+      },
+      {
+        "name": "conducteurs_visibles_sur_c_ble_2_5mm",
+        "$kuid": "bfympOSFO",
+        "label": [
+          "Conducteurs visibles sur câble 2,5mm²/"
+        ],
+        "list_name": "vo5kj15",
+        "$autovalue": "conducteurs_visibles_sur_c_ble_2_5mm"
+      },
+      {
+        "name": "conducteurs_visibles_sur_c_ble_4mm",
+        "$kuid": "kzBCxWLLb",
+        "label": [
+          "Conducteurs visibles sur câble 4mm²/"
+        ],
+        "list_name": "vo5kj15",
+        "$autovalue": "conducteurs_visibles_sur_c_ble_4mm"
+      },
+      {
+        "name": "conducteur_principal_de_protection_vert_",
+        "$kuid": "o2qtNk6K7",
+        "label": [
+          "Conducteur principal de protection Vert/Jaune sans gaine ou fourreau/"
+        ],
+        "list_name": "vo5kj15",
+        "$autovalue": "conducteur_principal_de_protection_vert_"
+      },
+      {
+        "name": "absence_de_piquet_de_terre",
+        "$kuid": "oeaqoTYRc",
+        "label": [
+          "Absence de piquet de terre/"
+        ],
+        "list_name": "pi0xx78",
+        "$autovalue": "absence_de_piquet_de_terre"
+      },
+      {
+        "name": "terre_non_raccord__sur_boite_de_d_rivati",
+        "$kuid": "sHaJxc3WK",
+        "label": [
+          "Conducteur de protection (Terre) non raccordé au niveau de la boite de dérivation/"
+        ],
+        "order": "1",
+        "list_name": "pi0xx78",
+        "$autovalue": "terre_non_raccord__sur_boite_de_d_rivati"
+      },
+      {
+        "name": "terre_non_raccord__au_niveau_du_coffret",
+        "$kuid": "5VIBVxxF0",
+        "label": [
+          "Conducteur de protection (Terre) non raccordé au niveau du coffret disjoncteur/"
+        ],
+        "order": "2",
+        "list_name": "pi0xx78",
+        "$autovalue": "terre_non_raccord__au_niveau_du_coffret"
+      },
+      {
+        "name": "d_placer_la_barrette_de_terre___l_endroi",
+        "$kuid": "tGNvGgdVY",
+        "label": [
+          "Déplacer la barrette de terre à l'endroit indiqué/"
+        ],
+        "order": "3",
+        "list_name": "pi0xx78",
+        "$autovalue": "d_placer_la_barrette_de_terre___l_endroi"
+      },
+      {
+        "name": "pas_de_barrette_de_terre",
+        "$kuid": "DfnykIzvY",
+        "label": [
+          "Pas de barrette de terre/"
+        ],
+        "order": "4",
+        "list_name": "pi0xx78",
+        "$autovalue": "pas_de_barrette_de_terre"
+      },
+      {
+        "name": "pas_de_continuit__du_conducteur_de_prote",
+        "$kuid": "PhCoEXFZK",
+        "label": [
+          "Pas de continuité du conducteur de protection (vert/jaune)/"
+        ],
+        "order": "5",
+        "list_name": "pi0xx78",
+        "$autovalue": "pas_de_continuit__du_conducteur_de_prote"
+      },
+      {
+        "name": "pas_de_domino_sur_circuit_de_terre__coff",
+        "$kuid": "aCvI5nTtf",
+        "label": [
+          "Pas de domino sur circuit de terre (coffret)/"
+        ],
+        "order": "6",
+        "list_name": "pi0xx78",
+        "$autovalue": "pas_de_domino_sur_circuit_de_terre__coff"
+      },
+      {
+        "name": "pas_de_domino_sur_circuit_de_terre__boit",
+        "$kuid": "pEhYlrzo7",
+        "label": [
+          "Pas de domino sur circuit de terre (Boite)/"
+        ],
+        "order": "7",
+        "list_name": "pi0xx78",
+        "$autovalue": "pas_de_domino_sur_circuit_de_terre__boit"
+      },
+      {
+        "name": "piquet_de_terre_d_connect",
+        "$kuid": "bKdzPi4u1",
+        "label": [
+          "Piquet de terre déconnecté/"
+        ],
+        "order": "8",
+        "list_name": "pi0xx78",
+        "$autovalue": "piquet_de_terre_d_connect"
+      },
+      {
+        "name": "pas_de_protection_m_canique_du_conducteu",
+        "$kuid": "m2OlS752Q",
+        "label": [
+          "Pas de protection mécanique du conducteur principale de protection (vert/jaune)/"
+        ],
+        "order": "9",
+        "list_name": "pi0xx78",
+        "$autovalue": "pas_de_protection_m_canique_du_conducteu"
+      },
+      {
+        "name": "r_seau_de_terre_non_raccord",
+        "$kuid": "OMzyF6Rzo",
+        "label": [
+          "Réseau de terre non raccordé/"
+        ],
+        "order": "10",
+        "list_name": "pi0xx78",
+        "$autovalue": "r_seau_de_terre_non_raccord"
+      },
+      {
+        "name": "r_seau_terre_en_cours_de_pose",
+        "$kuid": "MPGaeC4SS",
+        "label": [
+          "Réseau de terre En cours de pose/"
+        ],
+        "order": "11",
+        "list_name": "pi0xx78",
+        "$autovalue": "r_seau_terre_en_cours_de_pose"
+      },
+      {
+        "name": "barrette_conforme",
+        "$kuid": "mcgoFwIHG",
+        "label": [
+          "Barrette conforme"
+        ],
+        "list_name": "lk4xz51",
+        "$autovalue": "barrette_conforme"
+      },
+      {
+        "name": "barrette_rouill_e",
+        "$kuid": "ojPm85lLM",
+        "label": [
+          "Barrette Rouillée"
+        ],
+        "order": "1",
+        "list_name": "lk4xz51",
+        "$autovalue": "barrette_rouill_e"
+      }
+    ],
+    "settings": {
+      "style": "pages",
+      "version": "8 (2021-07-24 19:48:35)",
+      "default_language": "Français (fr)"
+    },
+    "translated": [
+      "hint",
+      "label"
+    ],
+    "translations": [
+      "Français (fr)"
+    ]
+  },
+  "downloads": [
+    {
+      "format": "xls",
+      "url": "https://kf.kobotoolbox.org/api/v2/assets/aEYZwPujJiFBTNb6mxMGCB.xls"
+    },
+    {
+      "format": "xml",
+      "url": "https://kf.kobotoolbox.org/api/v2/assets/aEYZwPujJiFBTNb6mxMGCB.xml"
+    }
+  ],
+  "embeds": [
+    {
+      "format": "xls",
+      "url": "https://kf.kobotoolbox.org/api/v2/assets/aEYZwPujJiFBTNb6mxMGCB/xls/"
+    },
+    {
+      "format": "xform",
+      "url": "https://kf.kobotoolbox.org/api/v2/assets/aEYZwPujJiFBTNb6mxMGCB/xform/"
+    }
+  ],
+  "analysis_form_json": {
+    "additional_fields": []
+  },
+  "xform_link": "https://kf.kobotoolbox.org/api/v2/assets/aEYZwPujJiFBTNb6mxMGCB/xform/",
+  "hooks_link": "https://kf.kobotoolbox.org/api/v2/assets/aEYZwPujJiFBTNb6mxMGCB/hooks/",
+  "tag_string": "",
+  "uid": "aEYZwPujJiFBTNb6mxMGCB",
+  "kind": "asset",
+  "xls_link": "https://kf.kobotoolbox.org/api/v2/assets/aEYZwPujJiFBTNb6mxMGCB/xls/",
+  "name": "Suivi Électrification menages V2",
+  "assignable_permissions": [
+    {
+      "url": "https://kf.kobotoolbox.org/api/v2/permissions/view_asset/",
+      "label": "View form"
+    },
+    {
+      "url": "https://kf.kobotoolbox.org/api/v2/permissions/change_asset/",
+      "label": "Edit form"
+    },
+    {
+      "url": "https://kf.kobotoolbox.org/api/v2/permissions/manage_asset/",
+      "label": "Manage project"
+    },
+    {
+      "url": "https://kf.kobotoolbox.org/api/v2/permissions/add_submissions/",
+      "label": "Add submissions"
+    },
+    {
+      "url": "https://kf.kobotoolbox.org/api/v2/permissions/view_submissions/",
+      "label": "View submissions"
+    },
+    {
+      "url": "https://kf.kobotoolbox.org/api/v2/permissions/partial_submissions/",
+      "label": {
+        "default": "Act on submissions only from specific users",
+        "view_submissions": "View submissions only from specific users",
+        "change_submissions": "Edit submissions only from specific users",
+        "delete_submissions": "Delete submissions only from specific users",
+        "validate_submissions": "Validate submissions only from specific users"
+      }
+    },
+    {
+      "url": "https://kf.kobotoolbox.org/api/v2/permissions/change_submissions/",
+      "label": "Edit submissions"
+    },
+    {
+      "url": "https://kf.kobotoolbox.org/api/v2/permissions/delete_submissions/",
+      "label": "Delete submissions"
+    },
+    {
+      "url": "https://kf.kobotoolbox.org/api/v2/permissions/validate_submissions/",
+      "label": "Validate submissions"
+    }
+  ],
+  "permissions": [
+    {
+      "url": "https://kf.kobotoolbox.org/api/v2/assets/aEYZwPujJiFBTNb6mxMGCB/permission-assignments/p4i8cRkixPsnbJGNdHjkXt/",
+      "user": "https://kf.kobotoolbox.org/api/v2/users/AnonymousUser/",
+      "permission": "https://kf.kobotoolbox.org/api/v2/permissions/add_submissions/",
+      "label": "Add submissions"
+    },
+    {
+      "url": "https://kf.kobotoolbox.org/api/v2/assets/aEYZwPujJiFBTNb6mxMGCB/permission-assignments/pRxReaVm3FbJCJSed2f37C/",
+      "user": "https://kf.kobotoolbox.org/api/v2/users/AnonymousUser/",
+      "permission": "https://kf.kobotoolbox.org/api/v2/permissions/view_asset/",
+      "label": "View form"
+    },
+    {
+      "url": "https://kf.kobotoolbox.org/api/v2/assets/aEYZwPujJiFBTNb6mxMGCB/permission-assignments/pFvXEiuu4C8ByWtxPTDDw6/",
+      "user": "https://kf.kobotoolbox.org/api/v2/users/pokebe/",
+      "permission": "https://kf.kobotoolbox.org/api/v2/permissions/add_submissions/",
+      "label": "Add submissions"
+    },
+    {
+      "url": "https://kf.kobotoolbox.org/api/v2/assets/aEYZwPujJiFBTNb6mxMGCB/permission-assignments/pqcM9j2RqizXeG4mLLLbL6/",
+      "user": "https://kf.kobotoolbox.org/api/v2/users/pokebe/",
+      "permission": "https://kf.kobotoolbox.org/api/v2/permissions/change_asset/",
+      "label": "Edit form"
+    },
+    {
+      "url": "https://kf.kobotoolbox.org/api/v2/assets/aEYZwPujJiFBTNb6mxMGCB/permission-assignments/prcKgQeDyFpkT3DhVbLYsc/",
+      "user": "https://kf.kobotoolbox.org/api/v2/users/pokebe/",
+      "permission": "https://kf.kobotoolbox.org/api/v2/permissions/change_submissions/",
+      "label": "Edit submissions"
+    },
+    {
+      "url": "https://kf.kobotoolbox.org/api/v2/assets/aEYZwPujJiFBTNb6mxMGCB/permission-assignments/pA8vwW584ikZCh25opm8yd/",
+      "user": "https://kf.kobotoolbox.org/api/v2/users/pokebe/",
+      "permission": "https://kf.kobotoolbox.org/api/v2/permissions/delete_submissions/",
+      "label": "Delete submissions"
+    },
+    {
+      "url": "https://kf.kobotoolbox.org/api/v2/assets/aEYZwPujJiFBTNb6mxMGCB/permission-assignments/pJvUwLzyGk2qnqUtwthjua/",
+      "user": "https://kf.kobotoolbox.org/api/v2/users/pokebe/",
+      "permission": "https://kf.kobotoolbox.org/api/v2/permissions/manage_asset/",
+      "label": "Manage project"
+    },
+    {
+      "url": "https://kf.kobotoolbox.org/api/v2/assets/aEYZwPujJiFBTNb6mxMGCB/permission-assignments/pf8qxegQDRkm3SbuiSLMPz/",
+      "user": "https://kf.kobotoolbox.org/api/v2/users/pokebe/",
+      "permission": "https://kf.kobotoolbox.org/api/v2/permissions/validate_submissions/",
+      "label": "Validate submissions"
+    },
+    {
+      "url": "https://kf.kobotoolbox.org/api/v2/assets/aEYZwPujJiFBTNb6mxMGCB/permission-assignments/p6xUdehXschpF2KGGPuasW/",
+      "user": "https://kf.kobotoolbox.org/api/v2/users/pokebe/",
+      "permission": "https://kf.kobotoolbox.org/api/v2/permissions/view_asset/",
+      "label": "View form"
+    },
+    {
+      "url": "https://kf.kobotoolbox.org/api/v2/assets/aEYZwPujJiFBTNb6mxMGCB/permission-assignments/pKz5YaBmai9JLAy7yYipK9/",
+      "user": "https://kf.kobotoolbox.org/api/v2/users/pokebe/",
+      "permission": "https://kf.kobotoolbox.org/api/v2/permissions/view_submissions/",
+      "label": "View submissions"
+    }
+  ],
+  "effective_permissions": [
+    {
+      "codename": "change_asset"
+    },
+    {
+      "codename": "view_submissions"
+    },
+    {
+      "codename": "delete_submissions"
+    },
+    {
+      "codename": "change_submissions"
+    },
+    {
+      "codename": "view_asset"
+    },
+    {
+      "codename": "delete_asset"
+    },
+    {
+      "codename": "manage_asset"
+    },
+    {
+      "codename": "validate_submissions"
+    },
+    {
+      "codename": "add_submissions"
+    }
+  ],
+  "exports": "https://kf.kobotoolbox.org/api/v2/assets/aEYZwPujJiFBTNb6mxMGCB/exports/",
+  "export_settings": [
+    {
+      "uid": "esw7vb2MqzMiAq6skR89SgE",
+      "url": "https://kf.kobotoolbox.org/api/v2/assets/aEYZwPujJiFBTNb6mxMGCB/export-settings/esw7vb2MqzMiAq6skR89SgE/",
+      "data_url_csv": "https://kf.kobotoolbox.org/api/v2/assets/aEYZwPujJiFBTNb6mxMGCB/export-settings/esw7vb2MqzMiAq6skR89SgE/data.csv",
+      "data_url_xlsx": "https://kf.kobotoolbox.org/api/v2/assets/aEYZwPujJiFBTNb6mxMGCB/export-settings/esw7vb2MqzMiAq6skR89SgE/data.xlsx",
+      "name": "",
+      "date_modified": "2026-04-11T02:15:46.256550Z",
+      "export_settings": {
+        "lang": "Français (fr)",
+        "type": "geojson",
+        "query": {},
+        "fields": [
+          "start",
+          "end",
+          "today",
+          "username",
+          "phonenumber",
+          "Numero_ordre",
+          "TYPE_DE_VISITE/nom_key",
+          "TYPE_DE_VISITE/telephone_key",
+          "TYPE_DE_VISITE/latitude_key",
+          "TYPE_DE_VISITE/longitude_key",
+          "TYPE_DE_VISITE/region_key",
+          "TYPE_DE_VISITE/LOCALISATION_CLIENT",
+          "TYPE_DE_VISITE/role",
+          "group_wu8kv54/note_Livreur",
+          "group_wu8kv54/Situation_du_M_nage",
+          "group_wu8kv54/justificatif",
+          "group_wu8kv54/group_sy9vj14/Longueur_Cable_2_5mm_Int_rieure",
+          "group_wu8kv54/group_sy9vj14/Longueur_Cable_1_5mm_Int_rieure",
+          "group_wu8kv54/group_sy9vj14/Longueur_Tranch_e_Cable_arm_4mm",
+          "group_wu8kv54/group_sy9vj14/Longueur_Tranch_e_C_ble_arm_1_5mm",
+          "group_wu8kv54/group_sy9vj14/Je_confirme_la_remis_u_materiel_au_m_nage",
+          "group_wu8kv54/group_sy9vj14/Je_confirme_le_marqu_ar_rapport_au_r_seau",
+          "group_wu8kv54/group_sy9vj14/Je_confirme_le_marqu_s_coffret_lectrique",
+          "group_wu8kv54/group_sy9vj14/Photo",
+          "etape_macon/note_macon_1",
+          "etape_macon/kit_disponible_macon",
+          "etape_macon/problemes_kit_macon",
+          "etape_macon/type_mur_realise_macon",
+          "etape_macon/problemes_travail_macon",
+          "etape_macon/validation_macon_final",
+          "etape_reseau/note_reseau_1",
+          "etape_reseau/verification_mur_reseau",
+          "etape_reseau/problemes_mur_reseau",
+          "etape_reseau/etat_branchement_reseau",
+          "etape_reseau/problemes_branchement_reseau",
+          "etape_reseau/validation_reseau_final",
+          "etape_interieur/note_interieur_1",
+          "etape_interieur/verification_branchement_interieur",
+          "etape_interieur/problemes_branchement_interieur",
+          "etape_interieur/etat_installation_interieur",
+          "etape_interieur/problemes_installation_interieur",
+          "etape_interieur/validation_interieur_final",
+          "etape_controleur/ETAT_DE_L_INSTALLATION",
+          "etape_controleur/controleurPROB",
+          "etape_controleur/Phase_de_controle",
+          "etape_controleur/group_zw7xz94/ETAT_BRANCHEMENT",
+          "etape_controleur/group_zw7xz94/OBSERVATION",
+          "etape_controleur/group_zw7xz94/group_wr05k35/Position_du_branchement",
+          "etape_controleur/group_zw7xz94/group_wr05k35/Observations_sur_la_ition_du_branchement",
+          "etape_controleur/group_zw7xz94/group_wr05k35/Hauteur_branchement",
+          "etape_controleur/group_zw7xz94/group_wr05k35/Observations",
+          "etape_controleur/group_zw7xz94/group_wr05k35/Hauteur_coffret",
+          "etape_controleur/group_zw7xz94/group_wr05k35/Observations_001",
+          "etape_controleur/group_zw7xz94/group_wr05k35/Etat_du_coupe_circuit",
+          "etape_controleur/group_zw7xz94/group_wr05k35/OBSERVATION_001",
+          "etape_controleur/group_zw7xz94/group_wr05k35/Continuit_PVC",
+          "etape_controleur/group_zw7xz94/group_wr05k35/OBSERVATION_002",
+          "etape_controleur/group_zw7xz94/group_wr05k35/Mise_en_oeuvre",
+          "etape_controleur/group_zw7xz94/group_wr05k35/OBSERVATION_003",
+          "etape_controleur/group_zw7xz94/group_wr05k35/_1_photo_anomalie_si_possible",
+          "etape_controleur/group_hx7ae46/DISJONCTEUR_GENERAL_EN_TETE_D_",
+          "etape_controleur/group_hx7ae46/OBSERVATIONS_",
+          "etape_controleur/group_hx7ae46/TYPE_DE_DISJONCTEUR_GENERAL",
+          "etape_controleur/group_hx7ae46/ENSEMBLE_DE_L_INSTALLATION_PRO",
+          "etape_controleur/group_hx7ae46/OBSERVATIONS__001",
+          "etape_controleur/group_hx7ae46/PROTECTION_L_ORIGINE_DE_CHAQ",
+          "etape_controleur/group_hx7ae46/OBSERVATIONS_002",
+          "etape_controleur/group_hx7ae46/S_PARATION_DES_CIRCUITS_Lumi_",
+          "etape_controleur/group_hx7ae46/OBSERVATIONS__002",
+          "etape_controleur/group_hx7ae46/PROTECTION_CONTACT_D_TOUTE_L_INSTALLATION",
+          "etape_controleur/group_hx7ae46/PROTECTION_CONTRE_LES_CONTACTS",
+          "etape_controleur/group_hx7ae46/OBSERVATIONS__003",
+          "etape_controleur/group_hx7ae46/MISE_EN_OEUVRE_MAT_RIEL_ET_APP",
+          "etape_controleur/group_hx7ae46/OBSERVATIONS__004",
+          "etape_controleur/group_hx7ae46/CONTINUITE_DE_LA_PROTECTION_ME",
+          "etape_controleur/group_hx7ae46/OBSERVATIONS__005",
+          "etape_controleur/group_hx7ae46/RESEAU_DE_TERRE_A_VE_TOUTE_L_INSTALLATION",
+          "etape_controleur/group_hx7ae46/MISE_EN_UVRE_DU_R_SEAU_DE_TER",
+          "etape_controleur/group_hx7ae46/OBSERVATIONS__006",
+          "etape_controleur/group_hx7ae46/ETAT_DE_LA_BARRETTE_DE_TERRE",
+          "etape_controleur/group_hx7ae46/VALEUR_DE_LA_RESISTANCE_DE_TER",
+          "etape_controleur/group_hx7ae46/OBSERVATIONS__007",
+          "etape_controleur/validation_controleur_final",
+          "notes_generales",
+          "_uuid"
+        ],
+        "group_sep": "/",
+        "multiple_select": "summary",
+        "xls_types_as_text": false,
+        "hierarchy_in_labels": false,
+        "fields_from_all_versions": false
+      }
+    },
+    {
+      "uid": "esexnrTccXwzCAFBXEAMT5v",
+      "url": "https://kf.kobotoolbox.org/api/v2/assets/aEYZwPujJiFBTNb6mxMGCB/export-settings/esexnrTccXwzCAFBXEAMT5v/",
+      "data_url_csv": "https://kf.kobotoolbox.org/api/v2/assets/aEYZwPujJiFBTNb6mxMGCB/export-settings/esexnrTccXwzCAFBXEAMT5v/data.csv",
+      "data_url_xlsx": "https://kf.kobotoolbox.org/api/v2/assets/aEYZwPujJiFBTNb6mxMGCB/export-settings/esexnrTccXwzCAFBXEAMT5v/data.xlsx",
+      "name": "donnee_terrain",
+      "date_modified": "2025-12-03T18:02:39.497136Z",
+      "export_settings": {
+        "lang": "Français (fr)",
+        "type": "xls",
+        "query": {},
+        "fields": [
+          "start",
+          "end",
+          "today",
+          "username",
+          "phonenumber",
+          "Numero_ordre",
+          "TYPE_DE_VISITE/nom_key",
+          "TYPE_DE_VISITE/telephone_key",
+          "TYPE_DE_VISITE/latitude_key",
+          "TYPE_DE_VISITE/longitude_key",
+          "TYPE_DE_VISITE/region_key",
+          "TYPE_DE_VISITE/LOCALISATION_CLIENT",
+          "TYPE_DE_VISITE/role",
+          "group_wu8kv54/note_Livreur",
+          "group_wu8kv54/Situation_du_M_nage",
+          "group_wu8kv54/justificatif",
+          "group_wu8kv54/group_sy9vj14/Longueur_Cable_2_5mm_Int_rieure",
+          "group_wu8kv54/group_sy9vj14/Longueur_Cable_1_5mm_Int_rieure",
+          "group_wu8kv54/group_sy9vj14/Longueur_Tranch_e_Cable_arm_4mm",
+          "group_wu8kv54/group_sy9vj14/Longueur_Tranch_e_C_ble_arm_1_5mm",
+          "group_wu8kv54/group_sy9vj14/Je_confirme_la_remis_u_materiel_au_m_nage",
+          "group_wu8kv54/group_sy9vj14/Je_confirme_le_marqu_ar_rapport_au_r_seau",
+          "group_wu8kv54/group_sy9vj14/Je_confirme_le_marqu_s_coffret_lectrique",
+          "group_wu8kv54/group_sy9vj14/Photo",
+          "etape_macon/note_macon_1",
+          "etape_macon/kit_disponible_macon",
+          "etape_macon/problemes_kit_macon",
+          "etape_macon/type_mur_realise_macon",
+          "etape_macon/problemes_travail_macon",
+          "etape_macon/validation_macon_final",
+          "etape_reseau/note_reseau_1",
+          "etape_reseau/verification_mur_reseau",
+          "etape_reseau/problemes_mur_reseau",
+          "etape_reseau/etat_branchement_reseau",
+          "etape_reseau/problemes_branchement_reseau",
+          "etape_reseau/validation_reseau_final",
+          "etape_interieur/note_interieur_1",
+          "etape_interieur/verification_branchement_interieur",
+          "etape_interieur/problemes_branchement_interieur",
+          "etape_interieur/etat_installation_interieur",
+          "etape_interieur/problemes_installation_interieur",
+          "etape_interieur/validation_interieur_final",
+          "etape_controleur/ETAT_DE_L_INSTALLATION",
+          "etape_controleur/controleurPROB",
+          "etape_controleur/Phase_de_controle",
+          "etape_controleur/group_zw7xz94/ETAT_BRANCHEMENT",
+          "etape_controleur/group_zw7xz94/OBSERVATION",
+          "etape_controleur/group_zw7xz94/group_wr05k35/Position_du_branchement",
+          "etape_controleur/group_zw7xz94/group_wr05k35/Observations_sur_la_ition_du_branchement",
+          "etape_controleur/group_zw7xz94/group_wr05k35/Hauteur_branchement",
+          "etape_controleur/group_zw7xz94/group_wr05k35/Observations",
+          "etape_controleur/group_zw7xz94/group_wr05k35/Hauteur_coffret",
+          "etape_controleur/group_zw7xz94/group_wr05k35/Observations_001",
+          "etape_controleur/group_zw7xz94/group_wr05k35/Etat_du_coupe_circuit",
+          "etape_controleur/group_zw7xz94/group_wr05k35/OBSERVATION_001",
+          "etape_controleur/group_zw7xz94/group_wr05k35/Continuit_PVC",
+          "etape_controleur/group_zw7xz94/group_wr05k35/OBSERVATION_002",
+          "etape_controleur/group_zw7xz94/group_wr05k35/Mise_en_oeuvre",
+          "etape_controleur/group_zw7xz94/group_wr05k35/OBSERVATION_003",
+          "etape_controleur/group_zw7xz94/group_wr05k35/_1_photo_anomalie_si_possible",
+          "etape_controleur/group_hx7ae46/DISJONCTEUR_GENERAL_EN_TETE_D_",
+          "etape_controleur/group_hx7ae46/OBSERVATIONS_",
+          "etape_controleur/group_hx7ae46/TYPE_DE_DISJONCTEUR_GENERAL",
+          "etape_controleur/group_hx7ae46/ENSEMBLE_DE_L_INSTALLATION_PRO",
+          "etape_controleur/group_hx7ae46/OBSERVATIONS__001",
+          "etape_controleur/group_hx7ae46/PROTECTION_L_ORIGINE_DE_CHAQ",
+          "etape_controleur/group_hx7ae46/OBSERVATIONS_002",
+          "etape_controleur/group_hx7ae46/S_PARATION_DES_CIRCUITS_Lumi_",
+          "etape_controleur/group_hx7ae46/OBSERVATIONS__002",
+          "etape_controleur/group_hx7ae46/PROTECTION_CONTACT_D_TOUTE_L_INSTALLATION",
+          "etape_controleur/group_hx7ae46/PROTECTION_CONTRE_LES_CONTACTS",
+          "etape_controleur/group_hx7ae46/OBSERVATIONS__003",
+          "etape_controleur/group_hx7ae46/MISE_EN_OEUVRE_MAT_RIEL_ET_APP",
+          "etape_controleur/group_hx7ae46/OBSERVATIONS__004",
+          "etape_controleur/group_hx7ae46/CONTINUITE_DE_LA_PROTECTION_ME",
+          "etape_controleur/group_hx7ae46/OBSERVATIONS__005",
+          "etape_controleur/group_hx7ae46/RESEAU_DE_TERRE_A_VE_TOUTE_L_INSTALLATION",
+          "etape_controleur/group_hx7ae46/MISE_EN_UVRE_DU_R_SEAU_DE_TER",
+          "etape_controleur/group_hx7ae46/OBSERVATIONS__006",
+          "etape_controleur/group_hx7ae46/ETAT_DE_LA_BARRETTE_DE_TERRE",
+          "etape_controleur/group_hx7ae46/VALEUR_DE_LA_RESISTANCE_DE_TER",
+          "etape_controleur/group_hx7ae46/OBSERVATIONS__007",
+          "etape_controleur/validation_controleur_final",
+          "notes_generales",
+          "_uuid"
+        ],
+        "group_sep": "/",
+        "multiple_select": "summary",
+        "include_media_url": true,
+        "xls_types_as_text": false,
+        "hierarchy_in_labels": false,
+        "fields_from_all_versions": false
+      }
+    }
+  ],
+  "data": "https://kf.kobotoolbox.org/api/v2/assets/aEYZwPujJiFBTNb6mxMGCB/data/",
+  "children": {
+    "count": 0
+  },
+  "subscribers_count": 0,
+  "status": "public",
+  "access_types": null,
+  "data_sharing": {
+    "fields": [],
+    "enabled": false
+  },
+  "paired_data": "https://kf.kobotoolbox.org/api/v2/assets/aEYZwPujJiFBTNb6mxMGCB/paired-data/",
+  "project_ownership": null,
+  "owner_label": "pokebe",
+  "last_modified_by": "pokebe"
+}
