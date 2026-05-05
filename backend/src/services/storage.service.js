@@ -99,3 +99,26 @@ export const deleteFile = async (key) => {
         throw new Error('Échec de la suppression du fichier.');
     }
 };
+
+/**
+ * Obtenir un stream de lecture pour un fichier (utile pour le ZIP)
+ */
+export const getFileStream = async (key) => {
+    try {
+        if (isS3Configured && s3Client) {
+            const command = new GetObjectCommand({
+                Bucket: BUCKET_NAME,
+                Key: key,
+            });
+            const response = await s3Client.send(command);
+            return response.Body; // C'est un ReadableStream
+        } else {
+            const filePath = path.join(LOCAL_UPLOADS_DIR, key);
+            const { createReadStream } = await import('fs');
+            return createReadStream(filePath);
+        }
+    } catch (error) {
+        console.error('[STORAGE SERVICE] Stream error:', error);
+        return null;
+    }
+};

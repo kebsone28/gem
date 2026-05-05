@@ -485,13 +485,13 @@ const INTERNAL_GEM_FIELD_ALIASES: Record<string, string[]> = {
   Longueur_Tranch_e_Cable_arm_4mm: ["Longueur_Tranch_e_c\u00e2ble_arm_4mm","group_wu8kv54/group_sy9vj14/Longueur_Tranch_e_Cable_arm_4mm"],
   Presence_de_Mur: ["New_Question"],
   Je_confirme_le_marqu_coffrets_lectriques: ["Je_confirme_le_marqu_s_coffret_lectrique"],
-  nom_key: ["TYPE_DE_VISITE/nom_key"],
-  telephone_key: ["TYPE_DE_VISITE/telephone_key"],
-  latitude_key: ["TYPE_DE_VISITE/latitude_key"],
-  longitude_key: ["TYPE_DE_VISITE/longitude_key"],
-  region_key: ["TYPE_DE_VISITE/region_key"],
-  LOCALISATION_CLIENT: ["TYPE_DE_VISITE/LOCALISATION_CLIENT"],
-  role: ["TYPE_DE_VISITE/role"],
+  nom_key: ["TYPE_DE_VISITE/nom_key", "C1", "nom"],
+  telephone_key: ["TYPE_DE_VISITE/telephone_key", "C3", "telephone"],
+  latitude_key: ["TYPE_DE_VISITE/latitude_key", "C2", "latitude"],
+  longitude_key: ["TYPE_DE_VISITE/longitude_key", "C4", "longitude"],
+  region_key: ["TYPE_DE_VISITE/region_key", "C5", "region"],
+  LOCALISATION_CLIENT: ["TYPE_DE_VISITE/LOCALISATION_CLIENT", "GPS_du_M_nage"],
+  role: ["TYPE_DE_VISITE/role", "Votre_Role"],
   note_Livreur: ["group_wu8kv54/note_Livreur"],
   Situation_du_M_nage: ["group_wu8kv54/Situation_du_M_nage"],
   Longueur_Tranch_e_C_ble_arm_1_5mm: ["group_wu8kv54/group_sy9vj14/Longueur_Tranch_e_C_ble_arm_1_5mm"],
@@ -551,9 +551,9 @@ const INTERNAL_GEM_FIELD_ALIASES: Record<string, string[]> = {
   MISE_EN_UVRE_DU_R_SEAU_DE_TER: ["etape_controleur/group_hx7ae46/MISE_EN_UVRE_DU_R_SEAU_DE_TER"],
   OBSERVATIONS__006: ["etape_controleur/group_hx7ae46/OBSERVATIONS__006"],
   ETAT_DE_LA_BARRETTE_DE_TERRE: ["etape_controleur/group_hx7ae46/ETAT_DE_LA_BARRETTE_DE_TERRE"],
-  VALEUR_DE_LA_RESISTANCE_DE_TER: ["etape_controleur/group_hx7ae46/VALEUR_DE_LA_RESISTANCE_DE_TER"],
-  OBSERVATIONS__007: ["etape_controleur/group_hx7ae46/OBSERVATIONS__007"],
-  validation_controleur_final: ["etape_controleur/validation_controleur_final"]
+  VALEUR_DE_LA_RESISTANCE_DE_TER: ["etape_controleur/group_hx7ae46/VALEUR_DE_LA_RESISTANCE_DE_TER", "VALEUR_DE_LA_RESISTANCE_DE_TERRE"],
+  OBSERVATIONS__007: ["etape_controleur/group_hx7ae46/OBSERVATIONS__007", "VALEUR_DE_LA_RESISTANCE_DE_TERRE_VALEUR"],
+  validation_controleur_final: ["etape_controleur/validation_controleur_final", "Je_confirme_avoir_tout_controle"]
 };
 
 const NON_NEGATIVE_INTEGER_FIELDS = new Set(

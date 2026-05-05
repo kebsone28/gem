@@ -1,9 +1,10 @@
 import prisma from '../../core/utils/prisma.js';
 import eventBus from '../../core/utils/eventBus.js';
 import { tracerAction } from '../../services/audit.service.js';
-import { uploadFile, getFileUrl } from '../../services/storage.service.js';
+import { uploadFile, getFileUrl, getFileStream } from '../../services/storage.service.js';
 import crypto from 'node:crypto';
 import ExcelJS from 'exceljs';
+import archiver from 'archiver';
 import {
     getServerRequiredMissing,
     getServerValidationIssues,
@@ -2046,5 +2047,65 @@ export const getInternalKoboSubmission = async (req, res) => {
             success: false,
             message: 'Server error while fetching internal Kobo submission'
         });
+    }
+};
+
+export const exportInternalKoboMedia = async (req, res) => {
+    const { organizationId } = req.user;
+    const { formKey, status } = req.query;
+
+    try {
+        const submissions = await prisma.internalKoboSubmission.findMany({
+            where: {
+                organizationId,
+                ...(formKey ? { formKey } : {}),
+                ...(status ? { status } : {})
+            },
+            select: {
+                id: true,
+                numeroOrdre: true,
+                household: {
+                    select: { name: true, numeroordre: true }
+                },
+                metadata: true
+            }
+        });
+
+        const archive = archiver('zip', {
+            zlib: { level: 5 }
+        });
+
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const filename = `gem-media-${formKey || 'all'}-${timestamp}.zip`;
+
+        res.attachment(filename);
+        archive.pipe(res);
+
+        for (const submission of submissions) {
+            const attachments = submission.metadata?.media?.attachments || [];
+            if (!Array.isArray(attachments)) continue;
+
+            const folderName = submission.household?.name 
+                ? `${submission.household.name}_${submission.id.slice(0, 8)}`
+                : `Menage_${submission.numeroOrdre || 'Inconnu'}_${submission.id.slice(0, 8)}`;
+
+            for (const attachment of attachments) {
+                if (!attachment.key || attachment.status === 'unresolved') continue;
+
+                const stream = await getFileStream(attachment.key);
+                if (stream) {
+                    const ext = attachment.fileName?.split('.').pop() || 'jpg';
+                    const name = attachment.fieldName || 'media';
+                    archive.append(stream, { name: `${folderName}/${name}.${ext}` });
+                }
+            }
+        }
+
+        await archive.finalize();
+    } catch (err) {
+        console.error('[INTERNAL-KOBO] Media export error:', err);
+        if (!res.headersSent) {
+            res.status(500).json({ success: false, message: 'Erreur lors de la génération du ZIP' });
+        }
     }
 };

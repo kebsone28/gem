@@ -1,5 +1,6 @@
 import express from 'express';
 import { authProtect } from '../middlewares/auth.js';
+import { ROLE_PERMISSIONS } from '../../core/config/permissions.js';
 
 const router = express.Router();
 
@@ -10,7 +11,26 @@ router.get('/whoami', authProtect, (req, res) => {
     delete safeUser.iat;
     delete safeUser.exp;
     delete safeUser.jti;
-    return res.json({ ok: true, user: safeUser });
+
+    const normalizedRole = (safeUser.role || '').toUpperCase();
+    const rolePerms = ROLE_PERMISSIONS[normalizedRole] || ROLE_PERMISSIONS[safeUser.role] || [];
+
+    // If permissionsWereManuallySet (empty array included) then token permissions are authoritative
+    const tokenPermissions = Array.isArray(safeUser.permissions) ? safeUser.permissions : [];
+    const permissionsWasManuallySet = !!req.user.permissionsWasManuallySet;
+
+    const effectivePermissions = permissionsWasManuallySet
+        ? tokenPermissions
+        : Array.from(new Set([...(rolePerms || []), ...tokenPermissions]));
+
+    return res.json({
+        ok: true,
+        user: safeUser,
+        rolePermissions: rolePerms,
+        tokenPermissions,
+        permissionsWasManuallySet,
+        effectivePermissions
+    });
 });
 
 export default router;

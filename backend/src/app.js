@@ -87,6 +87,7 @@ import chatRoutes from './modules/chat/chat.routes.js';
 import pvRoutes from './api/routes/pv.routes.js';
 import internalKoboRoutes from './modules/internalKobo/internalKobo.routes.js';
 import debugRoutes from './api/routes/debug.routes.js';
+import adminPermissionRoutes from './api/routes/admin.permissions.routes.js';
 
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
@@ -112,6 +113,7 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/pvs', pvRoutes);
 app.use('/api/internal-kobo', internalKoboRoutes);
 app.use('/api/debug', debugRoutes);
+app.use('/api/admin', adminPermissionRoutes);
 
 app.get('/health', async (req, res) => {
     const health = {

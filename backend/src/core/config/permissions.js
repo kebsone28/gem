@@ -36,6 +36,15 @@ export const PERMISSIONS = {
     CREER_MISSION: "creer_mission",
     VALIDER_MISSION: "valider_mission",
     GERER_PV: "gerer_pv"
+    ,
+    // Permissions additionnelles pour l'UI granularité des missions
+    VOIR_MISSIONS: "voir_missions",
+    VOIR_REGISTRE_MISSIONS: "voir_registre_missions",
+    MODIFIER_MISSIONS: "modifier_missions",
+    SUPPRIMER_MISSIONS: "supprimer_missions",
+    ARCHIVER_MISSIONS: "archiver_missions",
+    VALIDATION_OPERATIONNELLE: "validation_operationnelle",
+    APPROBATION_FINALE_DG: "approbation_finale_dg"
 };
 
 export const ROLE_PERMISSIONS = {
@@ -133,6 +142,9 @@ export const ROLE_PERMISSIONS = {
     [ROLES.CHEF_EQUIPE]: [
         PERMISSIONS.ACCES_TERMINAL_KOBO,
         PERMISSIONS.VOIR_CARTE,
-        PERMISSIONS.VOIR_RAPPORTS
+        PERMISSIONS.VOIR_RAPPORTS,
+        // Permissions liées aux missions (consultation / registre)
+        PERMISSIONS.VOIR_MISSIONS,
+        PERMISSIONS.VOIR_REGISTRE_MISSIONS
     ]
 };

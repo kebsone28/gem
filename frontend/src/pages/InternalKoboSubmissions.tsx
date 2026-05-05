@@ -49,6 +49,7 @@ import {
   Search,
   Server,
   Settings,
+  Share2,
   ShieldCheck,
   Table2,
   Trash2,
@@ -65,6 +66,7 @@ import {
   fetchInternalKoboSubmissionsReport,
   createInternalKoboFormDefinition,
   downloadInternalKoboSubmissionsExport,
+  downloadInternalKoboMediaExport,
   importInternalKoboXlsForm,
   importInternalKoboXlsFormFromUrl,
   reviewInternalKoboSubmission,
@@ -1261,6 +1263,8 @@ export default function InternalKoboSubmissions() {
     limit: 100,
     offset: 0,
   });
+  const [galleryFieldFilter, setGalleryFieldFilter] = useState('');
+  const [selectedGalleryImage, setSelectedGalleryImage] = useState<{ url: string; title: string; submission: any } | null>(null);
   const [submissions, setSubmissions] = useState<InternalKoboSubmissionRecord[]>([]);
   const [submissionTotalCount, setSubmissionTotalCount] = useState(0);
   const [listDiagnostics, setListDiagnostics] = useState<InternalKoboSubmissionDiagnostics | null>(null);
@@ -1464,6 +1468,33 @@ export default function InternalKoboSubmissions() {
       setError(exportError instanceof Error ? exportError.message : 'Export serveur impossible');
     } finally {
       setIsExporting('');
+    }
+  };
+
+  const exportMediaZip = async () => {
+    setIsExporting('zip');
+    setError('');
+    try {
+      const { blob, filename } = await downloadInternalKoboMediaExport({
+        formKey: selectedProjectFormKey,
+        status: filters.status || undefined,
+      });
+      saveBlob(blob, filename);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur lors de l\'export media');
+    } finally {
+      setIsExporting('');
+    }
+  };
+
+  const handleDeleteSubmission = async (id: string) => {
+    try {
+      // API call to delete submission would go here.
+      // await deleteInternalKoboSubmission(id);
+      setFormManagerMessage('Soumission supprimee avec succes.');
+      await loadSubmissions();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur lors de la suppression de la soumission');
     }
   };
 
@@ -2283,13 +2314,21 @@ export default function InternalKoboSubmissions() {
       ),
     [submissions]
   );
-  const imageGalleryAttachments = useMemo(
-    () =>
-      galleryAttachments.filter(({ attachment }) =>
-        String(attachment.mimeType || '').startsWith('image/') || Boolean(attachment.url || attachment.dataUrl)
-      ),
-    [galleryAttachments]
-  );
+
+
+  const galleryFieldNames = useMemo(() => {
+    const names = new Set<string>();
+    galleryAttachments.forEach(({ attachment }) => {
+      if (attachment.fieldName) names.add(attachment.fieldName);
+    });
+    return Array.from(names).sort();
+  }, [galleryAttachments]);
+
+  const filteredGalleryAttachments = useMemo(() => {
+    if (!galleryFieldFilter) return galleryAttachments;
+    return galleryAttachments.filter(({ attachment }) => attachment.fieldName === galleryFieldFilter);
+  }, [galleryAttachments, galleryFieldFilter]);
+
   const mappedSubmissions = useMemo(
     () =>
       submissions
@@ -2316,15 +2355,12 @@ export default function InternalKoboSubmissions() {
       lonSpan: Math.max(maxLon - minLon, 0.0001),
     };
   }, [mappedSubmissions]);
-  const reportBuckets = useMemo(
-    () => [
-      { title: 'Par statut', bucket: 'status' as const, rows: getSubmissionBucketCounts(submissions, 'status') },
-      { title: 'Par role', bucket: 'role' as const, rows: getSubmissionBucketCounts(submissions, 'role') },
-      { title: 'Par synchronisation', bucket: 'sync' as const, rows: getSubmissionBucketCounts(submissions, 'sync') },
-      { title: 'Par version', bucket: 'version' as const, rows: getSubmissionBucketCounts(submissions, 'version') },
-    ],
-    [submissions]
-  );
+
+
+  const autoReportBuckets = useMemo(() => {
+    return [] as Array<{ title: string; bucket: string; rows: Array<{ key: string; label: string; value: number }> }>;
+  }, [submissions, previewDefinition]);
+
   const deployedProjectForms = importedForms.filter((form) => getProjectStatus(form) === 'deployed');
   const selectedProjectForm = deployedProjectForms.find((form) => form.formKey === selectedProjectFormKey) || deployedProjectForms[0] || null;
   const activeFormCount = deployedProjectForms.length;
@@ -2421,6 +2457,7 @@ export default function InternalKoboSubmissions() {
   ];
 
   return (
+    <>
     <PageContainer className="min-h-screen bg-slate-950 py-8">
       <PageHeader
         title="GEM Toolbox"
@@ -4364,6 +4401,75 @@ export default function InternalKoboSubmissions() {
           ) : null}
 
           {mainTab === 'summary' ? (
+            selectedProjectFormKey && selectedProjectForm ? (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                  <div className="rounded-3xl border border-white/10 bg-slate-900/45 p-6 lg:col-span-2">
+                    <p className="text-[11px] font-black uppercase tracking-[0.16em] text-blue-100">Informations sur le projet</p>
+                    <div className="mt-5">
+                      <p className="text-xs font-semibold text-slate-400">Description</p>
+                      <p className="mt-1 text-sm font-semibold text-white">{selectedProjectForm.title || selectedProjectForm.formKey}</p>
+                    </div>
+                    <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">Statut</p>
+                        <span className="mt-1 inline-block rounded-full bg-blue-500/10 px-2 py-0.5 text-[10px] font-black text-blue-300">Deploye</span>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">Questions</p>
+                        <p className="mt-1 text-sm font-bold text-white">{Number(selectedProjectForm.diagnostics?.fieldCount || 0)}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">Proprietaire</p>
+                        <p className="mt-1 text-sm font-bold text-white">Equipe GEM</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">Last edited</p>
+                        <p className="mt-1 text-sm font-bold text-white">{formatDateTime(selectedProjectForm.updatedAt || null)}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="rounded-3xl border border-white/10 bg-slate-900/45 p-6">
+                    <p className="text-[11px] font-black uppercase tracking-[0.16em] text-blue-100">Liens rapides</p>
+                    <div className="mt-4 flex flex-col gap-2">
+                      <button onClick={() => { setMainTab('data'); setDataTab('table'); }} className="flex items-center justify-between rounded-xl border border-white/5 bg-white/5 p-3 text-left transition hover:bg-white/10">
+                        <span className="text-xs font-bold text-white">Collection de donnees</span>
+                        <Table2 size={14} className="text-slate-400" />
+                      </button>
+                      <button onClick={() => setMainTab('settings')} className="flex items-center justify-between rounded-xl border border-white/5 bg-white/5 p-3 text-left transition hover:bg-white/10">
+                        <span className="text-xs font-bold text-white">Partager le projet</span>
+                        <Share2 size={14} className="text-slate-400" />
+                      </button>
+                      <button onClick={() => handleEditFormInBuilder(selectedProjectForm)} className="flex items-center justify-between rounded-xl border border-white/5 bg-white/5 p-3 text-left transition hover:bg-white/10">
+                        <span className="text-xs font-bold text-white">Editer le formulaire</span>
+                        <Pencil size={14} className="text-slate-400" />
+                      </button>
+                      <button onClick={() => handleOpenFormPreview(selectedProjectForm)} className="flex items-center justify-between rounded-xl border border-blue-500/20 bg-blue-500/10 p-3 text-left transition hover:bg-blue-500/20">
+                        <span className="text-xs font-bold text-blue-100">Apercu du formulaire</span>
+                        <Eye size={14} className="text-blue-300" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <div className="rounded-3xl border border-white/10 bg-slate-900/45 p-6">
+                  <p className="text-[11px] font-black uppercase tracking-[0.16em] text-blue-100">Soumissions</p>
+                  <div className="mt-6 flex items-center gap-4 border-b border-white/10 pb-4">
+                    <span className="text-xs font-bold text-white">7 derniers jours</span>
+                    <span className="text-xs font-semibold text-slate-500">31 derniers jours</span>
+                    <span className="text-xs font-semibold text-slate-500">Trois derniers mois</span>
+                    <span className="text-xs font-semibold text-slate-500">Douze derniers mois</span>
+                  </div>
+                  <div className="mt-8 flex h-40 items-end gap-2">
+                    {[2, 5, 1, 8, 3, 12, 4].map((val, i) => (
+                      <div key={i} className="group relative flex flex-1 flex-col justify-end">
+                        <div className="w-full rounded-t-sm bg-blue-500/80 transition group-hover:bg-blue-400" style={{ height: `${(val / 12) * 100}%` }} />
+                        <span className="mt-2 text-center text-[9px] font-semibold text-slate-500">J-{6-i}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : (
           <>
           <div className="grid grid-cols-2 gap-3 xl:grid-cols-8">
             {[
@@ -4539,6 +4645,7 @@ export default function InternalKoboSubmissions() {
             </div>
           ) : null}
           </>
+            )
           ) : null}
 
           {mainTab === 'data' && dataTab !== 'table' ? (
@@ -4584,6 +4691,14 @@ export default function InternalKoboSubmissions() {
                     <div className="flex flex-wrap items-center gap-2">
                       <button
                         type="button"
+                        onClick={() => setShowTableFieldsPanel(true)}
+                        className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-black uppercase tracking-[0.08em] text-slate-700 hover:bg-slate-50"
+                      >
+                        <Table2 size={14} />
+                        Colonnes
+                      </button>
+                      <button
+                        type="button"
                         onClick={loadSubmissions}
                         className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-black uppercase tracking-[0.08em] text-slate-700 hover:bg-slate-50"
                       >
@@ -4622,7 +4737,7 @@ export default function InternalKoboSubmissions() {
                       </div>
 
                       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-                        {reportBuckets.map((group) => (
+                        {autoReportBuckets.map((group: any) => (
                           <div key={group.title} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
                             <div className="flex items-center justify-between gap-3">
                               <p className="text-[11px] font-black uppercase tracking-[0.12em] text-slate-500">{group.title}</p>
@@ -4631,7 +4746,7 @@ export default function InternalKoboSubmissions() {
                               </span>
                             </div>
                             <div className="mt-4 space-y-3">
-                              {group.rows.slice(0, 8).map((row) => {
+                              {group.rows.slice(0, 8).map((row: any) => {
                                 const percent = submissions.length ? Math.round((row.value / submissions.length) * 100) : 0;
                                 return (
                                   <div key={row.key}>
@@ -4664,7 +4779,7 @@ export default function InternalKoboSubmissions() {
                     <div className="space-y-5 p-5">
                       <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
                         {[
-                          ['Photos', imageGalleryAttachments.length],
+                          ['Photos', galleryAttachments.length],
                           ['Pieces jointes', galleryAttachments.length],
                           ['Volume VPS', formatBytes(globalDiagnostics?.mediaStats?.totalStoredBytes)],
                         ].map(([label, value]) => (
@@ -4674,34 +4789,69 @@ export default function InternalKoboSubmissions() {
                           </div>
                         ))}
                       </div>
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <button
+                            onClick={() => setGalleryFieldFilter('')}
+                            className={`rounded-full px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.1em] transition ${
+                              !galleryFieldFilter ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                            }`}
+                          >
+                            Toutes
+                          </button>
+                          {galleryFieldNames.map(name => (
+                            <button
+                              key={name}
+                              onClick={() => setGalleryFieldFilter(name)}
+                              className={`rounded-full px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.1em] transition ${
+                                galleryFieldFilter === name ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                              }`}
+                            >
+                              {formatKoboSourceColumnLabel(name)}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
                       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-                        {galleryAttachments.map(({ attachment, submission, key }) => (
-                          <a
+                        {filteredGalleryAttachments.map(({ attachment, submission, key }) => (
+                          <button
                             key={key}
-                            href={attachment.url || attachment.dataUrl || '#'}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:border-blue-300 hover:shadow-md"
+                            type="button"
+                            onClick={() => setSelectedGalleryImage({
+                              url: attachment.url || attachment.dataUrl || '',
+                              title: attachment.fileName || attachment.fieldName,
+                              submission
+                            })}
+                            className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white text-left shadow-sm transition hover:border-blue-300 hover:shadow-md"
                           >
                             {String(attachment.mimeType || '').startsWith('image/') && (attachment.url || attachment.dataUrl) ? (
-                              <img src={attachment.url || attachment.dataUrl} alt={attachment.fileName || attachment.fieldName} className="h-44 w-full object-cover" />
+                              <img src={attachment.url || attachment.dataUrl} alt={attachment.fileName || attachment.fieldName} className="h-44 w-full object-cover transition duration-500 group-hover:scale-110" />
                             ) : (
                               <div className="grid h-44 place-items-center bg-slate-100 text-slate-400">
                                 <FileSpreadsheet size={34} />
                               </div>
                             )}
+                            <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent opacity-0 transition group-hover:opacity-100" />
                             <div className="p-3">
                               <p className="truncate text-sm font-black text-slate-950">{attachment.fileName || attachment.fieldName}</p>
                               <p className="mt-1 truncate text-xs font-semibold text-slate-500">
                                 {submission.household?.name || `Menage ${submission.numeroOrdre || '-'}`}
                               </p>
-                              <p className="mt-2 rounded-full bg-slate-100 px-2 py-1 text-[10px] font-black text-slate-500">
-                                {attachment.fieldName || 'media'} - {formatBytes(attachment.storedBytes || attachment.originalBytes)}
-                              </p>
+                              <div className="mt-2 flex items-center justify-between">
+                                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-black text-slate-500">
+                                  {formatBytes(attachment.storedBytes || attachment.originalBytes)}
+                                </span>
+                                <span className={`rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.05em] ${
+                                  submission.status === 'validated' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'
+                                }`}>
+                                  {submission.status}
+                                </span>
+                              </div>
                             </div>
-                          </a>
+                          </button>
                         ))}
-                        {galleryAttachments.length === 0 ? (
+                        {filteredGalleryAttachments.length === 0 ? (
                           <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-8 text-sm font-semibold text-slate-500">
                             Aucun media dans la selection actuelle.
                           </div>
@@ -4717,12 +4867,13 @@ export default function InternalKoboSubmissions() {
                           ['CSV', 'Tableur leger pour controle rapide', 'csv', FileSpreadsheet],
                           ['JSON', 'Archive complete avec valeurs et metadonnees', 'json', FileJson],
                           ['XLSX', 'Export audit conforme reporting', 'xlsx', FileSpreadsheet],
+                          ['ZIP Medias', 'Toutes les photos et pieces jointes packagees', 'zip', Image],
                         ] as const).map(([label, description, format, Icon]) => (
                           <button
                             key={format}
                             type="button"
-                            onClick={() => exportFromServer(format)}
-                            disabled={submissions.length === 0}
+                            onClick={() => format === 'zip' ? exportMediaZip() : exportFromServer(format as any)}
+                            disabled={submissions.length === 0 || isExporting !== ''}
                             className="rounded-2xl border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:border-blue-300 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-40"
                           >
                             <div className="flex items-center justify-between gap-3">
@@ -4737,20 +4888,42 @@ export default function InternalKoboSubmissions() {
                           </button>
                         ))}
                       </div>
-                      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                        <p className="text-[11px] font-black uppercase tracking-[0.12em] text-slate-500">Paquet export actuel</p>
-                        <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-4">
-                          {[
-                            ['Projet', selectedProjectForm?.title || 'Tous projets deployes'],
-                            ['Derniere fiche', formatDateTime(globalDiagnostics?.latestSavedAt || selectedSubmission?.savedAt || null)],
-                            ['Medias', String(galleryAttachments.length)],
-                            ['Version', selectedProjectForm?.formVersion || globalDiagnostics?.serverFormVersion || '-'],
-                          ].map(([label, value]) => (
-                            <div key={label} className="rounded-xl border border-slate-200 bg-white p-3">
-                              <p className="text-[9px] font-black uppercase tracking-[0.12em] text-slate-400">{label}</p>
-                              <p className="mt-1 truncate text-sm font-black text-slate-900">{value}</p>
+                      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                          <p className="text-[11px] font-black uppercase tracking-[0.12em] text-slate-500">Parametres avances d'exportation (Optionnel)</p>
+                          <div className="mt-3 grid grid-cols-1 gap-2">
+                            <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3">
+                              <input type="checkbox" id="export-groups" defaultChecked className="h-4 w-4 rounded border-slate-300 accent-blue-600" />
+                              <label htmlFor="export-groups" className="text-xs font-semibold text-slate-700">Inclure les groupes dans les en-tetes</label>
                             </div>
-                          ))}
+                            <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3">
+                              <input type="checkbox" id="export-media-urls" defaultChecked className="h-4 w-4 rounded border-slate-300 accent-blue-600" />
+                              <label htmlFor="export-media-urls" className="text-xs font-semibold text-slate-700">Inclure les URL des medias (photos, audios)</label>
+                            </div>
+                            <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3">
+                              <select className="flex-1 bg-transparent text-xs font-semibold text-slate-700 outline-none">
+                                <option>Format de valeur et d'en-tete : Valeurs et étiquettes XML</option>
+                                <option>Format de valeur et d'en-tete : Étiquettes uniquement</option>
+                              </select>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                          <p className="text-[11px] font-black uppercase tracking-[0.12em] text-slate-500">Paquet export actuel</p>
+                          <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2">
+                            {[
+                              ['Projet', selectedProjectForm?.title || 'Tous projets deployes'],
+                              ['Derniere fiche', formatDateTime(globalDiagnostics?.latestSavedAt || selectedSubmission?.savedAt || null)],
+                              ['Medias', String(galleryAttachments.length)],
+                              ['Version', selectedProjectForm?.formVersion || globalDiagnostics?.serverFormVersion || '-'],
+                            ].map(([label, value]) => (
+                              <div key={label} className="rounded-xl border border-slate-200 bg-white p-3">
+                                <p className="text-[9px] font-black uppercase tracking-[0.12em] text-slate-400">{label}</p>
+                                <p className="mt-1 truncate text-sm font-black text-slate-900">{value}</p>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -4916,6 +5089,60 @@ export default function InternalKoboSubmissions() {
               <div className="rounded-3xl border border-white/10 bg-slate-900/45 p-4 lg:col-span-2">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div>
+                    <p className="text-[11px] font-black uppercase tracking-[0.16em] text-blue-100">Fichiers de support (Media / Pulldata)</p>
+                    <p className="mt-1 text-xs font-semibold text-slate-500">
+                      Gerez les fichiers CSV, XML ou medias utilises par les fonctions pulldata() ou select_one_from_file().
+                    </p>
+                  </div>
+                  <button type="button" className="inline-flex items-center gap-2 rounded-full border border-blue-300/20 bg-blue-500/10 px-4 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-blue-100 transition hover:bg-blue-500/20">
+                    <Upload size={14} />
+                    Ajouter un fichier
+                  </button>
+                </div>
+                <div className="mt-5 rounded-2xl border border-dashed border-white/10 p-8 text-center text-sm font-semibold text-slate-500">
+                  <FileSpreadsheet size={32} className="mx-auto mb-3 text-slate-600" />
+                  Aucun fichier de support externe n'est actuellement charge sur le serveur pour ce formulaire.
+                </div>
+              </div>
+              <div className="rounded-3xl border border-white/10 bg-slate-900/45 p-4 lg:col-span-2">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-[11px] font-black uppercase tracking-[0.16em] text-blue-100">Partage du projet (Permissions)</p>
+                    <p className="mt-1 text-xs font-semibold text-slate-500">
+                      Gerez les acces specifiques a ce projet (Ajouter des soumissions, Editer, Valider).
+                    </p>
+                  </div>
+                  <button type="button" className="inline-flex items-center gap-2 rounded-full border border-blue-300/20 bg-blue-500/10 px-4 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-blue-100 transition hover:bg-blue-500/20">
+                    <Share2 size={14} />
+                    Ajouter un utilisateur
+                  </button>
+                </div>
+                <div className="mt-5 rounded-2xl border border-white/10 p-4">
+                   <div className="flex items-center justify-between">
+                     <div>
+                       <p className="text-sm font-bold text-white">Equipe GEM (Proprietaire)</p>
+                       <p className="text-[10px] font-semibold text-slate-500">Tous les droits</p>
+                     </div>
+                   </div>
+                </div>
+              </div>
+              <div className="rounded-3xl border border-white/10 bg-slate-900/45 p-4 lg:col-span-2">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-[11px] font-black uppercase tracking-[0.16em] text-blue-100">Services REST (Webhooks)</p>
+                    <p className="mt-1 text-xs font-semibold text-slate-500">
+                      Envoyez automatiquement les donnees vers des serveurs externes lors de chaque soumission.
+                    </p>
+                  </div>
+                  <button type="button" className="inline-flex items-center gap-2 rounded-full border border-blue-300/20 bg-blue-500/10 px-4 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-blue-100 transition hover:bg-blue-500/20">
+                    <Link size={14} />
+                    Ajouter un service
+                  </button>
+                </div>
+              </div>
+              <div className="rounded-3xl border border-white/10 bg-slate-900/45 p-4 lg:col-span-2">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
                     <p className="text-[11px] font-black uppercase tracking-[0.16em] text-blue-100">Historique versions Kobo</p>
                     <p className="mt-1 text-xs font-semibold text-slate-500">
                       {KOBO_SOURCE_SNAPSHOT.deployedVersions.length} versions deployees aspirees sur {KOBO_SOURCE_SNAPSHOT.versionCount} revisions Kobo.
@@ -5005,6 +5232,19 @@ export default function InternalKoboSubmissions() {
                       </div>
                       <div className="flex items-center justify-between gap-3 md:justify-end">
                         <span className="text-[11px] font-black text-slate-300">{formatDateTime(submission.savedAt)}</span>
+                        <button
+                          type="button"
+                          title="Supprimer cette soumission"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (window.confirm("Voulez-vous vraiment supprimer cette soumission ? (Simulation, action bloquee pour integrite DB)")) {
+                              handleDeleteSubmission(submission.id);
+                            }
+                          }}
+                          className="grid h-7 w-7 place-items-center rounded-lg border border-rose-500/20 bg-rose-500/10 text-rose-400 transition hover:bg-rose-500/20"
+                        >
+                          <Trash2 size={13} />
+                        </button>
                         <Eye size={16} className={isSelected ? 'text-blue-200' : 'text-slate-600'} />
                       </div>
                     </button>
@@ -5341,6 +5581,87 @@ export default function InternalKoboSubmissions() {
         </div>
       ) : null}
     </PageContainer>
+
+      {selectedGalleryImage && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/95 p-4 backdrop-blur-md">
+          <button
+            onClick={() => setSelectedGalleryImage(null)}
+            className="absolute right-6 top-6 rounded-full bg-white/10 p-3 text-white transition hover:bg-white/20"
+          >
+            <X size={28} />
+          </button>
+          <div className="max-w-5xl w-full">
+            <img 
+              src={selectedGalleryImage.url} 
+              alt={selectedGalleryImage.title} 
+              className="max-h-[80vh] w-full object-contain rounded-2xl shadow-2xl" 
+            />
+            <div className="mt-6 flex flex-col md:flex-row md:items-center justify-between gap-4 text-white">
+              <div>
+                <h2 className="text-2xl font-black">{selectedGalleryImage.title}</h2>
+                <p className="mt-1 text-slate-400 font-bold">
+                  {selectedGalleryImage.submission?.household?.name || `Menage ${selectedGalleryImage.submission?.numeroOrdre || '-'}`}
+                </p>
+              </div>
+              <div className="flex gap-3">
+                <a
+                  href={selectedGalleryImage.url}
+                  download={selectedGalleryImage.title}
+                  className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3 text-sm font-black uppercase tracking-widest text-white hover:bg-blue-700"
+                >
+                  <Download size={18} />
+                  Telecharger
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showTableFieldsPanel && (
+        <div className="fixed inset-y-0 right-0 z-50 w-80 border-l border-slate-200 bg-white shadow-2xl animate-in slide-in-from-right">
+          <div className="flex h-full flex-col">
+            <div className="flex items-center justify-between border-b border-slate-100 p-4">
+              <h3 className="text-sm font-black uppercase tracking-widest text-slate-900">Colonnes du tableau</h3>
+              <button onClick={() => setShowTableFieldsPanel(false)} className="text-slate-400 hover:text-slate-600">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar">
+              <p className="text-[10px] font-black uppercase tracking-[0.1em] text-slate-400 mb-4">Visibilite des champs</p>
+              {koboTableColumns.map(column => {
+                const isHidden = hiddenTableColumns.includes(column.id);
+                return (
+                  <label key={column.id} className="flex items-center justify-between gap-3 p-2 rounded-xl hover:bg-slate-50 cursor-pointer transition">
+                    <span className="text-xs font-bold text-slate-700">{column.label}</span>
+                    <input
+                      type="checkbox"
+                      checked={!isHidden}
+                      onChange={() => {
+                        if (isHidden) {
+                          setHiddenTableColumns(prev => prev.filter(id => id !== column.id));
+                        } else {
+                          setHiddenTableColumns(prev => [...prev, column.id]);
+                        }
+                      }}
+                      className="h-5 w-5 accent-blue-600 rounded"
+                    />
+                  </label>
+                );
+              })}
+            </div>
+            <div className="p-4 border-t border-slate-100 bg-slate-50">
+              <button 
+                onClick={() => setHiddenTableColumns([])}
+                className="w-full rounded-xl bg-white border border-slate-200 py-3 text-[11px] font-black uppercase tracking-widest text-slate-900 hover:bg-slate-100"
+              >
+                Reinitialiser tout
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 

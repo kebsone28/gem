@@ -73,7 +73,7 @@ function Invoke-Ssh {
   )
 
   $sshArgs = @(
-    '-o', 'BatchMode=yes',
+    '-o', 'BatchMode=no',
     '-o', 'ConnectTimeout=15'
   )
 

@@ -19,6 +19,8 @@ import {
     purgeMissions
 } from '../../modules/mission/mission.controller.js';
 import { authProtect, authorize } from '../middlewares/auth.js';
+import { verifierPermission } from '../../middleware/verifierPermission.js';
+import { PERMISSIONS } from '../../core/config/permissions.js';
 import multer from 'multer';
 
 // Internal multer for doc sending
@@ -49,18 +51,17 @@ router.get('/', getMissions); // Filtrage géré dans le contrôleur selon le r�
 router.get('/stats', getMissionStats); // Statistiques KPI
 router.delete('/purge/all', authorize('ADMIN_PROQUELEC'), purgeMissions); // Purge massive (Admin seulement)
 
-router.post('/', authorize('ADMIN_PROQUELEC', 'DIRECTEUR', 'CHEF_PROJET', 'COMPTABLE'), async (req, res, next) => {
+router.post('/', verifierPermission(PERMISSIONS.CREER_MISSION), async (req, res, next) => {
     try {
         await createMission(req, res);
     } catch (e) {
         next(e);
     }
 });
-
-router.patch('/:id', authorize('ADMIN_PROQUELEC', 'DIRECTEUR', 'CHEF_PROJET', 'COMPTABLE'), updateMission);
-router.put('/:id',   authorize('ADMIN_PROQUELEC', 'DIRECTEUR', 'CHEF_PROJET', 'COMPTABLE'), updateMission);
-router.delete('/:id', authorize('ADMIN_PROQUELEC', 'DIRECTEUR', 'CHEF_PROJET', 'COMPTABLE'), deleteMission);
-router.post('/:id/duplicate', authorize('ADMIN_PROQUELEC', 'DIRECTEUR', 'CHEF_PROJET'), duplicateMission);
+router.patch('/:id', verifierPermission(PERMISSIONS.MODIFIER_MISSIONS), updateMission);
+router.put('/:id',   verifierPermission(PERMISSIONS.MODIFIER_MISSIONS), updateMission);
+router.delete('/:id', verifierPermission(PERMISSIONS.SUPPRIMER_MISSIONS), deleteMission);
+router.post('/:id/duplicate', verifierPermission(PERMISSIONS.CREER_MISSION), duplicateMission);
 
 // Workflow d'approbation - validation finale par Direction ou Administration
 router.get('/:missionId/approval-history', getMissionApprovalHistory);

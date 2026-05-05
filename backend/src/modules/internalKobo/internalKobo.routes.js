@@ -5,6 +5,7 @@ import {
     compareInternalKoboFormDefinitions,
     createInternalKoboFormDefinition,
     exportInternalKoboSubmissions,
+    exportInternalKoboMedia,
     getInternalKoboDiagnostics,
     getInternalKoboFormDefinition,
     getInternalKoboImportedFormDefinition,
@@ -39,6 +40,7 @@ router.get('/diagnostics', getInternalKoboDiagnostics);
 router.post('/client-queue-report', reportInternalKoboClientQueue);
 router.get('/submissions', listInternalKoboSubmissions);
 router.get('/submissions/export', exportInternalKoboSubmissions);
+router.get('/submissions/export-media', exportInternalKoboMedia);
 router.patch('/submissions/:id/review', reviewInternalKoboSubmission);
 router.get('/submissions/:id', getInternalKoboSubmission);
 router.post('/submissions', submitInternalKoboSubmission);

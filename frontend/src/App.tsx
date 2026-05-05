@@ -52,6 +52,7 @@ const Reports = lazyWithRetry(() => import('./pages/Reports'), 'lazy:reports');
 const Aide = lazyWithRetry(() => import('./pages/Aide'), 'lazy:aide');
 const Bordereau = lazyWithRetry(() => import('./pages/Bordereau'), 'lazy:bordereau');
 const AdminUsers = lazyWithRetry(() => import('./pages/AdminUsers'), 'lazy:admin-users');
+const AdminPermissions = lazyWithRetry(() => import('./pages/AdminPermissions'), 'lazy:admin-permissions');
 const DiagnosticSante = lazyWithRetry(() => import('./pages/DiagnosticSante'), 'lazy:diagnostic');
 const SecuritySettings = lazyWithRetry(() => import('./pages/SecuritySettings'), 'lazy:security');
 const MissionOrder = lazyWithRetry(() => import('./pages/MissionOrder'), 'lazy:mission-order');
@@ -273,6 +274,17 @@ function App() {
                 <ProtectedRoute>
                   <PermissionRoute permission={PERMISSIONS.GERER_PARAMETRES}>
                     <SecuritySettings />
+                  </PermissionRoute>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/admin/permissions"
+              element={
+                <ProtectedRoute>
+                  <PermissionRoute permission={PERMISSIONS.GERER_UTILISATEURS}>
+                    <AdminPermissions />
                   </PermissionRoute>
                 </ProtectedRoute>
               }

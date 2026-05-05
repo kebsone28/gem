@@ -808,43 +808,60 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
         const coordinates = Array.isArray(household.location?.coordinates)
           ? household.location.coordinates
           : null;
+        
+        // Extraction robuste des valeurs depuis diverses sources (Household direct, KoboData, KoboSync)
         const longitude =
           stringifyHouseholdValue(household.longitude) ||
           stringifyHouseholdValue(coordinates?.[0]) ||
           stringifyHouseholdValue(household.koboData?.longitude_key) ||
-          stringifyHouseholdValue(household.koboData?.C4);
+          stringifyHouseholdValue(household.koboData?.C4) ||
+          stringifyHouseholdValue(household.koboSync?.long);
+          
         const latitude =
           stringifyHouseholdValue(household.latitude) ||
           stringifyHouseholdValue(coordinates?.[1]) ||
           stringifyHouseholdValue(household.koboData?.latitude_key) ||
-          stringifyHouseholdValue(household.koboData?.C2);
+          stringifyHouseholdValue(household.koboData?.C2) ||
+          stringifyHouseholdValue(household.koboSync?.lat);
+          
         const displayName =
           stringifyHouseholdValue(household.name) ||
           stringifyHouseholdValue(household.owner) ||
           stringifyHouseholdValue(household.koboData?.nom_key) ||
-          stringifyHouseholdValue(household.koboData?.C1);
+          stringifyHouseholdValue(household.koboData?.C1) ||
+          stringifyHouseholdValue(household.koboSync?.nom);
+          
         const phone =
           stringifyHouseholdValue(household.phone) ||
           stringifyHouseholdValue(household.ownerPhone) ||
           stringifyHouseholdValue(household.koboData?.telephone_key) ||
           stringifyHouseholdValue(household.koboData?.C3) ||
           stringifyHouseholdValue(household.koboSync?.tel);
+          
         const region =
           stringifyHouseholdValue(household.region) ||
           stringifyHouseholdValue(household.koboData?.region_key) ||
-          stringifyHouseholdValue(household.koboData?.region);
+          stringifyHouseholdValue(household.koboData?.region) ||
+          stringifyHouseholdValue(household.koboSync?.region);
 
+        // Mise à jour des champs internes GEM
         onChangeRef.current('nom_key', String(displayName));
         onChangeRef.current('telephone_key', String(phone));
         onChangeRef.current('latitude_key', String(latitude));
         onChangeRef.current('longitude_key', String(longitude));
         onChangeRef.current('region_key', String(region));
+        
+        // Compatibilité XLSForm calculs directs (C1, C2, etc.)
         onChangeRef.current('C1', String(displayName));
         onChangeRef.current('C2', String(latitude));
         onChangeRef.current('C3', String(phone));
         onChangeRef.current('C4', String(longitude));
         onChangeRef.current('C5', String(region));
+        
+        // Mise à jour GPS composite
         onChangeRef.current('LOCALISATION_CLIENT', latitude && longitude ? `${latitude} ${longitude}` : '');
+        
+        // Mock de l'objet pulldata pour les XLSForm importés
         onChangeRef.current('_gem_pulldata_Thies', {
           code_key: numeroOrdre,
           nom: String(displayName),
@@ -860,12 +877,12 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
           status: 'found',
           message:
             source === 'server'
-              ? `Menage trouve sur le VPS: ${displayName || household.numeroordre || numeroOrdre}`
-              : `Menage trouve dans les donnees chargees: ${displayName || household.numeroordre || numeroOrdre}`,
+              ? `Ménage trouvé sur le VPS: ${displayName || household.numeroordre || numeroOrdre}`
+              : `Ménage trouvé localement: ${displayName || household.numeroordre || numeroOrdre}`,
         });
       };
 
-      setHouseholdLookup({ status: 'loading', message: 'Recherche du menage sur le serveur VPS...' });
+      setHouseholdLookup({ status: 'loading', message: 'Recherche du ménage...' });
       try {
         const response = await apiClient.get(`households/by-numero/${encodeURIComponent(numeroOrdre)}`);
         const household = response.data?.household || response.data;
@@ -888,14 +905,10 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
           status: status === 404 ? 'missing' : 'error',
           message:
             status === 404
-              ? `Aucun menage trouve pour le numero ${numeroOrdre}`
+              ? `Aucun ménage trouvé pour le numéro ${numeroOrdre}`
               : status === 401
-                ? 'Recherche impossible: session expiree, reconnectez-vous'
-                : status === 403
-                  ? 'Recherche impossible: droit insuffisant pour lire les menages'
-                  : status
-                    ? `Recherche impossible: erreur API VPS ${status}`
-                    : 'Recherche impossible: API VPS injoignable',
+                ? 'Session expirée, reconnectez-vous'
+                : 'Recherche impossible (API VPS indisponible)',
         });
       }
     }, 450);

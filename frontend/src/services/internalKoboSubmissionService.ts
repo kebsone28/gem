@@ -527,6 +527,21 @@ export async function downloadInternalKoboSubmissionsExport(
   };
 }
 
+export async function downloadInternalKoboMediaExport(
+  params: InternalKoboSubmissionFilters = {}
+): Promise<{ blob: Blob; filename: string }> {
+  const response = await apiClient.get<Blob>(`${INTERNAL_KOBO_SUBMISSION_ENDPOINT}/export-media`, {
+    params,
+    responseType: 'blob',
+  });
+  const fallback = `gem-media-${new Date().toISOString().slice(0, 10)}.zip`;
+
+  return {
+    blob: response.data,
+    filename: getFilenameFromDisposition(response.headers?.['content-disposition'], fallback),
+  };
+}
+
 export async function importInternalKoboXlsForm(file: File): Promise<{
   success: boolean;
   importId?: string;
