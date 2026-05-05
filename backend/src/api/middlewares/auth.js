@@ -60,7 +60,8 @@ export const authProtect = async (req, res, next) => {
             ...decoded,
             organizationId: decoded.organizationId,
             permissions: decoded.permissions || [],
-            permissionsWasManuallySet: Array.isArray(decoded.permissions) && decoded.permissions.length > 0
+            // Consider an explicit empty array as a manual override (admin intentionally removed permissions)
+            permissionsWasManuallySet: Array.isArray(decoded.permissions)
         };
 
         // 🚀 CRITICAL: Run entire request chain within async context for Prisma multi-tenant filtering.
