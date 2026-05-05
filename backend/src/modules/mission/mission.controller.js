@@ -1300,6 +1300,50 @@ export const deleteMission = async (req, res) => {
 };
 
 /**
+ * Purge all missions for the organization (Admin only)
+ */
+export const purgeMissions = async (req, res) => {
+    try {
+        const { organizationId, id: userId, role: rawUserRole } = req.user;
+        const userRole = (rawUserRole || '').toUpperCase();
+
+        // 🔒 DOUBLE SECURITY CHECK
+        if (userRole !== 'ADMIN_PROQUELEC' && req.user.email !== 'admingem') {
+            return res.status(403).json({ error: 'Action non autorisée. Réservée au Super Administrateur.' });
+        }
+
+        const { count } = await prisma.mission.updateMany({
+            where: {
+                organizationId,
+                deletedAt: null
+            },
+            data: {
+                deletedAt: new Date()
+            }
+        });
+
+        await tracerAction(organizationId, userId, 'MISSION_PURGE_ALL', 'Mission', 'ALL', {
+            count,
+            timestamp: new Date().toISOString()
+        });
+
+        logger.warn(`🔥 [MISSION_PURGE] ${count} missions have been purged by ${userId} (Org: ${organizationId})`);
+
+        res.json({ 
+            success: true, 
+            message: `${count} missions ont été purgées avec succès.`,
+            count 
+        });
+    } catch (error) {
+        logger.error('[MISSION_PURGE_ERROR]', error);
+        res.status(500).json({
+            error: 'Erreur serveur lors de la purge des missions',
+            ...(isDev && { details: error.message, stack: error.stack })
+        });
+    }
+};
+
+/**
  * Duplicate an existing mission
  */
 export const duplicateMission = async (req, res) => {

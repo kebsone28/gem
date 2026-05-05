@@ -107,6 +107,22 @@ export const duplicateMission = async (id: string): Promise<Mission | null> => {
 };
 
 /**
+ * Purge toutes les missions du serveur (Admin seulement)
+ */
+export const purgeAllMissions = async (): Promise<{ success: boolean; count: number }> => {
+  try {
+    const response = await api.delete('/missions/purge/all');
+    return {
+      success: true,
+      count: response.data.count || 0
+    };
+  } catch (err: any) {
+    logger.error('Failed to purge missions:', err);
+    throw new Error(err.response?.data?.error || 'Erreur lors de la purge des missions');
+  }
+};
+
+/**
  * Vérifie publiquement une mission via son identifiant unique
  */
 export const verifyMission = async (identifier: string): Promise<Mission | null> => {

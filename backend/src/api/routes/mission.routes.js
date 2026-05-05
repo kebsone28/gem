@@ -15,7 +15,8 @@ import {
     downloadMissionCertifiedDocumentPublic,
     downloadMissionCertifiedDocument,
     sendMissionDocumentEmail,
-    analyzeMissionIA
+    analyzeMissionIA,
+    purgeMissions
 } from '../../modules/mission/mission.controller.js';
 import { authProtect, authorize } from '../middlewares/auth.js';
 import multer from 'multer';
@@ -46,6 +47,7 @@ router.get('/approvals/pending', authorize('ADMIN_PROQUELEC', 'DIRECTEUR'), getP
 // CRUD missions
 router.get('/', getMissions); // Filtrage géré dans le contrôleur selon le rôle
 router.get('/stats', getMissionStats); // Statistiques KPI
+router.delete('/purge/all', authorize('ADMIN_PROQUELEC'), purgeMissions); // Purge massive (Admin seulement)
 
 router.post('/', authorize('ADMIN_PROQUELEC', 'DIRECTEUR', 'CHEF_PROJET', 'COMPTABLE'), async (req, res, next) => {
     try {

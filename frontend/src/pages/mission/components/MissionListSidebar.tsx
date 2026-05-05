@@ -10,6 +10,8 @@ interface MissionListSidebarProps {
   onLoadMission: (mission: any) => void;
   onDeleteMission: (id: string, orderNumber: string) => void;
   isCertifiedByWorkflow?: boolean;
+  role?: string;
+  onPurgeAll?: () => Promise<void>;
 }
 
 type StatusFilter = 'all' | 'draft' | 'pending' | 'certified';
@@ -50,11 +52,18 @@ export const MissionListSidebar: React.FC<MissionListSidebarProps> = ({
   onLoadMission,
   onDeleteMission,
   isCertifiedByWorkflow = false,
+  role,
+  onPurgeAll
 }) => {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<StatusFilter>('all');
   const [selectedRegion, setSelectedRegion] = useState('Toutes');
   const [showFilters, setShowFilters] = useState(false);
+  const [isPurging, setIsPurging] = useState(false);
+
+  const isAdmin = useMemo(() => {
+    return (role || '').toUpperCase() === 'ADMIN_PROQUELEC';
+  }, [role]);
 
   const regions = useMemo(() => {
     const r = new Set(['Toutes']);
@@ -284,6 +293,30 @@ export const MissionListSidebar: React.FC<MissionListSidebarProps> = ({
           ))
         )}
       </div>
+
+      {/* 💣 ADMIN PURGE SECTION */}
+      {isAdmin && onPurgeAll && (
+        <div className="pt-4 border-t border-white/5 px-1 pb-2">
+          <button
+            disabled={isPurging}
+            onClick={async () => {
+              if (window.confirm("🚨 ACTION CRITIQUE : Êtes-vous sûr de vouloir PURGER TOUTES les missions du serveur ? Cette action est irréversible.")) {
+                setIsPurging(true);
+                try {
+                  await onPurgeAll();
+                } finally {
+                  setIsPurging(false);
+                }
+              }
+            }}
+            className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-[10px] font-black uppercase tracking-widest hover:bg-rose-500 hover:text-white transition-all shadow-lg hover:shadow-rose-500/20 group"
+          >
+            <Trash2 size={14} className={isPurging ? 'animate-spin' : 'group-hover:scale-110 transition-transform'} />
+            {isPurging ? 'PURGE EN COURS...' : 'PURGER LE SERVEUR'}
+          </button>
+          <p className="text-[8px] text-slate-500 mt-2 text-center font-bold tracking-tighter">ACCÈS SUPER-ADMINISTRATEUR UNIQUEMENT</p>
+        </div>
+      )}
     </div>
   );
 };

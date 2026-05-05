@@ -473,6 +473,21 @@ export default function MissionOrder() {
     }
   };
 
+  const handlePurgeAllMissions = async () => {
+    try {
+      const result = await missionService.purgeAllMissions();
+      if (result.success) {
+        toast.success(`${result.count} missions ont été purgées.`);
+        // Vider la base locale (Dexie) pour synchroniser
+        await db.missions.clear();
+        missionState.resetMission('', '', []);
+        handleSyncFromServer();
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Échec de la purge');
+    }
+  };
+
   const handleToggleFeature = (feature: string) => {
     const currentFeatures = state.formData.features || {
       map: true,
@@ -874,6 +889,8 @@ export default function MissionOrder() {
                     onLoadMission={handleLoadMission}
                     onDeleteMission={handleDeleteMission}
                     isCertifiedByWorkflow={effectiveIsCertified}
+                    role={role || user?.role}
+                    onPurgeAll={handlePurgeAllMissions}
                   />
                 ) : (
                   /* Mini sidebar – points de statut */
