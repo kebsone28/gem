@@ -11,11 +11,14 @@ export default function AdminPermissions() {
   const [rolePerms, setRolePerms] = useState<Record<string, Set<string>>>({});
   const [roles, setRoles] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
       try {
         setLoading(true);
+        setError(null);
         const data = await adminPermissionsService.getRolePermissions();
         const map: Record<string, Set<string>> = {};
         data.roles.forEach((r: any) => {
@@ -24,7 +27,7 @@ export default function AdminPermissions() {
         setRolePerms(map);
         setRoles(data.roles.map((r: any) => r.role));
       } catch (err) {
-        // noop
+        setError("Impossible de charger les permissions. Veuillez réessayer.");
       } finally {
         setLoading(false);
       }
@@ -42,15 +45,22 @@ export default function AdminPermissions() {
   };
 
   const saveRole = async (role: string) => {
-    const perms = Array.from(rolePerms[role] || []);
-    await adminPermissionsService.updateRolePermissions(role, perms);
-    // simple reload
-    const data = await adminPermissionsService.getRolePermissions();
-    const map: Record<string, Set<string>> = {};
-    data.roles.forEach((r: any) => {
-      map[r.role] = new Set(r.permissions || []);
-    });
-    setRolePerms(map);
+    try {
+      setError(null);
+      setNotice(null);
+      const perms = Array.from(rolePerms[role] || []);
+      await adminPermissionsService.updateRolePermissions(role, perms);
+      // simple reload
+      const data = await adminPermissionsService.getRolePermissions();
+      const map: Record<string, Set<string>> = {};
+      data.roles.forEach((r: any) => {
+        map[r.role] = new Set(r.permissions || []);
+      });
+      setRolePerms(map);
+      setNotice(`Permissions mises à jour pour ${role}.`);
+    } catch {
+      setError(`Échec de l'enregistrement pour ${role}.`);
+    }
   };
 
   if (loading) return <PageContainer><PageHeader title="Permissions" subtitle="Chargement..." /></PageContainer>;
@@ -76,16 +86,17 @@ export default function AdminPermissions() {
                   a.click();
                   a.remove();
                   URL.revokeObjectURL(url);
-                  alert('Export téléchargé');
-                } catch (err) {
-                  alert('Export failed');
+                  setNotice('Export téléchargé.');
+                  setError(null);
+                } catch {
+                  setError("Échec de l'export.");
                 }
               }}
             >
               Exporter
             </button>
 
-            <label className="px-3 py-1 bg-slate-200 text-slate-800 rounded cursor-pointer">
+              <label className="px-3 py-1 bg-slate-200 text-slate-800 rounded cursor-pointer">
               Importer
               <input
                 type="file"
@@ -97,7 +108,8 @@ export default function AdminPermissions() {
                     const txt = await f.text();
                     const json = JSON.parse(txt);
                     await adminPermissionsService.importRolePermissions(json);
-                    alert('Import réussi');
+                    setNotice('Import réussi.');
+                    setError(null);
                     const data = await adminPermissionsService.getRolePermissions();
                     const map: Record<string, Set<string>> = {};
                     data.roles.forEach((r: any) => {
@@ -106,14 +118,25 @@ export default function AdminPermissions() {
                     setRolePerms(map);
                     setRoles(data.roles.map((r: any) => r.role));
                   } catch (err) {
-                    alert('Import failed: ' + (err as any).message);
+                    setError('Import échoué: ' + (err as any).message);
                   }
                 }}
-                style={{ display: 'none' }}
+                className="hidden"
               />
             </label>
           </div>
         </div>
+
+        {error && (
+          <div className="mb-4 rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">
+            {error}
+          </div>
+        )}
+        {notice && (
+          <div className="mb-4 rounded border border-green-300 bg-green-50 px-3 py-2 text-sm text-green-700">
+            {notice}
+          </div>
+        )}
 
         <div className="overflow-auto">
           <table className="min-w-full table-auto border-collapse">

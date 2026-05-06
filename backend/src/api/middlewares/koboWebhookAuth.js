@@ -31,10 +31,15 @@ export const verifyKoboWebhook = (req, res, next) => {
             .update(payload, 'utf8')
             .digest('base64');
 
-        if (koboSignature !== expectedSignature) {
+        const providedSignatureBuffer = Buffer.from(koboSignature, 'utf8');
+        const expectedSignatureBuffer = Buffer.from(expectedSignature, 'utf8');
+        const signaturesHaveSameLength = providedSignatureBuffer.length === expectedSignatureBuffer.length;
+        const signatureValid = signaturesHaveSameLength
+            && crypto.timingSafeEqual(providedSignatureBuffer, expectedSignatureBuffer);
+
+        if (!signatureValid) {
             console.warn('[WEBHOOK] Security mismatch. Invalid signature attempt.', {
-                expected: expectedSignature,
-                received: koboSignature
+                receivedLength: providedSignatureBuffer.length
             });
             return res.status(403).json({ error: 'Invalid crypto signature' });
         }

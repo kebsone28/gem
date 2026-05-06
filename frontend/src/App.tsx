@@ -136,6 +136,8 @@ const RoleRoute = ({
 
 // ── App ────────────────────────────────────────────────────────────────────
 function App() {
+  const { user } = useAuth();
+
   return (
     <Router>
       <ImpersonationBanner />
@@ -433,6 +435,7 @@ function App() {
 
             <Route path="/mission-order" element={<Navigate to="/admin/mission" replace />} />
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="*" element={<Navigate to={user ? '/dashboard' : '/login'} replace />} />
           </Routes>
         </Suspense>
       </LazyRouteErrorBoundary>

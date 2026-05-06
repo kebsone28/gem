@@ -11,6 +11,10 @@ export const updateConfig = async (req, res) => {
         const { organizationId, id: userId, role } = req.user;
         const { config } = req.body;
 
+        if (!config || typeof config !== 'object' || Array.isArray(config)) {
+            return res.status(400).json({ error: 'Le champ "config" doit être un objet JSON valide.' });
+        }
+
         if (role !== 'ADMIN_PROQUELEC') {
             return res.status(403).json({ error: 'Seul l\'administrateur peut modifier la config globale.' });
         }

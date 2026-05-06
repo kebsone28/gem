@@ -126,7 +126,7 @@ export const registerOrganization = async (req, res) => {
 export const login = async (req, res) => {
     try {
         const { email, password } = req.body;
-        console.log('🔍 Login attempt body:', req.body);
+        console.log('🔍 Login attempt received');
 
         if (!email) {
             console.log('❌ Email is missing in request body');
@@ -282,7 +282,7 @@ export const login = async (req, res) => {
 export const refreshToken = async (req, res) => {
     try {
         // Diagnostic logs for refresh flow
-        console.log('[AUTH-REFRESH] incoming refresh request from ip=', req.ip, 'origin=', req.headers.origin);
+        console.log('[AUTH-REFRESH] incoming refresh request');
         const token = req.cookies.refreshToken;
         console.log('[AUTH-REFRESH] hasRefreshCookie=', !!token);
         if (!token) return res.status(401).json({ error: 'No refresh token' });
@@ -321,8 +321,8 @@ export const refreshToken = async (req, res) => {
             user: buildSessionUser(user)
         });
     } catch (error) {
-        console.error('[AUTH-REFRESH] refresh failed:', error.message);
-        res.status(401).json({ error: 'Invalid refresh token', details: error.message });
+        console.error('[AUTH-REFRESH] refresh failed');
+        res.status(401).json({ error: 'Invalid refresh token' });
     }
 };
 

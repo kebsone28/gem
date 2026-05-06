@@ -15,9 +15,17 @@ if (process.env.DATABASE_URL) {
     console.log('🔍 Loaded DB_URL from env: MISSING');
 }
 console.log('🔍 Loaded REDIS_URL from env:', process.env.REDIS_URL ? 'PRESENT' : 'MISSING (Defaults to localhost)');
-console.log('🔍 JWT Secrets from env:', process.env.JWT_SECRET ? 'PRESENT' : 'MISSING (FALLBACK TO DEFAULT)', '| Refresh:', process.env.REFRESH_TOKEN_SECRET ? 'PRESENT' : 'MISSING');
+console.log('🔍 JWT Secrets from env:', process.env.JWT_SECRET ? 'PRESENT' : 'MISSING', '| Refresh:', process.env.REFRESH_TOKEN_SECRET ? 'PRESENT' : 'MISSING');
 // eslint-disable-next-line no-console
 console.log('🔍 Current Working Directory:', process.cwd());
+
+const isProduction = process.env.NODE_ENV === 'production';
+const jwtSecret = process.env.JWT_SECRET || (isProduction ? '' : 'secret');
+const refreshSecret = process.env.REFRESH_TOKEN_SECRET || (isProduction ? '' : 'refresh_secret');
+
+if (isProduction && (!jwtSecret || !refreshSecret)) {
+    throw new Error('JWT_SECRET and REFRESH_TOKEN_SECRET must be defined in production');
+}
 
 const localCorsOrigins = [
     'http://localhost:5173',
@@ -50,9 +58,9 @@ export const config = {
     port: parsePort(process.env.PORT, 5005),
     dbUrl: process.env.DATABASE_URL,
     jwt: {
-        secret: process.env.JWT_SECRET || 'secret',
+        secret: jwtSecret,
         accessExpiry: process.env.ACCESS_TOKEN_EXPIRY || '15m',
-        refreshSecret: process.env.REFRESH_TOKEN_SECRET || 'refresh_secret',
+        refreshSecret: refreshSecret,
         refreshExpiry: process.env.REFRESH_TOKEN_EXPIRY || '7d'
     },
     cors: {
@@ -60,8 +68,9 @@ export const config = {
             const isDev = process.env.NODE_ENV !== 'production';
             
             // Origins strictly loaded from env in prod, with secure default fallback
-            const configuredOrigins = process.env.CORS_ORIGINS
-                ? process.env.CORS_ORIGINS.split(',').map(o => o.trim())
+            const rawCorsOrigins = process.env.CORS_ORIGINS || process.env.CORS_ORIGIN || '';
+            const configuredOrigins = rawCorsOrigins
+                ? rawCorsOrigins.split(',').map(o => o.trim()).filter(Boolean)
                 : [];
             let allowedOrigins = [...new Set([...productionCorsOrigins, ...configuredOrigins])];
                 

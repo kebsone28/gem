@@ -7,36 +7,51 @@ const PORT = config.port || 5005;
  * Auto-create admin user if none exists
  */
 async function ensureAdminUser() {
+  const bootstrapEnabled = process.env.ENABLE_BOOTSTRAP_ADMIN === 'true';
+  if (!bootstrapEnabled) {
+    console.log('ℹ️ Bootstrap admin creation disabled.');
+    return;
+  }
+
+  const bootstrapEmail = process.env.BOOTSTRAP_ADMIN_EMAIL;
+  const bootstrapPassword = process.env.BOOTSTRAP_ADMIN_PASSWORD;
+  const bootstrapSecurityAnswer = process.env.BOOTSTRAP_ADMIN_SECURITY_ANSWER;
+  const bootstrapOrganization = process.env.BOOTSTRAP_ADMIN_ORGANIZATION || 'PROQUELEC';
+
+  if (!bootstrapEmail || !bootstrapPassword || !bootstrapSecurityAnswer) {
+    console.warn(
+      '⚠️ Bootstrap admin skipped: missing BOOTSTRAP_ADMIN_EMAIL/BOOTSTRAP_ADMIN_PASSWORD/BOOTSTRAP_ADMIN_SECURITY_ANSWER.'
+    );
+    return;
+  }
+
   try {
     console.log('🔍 Checking for admin user...');
     const { default: prisma } = await import('./core/utils/prisma.js');
     const bcrypt = (await import('bcryptjs')).default;
 
     // Check if admin exists
-    const existingAdmin = await prisma.user.findUnique({ where: { email: 'admingem' } });
+    const existingAdmin = await prisma.user.findUnique({ where: { email: bootstrapEmail } });
 
     if (!existingAdmin) {
-      console.log('🌱 Creating default admin user...');
-
-      const password = 'suprime';
-      const answer2FA = 'coran';
+      console.log('🌱 Creating bootstrap admin user...');
 
       const salt = await bcrypt.genSalt(10);
-      const passwordHash = await bcrypt.hash(password, salt);
-      const answerHash = await bcrypt.hash(answer2FA.toLowerCase(), salt);
+      const passwordHash = await bcrypt.hash(bootstrapPassword, salt);
+      const answerHash = await bcrypt.hash(bootstrapSecurityAnswer.toLowerCase(), salt);
 
       // Create organization if not exists
-      let org = await prisma.organization.findFirst({ where: { name: 'PROQUELEC' } });
+      let org = await prisma.organization.findFirst({ where: { name: bootstrapOrganization } });
       if (!org) {
-        org = await prisma.organization.create({ data: { name: 'PROQUELEC' } });
+        org = await prisma.organization.create({ data: { name: bootstrapOrganization } });
       }
 
       // Create admin user
       await prisma.user.create({
         data: {
-          email: 'admingem',
+          email: bootstrapEmail,
           passwordHash,
-          name: 'Administrateur PROQUELEC',
+          name: 'Administrateur',
           roleLegacy: 'ADMIN_PROQUELEC',
           organizationId: org.id,
           requires2FA: true,
@@ -45,12 +60,9 @@ async function ensureAdminUser() {
         }
       });
 
-      console.log('✅ Admin user created!');
-      console.log('   Login: admingem');
-      console.log('   Password: suprime');
-      console.log('   2FA: coran');
+      console.log('✅ Bootstrap admin user created.');
     } else {
-      console.log('✅ Admin user already exists');
+      console.log('✅ Bootstrap admin user already exists');
     }
   } catch (error) {
     console.error('❌ Error ensuring admin user:', error.message);

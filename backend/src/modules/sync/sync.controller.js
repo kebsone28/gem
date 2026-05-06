@@ -31,8 +31,7 @@ export const pullChanges = async (req, res) => {
         console.log(`[SYNC PULL] sync endpoint called - since: ${since}, organizationId: ${organizationId}`);
 
         if (!organizationId) {
-            console.error('[SYNC PULL] ERROR: organizationId is undefined or null in req.user');
-            console.error('[SYNC PULL] req.user:', JSON.stringify(req.user));
+            console.error('[SYNC PULL] ERROR: organizationId missing in authenticated context');
             return res.status(400).json({ error: 'organizationId missing' });
         }
 
@@ -111,6 +110,10 @@ export const pushChanges = async (req, res) => {
         const { organizationId, id: userId } = req.user;
         const { changes } = req.body;
 
+        if (!changes || typeof changes !== 'object' || Array.isArray(changes)) {
+            return res.status(400).json({ error: 'Invalid payload: "changes" must be an object' });
+        }
+
         console.log(`[SYNC-DEBUG] 🔄 Start Push for Organization: ${organizationId} (User: ${userId})`);
         console.log(`[SYNC-DEBUG] Changes received:`, {
             projects: changes?.projects?.length || 0,
@@ -131,14 +134,13 @@ export const pushChanges = async (req, res) => {
         const logMsg = `\n[${new Date().toISOString()}] Push start: H=${changes.households?.length || 0}, Z=${changes.zones?.length || 0}, P=${changes.projects?.length || 0}\n`;
         fs.appendFileSync(DEBUG_LOG, logMsg);
 
-        if (!changes) {
-            return res.status(400).json({ error: 'No changes provided' });
-        }
-
         // --- NEW: Schema Validation Layer ---
         const { error: validationError } = pushSchema.validate({ changes }, { abortEarly: false });
         if (validationError) {
-            console.warn(`[SYNC-VALIDATION-WARNING] Schema mismatch detected:`, validationError.details.length, 'errors');
+            return res.status(400).json({
+                error: 'Invalid sync payload',
+                details: validationError.details.map((item) => item.message)
+            });
         }
 
         // Process each entity type sequentially but NOT in a single transaction
@@ -729,8 +731,8 @@ export const clearEntityData = async (req, res) => {
         console.log(`[SYNC-CLEAR] Cleared ${entity} for Org ${organizationId}`);
         res.json({ success: true, deletedCount: result?.count || 0, entity });
     } catch (e) {
-        console.error('[SYNC-CLEAR] Error:', e);
-        res.status(500).json({ error: 'Failed to clear data', details: e.message });
+        console.error('[SYNC-CLEAR] Error:', e.message);
+        res.status(500).json({ error: 'Failed to clear data' });
     }
 };
 
@@ -942,7 +944,7 @@ export const bulkImportHouseholds = async (req, res) => {
 
     } catch (error) {
         console.error('[SYNC-BULK-FATAL]:', error);
-        res.status(500).json({ error: 'Bulk import failed', details: error.message });
+        res.status(500).json({ error: 'Bulk import failed' });
     }
 };
 

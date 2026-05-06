@@ -6,6 +6,32 @@
 import prisma from '../../core/utils/prisma.js';
 import { alertsService } from './alerts.service.js';
 
+const isNonEmptyString = (value) => typeof value === 'string' && value.trim().length > 0;
+
+const sanitizeCreateAlertPayload = (body = {}) => {
+  const payload = {
+    projectId: typeof body.projectId === 'string' ? body.projectId.trim() : '',
+    householdId: typeof body.householdId === 'string' ? body.householdId.trim() : null,
+    pvId: typeof body.pvId === 'string' ? body.pvId.trim() : null,
+    type: typeof body.type === 'string' ? body.type.trim() : '',
+    severity: typeof body.severity === 'string' ? body.severity.trim().toUpperCase() : '',
+    title: typeof body.title === 'string' ? body.title.trim() : '',
+    description: typeof body.description === 'string' ? body.description.trim() : '',
+    recommendedAction: typeof body.recommendedAction === 'string' ? body.recommendedAction.trim() : '',
+    metadata: body.metadata && typeof body.metadata === 'object' && !Array.isArray(body.metadata) ? body.metadata : {},
+  };
+
+  const allowedSeverities = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
+  if (!allowedSeverities.includes(payload.severity)) {
+    return { error: 'Invalid severity value', payload };
+  }
+  if (!isNonEmptyString(payload.projectId) || !isNonEmptyString(payload.type) || !isNonEmptyString(payload.title)) {
+    return { error: 'Missing required fields: projectId, type, severity, title', payload };
+  }
+
+  return { payload };
+};
+
 // @desc    Get all alerts for a project
 // @route   GET /api/alerts/:projectId
 // @access  Private
@@ -44,24 +70,14 @@ export const getProjectAlerts = async (req, res) => {
 export const createAlert = async (req, res) => {
   try {
     const { organizationId } = req.user;
-    const {
-      projectId,
-      householdId,
-      pvId,
-      type,
-      severity,
-      title,
-      description,
-      recommendedAction,
-      metadata,
-    } = req.body;
-
-    if (!projectId || !type || !severity || !title) {
+    const { error: payloadError, payload } = sanitizeCreateAlertPayload(req.body);
+    if (payloadError) {
       return res.status(400).json({
         success: false,
-        message: 'Missing required fields: projectId, type, severity, title',
+        message: payloadError,
       });
     }
+    const { projectId, householdId, pvId, type, severity, title, description, recommendedAction, metadata } = payload;
 
     const alert = await prisma.alert.create({
       data: {
@@ -141,7 +157,7 @@ export const resolveAlert = async (req, res) => {
   try {
     const { alertId } = req.params;
     const { organizationId, id: userId } = req.user;
-    const { comment } = req.body;
+    const comment = typeof req.body?.comment === 'string' ? req.body.comment.trim() : '';
 
     const alert = await prisma.alert.findUnique({
       where: { id: alertId },

@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type { User, UserRole } from '../utils/types';
 import logger from '../utils/logger';
@@ -161,9 +161,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     applySessionUser(newUser);
-    
-    // Update GLOBAL store
-    useAuthStore.getState().login(email, role, name, organization, id, accessToken, permissions);
 
     if (accessToken) {
       safeStorage.setItem('access_token', accessToken);
@@ -196,21 +193,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     try {
       const currentToken = safeStorage.getItem('access_token');
-      const response = await fetch('/api/auth/impersonate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${currentToken}`,
-        },
-        body: JSON.stringify({ targetUserId: targetUser.id, reason: 'Support Administratif' }),
+      const { data } = await apiClient.post('auth/impersonate', {
+        targetUserId: targetUser.id,
+        reason: 'Support Administratif',
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Erreur lors de l'impersonation");
-      }
-
-      const data = await response.json();
 
       // 💾 SAUVEGARDE DE L'IDENTITÉ ADMIN REELLE
       safeStorage.setItem('admin_access_token', currentToken!);
@@ -236,21 +222,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
    */
   const stopImpersonation = async () => {
     try {
-      const currentToken = safeStorage.getItem('access_token');
-      const response = await fetch('/api/auth/stop-impersonation', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${currentToken}`,
-        },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Erreur lors de l'arrêt de la simulation");
-      }
-
-      const data = await response.json();
+      const { data } = await apiClient.post('auth/stop-impersonation');
 
       // 🔄 RESTAURATION DE L'IDENTITÉ ADMIN (Token neuf reçu du serveur)
       safeStorage.setItem('access_token', data.accessToken);
