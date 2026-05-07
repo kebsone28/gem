@@ -8,29 +8,41 @@ const simulationQueue = createQueue('simulation-queue');
  * @route POST /api/simulation/lancer
  */
 export const lancerSimulation = async (req, res) => {
-    try {
-        const { params } = req.body;
-        const userId = req.user.id;
-        const organizationId = req.user.organizationId;
+  try {
+    const { params } = req.body;
+    const userId = req.user.id;
+    const organizationId = req.user.organizationId;
 
-        // On ajoute le job à la queue Redis
-        const job = await simulationQueue.add('calcul-simulation', {
-            params,
-            userId,
-            organizationId
-        }, {
-            removeOnComplete: true,
-            attempts: 3
-        });
-
-        res.json({
-            message: 'Simulation ajoutée à la file d\'attente',
-            jobId: job.id
-        });
-    } catch (error) {
-        console.error('Lancer simulation error:', error);
-        res.status(500).json({ error: 'Erreur lors du lancement de la simulation' });
+    // Validation minimale des paramètres
+    if (!params || typeof params !== 'object') {
+      return res.status(400).json({ error: 'Paramètres de simulation invalides.' });
     }
+    if (!params.householdsCount || params.householdsCount <= 0) {
+      return res.status(400).json({ error: 'householdsCount doit être supérieur à 0.' });
+    }
+
+    // On ajoute le job à la queue Redis
+    const job = await simulationQueue.add(
+      'calcul-simulation',
+      {
+        params,
+        userId,
+        organizationId,
+      },
+      {
+        removeOnComplete: { age: 3600 },
+        attempts: 3,
+      }
+    );
+
+    res.json({
+      message: "Simulation ajoutée à la file d'attente",
+      jobId: job.id,
+    });
+  } catch (error) {
+    console.error('Lancer simulation error:', error);
+    res.status(500).json({ error: 'Erreur lors du lancement de la simulation' });
+  }
 };
 
 /**
@@ -38,25 +50,30 @@ export const lancerSimulation = async (req, res) => {
  * @route GET /api/simulation/status/:jobId
  */
 export const getSimulationStatus = async (req, res) => {
-    try {
-        const { jobId } = req.params;
-        const job = await simulationQueue.getJob(jobId);
+  try {
+    const { jobId } = req.params;
+    const job = await simulationQueue.getJob(jobId);
 
-        if (!job) {
-            return res.status(404).json({ error: 'Job non trouvé' });
-        }
-
-        const state = await job.getState();
-        const result = job.returnvalue;
-
-        res.json({
-            jobId,
-            state,
-            progress: job.progress,
-            result
-        });
-    } catch (error) {
-        console.error('Get simulation status error:', error);
-        res.status(500).json({ error: 'Erreur lors de la récupération du statut' });
+    if (!job) {
+      return res.status(404).json({ error: 'Job non trouvé' });
     }
+
+    // Vérification d'ownership : l'utilisateur ne peut voir que ses propres simulations
+    if (job.data.userId && job.data.userId !== req.user?.id) {
+      return res.status(403).json({ error: 'Accès refusé à cette simulation.' });
+    }
+
+    const state = await job.getState();
+    const result = job.returnvalue;
+
+    res.json({
+      jobId,
+      state,
+      progress: job.progress,
+      result,
+    });
+  } catch (error) {
+    console.error('Get simulation status error:', error);
+    res.status(500).json({ error: 'Erreur lors de la récupération du statut' });
+  }
 };

@@ -19,13 +19,7 @@ export const ALL_STATUSES = [
   'Désistement',
 ];
 
-export type PanelType =
-  | 'none'
-  | 'routing'
-  | 'grappe'
-  | 'region'
-  | 'datahub'
-  | 'grappe_allocation';
+export type PanelType = 'none' | 'routing' | 'grappe' | 'region' | 'datahub' | 'grappe_allocation';
 
 interface TerrainUIState {
   // Panel Management
@@ -74,6 +68,10 @@ interface TerrainUIState {
   setIsSearching: (isSearching: boolean) => void;
 
   // --- NEW: Routing State ---
+  routingEnabled: boolean;
+  setRoutingEnabled: (enabled: boolean) => void;
+  followUser: boolean;
+  setFollowUser: (follow: boolean) => void;
   routingStart: [number, number] | null;
   routingDest: [number, number] | null;
   routeStats: { distance: number; duration: number } | null;
@@ -87,7 +85,6 @@ interface TerrainUIState {
   setIsRoutingLoading: (loading: boolean) => void;
   clearRouting: () => void;
 
-
   // --- NEW: Map Commands (Programmatic moves) ---
   mapCommand: { center: [number, number]; zoom: number; timestamp: number } | null;
   setMapCommand: (
@@ -100,7 +97,6 @@ interface TerrainUIState {
 
   isDownloadingOffline: boolean;
   setIsDownloadingOffline: (loading: boolean) => void;
-
 
   // Lightbox
   lightboxPhotos: { url: string; label: string }[];
@@ -138,7 +134,10 @@ export const useTerrainUIStore = create<TerrainUIState>((set) => ({
   showWarehouses: true,
   showDatabaseStats: false,
   showLegend: false,
-  mapStyle: ((safeStorage.getItem('gem-map-theme') as any) || 'light') as 'light' | 'dark' | 'satellite',
+  mapStyle: ((safeStorage.getItem('gem-map-theme') as any) || 'light') as
+    | 'light'
+    | 'dark'
+    | 'satellite',
 
   toggleHeatmap: () => set((state) => ({ showHeatmap: !state.showHeatmap })),
   toggleZones: () => set((state) => ({ showZones: !state.showZones })),
@@ -185,6 +184,10 @@ export const useTerrainUIStore = create<TerrainUIState>((set) => ({
   setIsSearching: (isSearching) => set({ isSearching }),
 
   // Routing
+  routingEnabled: false,
+  setRoutingEnabled: (enabled) => set({ routingEnabled: enabled }),
+  followUser: false,
+  setFollowUser: (follow) => set({ followUser: follow }),
   routingStart: null,
   routingDest: null,
   routeStats: null,
@@ -203,7 +206,6 @@ export const useTerrainUIStore = create<TerrainUIState>((set) => ({
       turnByTurnInstructions: [],
     }),
 
-
   // Map Commands
   mapCommand: null,
   setMapCommand: (mapCommand) => set({ mapCommand }),
@@ -213,7 +215,6 @@ export const useTerrainUIStore = create<TerrainUIState>((set) => ({
   setActiveGrappeId: (id) => set({ activeGrappeId: id }),
   isDownloadingOffline: false,
   setIsDownloadingOffline: (isDownloadingOffline) => set({ isDownloadingOffline }),
-
 
   // Lightbox
   lightboxPhotos: [],

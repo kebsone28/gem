@@ -18,48 +18,50 @@ app.use(helmet());
 app.use(cors(config.cors));
 
 app.get('/api/ping', async (req, res) => {
-    let dbStatus = 'waiting';
-    try {
-        const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('DB Timeout')), 5000));
-        await Promise.race([prisma.$queryRaw`SELECT 1`, timeout]);
-        dbStatus = 'connected';
-    } catch (e) {
-        dbStatus = `error: ${e.message}`;
-    }
-    res.json({ status: 'ok', msg: 'Core API is alive', db: dbStatus, version: '1.0.3-MANUAL-CORS' });
+  let dbStatus = 'waiting';
+  try {
+    const timeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('DB Timeout')), 5000)
+    );
+    await Promise.race([prisma.$queryRaw`SELECT 1`, timeout]);
+    dbStatus = 'connected';
+  } catch (e) {
+    dbStatus = `error: ${e.message}`;
+  }
+  res.json({ status: 'ok', msg: 'Core API is alive', db: dbStatus, version: '1.0.3-MANUAL-CORS' });
 });
 
-// 2. Request Parsing with rawBody for Webhooks
-app.use(express.json({ 
-    limit: '50mb',
+// 2. Request Parsing
+// rawBody uniquement sur les routes webhook (signature HMAC KoboToolbox)
+app.use(
+  '/api/kobo/webhook',
+  express.json({
+    limit: '10mb',
     verify: (req, res, buf) => {
-        req.rawBody = buf;
-    }
-}));
-app.use(express.urlencoded({ 
-    extended: true, 
-    limit: '50mb',
-    verify: (req, res, buf) => {
-        req.rawBody = buf;
-    }
-}));
+      req.rawBody = buf;
+    },
+  })
+);
+// Parsing standard pour tout le reste
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 app.use(compression());
 app.use('/api/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // 3. Rate Limiting (désactivé en DEV pour éviter les faux positifs)
 const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: (config.env === 'development' || !config.env) ? 0 : 1000, // 0 = illimité en DEV ou si env non défini
-    skip: () => config.env === 'development' || !config.env,
-    standardHeaders: true,
-    legacyHeaders: false
+  windowMs: 15 * 60 * 1000,
+  max: config.env === 'development' || !config.env ? 0 : 1000, // 0 = illimité en DEV ou si env non défini
+  skip: () => config.env === 'development' || !config.env,
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 app.use('/api/', limiter);
 
 // 4. Logging
 if (config.env === 'development') {
-    app.use(morgan('dev'));
+  app.use(morgan('dev'));
 }
 
 // 5. SaaS Routes (Prisma/DDD)
@@ -88,6 +90,7 @@ import pvRoutes from './api/routes/pv.routes.js';
 import internalKoboRoutes from './modules/internalKobo/internalKobo.routes.js';
 import debugRoutes from './api/routes/debug.routes.js';
 import adminPermissionRoutes from './api/routes/admin.permissions.routes.js';
+import { notFoundHandler } from './middleware/errorHandler.js';
 
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
@@ -113,64 +116,67 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/pvs', pvRoutes);
 app.use('/api/internal-kobo', internalKoboRoutes);
 if (config.env !== 'production') {
-    app.use('/api/debug', debugRoutes);
+  app.use('/api/debug', debugRoutes);
 }
 app.use('/api/admin', adminPermissionRoutes);
 
 app.get('/health', async (req, res) => {
-    const health = {
-        status: 'UP',
-        services: {
-            database: 'DOWN',
-            redis: redisConnection ? 'DOWN' : 'N/A'
-        },
-        time: new Date(),
-        version: '1.0.0-PRO'
+  const health = {
+    status: 'UP',
+    services: {
+      database: 'DOWN',
+      redis: redisConnection ? 'DOWN' : 'N/A',
+    },
+    time: new Date(),
+    version: '1.0.0-PRO',
+  };
+
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    health.services.database = 'UP';
+  } catch (e) {
+    health.status = 'PARTIAL';
+    health.services.database = {
+      status: 'DOWN',
+      ...(process.env.NODE_ENV !== 'production'
+        ? { error: e.message, code: e.code, meta: e.meta }
+        : { error: 'Vérification DB échouée' }),
     };
+  }
 
-    try {
-        await prisma.$queryRaw`SELECT 1`;
-        health.services.database = 'UP';
-    } catch (e) {
-        health.status = 'PARTIAL';
-        health.services.database = {
-            status: 'DOWN',
-            error: e.message,
-            code: e.code,
-            meta: e.meta
-        };
-    }
-
-    try {
-        const ping = await redisConnection.ping();
-        if (ping === 'PONG') health.services.redis = 'UP';
+  try {
+    const ping = await redisConnection.ping();
+    if (ping === 'PONG') health.services.redis = 'UP';
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    } catch (_err) {
-        health.status = 'PARTIAL';
-    }
+  } catch (_err) {
+    health.status = 'PARTIAL';
+  }
 
-    const statusCode = health.status === 'UP' ? 200 : 503;
-    res.status(statusCode).json(health);
+  const statusCode = health.status === 'UP' ? 200 : 503;
+  res.status(statusCode).json(health);
 });
 
-// 6. Global Error Handler
-app.use((err, req, res, next) => {
-    console.error('🔥 GLOBAL ERROR:', err.stack);
-    
-    // Specific handling for DB errors in the global handler
-    if (err.message?.includes("Can't reach database server")) {
-        return res.status(503).json({
-            error: 'Database Connection Error',
-            message: 'Le serveur ne parvient pas à contacter PostgreSQL. Vérifiez Docker Desktop.',
-            code: 'DB_CONNECTION_ERROR'
-        });
-    }
+// 6. 404 handler (doit être après toutes les routes)
+app.use(notFoundHandler);
 
-    res.status(err.status || 500).json({
-        error: 'Internal Server Error',
-        message: err.message,
-        stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+// 7. Global Error Handler
+app.use((err, req, res, _next) => {
+  console.error('🔥 GLOBAL ERROR:', err.stack);
+
+  // Specific handling for DB errors in the global handler
+  if (err.message?.includes("Can't reach database server")) {
+    return res.status(503).json({
+      error: 'Database Connection Error',
+      message: 'Le serveur ne parvient pas à contacter PostgreSQL. Vérifiez Docker Desktop.',
+      code: 'DB_CONNECTION_ERROR',
     });
+  }
+
+  res.status(err.status || 500).json({
+    error: 'Internal Server Error',
+    message: err.message,
+    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
+  });
 });
 
 export default app;

@@ -2,9 +2,13 @@
  * Formation Routes - API de gestion des formations
  */
 import { Router } from 'express';
+import { authProtect } from '../../api/middlewares/auth.js';
 import formationController from './formation.controller.js';
 
 const router = Router();
+
+// Protection globale : toutes les routes formation nécessitent une authentification
+router.use(authProtect);
 
 // Routes modules
 router.get('/modules', formationController.getModules);
@@ -21,7 +25,10 @@ router.post('/sessions/:id/recalculate-cascade', formationController.cascadeResc
 
 // Routes modules d'une session
 router.post('/sessions/:id/modules', formationController.addModuleToSession);
-router.delete('/sessions/:sessionId/modules/:moduleId', formationController.removeModuleFromSession);
+router.delete(
+  '/sessions/:sessionId/modules/:moduleId',
+  formationController.removeModuleFromSession
+);
 
 // Routes participants
 router.post('/sessions/:id/participants', formationController.addParticipant);

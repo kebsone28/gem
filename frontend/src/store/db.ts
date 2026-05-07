@@ -195,6 +195,7 @@ export class ProquelecDatabase extends Dexie {
       teams: 'id, organizationId, name, type, specialty',
       sync_logs: '++id, timestamp, action',
       app_security: 'key, updatedAt',
+      syncOutbox: '++id, status, timestamp', // 🔑 Préserver explicitement — absent = supprimé par Dexie lors de la migration v8→v9
       favorites: '++id, projectId, householdId, createdAt',
       map_tiles: 'url, timestamp, zoom', // Clé primaire: url
     });
