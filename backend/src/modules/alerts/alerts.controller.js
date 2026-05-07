@@ -5,6 +5,7 @@
 
 import prisma from '../../core/utils/prisma.js';
 import { alertsService } from './alerts.service.js';
+import logger from '../../utils/logger.js';
 
 const isNonEmptyString = (value) => typeof value === 'string' && value.trim().length > 0;
 
@@ -17,15 +18,23 @@ const sanitizeCreateAlertPayload = (body = {}) => {
     severity: typeof body.severity === 'string' ? body.severity.trim().toUpperCase() : '',
     title: typeof body.title === 'string' ? body.title.trim() : '',
     description: typeof body.description === 'string' ? body.description.trim() : '',
-    recommendedAction: typeof body.recommendedAction === 'string' ? body.recommendedAction.trim() : '',
-    metadata: body.metadata && typeof body.metadata === 'object' && !Array.isArray(body.metadata) ? body.metadata : {},
+    recommendedAction:
+      typeof body.recommendedAction === 'string' ? body.recommendedAction.trim() : '',
+    metadata:
+      body.metadata && typeof body.metadata === 'object' && !Array.isArray(body.metadata)
+        ? body.metadata
+        : {},
   };
 
   const allowedSeverities = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
   if (!allowedSeverities.includes(payload.severity)) {
     return { error: 'Invalid severity value', payload };
   }
-  if (!isNonEmptyString(payload.projectId) || !isNonEmptyString(payload.type) || !isNonEmptyString(payload.title)) {
+  if (
+    !isNonEmptyString(payload.projectId) ||
+    !isNonEmptyString(payload.type) ||
+    !isNonEmptyString(payload.title)
+  ) {
     return { error: 'Missing required fields: projectId, type, severity, title', payload };
   }
 
@@ -50,7 +59,7 @@ export const getProjectAlerts = async (req, res) => {
         ...(type && { type }),
       },
       orderBy: { createdAt: 'desc' },
-      take: parseInt(limit),
+      take: Math.min(parseInt(limit) || 50, 200),
     });
 
     res.json({
@@ -59,7 +68,7 @@ export const getProjectAlerts = async (req, res) => {
       data: alerts,
     });
   } catch (err) {
-    console.error('[ALERTS] getProjectAlerts error:', err);
+    logger.error('[ALERTS] getProjectAlerts error:', err);
     res.status(500).json({ success: false, message: err.message });
   }
 };
@@ -77,7 +86,17 @@ export const createAlert = async (req, res) => {
         message: payloadError,
       });
     }
-    const { projectId, householdId, pvId, type, severity, title, description, recommendedAction, metadata } = payload;
+    const {
+      projectId,
+      householdId,
+      pvId,
+      type,
+      severity,
+      title,
+      description,
+      recommendedAction,
+      metadata,
+    } = payload;
 
     const alert = await prisma.alert.create({
       data: {
@@ -106,7 +125,7 @@ export const createAlert = async (req, res) => {
       data: alert,
     });
   } catch (err) {
-    console.error('[ALERTS] createAlert error:', err);
+    logger.error('[ALERTS] createAlert error:', err);
     res.status(500).json({ success: false, message: err.message });
   }
 };
@@ -145,7 +164,7 @@ export const acknowledgeAlert = async (req, res) => {
       data: updated,
     });
   } catch (err) {
-    console.error('[ALERTS] acknowledgeAlert error:', err);
+    logger.error('[ALERTS] acknowledgeAlert error:', err);
     res.status(500).json({ success: false, message: err.message });
   }
 };
@@ -189,7 +208,7 @@ export const resolveAlert = async (req, res) => {
       data: updated,
     });
   } catch (err) {
-    console.error('[ALERTS] resolveAlert error:', err);
+    logger.error('[ALERTS] resolveAlert error:', err);
     res.status(500).json({ success: false, message: err.message });
   }
 };
@@ -229,13 +248,13 @@ export const getAlertStats = async (req, res) => {
     res.json({
       success: true,
       data: {
-        byStatus: Object.fromEntries(byStatus.map(s => [s.status, s._count])),
+        byStatus: Object.fromEntries(byStatus.map((s) => [s.status, s._count])),
         totalCritical,
         breakdown: stats,
       },
     });
   } catch (err) {
-    console.error('[ALERTS] getAlertStats error:', err);
+    logger.error('[ALERTS] getAlertStats error:', err);
     res.status(500).json({ success: false, message: err.message });
   }
 };
@@ -265,7 +284,7 @@ export const getAlertConfig = async (req, res) => {
       data: config,
     });
   } catch (err) {
-    console.error('[ALERTS] getAlertConfig error:', err);
+    logger.error('[ALERTS] getAlertConfig error:', err);
     res.status(500).json({ success: false, message: err.message });
   }
 };
@@ -276,7 +295,36 @@ export const getAlertConfig = async (req, res) => {
 export const updateAlertConfig = async (req, res) => {
   try {
     const { organizationId } = req.user;
-    const updates = req.body;
+
+    const {
+      stockCritical,
+      budgetThreshold,
+      teamCapacity,
+      electricityMin,
+      delayThreshold,
+      escalationDelay,
+      enableSms,
+      enableEmail,
+      enablePush,
+      enableWhatsapp,
+      smsSenderIds,
+      emailRecipients,
+    } = req.body;
+
+    const updates = {};
+    if (stockCritical !== undefined) updates.stockCritical = Number(stockCritical);
+    if (budgetThreshold !== undefined) updates.budgetThreshold = Number(budgetThreshold);
+    if (teamCapacity !== undefined) updates.teamCapacity = Number(teamCapacity);
+    if (electricityMin !== undefined) updates.electricityMin = Number(electricityMin);
+    if (delayThreshold !== undefined) updates.delayThreshold = Number(delayThreshold);
+    if (escalationDelay !== undefined)
+      updates.escalationDelay = Math.max(0, Number(escalationDelay));
+    if (enableSms !== undefined) updates.enableSms = Boolean(enableSms);
+    if (enableEmail !== undefined) updates.enableEmail = Boolean(enableEmail);
+    if (enablePush !== undefined) updates.enablePush = Boolean(enablePush);
+    if (enableWhatsapp !== undefined) updates.enableWhatsapp = Boolean(enableWhatsapp);
+    if (smsSenderIds !== undefined) updates.smsSenderIds = smsSenderIds;
+    if (emailRecipients !== undefined) updates.emailRecipients = emailRecipients;
 
     let config = await prisma.alertConfiguration.findUnique({
       where: { organizationId },
@@ -302,7 +350,7 @@ export const updateAlertConfig = async (req, res) => {
       data: config,
     });
   } catch (err) {
-    console.error('[ALERTS] updateAlertConfig error:', err);
+    logger.error('[ALERTS] updateAlertConfig error:', err);
     res.status(500).json({ success: false, message: err.message });
   }
 };

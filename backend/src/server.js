@@ -57,7 +57,7 @@ async function ensureAdminUser() {
           requires2FA: true,
           securityQuestion: 'Votre référence spirituelle',
           securityAnswerHash: answerHash,
-        }
+        },
       });
 
       console.log('✅ Bootstrap admin user created.');
@@ -80,11 +80,14 @@ async function bootstrap() {
 
   const server = http.createServer((req, res) => {
     // Add basic CORS for bootstrap phase debugging
-    const origin = req.headers.origin || '*';
+    const origin = req.headers.origin || process.env.FRONTEND_URL || 'http://localhost:5173';
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Access-Control-Allow-Credentials', 'true');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+    res.setHeader(
+      'Access-Control-Allow-Headers',
+      'Content-Type, Authorization, X-Requested-With, Accept, Origin'
+    );
 
     if (req.method === 'OPTIONS') {
       res.writeHead(204);
@@ -139,18 +142,20 @@ async function bootstrap() {
       if (supervisorCleanup) cleanupFunctions.push(supervisorCleanup);
 
       // Démarrage du système d'escalade des alertes
-      const { startAlertEscalationAgent, startIGPPAlertAgent } = await import('./services/alertEscalationAgent.js');
+      const { startAlertEscalationAgent, startIGPPAlertAgent } =
+        await import('./services/alertEscalationAgent.js');
       const alertEscalationCleanup = startAlertEscalationAgent();
       const igppAlertCleanup = startIGPPAlertAgent();
-      if (alertEscalationCleanup) cleanupFunctions.push(() => clearInterval(alertEscalationCleanup));
+      if (alertEscalationCleanup)
+        cleanupFunctions.push(() => clearInterval(alertEscalationCleanup));
       if (igppAlertCleanup) cleanupFunctions.push(() => clearInterval(igppAlertCleanup));
 
       console.log('💎 PROQUELEC Server is now fully operational.');
 
       // ✅ IMPROVED: Complete graceful shutdown
-      process.on('SIGTERM', async () => {
-        console.log('📥 SIGTERM received. Closing all resources...');
-        
+      const gracefulShutdown = async () => {
+        console.log('📥 Signal reçu. Fermeture des ressources...');
+
         // Stop all background services
         for (const cleanup of cleanupFunctions) {
           try {
@@ -159,32 +164,34 @@ async function bootstrap() {
             console.error('❌ Error during cleanup:', e.message);
           }
         }
-        
+
         // Close Socket.IO connections
         try {
           socketService.close();
         } catch (e) {
           console.error('❌ Error closing Socket.IO:', e.message);
         }
-        
+
         // Disconnect from database
         await prisma.$disconnect();
-        
+
         console.log('✅ All resources closed. Exiting gracefully.');
         process.exit(0);
-      });
+      };
 
+      process.on('SIGTERM', gracefulShutdown);
+      process.on('SIGINT', gracefulShutdown);
     } catch (error) {
       console.error('🔥 FATAL INITIALIZATION ERROR:', error);
 
       // Fallback handler to show the error in the browser/curl
       server.removeAllListeners('request');
       server.on('request', (req, res) => {
-        const origin = req.headers.origin || '*';
+        const origin = req.headers.origin || process.env.FRONTEND_URL || 'http://localhost:5173';
         res.setHeader('Access-Control-Allow-Origin', origin);
         res.setHeader('Access-Control-Allow-Credentials', 'true');
-        res.writeHead(500, { 'Content-Type': 'text/plain' });
-        res.end(`BOOT_ERROR: ${error.message}\n${error.stack}`);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Service temporairement indisponible' }));
       });
     }
   });
@@ -192,6 +199,7 @@ async function bootstrap() {
   // Global error handlers
   process.on('uncaughtException', (err) => {
     console.error('🔥 UNCAUGHT EXCEPTION:', err);
+    process.exit(1);
   });
   process.on('unhandledRejection', (reason) => {
     console.error('☄️ UNHANDLED REJECTION:', reason);
