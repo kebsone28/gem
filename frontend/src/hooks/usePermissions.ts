@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useAuth } from '../contexts/AuthContext';
 import { PERMISSIONS, hasPermission } from '../utils/permissions';
-import { isMasterAdminEmail } from '../utils/roleUtils';
+import { isMasterAdminEmail, isDirecteurRole } from '../utils/roleUtils';
 
 /**
  * Hook personnalisé pour gérer les permissions de manière centralisée dans le UI.
@@ -39,7 +39,7 @@ export const usePermissions = () => {
   const isAdmin =
     user?.role === 'ADMIN_PROQUELEC' || user?.role === 'ADMIN' || isMasterAdminEmail(user?.email);
   const isChefProjet = user?.role === 'CHEF_PROJET';
-  const isDG = user?.role === 'DIRECTEUR' || user?.role === 'DG_PROQUELEC' || user?.role === 'DG';
+  const isDG = isDirecteurRole(user?.role);
 
   return {
     peut,
