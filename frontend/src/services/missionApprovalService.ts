@@ -94,13 +94,19 @@ export const approveMissionStep = async (
   missionId: string,
   role: ApprovalRole,
   comment?: string,
-  signature?: string
+  signature?: string,
+  pin?: string,
+  idempotencyKey?: string
 ): Promise<MissionApprovalWorkflow | null> => {
   try {
     const response = await api.post(`/missions/${missionId}/approve`, {
       role: role.toUpperCase(),
       comment,
       signature,
+      // Optional PIN, used by DG validation flows from the mission page.
+      pin,
+    }, {
+      headers: idempotencyKey ? { 'x-idempotency-key': idempotencyKey } : undefined,
     });
 
     const wf = response.data;
@@ -135,9 +141,10 @@ export const rejectMission = async (
   missionId: string,
   role: ApprovalRole,
   reason: string,
-  category?: string
+  category?: string,
+  idempotencyKey?: string
 ): Promise<MissionApprovalWorkflow | null> => {
-  return rejectMissionStep(missionId, role, reason, category);
+  return rejectMissionStep(missionId, role, reason, category, idempotencyKey);
 };
 
 /**
@@ -147,7 +154,8 @@ export const rejectMissionStep = async (
   missionId: string,
   role: ApprovalRole,
   reason: string,
-  category = 'AUTRE'
+  category = 'AUTRE',
+  idempotencyKey?: string
 ): Promise<MissionApprovalWorkflow | null> => {
   try {
     const response = await api.post(`/missions/${missionId}/reject`, {
@@ -155,6 +163,8 @@ export const rejectMissionStep = async (
       reason,
       category,
       timestamp: new Date().toISOString(),
+    }, {
+      headers: idempotencyKey ? { 'x-idempotency-key': idempotencyKey } : undefined,
     });
 
     const wf = response.data;

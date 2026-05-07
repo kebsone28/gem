@@ -4,15 +4,28 @@ import { useSearchParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useAuth } from '../contexts/AuthContext';
 import * as safeStorage from '../utils/safeStorage';
-import { ClipboardList, MapPin, KeyRound, ShieldCheck, PanelLeftClose, PanelLeftOpen, Maximize2, Minimize2 } from 'lucide-react';
+import {
+  ClipboardList,
+  MapPin,
+  KeyRound,
+  ShieldCheck,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Maximize2,
+  Minimize2,
+} from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import logger from '../utils/logger';
 import * as missionApprovalService from '../services/missionApprovalService';
 import * as missionService from '../services/missionService';
+import { normalizeMissionApprovalRole, isMasterAdminEmail } from '../utils/roleUtils';
 
 // Services & Store
 import { generateMissionOrderPDF } from '../services/missionOrderGenerator';
-import { generateMissionOrderWord, generateMissionReportWord } from '../services/missionOrderWordGenerator';
+import {
+  generateMissionOrderWord,
+  generateMissionReportWord,
+} from '../services/missionOrderWordGenerator';
 import * as XLSX from 'xlsx';
 import { db } from '../store/db';
 import { createMissionFromTemplate } from '../services/missionTemplates';
@@ -81,21 +94,7 @@ const buildDraftReference = (suffix?: string) => {
   return `TEMP-${year}${month}${day}-${randomSeq}${suffix ? `-${suffix}` : ''}`;
 };
 
-const normalizeMissionApprovalRole = (rawRole?: string | null): 'ADMIN' | 'DIRECTEUR' | null => {
-  const role = (rawRole || '').toUpperCase();
-  if (['ADMIN', 'ADMIN_PROQUELEC'].includes(role)) return 'ADMIN';
-  if (
-    ['DIRECTEUR', 'DIRECTEUR_GENERAL', 'DIRECTEUR_TECHNIQUE', 'DG_PROQUELEC', 'DIR_GEN'].includes(
-      role
-    )
-  ) {
-    return 'DIRECTEUR';
-  }
-  return null;
-};
-
-const hasOfficialMissionNumber = (value?: string | null) =>
-  !!value && !value.startsWith('TEMP-');
+const hasOfficialMissionNumber = (value?: string | null) => !!value && !value.startsWith('TEMP-');
 
 const getMissionReferenceLabel = (data: Partial<MissionOrderData>) => {
   if (hasOfficialMissionNumber(data.orderNumber)) return data.orderNumber as string;
@@ -103,7 +102,9 @@ const getMissionReferenceLabel = (data: Partial<MissionOrderData>) => {
 };
 
 const getMissionFileStem = (data: Partial<MissionOrderData>) =>
-  getMissionReferenceLabel(data).replace(/[\\/:"*?<>|]+/g, '-').replace(/\s+/g, '_');
+  getMissionReferenceLabel(data)
+    .replace(/[\\/:"*?<>|]+/g, '-')
+    .replace(/\s+/g, '_');
 
 export default function MissionOrder() {
   const { user } = useAuth();
@@ -120,17 +121,22 @@ export default function MissionOrder() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
-    try { return localStorage.getItem('gem_mission_sidebar_collapsed') === '1'; } catch { return false; }
-  });
-  const toggleSidebar = () => setSidebarCollapsed(prev => {
-    const next = !prev;
     try {
-      localStorage.setItem('gem_mission_sidebar_collapsed', next ? '1' : '0');
+      return localStorage.getItem('gem_mission_sidebar_collapsed') === '1';
     } catch {
-      // Ignore storage failures; the sidebar state still updates for this session.
+      return false;
     }
-    return next;
   });
+  const toggleSidebar = () =>
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('gem_mission_sidebar_collapsed', next ? '1' : '0');
+      } catch {
+        // Ignore storage failures; the sidebar state still updates for this session.
+      }
+      return next;
+    });
   const autosaveTimerRef = useRef<number | null>(null);
   // Toujours initialiser à 'prep' pour éviter l'accès prématuré à state
   const [activeTab, setActiveTab] = useState<'prep' | 'report' | 'approval'>('prep');
@@ -157,19 +163,21 @@ export default function MissionOrder() {
   const savedMissions = useMemo(() => {
     // FILTRAGE STRICT : Chaque utilisateur ne voit que ses propres créations
     // On conserve un accès pour l'administrateur système 'admingem' par sécurité
-    const isSystemAdmin = user?.email === 'admingem';
-    
+    const isSystemAdmin = isMasterAdminEmail(user?.email);
+
     if (isSystemAdmin) return allMissions;
-    
+
     return allMissions.filter(
       (m: any) =>
-        m.createdBy === user?.id ||
-        m.createdBy === user?.email ||
-        m.creatorId === user?.id
+        m.createdBy === user?.id || m.createdBy === user?.email || m.creatorId === user?.id
     );
   }, [allMissions, user?.id, user?.email]);
 
   const unreadCount = useLiveQuery(() => db.notifications.where('read').equals(0).count(), []) || 0;
+  const selectedArchiveMissionData = useMemo(
+    () => savedMissions.find((m: any) => m.id === selectedArchiveMission) || null,
+    [savedMissions, selectedArchiveMission]
+  );
 
   // KPIs
   const projectBudget = useMemo(() => devis?.totalPlanned || 0, [devis]);
@@ -195,10 +203,7 @@ export default function MissionOrder() {
   const isWorkflowApproved = workflow?.overallStatus === 'approved';
   const isWorkflowRejected = workflow?.overallStatus === 'rejected';
   const isWorkflowPending =
-    !!workflow &&
-    !isWorkflowApproved &&
-    !isWorkflowRejected &&
-    workflow.overallStatus !== 'draft';
+    !!workflow && !isWorkflowApproved && !isWorkflowRejected && workflow.overallStatus !== 'draft';
   const effectiveIsCertified = !!state.isCertified || isWorkflowApproved;
   const effectiveIsSubmitted = !effectiveIsCertified && (!!state.isSubmitted || isWorkflowPending);
   const isMissionLocked = effectiveIsSubmitted || effectiveIsCertified;
@@ -228,6 +233,10 @@ export default function MissionOrder() {
         })
         .catch((error) => {
           logger.warn('[MissionOrder] Autosave failed', error);
+          toast('Sauvegarde automatique échouée - vos données sont conservées localement', {
+            icon: '⚠️',
+            duration: 3000,
+          });
         });
     }, 2500);
 
@@ -282,7 +291,7 @@ export default function MissionOrder() {
     const unsubMissionUpdate = syncEventBus.subscribe('mission:update', handleRemoteUpdate);
     const unsubMissionSubmitted = syncEventBus.subscribe('mission:submitted', handleRemoteUpdate);
     const unsubMissionCertified = syncEventBus.subscribe('mission:certified', handleRemoteUpdate);
-    
+
     return () => {
       unsubNotification();
       unsubMissionUpdate();
@@ -316,25 +325,22 @@ export default function MissionOrder() {
         mission.createdBy === 'inconnu';
       const hasContent = Boolean(
         mission.purpose ||
-          mission.title ||
-          mission.region ||
-          mission.startDate ||
-          mission.endDate ||
-          (Array.isArray(mission.members) && mission.members.length > 0)
+        mission.title ||
+        mission.region ||
+        mission.startDate ||
+        mission.endDate ||
+        (Array.isArray(mission.members) && mission.members.length > 0)
       );
 
       return isDraft && belongsToUser && !hasContent;
     });
 
     if (existingEmptyDraft) {
-      const shouldReuse = window.confirm(
-        'Un brouillon vide existe déjà. Voulez-vous le reprendre au lieu d’en créer un autre ?'
-      );
-      if (shouldReuse) {
-        handleLoadMission(existingEmptyDraft);
-        safeStorage.setItem('last_viewed_mission_id', existingEmptyDraft.id);
-        return;
-      }
+      // L'autosave a déjà sauvegardé le brouillon existant ; on le recharge directement
+      handleLoadMission(existingEmptyDraft);
+      safeStorage.setItem('last_viewed_mission_id', existingEmptyDraft.id);
+      toast('Brouillon vide existant rechargé.', { icon: '♻️' });
+      return;
     }
 
     const now = new Date();
@@ -469,7 +475,7 @@ export default function MissionOrder() {
       toast.success('Mission supprimée de la liste.');
     } catch (err) {
       logger.error('Erreur suppression:', err);
-      alert('Erreur lors de la suppression.');
+      toast.error('Erreur lors de la suppression.');
     }
   };
 
@@ -502,7 +508,11 @@ export default function MissionOrder() {
   };
 
   const handleExportPDF = async () => {
-    if (effectiveIsCertified && state.currentMissionId && !state.currentMissionId.startsWith('temp')) {
+    if (
+      effectiveIsCertified &&
+      state.currentMissionId &&
+      !state.currentMissionId.startsWith('temp')
+    ) {
       try {
         await missionApprovalService.downloadCertifiedMissionDocument(
           state.currentMissionId,
@@ -652,9 +662,8 @@ export default function MissionOrder() {
         const workflowMissionId = syncResult?.assignedId || state.currentMissionId!;
         const updated = await db.missions.get(workflowMissionId);
         if (updated) handleLoadMission(updated);
-        const refreshedWorkflow = await missionApprovalService.getMissionApprovalHistory(
-          workflowMissionId
-        );
+        const refreshedWorkflow =
+          await missionApprovalService.getMissionApprovalHistory(workflowMissionId);
         setWorkflow(refreshedWorkflow as any);
         toast.success('Mission envoyée en approbation');
       } else {
@@ -705,10 +714,15 @@ export default function MissionOrder() {
         return;
       }
 
+      const actionId = globalThis.crypto?.randomUUID?.() || `mission-certify-${Date.now()}`;
+      const idempotencyKey = `mission-certify:${state.currentMissionId}:${actionId}`;
       const result = await missionApprovalService.approveMissionStep(
         state.currentMissionId,
         approvalRole,
-        `Validation finale confirmée par ${user?.name || approvalRole}`
+        `Validation finale confirmée par ${user?.name || approvalRole}`,
+        undefined,
+        pinCode,
+        idempotencyKey
       );
 
       if (result) {
@@ -720,13 +734,15 @@ export default function MissionOrder() {
             ...((updatedMission.data || {}) as Record<string, unknown>),
             version: updatedMission.version || 1,
             updatedAt: updatedMission.updatedAt || new Date().toISOString(),
-            orderNumber: updatedMission.orderNumber || (updatedMission.data?.orderNumber as string | undefined),
+            orderNumber:
+              updatedMission.orderNumber ||
+              (updatedMission.data?.orderNumber as string | undefined),
           };
           await db.missions.put(normalizedMission as any);
           missionState.loadMission(
             normalizedMission.id,
             normalizedMission as any,
-            ((updatedMission.data?.members as MissionMember[]) || state.members),
+            (updatedMission.data?.members as MissionMember[]) || state.members,
             normalizedMission.version,
             normalizedMission.updatedAt,
             state.auditTrail
@@ -739,6 +755,11 @@ export default function MissionOrder() {
           }
         }
         missionState.addAuditEntry('Validation finale enregistrée', user?.name || approvalRole);
+        logger.info('[MissionOrder] certification completed', {
+          actionId,
+          missionId: state.currentMissionId,
+          approvalRole,
+        });
         await fetchWorkflow();
         toast.success('Mission validée avec succès.');
       } else {
@@ -752,7 +773,6 @@ export default function MissionOrder() {
     }
   };
 
-
   // Si la mission est signée/certifiée, forcer l'onglet rapport
   useEffect(() => {
     if ((effectiveIsCertified || effectiveIsSubmitted) && activeTab !== 'report') {
@@ -764,7 +784,12 @@ export default function MissionOrder() {
   if (state.isSimplifiedMode) {
     // Générer un planning terrain à partir du planning validé si la mission est signée/certifiée et qu'il n'y a pas de rapport terrain
     let missionData = state.formData as MissionOrderData;
-    if ((effectiveIsCertified || effectiveIsSubmitted) && (!missionData.reportDays || missionData.reportDays.length === 0) && Array.isArray(missionData.planning) && missionData.planning.length > 0) {
+    if (
+      (effectiveIsCertified || effectiveIsSubmitted) &&
+      (!missionData.reportDays || missionData.reportDays.length === 0) &&
+      Array.isArray(missionData.planning) &&
+      missionData.planning.length > 0
+    ) {
       // Générer un rapport terrain basé sur le planning validé
       missionData = {
         ...missionData,
@@ -781,7 +806,7 @@ export default function MissionOrder() {
             photos: [], // Nouveau format: tableau de photos
             location: undefined,
           };
-        })
+        }),
       };
     }
     return (
@@ -820,59 +845,62 @@ export default function MissionOrder() {
         <div className="relative z-50 mb-4 sm:mb-6 lg:mb-8 no-print">
           <WidgetErrorBoundary title="Barre d'Actions">
             <MissionOrderActionBar
-            formData={state.formData}
-            currentMissionId={state.currentMissionId}
-            role={role || ''}
-            isSyncing={state.isSyncing}
-            isSyncingServer={state.isSyncingServer}
-            isDirty={missionState.isDirty}
-            syncStatus={state.syncStatus}
-            showTemplates={showTemplates}
-            showConfig={showConfig}
-            showAudit={showAudit}
-            PERMISSIONS={PERMISSIONS}
-            peut={peut}
-            onNewMission={handleNewMission}
-            onDuplicate={handleDuplicate}
-            onTemplateToggle={() => setShowTemplates(!showTemplates)}
-            onTemplateSelect={handleTemplateSelect}
-            onConfigToggle={() => setShowConfig(!showConfig)}
-            onToggleFeature={handleToggleFeature}
-            onToggleSimplifiedMode={missionState.setSimplifiedMode}
-            isSimplifiedMode={state.isSimplifiedMode}
-            onNotificationsToggle={() => setShowNotifications(!showNotifications)}
-            onAuditToggle={() => setShowAudit(!showAudit)}
-            unreadCount={unreadCount}
-            onSyncFromServer={handleSyncFromServer}
-            onArchive={() => {}}
-            onDelete={() => {}}
-            onExportExcel={handleExportExcel}
-            onExportWord={handleExportWord}
-            onExportPDF={handleExportPDF}
-            onSave={() => {
-              if (window.confirm('Voulez-vous enregistrer les modifications ?')) {
-                handleSaveMission();
-              }
-            }}
-            onValidate={handleMissionCertify}
-            onSubmit={handleMissionSubmit}
-            isCertified={effectiveIsCertified}
-            isSubmitted={effectiveIsSubmitted}
-          />
+              formData={state.formData}
+              currentMissionId={state.currentMissionId}
+              role={role || ''}
+              isSyncing={state.isSyncing}
+              isSyncingServer={state.isSyncingServer}
+              isDirty={missionState.isDirty}
+              syncStatus={state.syncStatus}
+              showTemplates={showTemplates}
+              showConfig={showConfig}
+              showAudit={showAudit}
+              PERMISSIONS={PERMISSIONS}
+              peut={peut}
+              onNewMission={handleNewMission}
+              onDuplicate={handleDuplicate}
+              onTemplateToggle={() => setShowTemplates(!showTemplates)}
+              onTemplateSelect={handleTemplateSelect}
+              onConfigToggle={() => setShowConfig(!showConfig)}
+              onToggleFeature={handleToggleFeature}
+              onToggleSimplifiedMode={missionState.setSimplifiedMode}
+              isSimplifiedMode={state.isSimplifiedMode}
+              onNotificationsToggle={() => setShowNotifications(!showNotifications)}
+              onAuditToggle={() => setShowAudit(!showAudit)}
+              unreadCount={unreadCount}
+              onSyncFromServer={handleSyncFromServer}
+              onArchive={() => {}}
+              onDelete={() => {}}
+              onExportExcel={handleExportExcel}
+              onExportWord={handleExportWord}
+              onExportPDF={handleExportPDF}
+              onSave={() => {
+                if (window.confirm('Voulez-vous enregistrer les modifications ?')) {
+                  handleSaveMission();
+                }
+              }}
+              onValidate={handleMissionCertify}
+              onSubmit={handleMissionSubmit}
+              isCertified={effectiveIsCertified}
+              isSubmitted={effectiveIsSubmitted}
+            />
           </WidgetErrorBoundary>
         </div>
 
         {/* GRILLE PRINCIPALE */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 relative z-10">
-
           {/* SIDEBAR GAUCHE : collapsible + sticky + persistante */}
           {!focusMode && (
-            <div className={`no-print transition-all duration-300 ${sidebarCollapsed ? 'lg:col-span-1' : 'lg:col-span-2'}`}>
+            <div
+              className={`no-print transition-all duration-300 ${sidebarCollapsed ? 'lg:col-span-1' : 'lg:col-span-2'}`}
+            >
               <div className="sticky top-4">
                 {/* Toggle button */}
                 <div className="flex items-center justify-between mb-3">
                   {!sidebarCollapsed && (
-                    <span className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Missions</span>
+                    <span className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">
+                      Missions
+                    </span>
                   )}
                   <button
                     onClick={toggleSidebar}
@@ -897,19 +925,32 @@ export default function MissionOrder() {
                   <div className="space-y-1.5 max-h-[80vh] overflow-y-auto custom-scrollbar">
                     {savedMissions.slice(0, 30).map((m: any) => {
                       const isActive = state.currentMissionId === m.id;
-                      const isCert = m.isCertified || m.data?.isCertified || m.status === 'certified' || m.status === 'approuvee';
-                      const isPend = !isCert && (m.isSubmitted || m.data?.isSubmitted || m.status === 'soumise');
-                      const dotColor = isCert ? 'bg-emerald-500' : isPend ? 'bg-amber-500' : 'bg-slate-400';
+                      const isCert =
+                        m.isCertified ||
+                        m.data?.isCertified ||
+                        m.status === 'certified' ||
+                        m.status === 'approuvee';
+                      const isPend =
+                        !isCert && (m.isSubmitted || m.data?.isSubmitted || m.status === 'soumise');
+                      const dotColor = isCert
+                        ? 'bg-emerald-500'
+                        : isPend
+                          ? 'bg-amber-500'
+                          : 'bg-slate-400';
                       return (
                         <button
                           key={m.id}
                           onClick={() => handleLoadMission(m)}
                           title={m.purpose || m.title || m.orderNumber || 'Mission'}
                           className={`w-full flex items-center justify-center p-2 rounded-xl transition-all ${
-                            isActive ? 'bg-indigo-600 shadow-lg shadow-indigo-500/20' : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 hover:border-indigo-400/40'
+                            isActive
+                              ? 'bg-indigo-600 shadow-lg shadow-indigo-500/20'
+                              : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 hover:border-indigo-400/40'
                           }`}
                         >
-                          <span className={`w-2 h-2 rounded-full ${isActive ? 'bg-white' : dotColor}`} />
+                          <span
+                            className={`w-2 h-2 rounded-full ${isActive ? 'bg-white' : dotColor}`}
+                          />
                         </button>
                       );
                     })}
@@ -920,14 +961,18 @@ export default function MissionOrder() {
           )}
 
           {/* CONTENU PRINCIPAL */}
-          <div className={`transition-all duration-300 ${
-            focusMode ? 'lg:col-span-12' : sidebarCollapsed ? 'lg:col-span-11' : 'lg:col-span-10'
-          }`}>
+          <div
+            className={`transition-all duration-300 ${
+              focusMode ? 'lg:col-span-12' : sidebarCollapsed ? 'lg:col-span-11' : 'lg:col-span-10'
+            }`}
+          >
             <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 sm:gap-6 items-start">
               {/* FORMULAIRE : s'étend selon le focus mode */}
-              <div className={`space-y-4 sm:space-y-6 ${
-                focusMode ? 'xl:col-span-12' : 'xl:col-span-9'
-              }`}>
+              <div
+                className={`space-y-4 sm:space-y-6 ${
+                  focusMode ? 'xl:col-span-12' : 'xl:col-span-9'
+                }`}
+              >
                 {(effectiveIsSubmitted || effectiveIsCertified) && (
                   <MissionApprovalStatusBanner workflow={workflow} />
                 )}
@@ -969,7 +1014,7 @@ export default function MissionOrder() {
                   </div>
                   {/* Bouton Focus Mode */}
                   <button
-                    onClick={() => setFocusMode(f => !f)}
+                    onClick={() => setFocusMode((f) => !f)}
                     className={`shrink-0 p-3 rounded-xl transition-all border shadow-sm ${
                       focusMode
                         ? 'bg-indigo-600 text-white border-indigo-500 shadow-lg shadow-indigo-500/20'
@@ -985,53 +1030,53 @@ export default function MissionOrder() {
 
                 {activeTab === 'prep' && (
                   <>
-                <MissionInfoSection
-                  formData={state.formData}
-                  isReadOnly={effectiveIsCertified || effectiveIsSubmitted}
-                  onUpdateField={missionState.updateFormField}
-                />
-                {state.formData.features?.map && (
-                  <section className="glass-card !p-0 !rounded-[2.5rem] overflow-hidden border-2 border-indigo-500/10 shadow-2xl shadow-indigo-500/5">
-                    <div className="p-4 bg-slate-900 border-b border-white/5 flex justify-between items-center">
-                      <h2 className="!text-[9px] font-black uppercase tracking-widest text-indigo-400">
-                        Preview SIG Intelligente
-                      </h2>
-                      <MapPin size={14} className="text-indigo-400" />
-                    </div>
-                    <MissionMiniMap region={state.formData.region || ''} />
-                  </section>
-                )}
+                    <MissionInfoSection
+                      formData={state.formData}
+                      isReadOnly={effectiveIsCertified || effectiveIsSubmitted}
+                      onUpdateField={missionState.updateFormField}
+                    />
+                    {state.formData.features?.map && (
+                      <section className="glass-card !p-0 !rounded-[2.5rem] overflow-hidden border-2 border-indigo-500/10 shadow-2xl shadow-indigo-500/5">
+                        <div className="p-4 bg-slate-900 border-b border-white/5 flex justify-between items-center">
+                          <h2 className="!text-[9px] font-black uppercase tracking-widest text-indigo-400">
+                            Preview SIG Intelligente
+                          </h2>
+                          <MapPin size={14} className="text-indigo-400" />
+                        </div>
+                        <MissionMiniMap region={state.formData.region || ''} />
+                      </section>
+                    )}
 
-                <MissionTeamEditor
-                  members={state.members}
-                  isReadOnly={effectiveIsCertified || effectiveIsSubmitted}
-                  onUpdateMember={handleMemberUpdate}
-                  onRemoveMember={handleRemoveMember}
-                  onAddMember={handleAddMember}
-                  onSyncDuration={() => {}}
-                />
+                    <MissionTeamEditor
+                      members={state.members}
+                      isReadOnly={effectiveIsCertified || effectiveIsSubmitted}
+                      onUpdateMember={handleMemberUpdate}
+                      onRemoveMember={handleRemoveMember}
+                      onAddMember={handleAddMember}
+                      onSyncDuration={() => {}}
+                    />
 
-                <MissionItineraryEditor
-                  planning={state.formData.planning || []}
-                  isReadOnly={effectiveIsCertified || effectiveIsSubmitted}
-                  onUpdateStep={(i: number, text: string) => {
-                    const newPlanning = [...(state.formData.planning || [])];
-                    newPlanning[i] = text;
-                    missionState.updateFormField('planning', newPlanning);
-                  }}
-                  onAddStep={() => {
-                    const newPlanning = [...(state.formData.planning || []), ''];
-                    missionState.updateFormField('planning', newPlanning);
-                  }}
-                  onRemoveStep={(i: number) => {
-                    const newPlanning = (state.formData.planning || []).filter(
-                      (_, idx) => idx !== i
-                    );
-                    missionState.updateFormField('planning', newPlanning);
-                  }}
-                />
+                    <MissionItineraryEditor
+                      planning={state.formData.planning || []}
+                      isReadOnly={effectiveIsCertified || effectiveIsSubmitted}
+                      onUpdateStep={(i: number, text: string) => {
+                        const newPlanning = [...(state.formData.planning || [])];
+                        newPlanning[i] = text;
+                        missionState.updateFormField('planning', newPlanning);
+                      }}
+                      onAddStep={() => {
+                        const newPlanning = [...(state.formData.planning || []), ''];
+                        missionState.updateFormField('planning', newPlanning);
+                      }}
+                      onRemoveStep={(i: number) => {
+                        const newPlanning = (state.formData.planning || []).filter(
+                          (_, idx) => idx !== i
+                        );
+                        missionState.updateFormField('planning', newPlanning);
+                      }}
+                    />
 
-                {showAudit && <MissionAuditTrail entries={state.auditTrail} />}
+                    {showAudit && <MissionAuditTrail entries={state.auditTrail} />}
                   </>
                 )}
 
@@ -1043,7 +1088,7 @@ export default function MissionOrder() {
                         <span className="w-2 h-8 bg-emerald-500 rounded-full shadow-lg shadow-emerald-500/20"></span>
                         Rapport Post-Mission
                       </h3>
-                      
+
                       <div className="space-y-4">
                         <div>
                           <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
@@ -1051,7 +1096,9 @@ export default function MissionOrder() {
                           </label>
                           <textarea
                             value={state.formData.reportObservations || ''}
-                            onChange={(e) => missionState.updateFormField('reportObservations', e.target.value)}
+                            onChange={(e) =>
+                              missionState.updateFormField('reportObservations', e.target.value)
+                            }
                             rows={6}
                             className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                             placeholder="Saisissez les observations et conclusions de la mission..."
@@ -1077,7 +1124,10 @@ export default function MissionOrder() {
                               onClick={() => {
                                 missionState.updateFormField('reportingMode', 'narrative');
                                 if (!state.formData.narrativeReport) {
-                                  missionState.updateFormField('narrativeReport', KAFFRINE_TEMPLATE);
+                                  missionState.updateFormField(
+                                    'narrativeReport',
+                                    KAFFRINE_TEMPLATE
+                                  );
                                 }
                               }}
                               className={`flex-1 py-2 px-4 rounded-lg text-xs font-bold transition-all ${
@@ -1097,9 +1147,14 @@ export default function MissionOrder() {
                               Rapports journaliers
                             </label>
                             {(state.formData.reportDays || []).map((day: any, idx: number) => (
-                              <div key={idx} className="mb-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                              <div
+                                key={idx}
+                                className="mb-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700"
+                              >
                                 <div className="flex justify-between items-center mb-2">
-                                  <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400">Jour {idx + 1}</span>
+                                  <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400">
+                                    Jour {idx + 1}
+                                  </span>
                                   <button
                                     onClick={() => {
                                       const days = [...(state.formData.reportDays || [])];
@@ -1126,35 +1181,55 @@ export default function MissionOrder() {
                                 {/* Zone photos responsive */}
                                 <div className="mt-2">
                                   <div className="flex flex-wrap gap-2 items-center">
-                                    {(day.photos || []).map((photo: import('./mission/core/missionTypes').MissionPhoto, pidx: number) => (
-                                      <div key={photo.id || pidx} className="relative group w-16 h-16 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-900 flex flex-col items-center justify-center">
-                                        <img
-                                          src={photo.data || photo.url}
-                                          alt={`Photo ${pidx + 1}`}
-                                          className="object-cover w-full h-2/3"
-                                        />
-                                        <input
-                                          type="text"
-                                          value={photo.comment || ''}
-                                          onChange={e => {
-                                            const days = [...(state.formData.reportDays || [])];
-                                            const photos = [...(days[idx].photos || [])];
-                                            photos[pidx] = { ...photos[pidx], comment: e.target.value };
-                                            days[idx].photos = photos as import('./mission/core/missionTypes').MissionPhoto[];
-                                            missionState.updateFormField('reportDays', days);
-                                          }}
-                                          placeholder="Commentaire..."
-                                          className="w-full px-1 py-0.5 text-[10px] rounded-b bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-indigo-400 photo-comment-input"
-                                        />
-                                      </div>
-                                    ))}
+                                    {(day.photos || []).map(
+                                      (
+                                        photo: import('./mission/core/missionTypes').MissionPhoto,
+                                        pidx: number
+                                      ) => (
+                                        <div
+                                          key={photo.id || pidx}
+                                          className="relative group w-16 h-16 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-900 flex flex-col items-center justify-center"
+                                        >
+                                          <img
+                                            src={photo.data || photo.url}
+                                            alt={`Photo ${pidx + 1}`}
+                                            className="object-cover w-full h-2/3"
+                                          />
+                                          <input
+                                            type="text"
+                                            value={photo.comment || ''}
+                                            onChange={(e) => {
+                                              const days = [...(state.formData.reportDays || [])];
+                                              const photos = [...(days[idx].photos || [])];
+                                              photos[pidx] = {
+                                                ...photos[pidx],
+                                                comment: e.target.value,
+                                              };
+                                              days[idx].photos =
+                                                photos as import('./mission/core/missionTypes').MissionPhoto[];
+                                              missionState.updateFormField('reportDays', days);
+                                            }}
+                                            placeholder="Commentaire..."
+                                            className="w-full px-1 py-0.5 text-[10px] rounded-b bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-indigo-400 photo-comment-input"
+                                          />
+                                        </div>
+                                      )
+                                    )}
                                   </div>
                                 </div>
                               </div>
                             ))}
                             <button
                               onClick={() => {
-                                const days = [...(state.formData.reportDays || []), { day: (state.formData.reportDays?.length || 0) + 1, title: 'Nouveau jour', notes: '', photos: [] }];
+                                const days = [
+                                  ...(state.formData.reportDays || []),
+                                  {
+                                    day: (state.formData.reportDays?.length || 0) + 1,
+                                    title: 'Nouveau jour',
+                                    notes: '',
+                                    photos: [],
+                                  },
+                                ];
                                 missionState.updateFormField('reportDays', days);
                               }}
                               className="mt-2 px-4 py-2 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 rounded-lg text-sm font-bold hover:bg-emerald-200 dark:hover:bg-emerald-900/50"
@@ -1169,7 +1244,9 @@ export default function MissionOrder() {
                             </label>
                             <textarea
                               value={state.formData.narrativeReport || ''}
-                              onChange={(e) => missionState.updateFormField('narrativeReport', e.target.value)}
+                              onChange={(e) =>
+                                missionState.updateFormField('narrativeReport', e.target.value)
+                              }
                               rows={15}
                               className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-mono text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                               placeholder="Rédigez votre synthèse globale ici..."
@@ -1205,14 +1282,23 @@ export default function MissionOrder() {
                         <span className="w-2 h-8 bg-indigo-500 rounded-full shadow-lg shadow-indigo-500/20"></span>
                         Archivage & Rapports
                       </h3>
-                      
+
                       <div className="mb-4">
                         <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
                           Sélectionner une mission
                         </label>
                         <select
                           value={selectedArchiveMission || ''}
-                          onChange={(e) => setSelectedArchiveMission(e.target.value || null)}
+                          onChange={(e) => {
+                            const value = e.target.value || null;
+                            setSelectedArchiveMission(value);
+                            if (value) {
+                              const mission = savedMissions.find((m: any) => m.id === value);
+                              if (mission) {
+                                handleLoadMission(mission);
+                              }
+                            }
+                          }}
                           className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
                           title="Sélectionner une mission archivée"
                         >
@@ -1225,7 +1311,13 @@ export default function MissionOrder() {
                             })
                             .map((m: any) => {
                               const missionDate = m.date || m.missionDate || m.createdAt || null;
-                              const dateStr = missionDate ? new Date(missionDate).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Date non définie';
+                              const dateStr = missionDate
+                                ? new Date(missionDate).toLocaleDateString('fr-FR', {
+                                    day: '2-digit',
+                                    month: 'short',
+                                    year: 'numeric',
+                                  })
+                                : 'Date non définie';
                               return (
                                 <option key={m.id} value={m.id}>
                                   {m.title || m.orderNumber || 'Sans titre'} - {dateStr}
@@ -1241,117 +1333,147 @@ export default function MissionOrder() {
                           <p className="text-sm">Sélectionnez une mission pour voir ses rapports</p>
                         </div>
                       ) : (
-                      <div className="space-y-4">
-                        {/* Rapport Word Post-Mission */}
-                        <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
-                                <span className="text-xl">📄</span>
+                        <div className="space-y-4">
+                          <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/10 p-3">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-indigo-200">
+                              Mission active pour export
+                            </p>
+                            <p className="mt-1 text-sm font-bold text-white">
+                              {String(
+                                selectedArchiveMissionData?.title ||
+                                  selectedArchiveMissionData?.orderNumber ||
+                                  selectedArchiveMission ||
+                                  ''
+                              )}
+                            </p>
+                          </div>
+                          {/* Rapport Word Post-Mission */}
+                          <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+                                  <span className="text-xl">📄</span>
+                                </div>
+                                <div>
+                                  <p className="text-sm font-bold text-slate-900 dark:text-white">
+                                    Rapport Post-Mission (Word)
+                                  </p>
+                                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                                    Généré le {new Date().toLocaleDateString('fr-FR')}
+                                  </p>
+                                </div>
                               </div>
-                              <div>
-                                <p className="text-sm font-bold text-slate-900 dark:text-white">Rapport Post-Mission (Word)</p>
-                                <p className="text-xs text-slate-500 dark:text-slate-400">Généré le {new Date().toLocaleDateString('fr-FR')}</p>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={handleExportReportWord}
+                                  disabled={!selectedArchiveMission}
+                                  className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg flex items-center gap-1"
+                                >
+                                  <span>⬇️</span> Télécharger
+                                </button>
+                                <button
+                                  onClick={() => setActiveTab('report')}
+                                  className="px-3 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 text-xs font-bold rounded-lg"
+                                >
+                                  Modifier
+                                </button>
                               </div>
-                            </div>
-                            <div className="flex gap-2">
-                              <button
-                                onClick={handleExportReportWord}
-                                className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg flex items-center gap-1"
-                              >
-                                <span>⬇️</span> Télécharger
-                              </button>
-                              <button
-                                onClick={() => setActiveTab('report')}
-                                className="px-3 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 text-xs font-bold rounded-lg"
-                              >
-                                Modifier
-                              </button>
                             </div>
                           </div>
-                        </div>
 
-                        {/* Ordre de Mission Word */}
-                        <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg flex items-center justify-center">
-                                <span className="text-xl">📋</span>
+                          {/* Ordre de Mission Word */}
+                          <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg flex items-center justify-center">
+                                  <span className="text-xl">📋</span>
+                                </div>
+                                <div>
+                                  <p className="text-sm font-bold text-slate-900 dark:text-white">
+                                    Ordre de Mission
+                                  </p>
+                                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                                    Document officiel
+                                  </p>
+                                </div>
                               </div>
-                              <div>
-                                <p className="text-sm font-bold text-slate-900 dark:text-white">Ordre de Mission</p>
-                                <p className="text-xs text-slate-500 dark:text-slate-400">Document officiel</p>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={handleExportWord}
+                                  disabled={!selectedArchiveMission}
+                                  className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg flex items-center gap-1"
+                                >
+                                  <span>⬇️</span> Télécharger
+                                </button>
+                                <button
+                                  onClick={() => setActiveTab('prep')}
+                                  className="px-3 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 text-xs font-bold rounded-lg"
+                                >
+                                  Modifier
+                                </button>
                               </div>
-                            </div>
-                            <div className="flex gap-2">
-                              <button
-                                onClick={handleExportWord}
-                                className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg flex items-center gap-1"
-                              >
-                                <span>⬇️</span> Télécharger
-                              </button>
-                              <button
-                                onClick={() => setActiveTab('prep')}
-                                className="px-3 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 text-xs font-bold rounded-lg"
-                              >
-                                Modifier
-                              </button>
                             </div>
                           </div>
-                        </div>
 
-                        {/* PDF Rapport */}
-                        <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 bg-red-100 dark:bg-red-900/30 rounded-lg flex items-center justify-center">
-                                <span className="text-xl">📑</span>
+                          {/* PDF Rapport */}
+                          <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-red-100 dark:bg-red-900/30 rounded-lg flex items-center justify-center">
+                                  <span className="text-xl">📑</span>
+                                </div>
+                                <div>
+                                  <p className="text-sm font-bold text-slate-900 dark:text-white">
+                                    Rapport PDF
+                                  </p>
+                                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                                    Version imprimable
+                                  </p>
+                                </div>
                               </div>
-                              <div>
-                                <p className="text-sm font-bold text-slate-900 dark:text-white">Rapport PDF</p>
-                                <p className="text-xs text-slate-500 dark:text-slate-400">Version imprimable</p>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={handleExportPDF}
+                                  disabled={!selectedArchiveMission}
+                                  className="px-3 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg flex items-center gap-1"
+                                >
+                                  <span>⬇️</span> Télécharger
+                                </button>
+                                <button
+                                  onClick={() => setActiveTab('report')}
+                                  className="px-3 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 text-xs font-bold rounded-lg"
+                                >
+                                  Modifier
+                                </button>
                               </div>
-                            </div>
-                            <div className="flex gap-2">
-                              <button
-                                onClick={handleExportPDF}
-                                className="px-3 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg flex items-center gap-1"
-                              >
-                                <span>⬇️</span> Télécharger
-                              </button>
-                              <button
-                                onClick={() => setActiveTab('report')}
-                                className="px-3 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 text-xs font-bold rounded-lg"
-                              >
-                                Modifier
-                              </button>
                             </div>
                           </div>
-                        </div>
 
-                        {/* Statut de la mission */}
-                        <div className="mt-6 p-4 bg-indigo-950/30 dark:bg-indigo-900/20 rounded-xl border border-indigo-500/20 dark:border-indigo-800">
-                          <div className="flex items-center gap-3">
-                            <div className={`w-3 h-3 rounded-full ${effectiveIsCertified ? 'bg-emerald-500' : effectiveIsSubmitted ? 'bg-blue-500' : 'bg-amber-500'}`}></div>
-                            <div>
-                              <p className="text-sm font-bold text-white dark:text-indigo-300">
-                                {effectiveIsCertified
-                                  ? 'Mission validée et archivée'
-                                  : effectiveIsSubmitted
-                                  ? 'Mission soumise en attente de validation'
-                                  : 'En attente de soumission'}
-                              </p>
-                              <p className="text-xs text-indigo-400/70 dark:text-indigo-400">
-                                {effectiveIsCertified
-                                  ? `Archivée le ${new Date().toLocaleDateString('fr-FR')}`
-                                  : effectiveIsSubmitted
-                                  ? 'Validation finale attendue par la direction ou l’administration'
-                                  : 'Enregistrez puis soumettez la mission pour démarrer le workflow'}
-                              </p>
+                          {/* Statut de la mission */}
+                          <div className="mt-6 p-4 bg-indigo-950/30 dark:bg-indigo-900/20 rounded-xl border border-indigo-500/20 dark:border-indigo-800">
+                            <div className="flex items-center gap-3">
+                              <div
+                                className={`w-3 h-3 rounded-full ${effectiveIsCertified ? 'bg-emerald-500' : effectiveIsSubmitted ? 'bg-blue-500' : 'bg-amber-500'}`}
+                              ></div>
+                              <div>
+                                <p className="text-sm font-bold text-white dark:text-indigo-300">
+                                  {effectiveIsCertified
+                                    ? 'Mission validée et archivée'
+                                    : effectiveIsSubmitted
+                                      ? 'Mission soumise en attente de validation'
+                                      : 'En attente de soumission'}
+                                </p>
+                                <p className="text-xs text-indigo-400/70 dark:text-indigo-400">
+                                  {effectiveIsCertified
+                                    ? `Archivée le ${new Date().toLocaleDateString('fr-FR')}`
+                                    : effectiveIsSubmitted
+                                      ? 'Validation finale attendue par la direction ou l’administration'
+                                      : 'Enregistrez puis soumettez la mission pour démarrer le workflow'}
+                                </p>
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </div>
                       )}
                     </div>
                   </div>
@@ -1360,30 +1482,30 @@ export default function MissionOrder() {
 
               {/* WIDGETS : COL-3 sticky – masqués en focus mode */}
               {!focusMode && (
-              <div className="xl:col-span-3 space-y-4 sm:space-y-6">
-                <div className="sticky top-4">
-                <MissionBudgetPanel
-                  totalFrais={totalFrais}
-                  projectBudget={projectBudget}
-                  members={state.members}
-                />
-              <WidgetErrorBoundary title="Indicateurs de Statut">
-                <MissionStatusWidget
-                  data={state.formData}
-                  members={state.members}
-                  isCertified={effectiveIsCertified}
-                  isSubmitted={effectiveIsSubmitted}
-                  isSyncing={state.isSyncingServer}
-                  lastSync={state.lastSavedAt || 'Synchronisé'}
-                  version={state.version}
-                  isDirty={missionState.isDirty}
-                  healthScore={healthScore}
-                  healthStatus={healthStatus}
-                  budgetVariance={budgetVariance}
-                />
-              </WidgetErrorBoundary>
+                <div className="xl:col-span-3 space-y-4 sm:space-y-6">
+                  <div className="sticky top-4">
+                    <MissionBudgetPanel
+                      totalFrais={totalFrais}
+                      projectBudget={projectBudget}
+                      members={state.members}
+                    />
+                    <WidgetErrorBoundary title="Indicateurs de Statut">
+                      <MissionStatusWidget
+                        data={state.formData}
+                        members={state.members}
+                        isCertified={effectiveIsCertified}
+                        isSubmitted={effectiveIsSubmitted}
+                        isSyncing={state.isSyncingServer}
+                        lastSync={state.lastSavedAt || 'Synchronisé'}
+                        version={state.version}
+                        isDirty={missionState.isDirty}
+                        healthScore={healthScore}
+                        healthStatus={healthStatus}
+                        budgetVariance={budgetVariance}
+                      />
+                    </WidgetErrorBoundary>
+                  </div>
                 </div>
-              </div>
               )}
             </div>
           </div>
@@ -1434,10 +1556,10 @@ export default function MissionOrder() {
                 </button>
                 <button
                   onClick={confirmCertification}
-                  disabled={pinCode.length < 4}
+                  disabled={pinCode.length < 4 || isSubmitting}
                   className="flex-1 py-3.5 px-4 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 disabled:dark:bg-slate-700 text-white rounded-2xl font-black shadow-lg shadow-emerald-500/30 transition-all disabled:opacity-50"
                 >
-                  Valider
+                  {isSubmitting ? 'Validation...' : 'Valider'}
                 </button>
               </div>
             </div>

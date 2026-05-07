@@ -45,25 +45,8 @@ export const useAuditData = (households: Household[] | undefined) => {
 
     auditWorker.addEventListener('message', handler);
 
-    const workerData = households
-      .filter(
-        (h: any) =>
-          h.location?.coordinates &&
-          !isNaN(Number(h.location.coordinates[0])) &&
-          !isNaN(Number(h.location.coordinates[1]))
-      )
-      .map((h: any) => ({
-        id: h.id,
-        lat: Number(h.location.coordinates[1]),
-        lon: Number(h.location.coordinates[0]),
-        village: h.village || h.departement || '',
-        region: h.region || '',
-        status: h.status,
-        owner: h.owner,
-        name: h.name,
-        phone: h.phone,
-        location: h.location,
-      }));
+    // Réutiliser buildAuditWorkerData au lieu de dupliquer la logique de mapping
+    const workerData = buildAuditWorkerData(households);
 
     auditWorker.postMessage({ households: workerData });
 

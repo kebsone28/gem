@@ -68,7 +68,7 @@ export const useWebSockets = () => {
       logger.error('❌ Erreur de connexion WebSocket:', error.message);
     });
 
-    socket.on('connect', () => {
+    const handleConnect = () => {
       logger.log('✅ Connecté aux WebSockets (Status: ONLINE)');
       syncEventBus.initSocket(socket);
 
@@ -81,11 +81,14 @@ export const useWebSockets = () => {
 
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('socket:ready'));
+        // Déclencher un re-sync des données stale après reconnexion
+        window.dispatchEvent(new CustomEvent('sync:force'));
       }
-    });
+    };
 
-    // Handle generic real-time notifications via standard event bus
-    socket.on('notification', (data: any) => {
+    socket.on('connect', handleConnect);
+
+    const handleNotification = (data: any) => {
       // Ignorer les notifications destinées à UN AUTRE utilisateur spécifiquement
       if (data?.data?.user && data.data.user !== user?.id) {
         return;
@@ -93,21 +96,24 @@ export const useWebSockets = () => {
 
       // Propager proprement au système de notification React (NotificationCenter / Toaster)
       syncEventBus.emit('notification', data);
-    });
+    };
 
-    socket.on('disconnect', () => {
+    socket.on('notification', handleNotification);
+
+    const handleDisconnect = () => {
       logger.log('🔌 Déconnecté des WebSockets');
-    });
+    };
+    socket.on('disconnect', handleDisconnect);
 
     // Nettoyage strict des LISTENERS au démontage
     // (Le composant est démonté, on enlève SES écouteurs pour éviter les doublons au prochain mount)
     return () => {
       initializedRef.current = false;
       if (socket) {
-        socket.off('connect');
+        socket.off('connect', handleConnect);
         socket.off('connect_error');
-        socket.off('notification');
-        socket.off('disconnect');
+        socket.off('notification', handleNotification);
+        socket.off('disconnect', handleDisconnect);
       }
     };
   }, [user]);

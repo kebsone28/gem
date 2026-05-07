@@ -23,7 +23,15 @@ import {
   optimiserConfigurationsEquipes,
   buildRoleCapacities,
 } from '../hooks/useSimulationModel';
-import type { TeamConfig, RoleKey, ModeOptimisation, Scenario, CustomCharge, VehicleMode, PaymentMode } from '../hooks/useSimulationModel';
+import type {
+  TeamConfig,
+  RoleKey,
+  ModeOptimisation,
+  Scenario,
+  CustomCharge,
+  VehicleMode,
+  PaymentMode,
+} from '../hooks/useSimulationModel';
 import * as safeStorage from '../utils/safeStorage';
 import { db } from '../store/db';
 import apiClient from '../api/client';
@@ -90,11 +98,69 @@ export default function Simulation() {
   const [workDaysPerWeek, setWorkDaysPerWeek] = useState(6); // 5 or 6 days normally
   const [holidaysCount, setHolidaysCount] = useState(14); // Estimated Senegalese holidays
 
+  // Charger l'état de simulation depuis localStorage au montage
+  useEffect(() => {
+    const projectId = project?.id;
+    if (projectId) {
+      const saved = safeStorage.getItem(`sim_state_${projectId}`);
+      if (saved) {
+        try {
+          const state = JSON.parse(saved);
+          if (state.tauxImprevu !== undefined) setTauxImprevu(state.tauxImprevu);
+          if (state.customCharges) setCustomCharges(state.customCharges);
+          if (state.workDaysPerWeek)
+            setWorkDaysPerWeek(Math.min(7, Math.max(1, state.workDaysPerWeek || 5)));
+          if (state.isHivernage !== undefined) setIsHivernage(state.isHivernage);
+          if (state.tauxRejet !== undefined) setTauxRejet(state.tauxRejet);
+        } catch (e) {
+          console.warn('[Simulation] Failed to restore state');
+        }
+      }
+    }
+  }, [project?.id]);
+
+  // Sauvegarder l'état de simulation dans localStorage quand il change
+  useEffect(() => {
+    const projectId = project?.id;
+    if (projectId) {
+      const state = { tauxImprevu, customCharges, workDaysPerWeek, isHivernage, tauxRejet };
+      safeStorage.setItem(`sim_state_${projectId}`, JSON.stringify(state));
+    }
+  }, [project?.id, tauxImprevu, customCharges, workDaysPerWeek, isHivernage, tauxRejet]);
+
   const [teamConfigs, setTeamConfigs] = useState<Record<RoleKey, TeamConfig>>({
-    macon: { count: 25, paymentMode: 'task', rate: 29000, vehiclesPerTeam: 0, vehicleMode: 'rental', vehicleRate: 25000 },
-    network: { count: 6, paymentMode: 'task', rate: 4025, vehiclesPerTeam: 0, vehicleMode: 'rental', vehicleRate: 25000 },
-    interior: { count: 41, paymentMode: 'task', rate: 15000, vehiclesPerTeam: 0, vehicleMode: 'rental', vehicleRate: 25000 },
-    controller: { count: 6, paymentMode: 'day', rate: 6000, vehiclesPerTeam: 1, vehicleMode: 'rental', vehicleRate: 30000 },
+    macon: {
+      count: 25,
+      paymentMode: 'task',
+      rate: 29000,
+      vehiclesPerTeam: 0,
+      vehicleMode: 'rental',
+      vehicleRate: 25000,
+    },
+    network: {
+      count: 6,
+      paymentMode: 'task',
+      rate: 4025,
+      vehiclesPerTeam: 0,
+      vehicleMode: 'rental',
+      vehicleRate: 25000,
+    },
+    interior: {
+      count: 41,
+      paymentMode: 'task',
+      rate: 15000,
+      vehiclesPerTeam: 0,
+      vehicleMode: 'rental',
+      vehicleRate: 25000,
+    },
+    controller: {
+      count: 6,
+      paymentMode: 'day',
+      rate: 6000,
+      vehiclesPerTeam: 1,
+      vehicleMode: 'rental',
+      vehicleRate: 30000,
+    },
   });
 
   const [isOptimized, setIsOptimized] = useState(false);
@@ -104,11 +170,13 @@ export default function Simulation() {
   const [showApplyModal, setShowApplyModal] = useState(false);
 
   // Custom Charges Handlers
-  const addCustomCharge = () => setCustomCharges([...customCharges, { id: Date.now().toString(), label: '', amount: 0 }]);
+  const addCustomCharge = () =>
+    setCustomCharges([...customCharges, { id: Date.now().toString(), label: '', amount: 0 }]);
   const updateCustomCharge = (id: string, field: keyof CustomCharge, value: string | number) => {
-    setCustomCharges(customCharges.map(c => c.id === id ? { ...c, [field]: value } : c));
+    setCustomCharges(customCharges.map((c) => (c.id === id ? { ...c, [field]: value } : c)));
   };
-  const removeCustomCharge = (id: string) => setCustomCharges(customCharges.filter(c => c.id !== id));
+  const removeCustomCharge = (id: string) =>
+    setCustomCharges(customCharges.filter((c) => c.id !== id));
 
   const exporterPlanningPDF = useCallback((scenario: Scenario) => {
     try {
@@ -242,6 +310,7 @@ export default function Simulation() {
   const handleApplyConfiguration = useCallback(async () => {
     if (!optimizedConfigs) return;
 
+    const createdIds: string[] = [];
     try {
       const activeProjectId = safeStorage.getItem('active_project_id');
       if (activeProjectId) {
@@ -293,6 +362,7 @@ export default function Simulation() {
               const res = await apiClient.post('/teams', parentPayload);
               parentTeamId = res.data.id;
               parentTeamPath = res.data.path;
+              createdIds.push(res.data.id);
               await (db as any).teams.put(res.data);
               existingTeams.push(res.data);
               createdCount++;
@@ -324,6 +394,7 @@ export default function Simulation() {
               };
               try {
                 const res = await apiClient.post('/teams', payload);
+                createdIds.push(res.data.id);
                 await (db as any).teams.put(res.data);
                 existingTeams.push(res.data);
               } catch (apiErr) {
@@ -340,8 +411,20 @@ export default function Simulation() {
         }
       }
     } catch (err) {
-      logger.error('[Simulation] Erreur génération équipe', err);
-      toast.error('Erreur lors de la création auto des équipes');
+      logger.error('[Simulation] Apply failed, rolling back...', err);
+
+      // Rollback : supprimer toutes les équipes déjà créées sur le serveur et en local
+      for (const id of createdIds) {
+        try {
+          await apiClient.delete(`/teams/${id}`);
+          await (db as any).teams.delete(id);
+        } catch (delErr) {
+          console.warn('[Simulation] Rollback failed for team:', id, delErr);
+        }
+      }
+
+      toast.error("Erreur lors de l'application. Les changements ont été annulés.");
+      return;
     }
 
     setTeamConfigs(optimizedConfigs);
@@ -395,6 +478,12 @@ export default function Simulation() {
   );
 
   const handleOptimize = useCallback(() => {
+    const hasAnyTeam = Object.values(teamConfigs).some((c) => c.count > 0);
+    if (!hasAnyTeam) {
+      toast.error('Configurez au moins une équipe avant de lancer la simulation.');
+      return;
+    }
+
     const optimized = optimiserConfigurationsEquipes({
       teamConfigs,
       ROLE_CAPACITY: roleCapacities,
@@ -506,11 +595,15 @@ export default function Simulation() {
     []
   );
 
+  const handleWorkDaysChange = useCallback((value: number) => {
+    setWorkDaysPerWeek(Math.min(7, Math.max(1, value || 5)));
+  }, []);
+
   return (
     <PageContainer className="min-h-screen">
       <PageHeader
         title="Moteur d'Optimisation"
-        subtitle="Réduisez les coûts de revient et maximisez la marge nette à l'aide de l'IA."
+        subtitle="Réduisez les coûts de revient et maximisez la marge nette grâce à l'optimiseur."
         icon={<Activity size={24} className="text-purple-600" />}
         accent="simulation"
         actions={
@@ -518,7 +611,7 @@ export default function Simulation() {
             <div className="inline-flex items-center gap-1.5 rounded-full border border-purple-500/25 bg-purple-500/10 px-3 py-1 text-purple-200">
               <div className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse" />
               <span className="text-[10px] font-semibold uppercase tracking-[0.14em] leading-none">
-                IA Active
+                Optimisation Active
               </span>
             </div>
             <button
@@ -526,7 +619,7 @@ export default function Simulation() {
               className={`${DASHBOARD_PRIMARY_BUTTON} w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 shadow-emerald-600/25 text-white`}
             >
               <Zap className="group-hover:animate-pulse" size={20} />
-              LANCER L'IA D'OPTIMISATION
+              OPTIMISER LA CONFIGURATION
             </button>
             {isOptimized && optimizedConfigs && (
               <button
@@ -546,7 +639,9 @@ export default function Simulation() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             {/* Controls Sidebar */}
             <aside className="lg:col-span-4 space-y-6">
-              <div className={`${DASHBOARD_SECTION_SURFACE} ${DASHBOARD_ACCENT_SURFACE.violet} border-slate-200/10 p-6`}>
+              <div
+                className={`${DASHBOARD_SECTION_SURFACE} ${DASHBOARD_ACCENT_SURFACE.violet} border-slate-200/10 p-6`}
+              >
                 <h3 className="text-sm font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.2em] flex items-center justify-between">
                   Paramètres Actuels
                   {isOptimized && (
@@ -575,7 +670,9 @@ export default function Simulation() {
                             {fmtFCFA(devis.totalPlanned)}
                           </span>
                         </div>
-                        <p className="text-[10px] text-slate-500 dark:text-slate-500">Le montant total facturé au client final.</p>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-500">
+                          Le montant total facturé au client final.
+                        </p>
                       </div>
 
                       <div className="flex flex-col gap-1 pt-3 border-t border-slate-200 dark:border-slate-700/50">
@@ -589,7 +686,11 @@ export default function Simulation() {
                           disabled={isOptimized}
                           value={coutMaterielReel === 0 ? '' : coutMaterielReel}
                           placeholder="0"
-                          onChange={(e) => setCoutMaterielReel(e.target.value === '' ? 0 : parseInt(e.target.value) || 0)}
+                          onChange={(e) =>
+                            setCoutMaterielReel(
+                              e.target.value === '' ? 0 : parseInt(e.target.value) || 0
+                            )
+                          }
                           className="bg-slate-900 dark:bg-slate-950 border border-slate-800 dark:border-slate-700 rounded-lg p-2 text-sm text-white dark:text-white focus:outline-none focus:border-indigo-500 w-full"
                         />
                         <p className="text-[10px] text-slate-500 dark:text-slate-500">
@@ -613,7 +714,9 @@ export default function Simulation() {
 
                         <div className="space-y-2 mt-2">
                           {customCharges.length === 0 ? (
-                            <p className="text-[10px] text-slate-500 italic">Aucune charge supplémentaire.</p>
+                            <p className="text-[10px] text-slate-500 italic">
+                              Aucune charge supplémentaire.
+                            </p>
                           ) : (
                             customCharges.map((charge) => (
                               <div key={charge.id} className="flex gap-2 items-center">
@@ -622,7 +725,9 @@ export default function Simulation() {
                                   disabled={isOptimized}
                                   placeholder="Intitulé (ex: Loyer)"
                                   value={charge.label}
-                                  onChange={(e) => updateCustomCharge(charge.id, 'label', e.target.value)}
+                                  onChange={(e) =>
+                                    updateCustomCharge(charge.id, 'label', e.target.value)
+                                  }
                                   className="bg-slate-900 dark:bg-slate-950 border border-slate-800 dark:border-slate-700 rounded-lg p-2 text-xs text-white dark:text-white focus:outline-none focus:border-indigo-500 w-28"
                                 />
                                 <button
@@ -639,7 +744,9 @@ export default function Simulation() {
 
                         {customCharges.length > 0 && (
                           <div className="flex justify-between items-center mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                            <span className="text-[10px] font-bold text-slate-500 uppercase">Total Charges</span>
+                            <span className="text-[10px] font-bold text-slate-500 uppercase">
+                              Total Charges
+                            </span>
                             <span className="text-xs font-black text-slate-700 dark:text-slate-300">
                               {fmtFCFA(customCharges.reduce((sum, c) => sum + c.amount, 0))}
                             </span>
@@ -752,7 +859,11 @@ export default function Simulation() {
                                 value={config.rate === 0 ? '' : config.rate}
                                 placeholder="0"
                                 onChange={(e) =>
-                                  updateTeamConfig(role, 'rate', e.target.value === '' ? 0 : parseInt(e.target.value) || 0)
+                                  updateTeamConfig(
+                                    role,
+                                    'rate',
+                                    e.target.value === '' ? 0 : parseInt(e.target.value) || 0
+                                  )
                                 }
                                 className="bg-slate-900 dark:bg-slate-900 border border-slate-800 dark:border-slate-800 rounded-lg p-1.5 text-xs text-white dark:text-white focus:outline-none focus:border-indigo-500"
                               />
@@ -760,7 +871,9 @@ export default function Simulation() {
                             <div className="flex flex-col gap-1 col-span-2">
                               <label className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-widest font-black flex items-center justify-between">
                                 Véhicules & Logistique
-                                <span className="text-blue-400 font-bold">{config.vehiclesPerTeam} véh./éq.</span>
+                                <span className="text-blue-400 font-bold">
+                                  {config.vehiclesPerTeam} véh./éq.
+                                </span>
                               </label>
                               <div className="flex gap-2 items-center">
                                 <input
@@ -771,14 +884,26 @@ export default function Simulation() {
                                   max="5"
                                   value={config.vehiclesPerTeam === 0 ? '' : config.vehiclesPerTeam}
                                   placeholder="0"
-                                  onChange={(e) => updateTeamConfig(role, 'vehiclesPerTeam', e.target.value === '' ? 0 : parseInt(e.target.value) || 0)}
+                                  onChange={(e) =>
+                                    updateTeamConfig(
+                                      role,
+                                      'vehiclesPerTeam',
+                                      e.target.value === '' ? 0 : parseInt(e.target.value) || 0
+                                    )
+                                  }
                                   className="w-12 bg-slate-900 dark:bg-slate-900 border border-slate-800 dark:border-slate-800 rounded-lg p-1.5 text-xs text-white dark:text-white focus:outline-none focus:border-indigo-500"
                                 />
                                 <select
                                   title="Mode de véhicule"
                                   disabled={isOptimized || config.vehiclesPerTeam === 0}
                                   value={config.vehicleMode}
-                                  onChange={(e) => updateTeamConfig(role, 'vehicleMode', e.target.value as VehicleMode)}
+                                  onChange={(e) =>
+                                    updateTeamConfig(
+                                      role,
+                                      'vehicleMode',
+                                      e.target.value as VehicleMode
+                                    )
+                                  }
                                   className="bg-slate-900 dark:bg-slate-900 border border-slate-800 dark:border-slate-800 rounded-lg p-1.5 text-xs text-white dark:text-white focus:outline-none focus:border-indigo-500 flex-1"
                                 >
                                   <option value="rental">Location (/j)</option>
@@ -791,7 +916,13 @@ export default function Simulation() {
                                   type="number"
                                   value={config.vehicleRate === 0 ? '' : config.vehicleRate}
                                   placeholder="0"
-                                  onChange={(e) => updateTeamConfig(role, 'vehicleRate', e.target.value === '' ? 0 : parseInt(e.target.value) || 0)}
+                                  onChange={(e) =>
+                                    updateTeamConfig(
+                                      role,
+                                      'vehicleRate',
+                                      e.target.value === '' ? 0 : parseInt(e.target.value) || 0
+                                    )
+                                  }
                                   className="w-20 bg-slate-900 dark:bg-slate-900 border border-slate-800 dark:border-slate-800 rounded-lg p-1.5 text-xs text-white dark:text-white focus:outline-none focus:border-indigo-500"
                                 />
                               </div>
@@ -1031,7 +1162,7 @@ export default function Simulation() {
                         <option value="low_logistics">Logistique optimisée</option>
                       </select>
                       <div className="text-xs text-slate-500 dark:text-slate-400 mt-2">
-                        Choisissez la stratégie de calcul de l'IA.
+                        Choisissez la stratégie de calcul de l'optimiseur.
                       </div>
                     </div>
 
@@ -1116,7 +1247,7 @@ export default function Simulation() {
                           id="work-days"
                           title="Jours travaillés par semaine"
                           value={workDaysPerWeek}
-                          onChange={(e) => setWorkDaysPerWeek(parseInt(e.target.value))}
+                          onChange={(e) => handleWorkDaysChange(parseInt(e.target.value))}
                           className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
                         >
                           <option value="5">5 Jours (Lun-Ven)</option>
@@ -1356,17 +1487,13 @@ export default function Simulation() {
 
                 <div className="space-y-4 mt-6">
                   <div className="flex justify-between items-center bg-slate-900/50 p-4 rounded-2xl border border-slate-800">
-                    <span className="text-slate-400">
-                      Acompte perçu ({tauxAcompte}%)
-                    </span>
+                    <span className="text-slate-400">Acompte perçu ({tauxAcompte}%)</span>
                     <span className="text-white font-mono font-bold">
                       {fmtFCFA(activeScenario.tresorerieInitiale)}
                     </span>
                   </div>
                   <div className="flex justify-between items-center bg-slate-900/50 p-4 rounded-2xl border border-slate-800">
-                    <span className="text-slate-400">
-                      Besoin FdR (Salaires + Logistique)
-                    </span>
+                    <span className="text-slate-400">Besoin FdR (Salaires + Logistique)</span>
                     <span className="text-rose-400 font-mono font-bold">
                       {fmtFCFA(activeScenario.depenseMax)}
                     </span>
@@ -1475,17 +1602,15 @@ export default function Simulation() {
                       <Users size={20} />
                     </div>
                     <div>
-                      <h4 className="text-white font-bold mb-1">
-                        Impact sur la rentabilité
-                      </h4>
+                      <h4 className="text-white font-bold mb-1">Impact sur la rentabilité</h4>
                       <p className="text-sm text-indigo-200/70 font-medium">
                         Les autres équipes produisent plus vite que l'équipe "
                         {ROLE_LABELS[activeScenario.goulotDetroits as keyof typeof ROLE_LABELS]}".
                         Elles connaîtront des temps d'attente qui vous coûtent en salaires et en
                         location de véhicules sans avancement.
                         {isOptimized
-                          ? " L'IA a lissé ces écarts au maximum !"
-                          : " Cliquez sur 'Lancer l'IA d'optimisation' pour équilibrer la chaîne de production."}
+                          ? " L'optimiseur a lissé ces écarts au maximum !"
+                          : " Cliquez sur 'Optimiser la configuration' pour équilibrer la chaîne de production."}
                       </p>
                     </div>
                   </div>
@@ -1555,17 +1680,13 @@ export default function Simulation() {
 
                       <div className="space-y-3">
                         <div className="flex justify-between text-sm">
-                          <span className="text-slate-400">
-                            Capacité journalière:
-                          </span>
+                          <span className="text-slate-400">Capacité journalière:</span>
                           <span className="font-medium text-white">
                             {planning.capaciteJournaliere} ménages/jour
                           </span>
                         </div>
                         <div className="flex justify-between text-sm">
-                          <span className="text-slate-400">
-                            Durée effective:
-                          </span>
+                          <span className="text-slate-400">Durée effective:</span>
                           <span className="font-medium text-white">
                             {planning.dureeJours} jours
                           </span>
@@ -1573,9 +1694,7 @@ export default function Simulation() {
                       </div>
 
                       <div className="mt-4 pt-4 border-t border-slate-800">
-                        <h5 className="text-sm font-medium text-white mb-2">
-                          Tâches principales:
-                        </h5>
+                        <h5 className="text-sm font-medium text-white mb-2">Tâches principales:</h5>
                         <ul className="text-sm text-slate-400 space-y-1">
                           {planning.taches.map((tache, index) => (
                             <li key={index} className="flex items-start gap-2">
@@ -1633,9 +1752,7 @@ export default function Simulation() {
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-slate-400">Coût</span>
-                    <span className="font-bold text-white">
-                      {fmtFCFA(activeScenario.cost)}
-                    </span>
+                    <span className="font-bold text-white">{fmtFCFA(activeScenario.cost)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-slate-400">Marge</span>

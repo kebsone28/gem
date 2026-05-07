@@ -43,8 +43,11 @@ const MODE_COLORS: Record<AIEngineMode, string> = {
   CLAUDE_ONLY: 'border-orange-500 bg-orange-900/20',
 };
 
+import { isMasterAdminEmail } from '../../utils/roleUtils';
+
 export default function AIEngineAdminPanel({ user, onClose }: Props) {
-  const isMaster = user.role === 'ADMIN_PROQUELEC' || user.email === 'admingem';
+  const isMaster =
+    user.role === 'ADMIN_PROQUELEC' || isMasterAdminEmail(user.email as string | null);
 
   const [config, setConfig] = useState<AIEngineSettings>(getAIEngineConfig());
   const [saved, setSaved] = useState(false);
@@ -123,9 +126,9 @@ export default function AIEngineAdminPanel({ user, onClose }: Props) {
               Backend Securise
             </p>
             <p className="mt-2 text-sm leading-relaxed text-cyan-50">
-              Les fournisseurs IA, les secrets API et les appels Vision/Claude sont désormais
-              gérés côté serveur. Cette console pilote seulement le mode d’orchestration local du
-              mentor et sa mémoire de conversation.
+              Les fournisseurs IA, les secrets API et les appels Vision/Claude sont désormais gérés
+              côté serveur. Cette console pilote seulement le mode d’orchestration local du mentor
+              et sa mémoire de conversation.
             </p>
           </section>
 
@@ -251,7 +254,8 @@ export default function AIEngineAdminPanel({ user, onClose }: Props) {
                   <div>
                     <p className="text-sm font-bold text-white">Historique gardé localement</p>
                     <p className="text-[10px] text-gray-500">
-                      Nombre maximum de tours renvoyés au backend pour conserver le fil de la conversation.
+                      Nombre maximum de tours renvoyés au backend pour conserver le fil de la
+                      conversation.
                     </p>
                   </div>
                   <p className="text-lg font-black text-purple-400">{config.maxHistoryTurns}</p>

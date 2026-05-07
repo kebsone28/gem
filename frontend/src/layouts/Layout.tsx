@@ -26,11 +26,17 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   useWebSockets();
   useBackgroundSync();
   const location = useLocation();
-  const isTerrainImmersive = location.pathname === '/terrain';
+  const isTerrainImmersive =
+    location.pathname === '/terrain' || location.pathname === '/communication';
+  // Sur /communication on cache entièrement la sidebar pour que le chat
+  // occupe tout l'écran sans décalage ni barre latérale de navigation.
+  const hideSidebar = location.pathname === '/communication';
   const [sidebarMode, setSidebarMode] = useState<'wide' | 'compact' | 'rail'>(() => {
     if (typeof window === 'undefined') return 'wide';
     const storedMode = window.localStorage.getItem('gem-sidebar-mode');
-    return storedMode === 'compact' || storedMode === 'rail' || storedMode === 'wide' ? storedMode : 'wide';
+    return storedMode === 'compact' || storedMode === 'rail' || storedMode === 'wide'
+      ? storedMode
+      : 'wide';
   });
 
   useEffect(() => {
@@ -38,7 +44,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
     const syncMode = () => {
       const storedMode = window.localStorage.getItem('gem-sidebar-mode');
-      setSidebarMode(storedMode === 'compact' || storedMode === 'rail' || storedMode === 'wide' ? storedMode : 'wide');
+      setSidebarMode(
+        storedMode === 'compact' || storedMode === 'rail' || storedMode === 'wide'
+          ? storedMode
+          : 'wide'
+      );
     };
 
     const handleModeChange = (event: Event) => {
@@ -83,9 +93,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       : 'relative min-h-full px-3 py-4 sm:px-4 sm:py-5 lg:px-6 lg:py-6';
 
   return (
-    <div className="gem-app-shell flex flex-col overflow-hidden bg-[linear-gradient(135deg,#020817_0%,#071226_38%,#0a1833_72%,#0d2041_100%)] text-[#E8F0FF] md:flex-row">
+    // h-dvh : viewport height réel (respecte la barre d'adresse mobile)
+    // overflow-hidden : empêche tout débordement — le scroll est géré à l'intérieur de <main>
+    <div className="gem-app-shell flex h-dvh flex-col overflow-hidden bg-[linear-gradient(135deg,#020817_0%,#071226_38%,#0a1833_72%,#0d2041_100%)] text-[#E8F0FF] md:flex-row">
       <CommandPalette />
-      <Sidebar />
+      {/* Sidebar cachée automatiquement sur /communication pour libérer tout l'écran */}
+      {!hideSidebar && <Sidebar />}
 
       <main
         className="relative flex min-w-0 flex-1 flex-col overflow-hidden bg-[radial-gradient(circle_at_top,#17305f_0%,#0a1630_18%,#060c1c_58%,#030712_100%)]"
@@ -107,7 +120,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         )}
 
         {isTerrainImmersive ? (
-          <div className="relative z-10 flex-1 overflow-hidden">
+          // Mode immersif (terrain + communication) : contenu pleine hauteur, pas de scroll
+          <div className="relative z-10 flex h-full flex-1 flex-col overflow-hidden">
             {children}
           </div>
         ) : (

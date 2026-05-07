@@ -1,6 +1,5 @@
-﻿ 
-import React, { createContext, useContext, useCallback } from 'react';
-import * as safeStorage from '../utils/safeStorage';
+﻿import React, { createContext, useContext, useCallback } from 'react';
+import { useSyncStore } from '../store/syncStore';
 
 interface SyncContextType {
   lastSync: string | null;
@@ -16,7 +15,8 @@ const SyncContext = createContext<SyncContextType | undefined>(undefined);
  * to prevent root-level re-render loops.
  */
 export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const lastSync = safeStorage.getItem('last_sync_timestamp');
+  const lastSyncAt = useSyncStore((s) => s.lastSyncAt);
+  const lastSync = lastSyncAt ? new Date(lastSyncAt).toLocaleString('fr-FR') : null;
 
   const forceSync = useCallback(async () => {
     // Dispatches a manual sync event that BackgroundServices can pick up

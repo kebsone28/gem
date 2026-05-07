@@ -233,6 +233,38 @@ run_prisma_migrate() {
       return $?
     fi
 
+    if printf '%s' "$PRISMA_MIGRATE_OUTPUT" | grep -q 'P3009'; then
+      echo '[DEPLOY] Prisma P3009 detected: resolving failed migration.'
+      set +e
+      FAILED_MIG=$(printf '%s' "$PRISMA_MIGRATE_OUTPUT" | grep 'failed' | grep -oE '20[0-9]{12}_[a-zA-Z0-9_]+|20[0-9]{6}_[a-zA-Z0-9_]+|20[0-9]+_[a-zA-Z0-9_]+' | head -n 1)
+      set -e
+      if [ -n "$FAILED_MIG" ]; then
+        echo "[DEPLOY] Resolving failed migration: $FAILED_MIG as applied first..."
+        npx prisma migrate resolve --applied "$FAILED_MIG" --schema=prisma/schema.prisma || npx prisma migrate resolve --rolled-back "$FAILED_MIG" --schema=prisma/schema.prisma
+        echo '[DEPLOY] Re-running Prisma migrate deploy after resolving P3009.'
+        npx prisma migrate deploy --schema=prisma/schema.prisma
+        return $?
+      else
+        echo '[DEPLOY] Could not extract migration name from Prisma output.'
+      fi
+    fi
+
+    if printf '%s' "$PRISMA_MIGRATE_OUTPUT" | grep -q 'P3018'; then
+      echo '[DEPLOY] Prisma P3018 detected: migration failed to apply (likely table already exists).'
+      set +e
+      FAILED_MIG=$(printf '%s' "$PRISMA_MIGRATE_OUTPUT" | grep 'Migration name:' | awk '{print $3}' | head -n 1)
+      set -e
+      if [ -n "$FAILED_MIG" ]; then
+        echo "[DEPLOY] Resolving failed migration: $FAILED_MIG as applied..."
+        npx prisma migrate resolve --applied "$FAILED_MIG" --schema=prisma/schema.prisma
+        echo '[DEPLOY] Re-running Prisma migrate deploy after resolving P3018.'
+        npx prisma migrate deploy --schema=prisma/schema.prisma
+        return $?
+      else
+        echo '[DEPLOY] Could not extract migration name from Prisma output.'
+      fi
+    fi
+
     return $PRISMA_MIGRATE_EXIT
   fi
 }

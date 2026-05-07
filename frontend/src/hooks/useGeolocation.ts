@@ -1,5 +1,4 @@
-﻿ 
-import { useState, useEffect, useCallback, useRef } from 'react';
+﻿import { useState, useEffect, useCallback, useRef } from 'react';
 import toast from 'react-hot-toast';
 import logger from '../utils/logger';
 
@@ -11,7 +10,7 @@ export const useGeolocation = (onLocationFound?: (loc: [number, number]) => void
   const onLocationFoundRef = useRef(onLocationFound);
   useEffect(() => {
     onLocationFoundRef.current = onLocationFound;
-  });
+  }, [onLocationFound]);
 
   // Do not request geolocation on mount. Browsers increasingly require
   // a direct user gesture, and auto-requesting here causes console violations.
@@ -36,7 +35,7 @@ export const useGeolocation = (onLocationFound?: (loc: [number, number]) => void
       (pos) => {
         const newLoc: [number, number] = [pos.coords.longitude, pos.coords.latitude];
         setUserLocation(newLoc);
-        if (onLocationFound) onLocationFound(newLoc);
+        if (onLocationFoundRef.current) onLocationFoundRef.current(newLoc);
         toast.success('✅ Position trouvée ! ' + newLoc.map((v) => v.toFixed(4)).join(', '));
         logger.debug('✅ Position obtenue:', newLoc);
       },
@@ -60,7 +59,7 @@ export const useGeolocation = (onLocationFound?: (loc: [number, number]) => void
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     );
-  }, [onLocationFound]);
+  }, []);
 
   return {
     userLocation,

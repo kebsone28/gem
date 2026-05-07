@@ -5,20 +5,37 @@ import { getOrganizationId, getUserId, getProjectId } from '../context/storage.j
 import { isPrismaSchemaDriftError } from './prismaCompat.js';
 
 if (process.env.NODE_ENV !== 'production') {
-    console.log('🔧 Initializing Prisma for DB:', config.dbUrl);
+  console.log('🔧 Initializing Prisma for DB:', config.dbUrl);
 }
 
 export const basePrisma = new PrismaClient();
 
 // Modèles sans colonne organizationId: ne jamais y injecter de filtre tenant.
-const EXCLUDED_MODELS = ['Organization', 'SystemLog', 'AuditLog', 'Role', 'Permission', 'RolePermission', 'Region', 'MissionApprovalWorkflow', 'MissionApprovalStep', 'UserMemory', 'FormationModule', 'FormationSession', 'FormationSessionModule', 'FormationParticipant', 'FormationPlanningHistory', 'FormationPlannerState', 'spatial_ref_sys'];
+// Formation junction tables (FormationSessionModule, FormationParticipant) have no direct
+// organizationId — they are accessed only via FormationSession (which IS org-scoped).
+// Main formation tables now have organizationId and are auto-filtered by the middleware.
+const EXCLUDED_MODELS = [
+  'Organization',
+  'SystemLog',
+  'AuditLog',
+  'Role',
+  'Permission',
+  'RolePermission',
+  'Region',
+  'MissionApprovalWorkflow',
+  'MissionApprovalStep',
+  'UserMemory',
+  'FormationSessionModule', // junction table — no direct org column
+  'FormationParticipant', // junction table — no direct org column
+  'spatial_ref_sys',
+];
 
 // Liste des modèles filtrés par projectId si présent dans le contexte
 const PROJECT_LEVEL_MODELS = ['Zone', 'Team', 'Mission', 'PerformanceLog', 'Alert'];
 
 /**
  * CLIENT PRISMA ÉTENDU - ISOLATION MULTI-TENANTE & AUDIT AUTOMATIQUE
- * 
+ *
  * Security Strategy:
  * - READ operations (findMany, findFirst, count): automatic tenant filtering via organizationId.
  * - WRITE operations (create, createMany): automatic organizationId injection.
@@ -43,7 +60,7 @@ export const prisma = basePrisma.$extends({
           // ISOLATION PROJET (Si configurée dans le contexte)
           // ✅ NOTE: Household est intentionnellement EXCLU du filtrage auto-projet.
           if (projId && PROJECT_LEVEL_MODELS.includes(model)) {
-              filter.projectId = projId;
+            filter.projectId = projId;
           }
 
           // Injection automatique sur les lectures multi-résultats
@@ -59,12 +76,12 @@ export const prisma = basePrisma.$extends({
             const modelName = model.charAt(0).toLowerCase() + model.slice(1);
             return basePrisma[modelName][newOp](args);
           }
-          
+
           // Injection sur les créations
           if (['create', 'createMany'].includes(operation)) {
             const inject = { ...filter };
             if (Array.isArray(args.data)) {
-              args.data = args.data.map(d => ({ ...d, ...inject }));
+              args.data = args.data.map((d) => ({ ...d, ...inject }));
             } else {
               args.data = { ...args.data, ...inject };
             }
@@ -85,32 +102,43 @@ export const prisma = basePrisma.$extends({
         const result = await query(args);
 
         // AUDIT AUTOMATIQUE (fire-and-forget)
-        if (['create', 'update', 'delete', 'updateMany', 'deleteMany', 'upsert'].includes(operation) && model !== 'AuditLog') {
+        if (
+          ['create', 'update', 'delete', 'updateMany', 'deleteMany', 'upsert'].includes(
+            operation
+          ) &&
+          model !== 'AuditLog'
+        ) {
           if (orgId && userId) {
-            basePrisma.auditLog.create({
-              data: {
-                userId,
-                organizationId: orgId,
-                action: `AUTO_${operation.toUpperCase()}_${model.toUpperCase()}`,
-                resource: model,
-                resourceId: result?.id || (args.where?.id) || null,
-                details: { 
-                  operation,
-                  fields: args.data ? Object.keys(args.data) : (args.where ? Object.keys(args.where) : [])
+            basePrisma.auditLog
+              .create({
+                data: {
+                  userId,
+                  organizationId: orgId,
+                  action: `AUTO_${operation.toUpperCase()}_${model.toUpperCase()}`,
+                  resource: model,
+                  resourceId: result?.id || args.where?.id || null,
+                  details: {
+                    operation,
+                    fields: args.data
+                      ? Object.keys(args.data)
+                      : args.where
+                        ? Object.keys(args.where)
+                        : [],
+                  },
+                },
+              })
+              .catch((e) => {
+                if (!isPrismaSchemaDriftError(e)) {
+                  console.warn(`[PRISMA_AUDIT] Fail: ${e.message}`);
                 }
-              }
-            }).catch((e) => {
-              if (!isPrismaSchemaDriftError(e)) {
-                console.warn(`[PRISMA_AUDIT] Fail: ${e.message}`);
-              }
-            });
+              });
           }
         }
 
         return result;
-      }
-    }
-  }
+      },
+    },
+  },
 });
 
 export default prisma;

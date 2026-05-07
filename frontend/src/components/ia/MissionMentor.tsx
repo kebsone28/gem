@@ -31,6 +31,7 @@ import type { AuditLog, Household, Team } from '../../utils/types';
 import AIEngineAdminPanel from './AIEngineAdminPanel';
 import AIPremiumMessage from './AIPremiumMessage';
 import AITrainingStudio from './AITrainingStudio';
+import { isMasterAdminEmail } from '../../utils/roleUtils';
 
 interface MissionMentorProps {
   stats: MissionStats | null;
@@ -75,7 +76,7 @@ export const MissionMentor: React.FC<MissionMentorProps> = ({
     [stats, auditLogs, households, teams, regionalSummaries]
   );
   const canManageAI =
-    user?.role === 'ADMIN_PROQUELEC' || user?.role === 'ADMIN' || user?.email === 'admingem';
+    user?.role === 'ADMIN_PROQUELEC' || user?.role === 'ADMIN' || isMasterAdminEmail(user?.email);
 
   const speakResponse = (message: string) => {
     if (isMuted || !('speechSynthesis' in window)) return;
@@ -176,7 +177,7 @@ export const MissionMentor: React.FC<MissionMentorProps> = ({
       { key: 'referenceRule', label: 'Regle de reference', value: sheet?.referenceRule },
       { key: 'mainRisk', label: 'Risque principal', value: sheet?.mainRisk },
       { key: 'immediateAction', label: 'Action immediate', value: sheet?.immediateAction },
-    ].filter(entry => Boolean(entry.value));
+    ].filter((entry) => Boolean(entry.value));
 
   // Auto-scroll à chaque nouveau message - ajusté pour montrer le début du message IA
   useEffect(() => {
@@ -282,7 +283,9 @@ export const MissionMentor: React.FC<MissionMentorProps> = ({
           );
           setHistory((prev) => [...prev, resp]);
 
-          speakResponse("Analyse terminée. J'ai détecté des points d'attention sur votre installation.");
+          speakResponse(
+            "Analyse terminée. J'ai détecté des points d'attention sur votre installation."
+          );
         } catch (err) {
           logger.error('[MissionMentor] Vision analysis failed', err);
           setHistory((prev) => [
@@ -338,7 +341,10 @@ export const MissionMentor: React.FC<MissionMentorProps> = ({
   return (
     <>
       {/* FLOATING BUTTON (GEM-MINT) */}
-      <div className="fixed right-4 bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:bottom-10 sm:right-10 z-[1000] no-print" title="Ouvrir le Mentor GEM-MINT">
+      <div
+        className="fixed right-4 bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:bottom-10 sm:right-10 z-[1000] no-print"
+        title="Ouvrir le Mentor GEM-MINT"
+      >
         <motion.button
           whileHover={{ scale: 1.1, rotate: 5 }}
           whileTap={{ scale: 0.9 }}
@@ -348,7 +354,10 @@ export const MissionMentor: React.FC<MissionMentorProps> = ({
           className="w-12 h-12 sm:w-16 sm:h-16 bg-slate-900/90 hover:bg-blue-500 rounded-2xl sm:rounded-3xl shadow-2xl shadow-blue-600/25 flex items-center justify-center border border-white/10 group relative overflow-hidden backdrop-blur-xl"
         >
           <div className="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent animate-pulse" />
-          <Bot size={20} className="text-white group-hover:scale-110 transition-transform sm:size-7" />
+          <Bot
+            size={20}
+            className="text-white group-hover:scale-110 transition-transform sm:size-7"
+          />
           {!isOpen && history.length === 0 && (
             <span className="absolute -top-1 -right-1 flex h-4 w-4">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
@@ -529,7 +538,7 @@ export const MissionMentor: React.FC<MissionMentorProps> = ({
                             )}
                           </div>
                           <div className="grid gap-3 sm:grid-cols-2">
-                            {controlSheetEntries(resp.controlSheet).map(entry => (
+                            {controlSheetEntries(resp.controlSheet).map((entry) => (
                               <div
                                 key={entry.key}
                                 className="rounded-2xl border border-white/8 bg-white/[0.03] px-3 py-3"
@@ -548,15 +557,15 @@ export const MissionMentor: React.FC<MissionMentorProps> = ({
 
                       {resp.recommendedAction &&
                         resp.recommendedAction !== resp.controlSheet?.immediateAction && (
-                        <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/10 px-4 py-3">
-                          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-300">
-                            Action recommandee
-                          </p>
-                          <p className="mt-2 text-[12px] font-semibold leading-relaxed text-cyan-50">
-                            {resp.recommendedAction}
-                          </p>
-                        </div>
-                      )}
+                          <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/10 px-4 py-3">
+                            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-300">
+                              Action recommandee
+                            </p>
+                            <p className="mt-2 text-[12px] font-semibold leading-relaxed text-cyan-50">
+                              {resp.recommendedAction}
+                            </p>
+                          </div>
+                        )}
 
                       {resp.images && resp.images.length > 0 && (
                         <div className="grid gap-4 mt-2">

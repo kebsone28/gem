@@ -1,10 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import type { User, UserRole } from '../utils/types';
 import logger from '../utils/logger';
 import * as safeStorage from '../utils/safeStorage';
 import { useAuthStore, normalizeRole } from '../store/authStore';
 import apiClient from '../api/client';
+import { isMasterAdminEmail } from '../utils/roleUtils';
 
 interface AuthContextType {
   user: User | null;
@@ -43,10 +44,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         const parsed = JSON.parse(storedUser);
         // 🛠️ Auto-réparation du rôle corrompu
-        if (parsed && parsed.email === 'admingem' && !parsed.role) {
+        if (parsed && isMasterAdminEmail(parsed.email) && !parsed.role) {
           parsed.role = 'ADMIN_PROQUELEC';
           safeStorage.setItem('user', JSON.stringify(parsed));
-          logger.log('🛠️ [AUTH] Rôle Admin restauré pour admingem');
+          logger.log('🛠️ [AUTH] Rôle Admin restauré pour le super-administrateur');
         }
         return parsed;
       } catch (e) {
@@ -59,6 +60,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return null;
   });
 
+  const isRefreshingRef = useRef(false);
+
   const applySessionUser = useCallback((nextUser: User) => {
     setUser(nextUser);
     useAuthStore.getState().setUser(nextUser);
@@ -66,7 +69,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const refreshSession = useCallback(async () => {
-    if (!safeStorage.getItem('access_token')) return;
+    if (!safeStorage.getItem('access_token') || isRefreshingRef.current) return;
+    isRefreshingRef.current = true;
     try {
       const { data } = await apiClient.post('auth/refresh');
       if (data?.accessToken) {
@@ -77,6 +81,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } catch (err) {
       logger.warn('[AUTH] Session refresh skipped/failed', err);
+    } finally {
+      isRefreshingRef.current = false;
     }
   }, [applySessionUser]);
 
@@ -89,6 +95,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       safeStorage.removeItem('user');
       safeStorage.removeItem('active_project_id');
       safeStorage.removeItem('last_sync_timestamp');
+      useAuthStore.getState().logout();
       setUser(null);
     };
     const handleTokenRefreshed = (event: Event) => {
@@ -143,8 +150,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     organizationConfig?: any,
     permissions?: string[]
   ) => {
-    logger.info(`[AUTH-CONTEXT] Login called for ${email}. AccessToken provided: ${accessToken ? 'YES' : 'NO'}`);
-    
+    logger.info(
+      `[AUTH-CONTEXT] Login called for ${email}. AccessToken provided: ${accessToken ? 'YES' : 'NO'}`
+    );
+
     if (accessToken && (accessToken === 'undefined' || accessToken === 'null')) {
       logger.error('[AUTH-CONTEXT] Received invalid token string:', accessToken);
       accessToken = undefined;
@@ -153,7 +162,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const newUser: User = {
       id: id || 'temp-id-' + Date.now(),
       email,
-      role: normalizeRole(role) as UserRole || role as UserRole,
+      role: (normalizeRole(role) as UserRole) || (role as UserRole),
       name,
       organization,
       organizationConfig: organizationConfig || {},
@@ -186,7 +195,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
    * 🎭 Impersonate: Adopt another user's role via Backend Security
    */
   const impersonate = async (targetUser: User) => {
-    if (!user || (user.role !== 'ADMIN_PROQUELEC' && user.email !== 'admingem')) {
+    if (!user || (user.role !== 'ADMIN_PROQUELEC' && !isMasterAdminEmail(user.email))) {
       logger.warn("🚫 Tentative d'impersonation non autorisée bloquée côté client");
       return;
     }
@@ -209,7 +218,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(data.user);
       logger.log(`🎭 [AUTH] Simulation active : ${targetUser.name}`);
 
-      // Recharger la page pour réinitialiser tous les états de l'app avec le nouveau token
+      // TODO: Remplacer par un reset d'état React (reset Zustand + navigate).
+      // Rechargement conservé temporairement pour garantir un état applicatif propre.
       window.location.reload();
     } catch (error: any) {
       logger.error('❌ Impersonation failed:', error);
@@ -234,7 +244,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       logger.log('🔙 [AUTH] Sessions simulée fermée, retour admin validé');
 
-      // Recharger pour réinitialiser l'application
+      // TODO: Remplacer par un reset d'état React (reset Zustand + navigate).
+      // Rechargement conservé temporairement pour garantir un état applicatif propre.
       window.location.reload();
     } catch (error: any) {
       logger.error('❌ Stop impersonation failed:', error);

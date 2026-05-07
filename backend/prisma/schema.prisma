@@ -25,12 +25,16 @@ model Organization {
   syncLogs        SyncLog[]
   koboFormMappings KoboFormMapping[]
   internalKoboSubmissions InternalKoboSubmission[]
+  formationModules FormationModule[]
+  formationSessions FormationSession[]
+  formationPlanningHistories FormationPlanningHistory[]
+  formationPlannerStates FormationPlannerState[]
 }
 
 model User {
   id                 String           @id @default(uuid())
   organizationId     String
-  email              String           @unique
+  email              String
   name               String?
   passwordHash       String
   roleLegacy         String           @default("user")
@@ -60,6 +64,8 @@ model User {
   chatBlocksReceived ChatUserBlock[]  @relation("ChatBlockedUser")
   chatBlocksIssued   ChatUserBlock[]  @relation("ChatBlockIssuer")
   internalKoboSubmissions InternalKoboSubmission[]
+
+  @@unique([email, organizationId])
 }
 
 model Project {
@@ -247,7 +253,7 @@ model KoboFormMapping {
   lastValidated  DateTime @default(now())
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
-  
+
   organization   Organization @relation(fields: [organizationId], references: [id])
 
   @@unique([organizationId, koboAssetId])
@@ -646,41 +652,48 @@ enum SyncStatus {
 // ============================================
 
 model FormationModule {
-  id          String   @id @default(uuid())
-  name        String   // Nom du module
-  description String?  // Description du module
-  duration    Int      // Durée par défaut en jours
-  order       Int      @default(0) // Ordre d'affichage
-  isActive    Boolean  @default(true) // Module actif
-  
+  id             String   @id @default(uuid())
+  organizationId String
+  name           String
+  description    String?
+  duration       Int
+  order          Int      @default(0)
+  isActive       Boolean  @default(true)
+
   sessionModules FormationSessionModule[]
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId])
 }
 
 model FormationSession {
-  id                String   @id @default(uuid())
-  region            String   // Région du Sénégal
-  salle             String   // Nom de la salle
-  maxParticipants   Int      // Nombre max de participants par session
-  
-  startDate         DateTime // Date de début de la session
-  endDate           DateTime? // Date de fin calculée
-  
-  workSaturday     Boolean  @default(false) // Samedi travaillé
-  workSunday       Boolean  @default(false) // Dimanche travaillé
-  
-  status            String   @default("PLANIFIEE") // PLANIFIEE, EN_COURS, TERMINEE, ANNULEE
-  notes             String?  // Notes additionnelles
-  
-  participants      FormationParticipant[]
-  sessionModules    FormationSessionModule[]
-  historyEntries    FormationPlanningHistory[]
-  
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  
+  id             String   @id @default(uuid())
+  organizationId String
+  region         String
+  salle          String
+  maxParticipants Int
+
+  startDate    DateTime
+  endDate      DateTime?
+
+  workSaturday Boolean @default(false)
+  workSunday   Boolean @default(false)
+
+  status String  @default("PLANIFIEE")
+  notes  String?
+
+  participants   FormationParticipant[]
+  sessionModules FormationSessionModule[]
+  historyEntries FormationPlanningHistory[]
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId])
   @@index([region])
   @@index([startDate])
   @@index([status])
@@ -694,13 +707,13 @@ model FormationSessionModule {
   duration    Int      // Durée spécifique pour ce module dans cette session (surécrit la durée par défaut)
   orderIndex  Int      @default(0) // Ordre du module dans la session
   notes       String?  // Notes spécifiques au module
-  
+
   session     FormationSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   module      FormationModule  @relation(fields: [moduleId], references: [id])
-  
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  
+
   @@unique([sessionId, moduleId]) // Un module ne peut être ajouté qu'une fois par session
   @@index([sessionId])
   @@index([moduleId])
@@ -713,38 +726,45 @@ model FormationParticipant {
   email       String?
   phone       String?
   role        String?  // Role (électricien, chef d'équipe, etc.)
-  
+
   attendance  Boolean  @default(false) // Présence
-  
+
   session     FormationSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  
+
   createdAt   DateTime @default(now())
-  
+
   @@index([sessionId])
 }
 
 model FormationPlanningHistory {
-  id          String            @id @default(uuid())
-  sessionId   String?
-  action      String
-  title       String
-  details     String?
-  metadata    Json?
-  createdAt   DateTime          @default(now())
+  id             String  @id @default(uuid())
+  organizationId String
+  sessionId      String?
+  action         String
+  title          String
+  details        String?
+  metadata       Json?
+  createdAt      DateTime @default(now())
 
-  session     FormationSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  session      FormationSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  organization Organization      @relation(fields: [organizationId], references: [id])
 
+  @@index([organizationId])
   @@index([sessionId])
   @@index([action])
   @@index([createdAt])
 }
 
 model FormationPlannerState {
-  id          String   @id
-  payload     Json
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id             String @id @default(uuid())
+  organizationId String @unique
+  payload        Json
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
   @@index([updatedAt])
 }
 

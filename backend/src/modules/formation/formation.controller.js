@@ -22,17 +22,47 @@ const SENEGAL_REGIONS = [
   'Sedhiou',
   'Tambacounda',
   'Thies',
-  'Ziguinchor'
+  'Ziguinchor',
 ];
 
 // Modules de formation par défaut
 const DEFAULT_MODULES = [
-  { name: 'Habilitation électrique', description: 'Formation à la sécurité électrique et habilitation', duration: 3, order: 1 },
-  { name: 'Normalisation', description: 'Normes électriques SN-CEI et internationales', duration: 2, order: 2 },
-  { name: 'Conformité électrique', description: 'Contrôle et mise en conformité des installations', duration: 2, order: 3 },
-  { name: 'Imprégnation sur le projet', description: 'Présentation du projet GEM et objectifs', duration: 1, order: 4 },
-  { name: 'Disposition de branchement Senelec', description: 'Raccordement au réseau Senelec', duration: 2, order: 5 },
-  { name: 'Application GEM-KOBO', description: "Utilisation de l'application GEM-KOBO terrain", duration: 2, order: 6 }
+  {
+    name: 'Habilitation électrique',
+    description: 'Formation à la sécurité électrique et habilitation',
+    duration: 3,
+    order: 1,
+  },
+  {
+    name: 'Normalisation',
+    description: 'Normes électriques SN-CEI et internationales',
+    duration: 2,
+    order: 2,
+  },
+  {
+    name: 'Conformité électrique',
+    description: 'Contrôle et mise en conformité des installations',
+    duration: 2,
+    order: 3,
+  },
+  {
+    name: 'Imprégnation sur le projet',
+    description: 'Présentation du projet GEM et objectifs',
+    duration: 1,
+    order: 4,
+  },
+  {
+    name: 'Disposition de branchement Senelec',
+    description: 'Raccordement au réseau Senelec',
+    duration: 2,
+    order: 5,
+  },
+  {
+    name: 'Application GEM-KOBO',
+    description: "Utilisation de l'application GEM-KOBO terrain",
+    duration: 2,
+    order: 6,
+  },
 ];
 const FORMATION_PLANNER_STATE_ID = 'default';
 
@@ -59,10 +89,21 @@ function isPlannerStateFeatureUnavailable(error) {
  */
 export const getModules = async (req, res) => {
   try {
-    const modules = await prisma.formationModule.findMany({ orderBy: { order: 'asc' } });
+    const { organizationId } = req.user;
+    // Auto-seed per organization (not globally)
+    const modules = await prisma.formationModule.findMany({
+      where: { organizationId },
+      orderBy: { order: 'asc' },
+    });
     if (modules.length === 0) {
-      await prisma.formationModule.createMany({ data: DEFAULT_MODULES });
-      const freshModules = await prisma.formationModule.findMany({ orderBy: { order: 'asc' } });
+      // Seed default modules for this organization specifically
+      await prisma.formationModule.createMany({
+        data: DEFAULT_MODULES.map((m) => ({ ...m, organizationId })),
+      });
+      const freshModules = await prisma.formationModule.findMany({
+        where: { organizationId },
+        orderBy: { order: 'asc' },
+      });
       return res.json(freshModules);
     }
     res.json(modules);
@@ -77,23 +118,28 @@ export const getModules = async (req, res) => {
  */
 export const createModule = async (req, res) => {
   try {
+    const { organizationId } = req.user;
     const { name, description, duration, order, isActive } = req.body;
     if (!name) return res.status(400).json({ error: 'Nom du module requis' });
 
     let finalOrder = order;
     if (finalOrder === undefined || finalOrder === null) {
-      const maxOrder = await prisma.formationModule.aggregate({ _max: { order: true } });
+      const maxOrder = await prisma.formationModule.aggregate({
+        where: { organizationId },
+        _max: { order: true },
+      });
       finalOrder = (maxOrder._max.order || 0) + 1;
     }
 
+    // organizationId injected automatically by Prisma middleware
     const module = await prisma.formationModule.create({
       data: {
         name,
         description: description || null,
         duration: duration || 1,
         order: finalOrder,
-        isActive: isActive !== undefined ? isActive : true
-      }
+        isActive: isActive !== undefined ? isActive : true,
+      },
     });
 
     res.status(201).json(module);
@@ -109,7 +155,13 @@ export const createModule = async (req, res) => {
 export const updateModule = async (req, res) => {
   try {
     const { id } = req.params;
+    const { organizationId } = req.user;
     const { name, description, duration, order, isActive } = req.body;
+
+    // Ownership check
+    const existing = await prisma.formationModule.findFirst({ where: { id, organizationId } });
+    if (!existing) return res.status(404).json({ error: 'Module introuvable' });
+
     const module = await prisma.formationModule.update({
       where: { id },
       data: {
@@ -117,8 +169,8 @@ export const updateModule = async (req, res) => {
         ...(description !== undefined && { description }),
         ...(duration && { duration }),
         ...(order !== undefined && { order }),
-        ...(isActive !== undefined && { isActive })
-      }
+        ...(isActive !== undefined && { isActive }),
+      },
     });
     res.json(module);
   } catch (error) {
@@ -133,10 +185,20 @@ export const updateModule = async (req, res) => {
 export const deleteModule = async (req, res) => {
   try {
     const { id } = req.params;
+    const { organizationId } = req.user;
+
+    // Ownership check
+    const existing = await prisma.formationModule.findFirst({ where: { id, organizationId } });
+    if (!existing) return res.status(404).json({ error: 'Module introuvable' });
+
     const usageCount = await prisma.formationSessionModule.count({ where: { moduleId: id } });
     if (usageCount > 0) {
       await prisma.formationModule.update({ where: { id }, data: { isActive: false } });
-      return res.json({ success: true, message: 'Module désactivé (utilisé dans des sessions)', deactivated: true });
+      return res.json({
+        success: true,
+        message: 'Module désactivé (utilisé dans des sessions)',
+        deactivated: true,
+      });
     }
     await prisma.formationModule.delete({ where: { id } });
     res.json({ success: true, message: 'Module supprimé' });
@@ -151,8 +213,9 @@ export const deleteModule = async (req, res) => {
  */
 export const getSessions = async (req, res) => {
   try {
+    const { organizationId } = req.user;
     const { region, status, startDate, endDate } = req.query;
-    const where = {};
+    const where = { organizationId };
     if (region && region !== 'ALL') where.region = region;
     if (status && status !== 'ALL') where.status = status;
     if (startDate || endDate) {
@@ -163,20 +226,33 @@ export const getSessions = async (req, res) => {
 
     const sessions = await prisma.formationSession.findMany({
       where,
-      include: { sessionModules: { include: { module: true }, orderBy: { orderIndex: 'asc' } }, participants: true },
-      orderBy: { startDate: 'asc' }
+      include: {
+        sessionModules: { include: { module: true }, orderBy: { orderIndex: 'asc' } },
+        participants: true,
+      },
+      orderBy: { startDate: 'asc' },
     });
 
-    const sessionsWithCalculated = sessions.map(session => {
-      const totalDays = session.sessionModules.reduce((sum, sm) => sum + (sm.duration || sm.module.duration), 0);
-      const endDate = session.endDate || calculateEndDate(new Date(session.startDate), totalDays, session.workSaturday, session.workSunday);
+    const sessionsWithCalculated = sessions.map((session) => {
+      const totalDays = session.sessionModules.reduce(
+        (sum, sm) => sum + (sm.duration || sm.module.duration),
+        0
+      );
+      const endDate =
+        session.endDate ||
+        calculateEndDate(
+          new Date(session.startDate),
+          totalDays,
+          session.workSaturday,
+          session.workSunday
+        );
       return {
         ...session,
         totalDays,
         endDate,
         moduleCount: session.sessionModules.length,
         participantCount: session.participants.length,
-        availableSlots: session.maxParticipants - session.participants.length
+        availableSlots: session.maxParticipants - session.participants.length,
       };
     });
 
@@ -192,14 +268,21 @@ export const getSessions = async (req, res) => {
  */
 export const createSession = async (req, res) => {
   try {
-    const { region, salle, maxParticipants, startDate, workSaturday, workSunday, notes, modules } = req.body;
-    if (!region || !salle || !startDate) return res.status(400).json({ error: 'Champs obligatoires manquants: région, salle, date de début' });
-    if (!SENEGAL_REGIONS.includes(region)) return res.status(400).json({ error: 'Région invalide', validRegions: SENEGAL_REGIONS });
-    if (!modules || !Array.isArray(modules) || modules.length === 0) return res.status(400).json({ error: 'Au moins un module est requis' });
+    const { region, salle, maxParticipants, startDate, workSaturday, workSunday, notes, modules } =
+      req.body;
+    if (!region || !salle || !startDate)
+      return res
+        .status(400)
+        .json({ error: 'Champs obligatoires manquants: région, salle, date de début' });
+    if (!SENEGAL_REGIONS.includes(region))
+      return res.status(400).json({ error: 'Région invalide', validRegions: SENEGAL_REGIONS });
+    if (!modules || !Array.isArray(modules) || modules.length === 0)
+      return res.status(400).json({ error: 'Au moins un module est requis' });
 
     const totalDays = modules.reduce((sum, m) => sum + (m.duration || 1), 0);
     const endDate = calculateEndDate(new Date(startDate), totalDays, workSaturday, workSunday);
 
+    // organizationId auto-injected by Prisma middleware
     const session = await prisma.formationSession.create({
       data: {
         region,
@@ -211,15 +294,27 @@ export const createSession = async (req, res) => {
         workSunday: workSunday || false,
         notes: notes || null,
         status: 'PLANIFIEE',
-        sessionModules: { create: modules.map((m, index) => ({ moduleId: m.moduleId, duration: m.duration || null, orderIndex: m.orderIndex ?? index, notes: m.notes || null })) }
+        sessionModules: {
+          create: modules.map((m, index) => ({
+            moduleId: m.moduleId,
+            duration: m.duration || null,
+            orderIndex: m.orderIndex ?? index,
+            notes: m.notes || null,
+          })),
+        },
       },
-      include: { sessionModules: { include: { module: true }, orderBy: { orderIndex: 'asc' } } }
+      include: { sessionModules: { include: { module: true }, orderBy: { orderIndex: 'asc' } } },
     });
 
-    await createPlanningHistory('session_created', 'Session créée', `Création de session ${region} - ${salle}`, {
-      sessionId: session.id,
-      metadata: { region, salle, startDate, maxParticipants: maxParticipants || 20 }
-    });
+    await createPlanningHistory(
+      'session_created',
+      'Session créée',
+      `Création de session ${region} - ${salle}`,
+      {
+        sessionId: session.id,
+        metadata: { region, salle, startDate, maxParticipants: maxParticipants || 20 },
+      }
+    );
 
     res.status(201).json(session);
   } catch (error) {
@@ -234,8 +329,21 @@ export const createSession = async (req, res) => {
 export const updateSession = async (req, res) => {
   try {
     const { id } = req.params;
-    const { region, salle, maxParticipants, startDate, workSaturday, workSunday, notes, status, modules } = req.body;
-    const existingSession = await prisma.formationSession.findUnique({ where: { id }, include: { sessionModules: true } });
+    const {
+      region,
+      salle,
+      maxParticipants,
+      startDate,
+      workSaturday,
+      workSunday,
+      notes,
+      status,
+      modules,
+    } = req.body;
+    const existingSession = await prisma.formationSession.findUnique({
+      where: { id },
+      include: { sessionModules: true },
+    });
     if (!existingSession) return res.status(404).json({ error: 'Session introuvable' });
 
     let newStartDate = startDate ? new Date(startDate) : existingSession.startDate;
@@ -244,11 +352,32 @@ export const updateSession = async (req, res) => {
     if (modules && Array.isArray(modules)) {
       await prisma.formationSessionModule.deleteMany({ where: { sessionId: id } });
       const totalDays = modules.reduce((sum, m) => sum + (m.duration || 1), 0);
-      newEndDate = calculateEndDate(newStartDate, totalDays, workSaturday ?? existingSession.workSaturday, workSunday ?? existingSession.workSunday);
-      await prisma.formationSessionModule.createMany({ data: modules.map((m, index) => ({ sessionId: id, moduleId: m.moduleId, duration: m.duration || null, orderIndex: m.orderIndex ?? index, notes: m.notes || null })) });
+      newEndDate = calculateEndDate(
+        newStartDate,
+        totalDays,
+        workSaturday ?? existingSession.workSaturday,
+        workSunday ?? existingSession.workSunday
+      );
+      await prisma.formationSessionModule.createMany({
+        data: modules.map((m, index) => ({
+          sessionId: id,
+          moduleId: m.moduleId,
+          duration: m.duration || null,
+          orderIndex: m.orderIndex ?? index,
+          notes: m.notes || null,
+        })),
+      });
     } else if (startDate) {
-      const totalDays = existingSession.sessionModules.reduce((sum, sm) => sum + (sm.duration || sm.module?.duration || 1), 0);
-      newEndDate = calculateEndDate(newStartDate, totalDays, workSaturday ?? existingSession.workSaturday, workSunday ?? existingSession.workSunday);
+      const totalDays = existingSession.sessionModules.reduce(
+        (sum, sm) => sum + (sm.duration || sm.module?.duration || 1),
+        0
+      );
+      newEndDate = calculateEndDate(
+        newStartDate,
+        totalDays,
+        workSaturday ?? existingSession.workSaturday,
+        workSunday ?? existingSession.workSunday
+      );
     }
 
     const session = await prisma.formationSession.update({
@@ -262,20 +391,28 @@ export const updateSession = async (req, res) => {
         ...(typeof workSaturday === 'boolean' && { workSaturday }),
         ...(typeof workSunday === 'boolean' && { workSunday }),
         ...(notes !== undefined && { notes }),
-        ...(status && { status })
+        ...(status && { status }),
       },
-      include: { sessionModules: { include: { module: true }, orderBy: { orderIndex: 'asc' } }, participants: true }
+      include: {
+        sessionModules: { include: { module: true }, orderBy: { orderIndex: 'asc' } },
+        participants: true,
+      },
     });
 
-    await createPlanningHistory('session_updated', 'Session mise à jour', `Mise à jour de la session ${session.region} - ${session.salle}`, {
-      sessionId: session.id,
-      metadata: {
-        region: session.region,
-        salle: session.salle,
-        startDate: session.startDate,
-        status: session.status
+    await createPlanningHistory(
+      'session_updated',
+      'Session mise à jour',
+      `Mise à jour de la session ${session.region} - ${session.salle}`,
+      {
+        sessionId: session.id,
+        metadata: {
+          region: session.region,
+          salle: session.salle,
+          startDate: session.startDate,
+          status: session.status,
+        },
       }
-    });
+    );
 
     res.json(session);
   } catch (error) {
@@ -292,9 +429,18 @@ export const deleteSession = async (req, res) => {
     const { id } = req.params;
     const existing = await prisma.formationSession.findUnique({ where: { id } });
     await prisma.formationSession.delete({ where: { id } });
-    await createPlanningHistory('session_deleted', 'Session supprimée', `Suppression de la session ${existing?.region || id}`, {
-      metadata: { sessionId: id, region: existing?.region || null, salle: existing?.salle || null }
-    });
+    await createPlanningHistory(
+      'session_deleted',
+      'Session supprimée',
+      `Suppression de la session ${existing?.region || id}`,
+      {
+        metadata: {
+          sessionId: id,
+          region: existing?.region || null,
+          salle: existing?.salle || null,
+        },
+      }
+    );
     res.json({ success: true, message: 'Session supprimée' });
   } catch (error) {
     logger.error('[FORMATION_DELETE_SESSION_ERROR]', error);
@@ -312,20 +458,31 @@ export const addModuleToSession = async (req, res) => {
     if (!moduleId) return res.status(400).json({ error: 'ID du module requis' });
     const module = await prisma.formationModule.findUnique({ where: { id: moduleId } });
     if (!module) return res.status(404).json({ error: 'Module introuvable' });
-    const existing = await prisma.formationSessionModule.findFirst({ where: { sessionId, moduleId } });
+    const existing = await prisma.formationSessionModule.findFirst({
+      where: { sessionId, moduleId },
+    });
     if (existing) return res.status(400).json({ error: 'Ce module est déjà dans la session' });
 
-    const maxOrder = await prisma.formationSessionModule.aggregate({ where: { sessionId }, _max: { orderIndex: true } });
+    const maxOrder = await prisma.formationSessionModule.aggregate({
+      where: { sessionId },
+      _max: { orderIndex: true },
+    });
     const sessionModule = await prisma.formationSessionModule.create({
-      data: { sessionId, moduleId, duration: duration || module.duration, orderIndex: (maxOrder._max.orderIndex || 0) + 1, notes: notes || null },
-      include: { module: true }
+      data: {
+        sessionId,
+        moduleId,
+        duration: duration || module.duration,
+        orderIndex: (maxOrder._max.orderIndex || 0) + 1,
+        notes: notes || null,
+      },
+      include: { module: true },
     });
 
     await recalculateSessionEndDate(sessionId);
     res.status(201).json(sessionModule);
   } catch (error) {
     logger.error('[FORMATION_ADD_MODULE_SESSION_ERROR]', error);
-    res.status(500).json({ error: 'Erreur lors de l\'ajout du module' });
+    res.status(500).json({ error: "Erreur lors de l'ajout du module" });
   }
 };
 
@@ -353,14 +510,20 @@ export const addParticipant = async (req, res) => {
     const { name, email, phone, role } = req.body;
     if (!name) return res.status(400).json({ error: 'Nom du participant requis' });
 
-    const session = await prisma.formationSession.findUnique({ where: { id: sessionId }, include: { participants: true } });
-    if (session.participants.length >= session.maxParticipants) return res.status(400).json({ error: 'Nombre maximum de participants atteint' });
+    const session = await prisma.formationSession.findUnique({
+      where: { id: sessionId },
+      include: { participants: true },
+    });
+    if (session.participants.length >= session.maxParticipants)
+      return res.status(400).json({ error: 'Nombre maximum de participants atteint' });
 
-    const participant = await prisma.formationParticipant.create({ data: { sessionId, name, email, phone, role } });
+    const participant = await prisma.formationParticipant.create({
+      data: { sessionId, name, email, phone, role },
+    });
     res.status(201).json(participant);
   } catch (error) {
     logger.error('[FORMATION_ADD_PARTICIPANT_ERROR]', error);
-    res.status(500).json({ error: 'Erreur lors de l\'ajout du participant' });
+    res.status(500).json({ error: "Erreur lors de l'ajout du participant" });
   }
 };
 
@@ -385,7 +548,10 @@ export const toggleAttendance = async (req, res) => {
   try {
     const { id } = req.params;
     const { attendance } = req.body;
-    const participant = await prisma.formationParticipant.update({ where: { id }, data: { attendance: attendance !== undefined ? attendance : undefined } });
+    const participant = await prisma.formationParticipant.update({
+      where: { id },
+      data: { attendance: attendance !== undefined ? attendance : undefined },
+    });
     res.json(participant);
   } catch (error) {
     logger.error('[FORMATION_TOGGLE_ATTENDANCE_ERROR]', error);
@@ -396,25 +562,52 @@ export const toggleAttendance = async (req, res) => {
 /**
  * GET /api/formations/regions
  */
-export const getRegions = async (req, res) => { res.json(SENEGAL_REGIONS); };
+export const getRegions = async (req, res) => {
+  res.json(SENEGAL_REGIONS);
+};
 
 /**
  * GET /api/formations/planning
  */
 export const getPlanning = async (req, res) => {
   try {
+    const { organizationId } = req.user;
     const { startDate, endDate } = req.query;
-    const where = {};
+    const where = { organizationId };
     if (startDate || endDate) {
       where.startDate = {};
       if (startDate) where.startDate.gte = new Date(startDate);
       if (endDate) where.startDate.lte = new Date(endDate);
     }
-    const sessions = await prisma.formationSession.findMany({ where, include: { sessionModules: { include: { module: true }, orderBy: { orderIndex: 'asc' } }, participants: true }, orderBy: { startDate: 'asc' } });
-    const planning = sessions.map(session => {
-      const totalDays = session.sessionModules.reduce((sum, sm) => sum + (sm.duration || sm.module.duration), 0);
-      const endDate = session.endDate || calculateEndDate(new Date(session.startDate), totalDays, session.workSaturday, session.workSunday);
-      return { ...session, totalDays, endDate, moduleCount: session.sessionModules.length, participantCount: session.participants.length, availableSlots: session.maxParticipants - session.participants.length };
+    const sessions = await prisma.formationSession.findMany({
+      where,
+      include: {
+        sessionModules: { include: { module: true }, orderBy: { orderIndex: 'asc' } },
+        participants: true,
+      },
+      orderBy: { startDate: 'asc' },
+    });
+    const planning = sessions.map((session) => {
+      const totalDays = session.sessionModules.reduce(
+        (sum, sm) => sum + (sm.duration || sm.module.duration),
+        0
+      );
+      const endDate =
+        session.endDate ||
+        calculateEndDate(
+          new Date(session.startDate),
+          totalDays,
+          session.workSaturday,
+          session.workSunday
+        );
+      return {
+        ...session,
+        totalDays,
+        endDate,
+        moduleCount: session.sessionModules.length,
+        participantCount: session.participants.length,
+        availableSlots: session.maxParticipants - session.participants.length,
+      };
     });
     res.json(planning);
   } catch (error) {
@@ -428,25 +621,32 @@ export const getPlanning = async (req, res) => {
  */
 export const getStats = async (req, res) => {
   try {
-    const [totalSessions, totalParticipants, byRegion, byModule, byStatus, activeModules] = await Promise.all([
-      prisma.formationSession.count(),
-      prisma.formationParticipant.count(),
-      prisma.formationSession.groupBy({ by: ['region'], _count: { id: true } }),
-      prisma.formationSessionModule.groupBy({ by: ['moduleId'], _count: { id: true } }),
-      prisma.formationSession.groupBy({ by: ['status'], _count: { id: true } }),
-      prisma.formationModule.count({ where: { isActive: true } })
-    ]);
+    const { organizationId } = req.user;
+    // All queries are auto-filtered by organizationId via the Prisma middleware
+    const [totalSessions, totalParticipants, byRegion, byModule, byStatus, activeModules] =
+      await Promise.all([
+        prisma.formationSession.count(),
+        prisma.formationParticipant.count(),
+        prisma.formationSession.groupBy({ by: ['region'], _count: { id: true } }),
+        prisma.formationSessionModule.groupBy({ by: ['moduleId'], _count: { id: true } }),
+        prisma.formationSession.groupBy({ by: ['status'], _count: { id: true } }),
+        prisma.formationModule.count({ where: { isActive: true } }),
+      ]);
 
     const modules = await prisma.formationModule.findMany();
-    const byModuleWithNames = byModule.map(m => ({ moduleId: m.moduleId, moduleName: modules.find(mod => mod.id === m.moduleId)?.name || 'Inconnu', count: m._count.id }));
+    const byModuleWithNames = byModule.map((m) => ({
+      moduleId: m.moduleId,
+      moduleName: modules.find((mod) => mod.id === m.moduleId)?.name || 'Inconnu',
+      count: m._count.id,
+    }));
 
     res.json({
       totalSessions,
       totalParticipants,
       activeModules,
-      byRegion: byRegion.map(r => ({ region: r.region, count: r._count.id })),
+      byRegion: byRegion.map((r) => ({ region: r.region, count: r._count.id })),
       byModule: byModuleWithNames,
-      byStatus: byStatus.map(s => ({ status: s.status, count: s._count.id }))
+      byStatus: byStatus.map((s) => ({ status: s.status, count: s._count.id })),
     });
   } catch (error) {
     logger.error('[FORMATION_GET_STATS_ERROR]', error);
@@ -463,21 +663,25 @@ export const getPlannerState = async (req, res) => {
       return res.json(null);
     }
 
+    const { organizationId } = req.user;
+    // Use organizationId as the unique lookup key (one state per org)
     const state = await prisma.formationPlannerState.findUnique({
-      where: { id: FORMATION_PLANNER_STATE_ID }
+      where: { organizationId },
     });
 
     return res.json(state?.payload ?? null);
   } catch (error) {
     if (isPlannerStateFeatureUnavailable(error)) {
       logger.warn('[FORMATION_GET_PLANNER_STATE_UNAVAILABLE]', {
-        reason: error?.message || 'planner_state_delegate_missing'
+        reason: error?.message || 'planner_state_delegate_missing',
       });
       return res.json(null);
     }
 
     logger.error('[FORMATION_GET_PLANNER_STATE_ERROR]', error);
-    return res.status(500).json({ error: 'Erreur lors de la récupération du brouillon de planification' });
+    return res
+      .status(500)
+      .json({ error: 'Erreur lors de la récupération du brouillon de planification' });
   }
 };
 
@@ -495,23 +699,27 @@ export const savePlannerState = async (req, res) => {
       return res.status(400).json({ error: 'Payload de planification invalide' });
     }
 
+    const { organizationId } = req.user;
+    // Upsert by organizationId — one planner state per organization
     const state = await prisma.formationPlannerState.upsert({
-      where: { id: FORMATION_PLANNER_STATE_ID },
-      create: { id: FORMATION_PLANNER_STATE_ID, payload },
-      update: { payload }
+      where: { organizationId },
+      create: { organizationId, payload },
+      update: { payload },
     });
 
     return res.json({ success: true, updatedAt: state.updatedAt });
   } catch (error) {
     if (isPlannerStateFeatureUnavailable(error)) {
       logger.warn('[FORMATION_SAVE_PLANNER_STATE_UNAVAILABLE]', {
-        reason: error?.message || 'planner_state_delegate_missing'
+        reason: error?.message || 'planner_state_delegate_missing',
       });
       return res.json({ success: false, unsupported: true });
     }
 
     logger.error('[FORMATION_SAVE_PLANNER_STATE_ERROR]', error);
-    return res.status(500).json({ error: 'Erreur lors de la sauvegarde du brouillon de planification' });
+    return res
+      .status(500)
+      .json({ error: 'Erreur lors de la sauvegarde du brouillon de planification' });
   }
 };
 
@@ -530,15 +738,22 @@ export const getHistory = async (req, res) => {
       orderBy: { createdAt: 'desc' },
       include: {
         session: {
-          select: { id: true, region: true, salle: true, startDate: true, endDate: true, status: true }
-        }
-      }
+          select: {
+            id: true,
+            region: true,
+            salle: true,
+            startDate: true,
+            endDate: true,
+            status: true,
+          },
+        },
+      },
     });
     res.json(history);
   } catch (error) {
     if (isHistoryFeatureUnavailable(error)) {
       logger.warn('[FORMATION_GET_HISTORY_UNAVAILABLE]', {
-        reason: error?.message || 'history_delegate_missing'
+        reason: error?.message || 'history_delegate_missing',
       });
       return res.json([]);
     }
@@ -557,12 +772,13 @@ export const clearHistory = async (req, res) => {
       return res.json({ success: true, count: 0 });
     }
 
+    // Prisma middleware auto-filters deleteMany by organizationId
     const deleted = await prisma.formationPlanningHistory.deleteMany({});
     return res.json({ success: true, count: deleted.count });
   } catch (error) {
     if (isHistoryFeatureUnavailable(error)) {
       logger.warn('[FORMATION_CLEAR_HISTORY_UNAVAILABLE]', {
-        reason: error?.message || 'history_delegate_missing'
+        reason: error?.message || 'history_delegate_missing',
       });
       return res.json({ success: true, count: 0 });
     }
@@ -583,7 +799,7 @@ export const createHistoryEntry = async (req, res) => {
     }
     const entry = await createPlanningHistory(action, title, details || null, {
       sessionId: sessionId || null,
-      metadata: metadata || null
+      metadata: metadata || null,
     });
     res.status(201).json(entry);
   } catch (error) {
@@ -602,7 +818,7 @@ export const cascadeRescheduleSession = async (req, res) => {
 
     const target = await prisma.formationSession.findUnique({
       where: { id },
-      include: { sessionModules: { include: { module: true }, orderBy: { orderIndex: 'asc' } } }
+      include: { sessionModules: { include: { module: true }, orderBy: { orderIndex: 'asc' } } },
     });
     if (!target) return res.status(404).json({ error: 'Session introuvable' });
     if (!startDate) return res.status(400).json({ error: 'startDate requis' });
@@ -611,18 +827,22 @@ export const cascadeRescheduleSession = async (req, res) => {
     const allRegionalSessions = await prisma.formationSession.findMany({
       where: { region: targetRegion },
       include: { sessionModules: { include: { module: true }, orderBy: { orderIndex: 'asc' } } },
-      orderBy: { startDate: 'asc' }
+      orderBy: { startDate: 'asc' },
     });
 
     const targetIndex = allRegionalSessions.findIndex((session) => session.id === id);
-    if (targetIndex === -1) return res.status(404).json({ error: 'Session cible absente de la région' });
+    if (targetIndex === -1)
+      return res.status(404).json({ error: 'Session cible absente de la région' });
 
     const updatedSessions = [];
     let nextStartDate = new Date(startDate);
 
     for (let index = targetIndex; index < allRegionalSessions.length; index += 1) {
       const session = allRegionalSessions[index];
-      const totalDays = session.sessionModules.reduce((sum, sm) => sum + (sm.duration || sm.module?.duration || 1), 0);
+      const totalDays = session.sessionModules.reduce(
+        (sum, sm) => sum + (sm.duration || sm.module?.duration || 1),
+        0
+      );
       const nextEndDate = calculateEndDate(
         new Date(nextStartDate),
         totalDays,
@@ -637,9 +857,12 @@ export const cascadeRescheduleSession = async (req, res) => {
           startDate: new Date(nextStartDate),
           endDate: nextEndDate,
           ...(index === targetIndex && typeof workSaturday === 'boolean' ? { workSaturday } : {}),
-          ...(index === targetIndex && typeof workSunday === 'boolean' ? { workSunday } : {})
+          ...(index === targetIndex && typeof workSunday === 'boolean' ? { workSunday } : {}),
         },
-        include: { sessionModules: { include: { module: true }, orderBy: { orderIndex: 'asc' } }, participants: true }
+        include: {
+          sessionModules: { include: { module: true }, orderBy: { orderIndex: 'asc' } },
+          participants: true,
+        },
       });
 
       updatedSessions.push(updated);
@@ -656,8 +879,8 @@ export const cascadeRescheduleSession = async (req, res) => {
         metadata: {
           region: targetRegion,
           updatedSessionIds: updatedSessions.map((session) => session.id),
-          startDate
-        }
+          startDate,
+        },
       }
     );
 
@@ -674,9 +897,22 @@ export const cascadeRescheduleSession = async (req, res) => {
 export const bulkCreateSessions = async (req, res) => {
   try {
     const { sessions } = req.body;
-    if (!Array.isArray(sessions) || sessions.length === 0) return res.status(400).json({ error: 'Tableau de sessions requis' });
-    const created = await prisma.formationSession.createMany({ data: sessions.map(s => ({ region: s.region, salle: s.salle, maxParticipants: s.maxParticipants || 20, startDate: new Date(s.startDate), workSaturday: s.workSaturday || false, workSunday: s.workSunday || false, status: 'PLANIFIEE' })) });
-    res.status(201).json({ success: true, count: created.count, message: `${created.count} sessions créées` });
+    if (!Array.isArray(sessions) || sessions.length === 0)
+      return res.status(400).json({ error: 'Tableau de sessions requis' });
+    const created = await prisma.formationSession.createMany({
+      data: sessions.map((s) => ({
+        region: s.region,
+        salle: s.salle,
+        maxParticipants: s.maxParticipants || 20,
+        startDate: new Date(s.startDate),
+        workSaturday: s.workSaturday || false,
+        workSunday: s.workSunday || false,
+        status: 'PLANIFIEE',
+      })),
+    });
+    res
+      .status(201)
+      .json({ success: true, count: created.count, message: `${created.count} sessions créées` });
   } catch (error) {
     logger.error('[FORMATION_BULK_CREATE_ERROR]', error);
     res.status(500).json({ error: 'Erreur création en masse' });
@@ -721,9 +957,9 @@ function parseDateList(text) {
   if (!text || typeof text !== 'string') return [];
   return text
     .split(/[,\n;]/)
-    .map(value => value.trim())
+    .map((value) => value.trim())
     .filter(Boolean)
-    .filter(value => /^\d{4}-\d{2}-\d{2}$/.test(value));
+    .filter((value) => /^\d{4}-\d{2}-\d{2}$/.test(value));
 }
 
 function isWorkingDay(date, includeSaturday, blockedDates, includeSunday = false) {
@@ -735,7 +971,13 @@ function isWorkingDay(date, includeSaturday, blockedDates, includeSunday = false
   return true;
 }
 
-function computeSessionEndDate(startDate, workUnits, includeSaturday, blockedDates, includeSunday = false) {
+function computeSessionEndDate(
+  startDate,
+  workUnits,
+  includeSaturday,
+  blockedDates,
+  includeSunday = false
+) {
   const start = parsePlannerDate(startDate);
   if (!start) return startDate;
 
@@ -779,15 +1021,15 @@ async function resolvePlannerModules(modules) {
     throw new Error('Au moins un module actif est requis pour générer le planning');
   }
 
-  const ids = modules.map(module => module?.moduleId).filter(Boolean);
+  const ids = modules.map((module) => module?.moduleId).filter(Boolean);
   if (ids.length === 0) {
     throw new Error('Identifiants de modules invalides');
   }
 
   const dbModules = await prisma.formationModule.findMany({ where: { id: { in: ids } } });
-  const moduleDefs = ids.map(id => {
-    const dbModule = dbModules.find(module => module.id === id);
-    const supplied = modules.find(module => module.moduleId === id);
+  const moduleDefs = ids.map((id) => {
+    const dbModule = dbModules.find((module) => module.id === id);
+    const supplied = modules.find((module) => module.moduleId === id);
     if (!dbModule && !supplied) {
       throw new Error(`Module introuvable: ${id}`);
     }
@@ -810,23 +1052,23 @@ function normalizePlannerResources(items, type) {
   if (!Array.isArray(items)) return [];
 
   if (type === 'trainers') {
-    return items.map(item => ({
+    return items.map((item) => ({
       id: String(item.id || ''),
       name: String(item.name || 'Formateur'),
       active: item.active !== false,
       unavailableDates: Array.isArray(item.unavailableDates)
-        ? item.unavailableDates.filter(value => /^\d{4}-\d{2}-\d{2}$/.test(String(value)))
+        ? item.unavailableDates.filter((value) => /^\d{4}-\d{2}-\d{2}$/.test(String(value)))
         : [],
     }));
   }
 
-  return items.map(item => ({
+  return items.map((item) => ({
     id: String(item.id || ''),
     name: String(item.name || 'Salle'),
     capacity: Math.max(1, Number(item.capacity || 1)),
     active: item.active !== false,
     unavailableDates: Array.isArray(item.unavailableDates)
-      ? item.unavailableDates.filter(value => /^\d{4}-\d{2}-\d{2}$/.test(String(value)))
+      ? item.unavailableDates.filter((value) => /^\d{4}-\d{2}-\d{2}$/.test(String(value)))
       : [],
   }));
 }
@@ -835,14 +1077,14 @@ function normalizePlannerRegions(regions) {
   if (!Array.isArray(regions)) return [];
 
   return regions
-    .filter(region => region?.region && Number(region?.participants || region?.count || 0) > 0)
-    .map(region => ({
+    .filter((region) => region?.region && Number(region?.participants || region?.count || 0) > 0)
+    .map((region) => ({
       region: String(region.region),
       participants: Math.max(0, Number(region.participants || region.count || 0)),
       priority: Number(region.priority || 1),
       preferredRoomId: String(region.preferredRoomId || ''),
     }))
-    .filter(region => SENEGAL_REGIONS.includes(region.region));
+    .filter((region) => SENEGAL_REGIONS.includes(region.region));
 }
 
 function validatePlanSessionShape(session) {
@@ -867,8 +1109,14 @@ function validatePlanSessionShape(session) {
   return null;
 }
 
-function getPlannerCoveredDates(startDate, endDate, includeSaturday, blockedDates, includeSunday = false) {
-  return buildDateRange(startDate, endDate).filter(dateValue => {
+function getPlannerCoveredDates(
+  startDate,
+  endDate,
+  includeSaturday,
+  blockedDates,
+  includeSunday = false
+) {
+  return buildDateRange(startDate, endDate).filter((dateValue) => {
     const parsed = parsePlannerDate(dateValue);
     return parsed ? isWorkingDay(parsed, includeSaturday, blockedDates, includeSunday) : false;
   });
@@ -898,8 +1146,10 @@ function buildValidatedPreviewSession({
     ...parseDateList(plannerConfig?.holidaysText),
   ]);
 
-  const activeTrainers = normalizePlannerResources(trainers, 'trainers').filter(item => item.active);
-  const activeRooms = normalizePlannerResources(rooms, 'rooms').filter(item => item.active);
+  const activeTrainers = normalizePlannerResources(trainers, 'trainers').filter(
+    (item) => item.active
+  );
+  const activeRooms = normalizePlannerResources(rooms, 'rooms').filter((item) => item.active);
 
   const nextRegion = String(updates?.region || sourceSession.region || '');
   if (!SENEGAL_REGIONS.includes(nextRegion)) {
@@ -908,19 +1158,25 @@ function buildValidatedPreviewSession({
 
   const nextParticipants = Math.max(
     1,
-    Number(updates?.participants ?? sourceSession.participants ?? sourceSession.maxParticipants ?? 1)
+    Number(
+      updates?.participants ?? sourceSession.participants ?? sourceSession.maxParticipants ?? 1
+    )
   );
   const nextStartDate = String(updates?.startDate || sourceSession.startDate || '');
   if (!parsePlannerDate(nextStartDate)) {
     throw new Error('Date de démarrage invalide');
   }
 
-  const room = activeRooms.find(item => item.id === String(updates?.roomId || sourceSession.roomId || ''));
+  const room = activeRooms.find(
+    (item) => item.id === String(updates?.roomId || sourceSession.roomId || '')
+  );
   if (!room) {
     throw new Error('Salle invalide ou inactive');
   }
 
-  const trainer = activeTrainers.find(item => item.id === String(updates?.trainerId || sourceSession.trainerId || ''));
+  const trainer = activeTrainers.find(
+    (item) => item.id === String(updates?.trainerId || sourceSession.trainerId || '')
+  );
   if (!trainer) {
     throw new Error('Formateur invalide ou inactif');
   }
@@ -947,23 +1203,33 @@ function buildValidatedPreviewSession({
   }
 
   const totalModuleDays = normalizedModules.reduce((sum, module) => sum + module.duration, 0);
-  const endDate = computeSessionEndDate(nextStartDate, totalModuleDays, includeSaturday, blockedDates);
-  const coveredDates = getPlannerCoveredDates(nextStartDate, endDate, includeSaturday, blockedDates);
+  const endDate = computeSessionEndDate(
+    nextStartDate,
+    totalModuleDays,
+    includeSaturday,
+    blockedDates
+  );
+  const coveredDates = getPlannerCoveredDates(
+    nextStartDate,
+    endDate,
+    includeSaturday,
+    blockedDates
+  );
   const trainerUnavailable = new Set(trainer.unavailableDates);
   const roomUnavailable = new Set(room.unavailableDates);
 
-  if (coveredDates.some(dateValue => trainerUnavailable.has(dateValue))) {
+  if (coveredDates.some((dateValue) => trainerUnavailable.has(dateValue))) {
     throw new Error('Le formateur est indisponible sur la période choisie');
   }
-  if (coveredDates.some(dateValue => roomUnavailable.has(dateValue))) {
+  if (coveredDates.some((dateValue) => roomUnavailable.has(dateValue))) {
     throw new Error('La salle est indisponible sur la période choisie');
   }
 
-  const conflictingSession = (planSessions || []).find(session => {
+  const conflictingSession = (planSessions || []).find((session) => {
     if (!session || session.id === sourceSession.id) return false;
 
     const otherModules = Array.isArray(session.modules)
-      ? session.modules.map(module => ({
+      ? session.modules.map((module) => ({
           duration: Math.max(1, Number(module?.duration || 1)),
         }))
       : [];
@@ -981,15 +1247,19 @@ function buildValidatedPreviewSession({
       includeSaturday,
       blockedDates
     );
-    const overlap = coveredDates.some(dateValue => otherCoveredDates.includes(dateValue));
+    const overlap = coveredDates.some((dateValue) => otherCoveredDates.includes(dateValue));
     if (!overlap) return false;
 
     const roomConflict =
       String(session.roomId || '') === room.id ||
-      String(session.roomName || session.salle || '').trim().toLowerCase() === room.name.trim().toLowerCase();
+      String(session.roomName || session.salle || '')
+        .trim()
+        .toLowerCase() === room.name.trim().toLowerCase();
     const trainerConflict =
       String(session.trainerId || '') === trainer.id ||
-      String(session.trainerName || '').trim().toLowerCase() === trainer.name.trim().toLowerCase();
+      String(session.trainerName || '')
+        .trim()
+        .toLowerCase() === trainer.name.trim().toLowerCase();
 
     return roomConflict || trainerConflict;
   });
@@ -1022,7 +1292,9 @@ function validateCommittedPlanSessions(planSessions, workSaturday, workSunday) {
   const roomOccupation = new Map();
   const trainerOccupation = new Map();
 
-  for (const session of [...planSessions].sort((a, b) => String(a.startDate).localeCompare(String(b.startDate)))) {
+  for (const session of [...planSessions].sort((a, b) =>
+    String(a.startDate).localeCompare(String(b.startDate))
+  )) {
     const validationError = validatePlanSessionShape(session);
     if (validationError) return validationError;
 
@@ -1038,23 +1310,27 @@ function validateCommittedPlanSessions(planSessions, workSaturday, workSunday) {
       workSunday
     );
 
-    const roomKey = String(session.roomName || session.salle || '').trim().toLowerCase();
+    const roomKey = String(session.roomName || session.salle || '')
+      .trim()
+      .toLowerCase();
     if (roomKey) {
       const occupied = roomOccupation.get(roomKey) || new Set();
-      if (coveredDates.some(dateValue => occupied.has(dateValue))) {
+      if (coveredDates.some((dateValue) => occupied.has(dateValue))) {
         return `Conflit de salle détecté pour ${session.roomName || session.salle}`;
       }
-      coveredDates.forEach(dateValue => occupied.add(dateValue));
+      coveredDates.forEach((dateValue) => occupied.add(dateValue));
       roomOccupation.set(roomKey, occupied);
     }
 
-    const trainerKey = String(session.trainerName || '').trim().toLowerCase();
+    const trainerKey = String(session.trainerName || '')
+      .trim()
+      .toLowerCase();
     if (trainerKey) {
       const occupied = trainerOccupation.get(trainerKey) || new Set();
-      if (coveredDates.some(dateValue => occupied.has(dateValue))) {
+      if (coveredDates.some((dateValue) => occupied.has(dateValue))) {
         return `Conflit de formateur détecté pour ${session.trainerName}`;
       }
-      coveredDates.forEach(dateValue => occupied.add(dateValue));
+      coveredDates.forEach((dateValue) => occupied.add(dateValue));
       trainerOccupation.set(trainerKey, occupied);
     }
   }
@@ -1086,18 +1362,24 @@ async function generatePlannerPreview(body) {
   ]);
   const includeSaturday = plannerConfig.includeSaturday === true;
   const deliveryMode = body?.plannerDeliveryMode === 'single' ? 'single' : 'multiple';
-  const maxParticipantsPerSession = Math.max(1, Number(plannerConfig.maxParticipantsPerSession || 20));
+  const maxParticipantsPerSession = Math.max(
+    1,
+    Number(plannerConfig.maxParticipantsPerSession || 20)
+  );
   const equipmentPerParticipant = Math.max(1, Number(plannerConfig.equipmentPerParticipant || 1));
   const equipmentPool = Math.max(0, Number(plannerConfig.equipmentPool || 0));
   const daysBetweenSessions = Math.max(1, Number(plannerConfig.daysBetweenSessions || 1));
 
-  const normalizedTrainers = normalizePlannerResources(body?.trainers, 'trainers').filter(item => item.active);
-  const normalizedRooms = normalizePlannerResources(body?.rooms, 'rooms').filter(item => item.active);
+  const normalizedTrainers = normalizePlannerResources(body?.trainers, 'trainers').filter(
+    (item) => item.active
+  );
+  const normalizedRooms = normalizePlannerResources(body?.rooms, 'rooms').filter(
+    (item) => item.active
+  );
 
   const activeTrainers =
     deliveryMode === 'single' ? normalizedTrainers.slice(0, 1) : normalizedTrainers;
-  const activeRooms =
-    deliveryMode === 'single' ? normalizedRooms : normalizedRooms;
+  const activeRooms = deliveryMode === 'single' ? normalizedRooms : normalizedRooms;
 
   if (activeTrainers.length === 0 || activeRooms.length === 0) {
     throw new Error('Ajoutez au moins un formateur actif et une salle active');
@@ -1105,10 +1387,10 @@ async function generatePlannerPreview(body) {
 
   const trainerOccupation = new Map();
   const roomOccupation = new Map();
-  activeTrainers.forEach(trainer => {
+  activeTrainers.forEach((trainer) => {
     trainerOccupation.set(trainer.id, new Set(trainer.unavailableDates));
   });
-  activeRooms.forEach(room => {
+  activeRooms.forEach((room) => {
     roomOccupation.set(room.id, new Set(room.unavailableDates));
   });
 
@@ -1145,28 +1427,42 @@ async function generatePlannerPreview(body) {
       while (!booked && tries < 365) {
         tries += 1;
         const startDate = formatIsoDate(cursor);
-        const endDate = computeSessionEndDate(startDate, totalModuleDays, includeSaturday, blockedDates);
-        const coveredDates = buildDateRange(startDate, endDate).filter(dateValue =>
+        const endDate = computeSessionEndDate(
+          startDate,
+          totalModuleDays,
+          includeSaturday,
+          blockedDates
+        );
+        const coveredDates = buildDateRange(startDate, endDate).filter((dateValue) =>
           isWorkingDay(parsePlannerDate(dateValue) || new Date(), includeSaturday, blockedDates)
         );
 
         const preferredRoom =
-          activeRooms.find(room => room.id === region.preferredRoomId && room.capacity >= participants) || null;
+          activeRooms.find(
+            (room) => room.id === region.preferredRoomId && room.capacity >= participants
+          ) || null;
 
         const candidateRooms = preferredRoom
-          ? [preferredRoom, ...activeRooms.filter(room => room.id !== preferredRoom.id && room.capacity >= participants)]
-          : activeRooms.filter(room => room.capacity >= participants);
+          ? [
+              preferredRoom,
+              ...activeRooms.filter(
+                (room) => room.id !== preferredRoom.id && room.capacity >= participants
+              ),
+            ]
+          : activeRooms.filter((room) => room.capacity >= participants);
 
-        const room = candidateRooms.find(candidateRoom =>
-          coveredDates.every(dateValue => !roomOccupation.get(candidateRoom.id)?.has(dateValue))
+        const room = candidateRooms.find((candidateRoom) =>
+          coveredDates.every((dateValue) => !roomOccupation.get(candidateRoom.id)?.has(dateValue))
         );
 
-        const trainer = activeTrainers.find(candidateTrainer =>
-          coveredDates.every(dateValue => !trainerOccupation.get(candidateTrainer.id)?.has(dateValue))
+        const trainer = activeTrainers.find((candidateTrainer) =>
+          coveredDates.every(
+            (dateValue) => !trainerOccupation.get(candidateTrainer.id)?.has(dateValue)
+          )
         );
 
         if (room && trainer) {
-          coveredDates.forEach(dateValue => {
+          coveredDates.forEach((dateValue) => {
             trainerOccupation.get(trainer.id)?.add(dateValue);
             roomOccupation.get(room.id)?.add(dateValue);
           });
@@ -1186,7 +1482,7 @@ async function generatePlannerPreview(body) {
             durationDays: diffDaysInclusive(startDate, endDate),
             fillRate: Math.round((participants / maxParticipantsPerSession) * 100),
             equipmentNeeded,
-            modules: selectedModules.map(module => ({
+            modules: selectedModules.map((module) => ({
               moduleId: module.moduleId,
               name: module.moduleName,
               duration: module.duration,
@@ -1201,7 +1497,9 @@ async function generatePlannerPreview(body) {
       }
 
       if (!booked) {
-        alerts.push(`${region.region} session ${index + 1}: aucune combinaison salle/formateur disponible.`);
+        alerts.push(
+          `${region.region} session ${index + 1}: aucune combinaison salle/formateur disponible.`
+        );
         impossibleRegions.push(region.region);
       }
     }
@@ -1215,14 +1513,30 @@ async function generatePlannerPreview(body) {
 }
 
 async function recalculateSessionEndDate(sessionId) {
-  const session = await prisma.formationSession.findUnique({ where: { id: sessionId }, include: { sessionModules: { include: { module: true } } } });
+  const session = await prisma.formationSession.findUnique({
+    where: { id: sessionId },
+    include: { sessionModules: { include: { module: true } } },
+  });
   if (!session) return;
-  const totalDays = session.sessionModules.reduce((sum, sm) => sum + (sm.duration || sm.module?.duration || 1), 0);
-  const endDate = calculateEndDate(new Date(session.startDate), totalDays, session.workSaturday, session.workSunday);
+  const totalDays = session.sessionModules.reduce(
+    (sum, sm) => sum + (sm.duration || sm.module?.duration || 1),
+    0
+  );
+  const endDate = calculateEndDate(
+    new Date(session.startDate),
+    totalDays,
+    session.workSaturday,
+    session.workSunday
+  );
   await prisma.formationSession.update({ where: { id: sessionId }, data: { endDate } });
 }
 
-async function createPlanningHistory(action, title, details, { sessionId = null, metadata = null } = {}) {
+async function createPlanningHistory(
+  action,
+  title,
+  details,
+  { sessionId = null, metadata = null } = {}
+) {
   if (!prisma.formationPlanningHistory) {
     return null;
   }
@@ -1234,15 +1548,15 @@ async function createPlanningHistory(action, title, details, { sessionId = null,
         title,
         details,
         metadata,
-        ...(sessionId ? { sessionId } : {})
-      }
+        ...(sessionId ? { sessionId } : {}),
+      },
     });
   } catch (error) {
     if (isHistoryFeatureUnavailable(error)) {
       logger.warn('[FORMATION_CREATE_HISTORY_UNAVAILABLE]', {
         action,
         title,
-        reason: error?.message || 'history_delegate_missing'
+        reason: error?.message || 'history_delegate_missing',
       });
       return null;
     }
@@ -1276,7 +1590,7 @@ export const validatePreviewSessionEdit = async (req, res) => {
       return res.status(400).json({ error: 'Session preview et plan courant requis' });
     }
 
-    const sourceSession = plan.sessions.find(session => session.id === sessionId);
+    const sourceSession = plan.sessions.find((session) => session.id === sessionId);
     const session = buildValidatedPreviewSession({
       sourceSession,
       updates: updates || {},
@@ -1301,33 +1615,41 @@ async function generatePlan(body) {
 
   let moduleDefs = [];
   if (Array.isArray(modules) && modules.length > 0) {
-    const ids = modules.map(m => m.moduleId).filter(Boolean);
+    const ids = modules.map((m) => m.moduleId).filter(Boolean);
     if (ids.length > 0) {
       const dbModules = await prisma.formationModule.findMany({ where: { id: { in: ids } } });
-      moduleDefs = ids.map(id => {
-        const m = dbModules.find(x => x.id === id);
-        const supplied = modules.find(x => x.moduleId === id);
+      moduleDefs = ids.map((id) => {
+        const m = dbModules.find((x) => x.id === id);
+        const supplied = modules.find((x) => x.moduleId === id);
         return {
           moduleId: id,
           moduleName: supplied?.moduleName || supplied?.name || m?.name || 'Module',
-          duration: supplied?.duration || m?.duration || 1
+          duration: supplied?.duration || m?.duration || 1,
         };
       });
     } else {
-      moduleDefs = modules.map(m => ({
+      moduleDefs = modules.map((m) => ({
         moduleId: m.moduleId,
         moduleName: m.moduleName || m.name || 'Module',
-        duration: m.duration || 1
+        duration: m.duration || 1,
       }));
     }
   } else {
-    const dbModules = await prisma.formationModule.findMany({ where: { isActive: true }, orderBy: { order: 'asc' } });
-    moduleDefs = dbModules.map(m => ({ moduleId: m.id, moduleName: m.name, duration: m.duration || 1 }));
+    const dbModules = await prisma.formationModule.findMany({
+      where: { isActive: true },
+      orderBy: { order: 'asc' },
+    });
+    moduleDefs = dbModules.map((m) => ({
+      moduleId: m.id,
+      moduleName: m.name,
+      duration: m.duration || 1,
+    }));
   }
 
   const totalModuleDays = moduleDefs.reduce((s, m) => s + (m.duration || 1), 0);
   const preferredDefault = options?.preferredSize || 20;
-  const maxPerGroup = options?.maxPerGroup && Number(options.maxPerGroup) > 0 ? Number(options.maxPerGroup) : 25;
+  const maxPerGroup =
+    options?.maxPerGroup && Number(options.maxPerGroup) > 0 ? Number(options.maxPerGroup) : 25;
   const includeWeekends = options?.includeWeekends === true;
 
   const plan = { generatedAt: new Date(), sessions: [] };
@@ -1359,7 +1681,16 @@ async function generatePlan(body) {
       const sStart = new Date(cursorDate);
       const sEnd = calculateEndDate(sStart, totalModuleDays, includeWeekends, includeWeekends);
 
-      const sessionObj = { region: regionName, groupIndex: i + 1, maxParticipants, startDate: sStart, endDate: sEnd, modules: moduleDefs, workSaturday: includeWeekends, workSunday: includeWeekends };
+      const sessionObj = {
+        region: regionName,
+        groupIndex: i + 1,
+        maxParticipants,
+        startDate: sStart,
+        endDate: sEnd,
+        modules: moduleDefs,
+        workSaturday: includeWeekends,
+        workSunday: includeWeekends,
+      };
       plan.sessions.push(sessionObj);
 
       cursorDate = new Date(sEnd);
@@ -1367,7 +1698,10 @@ async function generatePlan(body) {
     }
   }
 
-  const overallEnd = plan.sessions.reduce((max, s) => (s.endDate > max ? s.endDate : max), new Date(0));
+  const overallEnd = plan.sessions.reduce(
+    (max, s) => (s.endDate > max ? s.endDate : max),
+    new Date(0)
+  );
   plan.overallEndDate = overallEnd;
   return plan;
 }
@@ -1379,19 +1713,22 @@ async function generatePlan(body) {
 export const exportPlanify = async (req, res) => {
   try {
     const { plan, format } = req.body;
-    const usedPlan = plan || await generatePlan(req.body);
+    const usedPlan = plan || (await generatePlan(req.body));
     const fmt = (format || 'pdf').toLowerCase();
 
     if (fmt === 'pdf') {
       const { default: PDFDocument } = await import('pdfkit');
-      const totalParticipants = usedPlan.sessions.reduce((sum, session) => sum + Number(session.maxParticipants || 0), 0);
+      const totalParticipants = usedPlan.sessions.reduce(
+        (sum, session) => sum + Number(session.maxParticipants || 0),
+        0
+      );
       const pdfDoc = new PDFDocument({
         size: 'A4',
         margin: 40,
-        info: { Title: 'Plan de formation' }
+        info: { Title: 'Plan de formation' },
       });
       const chunks = [];
-      pdfDoc.on('data', chunk => chunks.push(chunk));
+      pdfDoc.on('data', (chunk) => chunks.push(chunk));
       pdfDoc.on('end', () => {
         const result = Buffer.concat(chunks);
         res.setHeader('Content-Type', 'application/pdf');
@@ -1401,14 +1738,21 @@ export const exportPlanify = async (req, res) => {
 
       pdfDoc.fontSize(22).fillColor('#16324f').text('Planning de formation', { align: 'center' });
       pdfDoc.moveDown(0.4);
-      pdfDoc.fontSize(10).fillColor('#4b5d73').text('Synthèse détaillée des sessions, durées et modules.', { align: 'center' });
+      pdfDoc
+        .fontSize(10)
+        .fillColor('#4b5d73')
+        .text('Synthèse détaillée des sessions, durées et modules.', { align: 'center' });
       pdfDoc.moveDown(1.2);
 
       pdfDoc.fontSize(11).fillColor('#16324f');
-      pdfDoc.text(`Démarrage: ${usedPlan.sessions[0] ? formatPlanDate(usedPlan.sessions[0].startDate) : '-'}`);
+      pdfDoc.text(
+        `Démarrage: ${usedPlan.sessions[0] ? formatPlanDate(usedPlan.sessions[0].startDate) : '-'}`
+      );
       pdfDoc.text(`Sessions: ${usedPlan.sessions.length}`);
       pdfDoc.text(`Participants: ${totalParticipants}`);
-      pdfDoc.text(`Fin estimée: ${usedPlan.overallEndDate ? formatPlanDate(usedPlan.overallEndDate) : '-'}`);
+      pdfDoc.text(
+        `Fin estimée: ${usedPlan.overallEndDate ? formatPlanDate(usedPlan.overallEndDate) : '-'}`
+      );
       pdfDoc.moveDown(1);
 
       for (const [index, session] of usedPlan.sessions.entries()) {
@@ -1429,7 +1773,9 @@ export const exportPlanify = async (req, res) => {
         pdfDoc.fontSize(10).fillColor('#1f2d3d');
         pdfDoc.text(`Participants: ${session.maxParticipants}`);
         pdfDoc.text(`Durée session: ${sessionDuration} jour(s)`);
-        pdfDoc.text(`Période: ${formatPlanDate(session.startDate)} au ${formatPlanDate(session.endDate)}`);
+        pdfDoc.text(
+          `Période: ${formatPlanDate(session.startDate)} au ${formatPlanDate(session.endDate)}`
+        );
         pdfDoc.text(`Salle: ${session.salle || 'Salle à définir'}`);
         pdfDoc.text(`Formateur: ${session.trainerName || 'À affecter'}`);
         pdfDoc.moveDown(0.5);
@@ -1440,9 +1786,12 @@ export const exportPlanify = async (req, res) => {
           pdfDoc
             .fontSize(10)
             .fillColor('#1f2d3d')
-            .text(`• ${module.moduleName || module.name || 'Module'}: ${module.duration || 1} jour(s)`, {
-              indent: 10
-            });
+            .text(
+              `• ${module.moduleName || module.name || 'Module'}: ${module.duration || 1} jour(s)`,
+              {
+                indent: 10,
+              }
+            );
         }
 
         pdfDoc.moveDown(1);
@@ -1466,10 +1815,13 @@ export const exportPlanify = async (req, res) => {
           TableLayoutType,
           TableRow,
           TextRun,
-          WidthType
+          WidthType,
         } = await import('docx');
 
-        const totalParticipants = usedPlan.sessions.reduce((sum, session) => sum + Number(session.maxParticipants || 0), 0);
+        const totalParticipants = usedPlan.sessions.reduce(
+          (sum, session) => sum + Number(session.maxParticipants || 0),
+          0
+        );
         const tableBorders = {
           top: { style: BorderStyle.SINGLE, size: 1, color: 'D9E2F1' },
           bottom: { style: BorderStyle.SINGLE, size: 1, color: 'D9E2F1' },
@@ -1513,7 +1865,9 @@ export const exportPlanify = async (req, res) => {
           new TableRow({
             children: [
               labelCell('Démarrage'),
-              valueCell(usedPlan.sessions[0] ? formatPlanDate(usedPlan.sessions[0].startDate) : '-'),
+              valueCell(
+                usedPlan.sessions[0] ? formatPlanDate(usedPlan.sessions[0].startDate) : '-'
+              ),
               labelCell('Sessions'),
               valueCell(usedPlan.sessions.length),
             ],
@@ -1541,19 +1895,43 @@ export const exportPlanify = async (req, res) => {
               headerCell('Formateur', { size: 1600, type: WidthType.DXA }),
             ],
           }),
-          ...usedPlan.sessions.map((session) =>
-            new TableRow({
-              children: [
-                bodyCell(session.region, { size: 1400, type: WidthType.DXA }),
-                bodyCell(`Session ${session.groupIndex}`, { size: 1100, type: WidthType.DXA }, AlignmentType.CENTER),
-                bodyCell(session.maxParticipants || 0, { size: 1200, type: WidthType.DXA }, AlignmentType.CENTER),
-                bodyCell(`${getSessionTotalDays(session)} j`, { size: 1200, type: WidthType.DXA }, AlignmentType.CENTER),
-                bodyCell(formatPlanDate(session.startDate), { size: 1200, type: WidthType.DXA }, AlignmentType.CENTER),
-                bodyCell(formatPlanDate(session.endDate), { size: 1200, type: WidthType.DXA }, AlignmentType.CENTER),
-                bodyCell(session.salle || 'Salle à définir', { size: 1500, type: WidthType.DXA }),
-                bodyCell(session.trainerName || 'À affecter', { size: 1600, type: WidthType.DXA }),
-              ],
-            })
+          ...usedPlan.sessions.map(
+            (session) =>
+              new TableRow({
+                children: [
+                  bodyCell(session.region, { size: 1400, type: WidthType.DXA }),
+                  bodyCell(
+                    `Session ${session.groupIndex}`,
+                    { size: 1100, type: WidthType.DXA },
+                    AlignmentType.CENTER
+                  ),
+                  bodyCell(
+                    session.maxParticipants || 0,
+                    { size: 1200, type: WidthType.DXA },
+                    AlignmentType.CENTER
+                  ),
+                  bodyCell(
+                    `${getSessionTotalDays(session)} j`,
+                    { size: 1200, type: WidthType.DXA },
+                    AlignmentType.CENTER
+                  ),
+                  bodyCell(
+                    formatPlanDate(session.startDate),
+                    { size: 1200, type: WidthType.DXA },
+                    AlignmentType.CENTER
+                  ),
+                  bodyCell(
+                    formatPlanDate(session.endDate),
+                    { size: 1200, type: WidthType.DXA },
+                    AlignmentType.CENTER
+                  ),
+                  bodyCell(session.salle || 'Salle à définir', { size: 1500, type: WidthType.DXA }),
+                  bodyCell(session.trainerName || 'À affecter', {
+                    size: 1600,
+                    type: WidthType.DXA,
+                  }),
+                ],
+              })
           ),
         ];
 
@@ -1566,13 +1944,21 @@ export const exportPlanify = async (req, res) => {
                 headerCell('Durée', { size: 2600, type: WidthType.DXA }),
               ],
             }),
-            ...(session.modules || []).map((module) =>
-              new TableRow({
-                children: [
-                  bodyCell(module.moduleName || module.name || 'Module', { size: 6600, type: WidthType.DXA }),
-                  bodyCell(`${module.duration || 1} jour(s)`, { size: 2600, type: WidthType.DXA }, AlignmentType.CENTER),
-                ],
-              })
+            ...(session.modules || []).map(
+              (module) =>
+                new TableRow({
+                  children: [
+                    bodyCell(module.moduleName || module.name || 'Module', {
+                      size: 6600,
+                      type: WidthType.DXA,
+                    }),
+                    bodyCell(
+                      `${module.duration || 1} jour(s)`,
+                      { size: 2600, type: WidthType.DXA },
+                      AlignmentType.CENTER
+                    ),
+                  ],
+                })
             ),
           ];
 
@@ -1659,7 +2045,13 @@ export const exportPlanify = async (req, res) => {
                 }),
                 new Paragraph({
                   spacing: { before: 160, after: 80 },
-                  children: [new TextRun({ text: 'Tableau général des sessions', bold: true, color: '1F3A5F' })],
+                  children: [
+                    new TextRun({
+                      text: 'Tableau général des sessions',
+                      bold: true,
+                      color: '1F3A5F',
+                    }),
+                  ],
                 }),
                 new Table({
                   width: { size: 100, type: WidthType.PERCENTAGE },
@@ -1679,7 +2071,10 @@ export const exportPlanify = async (req, res) => {
           ],
         });
         const buffer = await Packer.toBuffer(doc);
-        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+        res.setHeader(
+          'Content-Type',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        );
         res.setHeader('Content-Disposition', 'attachment; filename="plan_formation.docx"');
         return res.send(Buffer.from(buffer));
       } catch (e) {
@@ -1689,7 +2084,10 @@ export const exportPlanify = async (req, res) => {
     }
 
     // fallback Word-compatible (HTML) export as .doc
-    const totalParticipants = usedPlan.sessions.reduce((sum, session) => sum + Number(session.maxParticipants || 0), 0);
+    const totalParticipants = usedPlan.sessions.reduce(
+      (sum, session) => sum + Number(session.maxParticipants || 0),
+      0
+    );
     let html = `
       <html>
         <head>
@@ -1814,13 +2212,17 @@ export const exportPlanify = async (req, res) => {
     res.send(html);
   } catch (error) {
     logger.error('[FORMATION_EXPORT_ERROR]', error);
-    res.status(500).json({ error: 'Erreur lors de l\'export' });
+    res.status(500).json({ error: "Erreur lors de l'export" });
   }
 };
 
 function escapeHtml(str) {
   if (!str) return '';
-  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
 function formatPlanDate(value) {
@@ -1858,12 +2260,16 @@ export const commitPlanify = async (req, res) => {
 
     const workSaturday = options?.workSaturday === true;
     const workSunday = options?.workSunday === true;
-    const planConflictError = validateCommittedPlanSessions(plan.sessions, workSaturday, workSunday);
+    const planConflictError = validateCommittedPlanSessions(
+      plan.sessions,
+      workSaturday,
+      workSunday
+    );
     if (planConflictError) {
       return res.status(400).json({ error: planConflictError });
     }
 
-    const created = await prisma.$transaction(async tx => {
+    const created = await prisma.$transaction(async (tx) => {
       const createdSessions = [];
 
       for (const session of plan.sessions) {
@@ -1889,14 +2295,15 @@ export const commitPlanify = async (req, res) => {
             workSaturday,
             workSunday,
             status: 'PLANIFIEE',
-            notes: [
-              session.trainerName ? `Formateur: ${session.trainerName}` : null,
-              session.priority ? `Priorité région: ${session.priority}` : null,
-            ]
-              .filter(Boolean)
-              .join(' • ') || null,
+            notes:
+              [
+                session.trainerName ? `Formateur: ${session.trainerName}` : null,
+                session.priority ? `Priorité région: ${session.priority}` : null,
+              ]
+                .filter(Boolean)
+                .join(' • ') || null,
             sessionModules: {
-              create: normalizedModules.map(module => ({
+              create: normalizedModules.map((module) => ({
                 moduleId: module.moduleId,
                 duration: module.duration,
                 orderIndex: module.orderIndex,
@@ -1921,7 +2328,7 @@ export const commitPlanify = async (req, res) => {
       {
         metadata: {
           count: created.length,
-          regions: Array.from(new Set(created.map(session => session.region))),
+          regions: Array.from(new Set(created.map((session) => session.region))),
         },
       }
     );
@@ -1929,7 +2336,7 @@ export const commitPlanify = async (req, res) => {
     res.status(201).json({
       success: true,
       count: created.length,
-      sessions: created.map(session => ({ id: session.id, region: session.region })),
+      sessions: created.map((session) => ({ id: session.id, region: session.region })),
     });
   } catch (error) {
     logger.error('[FORMATION_COMMIT_ERROR]', error);
@@ -1938,10 +2345,31 @@ export const commitPlanify = async (req, res) => {
 };
 
 export default {
-  getModules, createModule, updateModule, deleteModule,
-  getSessions, createSession, updateSession, deleteSession,
-  addModuleToSession, removeModuleFromSession,
-  addParticipant, removeParticipant, toggleAttendance,
-  getRegions, planify, validatePreviewSessionEdit, exportPlanify, commitPlanify, getPlanning, getStats, getPlannerState, savePlannerState, bulkCreateSessions,
-  getHistory, createHistoryEntry, clearHistory, cascadeRescheduleSession
+  getModules,
+  createModule,
+  updateModule,
+  deleteModule,
+  getSessions,
+  createSession,
+  updateSession,
+  deleteSession,
+  addModuleToSession,
+  removeModuleFromSession,
+  addParticipant,
+  removeParticipant,
+  toggleAttendance,
+  getRegions,
+  planify,
+  validatePreviewSessionEdit,
+  exportPlanify,
+  commitPlanify,
+  getPlanning,
+  getStats,
+  getPlannerState,
+  savePlannerState,
+  bulkCreateSessions,
+  getHistory,
+  createHistoryEntry,
+  clearHistory,
+  cascadeRescheduleSession,
 };

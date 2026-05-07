@@ -1,4 +1,4 @@
-﻿/**
+/**
  * AudioService (Axe 4 — Plan d'Amélioration Continue GEM-SAAS)
  * Fournit des feedbacks sonores subtils pour améliorer l'immersion et la réactivité.
  */
@@ -34,18 +34,18 @@ class AudioService {
   private attachUnlockListeners() {
     if (this.unlockListenersAttached || typeof window === 'undefined') return;
 
-    window.addEventListener('pointerdown', this.unlockHandler, { passive: true });
-    window.addEventListener('keydown', this.unlockHandler);
-    window.addEventListener('touchstart', this.unlockHandler, { passive: true });
+    window.addEventListener('click', this.unlockHandler, { passive: true });
+    window.addEventListener('keydown', this.unlockHandler, { passive: true });
+    window.addEventListener('touchend', this.unlockHandler, { passive: true });
     this.unlockListenersAttached = true;
   }
 
   private detachUnlockListeners() {
     if (!this.unlockListenersAttached || typeof window === 'undefined') return;
 
-    window.removeEventListener('pointerdown', this.unlockHandler);
+    window.removeEventListener('click', this.unlockHandler);
     window.removeEventListener('keydown', this.unlockHandler);
-    window.removeEventListener('touchstart', this.unlockHandler);
+    window.removeEventListener('touchend', this.unlockHandler);
     this.unlockListenersAttached = false;
   }
 

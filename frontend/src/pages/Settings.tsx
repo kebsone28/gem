@@ -41,31 +41,8 @@ import {
 } from '../services/localDeployAgent';
 import { computeTheoreticalNeeds, getAvailablePlanningRegions } from '../services/planningDomain';
 import { exportProjectConfig, importProjectConfig } from '../services/configExportService';
+import { isMasterAdmin } from '../utils/permissions';
 import ChargesAndResourcesTab from './settings/ChargesAndResourcesTab';
-
-// Helper stable id generator (defined outside components to avoid impure calls during render)
-const makeId = (prefix = 'id') =>
-  `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
-
-const normalizeGeoKey = (value: unknown) =>
-  String(value || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .trim()
-    .toLowerCase();
-
-const AUTO_TEAM_BLUEPRINTS = [
-  { needKey: 'livraison', tradeKey: 'livraison', role: 'LOGISTICS', label: 'Logistique' },
-  { needKey: 'macons', tradeKey: 'macons', role: 'INSTALLATION', label: 'Maçonnerie' },
-  { needKey: 'reseau', tradeKey: 'reseau', role: 'INSTALLATION', label: 'Réseau' },
-  {
-    needKey: 'interieur',
-    tradeKey: 'interieur_type1',
-    role: 'INSTALLATION',
-    label: 'Installations intérieures',
-  },
-  { needKey: 'controle', tradeKey: 'controle', role: 'SUPERVISION', label: 'Contrôle' },
-] as const;
 
 // ─── TYPE DEFINITIONS ───────────────────────────────────────────────────
 type ProjectConfig = Record<string, unknown> & {
@@ -85,15 +62,12 @@ type ProjectData = Record<string, unknown> & {
   config?: ProjectConfig;
 };
 
-type TabType =
-  | 'charges'
-  | 'kobo'
-  | 'data'
-  | 'system';
+type TabType = 'charges' | 'kobo' | 'data' | 'system';
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState<TabType>('charges');
   const [isDeploying, setIsDeploying] = useState(false);
+  const [commitMessage, setCommitMessage] = useState('Deploy update');
   const [localAgentState, setLocalAgentState] = useState<{
     checked: boolean;
     ok: boolean;
@@ -104,19 +78,13 @@ export default function Settings() {
     busy: false,
   });
   const { project, updateProject, isLoading: isProjectLoading } = useProject();
-  const {
-    households,
-    isLoading: isHouseholdsLoading,
-    error: householdsError,
-  } = useTerrainData();
+  const { households, isLoading: isHouseholdsLoading, error: householdsError } = useTerrainData();
   const { user } = useAuth();
 
   // Cast project config once at the top for type safety
   const cfg = ((project?.config || {}) as ProjectConfig) || ({} as ProjectConfig);
-  const canRunDbMaintenance = user?.email === 'admingem';
-  const canAccessAdminOnlyTabs =
-    user?.email === 'admingem' || user?.role === 'ADMIN_PROQUELEC';
-
+  const canRunDbMaintenance = isMasterAdmin(user);
+  const canAccessAdminOnlyTabs = isMasterAdmin(user) || user?.role === 'ADMIN_PROQUELEC';
 
   const isLoading = isProjectLoading || isHouseholdsLoading;
 
@@ -174,21 +142,11 @@ export default function Settings() {
           return;
         }
 
-        const commitMessage = window.prompt(
-          "Message de commit pour le déploiement local",
-          "Deploy update"
-        );
-        if (commitMessage === null) {
-          return;
-        }
-
-        if (
-          !window.confirm(
-            "🚀 Lancer le mode local complet ?\n\nCette action va faire commit + push + déploiement VPS depuis cette machine."
-          )
-        ) {
-          return;
-        }
+        // L'utilisateur a cliqué explicitement sur le bouton → procéder directement
+        toast('🚀 Déploiement local en cours...', {
+          icon: '🚀',
+          style: { background: '#1e293b', color: '#fff' },
+        });
 
         toast.loading('Agent local détecté: commit + push + déploiement en cours...', {
           id: 'deploy-progress',
@@ -204,35 +162,15 @@ export default function Settings() {
         return;
       }
 
-      const continueWithFallback = window.confirm(
-        "⚠️ Agent local introuvable.\n\nPour activer le mode complet sur ce poste, lancez d'abord :\n\nnpm run agent:deploy\n\nCliquez sur OK pour continuer en mode fallback GitHub seulement, ou Annuler pour interrompre."
-      );
-      if (!continueWithFallback) {
-        toast('Rappel: lancez `npm run agent:deploy`, puis recliquez sur le bouton.', {
-          icon: '💡',
-          style: { background: '#1e293b', color: '#fff' },
-        });
-        return;
-      }
+      // Agent local non détecté → fallback GitHub automatique
+      logger.warn('Agent local introuvable, passage automatique en mode fallback GitHub.');
+      toast('ℹ️ Agent local non détecté. Mode fallback GitHub activé automatiquement.', {
+        icon: '💡',
+        style: { background: '#1e293b', color: '#fff' },
+      });
 
-      const hasPushed = window.confirm(
-        "Le mode fallback ne déploie que le code déjà poussé sur GitHub.\n\nAvez-vous bien fait un Git Push de vos dernières modifications ?"
-      );
-      if (!hasPushed) {
-        toast('🛑 Veuillez faire `git push origin main` ou lancer `npm run agent:deploy` avant de déployer.', {
-          style: { background: '#333', color: '#fff' },
-        });
-        return;
-      }
-
-      if (
-        window.confirm(
-          "🚀 Lancer la mise à jour complète du serveur ?\n\nCette action va synchroniser le serveur avec GitHub et reconstruire l'application en arrière-plan."
-        )
-      ) {
-        const res = await apiClient.post('/projects/system/deploy');
-        toast.success(res.data.message || 'Le déploiement serveur a été lancé !');
-      }
+      const res = await apiClient.post('/projects/system/deploy');
+      toast.success(res.data.message || 'Le déploiement serveur a été lancé !');
     } catch (err: any) {
       toast.error(err?.response?.data?.error || err?.message || 'Erreur lors du déploiement');
     } finally {
@@ -282,7 +220,6 @@ export default function Settings() {
 
   return (
     <div className="min-h-screen bg-slate-950 py-4 sm:py-8 transition-all duration-500">
-      <div>{/* PageHeader removed - not used */}</div>
       <div className="space-y-6 sm:space-y-10 p-4 sm:p-8 bg-slate-950 border-white/5">
         <div className="max-w-7xl mx-auto space-y-6 sm:space-y-10">
           {/* ── HEADER ── */}
@@ -310,7 +247,7 @@ export default function Settings() {
                   try {
                     await exportProjectConfig(project);
                   } catch (err: any) {
-                    toast.error(err.message || 'Erreur lors de l\'exportation');
+                    toast.error(err.message || "Erreur lors de l'exportation");
                   }
                 }}
                 className="w-full sm:w-auto min-h-[48px] flex items-center justify-center gap-2 px-5 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[10px] sm:text-xs rounded-xl transition-all shadow-lg active:scale-95 uppercase tracking-[0.08em]"
@@ -324,16 +261,31 @@ export default function Settings() {
                 IMPORTER CONFIG
                 <input
                   type="file"
-                  accept=".xlsx"
+                  accept=".json,.xlsx"
                   className="hidden"
                   onChange={async (e) => {
                     const file = e.target.files?.[0];
                     if (!file) return;
                     try {
-                      const result = await importProjectConfig(file, project?.config);
-                      if (result.success) {
-                        await updateProject({ config: result.newConfig });
-                        toast.success('✅ Configuration importée ! Rechargez la page pour voir les changements.');
+                      const fileExtension = file.name.split('.').pop()?.toLowerCase();
+                      if (fileExtension === 'json') {
+                        // Parser comme JSON
+                        const text = await file.text();
+                        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                        const config = JSON.parse(text);
+                        await updateProject({ config: config as any });
+                        toast.success(
+                          '✅ Configuration JSON importée ! Rechargez la page pour voir les changements.'
+                        );
+                      } else {
+                        // Logique XLSX existante
+                        const result = await importProjectConfig(file, project?.config);
+                        if (result.success) {
+                          await updateProject({ config: result.newConfig });
+                          toast.success(
+                            '✅ Configuration importée ! Rechargez la page pour voir les changements.'
+                          );
+                        }
                       }
                     } catch (err: any) {
                       toast.error('❌ Erreur import: ' + (err?.message || 'Format invalide'));
@@ -369,7 +321,9 @@ export default function Settings() {
                   size={16}
                   className={`${activeTab === tab.id ? 'text-white' : 'text-gray-400 group-hover:text-blue-500'} transition-colors`}
                 />
-                <span className="font-black text-[10px] sm:text-xs uppercase tracking-[0.08em] sm:tracking-widest">{tab.label}</span>
+                <span className="font-black text-[10px] sm:text-xs uppercase tracking-[0.08em] sm:tracking-widest">
+                  {tab.label}
+                </span>
               </button>
             ))}
           </div>
@@ -426,9 +380,9 @@ export default function Settings() {
                             Mise à jour du serveur
                           </h3>
                           <p className="text-xs text-slate-400 font-bold leading-relaxed">
-                            Si un agent local est disponible sur ce poste, ce bouton lance
-                            commit + push + déploiement VPS. Sinon, il déploie seulement la
-                            dernière version déjà poussée sur GitHub.
+                            Si un agent local est disponible sur ce poste, ce bouton lance commit +
+                            push + déploiement VPS. Sinon, il déploie seulement la dernière version
+                            déjà poussée sur GitHub.
                           </p>
                           <div
                             className={`rounded-2xl border px-4 py-3 ${
@@ -455,7 +409,8 @@ export default function Settings() {
                                   <>
                                     <p className="text-xs font-bold leading-relaxed text-slate-300">
                                       Pour activer le mode complet sur cette machine, lancez
-                                      d&apos;abord l&apos;agent local dans un terminal ouvert sur ce dépôt.
+                                      d&apos;abord l&apos;agent local dans un terminal ouvert sur ce
+                                      dépôt.
                                     </p>
                                     <div className="flex flex-col gap-2 rounded-xl border border-white/10 bg-slate-950/80 p-3 sm:flex-row sm:items-center sm:justify-between">
                                       <code className="break-all text-[11px] font-black text-cyan-300">
@@ -465,7 +420,9 @@ export default function Settings() {
                                         type="button"
                                         onClick={async () => {
                                           try {
-                                            await navigator.clipboard.writeText(localAgentStartCommand);
+                                            await navigator.clipboard.writeText(
+                                              localAgentStartCommand
+                                            );
                                             toast.success('Commande copiée');
                                           } catch {
                                             toast.error('Copie impossible sur ce navigateur');
@@ -503,8 +460,8 @@ export default function Settings() {
                               Nettoyage Base de Données
                             </h3>
                             <p className="text-xs text-slate-400 font-bold leading-relaxed">
-                              Supprime définitivement les éléments dans la corbeille depuis plus de 30
-                              jours et optimise les structures de la base PostgreSQL.
+                              Supprime définitivement les éléments dans la corbeille depuis plus de
+                              30 jours et optimise les structures de la base PostgreSQL.
                             </p>
                             <button
                               onClick={async () => {

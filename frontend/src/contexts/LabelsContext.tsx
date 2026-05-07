@@ -1,5 +1,5 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/exhaustive-deps, react-hooks/preserve-manual-memoization */
-import React, { createContext, useContext, useMemo } from 'react';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import React, { createContext, useContext, useMemo, useCallback } from 'react';
 import { useAuth } from './AuthContext';
 
 /**
@@ -73,17 +73,20 @@ export const LabelsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
    * @param path e.g., "household.plural"
    * @param count if > 1, returns plural automatically if path is just "household"
    */
-  const getLabel = (path: string, count?: number): string => {
-    const [category, sub] = path.split('.');
-    const cat = (labels as any)[category];
-    if (!cat) return path;
+  const getLabel = useCallback(
+    (path: string, count?: number): string => {
+      const [category, sub] = path.split('.');
+      const cat = (labels as any)[category];
+      if (!cat) return path;
 
-    if (sub) return cat[sub] || path;
+      if (sub) return cat[sub] || path;
 
-    // Auto pluralize if only category is provided
-    if (count !== undefined && count > 1) return cat.plural;
-    return cat.singular;
-  };
+      // Auto pluralize if only category is provided
+      if (count !== undefined && count > 1) return cat.plural;
+      return cat.singular;
+    },
+    [labels]
+  );
 
   return <LabelsContext.Provider value={{ labels, getLabel }}>{children}</LabelsContext.Provider>;
 };

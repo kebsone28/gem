@@ -3,9 +3,9 @@ import { useState, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../store/db';
 import type { Team, Household } from '../utils/types';
-import * as safeStorage from '../utils/safeStorage';
 import { useProject } from '../contexts/ProjectContext';
 import logger from '../utils/logger';
+import apiClient from '../api/client';
 
 export interface DevisItem {
   id: string;
@@ -104,10 +104,7 @@ export function useFinances() {
 
   // Source unique : ProjectContext. Cela évite qu'un ancien active_project_id local
   // produise des indicateurs financiers différents selon le compte ou le navigateur.
-  const project =
-    activeProject ||
-    projects.find((p) => p.id === activeProjectId) ||
-    projects[0];
+  const project = activeProject || projects.find((p) => p.id === activeProjectId) || projects[0];
 
   const teams = useLiveQuery(() => db.teams.toArray()) as Team[] | undefined;
   const allHouseholds = useLiveQuery(() => db.households.toArray()) as Household[] | undefined;
@@ -124,25 +121,25 @@ export function useFinances() {
   const [householdsServerCount, setHouseholdsServerCount] = useState<number | null>(null);
 
   useEffect(() => {
+    const controller = new AbortController();
+
     const fetchServerHouseholdCount = async () => {
       try {
-        const token = safeStorage.getItem('access_token');
-        if (!token) return;
-        const res = await fetch(`${import.meta.env.VITE_API_URL}/households/count`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setHouseholdsServerCount(data.count);
-        }
-      } catch (err) {
+        const res = await apiClient.get('/households/count', { signal: controller.signal });
+        const data = res.data;
+        setHouseholdsServerCount(Number(data?.count ?? data ?? 0));
+      } catch (err: any) {
+        if (err?.code === 'ERR_CANCELED' || err?.name === 'CanceledError') return;
         logger.warn(
           'Failed to fetch absolute household count from server, falling back to local DB.',
           err
         );
       }
     };
-    fetchServerHouseholdCount();
+
+    void fetchServerHouseholdCount();
+
+    return () => controller.abort();
   }, []);
 
   // Filtrer les ménages. Si les ménages de Kobo n'ont pas de projectId, on les inclut quand même
@@ -393,7 +390,10 @@ export function useFinances() {
   const toggleClientProvidesMaterials = async () => {
     if (!project?.id) return;
     const current = !!project.config?.clientProvidesMaterials;
-    await updateProject({ config: { ...project.config, clientProvidesMaterials: !current } }, project.id);
+    await updateProject(
+      { config: { ...project.config, clientProvidesMaterials: !current } },
+      project.id
+    );
   };
 
   const toggleIncludeSupply = async () => {

@@ -1,13 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import {
-  AlignmentType,
-  Document,
-  HeadingLevel,
-  Packer,
-  Paragraph,
-  TextRun,
-} from 'docx';
+import { AlignmentType, Document, HeadingLevel, Packer, Paragraph, TextRun } from 'docx';
 import { saveAs } from 'file-saver';
 import {
   Download,
@@ -51,6 +44,7 @@ import {
 import './Cahier.css';
 import logger from '../utils/logger';
 import { isTeamAvailableForAllocation } from '../services/planningAllocation';
+import { isMasterAdminEmail } from '../utils/roleUtils';
 
 // Import centralized design system
 import { PageContainer, PageHeader, ContentArea, ActionBar } from '@components';
@@ -99,14 +93,13 @@ type CahierDocumentMode = 'cahier' | 'contrat' | 'strategie';
 type CahierGuideBlock = NonNullable<CahierTask['koboGuide']>[number];
 
 function isContractHeading(line: string): boolean {
-  return (
-    /^Article\s+\d+/i.test(line) ||
-    /^\d+\.\d+/.test(line) ||
-    line === line.toUpperCase()
-  );
+  return /^Article\s+\d+/i.test(line) || /^\d+\.\d+/.test(line) || line === line.toUpperCase();
 }
 
-function buildContractTemplateFromText(template: ContractTemplate, rawContent: string): ContractTemplate {
+function buildContractTemplateFromText(
+  template: ContractTemplate,
+  rawContent: string
+): ContractTemplate {
   const content = rawContent
     .split('\n')
     .map((line) => line.trim())
@@ -249,7 +242,10 @@ function sanitizeTaskForCahier(roleName: string, task: CahierTask): CahierTask {
 
 function sanitizeTaskLibraryForCahier(library: TaskLibrary): TaskLibrary {
   return Object.fromEntries(
-    Object.entries(library).map(([roleName, task]) => [roleName, sanitizeTaskForCahier(roleName, task)])
+    Object.entries(library).map(([roleName, task]) => [
+      roleName,
+      sanitizeTaskForCahier(roleName, task),
+    ])
   ) as TaskLibrary;
 }
 
@@ -301,9 +297,7 @@ const CahierSection: React.FC<{
         className="w-1 h-5 rounded-full bg-[var(--section-color)]"
         style={{ '--section-color': color } as React.CSSProperties}
       />
-      <h4 className="font-bold text-slate-100 uppercase tracking-[0.14em] text-xs">
-        {title}
-      </h4>
+      <h4 className="font-bold text-slate-100 uppercase tracking-[0.14em] text-xs">{title}</h4>
     </div>
     {children}
   </div>
@@ -396,14 +390,14 @@ const DEFAULT_TASK_LIBRARY: TaskLibrary = sanitizeTaskLibraryForCahier({
         blockers: [
           'Branchement non réalisé.',
           'Branchement non conforme.',
-          "Installation intérieure encore incomplète au moment de la validation Kobo.",
+          'Installation intérieure encore incomplète au moment de la validation Kobo.',
         ],
       },
       {
         title: 'Tableau, protections et séparation des circuits',
         checks: [
           "Présence d'un disjoncteur général en tête d'installation.",
-          "Type de disjoncteur général correctement identifié et installation protégée par DDR 30 mA.",
+          'Type de disjoncteur général correctement identifié et installation protégée par DDR 30 mA.',
           "Protection à l'origine de chaque circuit avec séparation claire entre lumière et prise.",
         ],
         blockers: [
@@ -442,7 +436,7 @@ const DEFAULT_TASK_LIBRARY: TaskLibrary = sanitizeTaskLibraryForCahier({
           'Absence de continuité du conducteur de protection.',
         ],
         completion: [
-          "La validation finale intérieure suppose une terre complète, continue et mesurée dans le formulaire.",
+          'La validation finale intérieure suppose une terre complète, continue et mesurée dans le formulaire.',
         ],
       },
     ],
@@ -455,7 +449,6 @@ const DEFAULT_TASK_LIBRARY: TaskLibrary = sanitizeTaskLibraryForCahier({
       "ART 5.3 - CAUTIONNEMENT FLEXIBLE : La retenue de garantie est limitée à 5-10% du montant des prestations. Le Titulaire peut la substituer par une caution d'assurance délivrée par une compagnie agréée (SONAM, ASKIA), sous réserve de transmission de l’attestation correspondante.",
     ],
     legal: [
-
       'ART E.1 - RESPONSABILITÉ TECHNIQUE : L’électricien est responsable de la conformité totale de l’installation intérieure aux normes NFC 15-100 et NS 01-001. Toute non-conformité engage sa responsabilité civile et pénale.',
       'ART E.2 - RISQUE ÉLECTRIQUE : Toute installation non sécurisée engage sa responsabilité en cas d’incendie, d’électrocution ou de dommage matériel, conformément au Code pénal sénégalais.',
       'ART E.3 - MISE À LA TERRE : L’absence ou la défaillance du systeme de terre (résistance > 1500 Ohms, conducteur section insuffisante) constitue une faute grave, entraînant le rejet de l’ouvrage et l’application de pénalités de 15% du montant du lot par jour de retard dans la correction.',
@@ -499,7 +492,6 @@ const DEFAULT_TASK_LIBRARY: TaskLibrary = sanitizeTaskLibraryForCahier({
       "**HSE 2.5 - PREMIERS SECOURS** : Présence obligatoire d'une trousse de secours (norme NF EN 12870) et d'un point d'eau potable sur chaque chantier. Leur absence est passible d'une pénalité de 5% du montant journalier du lot.",
     ],
     legal: [
-
       'ART M.1 - STABILITÉ MÉCANIQUE : Le maçon est responsable de la stabilité des ouvrages réalisés. Toute fissuration (> 0,2 mm) ou tout affaissement détecté dans les 30 jours suivant la réception entraîne une reprise intégrale aux frais du Titulaire.',
       'ART M.2 - SUPPORT DES COFFRETS : Tout défaut du support (muret, socle) affectant la fixation ou l’étanchéité du coffret de comptage engage la responsabilité décennale du Titulaire.',
       'ART M.3 - DOSAGE DU BÉTON : Le non-respect des dosages prescrits (350 kg/m3 pour les fondations, 1:2:4 pour les enduits) constitue une non-conformité majeure, entraînant le rejet de l’ouvrage et des pénalités de 10% par jour de retard dans la correction.',
@@ -586,7 +578,7 @@ const DEFAULT_TASK_LIBRARY: TaskLibrary = sanitizeTaskLibraryForCahier({
           'Mode de pose propre : coffret en limite de propriété, câble non jonctionné, potelet stable.',
         ],
         blockers: [
-          "Absence ou détérioration du coupe-circuit, ou calibre fusible supérieur à 25 A.",
+          'Absence ou détérioration du coupe-circuit, ou calibre fusible supérieur à 25 A.',
           'Pas de tube PVC ou protection mécanique incomplète sur la descente.',
           'Coffret percé ou posé à l’intérieur de la propriété.',
           'Câble préassemblé jonctionné.',
@@ -605,7 +597,6 @@ const DEFAULT_TASK_LIBRARY: TaskLibrary = sanitizeTaskLibraryForCahier({
       },
     ],
     legal: [
-
       'ART R.1 - INTÉGRITÉ DU RÉSEAU SENELEC : Toute dégradation du réseau Senelec (poteaux, câbles, hublots) imputable au Titulaire sera réparée à ses frais, sous 48h après notification, sous peine de pénalités de 20% du montant du lot par jour de retard.',
       'ART R.2 - DISTANCES DE SÉCURITÉ : Le non-respect des distances minimales (3 m au-dessus des voies, 1 m en propriété privée) ou des règles de tension mécanique des câbles constitue une faute grave, entraînant le rejet du branchement et une pénalité de 15% du montant du lot.',
       'ART R.3 - BRANCHEMENT ILLICITE : Tout branchement non conforme aux plans validés ou réalisé sans autorisation est strictement interdit. En cas de fraude avérée, le Titulaire sera exclu du marché et poursuivi conformément au Code pénal sénégalais.',
@@ -652,7 +643,6 @@ const DEFAULT_TASK_LIBRARY: TaskLibrary = sanitizeTaskLibraryForCahier({
       '**HSE 4.5 - GESTION DES DÉCHETS** : Tri et élimination des rebuts (câbles, emballages) conformément à la réglementation environnementale sénégalaise. Le non-respect expose à une pénalité de 5% du montant du lot et à des poursuites administratives.',
     ],
     legal: [
-
       "ART L.1 - RESPONSABILITÉ DU TRANSPORT : Le Titulaire est responsable des équipements et matériaux du départ du dépôt jusqu'à leur réception sur site. Toute perte, vol ou détérioration sera facturée au prix du marché majoré de 20%.",
       "ART L.2 - TRACABILITÉ OBLIGATOIRE : Toute sortie de matériel doit être enregistrée dans GEM-PROQUELEC avant le départ du dépôt. L'absence de tracabilité bloque les paiements jusqu'à régularisation.",
       "ART L.3 - GESTION DES DÉCHETS : Le non-respect des procédures de tri et d'élimination des rebuts (câbles, emballages) entraîne une pénalité de 5% du montant du lot et peut donner lieu à une exclusion du marché pour non-respect des normes environnementales.",
@@ -700,7 +690,6 @@ const DEFAULT_TASK_LIBRARY: TaskLibrary = sanitizeTaskLibraryForCahier({
       "**HSE 5.5 - FORMATION ET HABILITATION** : Le contrôleur doit être titulaire d'une habilitation électrique (BR ou BC) en cours de validité. Son absence est passible d'une exclusion du marché et de poursuites pour exercice illégal.",
     ],
     legal: [
-
       'ART C.1 - INDÉPENDANCE DU CONTRÔLEUR : Le contrôleur PROQUELEC agit de manière autonome et indépendante des équipes de réalisation. Ses décisions sont souveraines et ne peuvent faire l’objet de pression ou d’influence.',
       'ART C.2 - POUVOIR DE REFUS : Tout ouvrage non conforme aux normes ou présentant un risque pour la sécurité est rejeté jusqu’à reprise complète et validation par PROQUELEC. Le Titulaire ne peut contester ce rejet sans preuve écrite de conformité.',
       'ART C.3 - CERTIFICATION FINALE : La validation dans GEM-PROQUELEC par le contrôleur PROQUELEC constitue le seul acte déclenchant le processus de paiement. Aucune réception verbale ou partielle n’est opposable au Maître d’Ouvrage.',
@@ -737,7 +726,7 @@ export default function Cahier() {
     (user?.role || '').includes('ADMIN') ||
     (user?.role || '').includes('DG') ||
     (user?.role || '').includes('DIRECTEUR') ||
-    user?.email === 'admingem' ||
+    isMasterAdminEmail(user?.email) ||
     user?.role === 'CLIENT_LSE';
 
   const { project, updateProject } = useProject();
@@ -822,23 +811,26 @@ export default function Cahier() {
     return DEFAULT_CONTRACT_TEMPLATES;
   });
 
-  const [operationalStrategy, setOperationalStrategy] = useState<OperationalStrategyTemplate>(() => {
-    try {
-      const serverStrategy = (project?.config as any)?.operationalStrategy as OperationalStrategyTemplate;
-      if (Array.isArray(serverStrategy?.content) && serverStrategy.content.length > 0) {
-        return serverStrategy;
-      }
+  const [operationalStrategy, setOperationalStrategy] = useState<OperationalStrategyTemplate>(
+    () => {
+      try {
+        const serverStrategy = (project?.config as any)
+          ?.operationalStrategy as OperationalStrategyTemplate;
+        if (Array.isArray(serverStrategy?.content) && serverStrategy.content.length > 0) {
+          return serverStrategy;
+        }
 
-      const saved = safeStorage.getItem('gem_operational_strategy');
-      if (saved) {
-        const parsed = JSON.parse(saved) as OperationalStrategyTemplate;
-        if (Array.isArray(parsed.content) && parsed.content.length > 0) return parsed;
+        const saved = safeStorage.getItem('gem_operational_strategy');
+        if (saved) {
+          const parsed = JSON.parse(saved) as OperationalStrategyTemplate;
+          if (Array.isArray(parsed.content) && parsed.content.length > 0) return parsed;
+        }
+      } catch (e) {
+        logger.warn('[Cahier] Operational strategy initial load failed, fallback to default', e);
       }
-    } catch (e) {
-      logger.warn('[Cahier] Operational strategy initial load failed, fallback to default', e);
+      return DEFAULT_OPERATIONAL_STRATEGY;
     }
-    return DEFAULT_OPERATIONAL_STRATEGY;
-  });
+  );
 
   const currentRoleKey = customLibrary[selectedRole as keyof typeof customLibrary]
     ? selectedRole
@@ -871,35 +863,35 @@ export default function Cahier() {
   const [contractDraft, setContractDraft] = useState(currentContract.content.join('\n'));
   const [strategyDraft, setStrategyDraft] = useState(operationalStrategy.content.join('\n'));
 
-  const persistCahierConfig = useCallback(async (
-    updates: Record<string, unknown>,
-    successMessage?: string
-  ): Promise<boolean> => {
-    if (!project || !isAdmin) return false;
+  const persistCahierConfig = useCallback(
+    async (updates: Record<string, unknown>, successMessage?: string): Promise<boolean> => {
+      if (!project || !isAdmin) return false;
 
-    try {
-      setIsSaving(true);
-      await updateProject({
-        config: {
-          ...(project.config as any),
-          ...updates,
-          cahierServerSyncedAt: new Date().toISOString(),
-          cahierServerSyncedBy: user?.email || user?.name || user?.role || 'admin',
-        } as any,
-      });
+      try {
+        setIsSaving(true);
+        await updateProject({
+          config: {
+            ...(project.config as any),
+            ...updates,
+            cahierServerSyncedAt: new Date().toISOString(),
+            cahierServerSyncedBy: user?.email || user?.name || user?.role || 'admin',
+          } as any,
+        });
 
-      if (successMessage) {
-        alert(successMessage);
+        if (successMessage) {
+          alert(successMessage);
+        }
+        return true;
+      } catch (error) {
+        logger.error('[Cahier] Server save failed', error);
+        alert('Erreur pendant la sauvegarde serveur.');
+        return false;
+      } finally {
+        setIsSaving(false);
       }
-      return true;
-    } catch (error) {
-      logger.error('[Cahier] Server save failed', error);
-      alert('Erreur pendant la sauvegarde serveur.');
-      return false;
-    } finally {
-      setIsSaving(false);
-    }
-  }, [isAdmin, project, updateProject, user?.email, user?.name, user?.role]);
+    },
+    [isAdmin, project, updateProject, user?.email, user?.name, user?.role]
+  );
 
   const getCadence = (roleName: string) => {
     const tradeKey = ROLE_TO_TRADE_MAPPING[roleName];
@@ -925,8 +917,9 @@ export default function Cahier() {
 
     // 2. Fallback aux capacités individuelles des équipes
     const tradeTeams =
-      allTeams?.filter((team) => team.tradeKey === tradeKey && isTeamAvailableForAllocation(team)) ||
-      [];
+      allTeams?.filter(
+        (team) => team.tradeKey === tradeKey && isTeamAvailableForAllocation(team)
+      ) || [];
     if (tradeTeams.length > 0) {
       const capacities = Array.from(
         new Set(tradeTeams.map((t) => (t as any).capacity).filter((c) => !!c))
@@ -980,7 +973,8 @@ export default function Cahier() {
       setContractLibrary(mergeContractLibraryWithDefaults(serverContracts));
     }
 
-    const serverStrategy = (project.config as any)?.operationalStrategy as OperationalStrategyTemplate;
+    const serverStrategy = (project.config as any)
+      ?.operationalStrategy as OperationalStrategyTemplate;
     if (Array.isArray(serverStrategy?.content) && serverStrategy.content.length > 0) {
       setOperationalStrategy(serverStrategy);
     }
@@ -1425,7 +1419,11 @@ export default function Cahier() {
   if (!project) {
     return (
       <PageContainer>
-        <PageHeader title="Chargement..." subtitle="Préparation de la norme projet" icon={HardHat} />
+        <PageHeader
+          title="Chargement..."
+          subtitle="Préparation de la norme projet"
+          icon={HardHat}
+        />
         <ContentArea className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <CardSkeleton />
@@ -1593,7 +1591,10 @@ export default function Cahier() {
                           active ? 'bg-emerald-500/15' : 'bg-slate-900'
                         }`}
                       >
-                        <FileText size={18} className={active ? 'text-emerald-200' : 'text-slate-400'} />
+                        <FileText
+                          size={18}
+                          className={active ? 'text-emerald-200' : 'text-slate-400'}
+                        />
                       </div>
                       <div>
                         <span className="block text-sm font-black">{template.lot}</span>
@@ -1608,7 +1609,7 @@ export default function Cahier() {
             </aside>
 
             <main className="xl:col-span-3">
-                <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-950/45">
+              <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-950/45">
                 <div className="border-b border-slate-800 bg-slate-950/60 p-4 md:p-7">
                   <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                     <div>
@@ -1790,975 +1791,996 @@ export default function Cahier() {
             </div>
           </div>
         ) : (
-        <div className="mx-auto max-w-[96rem] space-y-4 md:space-y-6 p-3 md:p-8">
-          <section className="rounded-3xl border border-slate-800 bg-slate-950/40 p-3 md:p-4">
-            <div className="mb-3 flex items-center justify-between gap-3 px-1 md:px-2">
-              <div>
-                <h3 className="text-sm font-semibold uppercase tracking-[0.14em] text-slate-100">
-                  Lots disponibles
-                </h3>
-                <p className="mt-1 text-xs text-slate-500">
-                  Sélection du guide métier à afficher.
-                </p>
+          <div className="mx-auto max-w-[96rem] space-y-4 md:space-y-6 p-3 md:p-8">
+            <section className="rounded-3xl border border-slate-800 bg-slate-950/40 p-3 md:p-4">
+              <div className="mb-3 flex items-center justify-between gap-3 px-1 md:px-2">
+                <div>
+                  <h3 className="text-sm font-semibold uppercase tracking-[0.14em] text-slate-100">
+                    Lots disponibles
+                  </h3>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Sélection du guide métier à afficher.
+                  </p>
+                </div>
+                <span className="rounded-full border border-slate-700 bg-slate-900 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-300">
+                  {finalRolesToDisplay.length} rubriques
+                </span>
               </div>
-              <span className="rounded-full border border-slate-700 bg-slate-900 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-300">
-                {finalRolesToDisplay.length} rubriques
-              </span>
-            </div>
 
-            <div className="flex overflow-x-auto gap-3 pb-1 no-scrollbar md:grid md:grid-cols-2 md:auto-rows-fr md:items-stretch xl:grid-cols-5 md:overflow-visible">
-              {finalRolesToDisplay.map(([name, data]: [string, any]) => {
-                const Icon = data.icon;
-                const isSelected = selectedRole === name;
-                return (
-                  <button
-                    key={name}
-                    onClick={() => handleRoleChange(name)}
-                    className={`
+              <div className="flex overflow-x-auto gap-3 pb-1 no-scrollbar md:grid md:grid-cols-2 md:auto-rows-fr md:items-stretch xl:grid-cols-5 md:overflow-visible">
+                {finalRolesToDisplay.map(([name, data]: [string, any]) => {
+                  const Icon = data.icon;
+                  const isSelected = selectedRole === name;
+                  return (
+                    <button
+                      key={name}
+                      onClick={() => handleRoleChange(name)}
+                      className={`
                       min-w-[16rem] md:min-w-0 h-full min-h-[14rem] flex flex-col items-start gap-4 p-4 md:p-5 rounded-2xl transition-colors border text-left
-                      ${isSelected
-                        ? 'bg-orange-500/[0.08] text-white border-orange-500/60 shadow-[0_0_0_1px_rgba(249,115,22,0.08)]'
-                        : 'bg-slate-950/30 text-slate-400 border-slate-800 hover:bg-slate-900/70 hover:text-white'
+                      ${
+                        isSelected
+                          ? 'bg-orange-500/[0.08] text-white border-orange-500/60 shadow-[0_0_0_1px_rgba(249,115,22,0.08)]'
+                          : 'bg-slate-950/30 text-slate-400 border-slate-800 hover:bg-slate-900/70 hover:text-white'
                       }
                     `}
-                  >
-                    <div
-                      className={`
+                    >
+                      <div
+                        className={`
                         w-11 h-11 md:w-12 md:h-12 rounded-2xl flex items-center justify-center shrink-0
                         ${isSelected ? 'bg-orange-500/12' : 'bg-slate-900'}
                       `}
-                    >
-                      <Icon
-                        size={18}
-                        className={
-                          isSelected
-                            ? 'text-white'
-                            : COLOR_MAPS[data.color]?.text || 'text-slate-400'
-                        }
-                      />
-                    </div>
-                    <div className="min-w-0 flex flex-1 flex-col">
-                      <span className="block min-h-[3.5rem] text-base font-semibold leading-tight text-white">
-                        {name}
-                      </span>
-                      {getCadence(name) && (
-                        <span
-                          className={`mt-2 block text-xs leading-6 ${isSelected ? 'text-orange-100/90' : 'text-orange-300'
-                            }`}
-                        >
-                          {getCadence(name)}
-                        </span>
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-
-          <main className="space-y-3 md:space-y-8">
-            <div className="bg-slate-950/45 border border-slate-800 rounded-2xl overflow-hidden">
-              <div
-                className="p-4 md:p-7 bg-slate-950/60 border-b border-slate-800"
-              >
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div className="flex items-center space-x-3 md:space-x-4">
-                    <div
-                      className={`w-10 h-10 md:w-12 md:h-12 ${COLOR_MAPS[currentTask.color]?.bgSoft || 'bg-slate-800'} rounded-xl flex items-center justify-center border ${COLOR_MAPS[currentTask.color]?.border || 'border-slate-700'} shrink-0`}
-                    >
-                      <CurrentIcon
-                        size={20}
-                        className={COLOR_MAPS[currentTask.color]?.text || 'text-white'}
-                      />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-lg md:text-2xl font-bold text-white leading-tight">
-                          {selectedRole}
-                        </h3>
-                        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-bold text-emerald-300 uppercase tracking-wider">
-                          <ShieldCheck size={12} />
-                          PROQUELEC
-                        </div>
+                      >
+                        <Icon
+                          size={18}
+                          className={
+                            isSelected
+                              ? 'text-white'
+                              : COLOR_MAPS[data.color]?.text || 'text-slate-400'
+                          }
+                        />
                       </div>
-                      <p className="text-slate-500 text-xs md:text-sm">
-                        Cahier des charges opérationnel & technique
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={handleExportWord}
-                      className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-3 md:px-5 py-2 md:py-3 rounded-lg text-[10px] md:text-xs font-bold uppercase tracking-widest transition-colors border border-slate-700"
-                    >
-                      <Download size={14} className="text-orange-500" />
-                      <span>PDF / DOCX</span>
+                      <div className="min-w-0 flex flex-1 flex-col">
+                        <span className="block min-h-[3.5rem] text-base font-semibold leading-tight text-white">
+                          {name}
+                        </span>
+                        {getCadence(name) && (
+                          <span
+                            className={`mt-2 block text-xs leading-6 ${
+                              isSelected ? 'text-orange-100/90' : 'text-orange-300'
+                            }`}
+                          >
+                            {getCadence(name)}
+                          </span>
+                        )}
+                      </div>
                     </button>
+                  );
+                })}
+              </div>
+            </section>
 
-                    {isAdmin &&
-                      (isEditing ? (
-                        <button
-                          onClick={handleSave}
-                          className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg font-bold transition-colors"
-                        >
-                          <Save size={16} /> Enregistrer
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => setIsEditing(true)}
-                          className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-lg font-bold transition-colors border border-slate-700"
-                        >
-                          <Edit3 size={16} /> Éditer
-                        </button>
-                      ))}
+            <main className="space-y-3 md:space-y-8">
+              <div className="bg-slate-950/45 border border-slate-800 rounded-2xl overflow-hidden">
+                <div className="p-4 md:p-7 bg-slate-950/60 border-b border-slate-800">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex items-center space-x-3 md:space-x-4">
+                      <div
+                        className={`w-10 h-10 md:w-12 md:h-12 ${COLOR_MAPS[currentTask.color]?.bgSoft || 'bg-slate-800'} rounded-xl flex items-center justify-center border ${COLOR_MAPS[currentTask.color]?.border || 'border-slate-700'} shrink-0`}
+                      >
+                        <CurrentIcon
+                          size={20}
+                          className={COLOR_MAPS[currentTask.color]?.text || 'text-white'}
+                        />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-lg md:text-2xl font-bold text-white leading-tight">
+                            {selectedRole}
+                          </h3>
+                          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-bold text-emerald-300 uppercase tracking-wider">
+                            <ShieldCheck size={12} />
+                            PROQUELEC
+                          </div>
+                        </div>
+                        <p className="text-slate-500 text-xs md:text-sm">
+                          Cahier des charges opérationnel & technique
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={handleExportWord}
+                        className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-3 md:px-5 py-2 md:py-3 rounded-lg text-[10px] md:text-xs font-bold uppercase tracking-widest transition-colors border border-slate-700"
+                      >
+                        <Download size={14} className="text-orange-500" />
+                        <span>PDF / DOCX</span>
+                      </button>
+
+                      {isAdmin &&
+                        (isEditing ? (
+                          <button
+                            onClick={handleSave}
+                            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg font-bold transition-colors"
+                          >
+                            <Save size={16} /> Enregistrer
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => setIsEditing(true)}
+                            className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-lg font-bold transition-colors border border-slate-700"
+                          >
+                            <Edit3 size={16} /> Éditer
+                          </button>
+                        ))}
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="p-4 md:p-6 grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
-                <section className="md:col-span-1">
-                  {/* African Style Visual Card */}
-                  <div className="relative group mb-8">
-                    <div className="relative aspect-[4/5] bg-slate-950 rounded-xl overflow-hidden border border-slate-800">
-                      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-slate-950/90 z-10" />
-                      <img
-                        src={currentTask.image}
-                        alt={selectedRole}
-                        className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
-                      />
+                <div className="p-4 md:p-6 grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+                  <section className="md:col-span-1">
+                    {/* African Style Visual Card */}
+                    <div className="relative group mb-8">
+                      <div className="relative aspect-[4/5] bg-slate-950 rounded-xl overflow-hidden border border-slate-800">
+                        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-slate-950/90 z-10" />
+                        <img
+                          src={currentTask.image}
+                          alt={selectedRole}
+                          className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
+                        />
 
-                      <div className="absolute inset-x-0 bottom-0 p-4 md:p-6 z-20">
-                        <div className="backdrop-blur-md bg-white/5 border border-white/10 p-3 md:p-4 rounded-xl md:rounded-2xl">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 md:w-10 md:h-10 bg-orange-500 rounded-lg flex items-center justify-center text-white">
-                              <CurrentIcon size={18} />
-                            </div>
-                            <div>
-                              <span className="block text-[8px] md:text-[10px] font-black text-orange-400 uppercase tracking-[0.2em]">
-                                Guide Officiel
-                              </span>
-                              <span className="block text-sm md:text-lg font-bold text-white tracking-tight">
-                                Réalisation : {selectedRole}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Technical Gallery for Standards */}
-                  {currentTask.technicalImages?.some((image: any) => !image.notes) && (
-                    <div className="mt-8">
-                      <div className="flex items-center space-x-2 mb-6">
-                        <div className="w-1 h-6 bg-emerald-500 rounded-full" />
-                        <h4 className="font-bold text-white uppercase tracking-wider text-sm">
-                          Schémas & Standards Techniques
-                        </h4>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {currentTask.technicalImages.filter((image: any) => !image.notes).map((img: any, idx: number) => (
-                          <div
-                            key={idx}
-                            className="group relative overflow-hidden rounded-2xl border border-white/10 bg-slate-900/50"
-                          >
-                            <img
-                              src={img.url}
-                              alt={img.label}
-                              className="w-full h-48 object-cover transition-transform duration-500 group-hover:scale-110"
-                            />
-                            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950/90 to-transparent p-4">
-                              <span className="text-[10px] font-black uppercase text-emerald-400 tracking-widest">
-                                {img.label}
-                              </span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  <div className="flex items-center space-x-2 mb-6">
-                    <div className="w-1 h-6 bg-cyan-500 rounded-full" />
-                    <h4 className="font-bold text-white uppercase tracking-wider text-sm">
-                      Principes techniques communs
-                    </h4>
-                  </div>
-                  <div className="bg-cyan-500/5 border border-cyan-500/20 rounded-xl p-4 md:p-6 mb-8">
-                    <ul className="space-y-3">
-                      {CAHIER_TECHNICAL_PRINCIPLES.map((clause, idx) => (
-                        <li key={idx} className="flex items-start gap-3">
-                          <Shield size={14} className="text-cyan-400 mt-1 shrink-0" />
-                          <span className="text-slate-400 text-xs leading-relaxed">{clause}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  {currentTask.koboGuide && currentTask.koboGuide.length > 0 && (
-                    <CahierSection title="Guide Kobo terrain" color="#22c55e">
-                      <div className="space-y-5">
-                        <div className="rounded-2xl border border-emerald-500/15 bg-emerald-500/[0.04] p-5 md:p-6">
-                          <div className="flex items-start gap-3">
-                            <div className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400">
-                              <ClipboardList size={16} />
-                            </div>
-                            <p className="text-xs md:text-sm leading-relaxed text-slate-300">
-                              Guide dérivé des groupes `survey` et `choices` Kobo pour fiabiliser
-                              la saisie, le contrôle terrain et le passage au lot suivant.
-                            </p>
-                          </div>
-                        </div>
-
-                        {currentTask.koboGuide.map((block: CahierGuideBlock, idx: number) => (
-                          <div
-                            key={`${block.title}-${idx}`}
-                            className="rounded-3xl border border-white/8 bg-slate-950/45 p-5 md:p-6"
-                          >
-                            <div className="flex items-start justify-between gap-4">
+                        <div className="absolute inset-x-0 bottom-0 p-4 md:p-6 z-20">
+                          <div className="backdrop-blur-md bg-white/5 border border-white/10 p-3 md:p-4 rounded-xl md:rounded-2xl">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 md:w-10 md:h-10 bg-orange-500 rounded-lg flex items-center justify-center text-white">
+                                <CurrentIcon size={18} />
+                              </div>
                               <div>
-                                <h5 className="text-base md:text-lg font-semibold uppercase tracking-[0.08em] text-white">
-                                  {block.title}
-                                </h5>
-                                {block.intro && (
-                                  <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-400">
-                                    {block.intro}
-                                  </p>
-                                )}
-                              </div>
-                              <span className="shrink-0 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-300">
-                                Kobo
-                              </span>
-                            </div>
-
-                            <div className="mt-5 space-y-4">
-                              <div className="rounded-2xl border border-blue-500/15 bg-blue-500/[0.04] p-4 md:p-5">
-                                <h6 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-blue-300">
-                                  Points à renseigner
-                                </h6>
-                                <ul className="mt-4 space-y-3">
-                                  {block.checks.map((item: string, itemIdx: number) => (
-                                    <li key={itemIdx} className="flex items-start gap-2">
-                                      <CheckCircle2
-                                        size={14}
-                                        className="mt-1 shrink-0 text-blue-400"
-                                      />
-                                      <span className="text-sm leading-7 text-slate-300">
-                                        {item}
-                                      </span>
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-
-                              {(block.blockers || []).length > 0 && (
-                                <div className="rounded-2xl border border-amber-500/15 bg-amber-500/[0.04] p-4 md:p-5">
-                                  <h6 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-amber-300">
-                                    Non-conformités bloquantes
-                                  </h6>
-                                  <ul className="mt-4 space-y-3">
-                                    {(block.blockers || []).map((item: string, itemIdx: number) => (
-                                      <li key={itemIdx} className="flex items-start gap-2">
-                                        <AlertTriangle
-                                          size={14}
-                                          className="mt-1 shrink-0 text-amber-400"
-                                        />
-                                        <span className="text-sm leading-7 text-slate-300">
-                                          {item}
-                                        </span>
-                                      </li>
-                                    ))}
-                                  </ul>
-                                </div>
-                              )}
-
-                              {(block.completion || []).length > 0 && (
-                                <div className="rounded-2xl border border-emerald-500/15 bg-emerald-500/[0.04] p-4 md:p-5">
-                                  <h6 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
-                                    Condition de validation
-                                  </h6>
-                                  <ul className="mt-4 space-y-3">
-                                    {(block.completion || []).map((item: string, itemIdx: number) => (
-                                      <li key={itemIdx} className="flex items-start gap-2">
-                                        <ShieldCheck
-                                          size={14}
-                                          className="mt-1 shrink-0 text-emerald-400"
-                                        />
-                                        <span className="text-sm leading-7 text-slate-300">
-                                          {item}
-                                        </span>
-                                      </li>
-                                    ))}
-                                  </ul>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </CahierSection>
-                  )}
-
-                </section>
-
-                <section>
-                  <CahierSection title="Objet & Obligations Techniques" color="#3b82f6">
-                    {isEditing ? (
-                      <textarea
-                        aria-label="Modifier les missions"
-                        value={editData.missions}
-                        onChange={(e) =>
-                          setEditData((prev) => ({ ...prev, missions: e.target.value }))
-                        }
-                        className="w-full h-48 bg-slate-950 border border-slate-800 rounded-xl p-4 text-slate-300 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none resize-none"
-                      />
-                    ) : (
-                      <ul className="space-y-6">
-                        {currentTask.missions.map((m: string, i: number) => (
-                          <li key={i} className="flex items-start space-x-3 group">
-                            <CheckCircle2
-                              size={18}
-                              className="text-emerald-500 mt-0.5 shrink-0 transition-transform group-hover:scale-110"
-                            />
-                            <div className="flex flex-col gap-1">
-                              <span className="text-slate-300 text-sm leading-relaxed font-black uppercase tracking-tight">
-                                {m.split(' : ')[0]}
-                              </span>
-                              <span className="text-slate-400 text-xs md:text-sm leading-relaxed">
-                                {m.split(' : ')[1]}
-                              </span>
-                            </div>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </CahierSection>
-
-                  <CahierSection title="Cadre technique du modèle" color="#6366f1">
-                    <div className="bg-indigo-500/5 border border-indigo-500/20 rounded-xl p-4 mb-4">
-                      {isEditing ? (
-                        <textarea
-                          title="Modifier l'introduction"
-                          value={editData.introduction}
-                          onChange={(e) =>
-                            setEditData((prev) => ({ ...prev, introduction: e.target.value }))
-                          }
-                          className="w-full h-24 bg-slate-950 border border-indigo-500/30 rounded-xl p-3 text-indigo-200 text-sm focus:border-indigo-500 outline-none resize-none mb-4 italic"
-                        />
-                      ) : (
-                        <p className="text-indigo-200 text-sm italic font-medium leading-relaxed">
-                          {currentTask.introduction}
-                        </p>
-                      )}
-                    </div>
-                  </CahierSection>
-                  <CahierSection title="Matériel & Moyens Logistiques" color="#f97316">
-                    <div className="rounded-3xl border border-white/8 bg-slate-950/45 p-5 md:p-6 mb-6">
-                      {isEditing ? (
-                        <textarea
-                          title="Modifier le matériel"
-                          value={editData.materials}
-                          onChange={(e) =>
-                            setEditData((prev) => ({ ...prev, materials: e.target.value }))
-                          }
-                          className="w-full h-24 bg-slate-950 border border-slate-700 rounded-xl p-4 text-slate-300 text-sm focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none resize-none"
-                        />
-                      ) : (
-                        <div className="space-y-3">
-                          {currentTask.materials.map((m: string, i: number) => (
-                            <div
-                              key={i}
-                              className={`rounded-2xl border p-4 md:p-5 transition-colors ${
-                                m.startsWith('Materiel') || m.includes('Réalisation')
-                                  ? 'border-orange-500/15 bg-orange-500/[0.05]'
-                                  : 'border-white/8 bg-slate-900/35 hover:border-orange-500/20'
-                              }`}
-                            >
-                              <div className="flex items-start gap-3">
-                                <div
-                                  className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
-                                    m.startsWith('Materiel') || m.includes('Réalisation')
-                                      ? 'bg-orange-500/10 text-orange-400'
-                                      : 'bg-slate-800 text-slate-400'
-                                  }`}
-                                >
-                                  <Package size={16} />
-                                </div>
-                                <span
-                                  className={`text-sm leading-7 ${
-                                    m.startsWith('Materiel') || m.includes('Réalisation')
-                                      ? 'font-semibold uppercase tracking-[0.08em] text-orange-200'
-                                      : 'text-slate-300'
-                                  }`}
-                                >
-                                  {m}
+                                <span className="block text-[8px] md:text-[10px] font-black text-orange-400 uppercase tracking-[0.2em]">
+                                  Guide Officiel
+                                </span>
+                                <span className="block text-sm md:text-lg font-bold text-white tracking-tight">
+                                  Réalisation : {selectedRole}
                                 </span>
                               </div>
                             </div>
-                          ))}
+                          </div>
                         </div>
-                      )}
+                      </div>
                     </div>
-                  </CahierSection>
 
-                  <CahierSection title="Cadre Hygiène & Sécurité (HSE)" color="#f43f5e">
-                    <div className="rounded-3xl border border-rose-500/12 bg-rose-500/[0.04] p-5 md:p-6">
-                      {isEditing ? (
-                        <textarea
-                          title="Modifier les règles HSE"
-                          value={editData.hse}
-                          onChange={(e) =>
-                            setEditData((prev) => ({ ...prev, hse: e.target.value }))
-                          }
-                          className="w-full h-24 bg-slate-950 border border-rose-500/30 rounded-xl p-3 text-rose-300 text-sm focus:border-rose-500 outline-none resize-none"
-                        />
-                      ) : (
-                        <div className="space-y-4">
-                          {currentTask.hse.map((h: string, i: number) => (
+                    {/* Technical Gallery for Standards */}
+                    {currentTask.technicalImages?.some((image: any) => !image.notes) && (
+                      <div className="mt-8">
+                        <div className="flex items-center space-x-2 mb-6">
+                          <div className="w-1 h-6 bg-emerald-500 rounded-full" />
+                          <h4 className="font-bold text-white uppercase tracking-wider text-sm">
+                            Schémas & Standards Techniques
+                          </h4>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {currentTask.technicalImages
+                            .filter((image: any) => !image.notes)
+                            .map((img: any, idx: number) => (
+                              <div
+                                key={idx}
+                                className="group relative overflow-hidden rounded-2xl border border-white/10 bg-slate-900/50"
+                              >
+                                <img
+                                  src={img.url}
+                                  alt={img.label}
+                                  className="w-full h-48 object-cover transition-transform duration-500 group-hover:scale-110"
+                                />
+                                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950/90 to-transparent p-4">
+                                  <span className="text-[10px] font-black uppercase text-emerald-400 tracking-widest">
+                                    {img.label}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                        </div>
+                      </div>
+                    )}
+                    <div className="flex items-center space-x-2 mb-6">
+                      <div className="w-1 h-6 bg-cyan-500 rounded-full" />
+                      <h4 className="font-bold text-white uppercase tracking-wider text-sm">
+                        Principes techniques communs
+                      </h4>
+                    </div>
+                    <div className="bg-cyan-500/5 border border-cyan-500/20 rounded-xl p-4 md:p-6 mb-8">
+                      <ul className="space-y-3">
+                        {CAHIER_TECHNICAL_PRINCIPLES.map((clause, idx) => (
+                          <li key={idx} className="flex items-start gap-3">
+                            <Shield size={14} className="text-cyan-400 mt-1 shrink-0" />
+                            <span className="text-slate-400 text-xs leading-relaxed">{clause}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    {currentTask.koboGuide && currentTask.koboGuide.length > 0 && (
+                      <CahierSection title="Guide Kobo terrain" color="#22c55e">
+                        <div className="space-y-5">
+                          <div className="rounded-2xl border border-emerald-500/15 bg-emerald-500/[0.04] p-5 md:p-6">
+                            <div className="flex items-start gap-3">
+                              <div className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400">
+                                <ClipboardList size={16} />
+                              </div>
+                              <p className="text-xs md:text-sm leading-relaxed text-slate-300">
+                                Guide dérivé des groupes `survey` et `choices` Kobo pour fiabiliser
+                                la saisie, le contrôle terrain et le passage au lot suivant.
+                              </p>
+                            </div>
+                          </div>
+
+                          {currentTask.koboGuide.map((block: CahierGuideBlock, idx: number) => (
                             <div
-                              key={i}
-                              className="rounded-2xl border border-rose-500/10 bg-slate-950/35 p-4 md:p-5"
+                              key={`${block.title}-${idx}`}
+                              className="rounded-3xl border border-white/8 bg-slate-950/45 p-5 md:p-6"
                             >
-                              <div className="flex items-start gap-3">
-                                <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-rose-500/10 text-rose-400">
-                                  <AlertTriangle size={16} />
+                              <div className="flex items-start justify-between gap-4">
+                                <div>
+                                  <h5 className="text-base md:text-lg font-semibold uppercase tracking-[0.08em] text-white">
+                                    {block.title}
+                                  </h5>
+                                  {block.intro && (
+                                    <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-400">
+                                      {block.intro}
+                                    </p>
+                                  )}
                                 </div>
-                                <div className="min-w-0">
-                                  {(() => {
-                                    const [title, ...rest] = h.split(' : ');
-                                    const detail = rest.join(' : ');
-                                    return detail ? (
-                                      <>
-                                        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-rose-300">
-                                          {title}
-                                        </p>
-                                        <p className="mt-2 text-sm leading-7 text-slate-300">
-                                          {detail}
-                                        </p>
-                                      </>
-                                    ) : (
-                                      <p className="text-sm leading-7 text-slate-300">{h}</p>
-                                    );
-                                  })()}
+                                <span className="shrink-0 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-300">
+                                  Kobo
+                                </span>
+                              </div>
+
+                              <div className="mt-5 space-y-4">
+                                <div className="rounded-2xl border border-blue-500/15 bg-blue-500/[0.04] p-4 md:p-5">
+                                  <h6 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-blue-300">
+                                    Points à renseigner
+                                  </h6>
+                                  <ul className="mt-4 space-y-3">
+                                    {block.checks.map((item: string, itemIdx: number) => (
+                                      <li key={itemIdx} className="flex items-start gap-2">
+                                        <CheckCircle2
+                                          size={14}
+                                          className="mt-1 shrink-0 text-blue-400"
+                                        />
+                                        <span className="text-sm leading-7 text-slate-300">
+                                          {item}
+                                        </span>
+                                      </li>
+                                    ))}
+                                  </ul>
                                 </div>
+
+                                {(block.blockers || []).length > 0 && (
+                                  <div className="rounded-2xl border border-amber-500/15 bg-amber-500/[0.04] p-4 md:p-5">
+                                    <h6 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-amber-300">
+                                      Non-conformités bloquantes
+                                    </h6>
+                                    <ul className="mt-4 space-y-3">
+                                      {(block.blockers || []).map(
+                                        (item: string, itemIdx: number) => (
+                                          <li key={itemIdx} className="flex items-start gap-2">
+                                            <AlertTriangle
+                                              size={14}
+                                              className="mt-1 shrink-0 text-amber-400"
+                                            />
+                                            <span className="text-sm leading-7 text-slate-300">
+                                              {item}
+                                            </span>
+                                          </li>
+                                        )
+                                      )}
+                                    </ul>
+                                  </div>
+                                )}
+
+                                {(block.completion || []).length > 0 && (
+                                  <div className="rounded-2xl border border-emerald-500/15 bg-emerald-500/[0.04] p-4 md:p-5">
+                                    <h6 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
+                                      Condition de validation
+                                    </h6>
+                                    <ul className="mt-4 space-y-3">
+                                      {(block.completion || []).map(
+                                        (item: string, itemIdx: number) => (
+                                          <li key={itemIdx} className="flex items-start gap-2">
+                                            <ShieldCheck
+                                              size={14}
+                                              className="mt-1 shrink-0 text-emerald-400"
+                                            />
+                                            <span className="text-sm leading-7 text-slate-300">
+                                              {item}
+                                            </span>
+                                          </li>
+                                        )
+                                      )}
+                                    </ul>
+                                  </div>
+                                )}
                               </div>
                             </div>
                           ))}
                         </div>
-                      )}
-                    </div>
-                  </CahierSection>
+                      </CahierSection>
+                    )}
+                  </section>
 
-                  <div className="hidden">
-                  <CahierSection title="Dispositions Relatives à la Sous-traitance" color="#eab308">
-                    <div className="bg-yellow-500/5 border border-yellow-500/20 rounded-xl p-4">
+                  <section>
+                    <CahierSection title="Objet & Obligations Techniques" color="#3b82f6">
                       {isEditing ? (
                         <textarea
-                          title="Modifier les clauses de sous-traitance"
-                          value={editData.subcontracting}
+                          aria-label="Modifier les missions"
+                          value={editData.missions}
                           onChange={(e) =>
-                            setEditData((prev) => ({ ...prev, subcontracting: e.target.value }))
+                            setEditData((prev) => ({ ...prev, missions: e.target.value }))
                           }
-                          className="w-full h-32 bg-slate-950 border border-yellow-500/30 rounded-xl p-3 text-yellow-200 text-sm focus:border-yellow-500 outline-none resize-none"
+                          className="w-full h-48 bg-slate-950 border border-slate-800 rounded-xl p-4 text-slate-300 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none resize-none"
                         />
                       ) : (
-                        <ul className="space-y-3">
-                          {currentTask.subcontracting?.map((clause: string, i: number) => (
-                            <li key={i} className="flex items-start space-x-2">
-                              <ShieldCheck size={16} className="text-yellow-500 mt-0.5 shrink-0" />
-                              <span className="text-yellow-200/90 text-xs font-bold leading-relaxed">
-                                {clause}
-                              </span>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                  </CahierSection>
-                  </div>
-
-                  <div className="hidden">
-                  <CahierSection
-                    title="Dispositions Financières, Cautions & Garanties"
-                    color="#f59e0b"
-                  >
-                    <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-4">
-                      {isEditing ? (
-                        <textarea
-                          aria-label="Modifier les clauses financières"
-                          value={editData.finances}
-                          onChange={(e) =>
-                            setEditData((prev) => ({ ...prev, finances: e.target.value }))
-                          }
-                          className="w-full h-32 bg-slate-950 border border-amber-500/30 rounded-xl p-3 text-amber-200 text-sm focus:border-amber-500 outline-none resize-none"
-                        />
-                      ) : (
-                        <ul className="space-y-4">
-                          {currentTask.finances?.map((f: string, i: number) => (
-                            <li
-                              key={i}
-                              className="flex items-start space-x-3 bg-amber-500/10 p-3 rounded-lg border border-amber-500/20 shadow-inner"
-                            >
-                              <div className="w-2 h-2 rounded-full bg-amber-500 mt-2 shrink-0 animate-pulse" />
-                              <div>
-                                <p className="text-amber-200 text-xs font-black uppercase tracking-tight">
-                                  {f.split(' : ')[0]}
-                                </p>
-                                <p className="text-amber-100/70 text-[11px] leading-tight font-medium mt-1">
-                                  {f.split(' : ')[1]}
-                                </p>
+                        <ul className="space-y-6">
+                          {currentTask.missions.map((m: string, i: number) => (
+                            <li key={i} className="flex items-start space-x-3 group">
+                              <CheckCircle2
+                                size={18}
+                                className="text-emerald-500 mt-0.5 shrink-0 transition-transform group-hover:scale-110"
+                              />
+                              <div className="flex flex-col gap-1">
+                                <span className="text-slate-300 text-sm leading-relaxed font-black uppercase tracking-tight">
+                                  {m.split(' : ')[0]}
+                                </span>
+                                <span className="text-slate-400 text-xs md:text-sm leading-relaxed">
+                                  {m.split(' : ')[1]}
+                                </span>
                               </div>
                             </li>
                           ))}
                         </ul>
                       )}
-                    </div>
-                  </CahierSection>
-                  </div>
+                    </CahierSection>
 
-                  <div className="hidden">
-                  <CahierSection title="Configurations & Barèmes Contractuels" color="#10b981">
-                    <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-6">
-                      {isEditing ? (
-                        <div className="space-y-4">
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                            <div>
-                              <div className="flex items-center justify-between mb-1.5">
-                                <label className="block text-xs text-emerald-400 uppercase font-bold">
-                                  Tarif journalier (FCFA)
-                                </label>
-                                {automatedRate && (
-                                  <span className="flex items-center gap-1 text-xs bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded uppercase font-black tracking-tighter">
-                                    <RefreshCw size={8} className="animate-spin-slow" />
-                                    Sync Paramètres
+                    <CahierSection title="Cadre technique du modèle" color="#6366f1">
+                      <div className="bg-indigo-500/5 border border-indigo-500/20 rounded-xl p-4 mb-4">
+                        {isEditing ? (
+                          <textarea
+                            title="Modifier l'introduction"
+                            value={editData.introduction}
+                            onChange={(e) =>
+                              setEditData((prev) => ({ ...prev, introduction: e.target.value }))
+                            }
+                            className="w-full h-24 bg-slate-950 border border-indigo-500/30 rounded-xl p-3 text-indigo-200 text-sm focus:border-indigo-500 outline-none resize-none mb-4 italic"
+                          />
+                        ) : (
+                          <p className="text-indigo-200 text-sm italic font-medium leading-relaxed">
+                            {currentTask.introduction}
+                          </p>
+                        )}
+                      </div>
+                    </CahierSection>
+                    <CahierSection title="Matériel & Moyens Logistiques" color="#f97316">
+                      <div className="rounded-3xl border border-white/8 bg-slate-950/45 p-5 md:p-6 mb-6">
+                        {isEditing ? (
+                          <textarea
+                            title="Modifier le matériel"
+                            value={editData.materials}
+                            onChange={(e) =>
+                              setEditData((prev) => ({ ...prev, materials: e.target.value }))
+                            }
+                            className="w-full h-24 bg-slate-950 border border-slate-700 rounded-xl p-4 text-slate-300 text-sm focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none resize-none"
+                          />
+                        ) : (
+                          <div className="space-y-3">
+                            {currentTask.materials.map((m: string, i: number) => (
+                              <div
+                                key={i}
+                                className={`rounded-2xl border p-4 md:p-5 transition-colors ${
+                                  m.startsWith('Materiel') || m.includes('Réalisation')
+                                    ? 'border-orange-500/15 bg-orange-500/[0.05]'
+                                    : 'border-white/8 bg-slate-900/35 hover:border-orange-500/20'
+                                }`}
+                              >
+                                <div className="flex items-start gap-3">
+                                  <div
+                                    className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
+                                      m.startsWith('Materiel') || m.includes('Réalisation')
+                                        ? 'bg-orange-500/10 text-orange-400'
+                                        : 'bg-slate-800 text-slate-400'
+                                    }`}
+                                  >
+                                    <Package size={16} />
+                                  </div>
+                                  <span
+                                    className={`text-sm leading-7 ${
+                                      m.startsWith('Materiel') || m.includes('Réalisation')
+                                        ? 'font-semibold uppercase tracking-[0.08em] text-orange-200'
+                                        : 'text-slate-300'
+                                    }`}
+                                  >
+                                    {m}
                                   </span>
-                                )}
+                                </div>
                               </div>
-                              <div className="relative">
-                                <input
-                                  type="number"
-                                  title="Tarif journalier"
-                                  value={editData.pricing.dailyRate}
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </CahierSection>
+
+                    <CahierSection title="Cadre Hygiène & Sécurité (HSE)" color="#f43f5e">
+                      <div className="rounded-3xl border border-rose-500/12 bg-rose-500/[0.04] p-5 md:p-6">
+                        {isEditing ? (
+                          <textarea
+                            title="Modifier les règles HSE"
+                            value={editData.hse}
+                            onChange={(e) =>
+                              setEditData((prev) => ({ ...prev, hse: e.target.value }))
+                            }
+                            className="w-full h-24 bg-slate-950 border border-rose-500/30 rounded-xl p-3 text-rose-300 text-sm focus:border-rose-500 outline-none resize-none"
+                          />
+                        ) : (
+                          <div className="space-y-4">
+                            {currentTask.hse.map((h: string, i: number) => (
+                              <div
+                                key={i}
+                                className="rounded-2xl border border-rose-500/10 bg-slate-950/35 p-4 md:p-5"
+                              >
+                                <div className="flex items-start gap-3">
+                                  <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-rose-500/10 text-rose-400">
+                                    <AlertTriangle size={16} />
+                                  </div>
+                                  <div className="min-w-0">
+                                    {(() => {
+                                      const [title, ...rest] = h.split(' : ');
+                                      const detail = rest.join(' : ');
+                                      return detail ? (
+                                        <>
+                                          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-rose-300">
+                                            {title}
+                                          </p>
+                                          <p className="mt-2 text-sm leading-7 text-slate-300">
+                                            {detail}
+                                          </p>
+                                        </>
+                                      ) : (
+                                        <p className="text-sm leading-7 text-slate-300">{h}</p>
+                                      );
+                                    })()}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </CahierSection>
+
+                    <div className="hidden">
+                      <CahierSection
+                        title="Dispositions Relatives à la Sous-traitance"
+                        color="#eab308"
+                      >
+                        <div className="bg-yellow-500/5 border border-yellow-500/20 rounded-xl p-4">
+                          {isEditing ? (
+                            <textarea
+                              title="Modifier les clauses de sous-traitance"
+                              value={editData.subcontracting}
+                              onChange={(e) =>
+                                setEditData((prev) => ({ ...prev, subcontracting: e.target.value }))
+                              }
+                              className="w-full h-32 bg-slate-950 border border-yellow-500/30 rounded-xl p-3 text-yellow-200 text-sm focus:border-yellow-500 outline-none resize-none"
+                            />
+                          ) : (
+                            <ul className="space-y-3">
+                              {currentTask.subcontracting?.map((clause: string, i: number) => (
+                                <li key={i} className="flex items-start space-x-2">
+                                  <ShieldCheck
+                                    size={16}
+                                    className="text-yellow-500 mt-0.5 shrink-0"
+                                  />
+                                  <span className="text-yellow-200/90 text-xs font-bold leading-relaxed">
+                                    {clause}
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      </CahierSection>
+                    </div>
+
+                    <div className="hidden">
+                      <CahierSection
+                        title="Dispositions Financières, Cautions & Garanties"
+                        color="#f59e0b"
+                      >
+                        <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-4">
+                          {isEditing ? (
+                            <textarea
+                              aria-label="Modifier les clauses financières"
+                              value={editData.finances}
+                              onChange={(e) =>
+                                setEditData((prev) => ({ ...prev, finances: e.target.value }))
+                              }
+                              className="w-full h-32 bg-slate-950 border border-amber-500/30 rounded-xl p-3 text-amber-200 text-sm focus:border-amber-500 outline-none resize-none"
+                            />
+                          ) : (
+                            <ul className="space-y-4">
+                              {currentTask.finances?.map((f: string, i: number) => (
+                                <li
+                                  key={i}
+                                  className="flex items-start space-x-3 bg-amber-500/10 p-3 rounded-lg border border-amber-500/20 shadow-inner"
+                                >
+                                  <div className="w-2 h-2 rounded-full bg-amber-500 mt-2 shrink-0 animate-pulse" />
+                                  <div>
+                                    <p className="text-amber-200 text-xs font-black uppercase tracking-tight">
+                                      {f.split(' : ')[0]}
+                                    </p>
+                                    <p className="text-amber-100/70 text-[11px] leading-tight font-medium mt-1">
+                                      {f.split(' : ')[1]}
+                                    </p>
+                                  </div>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      </CahierSection>
+                    </div>
+
+                    <div className="hidden">
+                      <CahierSection title="Configurations & Barèmes Contractuels" color="#10b981">
+                        <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-6">
+                          {isEditing ? (
+                            <div className="space-y-4">
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <div>
+                                  <div className="flex items-center justify-between mb-1.5">
+                                    <label className="block text-xs text-emerald-400 uppercase font-bold">
+                                      Tarif journalier (FCFA)
+                                    </label>
+                                    {automatedRate && (
+                                      <span className="flex items-center gap-1 text-xs bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded uppercase font-black tracking-tighter">
+                                        <RefreshCw size={8} className="animate-spin-slow" />
+                                        Sync Paramètres
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="relative">
+                                    <input
+                                      type="number"
+                                      title="Tarif journalier"
+                                      value={editData.pricing.dailyRate}
+                                      onChange={(e) =>
+                                        setEditData((prev) => ({
+                                          ...prev,
+                                          pricing: {
+                                            ...prev.pricing,
+                                            dailyRate: e.target.valueAsNumber || 0,
+                                          },
+                                        }))
+                                      }
+                                      className="w-full bg-slate-950 border border-emerald-500/30 rounded-lg px-3 py-2 text-emerald-300 text-sm outline-none focus:border-emerald-500"
+                                    />
+                                    {automatedRate &&
+                                      editData.pricing.dailyRate !== automatedRate && (
+                                        <button
+                                          onClick={() =>
+                                            setEditData((prev) => ({
+                                              ...prev,
+                                              pricing: {
+                                                ...prev.pricing,
+                                                dailyRate: automatedRate,
+                                              },
+                                            }))
+                                          }
+                                          title={`Réinitialiser au tarif paramétré (${automatedRate})`}
+                                          className="absolute right-2 top-1/2 -translate-y-1/2 text-emerald-500 hover:text-emerald-400 p-1"
+                                        >
+                                          <RefreshCw size={14} />
+                                        </button>
+                                      )}
+                                  </div>
+                                </div>
+                                <div>
+                                  <label className="block text-xs text-emerald-400 uppercase mb-1.5 font-bold">
+                                    Effectif (Pers.)
+                                  </label>
+                                  <input
+                                    type="number"
+                                    aria-label="Effectif"
+                                    value={editData.pricing.personnelCount}
+                                    onChange={(e) =>
+                                      setEditData((prev) => ({
+                                        ...prev,
+                                        pricing: {
+                                          ...prev.pricing,
+                                          personnelCount: e.target.valueAsNumber || 0,
+                                        },
+                                      }))
+                                    }
+                                    className="w-full bg-slate-950 border border-emerald-500/30 rounded-lg px-3 py-2 text-emerald-300 text-sm outline-none focus:border-emerald-500"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-xs text-emerald-400 uppercase mb-1.5 font-bold">
+                                    Durée (Jours)
+                                  </label>
+                                  <input
+                                    type="number"
+                                    title="Durée"
+                                    value={editData.pricing.durationDays}
+                                    onChange={(e) =>
+                                      setEditData((prev) => ({
+                                        ...prev,
+                                        pricing: {
+                                          ...prev.pricing,
+                                          durationDays: e.target.valueAsNumber || 0,
+                                        },
+                                      }))
+                                    }
+                                    className="w-full bg-slate-950 border border-emerald-500/30 rounded-lg px-3 py-2 text-emerald-300 text-sm outline-none focus:border-emerald-500"
+                                  />
+                                </div>
+                              </div>
+                              <div>
+                                <label className="block text-xs text-emerald-400 uppercase mb-1.5 font-bold">
+                                  Clauses Pénales & Précisions
+                                </label>
+                                <textarea
+                                  title="Modifier les pénalités"
+                                  value={editData.pricing.penalties}
                                   onChange={(e) =>
                                     setEditData((prev) => ({
                                       ...prev,
-                                      pricing: {
-                                        ...prev.pricing,
-                                        dailyRate: e.target.valueAsNumber || 0,
-                                      },
+                                      pricing: { ...prev.pricing, penalties: e.target.value },
                                     }))
                                   }
-                                  className="w-full bg-slate-950 border border-emerald-500/30 rounded-lg px-3 py-2 text-emerald-300 text-sm outline-none focus:border-emerald-500"
+                                  className="w-full h-20 bg-slate-950 border border-emerald-500/30 rounded-lg p-3 text-emerald-300 text-sm outline-none focus:border-emerald-500 resize-none"
                                 />
-                                {automatedRate && editData.pricing.dailyRate !== automatedRate && (
-                                  <button
-                                    onClick={() =>
-                                      setEditData((prev) => ({
-                                        ...prev,
-                                        pricing: { ...prev.pricing, dailyRate: automatedRate },
-                                      }))
-                                    }
-                                    title={`Réinitialiser au tarif paramétré (${automatedRate})`}
-                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-emerald-500 hover:text-emerald-400 p-1"
-                                  >
-                                    <RefreshCw size={14} />
-                                  </button>
-                                )}
+                              </div>
+                              <div className="pt-2 flex justify-end">
+                                <div className="bg-emerald-500/20 px-4 py-2 rounded-lg border border-emerald-500/30">
+                                  <span className="text-xs text-emerald-400 font-bold uppercase mr-2">
+                                    Total Auto :
+                                  </span>
+                                  <span className="text-emerald-300 font-black">
+                                    {(
+                                      editData.pricing.dailyRate *
+                                      editData.pricing.personnelCount *
+                                      editData.pricing.durationDays
+                                    ).toLocaleString()}{' '}
+                                    FCFA
+                                  </span>
+                                </div>
                               </div>
                             </div>
-                            <div>
-                              <label className="block text-xs text-emerald-400 uppercase mb-1.5 font-bold">
-                                Effectif (Pers.)
-                              </label>
-                              <input
-                                type="number"
-                                aria-label="Effectif"
-                                value={editData.pricing.personnelCount}
-                                onChange={(e) =>
-                                  setEditData((prev) => ({
-                                    ...prev,
-                                    pricing: {
-                                      ...prev.pricing,
-                                      personnelCount: e.target.valueAsNumber || 0,
-                                    },
-                                  }))
-                                }
-                                className="w-full bg-slate-950 border border-emerald-500/30 rounded-lg px-3 py-2 text-emerald-300 text-sm outline-none focus:border-emerald-500"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-xs text-emerald-400 uppercase mb-1.5 font-bold">
-                                Durée (Jours)
-                              </label>
-                              <input
-                                type="number"
-                                title="Durée"
-                                value={editData.pricing.durationDays}
-                                onChange={(e) =>
-                                  setEditData((prev) => ({
-                                    ...prev,
-                                    pricing: {
-                                      ...prev.pricing,
-                                      durationDays: e.target.valueAsNumber || 0,
-                                    },
-                                  }))
-                                }
-                                className="w-full bg-slate-950 border border-emerald-500/30 rounded-lg px-3 py-2 text-emerald-300 text-sm outline-none focus:border-emerald-500"
-                              />
-                            </div>
-                          </div>
-                          <div>
-                            <label className="block text-xs text-emerald-400 uppercase mb-1.5 font-bold">
-                              Clauses Pénales & Précisions
-                            </label>
-                            <textarea
-                              title="Modifier les pénalités"
-                              value={editData.pricing.penalties}
-                              onChange={(e) =>
-                                setEditData((prev) => ({
-                                  ...prev,
-                                  pricing: { ...prev.pricing, penalties: e.target.value },
-                                }))
-                              }
-                              className="w-full h-20 bg-slate-950 border border-emerald-500/30 rounded-lg p-3 text-emerald-300 text-sm outline-none focus:border-emerald-500 resize-none"
-                            />
-                          </div>
-                          <div className="pt-2 flex justify-end">
-                            <div className="bg-emerald-500/20 px-4 py-2 rounded-lg border border-emerald-500/30">
-                              <span className="text-xs text-emerald-400 font-bold uppercase mr-2">
-                                Total Auto :
-                              </span>
-                              <span className="text-emerald-300 font-black">
-                                {(
-                                  editData.pricing.dailyRate *
-                                  editData.pricing.personnelCount *
-                                  editData.pricing.durationDays
-                                ).toLocaleString()}{' '}
-                                FCFA
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="space-y-6">
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                            <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-800 relative">
-                              <div className="flex justify-between items-start mb-1">
-                                <p className="text-xs text-slate-500 uppercase font-bold">
-                                  Prix Unitaire
+                          ) : (
+                            <div className="space-y-6">
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                                <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-800 relative">
+                                  <div className="flex justify-between items-start mb-1">
+                                    <p className="text-xs text-slate-500 uppercase font-bold">
+                                      Prix Unitaire
+                                    </p>
+                                    {automatedRate &&
+                                      currentTask.pricing?.dailyRate === automatedRate && (
+                                        <span className="text-xs text-emerald-500/50 font-black uppercase tracking-tighter">
+                                          Sync ✔
+                                        </span>
+                                      )}
+                                  </div>
+                                  <p className="text-emerald-400 font-bold">
+                                    {currentTask.pricing?.dailyRate?.toLocaleString()}{' '}
+                                    <span className="text-xs">{currentTask.pricing?.currency}</span>
+                                  </p>
+                                </div>
+                                <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-800">
+                                  <p className="text-xs text-slate-500 uppercase font-bold mb-1">
+                                    Ressources
+                                  </p>
+                                  <p className="text-white font-bold">
+                                    {currentTask.pricing?.personnelCount}{' '}
+                                    <span className="text-xs text-slate-400">Agents</span>
+                                  </p>
+                                </div>
+                                <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-800">
+                                  <p className="text-xs text-slate-500 uppercase font-bold mb-1">
+                                    Durée
+                                  </p>
+                                  <p className="text-white font-bold">
+                                    {currentTask.pricing?.durationDays}{' '}
+                                    <span className="text-xs text-slate-400">Jours</span>
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="border-t border-emerald-500/10 pt-4">
+                                <p className="text-xs text-slate-500 uppercase font-bold mb-2">
+                                  Clauses de pénalités applicâbles
                                 </p>
-                                {automatedRate &&
-                                  currentTask.pricing?.dailyRate === automatedRate && (
-                                    <span className="text-xs text-emerald-500/50 font-black uppercase tracking-tighter">
-                                      Sync ✔
-                                    </span>
-                                  )}
+                                <p className="text-xs text-emerald-500/70 italic leading-relaxed">
+                                  "{currentTask.pricing?.penalties}"
+                                </p>
                               </div>
-                              <p className="text-emerald-400 font-bold">
-                                {currentTask.pricing?.dailyRate?.toLocaleString()}{' '}
-                                <span className="text-xs">{currentTask.pricing?.currency}</span>
-                              </p>
-                            </div>
-                            <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-800">
-                              <p className="text-xs text-slate-500 uppercase font-bold mb-1">
-                                Ressources
-                              </p>
-                              <p className="text-white font-bold">
-                                {currentTask.pricing?.personnelCount}{' '}
-                                <span className="text-xs text-slate-400">Agents</span>
-                              </p>
-                            </div>
-                            <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-800">
-                              <p className="text-xs text-slate-500 uppercase font-bold mb-1">
-                                Durée
-                              </p>
-                              <p className="text-white font-bold">
-                                {currentTask.pricing?.durationDays}{' '}
-                                <span className="text-xs text-slate-400">Jours</span>
-                              </p>
-                            </div>
-                          </div>
 
-                          <div className="border-t border-emerald-500/10 pt-4">
-                            <p className="text-xs text-slate-500 uppercase font-bold mb-2">
-                              Clauses de pénalités applicâbles
-                            </p>
-                            <p className="text-xs text-emerald-500/70 italic leading-relaxed">
-                              "{currentTask.pricing?.penalties}"
-                            </p>
-                          </div>
-
-                          <div className="flex items-center justify-between bg-emerald-500/10 px-4 py-3 rounded-xl border border-emerald-500/20">
-                            <span className="text-xs font-bold text-emerald-400 uppercase tracking-tighter font-display">
-                              Total Prévisionnel du Lot
-                            </span>
-                            <span className="text-xl font-black text-emerald-400 font-display">
-                              {(
-                                (currentTask.pricing?.dailyRate || 0) *
-                                (currentTask.pricing?.personnelCount || 0) *
-                                (currentTask.pricing?.durationDays || 0)
-                              ).toLocaleString()}{' '}
-                              {currentTask.pricing?.currency}
-                            </span>
-                          </div>
+                              <div className="flex items-center justify-between bg-emerald-500/10 px-4 py-3 rounded-xl border border-emerald-500/20">
+                                <span className="text-xs font-bold text-emerald-400 uppercase tracking-tighter font-display">
+                                  Total Prévisionnel du Lot
+                                </span>
+                                <span className="text-xl font-black text-emerald-400 font-display">
+                                  {(
+                                    (currentTask.pricing?.dailyRate || 0) *
+                                    (currentTask.pricing?.personnelCount || 0) *
+                                    (currentTask.pricing?.durationDays || 0)
+                                  ).toLocaleString()}{' '}
+                                  {currentTask.pricing?.currency}
+                                </span>
+                              </div>
+                            </div>
+                          )}
                         </div>
-                      )}
+                      </CahierSection>
                     </div>
-                  </CahierSection>
-                  </div>
 
-                  <div className="hidden">
-                  <CahierSection title="Juridique & Responsabilité" color="#a855f7">
-                    <div className="bg-purple-500/5 border border-purple-500/20 rounded-xl p-4 mb-8">
-                      <ul className="space-y-3">
-                        {((currentTask as CahierTask).legal || []).map(
-                          (item: string, i: number) => (
-                            <li key={i} className="flex items-start gap-2 group">
-                              <Scale
-                                size={14}
-                                className="text-purple-500 mt-1 shrink-0 transition-transform group-hover:scale-110"
-                              />
-                              <span className="text-slate-400 text-[11px] italic leading-relaxed">
-                                {item}
-                              </span>
-                            </li>
-                          )
-                        )}
-                      </ul>
-                    </div>
-                  </CahierSection>
-                  </div>
-                </section>
-              </div>
-
-              {synopticSchema && (
-                <section className="mx-4 mb-8 rounded-2xl border border-cyan-500/20 bg-slate-950/55 p-4 md:mx-6 md:mb-10 md:p-6">
-                  <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-                    <div>
-                      <p className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-300">
-                        Synoptique séquentiel
-                      </p>
-                      <h4 className="mt-2 text-xl font-black text-white md:text-2xl">
-                        Installation monophasée
-                      </h4>
-                    </div>
-                    <span className="w-fit rounded-full border border-cyan-500/20 bg-cyan-500/10 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-cyan-200">
-                      230 V ~ 50 Hz
-                    </span>
-                  </div>
-
-                  <div className="overflow-hidden rounded-xl border border-slate-800 bg-white p-2 md:p-3 shadow-2xl shadow-cyan-950/30">
-                    <img
-                      src={synopticSchema.url}
-                      alt={synopticSchema.label}
-                      className="h-auto w-full rounded-lg object-contain"
-                    />
-                  </div>
-
-                  <div className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-2 xl:items-start">
-                    <div className="space-y-4">
-                      {synopticLeftNotes.map((block) => (
-                        <div
-                          key={block.title}
-                          className="rounded-xl border border-slate-800 bg-slate-900/55 p-4 md:p-5"
-                        >
-                          <h5 className="mb-3 text-xs font-black uppercase tracking-[0.14em] text-cyan-200">
-                            {block.title}
-                          </h5>
-                          <ul className="space-y-2">
-                            {block.lines.map((line) => (
-                              <li key={line} className="flex gap-2 text-sm leading-7 text-slate-300">
-                                <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-cyan-400" />
-                                <span>{line}</span>
-                              </li>
-                            ))}
+                    <div className="hidden">
+                      <CahierSection title="Juridique & Responsabilité" color="#a855f7">
+                        <div className="bg-purple-500/5 border border-purple-500/20 rounded-xl p-4 mb-8">
+                          <ul className="space-y-3">
+                            {((currentTask as CahierTask).legal || []).map(
+                              (item: string, i: number) => (
+                                <li key={i} className="flex items-start gap-2 group">
+                                  <Scale
+                                    size={14}
+                                    className="text-purple-500 mt-1 shrink-0 transition-transform group-hover:scale-110"
+                                  />
+                                  <span className="text-slate-400 text-[11px] italic leading-relaxed">
+                                    {item}
+                                  </span>
+                                </li>
+                              )
+                            )}
                           </ul>
                         </div>
-                      ))}
+                      </CahierSection>
+                    </div>
+                  </section>
+                </div>
+
+                {synopticSchema && (
+                  <section className="mx-4 mb-8 rounded-2xl border border-cyan-500/20 bg-slate-950/55 p-4 md:mx-6 md:mb-10 md:p-6">
+                    <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-300">
+                          Synoptique séquentiel
+                        </p>
+                        <h4 className="mt-2 text-xl font-black text-white md:text-2xl">
+                          Installation monophasée
+                        </h4>
+                      </div>
+                      <span className="w-fit rounded-full border border-cyan-500/20 bg-cyan-500/10 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-cyan-200">
+                        230 V ~ 50 Hz
+                      </span>
                     </div>
 
-                    <div className="space-y-4">
-                      {synopticRightNotes.map((block) => (
-                        <div
-                          key={block.title}
-                          className="rounded-xl border border-slate-800 bg-slate-900/55 p-4 md:p-5"
-                        >
-                          <h5 className="mb-3 text-xs font-black uppercase tracking-[0.14em] text-cyan-200">
-                            {block.title}
-                          </h5>
-                          <ul className="space-y-2">
-                            {block.lines.map((line) => (
-                              <li key={line} className="flex gap-2 text-sm leading-7 text-slate-300">
-                                <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-cyan-400" />
-                                <span>{line}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      ))}
+                    <div className="overflow-hidden rounded-xl border border-slate-800 bg-white p-2 md:p-3 shadow-2xl shadow-cyan-950/30">
+                      <img
+                        src={synopticSchema.url}
+                        alt={synopticSchema.label}
+                        className="h-auto w-full rounded-lg object-contain"
+                      />
                     </div>
-                  </div>
 
-                  {synopticSchema.legend && (
-                    <div className="mt-5 rounded-xl border border-slate-800 bg-slate-950/70 p-4 md:p-5">
-                      <h5 className="mb-3 text-xs font-black uppercase tracking-[0.14em] text-slate-400">
-                        Légende normalisée
-                      </h5>
-                      <div className="flex flex-wrap gap-2">
-                        {synopticSchema.legend.map((item) => (
-                          <span
-                            key={item}
-                            className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] font-bold text-slate-200"
+                    <div className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-2 xl:items-start">
+                      <div className="space-y-4">
+                        {synopticLeftNotes.map((block) => (
+                          <div
+                            key={block.title}
+                            className="rounded-xl border border-slate-800 bg-slate-900/55 p-4 md:p-5"
                           >
-                            {item}
-                          </span>
+                            <h5 className="mb-3 text-xs font-black uppercase tracking-[0.14em] text-cyan-200">
+                              {block.title}
+                            </h5>
+                            <ul className="space-y-2">
+                              {block.lines.map((line) => (
+                                <li
+                                  key={line}
+                                  className="flex gap-2 text-sm leading-7 text-slate-300"
+                                >
+                                  <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-cyan-400" />
+                                  <span>{line}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="space-y-4">
+                        {synopticRightNotes.map((block) => (
+                          <div
+                            key={block.title}
+                            className="rounded-xl border border-slate-800 bg-slate-900/55 p-4 md:p-5"
+                          >
+                            <h5 className="mb-3 text-xs font-black uppercase tracking-[0.14em] text-cyan-200">
+                              {block.title}
+                            </h5>
+                            <ul className="space-y-2">
+                              {block.lines.map((line) => (
+                                <li
+                                  key={line}
+                                  className="flex gap-2 text-sm leading-7 text-slate-300"
+                                >
+                                  <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-cyan-400" />
+                                  <span>{line}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
                         ))}
                       </div>
                     </div>
-                  )}
-                </section>
-              )}
 
-              {/* SECTION INNOVATION FULL WIDTH */}
-              <div className="hidden mt-12 pt-12 border-t border-slate-800">
-                <div className="flex items-center space-x-2 md:space-x-3 mb-8">
-                  <div className="w-10 h-10 rounded-xl bg-indigo-500/20 flex items-center justify-center border border-indigo-500/30">
-                    <ShieldCheck size={24} className="text-indigo-400" />
+                    {synopticSchema.legend && (
+                      <div className="mt-5 rounded-xl border border-slate-800 bg-slate-950/70 p-4 md:p-5">
+                        <h5 className="mb-3 text-xs font-black uppercase tracking-[0.14em] text-slate-400">
+                          Légende normalisée
+                        </h5>
+                        <div className="flex flex-wrap gap-2">
+                          {synopticSchema.legend.map((item) => (
+                            <span
+                              key={item}
+                              className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] font-bold text-slate-200"
+                            >
+                              {item}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </section>
+                )}
+
+                {/* SECTION INNOVATION FULL WIDTH */}
+                <div className="hidden mt-12 pt-12 border-t border-slate-800">
+                  <div className="flex items-center space-x-2 md:space-x-3 mb-8">
+                    <div className="w-10 h-10 rounded-xl bg-indigo-500/20 flex items-center justify-center border border-indigo-500/30">
+                      <ShieldCheck size={24} className="text-indigo-400" />
+                    </div>
+                    <h4 className="text-base md:text-xl font-black text-indigo-300 uppercase tracking-widest leading-tight">
+                      ARTICLE 5 – MODÈLE PROQUELEC INCLUSIF : PERFORMANCE & FLEXIBILITÉ
+                    </h4>
                   </div>
-                  <h4 className="text-base md:text-xl font-black text-indigo-300 uppercase tracking-widest leading-tight">
-                    ARTICLE 5 – MODÈLE PROQUELEC INCLUSIF : PERFORMANCE & FLEXIBILITÉ
-                  </h4>
-                </div>
 
-                <div className="bg-indigo-500/10 border border-indigo-500/30 rounded-3xl p-6 md:p-10 mb-10 shadow-inner">
-                  <p className="text-sm md:text-base text-indigo-200 leading-relaxed font-bold italic text-center max-w-5xl mx-auto">
-                    "Il est expressément convenu que le Maître d’œuvre instaure un dispositif de
-                    règlement basé sur la{' '}
-                    <span className="text-white underline decoration-indigo-400">
-                      Réception Finale PROQUELEC
+                  <div className="bg-indigo-500/10 border border-indigo-500/30 rounded-3xl p-6 md:p-10 mb-10 shadow-inner">
+                    <p className="text-sm md:text-base text-indigo-200 leading-relaxed font-bold italic text-center max-w-5xl mx-auto">
+                      "Il est expressément convenu que le Maître d’œuvre instaure un dispositif de
+                      règlement basé sur la{' '}
+                      <span className="text-white underline decoration-indigo-400">
+                        Réception Finale PROQUELEC
+                      </span>
+                      . Toute validation rend les prestations éligibles au paiement sous réserve du
+                      renseignement quotidien, exact et exhaustif des formulaires numériques via
+                      Kobo."
+                    </p>
+                  </div>
+
+                  <div className="space-y-6 mb-12">
+                    {/* ART 5.1 */}
+                    <div className="flex flex-col md:flex-row items-center gap-8 bg-slate-900/60 border border-indigo-500/10 rounded-[2rem] p-8 md:p-10 transition-all hover:bg-slate-900/80 hover:border-indigo-500/30 group shadow-2xl">
+                      <div className="w-20 h-20 shrink-0 rounded-3xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 group-hover:scale-110 transition-transform">
+                        <ShieldCheck size={40} />
+                      </div>
+                      <div className="flex-1 text-center md:text-left">
+                        <span className="text-sm font-black text-indigo-400 uppercase tracking-[0.3em] block mb-3">
+                          ART 5.1 – RÉCEPTION FINALE ET VALIDATION TECHNIQUE
+                        </span>
+                        <p className="text-sm md:text-base text-slate-400 leading-relaxed">
+                          La réception finale est prononcée par{' '}
+                          <span className="text-indigo-300 font-bold">PROQUELEC</span> après
+                          vérification de la conformité aux exigences contractuelles. Elle peut être
+                          prononcée <span className="text-indigo-200 italic">sans réserve</span>{' '}
+                          (validation définitive) ou{' '}
+                          <span className="text-indigo-200 italic">avec réserves</span> (délai de
+                          levée fixé par le Chef de Projet). La validation est matérialisée par le
+                          statut{' '}
+                          <span className="text-white font-bold italic">
+                            « Réceptionné conforme »
+                          </span>{' '}
+                          dans GEM.
+                        </p>
+                      </div>
+                      <div className="shrink-0 bg-indigo-500/20 px-6 py-3 rounded-2xl border border-indigo-500/30 shadow-lg min-w-[160px] text-center">
+                        <span className="text-xs font-black text-indigo-200 uppercase tracking-widest">
+                          Réception Conforme
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* ART 5.2 */}
+                    <div className="flex flex-col md:flex-row items-center gap-8 bg-slate-900/60 border border-indigo-500/10 rounded-[2rem] p-8 md:p-10 transition-all hover:bg-slate-900/80 hover:border-indigo-500/30 group shadow-2xl">
+                      <div className="w-20 h-20 shrink-0 rounded-3xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 group-hover:scale-110 transition-transform">
+                        <Zap size={40} />
+                      </div>
+                      <div className="flex-1 text-center md:text-left">
+                        <span className="text-sm font-black text-indigo-400 uppercase tracking-[0.3em] block mb-3">
+                          ART 5.2 – OBLIGATION DE SAISIE DES DONNÉES (KOBO)
+                        </span>
+                        <p className="text-sm md:text-base text-slate-400 leading-relaxed">
+                          Le Titulaire assure le renseignement{' '}
+                          <span className="text-indigo-300 font-bold">
+                            quotidien, exact et exhaustif
+                          </span>{' '}
+                          des formulaires Kobo. Ces données constituent la base contractuelle de
+                          liquidation des prestations. Toute absence, incohérence ou falsification
+                          des données peut entraîner la suspension du paiement ou le rejet des
+                          prestations concernées.
+                        </p>
+                      </div>
+                      <div className="shrink-0 bg-indigo-500/20 px-6 py-3 rounded-2xl border border-indigo-500/30 shadow-lg min-w-[160px] text-center">
+                        <span className="text-xs font-black text-indigo-200 uppercase tracking-widest">
+                          Base Contractuelle
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* ART 5.3 */}
+                    <div className="flex flex-col md:flex-row items-center gap-8 bg-slate-900/60 border border-indigo-500/10 rounded-[2rem] p-8 md:p-10 transition-all hover:bg-slate-900/80 hover:border-indigo-500/30 group shadow-2xl">
+                      <div className="w-20 h-20 shrink-0 rounded-3xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 group-hover:scale-110 transition-transform">
+                        <Scale size={40} />
+                      </div>
+                      <div className="flex-1 text-center md:text-left">
+                        <span className="text-sm font-black text-indigo-400 uppercase tracking-[0.3em] block mb-3">
+                          ART 5.3 – RETENUE DE GARANTIE ET CAUTIONNEMENTS
+                        </span>
+                        <p className="text-sm md:text-base text-slate-400 leading-relaxed">
+                          Une retenue de garantie est appliquée sur les paiements (taux de 5% à
+                          10%). Le Titulaire peut substituer cette retenue par une caution délivrée
+                          par une compagnie d’assurance agréée, notamment{' '}
+                          <span className="text-indigo-300 font-bold">SONAM, ASKIA Assurances</span>{' '}
+                          ou toute autre structure validée par PROQUELEC.
+                        </p>
+                      </div>
+                      <div className="shrink-0 bg-indigo-500/20 px-6 py-3 rounded-2xl border border-indigo-500/30 shadow-lg min-w-[160px] text-center">
+                        <span className="text-xs font-black text-indigo-200 uppercase tracking-widest">
+                          Caution Agréée
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-4 mb-16">
+                    <button
+                      onClick={handleExportWord}
+                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-black py-5 rounded-2xl transition-all shadow-2xl shadow-blue-500/40 active:scale-95 flex items-center justify-center gap-3 text-lg uppercase tracking-widest"
+                    >
+                      <FileText size={24} />
+                      EXPORTER LE BORDEREAU CONTRACTUEL (.DOCX)
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-12 pt-12 border-t border-white/5 pb-12">
+                <div className="bg-slate-900 border border-slate-800 p-8 rounded-3xl border-dashed">
+                  <div className="flex flex-col items-center justify-center min-h-[100px]">
+                    <span className="text-xs text-slate-500 font-bold uppercase tracking-widest">
+                      VISA DIRECTION PROQUELEC
                     </span>
-                    . Toute validation rend les prestations éligibles au paiement sous réserve du
-                    renseignement quotidien, exact et exhaustif des formulaires numériques via
-                    Kobo."
-                  </p>
-                </div>
-
-                <div className="space-y-6 mb-12">
-                  {/* ART 5.1 */}
-                  <div className="flex flex-col md:flex-row items-center gap-8 bg-slate-900/60 border border-indigo-500/10 rounded-[2rem] p-8 md:p-10 transition-all hover:bg-slate-900/80 hover:border-indigo-500/30 group shadow-2xl">
-                    <div className="w-20 h-20 shrink-0 rounded-3xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 group-hover:scale-110 transition-transform">
-                      <ShieldCheck size={40} />
-                    </div>
-                    <div className="flex-1 text-center md:text-left">
-                      <span className="text-sm font-black text-indigo-400 uppercase tracking-[0.3em] block mb-3">
-                        ART 5.1 – RÉCEPTION FINALE ET VALIDATION TECHNIQUE
-                      </span>
-                      <p className="text-sm md:text-base text-slate-400 leading-relaxed">
-                        La réception finale est prononcée par{' '}
-                        <span className="text-indigo-300 font-bold">PROQUELEC</span> après
-                        vérification de la conformité aux exigences contractuelles. Elle peut être
-                        prononcée <span className="text-indigo-200 italic">sans réserve</span>{' '}
-                        (validation définitive) ou{' '}
-                        <span className="text-indigo-200 italic">avec réserves</span> (délai de
-                        levée fixé par le Chef de Projet). La validation est matérialisée par le
-                        statut{' '}
-                        <span className="text-white font-bold italic">
-                          « Réceptionné conforme »
-                        </span>{' '}
-                        dans GEM.
-                      </p>
-                    </div>
-                    <div className="shrink-0 bg-indigo-500/20 px-6 py-3 rounded-2xl border border-indigo-500/30 shadow-lg min-w-[160px] text-center">
-                      <span className="text-xs font-black text-indigo-200 uppercase tracking-widest">
-                        Réception Conforme
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* ART 5.2 */}
-                  <div className="flex flex-col md:flex-row items-center gap-8 bg-slate-900/60 border border-indigo-500/10 rounded-[2rem] p-8 md:p-10 transition-all hover:bg-slate-900/80 hover:border-indigo-500/30 group shadow-2xl">
-                    <div className="w-20 h-20 shrink-0 rounded-3xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 group-hover:scale-110 transition-transform">
-                      <Zap size={40} />
-                    </div>
-                    <div className="flex-1 text-center md:text-left">
-                      <span className="text-sm font-black text-indigo-400 uppercase tracking-[0.3em] block mb-3">
-                        ART 5.2 – OBLIGATION DE SAISIE DES DONNÉES (KOBO)
-                      </span>
-                      <p className="text-sm md:text-base text-slate-400 leading-relaxed">
-                        Le Titulaire assure le renseignement{' '}
-                        <span className="text-indigo-300 font-bold">
-                          quotidien, exact et exhaustif
-                        </span>{' '}
-                        des formulaires Kobo. Ces données constituent la base contractuelle de
-                        liquidation des prestations. Toute absence, incohérence ou falsification des
-                        données peut entraîner la suspension du paiement ou le rejet des prestations
-                        concernées.
-                      </p>
-                    </div>
-                    <div className="shrink-0 bg-indigo-500/20 px-6 py-3 rounded-2xl border border-indigo-500/30 shadow-lg min-w-[160px] text-center">
-                      <span className="text-xs font-black text-indigo-200 uppercase tracking-widest">
-                        Base Contractuelle
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* ART 5.3 */}
-                  <div className="flex flex-col md:flex-row items-center gap-8 bg-slate-900/60 border border-indigo-500/10 rounded-[2rem] p-8 md:p-10 transition-all hover:bg-slate-900/80 hover:border-indigo-500/30 group shadow-2xl">
-                    <div className="w-20 h-20 shrink-0 rounded-3xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 group-hover:scale-110 transition-transform">
-                      <Scale size={40} />
-                    </div>
-                    <div className="flex-1 text-center md:text-left">
-                      <span className="text-sm font-black text-indigo-400 uppercase tracking-[0.3em] block mb-3">
-                        ART 5.3 – RETENUE DE GARANTIE ET CAUTIONNEMENTS
-                      </span>
-                      <p className="text-sm md:text-base text-slate-400 leading-relaxed">
-                        Une retenue de garantie est appliquée sur les paiements (taux de 5% à 10%).
-                        Le Titulaire peut substituer cette retenue par une caution délivrée par une
-                        compagnie d’assurance agréée, notamment{' '}
-                        <span className="text-indigo-300 font-bold">SONAM, ASKIA Assurances</span>{' '}
-                        ou toute autre structure validée par PROQUELEC.
-                      </p>
-                    </div>
-                    <div className="shrink-0 bg-indigo-500/20 px-6 py-3 rounded-2xl border border-indigo-500/30 shadow-lg min-w-[160px] text-center">
-                      <span className="text-xs font-black text-indigo-200 uppercase tracking-widest">
-                        Caution Agréée
-                      </span>
-                    </div>
+                    <div className="mt-8 w-32 h-px bg-slate-800" />
                   </div>
                 </div>
-
-                <div className="flex items-center gap-4 mb-16">
-                  <button
-                    onClick={handleExportWord}
-                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-black py-5 rounded-2xl transition-all shadow-2xl shadow-blue-500/40 active:scale-95 flex items-center justify-center gap-3 text-lg uppercase tracking-widest"
-                  >
-                    <FileText size={24} />
-                    EXPORTER LE BORDEREAU CONTRACTUEL (.DOCX)
-                  </button>
+                <div className="bg-slate-900 border border-slate-800 p-8 rounded-3xl border-dashed">
+                  <div className="flex flex-col items-center justify-center min-h-[100px]">
+                    <span className="text-xs text-slate-500 font-bold uppercase tracking-widest text-center">
+                      VISA PRESTATAIRE ({selectedRole.toUpperCase()})
+                    </span>
+                    <div className="mt-8 w-32 h-px bg-slate-800" />
+                  </div>
                 </div>
               </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-12 pt-12 border-t border-white/5 pb-12">
-              <div className="bg-slate-900 border border-slate-800 p-8 rounded-3xl border-dashed">
-                <div className="flex flex-col items-center justify-center min-h-[100px]">
-                  <span className="text-xs text-slate-500 font-bold uppercase tracking-widest">
-                    VISA DIRECTION PROQUELEC
-                  </span>
-                  <div className="mt-8 w-32 h-px bg-slate-800" />
-                </div>
-              </div>
-              <div className="bg-slate-900 border border-slate-800 p-8 rounded-3xl border-dashed">
-                <div className="flex flex-col items-center justify-center min-h-[100px]">
-                  <span className="text-xs text-slate-500 font-bold uppercase tracking-widest text-center">
-                    VISA PRESTATAIRE ({selectedRole.toUpperCase()})
-                  </span>
-                  <div className="mt-8 w-32 h-px bg-slate-800" />
-                </div>
-              </div>
-            </div>
-          </main>
-        </div>
+            </main>
+          </div>
         )}
       </ContentArea>
     </PageContainer>

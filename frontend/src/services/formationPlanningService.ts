@@ -219,6 +219,21 @@ export interface PreviewSessionValidationRequest {
   rooms: RoomResource[];
 }
 
+import * as safeStorage from '../utils/safeStorage';
+
+const apiFetch = async (url: string, options: RequestInit = {}) => {
+  const token = safeStorage.getItem('access_token');
+  const activeProjectId = safeStorage.getItem('active_project_id');
+  const headers = new Headers(options.headers || {});
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+  if (activeProjectId) {
+    headers.set('X-Project-Id', activeProjectId);
+  }
+  return fetch(url, { ...options, headers });
+};
+
 const handleResponse = async (response: Response) => {
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
@@ -246,21 +261,21 @@ const downloadResponseBlob = async (response: Response, fallbackFileName: string
 };
 
 export const formationApi = {
-  getModules: (): Promise<FormationModule[]> => fetch(`${API_BASE}/modules`).then(handleResponse),
+  getModules: (): Promise<FormationModule[]> => apiFetch(`${API_BASE}/modules`).then(handleResponse),
   createModule: (data: Partial<FormationModule>) =>
-    fetch(`${API_BASE}/modules`, {
+    apiFetch(`${API_BASE}/modules`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     }).then(handleResponse),
   updateModule: (id: string, data: Partial<FormationModule>) =>
-    fetch(`${API_BASE}/modules/${id}`, {
+    apiFetch(`${API_BASE}/modules/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     }).then(handleResponse),
-  deleteModule: (id: string) => fetch(`${API_BASE}/modules/${id}`, { method: 'DELETE' }).then(handleResponse),
-  getSessions: (): Promise<FormationSession[]> => fetch(`${API_BASE}/sessions`).then(handleResponse),
+  deleteModule: (id: string) => apiFetch(`${API_BASE}/modules/${id}`, { method: 'DELETE' }).then(handleResponse),
+  getSessions: (): Promise<FormationSession[]> => apiFetch(`${API_BASE}/sessions`).then(handleResponse),
   createSession: (data: {
     region: string;
     salle: string;
@@ -271,7 +286,7 @@ export const formationApi = {
     notes?: string;
     modules: { moduleId: string; duration?: number; notes?: string; orderIndex?: number }[];
   }) =>
-    fetch(`${API_BASE}/sessions`, {
+    apiFetch(`${API_BASE}/sessions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -290,7 +305,7 @@ export const formationApi = {
       modules?: { moduleId: string; duration?: number; notes?: string; orderIndex?: number }[];
     }
   ) =>
-    fetch(`${API_BASE}/sessions/${id}`, {
+    apiFetch(`${API_BASE}/sessions/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -299,13 +314,13 @@ export const formationApi = {
     id: string,
     data: { startDate: string; region?: string; workSaturday?: boolean; workSunday?: boolean }
   ) =>
-    fetch(`${API_BASE}/sessions/${id}/recalculate-cascade`, {
+    apiFetch(`${API_BASE}/sessions/${id}/recalculate-cascade`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     }).then(handleResponse),
-  deleteSession: (id: string) => fetch(`${API_BASE}/sessions/${id}`, { method: 'DELETE' }).then(handleResponse),
-  getHistory: (): Promise<ApiHistoryEntry[]> => fetch(`${API_BASE}/history`).then(handleResponse),
+  deleteSession: (id: string) => apiFetch(`${API_BASE}/sessions/${id}`, { method: 'DELETE' }).then(handleResponse),
+  getHistory: (): Promise<ApiHistoryEntry[]> => apiFetch(`${API_BASE}/history`).then(handleResponse),
   createHistory: (data: {
     action: string;
     title: string;
@@ -313,20 +328,20 @@ export const formationApi = {
     sessionId?: string;
     metadata?: Record<string, unknown>;
   }) =>
-    fetch(`${API_BASE}/history`, {
+    apiFetch(`${API_BASE}/history`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     }).then(handleResponse),
-  clearHistory: () => fetch(`${API_BASE}/history`, { method: 'DELETE' }).then(handleResponse),
+  clearHistory: () => apiFetch(`${API_BASE}/history`, { method: 'DELETE' }).then(handleResponse),
   planifyPreview: (data: PlannerPreviewRequest): Promise<PreviewPlan> =>
-    fetch(`${API_BASE}/planify`, {
+    apiFetch(`${API_BASE}/planify`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     }).then(handleResponse),
   validatePreviewSession: (data: PreviewSessionValidationRequest): Promise<{ session: PreviewSession }> =>
-    fetch(`${API_BASE}/planify/validate-preview-session`, {
+    apiFetch(`${API_BASE}/planify/validate-preview-session`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -335,7 +350,7 @@ export const formationApi = {
     plan: PreviewPlan;
     options: { workSaturday: boolean; workSunday: boolean };
   }) =>
-    fetch(`${API_BASE}/planify/commit`, {
+    apiFetch(`${API_BASE}/planify/commit`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -358,7 +373,7 @@ export const formationApi = {
     };
     format: 'pdf' | 'docx';
   }) => {
-    const response = await fetch(`${API_BASE}/planify/export`, {
+    const response = await apiFetch(`${API_BASE}/planify/export`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -368,10 +383,10 @@ export const formationApi = {
       data.format === 'pdf' ? 'plan_formation.pdf' : 'plan_formation.docx'
     );
   },
-  getStats: (): Promise<StatsResponse> => fetch(`${API_BASE}/stats`).then(handleResponse),
-  getPlannerState: (): Promise<PlannerStatePayload | null> => fetch(`${API_BASE}/planner-state`).then(handleResponse),
+  getStats: (): Promise<StatsResponse> => apiFetch(`${API_BASE}/stats`).then(handleResponse),
+  getPlannerState: (): Promise<PlannerStatePayload | null> => apiFetch(`${API_BASE}/planner-state`).then(handleResponse),
   savePlannerState: (data: PlannerStatePayload) =>
-    fetch(`${API_BASE}/planner-state`, {
+    apiFetch(`${API_BASE}/planner-state`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),

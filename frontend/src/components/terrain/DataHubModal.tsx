@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 import { useRef, useState, useEffect } from 'react';
+import { isMasterAdminEmail } from '../../utils/roleUtils';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X,
@@ -194,14 +195,32 @@ export const DataHubModal: React.FC<DataHubModalProps> = ({ isOpen, onClose }) =
 
       const aliases = {
         id: ['id', 'numeroordre', 'identifiant', 'numero', 'n', 'code', 'num_ordre', 'ordre'],
-        owner: ['owner', 'nom', 'prenometnom', 'chefdemenage', 'client', 'prenomnom', 'beneficiaire', 'titulaire'],
+        owner: [
+          'owner',
+          'nom',
+          'prenometnom',
+          'chefdemenage',
+          'client',
+          'prenomnom',
+          'beneficiaire',
+          'titulaire',
+        ],
         phone: ['phone', 'telephone', 'tel', 'contact', 'mobile', 'cellulaire'],
         lat: ['lat', 'latitude', 'gpslatitude', 'y', 'lat_gps'],
         lon: ['lon', 'lng', 'longitude', 'gpslongitude', 'x', 'lon_gps', 'long'],
         status: ['status', 'statut', 'etat', 'avancement', 'phase'],
         region: ['region', 'reg', 'province', 'nom_region', 'region_nom'],
         departement: ['departement', 'dept', 'district', 'prefecture', 'pref'],
-        village: ['village', 'nom_village', 'nom_grappe', 'grappe', 'localite', 'commune', 'settlement', 'quartier'],
+        village: [
+          'village',
+          'nom_village',
+          'nom_grappe',
+          'grappe',
+          'localite',
+          'commune',
+          'settlement',
+          'quartier',
+        ],
         photo: ['photo', 'image', 'picture', 'file', 'media', 'lienphoto', 'photo_lieu'],
       };
 
@@ -210,7 +229,7 @@ export const DataHubModal: React.FC<DataHubModalProps> = ({ isOpen, onClose }) =
         for (const key of Object.keys(obj)) {
           normalizedObjKeys.set(normalizeKey(key), key);
         }
-        
+
         for (const alias of aliasList) {
           if (normalizedObjKeys.has(alias)) {
             return obj[normalizedObjKeys.get(alias)!];
@@ -503,7 +522,8 @@ export const DataHubModal: React.FC<DataHubModalProps> = ({ isOpen, onClose }) =
   };
 
   const handleRestoreBackup = async (id: string) => {
-    if (!(await showConfirm('Restauration', 'Réimporter cette sauvegarde sur le serveur ?'))) return;
+    if (!(await showConfirm('Restauration', 'Réimporter cette sauvegarde sur le serveur ?')))
+      return;
     setIsProcessing(true);
     try {
       const data = JSON.parse(localStorage.getItem(`gem_backup_data_${id}`) || '[]');
@@ -817,7 +837,7 @@ export const DataHubModal: React.FC<DataHubModalProps> = ({ isOpen, onClose }) =
                               ['ADMIN_PROQUELEC', 'DG_PROQUELEC', 'COMPTABLE', 'ADMIN'].includes(
                                 userRole || ''
                               ) ||
-                              userEmail === 'admingem' ||
+                              isMasterAdminEmail(userEmail) ||
                               userEmail?.includes('admin@proquelec.com');
 
                             return (

@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, no-empty */ 
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/exhaustive-deps, no-empty */
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { db } from '../store/db';
@@ -41,6 +41,7 @@ import { userService } from '../services/userService';
 import { organizationService } from '../services/organizationService';
 import { auditService } from '../services/auditService';
 import logger from '../utils/logger';
+import { isMasterAdminEmail } from '../utils/roleUtils';
 import {
   Settings as SettingsIcon,
   Layout,
@@ -155,34 +156,23 @@ const emptyForm = (): UserForm => ({
   permissions: [],
 });
 
-// ─── Toast ───────────────────────────────────────────────────────────────────
-type ToastType = 'success' | 'error' | 'info' | 'warning';
-interface Toast {
-  id: number;
-  msg: string;
-  type: ToastType;
-}
-
-let _toastId = 0;
-
 // ─── Composant principal ─────────────────────────────────────────────────────
 export default function AdminUsers() {
   const navigate = useNavigate();
-    const [applyingRoleDefaults, setApplyingRoleDefaults] = useState(false);
-    const [confirmApplyOpen, setConfirmApplyOpen] = useState(false);
-    const [pendingApplyPerms, setPendingApplyPerms] = useState<string[] | null>(null);
-    const [pendingApplyRole, setPendingApplyRole] = useState<string | null>(null);
+  const [applyingRoleDefaults, setApplyingRoleDefaults] = useState(false);
+  const [confirmApplyOpen, setConfirmApplyOpen] = useState(false);
+  const [pendingApplyPerms, setPendingApplyPerms] = useState<string[] | null>(null);
+  const [pendingApplyRole, setPendingApplyRole] = useState<string | null>(null);
   const { user, impersonate } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [teams, setTeams] = useState<any[]>([]);
-  // const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
 
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState<UserForm>(emptyForm());
   const [showPass, setShowPass] = useState(false);
-  const [toasts, setToasts] = useState<Toast[]>([]);
 
   // ── Delete modal state ──
   const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
@@ -191,6 +181,7 @@ export default function AdminUsers() {
   const [delStep, setDelStep] = useState<1 | 2>(1);
   const [delError, setDelError] = useState('');
   const [showDelPass, setShowDelPass] = useState(false);
+  const [deleteConfirmedName, setDeleteConfirmedName] = useState('');
   const [activeSecurityQuestion, setActiveSecurityQuestion] = useState('');
 
   // ── Organization Config State ──
@@ -201,6 +192,7 @@ export default function AdminUsers() {
 
   // Load data from API
   const loadData = async () => {
+    setLoading(true);
     try {
       const [u, t] = await Promise.all([
         userService.getUsers(),
@@ -209,8 +201,9 @@ export default function AdminUsers() {
       setUsers(u);
       setTeams(t);
     } catch (err) {
-      addToast('Erreur lors du chargement des données', 'error');
+      toast.error('Erreur lors du chargement des données');
     } finally {
+      setLoading(false);
     }
   };
 
@@ -219,7 +212,7 @@ export default function AdminUsers() {
   useEffect(() => {
     if (hasFetched.current) return;
     hasFetched.current = true;
-    
+
     loadData();
     loadOrgConfig();
     appSecurity.get('securityQuestion').then(setActiveSecurityQuestion);
@@ -239,9 +232,9 @@ export default function AdminUsers() {
     try {
       await organizationService.updateConfig(newConfig);
       setOrgConfig(newConfig);
-      addToast("Configuration de l'organisation mise à jour", 'success');
+      toast.success("Configuration de l'organisation mise à jour");
     } catch (err) {
-      addToast('Échec de la mise à jour de la config', 'error');
+      toast.error('Échec de la mise à jour de la config');
     } finally {
       setIsSavingConfig(false);
     }
@@ -260,13 +253,6 @@ export default function AdminUsers() {
   const [newPassword, setNewPassword] = useState('');
   const [showNewPass, setShowNewPass] = useState(false);
 
-  // ─── Toast helpers ────────────────────────────────────────────────────────
-  const addToast = (msg: string, type: ToastType = 'success') => {
-    const id = ++_toastId;
-    setToasts((prev) => [...prev, { id, msg, type }]);
-    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
-  };
-
   // ─── Filtering ────────────────────────────────────────────────────────────
   const filtered = users.filter(
     (u: User) =>
@@ -284,7 +270,7 @@ export default function AdminUsers() {
   };
   const openEdit = (u: User) => {
     if (u.role === 'ADMIN_PROQUELEC' && user?.id !== u.id) {
-      addToast('Impossible de modifier un autre Administrateur Système', 'error');
+      toast.error('Impossible de modifier un autre Administrateur Système');
       return;
     }
     setEditId(u.id);
@@ -306,10 +292,10 @@ export default function AdminUsers() {
   const togglePermission = (p: string) => {
     setForm((f: any) => {
       const currentRole = normalizeRole(f.role) || (f.role as PermissionUserRole);
-      
+
       // Si on est en mode Auto (null ou undefined), on part de la base du rôle
       const isAuto = f.permissions === null || f.permissions === undefined;
-      const current = isAuto ? (ROLE_PERMISSIONS[currentRole] || []) : f.permissions;
+      const current = isAuto ? ROLE_PERMISSIONS[currentRole] || [] : f.permissions;
 
       if (current.includes(p)) {
         return { ...f, permissions: current.filter((x: string) => x !== p) };
@@ -323,17 +309,17 @@ export default function AdminUsers() {
     // En mettant permissions à undefined, le système repasse automatiquement
     // sur le fallback du RÔLE (comportement par défaut)
     setForm((f: any) => ({ ...f, permissions: null })); // null tells the server to reset to role defaults
-    addToast(`✅ Compte synchronisé sur les droits par défaut du rôle ${form.role}`, 'info');
+    toast(`✅ Compte synchronisé sur les droits par défaut du rôle ${form.role}`, { icon: 'ℹ️' });
   };
 
   // ─── Save (create / update) ───────────────────────────────────────────────
   const saveUser = async () => {
     if (!form.email.trim() || (!editId && !form.password?.trim()) || !form.name.trim()) {
-      addToast('Tous les champs obligatoires doivent être remplis.', 'error');
+      toast.error('Tous les champs obligatoires doivent être remplis.');
       return;
     }
     if (!editId && (form.password?.length ?? 0) < 6) {
-      addToast('Le mot de passe doit faire au moins 6 caractères.', 'error');
+      toast.error('Le mot de passe doit faire au moins 6 caractères.');
       return;
     }
     try {
@@ -351,7 +337,7 @@ export default function AdminUsers() {
             'info'
           );
         }
-        addToast(`✏️  Compte "${form.name}" mis à jour sur le serveur.`, 'success');
+        toast.success(`✏️  Compte "${form.name}" mis à jour sur le serveur.`);
       } else {
         await userService.createUser(form);
         if (user) {
@@ -363,19 +349,19 @@ export default function AdminUsers() {
             'info'
           );
         }
-        addToast(`✅  Compte "${form.name}" créé sur le serveur.`, 'success');
+        toast.success(`✅  Compte "${form.name}" créé sur le serveur.`);
       }
       setShowForm(false);
       loadData(); // Refresh list
     } catch (err: any) {
-      addToast(`❌  Erreur: ${err.message}`, 'error');
+      toast.error(`❌  Erreur: ${err.message}`);
     }
   };
 
   // ─── Open delete modal ────────────────────────────────────────────────────
   const openDelete = (u: User) => {
     if (u.id === '1' || u.role === 'ADMIN_PROQUELEC') {
-      addToast('Impossible de supprimer un compte Administrateur.', 'error');
+      toast.error('Impossible de supprimer un compte Administrateur.');
       return;
     }
     setDeleteTarget(u);
@@ -384,14 +370,22 @@ export default function AdminUsers() {
     setDelError('');
     setDelStep(1);
     setShowDelPass(false);
+    setDeleteConfirmedName('');
   };
 
   // ─── Confirm delete: step 1 (password) ────────────────────────────────────
   const confirmDelStep1 = async () => {
     if (!deleteTarget) return;
-    // Non-admin: direct delete
+    // Non-admin: require name confirmation before delete
     if (deleteTarget.role !== 'ADMIN_PROQUELEC') {
-      executeDelete();
+      if (
+        !deleteConfirmedName ||
+        deleteConfirmedName.toLowerCase() !== (deleteTarget.name || '').toLowerCase()
+      ) {
+        setDelError("Veuillez saisir le nom de l'utilisateur pour confirmer la suppression.");
+        return;
+      }
+      await executeDelete();
       return;
     }
     // Admin: check password first
@@ -428,18 +422,18 @@ export default function AdminUsers() {
           'warning'
         );
       }
-      addToast(`🗑️  Compte "${name}" supprimé du serveur.`, 'warning');
+      toast(`🗑️  Compte "${name}" supprimé du serveur.`, { icon: '⚠️' });
       setDeleteTarget(null);
       loadData();
     } catch (err: any) {
-      addToast(`❌  Erreur: ${err.message}`, 'error');
+      toast.error(`❌  Erreur: ${err.message}`);
     }
   };
 
   // ─── Toggle active ────────────────────────────────────────────────────────
   const toggleActive = async (u: User) => {
     if (u.id === '1') {
-      addToast('Impossible de désactiver le compte Admin principal.', 'error');
+      toast.error('Impossible de désactiver le compte Admin principal.');
       return;
     }
     const next = !u.active;
@@ -454,13 +448,14 @@ export default function AdminUsers() {
           next ? 'info' : 'warning'
         );
       }
-      addToast(
-        next ? `▶️  Compte "${u.name}" activé.` : `⏸️  Compte "${u.name}" désactivé.`,
-        next ? 'success' : 'info'
-      );
+      if (next) {
+        toast.success(`▶️  Compte "${u.name}" activé.`);
+      } else {
+        toast(`⏸️  Compte "${u.name}" désactivé.`, { icon: 'ℹ️' });
+      }
       loadData();
     } catch (err: any) {
-      addToast(`❌  Erreur: ${err.message}`, 'error');
+      toast.error(`❌  Erreur: ${err.message}`);
     }
   };
 
@@ -473,7 +468,7 @@ export default function AdminUsers() {
   const saveReset = async () => {
     if (!resetTarget) return;
     if (newPassword.length < 6) {
-      addToast('Le mot de passe doit faire au moins 6 caractères.', 'error');
+      toast.error('Le mot de passe doit faire au moins 6 caractères.');
       return;
     }
     try {
@@ -487,11 +482,11 @@ export default function AdminUsers() {
           'warning'
         );
       }
-      addToast(`🔑  Mot de passe de "${resetTarget.name}" réinitialisé.`, 'success');
+      toast.success(`🔑  Mot de passe de "${resetTarget.name}" réinitialisé.`);
       setResetTarget(null);
       loadData();
     } catch (err: any) {
-      addToast(`❌  Erreur: ${err.message}`, 'error');
+      toast.error(`❌  Erreur: ${err.message}`);
     }
   };
 
@@ -506,35 +501,6 @@ export default function AdminUsers() {
 
   return (
     <PageContainer className="min-h-screen bg-slate-950 py-8">
-      {/* ── Toast Stack ── */}
-      <div className="fixed top-6 right-6 z-[9999] flex flex-col gap-2 pointer-events-none">
-        {toasts.map((t) => (
-          <div
-            key={t.id}
-            className={`flex items-center gap-3 px-5 py-4 rounded-2xl shadow-2xl font-bold text-sm pointer-events-auto animate-in slide-in-from-right-4 duration-300 ${
-              t.type === 'success'
-                ? 'bg-emerald-600 text-white'
-                : t.type === 'error'
-                  ? 'bg-red-600 text-white'
-                  : t.type === 'warning'
-                    ? 'bg-amber-500 text-white'
-                    : 'bg-indigo-600 text-white'
-            }`}
-          >
-            {t.type === 'success' ? (
-              <CheckCircle2 size={16} />
-            ) : t.type === 'error' ? (
-              <AlertTriangle size={16} />
-            ) : t.type === 'warning' ? (
-              <AlertTriangle size={16} />
-            ) : (
-              <CheckCircle2 size={16} />
-            )}
-            {t.msg}
-          </div>
-        ))}
-      </div>
-
       {/* Delete Confirmation Modal */}
       <AnimatePresence>
         {deleteTarget && (
@@ -594,11 +560,11 @@ export default function AdminUsers() {
                   if (isAdminDelete) {
                     if (delStep === 1) confirmDelStep1();
                     else confirmDelStep2();
-                  } else executeDelete();
+                  } else confirmDelStep1();
                 }}
                 className="space-y-6"
               >
-                {isAdminDelete && (
+                {isAdminDelete ? (
                   <div className="space-y-4">
                     {delStep === 1 ? (
                       <div className="space-y-3">
@@ -669,6 +635,34 @@ export default function AdminUsers() {
                       </motion.p>
                     )}
                   </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="space-y-3">
+                      <label className="text-xs font-black text-slate-500 uppercase tracking-widest block ml-1">
+                        Confirmer la suppression
+                      </label>
+                      <input
+                        type="text"
+                        placeholder={`Saisir "${deleteTarget?.name}" pour confirmer`}
+                        value={deleteConfirmedName}
+                        onChange={(e) => {
+                          setDeleteConfirmedName(e.target.value);
+                          setDelError('');
+                        }}
+                        autoFocus
+                        className={`w-full bg-slate-950 border rounded-2xl px-5 py-4 text-white font-bold text-sm placeholder:text-slate-700 outline-none transition-all ${delError ? 'border-rose-500 ring-4 ring-rose-200 dark:ring-rose-600' : 'border-slate-800 focus:border-rose-500/50'}`}
+                      />
+                    </div>
+                    {delError && (
+                      <motion.p
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        className="text-rose-900 dark:text-rose-100 text-xs font-bold text-center"
+                      >
+                        {delError}
+                      </motion.p>
+                    )}
+                  </div>
                 )}
 
                 <div className="flex gap-4">
@@ -716,7 +710,10 @@ export default function AdminUsers() {
                 if (!pendingApplyRole || !pendingApplyPerms) return setConfirmApplyOpen(false);
                 try {
                   setApplyingRoleDefaults(true);
-                  await adminPermissionsService.updateRolePermissions(pendingApplyRole, pendingApplyPerms);
+                  await adminPermissionsService.updateRolePermissions(
+                    pendingApplyRole,
+                    pendingApplyPerms
+                  );
                   toast.success('Matrice mise à jour pour le rôle');
                 } catch (err: any) {
                   logger.error('Apply role defaults failed', err);
@@ -735,8 +732,13 @@ export default function AdminUsers() {
           </>
         }
       >
-        <p className="text-sm text-slate-400">Vous allez écraser la configuration par défaut du rôle <strong>{pendingApplyRole}</strong>.</p>
-        <p className="text-sm text-slate-400 mt-3">Nombre de permissions à appliquer : <strong>{pendingApplyPerms?.length ?? 0}</strong></p>
+        <p className="text-sm text-slate-400">
+          Vous allez écraser la configuration par défaut du rôle <strong>{pendingApplyRole}</strong>
+          .
+        </p>
+        <p className="text-sm text-slate-400 mt-3">
+          Nombre de permissions à appliquer : <strong>{pendingApplyPerms?.length ?? 0}</strong>
+        </p>
       </Modal>
 
       {/* Reset Password Modal */}
@@ -1145,9 +1147,22 @@ export default function AdminUsers() {
                         <td className="px-2 py-5">
                           <div className="flex justify-end gap-1">
                             <button
-                              onClick={() => {
+                              onClick={async () => {
+                                try {
+                                  if (user && typeof auditService?.logAction === 'function') {
+                                    await auditService.logAction(
+                                      user,
+                                      'Impersonation Demarree',
+                                      'UTILISATEURS',
+                                      `A demarre la simulation du compte "${u.name}" (${u.email}) - Role: ${u.role}`,
+                                      'warning'
+                                    );
+                                  }
+                                } catch (e) {
+                                  console.warn('[AdminUsers] Audit impersonation failed:', e);
+                                }
                                 impersonate(u);
-                                addToast(`🎭 Simulation de "${u.name}" activée`, 'info');
+                                toast(`🎭 Simulation de "${u.name}" activée`, { icon: 'ℹ️' });
                               }}
                               title="Simuler cet accès (God Mode Simulation)"
                               className="w-9 h-9 flex items-center justify-center bg-indigo-600 text-white hover:bg-white hover:text-indigo-600 shadow-lg shadow-indigo-500/20 transition-all rounded-xl active:scale-90"
@@ -1182,7 +1197,19 @@ export default function AdminUsers() {
                 </tbody>
               </table>
             </div>
-            {filtered.length === 0 && (
+            {loading ? (
+              <div className="p-20 text-center space-y-4">
+                <div className="w-16 h-16 flex items-center justify-center mx-auto">
+                  <RefreshCw size={32} className="text-indigo-400 animate-spin" />
+                </div>
+                <div>
+                  <h3 className="text-white font-black">Chargement...</h3>
+                  <p className="text-slate-500 text-sm mt-1">
+                    Récupération des utilisateurs en cours.
+                  </p>
+                </div>
+              </div>
+            ) : filtered.length === 0 ? (
               <div className="p-20 text-center space-y-4">
                 <div className="w-16 h-16 bg-slate-800/50 border border-slate-700/50 rounded-3xl inline-flex items-center justify-center mb-2">
                   <Search size={24} className="text-slate-600 dark:text-slate-400" />
@@ -1196,7 +1223,7 @@ export default function AdminUsers() {
                   </p>
                 </div>
               </div>
-            )}
+            ) : null}
           </div>
         </div>
 
@@ -1309,7 +1336,7 @@ export default function AdminUsers() {
                       Object.entries(ROLE_CONFIG) as [UserRole, (typeof ROLE_CONFIG)[UserRole]][]
                     ).map(([role, cfg]) => {
                       const isImmutable =
-                        form.role === 'ADMIN_PROQUELEC' || form.email === 'admingem';
+                        form.role === 'ADMIN_PROQUELEC' || isMasterAdminEmail(form.email);
                       return (
                         <button
                           key={role}
@@ -1333,7 +1360,7 @@ export default function AdminUsers() {
                       );
                     })}
                   </div>
-                  {(form.role === 'ADMIN_PROQUELEC' || form.email === 'admingem') && (
+                  {(form.role === 'ADMIN_PROQUELEC' || isMasterAdminEmail(form.email)) && (
                     <p className="mt-2 text-[10px] text-indigo-400 font-bold uppercase tracking-widest flex items-center gap-1.5">
                       <Lock size={10} /> Rôle Administrateur immuable
                     </p>
@@ -1385,33 +1412,135 @@ export default function AdminUsers() {
                 <div className="col-span-1 mt-6 pt-6 border-t border-slate-200 dark:border-slate-800">
                   {(() => {
                     const permissionGroups = [
-                      { title: '🛡️ Administration & Sécurité', keys: ['GERER_UTILISATEURS', 'GERER_PARAMETRES', 'VOIR_AUDIT_LOGS', 'EXPORTER_AUDIT_LOGS', 'ACCES_GOD_MODE', 'VOIR_DIAGNOSTIC', 'MODIFIER_TEMPLATES', 'DIFFUSER_MESSAGE_SYSTEME', 'GENERER_CLES_API', 'GERER_WEBHOOKS'] },
-                      { title: '🚀 Missions (Ordres de Mission)', keys: ['VOIR_MISSIONS', 'CREER_MISSION', 'MODIFIER_MISSION', 'VALIDER_MISSION', 'APPROUVER_MISSION', 'SUPPRIMER_MISSION', 'ARCHIVER_MISSION', 'PURGER_MISSIONS', 'CONFIGURER_WORKFLOW'] },
-                      { title: '👥 Équipes & Organisation', keys: ['VOIR_EQUIPES', 'CREER_EQUIPE', 'MODIFIER_EQUIPE', 'SUPPRIMER_EQUIPE'] },
-                      { title: '💰 Finances & Budgets', keys: ['VOIR_FINANCES', 'GERER_BUDGETS', 'VOIR_PAIEMENTS', 'EXPORTER_COMPTABILITE', 'REINITIALISER_STATISTIQUES'] },
-                      { title: '🗺️ Terrain & Cartographie', keys: ['VOIR_CARTE', 'MODIFIER_CARTE', 'GERER_ZONES', 'GERER_MENAGES', 'VALIDER_INSTALLATION', 'REJETER_DOSSIER'] },
-                      { title: '📁 Projets & Planning', keys: ['VOIR_PROJETS', 'CREER_PROJET', 'MODIFIER_PROJET', 'SUPPRIMER_PROJET', 'ARCHIVER_PROJET', 'GERER_PLANNING', 'MODIFIER_VUES_TABLEAUX_BORD'] },
-                      { title: '📦 Logistique & Kobo', keys: ['VOIR_LOGISTIQUE', 'GERER_STOCK', 'ACCES_TERMINAL_KOBO', 'CONFIGURER_KOBO'] },
-                      { title: '📊 Rapports & Documents', keys: ['VOIR_RAPPORTS_TERRAIN', 'VOIR_RAPPORTS_FINANCIERS', 'GERER_PV', 'EXPORTER_DONNEES', 'VOIR_DOCUMENTS_CONFIDENTIELS', 'SUPPRIMER_DOCUMENTS'] },
+                      {
+                        title: '🛡️ Administration & Sécurité',
+                        keys: [
+                          'GERER_UTILISATEURS',
+                          'GERER_PARAMETRES',
+                          'VOIR_AUDIT_LOGS',
+                          'EXPORTER_AUDIT_LOGS',
+                          'ACCES_GOD_MODE',
+                          'VOIR_DIAGNOSTIC',
+                          'MODIFIER_TEMPLATES',
+                          'DIFFUSER_MESSAGE_SYSTEME',
+                          'GENERER_CLES_API',
+                          'GERER_WEBHOOKS',
+                        ],
+                      },
+                      {
+                        title: '🚀 Missions (Ordres de Mission)',
+                        keys: [
+                          'VOIR_MISSIONS',
+                          'CREER_MISSION',
+                          'MODIFIER_MISSION',
+                          'VALIDER_MISSION',
+                          'APPROUVER_MISSION',
+                          'SUPPRIMER_MISSION',
+                          'ARCHIVER_MISSION',
+                          'PURGER_MISSIONS',
+                          'CONFIGURER_WORKFLOW',
+                        ],
+                      },
+                      {
+                        title: '👥 Équipes & Organisation',
+                        keys: [
+                          'VOIR_EQUIPES',
+                          'CREER_EQUIPE',
+                          'MODIFIER_EQUIPE',
+                          'SUPPRIMER_EQUIPE',
+                        ],
+                      },
+                      {
+                        title: '💰 Finances & Budgets',
+                        keys: [
+                          'VOIR_FINANCES',
+                          'GERER_BUDGETS',
+                          'VOIR_PAIEMENTS',
+                          'EXPORTER_COMPTABILITE',
+                          'REINITIALISER_STATISTIQUES',
+                        ],
+                      },
+                      {
+                        title: '🗺️ Terrain & Cartographie',
+                        keys: [
+                          'VOIR_CARTE',
+                          'MODIFIER_CARTE',
+                          'GERER_ZONES',
+                          'GERER_MENAGES',
+                          'VALIDER_INSTALLATION',
+                          'REJETER_DOSSIER',
+                        ],
+                      },
+                      {
+                        title: '📁 Projets & Planning',
+                        keys: [
+                          'VOIR_PROJETS',
+                          'CREER_PROJET',
+                          'MODIFIER_PROJET',
+                          'SUPPRIMER_PROJET',
+                          'ARCHIVER_PROJET',
+                          'GERER_PLANNING',
+                          'MODIFIER_VUES_TABLEAUX_BORD',
+                        ],
+                      },
+                      {
+                        title: '📦 Logistique & Kobo',
+                        keys: [
+                          'VOIR_LOGISTIQUE',
+                          'GERER_STOCK',
+                          'ACCES_TERMINAL_KOBO',
+                          'CONFIGURER_KOBO',
+                        ],
+                      },
+                      {
+                        title: '📊 Rapports & Documents',
+                        keys: [
+                          'VOIR_RAPPORTS_TERRAIN',
+                          'VOIR_RAPPORTS_FINANCIERS',
+                          'GERER_PV',
+                          'EXPORTER_DONNEES',
+                          'VOIR_DOCUMENTS_CONFIDENTIELS',
+                          'SUPPRIMER_DOCUMENTS',
+                        ],
+                      },
                       { title: '🎓 Formations', keys: ['VOIR_FORMATIONS', 'GERER_FORMATIONS'] },
-                      { title: '💬 Communication', keys: ['ACCES_CHAT', 'MODERER_CHAT', 'ENVOYER_SMS_MASSIF'] },
-                      { title: '🔔 Alertes & Notifications', keys: ['VOIR_ALERTES', 'CONFIGURER_ALERTES'] },
-                      { title: '🔄 Synchronisation & Offline', keys: ['VOIR_SYNCHRO', 'GERER_CONFLITS'] },
-                      { title: '🤖 Intelligence Artificielle', keys: ['UTILISER_IA', 'GERER_MEMOIRE_IA', 'VOIR_METRIQUES_IA'] },
+                      {
+                        title: '💬 Communication',
+                        keys: ['ACCES_CHAT', 'MODERER_CHAT', 'ENVOYER_SMS_MASSIF'],
+                      },
+                      {
+                        title: '🔔 Alertes & Notifications',
+                        keys: ['VOIR_ALERTES', 'CONFIGURER_ALERTES'],
+                      },
+                      {
+                        title: '🔄 Synchronisation & Offline',
+                        keys: ['VOIR_SYNCHRO', 'GERER_CONFLITS'],
+                      },
+                      {
+                        title: '🤖 Intelligence Artificielle',
+                        keys: ['UTILISER_IA', 'GERER_MEMOIRE_IA', 'VOIR_METRIQUES_IA'],
+                      },
                       { title: '🧪 Simulation', keys: ['VOIR_SIMULATION', 'LANCER_SIMULATION'] },
                     ];
-                    const totalPermissions = permissionGroups.reduce((acc, g) => acc + g.keys.length, 0);
+                    const totalPermissions = permissionGroups.reduce(
+                      (acc, g) => acc + g.keys.length,
+                      0
+                    );
 
                     // Calcul dynamique du nombre de permissions réellement cochées
-                    const currentRole = normalizeRole(form.role) || (form.role as PermissionUserRole);
-                    const checkedPermissionsCount = permissionGroups.flatMap(g => g.keys).filter(key => {
-                      const value = (PERMISSIONS as any)[key];
-                      if (!value) return false;
-                      if (form.role === 'ADMIN_PROQUELEC' || form.email === 'admingem') return true;
-                      return (form.permissions === null || form.permissions === undefined)
-                        ? (ROLE_PERMISSIONS[currentRole] || []).includes(value)
-                        : form.permissions.includes(value);
-                    }).length;
+                    const currentRole =
+                      normalizeRole(form.role) || (form.role as PermissionUserRole);
+                    const checkedPermissionsCount = permissionGroups
+                      .flatMap((g) => g.keys)
+                      .filter((key) => {
+                        const value = (PERMISSIONS as any)[key];
+                        if (!value) return false;
+                        if (form.role === 'ADMIN_PROQUELEC' || isMasterAdminEmail(form.email))
+                          return true;
+                        return form.permissions === null || form.permissions === undefined
+                          ? (ROLE_PERMISSIONS[currentRole] || []).includes(value)
+                          : form.permissions.includes(value);
+                      }).length;
 
                     return (
                       <>
@@ -1421,13 +1550,14 @@ export default function AdminUsers() {
                             <h4 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
                               Droits d'accès granulaires
                               <span className="text-[10px] bg-slate-800 text-emerald-400 px-2 py-0.5 rounded-full border border-slate-700 font-bold">
-                                {permissionGroups.length} Modules &bull; {checkedPermissionsCount}/{totalPermissions} Actives
+                                {permissionGroups.length} Modules &bull; {checkedPermissionsCount}/
+                                {totalPermissions} Actives
                               </span>
                             </h4>
                           </div>
-                              {!(form.role === 'ADMIN_PROQUELEC' || form.email === 'admingem') && (
-                                <div className="flex items-center gap-3">
-                              {(form.permissions === null || form.permissions === undefined) ? (
+                          {!(form.role === 'ADMIN_PROQUELEC' || isMasterAdminEmail(form.email)) && (
+                            <div className="flex items-center gap-3">
+                              {form.permissions === null || form.permissions === undefined ? (
                                 <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 shadow-[0_0_15px_-5px_rgba(16,185,129,0.3)]">
                                   <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                                   <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">
@@ -1455,12 +1585,14 @@ export default function AdminUsers() {
                                   type="button"
                                   onClick={async () => {
                                     if (!form.role) return toast.error('Rôle manquant');
-                                    const currentRole = normalizeRole(form.role) || (form.role as PermissionUserRole);
+                                    const currentRole =
+                                      normalizeRole(form.role) || (form.role as PermissionUserRole);
                                     const allValues = Object.values(PERMISSIONS) as string[];
                                     const perms = allValues.filter((value) => {
-                                      const isChecked = (form.permissions === null || form.permissions === undefined)
-                                        ? (ROLE_PERMISSIONS[currentRole] || []).includes(value)
-                                        : (form.permissions || []).includes(value);
+                                      const isChecked =
+                                        form.permissions === null || form.permissions === undefined
+                                          ? (ROLE_PERMISSIONS[currentRole] || []).includes(value)
+                                          : (form.permissions || []).includes(value);
                                       return isChecked;
                                     });
                                     setPendingApplyPerms(perms);
@@ -1486,7 +1618,7 @@ export default function AdminUsers() {
                           )}
                         </div>
 
-                        {form.role === 'ADMIN_PROQUELEC' || form.email === 'admingem' ? (
+                        {form.role === 'ADMIN_PROQUELEC' || isMasterAdminEmail(form.email) ? (
                           <div className="p-6 rounded-[2rem] bg-indigo-500/10 border border-indigo-500/30 flex flex-col items-center text-center gap-3">
                             <div className="w-12 h-12 rounded-2xl bg-indigo-500 flex items-center justify-center text-white shadow-lg shadow-indigo-500/40">
                               <Award size={24} />
@@ -1497,8 +1629,8 @@ export default function AdminUsers() {
                               </p>
                               <p className="text-slate-400 text-xs mt-1 font-medium italic">
                                 Ce compte est un Administrateur Système. <br />
-                                Toutes les permissions sont déverrouillées par défaut au niveau du noyau
-                                de sécurité Wanekoo.
+                                Toutes les permissions sont déverrouillées par défaut au niveau du
+                                noyau de sécurité Wanekoo.
                               </p>
                             </div>
                           </div>
@@ -1513,10 +1645,11 @@ export default function AdminUsers() {
                                   {group.keys.map((key) => {
                                     const value = (PERMISSIONS as any)[key];
                                     if (!value) return null;
-                                    
-                                    const currentRole = normalizeRole(form.role) || (form.role as PermissionUserRole);
+
+                                    const currentRole =
+                                      normalizeRole(form.role) || (form.role as PermissionUserRole);
                                     const isChecked =
-                                      (form.permissions === null || form.permissions === undefined)
+                                      form.permissions === null || form.permissions === undefined
                                         ? (ROLE_PERMISSIONS[currentRole] || []).includes(value)
                                         : form.permissions.includes(value);
 
@@ -1546,7 +1679,7 @@ export default function AdminUsers() {
                                           {isChecked && <CheckCircle2 size={12} />}
                                         </div>
                                         <span
-                                          className={`text-xs font-medium ${isChecked ? 'text-emerald-400' : (form.permissions === null || form.permissions === undefined) ? 'text-slate-500 italic' : 'text-slate-400'}`}
+                                          className={`text-xs font-medium ${isChecked ? 'text-emerald-400' : form.permissions === null || form.permissions === undefined ? 'text-slate-500 italic' : 'text-slate-400'}`}
                                         >
                                           {label}
                                         </span>
@@ -1561,13 +1694,12 @@ export default function AdminUsers() {
                       </>
                     );
                   })()}
-                      <p className="mt-3 text-[10px] text-slate-500 flex items-start gap-2 italic">
-                        <AlertTriangle size={12} className="mt-0.5 text-amber-500" />
-                        <span>
-                          Note : L'admin peut forcer ou retirer n'importe quel accès
-                          individuellement.
-                        </span>
-                      </p>
+                  <p className="mt-3 text-[10px] text-slate-500 flex items-start gap-2 italic">
+                    <AlertTriangle size={12} className="mt-0.5 text-amber-500" />
+                    <span>
+                      Note : L'admin peut forcer ou retirer n'importe quel accès individuellement.
+                    </span>
+                  </p>
                 </div>
 
                 {/* Active toggle */}

@@ -2,28 +2,29 @@ import express from 'express';
 import multer from 'multer';
 import { authProtect } from '../../api/middlewares/auth.js';
 import {
-    compareInternalKoboFormDefinitions,
-    createInternalKoboFormDefinition,
-    exportInternalKoboSubmissions,
-    exportInternalKoboMedia,
-    getInternalKoboDiagnostics,
-    getInternalKoboFormDefinition,
-    getInternalKoboImportedFormDefinition,
-    getInternalKoboSubmission,
-    importInternalKoboXlsForm,
-    importInternalKoboXlsFormFromUrl,
-    listInternalKoboFormDefinitions,
-    listInternalKoboSubmissions,
-    reportInternalKoboClientQueue,
-    reviewInternalKoboSubmission,
-    submitInternalKoboSubmission,
-    updateInternalKoboFormDefinitionStatus
+  compareInternalKoboFormDefinitions,
+  createInternalKoboFormDefinition,
+  exportInternalKoboSubmissions,
+  exportInternalKoboMedia,
+  getInternalKoboDiagnostics,
+  getInternalKoboFormDefinition,
+  getInternalKoboImportedFormDefinition,
+  getInternalKoboSubmission,
+  deleteInternalKoboSubmission,
+  importInternalKoboXlsForm,
+  importInternalKoboXlsFormFromUrl,
+  listInternalKoboFormDefinitions,
+  listInternalKoboSubmissions,
+  reportInternalKoboClientQueue,
+  reviewInternalKoboSubmission,
+  submitInternalKoboSubmission,
+  updateInternalKoboFormDefinitionStatus,
 } from './internalKobo.controller.js';
 
 const router = express.Router();
 const upload = multer({
-    storage: multer.memoryStorage(),
-    limits: { fileSize: 20 * 1024 * 1024 }
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 20 * 1024 * 1024 },
 });
 
 router.use(authProtect);
@@ -42,6 +43,7 @@ router.get('/submissions', listInternalKoboSubmissions);
 router.get('/submissions/export', exportInternalKoboSubmissions);
 router.get('/submissions/export-media', exportInternalKoboMedia);
 router.patch('/submissions/:id/review', reviewInternalKoboSubmission);
+router.delete('/submissions/:id', deleteInternalKoboSubmission);
 router.get('/submissions/:id', getInternalKoboSubmission);
 router.post('/submissions', submitInternalKoboSubmission);
 

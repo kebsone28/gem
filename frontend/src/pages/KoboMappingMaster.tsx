@@ -32,6 +32,7 @@ import { useAuth } from '@contexts/AuthContext';
 import { organizationService } from '@services/organizationService';
 import projectService from '@services/projectService';
 import { auditService } from '@services/auditService';
+import toast from 'react-hot-toast';
 import logger from '../utils/logger';
 
 /**
@@ -44,7 +45,9 @@ export default function KoboMappingMaster() {
   const [selectedProjectId, setSelectedProjectId] = useState<string>('ORG_GLOBAL');
   const [config, setConfig] = useState<any>({ kobo_field_mapping: {} });
   const [isSaving, setIsSaving] = useState(false);
-  const [lastSync, setLastSync] = useState<string | null>(null);
+  const [isLoadingConfig, setIsLoadingConfig] = useState(false);
+  const [lastLoaded, setLastLoaded] = useState<string | null>(null);
+  const [lastSaved, setLastSaved] = useState<string | null>(null);
   const [searchField, setSearchField] = useState('');
   const [isLocked, setIsLocked] = useState(true);
 
@@ -142,6 +145,7 @@ export default function KoboMappingMaster() {
   };
 
   const loadMappingConfig = async () => {
+    setIsLoadingConfig(true);
     try {
       let data;
       if (selectedProjectId === 'ORG_GLOBAL') {
@@ -152,9 +156,12 @@ export default function KoboMappingMaster() {
 
       const mapping = data.config?.kobo_field_mapping || {};
       setConfig({ ...data.config, kobo_field_mapping: mapping });
-      setLastSync(new Date().toLocaleString());
+      setLastLoaded(new Date().toLocaleString());
     } catch (err) {
       logger.error('[KoboMappingMaster] Failed to load mapping config', err);
+      toast.error('Erreur lors du chargement de la configuration.');
+    } finally {
+      setIsLoadingConfig(false);
     }
   };
 
@@ -164,6 +171,16 @@ export default function KoboMappingMaster() {
   };
 
   const saveMapping = async () => {
+    // Correction 3 — Validation des champs requis avant l'appel API
+    const requiredFields = TARGET_FIELDS.flatMap((s) => s.fields).filter((f) => f.required);
+    const missingFields = requiredFields.filter((f) => !config.kobo_field_mapping?.[f.id]?.trim());
+    if (missingFields.length > 0) {
+      toast.error(
+        `Champs obligatoires manquants : ${missingFields.map((f) => f.label).join(', ')}`
+      );
+      return;
+    }
+
     setIsSaving(true);
     try {
       if (selectedProjectId === 'ORG_GLOBAL') {
@@ -182,15 +199,28 @@ export default function KoboMappingMaster() {
         );
       }
 
-      await new Promise((r) => setTimeout(r, 800));
+      // Correction 1 — délai artificiel supprimé
       setIsLocked(true);
-      setLastSync(new Date().toLocaleString());
+      setLastSaved(new Date().toLocaleString()); // Correction 6
     } catch (err) {
+      // Correction 2 — feedback d'erreur utilisateur
       logger.error('[KoboMappingMaster] Failed to save mapping', err);
+      toast.error('Erreur lors de la sauvegarde du mapping. Veuillez réessayer.');
     } finally {
       setIsSaving(false);
     }
   };
+
+  // Correction 4 — Filtrage des sections/champs par la recherche
+  const filteredTargetFields = TARGET_FIELDS.map((section) => ({
+    ...section,
+    fields: section.fields.filter(
+      (f) =>
+        !searchField ||
+        f.label.toLowerCase().includes(searchField.toLowerCase()) ||
+        f.id.toLowerCase().includes(searchField.toLowerCase())
+    ),
+  })).filter((section) => section.fields.length > 0);
 
   return (
     <PageContainer className="min-h-screen bg-slate-950 py-12">
@@ -257,81 +287,112 @@ export default function KoboMappingMaster() {
           </div>
         </div>
 
+        {/* 🔍 Barre de recherche de champs */}
+        <div className="relative">
+          <div className="pointer-events-none absolute inset-y-0 left-5 flex items-center text-slate-600">
+            <Search size={16} />
+          </div>
+          <input
+            type="text"
+            value={searchField}
+            onChange={(e) => setSearchField(e.target.value)}
+            placeholder="Filtrer les champs GEM (label ou ID)..."
+            className="w-full bg-slate-900/40 border border-slate-800 rounded-2xl pl-12 pr-5 py-3.5 text-white text-sm placeholder:text-slate-600 outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500/50 transition-all"
+          />
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
           {/* 🔧 Mapping Grid */}
           <div className="lg:col-span-8 space-y-12">
-            {TARGET_FIELDS.map((section, sIdx) => (
-              <div key={sIdx} className="space-y-6">
-                <div className="flex items-center gap-3 px-2">
-                  <span className="h-[2px] w-8 bg-blue-500/30" />
-                  <h3 className="text-xs font-black text-slate-500 uppercase tracking-[0.4em] italic">
-                    {section.section}
-                  </h3>
-                </div>
+            {/* Correction 5 — Spinner de chargement */}
+            {isLoadingConfig ? (
+              <div className="flex flex-col items-center justify-center py-24 gap-4 text-slate-600">
+                <RefreshCcw size={28} className="animate-spin text-blue-500/60" />
+                <p className="text-xs font-black uppercase tracking-widest italic">
+                  Chargement de la configuration...
+                </p>
+              </div>
+            ) : filteredTargetFields.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-24 gap-4 text-slate-600">
+                <Search size={28} className="text-slate-700" />
+                <p className="text-xs font-black uppercase tracking-widest italic">
+                  Aucun champ ne correspond à votre recherche.
+                </p>
+              </div>
+            ) : (
+              filteredTargetFields.map((section, sIdx) => (
+                <div key={sIdx} className="space-y-6">
+                  <div className="flex items-center gap-3 px-2">
+                    <span className="h-[2px] w-8 bg-blue-500/30" />
+                    <h3 className="text-xs font-black text-slate-500 uppercase tracking-[0.4em] italic">
+                      {section.section}
+                    </h3>
+                  </div>
 
-                <div className="space-y-3">
-                  {section.fields.map((field) => (
-                    <motion.div
-                      key={field.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className={`p-6 rounded-[2rem] border transition-all group ${
-                        isLocked
-                          ? 'bg-slate-900/20 border-white/5 opacity-70'
-                          : 'bg-slate-900/40 border-slate-800 hover:border-blue-500/40'
-                      }`}
-                    >
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-                        <div className="flex items-center gap-4">
-                          <div
-                            className={`w-12 h-12 border rounded-2xl flex items-center justify-center transition-all ${
-                              isLocked
-                                ? 'bg-white/5 border-white/5 text-slate-600'
-                                : 'bg-blue-500/10 border-blue-500/20 text-blue-400 group-hover:bg-blue-600 group-hover:text-white'
-                            }`}
-                          >
-                            <field.icon size={20} />
-                          </div>
-                          <div>
-                            <h4 className="text-[13px] font-black text-white uppercase italic tracking-tight">
-                              {field.label}
-                            </h4>
-                            <div className="flex items-center gap-2 mt-1">
-                              <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest">
-                                ID: {field.id}
-                              </span>
-                              {field.required && (
-                                <span className="text-[9px] font-black text-rose-500/80 uppercase tracking-widest bg-rose-500/5 px-2 py-0.5 rounded-full border border-rose-500/10">
-                                  CRITIQUE
+                  <div className="space-y-3">
+                    {section.fields.map((field) => (
+                      <motion.div
+                        key={field.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className={`p-6 rounded-[2rem] border transition-all group ${
+                          isLocked
+                            ? 'bg-slate-900/20 border-white/5 opacity-70'
+                            : 'bg-slate-900/40 border-slate-800 hover:border-blue-500/40'
+                        }`}
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+                          <div className="flex items-center gap-4">
+                            <div
+                              className={`w-12 h-12 border rounded-2xl flex items-center justify-center transition-all ${
+                                isLocked
+                                  ? 'bg-white/5 border-white/5 text-slate-600'
+                                  : 'bg-blue-500/10 border-blue-500/20 text-blue-400 group-hover:bg-blue-600 group-hover:text-white'
+                              }`}
+                            >
+                              <field.icon size={20} />
+                            </div>
+                            <div>
+                              <h4 className="text-[13px] font-black text-white uppercase italic tracking-tight">
+                                {field.label}
+                              </h4>
+                              <div className="flex items-center gap-2 mt-1">
+                                <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest">
+                                  ID: {field.id}
                                 </span>
-                              )}
+                                {field.required && (
+                                  <span className="text-[9px] font-black text-rose-500/80 uppercase tracking-widest bg-rose-500/5 px-2 py-0.5 rounded-full border border-rose-500/10">
+                                    CRITIQUE
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </div>
-                        </div>
 
-                        <div className="flex-1 flex items-center gap-4 max-w-sm">
-                          <div className="shrink-0 text-slate-700">
-                            <Link2 size={16} />
+                          <div className="flex-1 flex items-center gap-4 max-w-sm">
+                            <div className="shrink-0 text-slate-700">
+                              <Link2 size={16} />
+                            </div>
+                            <input
+                              type="text"
+                              placeholder="Nom du champ dans Kobo..."
+                              value={config.kobo_field_mapping?.[field.id] || ''}
+                              onChange={(e) => handleMapChange(field.id, e.target.value)}
+                              readOnly={isLocked}
+                              className={`w-full bg-slate-950 border border-slate-800 rounded-2xl px-5 py-3.5 text-white font-mono text-xs placeholder:text-slate-700 outline-none focus:ring-2 focus:ring-blue-500/30 transition-all ${
+                                isLocked
+                                  ? 'cursor-not-allowed opacity-50'
+                                  : 'focus:border-blue-500/50 shadow-inner'
+                              }`}
+                            />
                           </div>
-                          <input
-                            type="text"
-                            placeholder="Nom du champ dans Kobo..."
-                            value={config.kobo_field_mapping?.[field.id] || ''}
-                            onChange={(e) => handleMapChange(field.id, e.target.value)}
-                            readOnly={isLocked}
-                            className={`w-full bg-slate-950 border border-slate-800 rounded-2xl px-5 py-3.5 text-white font-mono text-xs placeholder:text-slate-700 outline-none focus:ring-2 focus:ring-blue-500/30 transition-all ${
-                              isLocked
-                                ? 'cursor-not-allowed opacity-50'
-                                : 'focus:border-blue-500/50 shadow-inner'
-                            }`}
-                          />
                         </div>
-                      </div>
-                    </motion.div>
-                  ))}
+                      </motion.div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
 
           {/* 📊 Sidebar Info */}
@@ -377,10 +438,19 @@ export default function KoboMappingMaster() {
                   </div>
                 </div>
 
-                <div className="pt-4 border-t border-white/5">
-                  <p className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">
-                    Dernière Modif : {lastSync}
-                  </p>
+                <div className="pt-4 border-t border-white/5 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 size={11} className="text-emerald-500/60 shrink-0" />
+                    <p className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">
+                      Chargé : {lastLoaded ?? '—'}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Save size={11} className="text-blue-500/60 shrink-0" />
+                    <p className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">
+                      Sauv. : {lastSaved ?? '—'}
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>

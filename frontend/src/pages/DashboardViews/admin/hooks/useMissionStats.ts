@@ -1,5 +1,5 @@
-﻿ 
-import { useState, useEffect, useCallback } from 'react';
+﻿import { useState, useEffect, useCallback } from 'react';
+import { isMasterAdminEmail } from '../../../../utils/roleUtils';
 import type { MissionStats } from '../../../../services/missionStatsService';
 import { missionStatsService } from '../../../../services/missionStatsService';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -18,7 +18,7 @@ export function useMissionStats(user: Record<string, unknown> | null, projectId:
   const fetchStats = useCallback(async () => {
     if (!user) return;
     const isMaster =
-      (user.email as string | undefined) === 'admingem' ||
+      isMasterAdminEmail(user.email as string | null) ||
       (user.role as string | undefined) === 'ADMIN_PROQUELEC';
     const data = isMaster
       ? await missionStatsService.getGlobalStats()

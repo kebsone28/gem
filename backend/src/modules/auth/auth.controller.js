@@ -43,7 +43,7 @@ export const registerOrganization = async (req, res) => {
     const { orgName, email, password, name } = req.body;
 
     // 1. Check if user already exists
-    const userExists = await prisma.user.findUnique({ where: { email } });
+    const userExists = await prisma.user.findFirst({ where: { email } });
     if (userExists) {
       return res.status(400).json({ error: 'User already exists' });
     }
@@ -139,7 +139,7 @@ export const login = async (req, res) => {
       return res.status(400).json({ error: 'Email is required' });
     }
 
-    const user = await prisma.user.findUnique({
+    const user = await prisma.user.findFirst({
       where: { email: email.trim().toLowerCase() },
       include: {
         organization: true,
@@ -480,7 +480,7 @@ export const resetPassword = async (req, res) => {
   try {
     const { email, securityAnswer, recoveryCode, newPassword } = req.body;
 
-    const user = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+    const user = await prisma.user.findFirst({ where: { email: email.toLowerCase() } });
     if (!user) return res.status(404).json({ error: 'Utilisateur non trouvé' });
 
     let verified = false;
@@ -541,7 +541,7 @@ export const verify2FA = async (req, res) => {
       return res.status(400).json({ error: 'Identifiant et réponse requis' });
     }
 
-    const user = await prisma.user.findUnique({
+    const user = await prisma.user.findFirst({
       where: id ? { id } : { email: email.toLowerCase() },
       include: {
         organization: true,
@@ -698,17 +698,18 @@ export const impersonateUser = async (req, res) => {
     const targetRole = targetUser.role?.name || targetUser.roleLegacy;
     if (
       (targetRole === 'ADMIN_PROQUELEC' || targetRole === 'DG_PROQUELEC') &&
-      adminUser.email !== 'admingem'
+      adminUser.email !== (process.env.SUPER_ADMIN_EMAIL || 'admingem')
     ) {
-      return res
-        .status(403)
-        .json({
-          error: "Sécurité : Impossible de simuler un compte de Direction ou d'Administration.",
-        });
+      return res.status(403).json({
+        error: "Sécurité : Impossible de simuler un compte de Direction ou d'Administration.",
+      });
     }
 
     // Sécurité Multi-tenant : on ne simule pas hors de son organisation
-    if (targetUser.organizationId !== adminUser.organizationId && adminUser.email !== 'admingem') {
+    if (
+      targetUser.organizationId !== adminUser.organizationId &&
+      adminUser.email !== (process.env.SUPER_ADMIN_EMAIL || 'admingem')
+    ) {
       return res
         .status(403)
         .json({ error: "Interdit de simuler un utilisateur d'une autre organisation." });

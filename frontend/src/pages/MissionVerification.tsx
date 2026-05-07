@@ -1,7 +1,16 @@
 ﻿/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ShieldCheck, ShieldAlert, Calendar, Users, MapPin, Building2, CheckCircle2, Clock } from 'lucide-react';
+import {
+  ShieldCheck,
+  ShieldAlert,
+  Calendar,
+  Users,
+  MapPin,
+  Building2,
+  CheckCircle2,
+  Clock,
+} from 'lucide-react';
 import axios from 'axios';
 import { motion } from 'framer-motion';
 
@@ -19,6 +28,12 @@ interface VerifiedMission {
   isCertified: boolean;
   verifiedAt: string;
 }
+
+const safeFormatDate = (dateStr?: string | null): string => {
+  if (!dateStr) return 'Date inconnue';
+  const d = new Date(dateStr);
+  return isNaN(d.getTime()) ? 'Date invalide' : d.toLocaleString('fr-FR');
+};
 
 export default function MissionVerification() {
   const { identifier } = useParams();
@@ -44,21 +59,22 @@ export default function MissionVerification() {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 sm:p-6">
         <div className="w-16 h-16 border-4 border-blue-600/20 border-t-blue-600 rounded-full animate-spin mb-4" />
-        <p className="text-slate-500 font-black tracking-[0.16em] sm:tracking-widest text-[10px] animate-pulse uppercase text-center">Vérification de l'empreinte numérique...</p>
+        <p className="text-slate-500 font-black tracking-[0.16em] sm:tracking-widest text-[10px] animate-pulse uppercase text-center">
+          Vérification de l'empreinte numérique...
+        </p>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-[#050505] text-white selection:bg-blue-500/30 font-sans p-4 sm:p-6 md:p-12 flex flex-col items-center">
-      
       {/* BACKGROUND EFFECTS */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-600/10 blur-[120px] rounded-full" />
         <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-600/5 blur-[120px] rounded-full" />
       </div>
 
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-lg z-10"
@@ -69,7 +85,9 @@ export default function MissionVerification() {
             <div className="w-11 h-11 sm:w-12 sm:h-12 bg-white/5 rounded-xl sm:rounded-2xl flex items-center justify-center border border-white/10 mb-3 backdrop-blur-xl">
               <ShieldCheck className="text-blue-500" size={24} />
             </div>
-            <h1 className="text-[9px] sm:text-[10px] font-black tracking-[0.18em] sm:tracking-[0.4em] text-slate-400 uppercase text-center">Proquelec Security</h1>
+            <h1 className="text-[9px] sm:text-[10px] font-black tracking-[0.18em] sm:tracking-[0.4em] text-slate-400 uppercase text-center">
+              {data?.organization || 'Proquelec Security'}
+            </h1>
           </div>
         </div>
 
@@ -79,40 +97,59 @@ export default function MissionVerification() {
             <div className="w-16 h-16 sm:w-20 sm:h-20 bg-rose-500/10 rounded-full flex items-center justify-center mx-auto mb-5 sm:mb-6 border border-rose-500/20">
               <ShieldAlert className="text-rose-500" size={32} />
             </div>
-            <h2 className="text-lg sm:text-xl font-black mb-2 text-rose-500">MISSION NON TROUVÉE</h2>
+            <h2 className="text-lg sm:text-xl font-black mb-2 text-rose-500">
+              MISSION NON TROUVÉE
+            </h2>
             <p className="text-slate-400 text-sm mb-6 sm:mb-8 leading-relaxed italic">
-              L'identifiant fourni ne correspond à aucun ordre de mission valide ou actif dans nos registres sécurisés.
+              L'identifiant fourni ne correspond à aucun ordre de mission valide ou actif dans nos
+              registres sécurisés.
             </p>
-            <Link to="/" className="inline-flex items-center justify-center gap-2 px-5 sm:px-6 py-3 bg-white/5 hover:bg-white/10 rounded-xl text-[10px] font-black uppercase tracking-[0.14em] sm:tracking-widest transition-all w-full sm:w-auto">
-              RETOUR À L'ACCUEIL
-            </Link>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Link
+                to="/"
+                className="inline-flex items-center justify-center gap-2 px-5 sm:px-6 py-3 bg-white/5 hover:bg-white/10 rounded-xl text-[10px] font-black uppercase tracking-[0.14em] sm:tracking-widest transition-all"
+              >
+                RETOUR À L'ACCUEIL
+              </Link>
+              <button
+                onClick={() => window.location.reload()}
+                className="inline-flex items-center justify-center gap-2 px-5 sm:px-6 py-3 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 rounded-xl text-[10px] font-black uppercase tracking-[0.14em] sm:tracking-widest text-rose-400 transition-all"
+              >
+                🔄 Réessayer
+              </button>
+            </div>
           </div>
         ) : data?.valid ? (
           <div className="space-y-4 sm:space-y-6">
-            
             {/* STATUS HEADER CARD */}
-            <div className={`glass-card p-5 sm:p-8 rounded-[1.8rem] sm:rounded-[3rem] text-center border-2 relative overflow-hidden ${data.isCertified ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-blue-500/20 bg-blue-500/5'}`}>
-              <div className={`absolute top-0 left-0 w-full h-1.5 ${data.isCertified ? 'bg-emerald-500' : 'bg-blue-600'}`} />
-              
+            <div
+              className={`glass-card p-5 sm:p-8 rounded-[1.8rem] sm:rounded-[3rem] text-center border-2 relative overflow-hidden ${data.isCertified ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-blue-500/20 bg-blue-500/5'}`}
+            >
+              <div
+                className={`absolute top-0 left-0 w-full h-1.5 ${data.isCertified ? 'bg-emerald-500' : 'bg-blue-600'}`}
+              />
+
               <div className="flex justify-center mb-5 sm:mb-6">
-                 {data.isCertified ? (
-                   <div className="relative">
-                     <CheckCircle2 size={56} className="sm:w-16 sm:h-16 text-emerald-500" />
-                     <motion.div 
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        transition={{ delay: 0.3 }}
-                        className="absolute -top-1 -right-1 w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center border-4 border-emerald-950"
-                      >
-                        <ShieldCheck size={12} className="text-white" />
-                      </motion.div>
-                   </div>
-                 ) : (
-                   <Clock size={56} className="sm:w-16 sm:h-16 text-blue-400 opacity-50" />
-                 )}
+                {data.isCertified ? (
+                  <div className="relative">
+                    <CheckCircle2 size={56} className="sm:w-16 sm:h-16 text-emerald-500" />
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ delay: 0.3 }}
+                      className="absolute -top-1 -right-1 w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center border-4 border-emerald-950"
+                    >
+                      <ShieldCheck size={12} className="text-white" />
+                    </motion.div>
+                  </div>
+                ) : (
+                  <Clock size={56} className="sm:w-16 sm:h-16 text-blue-400 opacity-50" />
+                )}
               </div>
 
-              <h2 className={`text-xl sm:text-2xl font-black tracking-tight mb-1 uppercase ${data.isCertified ? 'text-emerald-400' : 'text-blue-400'}`}>
+              <h2
+                className={`text-xl sm:text-2xl font-black tracking-tight mb-1 uppercase ${data.isCertified ? 'text-emerald-400' : 'text-blue-400'}`}
+              >
                 {data.isCertified ? 'Mission Officielle' : 'Mission en Validation'}
               </h2>
               <div className="flex flex-wrap items-center justify-center gap-2 text-slate-500 font-black text-[9px] sm:text-[10px] tracking-[0.14em] sm:tracking-widest mb-4">
@@ -120,15 +157,16 @@ export default function MissionVerification() {
                 <span className="w-1 h-1 rounded-full bg-slate-700" />
                 <span>{data.organization}</span>
               </div>
-              
-              <div className={`inline-block px-4 py-1.5 rounded-full text-[9px] font-black tracking-widest ${data.isCertified ? 'bg-emerald-500/20 text-emerald-400' : 'bg-blue-500/20 text-blue-400'}`}>
+
+              <div
+                className={`inline-block px-4 py-1.5 rounded-full text-[9px] font-black tracking-widest ${data.isCertified ? 'bg-emerald-500/20 text-emerald-400' : 'bg-blue-500/20 text-blue-400'}`}
+              >
                 STATUT : {data.status.toUpperCase()}
               </div>
             </div>
 
             {/* DETAILS CONTENT */}
             <div className="glass-card p-5 sm:p-8 rounded-[1.8rem] sm:rounded-[3rem] space-y-6 sm:space-y-8 border-white/5">
-              
               {/* Info Group */}
               <div className="space-y-4">
                 <div className="flex items-start gap-3 sm:gap-4">
@@ -136,8 +174,12 @@ export default function MissionVerification() {
                     <Building2 size={18} className="text-slate-400" />
                   </div>
                   <div>
-                    <label className="text-[8px] sm:text-[9px] font-black text-slate-500 uppercase tracking-[0.14em] sm:tracking-widest mb-1 block">Objet de la Mission</label>
-                    <p className="text-sm font-bold leading-relaxed">{data.purpose || data.title}</p>
+                    <label className="text-[8px] sm:text-[9px] font-black text-slate-500 uppercase tracking-[0.14em] sm:tracking-widest mb-1 block">
+                      Objet de la Mission
+                    </label>
+                    <p className="text-sm font-bold leading-relaxed">
+                      {data.purpose || data.title}
+                    </p>
                   </div>
                 </div>
 
@@ -146,7 +188,9 @@ export default function MissionVerification() {
                     <MapPin size={18} className="text-slate-400" />
                   </div>
                   <div>
-                    <label className="text-[8px] sm:text-[9px] font-black text-slate-500 uppercase tracking-[0.14em] sm:tracking-widest mb-1 block">Zone d'intervention</label>
+                    <label className="text-[8px] sm:text-[9px] font-black text-slate-500 uppercase tracking-[0.14em] sm:tracking-widest mb-1 block">
+                      Zone d'intervention
+                    </label>
                     <p className="text-sm font-bold">{data.region}</p>
                   </div>
                 </div>
@@ -156,8 +200,12 @@ export default function MissionVerification() {
                     <Calendar size={18} className="text-slate-400" />
                   </div>
                   <div>
-                    <label className="text-[8px] sm:text-[9px] font-black text-slate-500 uppercase tracking-[0.14em] sm:tracking-widest mb-1 block">Période d'activité</label>
-                    <p className="text-sm font-bold italic">Du {data.startDate} au {data.endDate}</p>
+                    <label className="text-[8px] sm:text-[9px] font-black text-slate-500 uppercase tracking-[0.14em] sm:tracking-widest mb-1 block">
+                      Période d'activité
+                    </label>
+                    <p className="text-sm font-bold italic">
+                      Du {data.startDate} au {data.endDate}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -166,33 +214,44 @@ export default function MissionVerification() {
               <div className="pt-5 sm:pt-6 border-t border-white/5">
                 <div className="flex items-center gap-2 mb-6">
                   <Users size={16} className="text-blue-500" />
-                  <h3 className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.14em] sm:tracking-[0.2em] text-slate-400">Équipage Autorisé</h3>
+                  <h3 className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.14em] sm:tracking-[0.2em] text-slate-400">
+                    Équipage Autorisé
+                  </h3>
                 </div>
-                
+
                 <div className="grid gap-3">
                   {(data.members || []).length === 0 ? (
-                    <p className="text-[10px] text-slate-600 italic text-center py-4">Aucun missionnaire listé</p>
+                    <p className="text-[10px] text-slate-600 italic text-center py-4">
+                      Aucun missionnaire listé
+                    </p>
                   ) : (
                     (data.members || []).map((member, i) => (
-                    <div key={i} className="flex items-center justify-between gap-3 p-3 sm:p-4 bg-white/5 rounded-2xl border border-white/5 group hover:bg-white/[0.08] transition-colors">
-                      <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-                        <div className="w-8 h-8 rounded-lg bg-blue-600/20 text-blue-400 flex items-center justify-center font-black text-[10px]">
-                          {i+1}
+                      <div
+                        key={i}
+                        className="flex items-center justify-between gap-3 p-3 sm:p-4 bg-white/5 rounded-2xl border border-white/5 group hover:bg-white/[0.08] transition-colors"
+                      >
+                        <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                          <div className="w-8 h-8 rounded-lg bg-blue-600/20 text-blue-400 flex items-center justify-center font-black text-[10px]">
+                            {i + 1}
+                          </div>
+                          <span className="text-sm font-black tracking-tight truncate">
+                            {member.name}
+                          </span>
                         </div>
-                        <span className="text-sm font-black tracking-tight truncate">{member.name}</span>
+                        <span className="text-[8px] sm:text-[9px] font-black text-slate-500 italic uppercase tracking-tight text-right">
+                          {member.role}
+                        </span>
                       </div>
-                      <span className="text-[8px] sm:text-[9px] font-black text-slate-500 italic uppercase tracking-tight text-right">{member.role}</span>
-                    </div>
-                  )))}
+                    ))
+                  )}
                 </div>
               </div>
-
             </div>
 
             {/* FOOTER CERTAINTY */}
             <div className="text-center space-y-4 pt-2 sm:pt-4">
               <p className="text-[8px] font-black text-slate-600 uppercase tracking-[0.14em] sm:tracking-[0.3em]">
-                Vérification numérique authentique &bull; {new Date(data.verifiedAt).toLocaleString()}
+                Vérification numérique authentique &bull; {safeFormatDate(data.verifiedAt)}
               </p>
               <div className="flex justify-center gap-4">
                 <div className="h-px w-12 bg-white/5 self-center" />
@@ -200,9 +259,19 @@ export default function MissionVerification() {
                 <div className="h-px w-12 bg-white/5 self-center" />
               </div>
             </div>
-
           </div>
-        ) : null}
+        ) : (
+          <div className="text-center py-16">
+            <div className="text-6xl mb-4">⚠️</div>
+            <h2 className="text-2xl font-bold text-red-400 mb-2">Mission Non Valide</h2>
+            <p className="text-slate-400">
+              Cette mission a été révoquée, expirée ou n'existe pas dans notre système.
+            </p>
+            <p className="text-slate-500 text-sm mt-2">
+              Si vous pensez qu'il s'agit d'une erreur, contactez l'émetteur de ce document.
+            </p>
+          </div>
+        )}
       </motion.div>
     </div>
   );
