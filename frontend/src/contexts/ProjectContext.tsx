@@ -109,7 +109,8 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const serverProjects: Project[] = response.data.projects || response.data || [];
 
       // Transaction atomique : si bulkPut échoue, clear() est annulé → base jamais vide
-      await db.transaction('rw', db.projects, async () => {
+      // Cast `db` en `any` pour éviter l'inférence sur Team.children (référence circulaire TS)
+      await (db as any).transaction('rw', db.projects, async () => {
         await db.projects.clear();
         if (serverProjects.length > 0) {
           await (db.projects as any).bulkPut(serverProjects);

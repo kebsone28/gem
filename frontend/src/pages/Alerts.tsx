@@ -35,6 +35,8 @@ export default function AlertsPage() {
   const [showConfig, setShowConfig] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
+  const [alertStats, setAlertStats] = useState({ critical: 0, high: 0, resolved: 0 });
   const [config, setConfig] = useState<AlertConfig>({
     stockCritical: 5,
     budgetThreshold: 90,
@@ -47,6 +49,23 @@ export default function AlertsPage() {
     enablePush: false,
     enableWhatsApp: false,
   });
+
+  // Charger les stats d'alertes depuis l'API
+  useEffect(() => {
+    if (!project?.id) return;
+    alertsAPI
+      .getAlertStats(project.id)
+      .then((data) => {
+        if (data) {
+          setAlertStats({
+            critical: data.critical ?? 0,
+            high: data.high ?? 0,
+            resolved: data.resolved ?? 0,
+          });
+        }
+      })
+      .catch((err) => console.warn('[Alerts] Stats non disponibles :', err));
+  }, [project?.id]);
 
   // Charger la configuration existante
   useEffect(() => {
@@ -86,6 +105,7 @@ export default function AlertsPage() {
       setSaving(true);
       await alertsAPI.updateAlertConfig(config as any);
       toast.success('Configuration mise à jour avec succès');
+      setIsDirty(false);
       // On garde le panneau ouvert ou on le ferme selon préférence, ici on le laisse
     } catch (err) {
       logger.error('[Alerts] Error saving alert config', err);
@@ -96,7 +116,16 @@ export default function AlertsPage() {
   };
 
   const handleChange = (field: keyof AlertConfig, value: any) => {
-    setConfig(prev => ({ ...prev, [field]: value }));
+    setConfig((prev) => ({ ...prev, [field]: value }));
+    setIsDirty(true);
+  };
+
+  const handleCloseConfig = () => {
+    if (isDirty) {
+      if (!window.confirm('Des modifications non sauvegardées seront perdues. Continuer ?')) return;
+    }
+    setIsDirty(false);
+    setShowConfig(false);
   };
 
   return (
@@ -107,7 +136,7 @@ export default function AlertsPage() {
         icon={Bell}
         actions={
           <button
-            onClick={() => setShowConfig(!showConfig)}
+            onClick={() => (showConfig ? handleCloseConfig() : setShowConfig(true))}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
               showConfig ? 'bg-blue-600' : 'bg-slate-800 hover:bg-slate-700'
             }`}
@@ -126,9 +155,11 @@ export default function AlertsPage() {
               <AlertTriangle className="text-red-400" size={24} />
             </div>
             <div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Alertes Critiques</p>
-              <p className="text-2xl font-black text-white">0</p>
-              <p className="text-[9px] text-slate-500 mt-1">Requièrent une action immédiate</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                Alertes Critiques
+              </p>
+              <p className="text-2xl font-black text-white">{alertStats.critical}</p>
+              <p className="text-[9px] text-slate-500 mt-1">Requèrent une action immédiate</p>
             </div>
           </div>
 
@@ -137,8 +168,10 @@ export default function AlertsPage() {
               <AlertCircle className="text-orange-400" size={24} />
             </div>
             <div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Élevées</p>
-              <p className="text-2xl font-black text-white">0</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                Élevées
+              </p>
+              <p className="text-2xl font-black text-white">{alertStats.high}</p>
               <p className="text-[9px] text-slate-500 mt-1">À traiter rapidement</p>
             </div>
           </div>
@@ -148,8 +181,10 @@ export default function AlertsPage() {
               <CheckCircle className="text-green-400" size={24} />
             </div>
             <div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Résolues</p>
-              <p className="text-2xl font-black text-white">0</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                Résolues
+              </p>
+              <p className="text-2xl font-black text-white">{alertStats.resolved}</p>
               <p className="text-[9px] text-slate-500 mt-1">Cette semaine</p>
             </div>
           </div>
@@ -168,7 +203,9 @@ export default function AlertsPage() {
 
         {/* Alert Configuration Section */}
         {showConfig && (
-          <div className={`bg-slate-900/50 backdrop-blur-xl border border-white/5 rounded-2xl p-8 space-y-8 transition-all ${loading ? 'opacity-50 pointer-events-none' : ''}`}>
+          <div
+            className={`bg-slate-900/50 backdrop-blur-xl border border-white/5 rounded-2xl p-8 space-y-8 transition-all ${loading ? 'opacity-50 pointer-events-none' : ''}`}
+          >
             <div>
               <h3 className="text-base font-black text-white mb-6 flex items-center gap-2">
                 <Settings size={20} />
@@ -188,7 +225,10 @@ export default function AlertsPage() {
                     className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2 text-white focus:border-blue-500 outline-none"
                     placeholder="Nombre d'alertes"
                   />
-                  <p className="text-[9px] text-slate-500 mt-2">Seuil de vigilance stock. Une valeur trop basse prévient une rupture de matériel qui bloquerait les équipes.</p>
+                  <p className="text-[9px] text-slate-500 mt-2">
+                    Seuil de vigilance stock. Une valeur trop basse prévient une rupture de matériel
+                    qui bloquerait les équipes.
+                  </p>
                 </div>
 
                 {/* Budget Threshold */}
@@ -205,7 +245,10 @@ export default function AlertsPage() {
                     className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2 text-white focus:border-blue-500 outline-none"
                     placeholder="Pourcentage"
                   />
-                  <p className="text-[9px] text-slate-500 mt-2">Alerte de consommation budgétaire. Permet d'anticiper les demandes de rallonges auprès des partenaires.</p>
+                  <p className="text-[9px] text-slate-500 mt-2">
+                    Alerte de consommation budgétaire. Permet d'anticiper les demandes de rallonges
+                    auprès des partenaires.
+                  </p>
                 </div>
 
                 {/* Team Capacity */}
@@ -222,7 +265,10 @@ export default function AlertsPage() {
                     className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2 text-white focus:border-blue-500 outline-none"
                     placeholder="Pourcentage"
                   />
-                  <p className="text-[9px] text-slate-500 mt-2">Indice de saturation. Prévient les risques de retard ou d'épuisement des équipes par surcharge de travail.</p>
+                  <p className="text-[9px] text-slate-500 mt-2">
+                    Indice de saturation. Prévient les risques de retard ou d'épuisement des équipes
+                    par surcharge de travail.
+                  </p>
                 </div>
 
                 {/* Electricity Min */}
@@ -239,7 +285,10 @@ export default function AlertsPage() {
                     className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2 text-white focus:border-blue-500 outline-none"
                     placeholder="Pourcentage"
                   />
-                  <p className="text-[9px] text-slate-500 mt-2">Objectif de succès. Une valeur inférieure génère une alerte de "Performance Faible" pour la zone concernée.</p>
+                  <p className="text-[9px] text-slate-500 mt-2">
+                    Objectif de succès. Une valeur inférieure génère une alerte de "Performance
+                    Faible" pour la zone concernée.
+                  </p>
                 </div>
 
                 {/* Delay Threshold */}
@@ -254,7 +303,10 @@ export default function AlertsPage() {
                     className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2 text-white focus:border-blue-500 outline-none"
                     placeholder="Jours"
                   />
-                  <p className="text-[9px] text-slate-500 mt-2">Délai avant marquage "En Souffrance". Identifie les missions bloquées nécessitant un arbitrage rapide.</p>
+                  <p className="text-[9px] text-slate-500 mt-2">
+                    Délai avant marquage "En Souffrance". Identifie les missions bloquées
+                    nécessitant un arbitrage rapide.
+                  </p>
                 </div>
 
                 {/* Escalation Delay */}
@@ -269,7 +321,10 @@ export default function AlertsPage() {
                     className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2 text-white focus:border-blue-500 outline-none"
                     placeholder="Secondes"
                   />
-                  <p className="text-[9px] text-slate-500 mt-2">Temps sans traitement avant que l'alerte n'escalade automatiquement vers la Direction Générale.</p>
+                  <p className="text-[9px] text-slate-500 mt-2">
+                    Temps sans traitement avant que l'alerte n'escalade automatiquement vers la
+                    Direction Générale.
+                  </p>
                 </div>
               </div>
             </div>
@@ -285,7 +340,9 @@ export default function AlertsPage() {
                     onChange={(e) => handleChange('enableSMS', e.target.checked)}
                     className="w-4 h-4 rounded accent-blue-600"
                   />
-                  <span className="text-sm text-slate-300 group-hover:text-white transition-colors">Activer SMS</span>
+                  <span className="text-sm text-slate-300 group-hover:text-white transition-colors">
+                    Activer SMS
+                  </span>
                 </label>
                 <label className="flex items-center gap-3 cursor-pointer group">
                   <input
@@ -294,7 +351,9 @@ export default function AlertsPage() {
                     onChange={(e) => handleChange('enableEmail', e.target.checked)}
                     className="w-4 h-4 rounded accent-blue-600"
                   />
-                  <span className="text-sm text-slate-300 group-hover:text-white transition-colors">Activer Email</span>
+                  <span className="text-sm text-slate-300 group-hover:text-white transition-colors">
+                    Activer Email
+                  </span>
                 </label>
                 <label className="flex items-center gap-3 cursor-pointer group">
                   <input
@@ -303,7 +362,9 @@ export default function AlertsPage() {
                     onChange={(e) => handleChange('enablePush', e.target.checked)}
                     className="w-4 h-4 rounded accent-blue-600"
                   />
-                  <span className="text-sm text-slate-300 group-hover:text-white transition-colors">Activer Push Notifications</span>
+                  <span className="text-sm text-slate-300 group-hover:text-white transition-colors">
+                    Activer Push Notifications
+                  </span>
                 </label>
                 <label className="flex items-center gap-3 cursor-pointer group">
                   <input
@@ -312,7 +373,9 @@ export default function AlertsPage() {
                     onChange={(e) => handleChange('enableWhatsApp', e.target.checked)}
                     className="w-4 h-4 rounded accent-blue-600"
                   />
-                  <span className="text-sm text-slate-300 group-hover:text-white transition-colors">Activer WhatsApp</span>
+                  <span className="text-sm text-slate-300 group-hover:text-white transition-colors">
+                    Activer WhatsApp
+                  </span>
                 </label>
               </div>
             </div>

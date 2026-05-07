@@ -13,6 +13,7 @@ export default function AdminPermissions() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [savingRole, setSavingRole] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -27,25 +28,41 @@ export default function AdminPermissions() {
         setRolePerms(map);
         setRoles(data.roles.map((r: any) => r.role));
       } catch {
-        setError("Impossible de charger les permissions. Veuillez réessayer.");
+        setError('Impossible de charger les permissions. Veuillez réessayer.');
       } finally {
         setLoading(false);
       }
     })();
   }, []);
 
+  useEffect(() => {
+    if (notice) {
+      const timer = setTimeout(() => setNotice(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [notice]);
+
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => setError(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
+
   const toggle = (role: string, p: string) => {
     setRolePerms((prev) => {
       const copy = { ...prev };
-      if (!copy[role]) copy[role] = new Set();
-      if (copy[role].has(p)) copy[role].delete(p);
-      else copy[role].add(p);
+      const currentSet = new Set(copy[role] || []); // nouvelle instance — évite la mutation
+      if (currentSet.has(p)) currentSet.delete(p);
+      else currentSet.add(p);
+      copy[role] = currentSet;
       return copy;
     });
   };
 
   const saveRole = async (role: string) => {
     try {
+      setSavingRole(role);
       setError(null);
       setNotice(null);
       const perms = Array.from(rolePerms[role] || []);
@@ -59,15 +76,25 @@ export default function AdminPermissions() {
       setRolePerms(map);
       setNotice(`Permissions mises à jour pour ${role}.`);
     } catch {
-      setError(`Échec de l'enregistrement pour ${role}.`);
+      setError(`Échec de l’enregistrement pour ${role}.`);
+    } finally {
+      setSavingRole(null);
     }
   };
 
-  if (loading) return <PageContainer><PageHeader title="Permissions" subtitle="Chargement..." /></PageContainer>;
+  if (loading)
+    return (
+      <PageContainer>
+        <PageHeader title="Permissions" subtitle="Chargement..." />
+      </PageContainer>
+    );
 
   return (
     <PageContainer>
-      <PageHeader title="Gestion des permissions" subtitle="Modifier la matrice roles × permissions" />
+      <PageHeader
+        title="Gestion des permissions"
+        subtitle="Modifier la matrice roles × permissions"
+      />
       <ContentArea>
         <div className="flex items-center justify-between mb-4">
           <div />
@@ -77,7 +104,9 @@ export default function AdminPermissions() {
               onClick={async () => {
                 try {
                   const data = await adminPermissionsService.exportRolePermissions();
-                  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                  const blob = new Blob([JSON.stringify(data, null, 2)], {
+                    type: 'application/json',
+                  });
                   const url = URL.createObjectURL(blob);
                   const a = document.createElement('a');
                   a.href = url;
@@ -96,7 +125,7 @@ export default function AdminPermissions() {
               Exporter
             </button>
 
-              <label className="px-3 py-1 bg-slate-200 text-slate-800 rounded cursor-pointer">
+            <label className="px-3 py-1 bg-slate-200 text-slate-800 rounded cursor-pointer">
               Importer
               <input
                 type="file"
@@ -147,10 +176,11 @@ export default function AdminPermissions() {
                   <th key={r} className="p-2 text-center">
                     <div className="font-medium">{r}</div>
                     <button
-                      className="mt-2 px-2 py-1 text-xs bg-blue-600 text-white rounded"
+                      className="mt-2 px-2 py-1 text-xs bg-blue-600 text-white rounded disabled:opacity-50 disabled:cursor-not-allowed"
                       onClick={() => saveRole(r)}
+                      disabled={savingRole === r}
                     >
-                      Enregistrer
+                      {savingRole === r ? 'Enregistrement…' : 'Enregistrer'}
                     </button>
                   </th>
                 ))}

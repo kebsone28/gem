@@ -2,6 +2,7 @@
 export type UserRole =
   | 'ADMIN'
   | 'ADMIN_PROQUELEC'
+  | 'DG'
   | 'DG_PROQUELEC'
   | 'CLIENT_LSE'
   | 'CHEF_EQUIPE'

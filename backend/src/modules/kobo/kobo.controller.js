@@ -151,7 +151,15 @@ export const autoDetectMapping = async (req, res) => {
     return res.status(400).json({ error: 'koboAssetId requis' });
   }
 
+  if (koboAssetId && !/^[a-zA-Z0-9_-]+$/.test(koboAssetId)) {
+    return res.status(400).json({ error: 'koboAssetId invalide.' });
+  }
+
   const serverUrl = koboServerUrl || process.env.KOBO_API_URL || 'https://kf.kobotoolbox.org';
+
+  if (koboServerUrl && !validateKoboUrl(koboServerUrl)) {
+    return res.status(400).json({ error: 'URL Kobo non autorisée.' });
+  }
 
   try {
     const mapping = await koboEngine.generateMapping(koboAssetId, serverUrl);
@@ -185,6 +193,10 @@ export const getMapping = async (req, res) => {
     return res.status(400).json({ error: 'koboAssetId requis' });
   }
 
+  if (koboAssetId && !/^[a-zA-Z0-9_-]+$/.test(koboAssetId)) {
+    return res.status(400).json({ error: 'koboAssetId invalide.' });
+  }
+
   try {
     const mapping = await koboEngine.getMapping(
       organizationId,
@@ -211,7 +223,15 @@ export const migrateMapping = async (req, res) => {
     return res.status(400).json({ error: 'koboAssetId requis' });
   }
 
+  if (koboAssetId && !/^[a-zA-Z0-9_-]+$/.test(koboAssetId)) {
+    return res.status(400).json({ error: 'koboAssetId invalide.' });
+  }
+
   const serverUrl = koboServerUrl || process.env.KOBO_API_URL || 'https://kf.kobotoolbox.org';
+
+  if (koboServerUrl && !validateKoboUrl(koboServerUrl)) {
+    return res.status(400).json({ error: 'URL Kobo non autorisée.' });
+  }
 
   try {
     const result = await koboEngine.migrateMapping(organizationId, koboAssetId, serverUrl);
@@ -241,7 +261,15 @@ export const transformData = async (req, res) => {
     return res.status(400).json({ error: 'koboAssetId et koboData requis' });
   }
 
+  if (koboAssetId && !/^[a-zA-Z0-9_-]+$/.test(koboAssetId)) {
+    return res.status(400).json({ error: 'koboAssetId invalide.' });
+  }
+
   const serverUrl = koboServerUrl || process.env.KOBO_API_URL || 'https://kf.kobotoolbox.org';
+
+  if (koboServerUrl && !validateKoboUrl(koboServerUrl)) {
+    return res.status(400).json({ error: 'URL Kobo non autorisée.' });
+  }
 
   try {
     const mapping = await koboEngine.getMapping(organizationId, koboAssetId, serverUrl);

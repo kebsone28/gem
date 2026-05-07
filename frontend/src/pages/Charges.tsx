@@ -23,6 +23,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useProject } from '../contexts/ProjectContext';
 import { exportFinancialPDF } from '../services/exportService';
 import { Database } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 import { PageContainer, Section, DESIGN_TOKENS, COMMON_CLASSES } from '../components';
 
@@ -74,7 +75,9 @@ export default function Charges() {
               <span className="hidden leading-tight sm:inline">
                 {isClientProvided ? 'Matériaux fournis par client' : 'Fourniture entrepreneur'}
               </span>
-              <span className="leading-tight sm:hidden">{isClientProvided ? 'Client' : 'Entrepreneur'}</span>
+              <span className="leading-tight sm:hidden">
+                {isClientProvided ? 'Client' : 'Entrepreneur'}
+              </span>
             </button>
 
             <div
@@ -125,7 +128,6 @@ export default function Charges() {
       <AnimatePresence mode="wait">
         {activeTab === 'overview' ? (
           <motion.div
-            id="financial-analysis-content"
             key="overview"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -151,7 +153,6 @@ export default function Charges() {
           </motion.div>
         ) : activeTab === 'devis' ? (
           <motion.div
-            id="financial-analysis-content"
             key="devis"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -163,7 +164,6 @@ export default function Charges() {
           </motion.div>
         ) : activeTab === 'dotations' ? (
           <motion.div
-            id="financial-analysis-content"
             key="dotations"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -175,7 +175,6 @@ export default function Charges() {
           </motion.div>
         ) : (
           <motion.div
-            id="financial-analysis-content"
             key="inventory"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -220,9 +219,9 @@ export default function Charges() {
                     project?.name
                   );
                   if (result === true) {
-                    alert('✅ PDF généré ! Le téléchargement va démarrer.');
+                    toast.success('PDF généré ! Le téléchargement va démarrer.');
                   } else {
-                    alert(`❌ Erreur PDF: ${result}`);
+                    toast.error(`Erreur PDF : ${result}`);
                   }
                 } finally {
                   target.innerHTML = originalHtml;
@@ -235,7 +234,9 @@ export default function Charges() {
               EXPORTER PDF
             </button>
             <button
-              className={`flex items-center justify-center gap-2 px-8 py-4 rounded-2xl font-black text-xs transition-all border ${isDarkMode ? 'bg-indigo-500/20 text-white border-white/10 hover:bg-indigo-500/30' : 'bg-slate-800 text-white border-slate-700 hover:bg-slate-700'}`}
+              disabled
+              title="Fonctionnalité disponible bientôt"
+              className={`flex items-center justify-center gap-2 px-8 py-4 rounded-2xl font-black text-xs transition-all border opacity-50 cursor-not-allowed ${isDarkMode ? 'bg-indigo-500/20 text-white border-white/10' : 'bg-slate-800 text-white border-slate-700'}`}
             >
               EXPLORER LES SCÉNARIOS
               <ArrowUpRight size={14} />

@@ -62,8 +62,15 @@ import { MODULE_ACCENTS } from '../components/dashboards/DashboardComponents';
 const Terrain: React.FC = () => {
   const terrainAccent = MODULE_ACCENTS.terrain;
   // 1. Core Data & Contexts
-  const { households, updateHouseholdStatus, updateHouseholdLocation, uploadHouseholdPhoto, updateHousehold, reloadHouseholds, repairSyncQueue } =
-    useTerrainData();
+  const {
+    households,
+    updateHouseholdStatus,
+    updateHouseholdLocation,
+    uploadHouseholdPhoto,
+    updateHousehold,
+    reloadHouseholds,
+    repairSyncQueue,
+  } = useTerrainData();
 
   const { project } = useProject();
   const { forceSync } = useSync();
@@ -197,7 +204,7 @@ const Terrain: React.FC = () => {
     [conformingHouseholds]
   );
 
-  // useTerrainPhoto removed as floating tools are gone. 
+  // useTerrainPhoto removed as floating tools are gone.
   // HouseholdDetailsPanel now handles its own uploads.
 
   // ✅ GUARD: Prevent double-initialization from StrictMode
@@ -333,7 +340,7 @@ const Terrain: React.FC = () => {
   const handleSelectResult = useCallback(
     (result: SearchResult) => {
       const setHighlightedLocation = useTerrainUIStore.getState().setHighlightedLocation;
-      
+
       if (result.type === 'household') {
         setSelectedHouseholdId(result.data.id);
         const lng = Number(result.data.location?.coordinates?.[0] || result.data.longitude);
@@ -342,7 +349,7 @@ const Terrain: React.FC = () => {
         if (isValidCoordinate(lng, lat)) {
           // Activer le pulse temporaire (1 min)
           setHighlightedLocation([lng, lat]);
-          
+
           setMapCommand({
             center: [lng, lat],
             zoom: 20,
@@ -361,14 +368,17 @@ const Terrain: React.FC = () => {
     [setSelectedHouseholdId, setMapCommand, setSearchQuery, setSearchResults]
   );
 
-  const handleZoneClick = useCallback((center: [number, number], zoom?: number) => {
-    setMapCommand({ center, zoom: zoom ?? 16, timestamp: Date.now() });
-  }, [setMapCommand]);
+  const handleZoneClick = useCallback(
+    (center: [number, number], zoom?: number) => {
+      setMapCommand({ center, zoom: zoom ?? 16, timestamp: Date.now() });
+    },
+    [setMapCommand]
+  );
 
   const handleTraceItinerary = useCallback(() => {
     const h = households?.find((hh) => hh.id === selectedHouseholdId);
     if (!h || !hasValidCoordinates(h)) return;
-    
+
     const lng = Number(h.location?.coordinates?.[0] || h.longitude);
     const lat = Number(h.location?.coordinates?.[1] || h.latitude);
     const dest: [number, number] = [lng, lat];
@@ -427,9 +437,7 @@ const Terrain: React.FC = () => {
   const handleRepairSyncIssues = useCallback(async () => {
     const repaired = await repairSyncQueue();
     toast.success(
-      repaired > 0
-        ? `${repaired} élément(s) de sync réparé(s)`
-        : 'Aucun doublon ou échec à réparer'
+      repaired > 0 ? `${repaired} élément(s) de sync réparé(s)` : 'Aucun doublon ou échec à réparer'
     );
   }, [repairSyncQueue]);
 
@@ -472,10 +480,9 @@ const Terrain: React.FC = () => {
       }
 
       if (updatedCount > 0) {
-        toast.success(
-          `${updatedCount} ménage(s) verrouillé(s), ${failedCount} en échec`,
-          { id: toastId }
-        );
+        toast.success(`${updatedCount} ménage(s) verrouillé(s), ${failedCount} en échec`, {
+          id: toastId,
+        });
         return;
       }
 
@@ -526,10 +533,9 @@ const Terrain: React.FC = () => {
       }
 
       if (updatedCount > 0) {
-        toast.success(
-          `${updatedCount} ménage(s) déverrouillé(s), ${failedCount} en échec`,
-          { id: toastId }
-        );
+        toast.success(`${updatedCount} ménage(s) déverrouillé(s), ${failedCount} en échec`, {
+          id: toastId,
+        });
         return;
       }
 
@@ -541,7 +547,7 @@ const Terrain: React.FC = () => {
   }, [unlockableConformingHouseholds, updateHousehold]);
 
   // Keyboard shortcuts removed
-  
+
   // 7. Memoized Computed Values
   const selectedHousehold = useMemo(
     () => (households || []).find((h) => h.id === selectedHouseholdId) || null,
@@ -549,14 +555,17 @@ const Terrain: React.FC = () => {
   );
 
   const allAvailableTeams = useMemo(() => {
-    const fromDB = (teams || []).map((t) => t.name);
+    const fromDB = (teams || []).map((t) => t.name.toLowerCase().trim());
     const fromHouseholds = (households || []).reduce((acc, h) => {
       if (Array.isArray(h.assignedTeams)) {
-        h.assignedTeams.forEach((at: string) => acc.add(at));
+        h.assignedTeams.forEach((at: string) => acc.add(at.toLowerCase().trim()));
       }
       return acc;
     }, new Set<string>());
-    return Array.from(new Set([...fromDB, ...fromHouseholds])).sort();
+    return Array.from(new Set([...fromDB, ...fromHouseholds]))
+      .filter(Boolean)
+      .sort()
+      .map((name) => name.charAt(0).toUpperCase() + name.slice(1));
   }, [teams, households]);
 
   const terrainStatusOptions = useMemo(
@@ -580,7 +589,9 @@ const Terrain: React.FC = () => {
   }, [selectedPhases]);
 
   const hasZoneOverlayData = useMemo(() => {
-    const zoneCount = Array.isArray(grappeZonesData?.features) ? grappeZonesData.features.length : 0;
+    const zoneCount = Array.isArray(grappeZonesData?.features)
+      ? grappeZonesData.features.length
+      : 0;
     const centroidCount = Array.isArray(grappeCentroidsData?.features)
       ? grappeCentroidsData.features.length
       : 0;
@@ -615,33 +626,35 @@ const Terrain: React.FC = () => {
     };
 
     if (gId) {
-      const grappeDef = (grappesConfig?.grappes as any[])?.find((g: any) => g.id === gId) ||
-                       (grappesConfig?.sous_grappes as any[])?.find((sg: any) => sg.id === gId);
-      
+      const grappeDef =
+        (grappesConfig?.grappes as any[])?.find((g: any) => g.id === gId) ||
+        (grappesConfig?.sous_grappes as any[])?.find((sg: any) => sg.id === gId);
+
       const grappeName =
-        selectedHousehold.grappeName || 
-        grappeDef?.nom || 
-        grappeDef?.name || 
-        grappeDef?.code || 
+        selectedHousehold.grappeName ||
+        grappeDef?.nom ||
+        grappeDef?.name ||
+        grappeDef?.code ||
         (grappeDef?.grappe_numero ? `Grappe ${grappeDef.grappe_numero}` : null) ||
         (grappeDef?.numero ? `Grappe ${grappeDef.numero}` : null) ||
         (() => {
           // If it's an auto-generated grappe (UUID), try to find the most common village
           const siblings = (households || []).filter((h) => h.grappeId === gId);
-          const villages = siblings.map(h => h.village || h.koboSync?.village).filter(Boolean);
+          const villages = siblings.map((h) => h.village || h.koboSync?.village).filter(Boolean);
           if (villages.length > 0) {
-            const mostCommon = villages.reduce((acc, v) => {
-              acc[v!] = (acc[v!] || 0) + 1;
-              return acc;
-            }, {} as Record<string, number>);
+            const mostCommon = villages.reduce(
+              (acc, v) => {
+                acc[v!] = (acc[v!] || 0) + 1;
+                return acc;
+              },
+              {} as Record<string, number>
+            );
             const bestVillage = Object.entries(mostCommon).sort((a, b) => b[1] - a[1])[0][0];
             return `Grappe ${bestVillage}`;
           }
           return `Grappe ${gId.slice(0, 8)}`;
         })();
 
-
-        
       const grappeCount = (households || []).filter((h: Household) => h.grappeId === gId).length;
       return { id: gId, name: grappeName, count: grappeCount };
     }
@@ -656,8 +669,7 @@ const Terrain: React.FC = () => {
       (selectedHousehold.koboSync as any)?.region;
     const pool = hRegion
       ? (allGrappes as any[]).filter(
-          (g: any) =>
-            (g.region && g.region.toLowerCase() === hRegion.toLowerCase()) || !g.region
+          (g: any) => (g.region && g.region.toLowerCase() === hRegion.toLowerCase()) || !g.region
         )
       : (allGrappes as any[]);
 
@@ -673,7 +685,9 @@ const Terrain: React.FC = () => {
     }
 
     if (!nearest || minDist > 150) return undefined;
-    const count = (households || []).filter((h: Household) => h.grappeId === (nearest as any).id).length;
+    const count = (households || []).filter(
+      (h: Household) => h.grappeId === (nearest as any).id
+    ).length;
     return {
       id: nearest.id,
       name: nearest.nom || nearest.name || `Grappe ${nearest.id}`,
@@ -836,10 +850,8 @@ const Terrain: React.FC = () => {
           terrainFeatures.grappeTools ||
           terrainFeatures.analytics ||
           terrainFeatures.heatmap ||
-          terrainFeatures.analytics ||
-          terrainFeatures.heatmap ||
-          terrainFeatures.dataHub
-          || terrainFeatures.regionDownload
+          terrainFeatures.dataHub ||
+          terrainFeatures.regionDownload
         }
         mapToolbarFeatures={{
           mapStyle: terrainFeatures.mapStyle,
@@ -858,7 +870,7 @@ const Terrain: React.FC = () => {
 
       {/* 📊 BOTTOM OVERLAY */}
       <BottomBar
-        filteredCount={(households?.filter(hasValidCoordinates) || []).length}
+        filteredCount={(filteredHouseholds?.filter(hasValidCoordinates) || []).length}
         totalCount={(households?.filter(hasValidCoordinates) || []).length}
         isOfflineMode={isOfflineMode}
         auditResult={auditResult}
@@ -887,9 +899,12 @@ const Terrain: React.FC = () => {
       )}
 
       {terrainFeatures.geofencingAlerts && (
-        <GeofencingAlerts households={filteredHouseholds} grappesConfig={grappesConfig} isDarkMode />
+        <GeofencingAlerts
+          households={filteredHouseholds}
+          grappesConfig={grappesConfig}
+          isDarkMode
+        />
       )}
-
 
       {terrainFeatures.grappeTools && activePanel === 'grappe' && (
         <div className="z-[60] pointer-events-auto">
@@ -954,8 +969,6 @@ const Terrain: React.FC = () => {
       )}
 
       <AnimatePresence>{lightboxPhotos.length > 0 && <PhotoLightbox />}</AnimatePresence>
-
-
 
       {terrainFeatures.syncIssues && (
         <TerrainSyncIssuesPanel

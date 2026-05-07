@@ -219,10 +219,7 @@ export async function createIGPPAlerts(projectIdOrParams, kpiDataArg = {}) {
     const hasOpenAlert = (type) =>
       Array.isArray(existingAlerts) && existingAlerts.some((alert) => alert.type === type);
 
-    let duplicatesPrevented = ['IGPP_STOCK', 'IGPP_BUDGET', 'IGPP_ELECTRICITY'].reduce(
-      (count, type) => (hasOpenAlert(type) ? count + 1 : count),
-      0
-    );
+    let duplicatesPrevented = 0;
 
     const config = prisma.alertConfiguration?.findFirst
       ? await prisma.alertConfiguration.findFirst({ where: { organizationId } })
@@ -235,7 +232,11 @@ export async function createIGPPAlerts(projectIdOrParams, kpiDataArg = {}) {
     const alertsToCreate = [];
 
     const kitPrepared = Number(kpiData.kitPrepared ?? Number.NaN);
-    if (Number.isFinite(kitPrepared) && Number.isFinite(config.stockCritical) && kitPrepared < config.stockCritical) {
+    if (
+      Number.isFinite(kitPrepared) &&
+      Number.isFinite(config.stockCritical) &&
+      kitPrepared < config.stockCritical
+    ) {
       if (hasOpenAlert('IGPP_STOCK')) {
         duplicatesPrevented += 1;
       } else {
@@ -243,7 +244,7 @@ export async function createIGPPAlerts(projectIdOrParams, kpiDataArg = {}) {
           organizationId,
           projectId,
           type: 'IGPP_STOCK',
-          severity: 'critical',
+          severity: 'CRITICAL',
           status: 'OPEN',
           message: `Stock niveau critique (${kitPrepared})`,
         });
@@ -263,7 +264,7 @@ export async function createIGPPAlerts(projectIdOrParams, kpiDataArg = {}) {
           organizationId,
           projectId,
           type: 'IGPP_BUDGET',
-          severity: 'high',
+          severity: 'HIGH',
           status: 'OPEN',
           message: `Budget seuil dépassé (${budgetUsagePercent}%)`,
         });
@@ -285,7 +286,7 @@ export async function createIGPPAlerts(projectIdOrParams, kpiDataArg = {}) {
           organizationId,
           projectId,
           type: 'IGPP_ELECTRICITY',
-          severity: 'medium',
+          severity: 'MEDIUM',
           status: 'OPEN',
           message: `Accès électricité insuffisant (${electricityAccess})`,
         });
@@ -324,6 +325,7 @@ export const alertsService = {
       if (alert.householdId) {
         household = await prisma.household.findUnique({
           where: { id: alert.householdId },
+          include: { owner: true },
         });
       }
 
@@ -395,9 +397,16 @@ export const alertsService = {
     try {
       const household = await prisma.household.findUnique({
         where: { id: householdId },
+        include: { zone: true },
       });
 
       if (!household) return;
+
+      const projectId = household.zone?.projectId;
+      if (!projectId) {
+        logger.warn('[ALERTS] Cannot create PV alert: household has no project');
+        return null;
+      }
 
       const severityMap = {
         PVHSE: 'CRITICAL',
@@ -411,7 +420,7 @@ export const alertsService = {
       const alert = await prisma.alert.create({
         data: {
           organizationId: household.organizationId,
-          projectId: household.zone?.projectId || 'unknown',
+          projectId,
           householdId,
           type: pvType,
           severity: severityMap[pvType] || 'MEDIUM',

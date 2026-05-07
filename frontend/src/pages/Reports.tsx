@@ -18,6 +18,7 @@ import {
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../store/db';
 import { useAuth } from '../contexts/AuthContext';
+import { useProject } from '../contexts/ProjectContext';
 import { usePermissions } from '../hooks/usePermissions';
 import { useFinances } from '../hooks/useFinances';
 import {
@@ -63,6 +64,7 @@ export default function Reports() {
   const households = useLiveQuery(() => db.households.toArray()) || [];
   const zones = useLiveQuery(() => db.zones.toArray()) || [];
   const { user } = useAuth();
+  const { project } = useProject();
   const { peut, PERMISSIONS } = usePermissions();
   const { getLabel } = useLabels();
   const isLSE = user?.role === 'CLIENT_LSE';
@@ -75,18 +77,19 @@ export default function Reports() {
   const [includeSummary, setIncludeSummary] = useState(true);
   const reportsAccent = MODULE_ACCENTS.reports;
 
-  const markState = (id: string, state: 'loading' | 'done' | 'error') =>
+  const markState = (id: string, state: 'idle' | 'loading' | 'done' | 'error') =>
     setStates((s) => ({ ...s, [id]: state }));
 
-  const run = async (id: string, fn: () => void) => {
+  const run = async (id: string, fn: () => Promise<void>) => {
     markState(id, 'loading');
-    await new Promise((r) => setTimeout(r, 600)); // visual delay
     try {
-      fn();
+      await fn();
       markState(id, 'done');
-      setTimeout(() => setStates((s) => ({ ...s, [id]: 'idle' })), 3000);
+      setTimeout(() => markState(id, 'idle'), 3000);
     } catch (e) {
+      console.error(`[Reports] Error generating ${id}:`, e);
       markState(id, 'error');
+      setTimeout(() => markState(id, 'idle'), 5000);
     }
   };
 
@@ -128,7 +131,9 @@ export default function Reports() {
         financeOnly: true,
       },
     ];
-    return allStats.filter((s) => (!isLSE || s.lseVisible) && (!(s as any).financeOnly || canViewFinances));
+    return allStats.filter(
+      (s) => (!isLSE || s.lseVisible) && (!(s as any).financeOnly || canViewFinances)
+    );
   }, [completionRate, households.length, zones.length, finances, isLSE, canViewFinances, getLabel]);
 
   const reportCards: ReportCard[] = [
@@ -152,7 +157,7 @@ export default function Reports() {
         generateRapportAvancement({
           households,
           zones,
-          projectName: 'Projet GEM — Sénégal',
+          projectName: project?.name || 'Projet GEM',
           userName: user?.name,
         });
       },
@@ -183,7 +188,7 @@ export default function Reports() {
           marginPct: finances.devis?.marginPct || 0,
           ceiling: finances.devis?.ceiling || 300823750,
           stats: finances.stats,
-          projectName: 'Projet GEM — Sénégal',
+          projectName: project?.name || 'Projet GEM',
         });
       },
     },
@@ -261,7 +266,10 @@ export default function Reports() {
                 className={`${COMMON_CLASSES.input} pl-10 bg-slate-900/50 border-white/5 focus:border-cyan-400`}
               />
             </div>
-            <button aria-label="Filtrer" className={`${COMMON_CLASSES.btnSecondary} p-2.5 hover:border-cyan-400 hover:text-cyan-300`}>
+            <button
+              aria-label="Filtrer"
+              className={`${COMMON_CLASSES.btnSecondary} p-2.5 hover:border-cyan-400 hover:text-cyan-300`}
+            >
               <Filter size={18} />
             </button>
           </div>
@@ -271,7 +279,10 @@ export default function Reports() {
       <Section title="Indicateurs de Performance">
         <CardGrid columns={4}>
           {stats.map((stat, i) => (
-            <div key={i} className={`${COMMON_CLASSES.card} ${COMMON_CLASSES.cardHover} ${reportsAccent.surface} p-6 group`}>
+            <div
+              key={i}
+              className={`${COMMON_CLASSES.card} ${COMMON_CLASSES.cardHover} ${reportsAccent.surface} p-6 group`}
+            >
               <div className="flex items-center justify-between mb-4">
                 <div
                   className={`w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center ${stat.color} group-hover:scale-110 transition-transform`}
@@ -347,7 +358,7 @@ export default function Reports() {
                                                 ${
                                                   state === 'done'
                                                     ? 'bg-emerald-500 text-white shadow-emerald-500/20'
-                                                  : state === 'error'
+                                                    : state === 'error'
                                                       ? 'bg-rose-500/10 text-rose-500 border border-rose-500/20 shadow-none'
                                                       : `${COMMON_CLASSES.btnPrimary} !from-cyan-600 !via-cyan-500 !to-blue-500`
                                                 }`}
@@ -378,66 +389,66 @@ export default function Reports() {
         <div className="xl:col-span-1">
           <Section title="Export Avancé" subtitle="Paramétrez votre extraction de données terrain.">
             <ModulePageShell accent="reports" className="p-0">
-            <ContentArea className={`bg-[#0D1E35] border-white/5 ${reportsAccent.surface}`}>
-              <div className="space-y-6">
-                <div className="space-y-3">
-                  <label className={COMMON_CLASSES.label} htmlFor="export-format">
-                    Format du fichier
-                  </label>
-                  <div className="relative">
-                    <select
-                      id="export-format"
-                      title="Choisir le format d'export"
-                      value={exportFormat}
-                      onChange={(e) => setExportFormat(e.target.value)}
-                      className={`${COMMON_CLASSES.input} appearance-none pr-10 bg-slate-900 border-white/10 text-white`}
+              <ContentArea className={`bg-[#0D1E35] border-white/5 ${reportsAccent.surface}`}>
+                <div className="space-y-6">
+                  <div className="space-y-3">
+                    <label className={COMMON_CLASSES.label} htmlFor="export-format">
+                      Format du fichier
+                    </label>
+                    <div className="relative">
+                      <select
+                        id="export-format"
+                        title="Choisir le format d'export"
+                        value={exportFormat}
+                        onChange={(e) => setExportFormat(e.target.value)}
+                        className={`${COMMON_CLASSES.input} appearance-none pr-10 bg-slate-900 border-white/10 text-white`}
+                      >
+                        <option value="PDF">PDF Document (.pdf)</option>
+                        <option value="Excel">Excel Spreadsheet (.xlsx)</option>
+                      </select>
+                      <ChevronDown
+                        className="absolute right-5 top-1/2 -translate-y-1/2 text-blue-300/30 pointer-events-none"
+                        size={18}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="pt-2 space-y-4">
+                    <label
+                      className="flex items-center gap-4 cursor-pointer group"
+                      onClick={() => setIncludeSummary((v) => !v)}
                     >
-                      <option value="PDF">PDF Document (.pdf)</option>
-                      <option value="Excel">Excel Spreadsheet (.xlsx)</option>
-                    </select>
-                    <ChevronDown
-                      className="absolute right-5 top-1/2 -translate-y-1/2 text-blue-300/30 pointer-events-none"
-                      size={18}
-                    />
+                      <div
+                        className={`w-6 h-6 rounded-lg border-2 transition-all flex items-center justify-center ${includeSummary ? 'border-blue-500 bg-blue-500/10' : 'border-white/10'}`}
+                      >
+                        {includeSummary && <div className="w-2.5 h-2.5 bg-blue-500 rounded-sm" />}
+                      </div>
+                      <span className="text-blue-100 font-bold text-xs uppercase tracking-tight">
+                        Résumé Avancement Terrain
+                      </span>
+                    </label>
+                    {canViewFinances && (
+                      <label
+                        className="flex items-center gap-4 cursor-pointer group"
+                        onClick={() => setIncludeFinancial((v) => !v)}
+                      >
+                        <div
+                          className={`w-6 h-6 rounded-lg border-2 transition-all flex items-center justify-center ${includeFinancial ? 'border-emerald-500 bg-emerald-500/10' : 'border-white/10 group-hover:border-emerald-500'}`}
+                        >
+                          {includeFinancial && (
+                            <div className="w-2.5 h-2.5 bg-emerald-500 rounded-sm" />
+                          )}
+                        </div>
+                        <span className="font-bold text-xs uppercase tracking-tight text-blue-100">
+                          Données Financières (Devis vs Réel)
+                        </span>
+                      </label>
+                    )}
                   </div>
                 </div>
 
-                <div className="pt-2 space-y-4">
-                  <label
-                    className="flex items-center gap-4 cursor-pointer group"
-                    onClick={() => setIncludeSummary((v) => !v)}
-                  >
-                    <div
-                      className={`w-6 h-6 rounded-lg border-2 transition-all flex items-center justify-center ${includeSummary ? 'border-blue-500 bg-blue-500/10' : 'border-white/10'}`}
-                    >
-                      {includeSummary && <div className="w-2.5 h-2.5 bg-blue-500 rounded-sm" />}
-                    </div>
-                    <span className="text-blue-100 font-bold text-xs uppercase tracking-tight">
-                      Résumé Avancement Terrain
-                    </span>
-                  </label>
-                  {canViewFinances && (
-                    <label
-                      className="flex items-center gap-4 cursor-pointer group"
-                      onClick={() => setIncludeFinancial((v) => !v)}
-                    >
-                      <div
-                        className={`w-6 h-6 rounded-lg border-2 transition-all flex items-center justify-center ${includeFinancial ? 'border-emerald-500 bg-emerald-500/10' : 'border-white/10 group-hover:border-emerald-500'}`}
-                      >
-                        {includeFinancial && (
-                          <div className="w-2.5 h-2.5 bg-emerald-500 rounded-sm" />
-                        )}
-                      </div>
-                      <span className="font-bold text-xs uppercase tracking-tight text-blue-100">
-                        Données Financières (Devis vs Réel)
-                      </span>
-                    </label>
-                  )}
-                </div>
-              </div>
-
-              <div
-                className={`flex items-center gap-4 p-5 rounded-3xl border text-xs font-bold leading-relaxed mt-8
+                <div
+                  className={`flex items-center gap-4 p-5 rounded-3xl border text-xs font-bold leading-relaxed mt-8
                                 ${
                                   isAdmin
                                     ? 'bg-blue-500/10 border-blue-500/20 text-blue-400'
@@ -445,56 +456,58 @@ export default function Reports() {
                                       ? 'bg-amber-500/10 border-amber-500/20 text-amber-400'
                                       : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
                                 }`}
-              >
-                <ShieldCheck size={20} className="shrink-0" />
-                <div>
-                  <span className="uppercase text-xs font-black opacity-60">Permissions :</span>
-                  <br />
-                  {canViewFinances
-                    ? canManageFinances
-                      ? 'Accès financier — Devis, réel, marges et rapports économiques.'
-                      : 'Lecture financière — Consultation des indicateurs économiques autorisés.'
-                    : isLSE
-                      ? "Mode Client — Données d'avancement certifiées uniquement."
-                      : 'Mode Opérationnel — Rapports terrain et logistique.'}
+                >
+                  <ShieldCheck size={20} className="shrink-0" />
+                  <div>
+                    <span className="uppercase text-xs font-black opacity-60">Permissions :</span>
+                    <br />
+                    {canViewFinances
+                      ? canManageFinances
+                        ? 'Accès financier — Devis, réel, marges et rapports économiques.'
+                        : 'Lecture financière — Consultation des indicateurs économiques autorisés.'
+                      : isLSE
+                        ? "Mode Client — Données d'avancement certifiées uniquement."
+                        : 'Mode Opérationnel — Rapports terrain et logistique.'}
+                  </div>
                 </div>
-              </div>
 
-              <button
-                onClick={() => {
-                  if (includeFinancial && canViewFinances) {
-                    run('global', () =>
-                      generateRapportFinancier({
-                        devisReport: finances.devis?.report || [],
-                        totalPlanned: finances.devis?.totalPlanned || 0,
-                        totalReal: finances.devis?.totalReal || 0,
-                        globalMargin: finances.devis?.globalMargin || 0,
-                        marginPct: finances.devis?.marginPct || 0,
-                        ceiling: finances.devis?.ceiling || 300823750,
-                        stats: finances.stats,
-                        projectName: 'Projet GEM — Sénégal',
-                      })
-                    );
-                  } else {
-                    run('global', () =>
-                      generateRapportAvancement({ households, zones, userName: user?.name })
-                    );
-                  }
-                }}
-                disabled={states['global'] === 'loading'}
-                className={`${COMMON_CLASSES.btnPrimary} w-full py-5 rounded-[1.5rem] mt-6 text-xs uppercase tracking-[0.2em] shadow-blue-500/20`}
-              >
-                {states['global'] === 'loading' ? (
-                  <>
-                    <RefreshCw size={18} className="animate-spin" /> Extraction...
-                  </>
-                ) : (
-                  <>
-                    <Download size={18} /> Lancer l'Export
-                  </>
-                )}
-              </button>
-            </ContentArea>
+                <button
+                  onClick={() => {
+                    if (includeFinancial && canViewFinances) {
+                      run('global', () => {
+                        generateRapportFinancier({
+                          devisReport: finances.devis?.report || [],
+                          totalPlanned: finances.devis?.totalPlanned || 0,
+                          totalReal: finances.devis?.totalReal || 0,
+                          globalMargin: finances.devis?.globalMargin || 0,
+                          marginPct: finances.devis?.marginPct || 0,
+                          ceiling: finances.devis?.ceiling || 300823750,
+                          stats: finances.stats,
+                          projectName: project?.name || 'Projet GEM',
+                        });
+                        return Promise.resolve();
+                      });
+                    } else {
+                      run('global', () => {
+                        generateRapportAvancement({ households, zones, userName: user?.name });
+                        return Promise.resolve();
+                      });
+                    }
+                  }}
+                  disabled={states['global'] === 'loading'}
+                  className={`${COMMON_CLASSES.btnPrimary} w-full py-5 rounded-[1.5rem] mt-6 text-xs uppercase tracking-[0.2em] shadow-blue-500/20`}
+                >
+                  {states['global'] === 'loading' ? (
+                    <>
+                      <RefreshCw size={18} className="animate-spin" /> Extraction...
+                    </>
+                  ) : (
+                    <>
+                      <Download size={18} /> Lancer l'Export
+                    </>
+                  )}
+                </button>
+              </ContentArea>
             </ModulePageShell>
           </Section>
         </div>
