@@ -48,8 +48,8 @@ export const teamMatchesPlanningRegion = (team: Team, regionName?: string | null
   const teamRegionId = normalizePlanningText(team.regionId);
 
   return (
-    (teamRegionName && teamRegionName === normalizedRegion) ||
-    (teamRegionId && teamRegionId === normalizedRegion)
+    (!!teamRegionName && teamRegionName === normalizedRegion) ||
+    (!!teamRegionId && teamRegionId === normalizedRegion)
   );
 };
 

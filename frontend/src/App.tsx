@@ -10,9 +10,11 @@ import OfflineBanner from './components/OfflineBanner';
 import PWAPrompt from './components/PWAPrompt';
 import SyncNotification from './components/SyncNotification';
 import ImpersonationBanner from './components/ImpersonationBanner';
+import ChatNotificationHandler from './components/ChatNotificationHandler';
 import { CommandPalette } from './components/common/CommandPalette';
 import { LazyRouteErrorBoundary } from './components/LazyRouteErrorBoundary';
 import { Toaster } from 'react-hot-toast';
+import { useWebSockets } from './hooks/useWebSockets';
 import { PERMISSIONS, ROLES, hasPermission, normalizeRole } from './utils/permissions';
 
 function lazyWithRetry<T extends React.ComponentType<Record<string, never>>>(
@@ -137,12 +139,14 @@ const RoleRoute = ({
 // ── App ────────────────────────────────────────────────────────────────────
 function App() {
   const { user } = useAuth();
+  useWebSockets();
 
   return (
     <Router>
       <ImpersonationBanner />
       {/* Dexie → syncStore bridge (must live inside React tree for useLiveQuery) */}
       <BackgroundServices />
+      <ChatNotificationHandler />
 
       <LazyRouteErrorBoundary>
         <Suspense fallback={<PageLoader />}>

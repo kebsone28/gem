@@ -198,24 +198,24 @@ function renderMarkdown(text: string): React.ReactNode[] {
       if (type === 'IMAGE') {
         parts.push(
           <div key={match.index} className="mt-2 mb-1">
-             <img src={dataUrl} alt={filename} className="max-w-full rounded-lg max-h-64 object-contain shadow-sm border border-white/10" />
-             <p className="text-[10px] opacity-70 mt-1">{filename}</p>
+            <img src={dataUrl} alt={filename} className="max-w-full rounded-lg max-h-64 object-contain shadow-sm border border-white/10" />
+            <p className="text-[10px] opacity-70 mt-1">{filename}</p>
           </div>
         );
       } else if (type === 'AUDIO') {
         parts.push(
           <div key={match.index} className="mt-2 mb-1">
-             <audio controls src={dataUrl} className="w-full max-w-[250px] h-9 custom-audio" />
-             <p className="text-[10px] opacity-70 mt-1">{filename}</p>
+            <audio controls src={dataUrl} className="w-full max-w-[250px] h-9 custom-audio" />
+            <p className="text-[10px] opacity-70 mt-1">{filename}</p>
           </div>
         );
       } else {
         parts.push(
           <a key={match.index} href={dataUrl} download={filename} className="flex items-center gap-2 mt-2 mb-1 p-2.5 bg-black/20 rounded-xl hover:bg-black/30 transition-colors border border-white/5 w-fit">
-             <div className="bg-indigo-500/20 p-1.5 rounded-lg text-indigo-300 shrink-0">
-               <Paperclip size={16} />
-             </div>
-             <span className="text-[13px] font-medium underline truncate max-w-[200px]">{filename}</span>
+            <div className="bg-indigo-500/20 p-1.5 rounded-lg text-indigo-300 shrink-0">
+              <Paperclip size={16} />
+            </div>
+            <span className="text-[13px] font-medium underline truncate max-w-[200px]">{filename}</span>
           </a>
         );
       }
@@ -321,7 +321,6 @@ GemAvatar.displayName = 'GemAvatar';
 
 /** Animated typing dots */
 const TypingIndicator = memo(({ users }: { users: TypingUser[] }) => {
-  if (users.length === 0) return null;
   const label =
     users.length === 1
       ? `${users[0].name} écrit…`
@@ -330,26 +329,30 @@ const TypingIndicator = memo(({ users }: { users: TypingUser[] }) => {
         : `${users.length} personnes écrivent…`;
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: 8 }}
-      className="flex items-center gap-2 px-4 py-1.5"
-    >
-      <div className="flex items-center gap-1 bg-slate-800/80 rounded-2xl px-3 py-2 backdrop-blur-sm">
-        <div className="flex gap-1 mr-2">
-          {[0, 1, 2].map((i) => (
-            <motion.span
-              key={i}
-              className="h-1.5 w-1.5 rounded-full bg-slate-400"
-              animate={{ y: [0, -4, 0] }}
-              transition={{ duration: 0.8, repeat: Infinity, delay: i * 0.15 }}
-            />
-          ))}
-        </div>
-        <span className="text-[12px] text-slate-400">{label}</span>
-      </div>
-    </motion.div>
+    <div className="h-9 px-4 flex items-center shrink-0">
+      <AnimatePresence initial={false}>
+        {users.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 5 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 5 }}
+            className="flex items-center gap-1 bg-slate-800/40 rounded-full px-3 py-1 backdrop-blur-sm border border-white/5"
+          >
+            <div className="flex gap-1 mr-2">
+              {[0, 1, 2].map((i) => (
+                <motion.span
+                  key={i}
+                  className="h-1 w-1 rounded-full bg-indigo-400"
+                  animate={{ opacity: [0.4, 1, 0.4] }}
+                  transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.2 }}
+                />
+              ))}
+            </div>
+            <span className="text-[11px] text-slate-400 italic">{label}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 });
 TypingIndicator.displayName = 'TypingIndicator';
@@ -764,10 +767,10 @@ const MessageBubble = memo(
           <div
             ref={bubbleRef}
             onContextMenu={handleContextMenu}
-            className={`relative rounded-[18px] px-3.5 py-2.5 shadow-md cursor-default select-text transition-shadow ${isOwn
-              ? 'bg-gradient-to-br from-indigo-600 to-indigo-700 text-white rounded-tr-sm'
-              : 'bg-slate-800/90 text-slate-100 rounded-tl-sm'
-              } ${hovered ? 'shadow-lg' : ''}`}
+            className={`relative rounded-[20px] px-4 py-2.5 shadow-sm cursor-default select-text transition-all ${isOwn
+              ? 'bg-indigo-600 text-white rounded-tr-none shadow-indigo-500/10'
+              : 'bg-slate-800 text-slate-100 rounded-tl-none border border-white/5'
+              } ${hovered ? 'shadow-md brightness-110' : ''}`}
           >
             {/* Starred indicator */}
             {starred && (
@@ -1122,7 +1125,7 @@ const GemChatComposer = memo(
         : [];
 
     return (
-      <div className="bg-slate-900/95 backdrop-blur-md border-t border-white/8">
+      <div className="bg-slate-900/95 backdrop-blur-md border-t border-white/8 shrink-0">
         {/* Reply preview */}
         <AnimatePresence>
           {replyTo && (
@@ -1276,11 +1279,10 @@ const GemChatComposer = memo(
               whileTap={{ scale: 0.95 }}
               onClick={() => recording ? handleToggleRecording() : void handleSend()}
               disabled={disabled || sending}
-              className={`flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-2xl shadow-lg transition-all disabled:opacity-50 ${
-                recording
-                  ? 'bg-emerald-600 text-white shadow-emerald-500/25 hover:bg-emerald-500'
-                  : 'bg-indigo-600 text-white shadow-indigo-500/25 hover:bg-indigo-500'
-              }`}
+              className={`flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-2xl shadow-lg transition-all disabled:opacity-50 ${recording
+                ? 'bg-emerald-600 text-white shadow-emerald-500/25 hover:bg-emerald-500'
+                : 'bg-indigo-600 text-white shadow-indigo-500/25 hover:bg-indigo-500'
+                }`}
             >
               {sending ? (
                 <div className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
@@ -2004,11 +2006,10 @@ export default function Communication() {
                         key={conv.id}
                         layout
                         onClick={() => setActiveConversationId(conv.id)}
-                        className={`relative flex items-center gap-3 w-full px-3 py-3 transition-all group ${
-                          isActive
-                            ? 'bg-gradient-to-r from-indigo-600/20 to-violet-600/10'
-                            : 'hover:bg-slate-800/50'
-                        }`}
+                        className={`relative flex items-center gap-3 w-full px-3 py-3 transition-all group ${isActive
+                          ? 'bg-gradient-to-r from-indigo-600/20 to-violet-600/10'
+                          : 'hover:bg-slate-800/50'
+                          }`}
                         title={getConvLabel(conv)}
                       >
                         {/* Active indicator bar */}
@@ -2047,14 +2048,12 @@ export default function Communication() {
                         {/* Text content */}
                         <div className="flex-1 min-w-0 text-left">
                           <div className="flex justify-between items-center mb-0.5">
-                            <span className={`text-[13.5px] truncate leading-tight ${
-                              unread ? 'font-bold text-white' : 'font-semibold text-slate-200'
-                            }`}>
+                            <span className={`text-[13.5px] truncate leading-tight ${unread ? 'font-bold text-white' : 'font-semibold text-slate-200'
+                              }`}>
                               {getConvLabel(conv)}
                             </span>
-                            <span className={`text-[10px] shrink-0 ml-2 tabular-nums ${
-                              unread ? 'text-indigo-400 font-bold' : 'text-slate-600'
-                            }`}>
+                            <span className={`text-[10px] shrink-0 ml-2 tabular-nums ${unread ? 'text-indigo-400 font-bold' : 'text-slate-600'
+                              }`}>
                               {conv.lastMessage ? formatTime(conv.lastMessage.createdAt) : ''}
                             </span>
                           </div>
@@ -2062,9 +2061,8 @@ export default function Communication() {
                             {isLastMine && (
                               <CheckCheck size={12} className="shrink-0 text-indigo-400" />
                             )}
-                            <span className={`text-[12px] truncate ${
-                              unread ? 'text-slate-300' : 'text-slate-500'
-                            }`}>
+                            <span className={`text-[12px] truncate ${unread ? 'text-slate-300' : 'text-slate-500'
+                              }`}>
                               {lastMsgPreview}
                             </span>
                           </div>
@@ -2362,7 +2360,7 @@ export default function Communication() {
               {/* ── Messages ── */}
               <div
                 ref={chatContainerRef}
-                className="flex-1 overflow-y-auto py-4 z-10 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/10"
+                className="flex-1 overflow-y-auto py-2 z-10 scroll-smooth [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/10"
               >
                 {currentUserBlocked && (
                   <div className="flex justify-center mb-4 mt-2">
@@ -2388,13 +2386,13 @@ export default function Communication() {
                     {activeMessages.map((msg, i) => {
                       const prev = activeMessages[i - 1];
                       const next = activeMessages[i + 1];
-                      const isOwn = msg.senderId === user?.id;
+                      const isOwn = String(msg.senderId) === String(user?.id) || String(msg.sender?.id) === String(user?.id);
                       const showName = !isOwn && (!prev || prev.senderId !== msg.senderId);
                       const showAvatar = !prev || prev.senderId !== msg.senderId;
                       const showDate =
                         !prev ||
                         new Date(prev.createdAt).toDateString() !==
-                          new Date(msg.createdAt).toDateString();
+                        new Date(msg.createdAt).toDateString();
 
                       const msgReactions = reactions[msg.id] || [];
                       const isStarred = starred.has(msg.id);
