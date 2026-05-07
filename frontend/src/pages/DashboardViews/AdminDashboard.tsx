@@ -90,12 +90,12 @@ export default function AdminDashboard() {
   const lastSyncLabel = isSyncing
     ? 'maintenant'
     : feedActivities[0]?.time || activities[0]?.time || 'recemment';
-  const missionsDone = missionStats?.totalCertified ?? metrics.totalArchived;
+  const missionsDone = (missionStats?.totalCertified ?? metrics.totalArchived ?? 0);
   const missionsInProgress = Math.max(
     0,
     (missionStats?.totalMissions ?? 0) - (missionStats?.totalCertified ?? 0)
   );
-  const errorCount = metrics.problemHouseholds + metrics.actionRequired + metrics.incidentsHSE;
+  const errorCount = (metrics.problemHouseholds ?? 0) + (metrics.actionRequired ?? 0) + (metrics.incidentsHSE ?? 0);
   const exportAvailable = Boolean(missionStats && missionStats.totalMissions >= 0);
   const koboConnected = canViewReports && Boolean(projectId);
   const situationItems = [
@@ -124,8 +124,8 @@ export default function AdminDashboard() {
     },
     {
       label: 'Conformite terrain',
-      value: metrics.conforme,
-      helper: `${metrics.nonConforme} non conforme(s), ${metrics.incidentsHSE} incident(s) HSE`,
+      value: (metrics.conforme ?? 0),
+      helper: `${metrics.nonConforme ?? 0} non conforme(s), ${metrics.incidentsHSE ?? 0} incident(s) HSE`,
       tone: 'border-emerald-500/20 bg-emerald-500/10 text-emerald-200',
       icon: CheckCircle2,
     },
@@ -134,8 +134,8 @@ export default function AdminDashboard() {
     errorCount > 0
       ? `${errorCount} point(s) demandent un arbitrage rapide`
       : 'Aucun point critique remonte dans le flux terrain',
-    metrics.pvRetard > 0
-      ? `${metrics.pvRetard} PV en retard sur ${metrics.totalPV || 0}`
+    (metrics.pvRetard ?? 0) > 0
+      ? `${metrics.pvRetard ?? 0} PV en retard sur ${metrics.totalPV ?? 0}`
       : 'Aucun retard PV detecte',
     koboConnected ? 'Collecte Kobo disponible pour les equipes' : 'Connexion Kobo a verifier',
   ];

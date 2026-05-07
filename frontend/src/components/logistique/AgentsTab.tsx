@@ -1,3 +1,4 @@
+/* eslint-disable no-inline-styles */
 import { TrendingUp, Activity, AlertTriangle, Zap, Timer } from 'lucide-react';
 import { useLogistique } from '../../hooks/useLogistique';
 import { useTheme } from '../../contexts/ThemeContext';

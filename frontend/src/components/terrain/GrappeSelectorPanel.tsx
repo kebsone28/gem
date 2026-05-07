@@ -1,3 +1,4 @@
+/* eslint-disable no-inline-styles */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';

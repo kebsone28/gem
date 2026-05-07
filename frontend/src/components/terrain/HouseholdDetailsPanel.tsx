@@ -1,3 +1,4 @@
+/* eslint-disable no-inline-styles */
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
@@ -1275,7 +1276,7 @@ export const HouseholdDetailsPanel: React.FC<HouseholdDetailsPanelProps> = ({
                       style={{ '--stop-color': '#38bdf8' } as React.CSSProperties} 
                       stopColor="var(--stop-color)" 
                     />
-                    <stop 
+                     <stop 
                       offset="1" 
                       style={{ '--stop-color': isTerminalStatus ? '#fb7185' : '#34d399' } as React.CSSProperties} 
                       stopColor="var(--stop-color)" 

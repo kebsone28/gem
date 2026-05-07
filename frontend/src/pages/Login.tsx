@@ -384,6 +384,8 @@ export default function Login() {
                         <User size={16} className="text-slate-600 group-focus-within:text-indigo-400 transition-colors" />
                       </div>
                       <input
+                        id="login-username"
+                        aria-label="Identifiant"
                         type="text"
                         required
                         value={username}
@@ -396,7 +398,7 @@ export default function Login() {
 
                   <div className="space-y-2">
                     <div className="flex justify-between items-center px-1">
-                      <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Mot de passe</label>
+                      <label htmlFor="login-password" className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Mot de passe</label>
                       <button type="button" onClick={startRecovery} className="text-[9px] font-black text-indigo-400/60 hover:text-indigo-400 uppercase tracking-widest transition-colors">Perdu ?</button>
                     </div>
                     <div className="relative group">
@@ -404,6 +406,8 @@ export default function Login() {
                         <Lock size={16} className="text-slate-600 group-focus-within:text-indigo-400 transition-colors" />
                       </div>
                       <input
+                        id="login-password"
+                        aria-label="Mot de passe"
                         type={showPassword ? 'text' : 'password'}
                         required
                         value={password}
@@ -414,6 +418,8 @@ export default function Login() {
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
+                        aria-pressed={showPassword}
+                        aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
                         className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-600 hover:text-indigo-400 transition-colors"
                       >
                         {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -456,8 +462,9 @@ export default function Login() {
                   className="space-y-6"
                 >
                   <div className="space-y-2">
-                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Réponse de sécurité</label>
+                    <label htmlFor="login-2fa" className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Réponse de sécurité</label>
                     <input
+                      id="login-2fa"
                       type="text"
                       required
                       value={twoFAAnswer}
@@ -497,6 +504,8 @@ export default function Login() {
                             required
                             value={recSecAns}
                             onChange={(e) => setRecSecAns(e.target.value)}
+                            id="recovery-answer"
+                            aria-label="Réponse de sécurité"
                             className="w-full bg-white/[0.03] border border-white/5 rounded-2xl px-5 py-4 text-[13px] font-bold text-white outline-none focus:border-indigo-500/40 transition-all"
                           />
                         </div>
@@ -519,6 +528,8 @@ export default function Login() {
                           required
                           value={recNewPw}
                           onChange={(e) => setRecNewPw(e.target.value)}
+                          id="recovery-new-password"
+                          aria-label="Nouveau mot de passe"
                           className="w-full bg-white/[0.03] border border-white/5 rounded-2xl px-5 py-4 text-[13px] font-bold text-white outline-none focus:border-indigo-500/40 transition-all"
                         />
                       </div>

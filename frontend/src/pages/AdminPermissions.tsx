@@ -7,7 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 const permissions = Object.values(PERMISSIONS);
 
 export default function AdminPermissions() {
-  const { user } = useAuth();
+  useAuth();
   const [rolePerms, setRolePerms] = useState<Record<string, Set<string>>>({});
   const [roles, setRoles] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -26,7 +26,7 @@ export default function AdminPermissions() {
         });
         setRolePerms(map);
         setRoles(data.roles.map((r: any) => r.role));
-      } catch (err) {
+      } catch {
         setError("Impossible de charger les permissions. Veuillez réessayer.");
       } finally {
         setLoading(false);

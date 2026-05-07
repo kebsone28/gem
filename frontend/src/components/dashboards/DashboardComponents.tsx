@@ -1,4 +1,5 @@
-﻿ 
+﻿/* eslint-disable no-inline-styles */
+ 
 import React from 'react';
 import {
   TrendingUp,

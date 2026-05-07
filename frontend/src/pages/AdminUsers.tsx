@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 import { appSecurity } from '../services/appSecurity';
 import { useAuth } from '../contexts/AuthContext';
-import { PageContainer, PageHeader, ContentArea } from '../components';
+import { PageContainer, PageHeader, ContentArea, Modal } from '../components';
 import {
   PERMISSION_LABELS,
   PERMISSIONS,
@@ -168,7 +168,10 @@ let _toastId = 0;
 // ─── Composant principal ─────────────────────────────────────────────────────
 export default function AdminUsers() {
   const navigate = useNavigate();
-  const [applyingRoleDefaults, setApplyingRoleDefaults] = useState(false);
+    const [applyingRoleDefaults, setApplyingRoleDefaults] = useState(false);
+    const [confirmApplyOpen, setConfirmApplyOpen] = useState(false);
+    const [pendingApplyPerms, setPendingApplyPerms] = useState<string[] | null>(null);
+    const [pendingApplyRole, setPendingApplyRole] = useState<string | null>(null);
   const { user, impersonate } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [teams, setTeams] = useState<any[]>([]);
@@ -692,6 +695,49 @@ export default function AdminUsers() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Apply-to-role Confirmation Modal */}
+      <Modal
+        isOpen={confirmApplyOpen}
+        onClose={() => setConfirmApplyOpen(false)}
+        title={`Confirmer l'écrasement des permissions`}
+        actions={
+          <>
+            <button
+              type="button"
+              onClick={() => setConfirmApplyOpen(false)}
+              className="px-4 py-2 rounded-lg bg-gray-200 text-gray-800 mr-2"
+            >
+              Annuler
+            </button>
+            <button
+              type="button"
+              onClick={async () => {
+                if (!pendingApplyRole || !pendingApplyPerms) return setConfirmApplyOpen(false);
+                try {
+                  setApplyingRoleDefaults(true);
+                  await adminPermissionsService.updateRolePermissions(pendingApplyRole, pendingApplyPerms);
+                  toast.success('Matrice mise à jour pour le rôle');
+                } catch (err: any) {
+                  logger.error('Apply role defaults failed', err);
+                  toast.error('Erreur lors de la mise à jour de la matrice');
+                } finally {
+                  setApplyingRoleDefaults(false);
+                  setConfirmApplyOpen(false);
+                  setPendingApplyPerms(null);
+                  setPendingApplyRole(null);
+                }
+              }}
+              className="px-4 py-2 rounded-lg bg-emerald-600 text-white"
+            >
+              Confirmer
+            </button>
+          </>
+        }
+      >
+        <p className="text-sm text-slate-400">Vous allez écraser la configuration par défaut du rôle <strong>{pendingApplyRole}</strong>.</p>
+        <p className="text-sm text-slate-400 mt-3">Nombre de permissions à appliquer : <strong>{pendingApplyPerms?.length ?? 0}</strong></p>
+      </Modal>
 
       {/* Reset Password Modal */}
       <AnimatePresence>
@@ -1409,26 +1455,17 @@ export default function AdminUsers() {
                                   type="button"
                                   onClick={async () => {
                                     if (!form.role) return toast.error('Rôle manquant');
-                                    const confirmMsg = `Vous êtes sur le point d'écraser la configuration par défaut du rôle "${form.role}". Continuer ?`;
-                                    if (!window.confirm(confirmMsg)) return;
-                                    try {
-                                      setApplyingRoleDefaults(true);
-                                      const currentRole = normalizeRole(form.role) || (form.role as PermissionUserRole);
-                                      const allValues = Object.values(PERMISSIONS) as string[];
-                                      const perms = allValues.filter((value) => {
-                                        const isChecked = (form.permissions === null || form.permissions === undefined)
-                                          ? (ROLE_PERMISSIONS[currentRole] || []).includes(value)
-                                          : (form.permissions || []).includes(value);
-                                        return isChecked;
-                                      });
-                                      await adminPermissionsService.updateRolePermissions(form.role, perms);
-                                      toast.success('Matrice mise à jour pour le rôle');
-                                    } catch (err: any) {
-                                      logger.error('Apply role defaults failed', err);
-                                      toast.error('Erreur lors de la mise à jour de la matrice');
-                                    } finally {
-                                      setApplyingRoleDefaults(false);
-                                    }
+                                    const currentRole = normalizeRole(form.role) || (form.role as PermissionUserRole);
+                                    const allValues = Object.values(PERMISSIONS) as string[];
+                                    const perms = allValues.filter((value) => {
+                                      const isChecked = (form.permissions === null || form.permissions === undefined)
+                                        ? (ROLE_PERMISSIONS[currentRole] || []).includes(value)
+                                        : (form.permissions || []).includes(value);
+                                      return isChecked;
+                                    });
+                                    setPendingApplyPerms(perms);
+                                    setPendingApplyRole(form.role);
+                                    setConfirmApplyOpen(true);
                                   }}
                                   disabled={applyingRoleDefaults}
                                   className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[12px] font-bold uppercase tracking-wider border border-emerald-600 transition-all disabled:opacity-50"

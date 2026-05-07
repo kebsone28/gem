@@ -1,5 +1,4 @@
-﻿ 
-/**
+﻿/**
  * AudioService (Axe 4 — Plan d'Amélioration Continue GEM-SAAS)
  * Fournit des feedbacks sonores subtils pour améliorer l'immersion et la réactivité.
  */
@@ -73,13 +72,18 @@ class AudioService {
 
   private isReadyToPlay() {
     this.attachUnlockListeners();
-    this.initContext();
+    // Do NOT create/init the AudioContext here — creating it without a user
+    // gesture can trigger browser policies that block playback. Require an
+    // explicit unlock() (triggered by a user gesture) before playing.
     if (!this.context) return false;
     if (this.context.state !== 'running' || !this.unlocked) return false;
     return true;
   }
 
   public async unlock() {
+    // Ensure context exists and try to resume — this should be called from a
+    // user gesture (click/tap) to satisfy browser autoplay policies.
+    this.initContext();
     return this.resumeFromGesture();
   }
 

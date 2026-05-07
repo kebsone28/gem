@@ -1,4 +1,5 @@
 
+
 /**
  * AdminDashboardEnhanced - Console d'Administration avec paramètres ajustables
  * Exemple d'implémentation avec ConsoleSettings et useConsoleLayout

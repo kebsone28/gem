@@ -1,4 +1,4 @@
-/* eslint-disable no-inline-styles */
+
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
 import QRCode from 'qrcode';
 import {
@@ -1489,7 +1489,7 @@ export default function InternalKoboSubmissions() {
     }
   };
 
-  const handleDeleteSubmission = async (_submissionId?: string) => {
+  const handleDeleteSubmission = async () => {
     try {
       // API call to delete submission would go here.
       // await deleteInternalKoboSubmission(_submissionId);

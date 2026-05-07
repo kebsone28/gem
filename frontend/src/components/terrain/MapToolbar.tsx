@@ -1,3 +1,4 @@
+/* eslint-disable no-inline-styles */
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';

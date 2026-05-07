@@ -1,3 +1,4 @@
+/* eslint-disable no-inline-styles */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertCircle,
@@ -48,7 +49,6 @@ import {
   isInternalGemFieldVisible,
   isTruthyGemValue,
   validateInternalGemFields,
-  validateInternalGemRequiredFields,
 } from './internalKoboFormDefinition';
 import type { InternalGemField } from './internalKoboFormDefinition';
 import {
@@ -2122,7 +2122,7 @@ export const InternalKoboForm: React.FC<InternalKoboFormProps> = ({
           const isQueuedPhoto = attachment?.status === 'queued' || attachment?.storage?.startsWith('embedded');
           const current = String(values[field.name] || '');
           const hasVal = hasInternalGemValue(current);
-          const isReq = field.required && !hasVal;
+          
 
           return (
             <div className="rounded-2xl border border-dashed border-white/12 bg-slate-900/45 p-3">

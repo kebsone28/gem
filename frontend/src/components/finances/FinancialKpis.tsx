@@ -1,3 +1,4 @@
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { DollarSign, Users, Truck, Package, TrendingUp, Target, ArrowUpRight, Wrench } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';

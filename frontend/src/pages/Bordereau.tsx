@@ -42,7 +42,6 @@ import {
   DASHBOARD_PRIMARY_BUTTON,
   DASHBOARD_SECTION_SURFACE,
 } from '../components/dashboards/DashboardComponents';
-
 const Bordereau = () => {
   const navigate = useNavigate();
   const { project } = useProject();

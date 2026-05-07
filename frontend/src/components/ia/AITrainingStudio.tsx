@@ -1,3 +1,4 @@
+
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Archive,
@@ -514,23 +515,25 @@ export default function AITrainingStudio({
             {filteredEntries.map((entry) => (
               <div
                 key={entry.id}
-                role="button"
-                tabIndex={0}
-                onClick={() => handleSelectEntry(entry)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault();
-                    handleSelectEntry(entry);
-                  }
-                }}
-                className={`cursor-pointer rounded-[1.5rem] border p-4 transition-colors ${
+                className={`rounded-[1.5rem] border p-4 transition-colors ${
                   selectedEntryId === entry.id
                     ? 'border-cyan-400/30 bg-cyan-400/10'
                     : 'border-white/8 bg-white/[0.03] hover:bg-white/[0.05]'
                 }`}
               >
                 <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => handleSelectEntry(entry)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        handleSelectEntry(entry);
+                      }
+                    }}
+                    className="min-w-0"
+                  >
                     <p className="text-sm font-black leading-6 text-white">{entry.question}</p>
                     <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
                       Mise à jour {new Date(entry.updatedAt).toLocaleString()}

@@ -1,3 +1,4 @@
+/* eslint-disable no-inline-styles */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useCallback, useMemo } from 'react';
 import { List } from 'react-window';
@@ -405,8 +406,8 @@ export const HouseholdListView: React.FC<HouseholdListViewProps> = ({
                 }}
                 className="custom-scrollbar"
                 style={{ 
-                    '--height': height ? `${height}px` : '100%', 
-                    '--width': width ? `${width}px` : '100%' 
+                  '--height': height ? `${height}px` : '100%', 
+                  '--width': width ? `${width}px` : '100%' 
                 } as React.CSSProperties}
               />
             )}

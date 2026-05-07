@@ -1,3 +1,4 @@
+/* eslint-disable no-inline-styles */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState } from 'react';
 import logger from '../../utils/logger';
