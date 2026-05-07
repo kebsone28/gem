@@ -1489,10 +1489,11 @@ export default function InternalKoboSubmissions() {
     }
   };
 
-  const handleDeleteSubmission = async (_submissionId?: string) => {
+  const handleDeleteSubmission = async (submissionId?: string) => {
+    void submissionId;
     try {
       // API call to delete submission would go here.
-      // await deleteInternalKoboSubmission(_submissionId);
+      // await deleteInternalKoboSubmission(submissionId);
       setFormManagerMessage('Soumission supprimee avec succes.');
       await loadSubmissions();
     } catch (err) {
