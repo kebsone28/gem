@@ -3,16 +3,11 @@ import React, { useState, useEffect } from 'react';
 import { 
   ClipboardList, 
   Search, 
-  Info, 
-  AlertCircle, 
-  CheckCircle2, 
   FileText, 
   ArrowLeft, 
   ChevronRight,
-  Database,
-  RefreshCcw,
-  Cloud,
   CloudOff,
+  RefreshCcw,
   LayoutGrid,
   List as ListIcon
 } from 'lucide-react';
@@ -43,7 +38,7 @@ const GemCollectPage: React.FC = () => {
     try {
       const forms = await fetchInternalKoboFormDefinitions();
       setAvailableForms(forms.filter(f => f.active !== false));
-    } catch (error) {
+    } catch {
       toast.error('Erreur lors du chargement des formulaires');
     } finally {
       setIsLoading(false);
@@ -61,7 +56,7 @@ const GemCollectPage: React.FC = () => {
       toast.success('Formulaire mis en attente de synchronisation');
       setValues({});
       setSelectedFormKey(null); // Return to list after successful save
-    } catch (error) {
+    } catch {
       toast.error('Erreur lors de l\'enregistrement');
     } finally {
       setIsSaving(false);
@@ -143,12 +138,16 @@ const GemCollectPage: React.FC = () => {
           <div className="flex items-center gap-3 p-1.5 bg-white/5 rounded-2xl border border-white/10">
             <button 
               onClick={() => setViewMode('grid')}
+              aria-label="Vue en grille"
+              title="Vue en grille"
               className={`p-2.5 rounded-xl transition-all ${viewMode === 'grid' ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'text-slate-400 hover:text-white'}`}
             >
               <LayoutGrid size={20} />
             </button>
             <button 
               onClick={() => setViewMode('list')}
+              aria-label="Vue en liste"
+              title="Vue en liste"
               className={`p-2.5 rounded-xl transition-all ${viewMode === 'list' ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'text-slate-400 hover:text-white'}`}
             >
               <ListIcon size={20} />
@@ -156,8 +155,9 @@ const GemCollectPage: React.FC = () => {
             <div className="w-px h-6 bg-white/10 mx-1" />
             <button 
               onClick={loadForms}
-              className="p-2.5 rounded-xl text-slate-400 hover:text-white transition-all hover:bg-white/5"
+              aria-label="Rafraîchir la liste"
               title="Rafraîchir la liste"
+              className="p-2.5 rounded-xl text-slate-400 hover:text-white transition-all hover:bg-white/5"
             >
               <RefreshCcw size={20} className={isLoading ? 'animate-spin' : ''} />
             </button>

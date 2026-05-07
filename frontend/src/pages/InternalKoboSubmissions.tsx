@@ -1,3 +1,4 @@
+/* eslint-disable no-inline-styles */
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
 import QRCode from 'qrcode';
 import {
@@ -923,6 +924,7 @@ const normalizeBucketLabel = (bucket: 'status' | 'role' | 'sync' | 'version', va
   return value ? `v${value}` : 'Version inconnue';
 };
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const getSubmissionBucketCounts = (
   submissions: InternalKoboSubmissionRecord[],
   bucket: 'status' | 'role' | 'sync' | 'version'
@@ -1487,10 +1489,10 @@ export default function InternalKoboSubmissions() {
     }
   };
 
-  const handleDeleteSubmission = async (id: string) => {
+  const handleDeleteSubmission = async (_submissionId?: string) => {
     try {
       // API call to delete submission would go here.
-      // await deleteInternalKoboSubmission(id);
+      // await deleteInternalKoboSubmission(_submissionId);
       setFormManagerMessage('Soumission supprimee avec succes.');
       await loadSubmissions();
     } catch (err) {
@@ -1914,7 +1916,7 @@ export default function InternalKoboSubmissions() {
     return cleanRow;
   };
 
-  const buildBuilderSurvey = (questions: BuilderQuestion[] = builderQuestions) => {
+  const buildBuilderSurvey = () => {
     const rows: Array<Record<string, unknown>> = [
       { type: 'start', name: 'start' },
       { type: 'end', name: 'end' },
@@ -2212,8 +2214,6 @@ export default function InternalKoboSubmissions() {
     try {
       const questions = getInternalGemBuilderQuestions();
       const title = 'GEM Collect Natif Dynamique';
-      const formId = normalizeBuilderName(`${title}_${Date.now()}`, 'gem_collect_natif');
-      
       const result = await createInternalKoboFormDefinition({
         title,
         description: 'Structure native GEM migree en definition dynamique.',
@@ -2221,7 +2221,7 @@ export default function InternalKoboSubmissions() {
         country: 'Senegal',
         sourceType: 'internal_gem',
         activate: true,
-        survey: buildBuilderSurvey(questions),
+        survey: buildBuilderSurvey(),
         choices: buildBuilderChoices(questions),
         defaultLanguage: projectDraft.defaultLanguage,
         settings: {
@@ -2359,7 +2359,7 @@ export default function InternalKoboSubmissions() {
 
   const autoReportBuckets = useMemo(() => {
     return [] as Array<{ title: string; bucket: string; rows: Array<{ key: string; label: string; value: number }> }>;
-  }, [submissions, previewDefinition]);
+  }, []);
 
   const deployedProjectForms = importedForms.filter((form) => getProjectStatus(form) === 'deployed');
   const selectedProjectForm = deployedProjectForms.find((form) => form.formKey === selectedProjectFormKey) || deployedProjectForms[0] || null;
@@ -3690,12 +3690,6 @@ export default function InternalKoboSubmissions() {
                           >
                             {dropBefore ? <div className="mb-2 h-1 rounded-full bg-blue-500 shadow-[0_0_18px_rgba(59,130,246,0.7)]" /> : null}
                             <div
-                              role="button"
-                              tabIndex={0}
-                              onClick={() => setSelectedBuilderQuestionId(question.id)}
-                              onKeyDown={(event) => {
-                                if (event.key === 'Enter' || event.key === ' ') setSelectedBuilderQuestionId(question.id);
-                              }}
                               className={`grid w-full grid-cols-[44px_54px_1fr_auto] items-stretch overflow-hidden rounded-xl border text-left transition-all ${
                                 active
                                   ? 'border-blue-400 bg-blue-50 shadow-sm ring-4 ring-blue-100'
@@ -3722,7 +3716,15 @@ export default function InternalKoboSubmissions() {
                                   <Icon size={16} />
                                 </span>
                               </span>
-                              <span className="min-w-0 p-4">
+                              <span
+                                role="button"
+                                tabIndex={0}
+                                onClick={() => setSelectedBuilderQuestionId(question.id)}
+                                onKeyDown={(event) => {
+                                  if (event.key === 'Enter' || event.key === ' ') setSelectedBuilderQuestionId(question.id);
+                                }}
+                                className="min-w-0 p-4"
+                              >
                                 <span className="flex flex-wrap items-center gap-2">
                                   <span className="rounded bg-slate-100 px-2 py-1 text-[10px] font-black text-slate-500">#{index + 1}</span>
                                   <span className="text-sm font-black text-slate-950">
@@ -4901,7 +4903,7 @@ export default function InternalKoboSubmissions() {
                               <label htmlFor="export-media-urls" className="text-xs font-semibold text-slate-700">Inclure les URL des medias (photos, audios)</label>
                             </div>
                             <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3">
-                              <select className="flex-1 bg-transparent text-xs font-semibold text-slate-700 outline-none">
+                                  <select title="Format de valeur et d'en-tete" aria-label="Format de valeur et d'en-tete" className="flex-1 bg-transparent text-xs font-semibold text-slate-700 outline-none">
                                 <option>Format de valeur et d'en-tete : Valeurs et étiquettes XML</option>
                                 <option>Format de valeur et d'en-tete : Étiquettes uniquement</option>
                               </select>
@@ -5586,6 +5588,7 @@ export default function InternalKoboSubmissions() {
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/95 p-4 backdrop-blur-md">
           <button
             onClick={() => setSelectedGalleryImage(null)}
+            aria-label="Fermer la vue" 
             className="absolute right-6 top-6 rounded-full bg-white/10 p-3 text-white transition hover:bg-white/20"
           >
             <X size={28} />
@@ -5623,7 +5626,7 @@ export default function InternalKoboSubmissions() {
           <div className="flex h-full flex-col">
             <div className="flex items-center justify-between border-b border-slate-100 p-4">
               <h3 className="text-sm font-black uppercase tracking-widest text-slate-900">Colonnes du tableau</h3>
-              <button onClick={() => setShowTableFieldsPanel(false)} className="text-slate-400 hover:text-slate-600">
+              <button onClick={() => setShowTableFieldsPanel(false)} aria-label="Fermer panneau colonnes" className="text-slate-400 hover:text-slate-600">
                 <X size={20} />
               </button>
             </div>
