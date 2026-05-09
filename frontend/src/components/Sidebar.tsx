@@ -305,7 +305,7 @@ export default function Sidebar() {
         category: 'SYSTÈME',
       },
     ],
-    [PERMISSIONS, canAccessCharges, isMaster, missionLabel]
+    [PERMISSIONS, canAccessCharges, isMaster, missionLabel, nRole, visibleMissionPanels]
   );
 
   // 🚀 [REACTIVITY] Re-calculate items when user or permissions change
