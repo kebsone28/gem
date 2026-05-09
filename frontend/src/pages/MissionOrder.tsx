@@ -18,7 +18,9 @@ import { toast } from 'react-hot-toast';
 import logger from '../utils/logger';
 import * as missionApprovalService from '../services/missionApprovalService';
 import * as missionService from '../services/missionService';
+import { organizationService } from '../services/organizationService';
 import { normalizeMissionApprovalRole } from '../utils/roleUtils';
+import { ROLES, normalizeRole } from '../utils/permissions';
 
 // Services & Store
 import { generateMissionOrderPDF } from '../services/missionOrderGenerator';
@@ -113,6 +115,17 @@ export default function MissionOrder() {
   const { activeProjectId } = useProject();
   const [searchParams, setSearchParams] = useSearchParams();
 
+  // Organization Config for DG Visibility
+  const [orgConfig, setOrgConfig] = useState<any>(null);
+  const nRole = useMemo(() => normalizeRole(user?.role), [user?.role]);
+  const isDG = nRole === ROLES.PROQUELEC_DG;
+
+  useEffect(() => {
+    organizationService.getConfig().then(setOrgConfig).catch(err => {
+      logger.error('[MissionOrder] Failed to fetch org config', err);
+    });
+  }, []);
+
   // UI Local State
   const [showTemplates, setShowTemplates] = useState(false);
   const [showConfig, setShowConfig] = useState(false);
@@ -138,8 +151,12 @@ export default function MissionOrder() {
       return next;
     });
   const autosaveTimerRef = useRef<number | null>(null);
-  // Toujours initialiser à 'prep' pour éviter l'accès prématuré à state
-  const [activeTab, setActiveTab] = useState<'prep' | 'report' | 'approval'>('prep');
+  // Toujours initialiser à 'prep' pour éviter l'accès prématuré à state, ou utiliser le paramètre URL
+  const [activeTab, setActiveTab] = useState<'prep' | 'report' | 'approval'>(() => {
+    const t = searchParams.get('tab');
+    if (t === 'prep' || t === 'report' || t === 'approval') return t as any;
+    return 'prep';
+  });
 
   // Sélecteur de mission pour l'archivage
   const [selectedArchiveMission, setSelectedArchiveMission] = useState<string | null>(null);
@@ -981,36 +998,42 @@ export default function MissionOrder() {
                 <div className="flex items-center gap-2 mb-5">
                   {/* Segmented control */}
                   <div className="flex-1 flex gap-1.5 p-1 bg-slate-900/60 dark:bg-slate-800/60 border border-white/5 rounded-2xl min-w-0 overflow-x-auto no-scrollbar shadow-inner">
-                    <button
-                      onClick={() => setActiveTab('prep')}
-                      className={`flex-1 shrink-0 px-3 py-2 text-[11px] font-black uppercase tracking-wide rounded-xl transition-all duration-200 whitespace-nowrap ${
-                        activeTab === 'prep'
-                          ? 'bg-slate-900 dark:bg-slate-900 text-indigo-400 shadow-md shadow-black/10'
-                          : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-                      }`}
-                    >
-                      📋 Préparation
-                    </button>
-                    <button
-                      onClick={() => setActiveTab('report')}
-                      className={`flex-1 shrink-0 px-3 py-2 text-[11px] font-black uppercase tracking-wide rounded-xl transition-all duration-200 whitespace-nowrap ${
-                        activeTab === 'report'
-                          ? 'bg-slate-900 dark:bg-slate-900 text-emerald-400 shadow-md shadow-black/10'
-                          : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-                      }`}
-                    >
-                      📝 Rapport
-                    </button>
-                    <button
-                      onClick={() => setActiveTab('approval')}
-                      className={`flex-1 shrink-0 px-3 py-2 text-[11px] font-black uppercase tracking-wide rounded-xl transition-all duration-200 whitespace-nowrap ${
-                        activeTab === 'approval'
-                          ? 'bg-slate-900 dark:bg-slate-900 text-amber-400 shadow-lg shadow-black/20 ring-1 ring-white/5'
-                          : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-                      }`}
-                    >
-                      ✅ Approbation
-                    </button>
+                    {(!isDG || (orgConfig?.mission_panels_dg || []).includes('prep')) && (
+                      <button
+                        onClick={() => setActiveTab('prep')}
+                        className={`flex-1 shrink-0 px-3 py-2 text-[11px] font-black uppercase tracking-wide rounded-xl transition-all duration-200 whitespace-nowrap ${
+                          activeTab === 'prep'
+                            ? 'bg-slate-900 dark:bg-slate-900 text-indigo-400 shadow-md shadow-black/10'
+                            : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                        }`}
+                      >
+                        📋 Préparation
+                      </button>
+                    )}
+                    {(!isDG || (orgConfig?.mission_panels_dg || []).includes('report')) && (
+                      <button
+                        onClick={() => setActiveTab('report')}
+                        className={`flex-1 shrink-0 px-3 py-2 text-[11px] font-black uppercase tracking-wide rounded-xl transition-all duration-200 whitespace-nowrap ${
+                          activeTab === 'report'
+                            ? 'bg-slate-900 dark:bg-slate-900 text-emerald-400 shadow-md shadow-black/10'
+                            : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                        }`}
+                      >
+                        📝 Rapport
+                      </button>
+                    )}
+                    {(!isDG || (orgConfig?.mission_panels_dg || []).includes('approval')) && (
+                      <button
+                        onClick={() => setActiveTab('approval')}
+                        className={`flex-1 shrink-0 px-3 py-2 text-[11px] font-black uppercase tracking-wide rounded-xl transition-all duration-200 whitespace-nowrap ${
+                          activeTab === 'approval'
+                            ? 'bg-slate-900 dark:bg-slate-900 text-amber-400 shadow-lg shadow-black/20 ring-1 ring-white/5'
+                            : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                        }`}
+                      >
+                        ✅ Approbation
+                      </button>
+                    )}
                   </div>
                   {/* Bouton Focus Mode */}
                   <button

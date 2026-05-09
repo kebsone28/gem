@@ -38,8 +38,8 @@ import {
   ROLES,
   type UserRole,
 } from '../utils/permissions';
-import { useProject } from '../contexts/ProjectContext';
 import { NotificationCenter } from './layout';
+import { organizationService } from '../services/organizationService';
 
 /**
  * Sidebar – Navigation principale Wanekoo (Deep Navy).
@@ -94,6 +94,13 @@ export default function Sidebar() {
       window.localStorage.setItem('gem-sidebar-density', nextMode === 'wide' ? 'wide' : 'compact');
     }
   };
+
+  const [orgConfig, setOrgConfig] = useState<any>(null);
+  useEffect(() => {
+    organizationService.getConfig().then(setOrgConfig).catch(() => {});
+  }, []);
+
+  const visibleMissionPanels = useMemo(() => orgConfig?.mission_panels_dg || [], [orgConfig]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -214,6 +221,7 @@ export default function Sidebar() {
         label: missionLabel,
         title: 'Planifiez vos prochaines missions et objectifs',
         permission: PERMISSIONS.CREER_MISSION,
+        visible: nRole === ROLES.PROQUELEC_DG ? visibleMissionPanels.length > 0 : true,
         category: 'OPÉRATIONS',
       },
       {

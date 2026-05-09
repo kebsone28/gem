@@ -11,6 +11,9 @@ import { missionStatsService } from '../../services/missionStatsService';
 import { useAuth } from '../../contexts/AuthContext';
 import { ConsoleSettings, type ConsoleSettingsConfig } from '../../components/admin/ConsoleSettings';
 import { useConsoleLayout } from '../../hooks/useConsoleLayout';
+import { organizationService } from '../../services/organizationService';
+import { ROLES, normalizeRole } from '../../utils/permissions';
+import { FileText, CheckCircle, Shield } from 'lucide-react';
 
 // ── MODULE ARCHITECTURE ──
 import { DashboardHeader } from './admin/components/DashboardHeader';
@@ -48,6 +51,14 @@ export default function AdminDashboard() {
   const { project } = useProject();
   const { peut, PERMISSIONS } = usePermissions();
   const { getLabel } = useLabels();
+
+  const [orgConfig, setOrgConfig] = useState<any>(null);
+  const nRole = useMemo(() => normalizeRole(user?.role), [user?.role]);
+  const isDG = nRole === ROLES.PROQUELEC_DG;
+
+  useEffect(() => {
+    organizationService.getConfig().then(setOrgConfig).catch(() => {});
+  }, []);
 
   // ── CONSOLE CUSTOMIZATION ──
   const [consoleSettings, setConsoleSettings] = useState<ConsoleSettingsConfig>(DEFAULT_CONSOLE_SETTINGS);
@@ -181,6 +192,61 @@ export default function AdminDashboard() {
             koboConnected={koboConnected}
             exportAvailable={exportAvailable}
           />
+
+          {/* 🎯 DG QUICK ACCESS MODULES */}
+          {isDG && orgConfig?.mission_panels_dg && orgConfig.mission_panels_dg.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+              {[
+                {
+                  id: 'prep',
+                  label: 'Stratégie',
+                  desc: 'Planning & Cadrage',
+                  icon: FileText,
+                  color: 'text-sky-400',
+                  bg: 'bg-sky-400/10',
+                  border: 'border-sky-400/20',
+                  tab: 'prep'
+                },
+                {
+                  id: 'report',
+                  label: 'Exécution',
+                  desc: 'Rapports Terrain',
+                  icon: CheckCircle,
+                  color: 'text-emerald-400',
+                  bg: 'bg-emerald-400/10',
+                  border: 'border-emerald-400/20',
+                  tab: 'report'
+                },
+                {
+                  id: 'approval',
+                  label: 'Approbations',
+                  desc: 'Validations Métier',
+                  icon: Shield,
+                  color: 'text-purple-400',
+                  bg: 'bg-purple-400/10',
+                  border: 'border-purple-400/20',
+                  tab: 'approval'
+                }
+              ].filter(m => orgConfig.mission_panels_dg.includes(m.id)).map((module) => (
+                <button
+                  key={module.id}
+                  onClick={() => navigate(`/admin/mission?tab=${module.tab}`)}
+                  className={`flex flex-col items-start p-6 rounded-3xl border ${module.border} ${module.bg} transition-all hover:scale-[1.02] active:scale-[0.98] group relative overflow-hidden`}
+                >
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-3xl group-hover:bg-white/10 transition-colors" />
+                  <div className={`p-3 rounded-2xl mb-4 ${module.bg} ${module.color} ring-1 ring-white/10`}>
+                    <module.icon size={24} />
+                  </div>
+                  <h3 className="text-lg font-black uppercase tracking-tight text-white">{module.label}</h3>
+                  <p className="text-sm text-slate-400 mt-1 font-medium">{module.desc}</p>
+                  <div className={`mt-4 text-[10px] font-black uppercase tracking-[0.2em] ${module.color} flex items-center gap-2`}>
+                    Accéder au module
+                    <span className="w-1 h-1 rounded-full bg-current animate-pulse" />
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
 
           <section className="rounded-[1.55rem] border border-white/8 bg-[linear-gradient(180deg,rgba(15,23,42,0.76),rgba(2,6,23,0.88))] p-4 shadow-[0_18px_50px_rgba(2,6,23,0.22)] sm:rounded-[1.9rem] sm:p-5">
             <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
