@@ -34,12 +34,10 @@ import {
   normalizeRole,
   type UserRole as PermissionUserRole,
 } from '../utils/permissions';
-import adminPermissionsService from '../services/adminPermissionsService';
-import { useNavigate } from 'react-router-dom';
-import toast from 'react-hot-toast';
 import { userService } from '../services/userService';
 import { organizationService } from '../services/organizationService';
 import { auditService } from '../services/auditService';
+import projectService from '../services/projectService';
 import logger from '../utils/logger';
 import { isMasterAdminEmail } from '../utils/roleUtils';
 import {
@@ -247,6 +245,7 @@ const emptyForm = (): UserForm => ({
   active: true,
   requires2FA: false,
   permissions: [],
+  assignedProjectIds: [], // New field for UI management
 });
 
 // ─── Composant principal ─────────────────────────────────────────────────────
@@ -262,6 +261,7 @@ export default function AdminUsers() {
   const [loading, setLoading] = useState(true);
 
   const [search, setSearch] = useState('');
+  const [projects, setProjects] = useState<any[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState<UserForm>(emptyForm());
@@ -287,12 +287,14 @@ export default function AdminUsers() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [u, t] = await Promise.all([
+      const [u, t, p] = await Promise.all([
         userService.getUsers(),
-        db.teams.toArray(), // Keep teams in Dexie for now or fetch if needed
+        db.teams.toArray(),
+        projectService.getProjects(),
       ]);
       setUsers(u);
       setTeams(t);
+      setProjects(p);
     } catch (err) {
       toast.error('Erreur lors du chargement des données');
     } finally {
@@ -367,6 +369,15 @@ export default function AdminUsers() {
       return;
     }
     setEditId(u.id);
+    
+    // Compute which projects this user is assigned to
+    const userProjects = projects
+      .filter(p => {
+        const assigned = p.config?.assignedUsers || [];
+        return assigned.includes(u.id);
+      })
+      .map(p => p.id);
+
     setForm({
       email: u.email,
       notificationEmail: (u as any).notificationEmail || '',
@@ -377,7 +388,8 @@ export default function AdminUsers() {
       active: u.active ?? true,
       requires2FA: !!u.requires2FA,
       permissions: u.permissions ?? undefined,
-    });
+      assignedProjectIds: userProjects,
+    } as any);
     setShowForm(true);
     setShowPass(false);
   };
@@ -438,6 +450,7 @@ export default function AdminUsers() {
       return;
     }
     try {
+      let finalUserId = editId;
       if (editId) {
         // Find existing user to log changes
         const oldUser = users.find((u) => u.id === editId);
@@ -454,7 +467,8 @@ export default function AdminUsers() {
         }
         toast.success(`✏️  Compte "${form.name}" mis à jour sur le serveur.`);
       } else {
-        await userService.createUser(form);
+        const newUser = await userService.createUser(form);
+        finalUserId = newUser.id;
         if (user) {
           auditService.logAction(
             user,
@@ -466,6 +480,32 @@ export default function AdminUsers() {
         }
         toast.success(`✅  Compte "${form.name}" créé sur le serveur.`);
       }
+
+      // ── Update Project Assignments ──
+      if (finalUserId) {
+        const assignedIds = (form as any).assignedProjectIds || [];
+        const updatePromises = projects.map(async (p) => {
+          const currentAssigned = p.config?.assignedUsers || [];
+          const isCurrentlyAssigned = currentAssigned.includes(finalUserId);
+          const shouldBeAssigned = assignedIds.includes(p.id);
+
+          if (shouldBeAssigned && !isCurrentlyAssigned) {
+            // Add user to project
+            const nextAssigned = [...currentAssigned, finalUserId];
+            await projectService.updateProject(p.id, {
+              config: { ...p.config, assignedUsers: nextAssigned }
+            });
+          } else if (!shouldBeAssigned && isCurrentlyAssigned) {
+            // Remove user from project
+            const nextAssigned = currentAssigned.filter((id: string) => id !== finalUserId);
+            await projectService.updateProject(p.id, {
+              config: { ...p.config, assignedUsers: nextAssigned }
+            });
+          }
+        });
+        await Promise.all(updatePromises);
+      }
+
       setShowForm(false);
       loadData(); // Refresh list
     } catch (err: any) {
@@ -1512,6 +1552,75 @@ export default function AdminUsers() {
                     </select>
                   </div>
                 )}
+
+                {/* 📂 Projets assignés */}
+                <div className="space-y-3">
+                  <label className="text-xs font-black text-slate-500 uppercase tracking-widest block mb-2">
+                    Projets assignés *
+                  </label>
+                  <div className="grid grid-cols-1 gap-2 bg-slate-950 p-4 rounded-2xl border border-slate-800">
+                    {projects.length === 0 ? (
+                      <p className="text-slate-600 text-[10px] italic">Aucun projet disponible</p>
+                    ) : (
+                      projects.map((p) => {
+                        const isAssigned = ((form as any).assignedProjectIds || []).includes(p.id);
+                        return (
+                          <label
+                            key={p.id}
+                            className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${
+                              isAssigned
+                                ? 'bg-indigo-500/10 border-indigo-500/30'
+                                : 'bg-slate-900/50 border-slate-800/50 hover:border-slate-700'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <input
+                                type="checkbox"
+                                className="hidden"
+                                checked={isAssigned}
+                                onChange={() => {
+                                  setForm((f: any) => {
+                                    const current = f.assignedProjectIds || [];
+                                    const next = current.includes(p.id)
+                                      ? current.filter((id: string) => id !== p.id)
+                                      : [...current, p.id];
+                                    return { ...f, assignedProjectIds: next };
+                                  });
+                                }}
+                              />
+                              <div
+                                className={`w-4 h-4 flex items-center justify-center rounded border transition-all ${
+                                  isAssigned
+                                    ? 'bg-indigo-500 border-indigo-500 text-white'
+                                    : 'border-slate-600'
+                                }`}
+                              >
+                                {isAssigned && <CheckCircle2 size={12} />}
+                              </div>
+                              <div className="flex flex-col">
+                                <span className={`text-xs font-bold ${isAssigned ? 'text-indigo-400' : 'text-slate-400'}`}>
+                                  {p.name}
+                                </span>
+                                <span className="text-[8px] text-slate-600 uppercase font-bold tracking-widest">
+                                  {p.client || 'Sans Client'}
+                                </span>
+                              </div>
+                            </div>
+                            
+                            {isAssigned && (
+                              <span className="text-[8px] px-2 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 font-black uppercase tracking-widest">
+                                Accès Activé
+                              </span>
+                            )}
+                          </label>
+                        );
+                      })
+                    )}
+                  </div>
+                  <p className="mt-1 text-[10px] text-slate-500 italic">
+                    L'utilisateur ne pourra voir que les projets sélectionnés ici.
+                  </p>
+                </div>
 
                 {/* 2FA (Admin only) */}
                 {form.role === 'ADMIN_PROQUELEC' && (
