@@ -120,7 +120,7 @@ const PermissionRoute = ({
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
   if (!hasPermission(user, permission)) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/home" replace />;
   }
   return <>{children}</>;
 };
@@ -136,7 +136,7 @@ const RoleRoute = ({
   if (!user) return <Navigate to="/login" replace />;
   const role = normalizeRole(user.role);
   if (!role || !allowedRoles.includes(role)) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/home" replace />;
   }
   return <>{children}</>;
 };
@@ -228,7 +228,7 @@ function App() {
               path="/charges"
               element={
                 <ProtectedRoute>
-                  <RoleRoute allowedRoles={[ROLES.PROQUELEC_ADMIN, ROLES.PROQUELEC_DG, ROLES.PROQUELEC_COMPTABLE]}>
+                  <RoleRoute allowedRoles={[ROLES.ADMIN, ROLES.DG, ROLES.COMPTABLE]}>
                     <Charges />
                   </RoleRoute>
                 </ProtectedRoute>
@@ -464,7 +464,7 @@ function App() {
               path="/admin/project-creation"
               element={
                 <ProtectedRoute>
-                  <RoleRoute allowedRoles={[ROLES.PROQUELEC_ADMIN, ROLES.PROQUELEC_DG]}>
+                  <RoleRoute allowedRoles={[ROLES.ADMIN, ROLES.DG]}>
                     <AdminProjectCreation />
                   </RoleRoute>
                 </ProtectedRoute>

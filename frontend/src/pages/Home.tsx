@@ -72,11 +72,8 @@ export default function Home() {
       return;
     }
 
-    // Rediriger vers le dashboard si un projet est déjà sélectionné
-    if (selectedProject) {
-      navigate('/dashboard', { replace: true });
-    }
-  }, [user, selectedProject, navigate]);
+    // L'utilisateur reste sur Home pour choisir son projet activement
+  }, [user, navigate]);
 
   const getRoleColor = (role: string) => {
     switch (role) {
