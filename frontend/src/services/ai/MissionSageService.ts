@@ -74,6 +74,15 @@ export interface ExpertControlSheet {
   immediateAction?: string;
 }
 
+export interface AISuggestion {
+  id: string;
+  type: 'action' | 'form';
+  label: string;
+  description: string;
+  severity: 'info' | 'warning' | 'success' | 'error';
+  action: any;
+}
+
 // Type enrichi pour les réponses IA avec métadonnées détaillées
 export interface AIResponse {
   // Champs existants maintenus pour compatibilité
@@ -88,7 +97,10 @@ export interface AIResponse {
   severity?: SeverityType;
   recommendedAction?: string;
   controlSheet?: ExpertControlSheet | FicheControleTerrain;
-  _engine?: 'RULES' | 'CLAUDE' | 'RULES_FALLBACK' | 'CLAUDE_FALLBACK' | 'VISION' | 'VISION_ERROR';
+  _engine?: 'RULES' | 'PRIVATE_AI' | 'RULES_FALLBACK' | 'PRIVATE_AI_FALLBACK' | 'VISION' | 'VISION_ERROR';
+  
+  // Nouveaux champs pour les actions dynamiques (ex-Copilote)
+  suggestions?: AISuggestion[];
   
   // Nouveaux champs enrichis (optionnels pour compatibilité ascendante)
   domaine?: DomaineTechnique;
@@ -1229,7 +1241,7 @@ const SEMANTIC_KNOWLEDGE_LIBRARY: Record<SemanticEntryKey, SemanticKnowledgeEntr
       'La mission est-elle au bon statut avant la prochaine étape ?',
     ],
     references: ['MISSION_SAGE_INTEGRATION_README', 'Workflow OM interne'],
-    smartReplies: ['Comment créer une mission ?', 'Qui valide les OM ?', 'Voir mes missions', 'Comment certifier une mission ?'],
+    smartReplies: ['🚀 Créer une mission', 'Missions en attente', 'Qui valide les OM ?', 'Dashboard'],
     actionLine: 'Une mission mal cadrée au départ coûte toujours plus cher à corriger au moment de la validation.',
   },
   workflow: {
@@ -1531,6 +1543,18 @@ function buildSemanticFocus(query: string, entryKey: SemanticEntryKey): string {
     }
   }
 
+  if (entryKey === 'mission') {
+    if (/creer|nouveau|nouvelle|creation/.test(normalized)) {
+      return 'Pour créer une mission, utilisez le module dédié. Je peux vous y accompagner via le bouton ci-dessous.';
+    }
+    if (/kaffrine|region|zone/.test(normalized)) {
+      return 'Concernant la zone géographique (comme Kaffrine), assurez-vous que les agents affectés sont bien rattachés à cette région dans les paramètres pour éviter tout blocage de validation.';
+    }
+    if (/stat|nombre|volume|combien/.test(normalized)) {
+      return 'Le volume de missions est un indicateur de charge. Une forte concentration de missions non certifiées peut signaler un goulot d’étranglement au niveau de la validation Chef de Projet ou DG.';
+    }
+  }
+
   return '';
 }
 
@@ -1636,7 +1660,7 @@ const KNOWLEDGE = {
     'PROQUELEC est votre bastion SaaS de gestion énergétique. Il repose sur 4 piliers stratégiques : 🏗️ Terrain (Kobo), 📋 Logistique (Missions), 📊 Pilotage (Dashboard) et 💰 Finance (Contrôle).',
   kobo: 'Le Pilier n°1 (Kobo) capte les audits et ménages directement sur le terrain. Les données remontent vers votre Dashboard pour une vision analytique pure.',
   mission:
-    "Une mission (OM) est votre unité d'action stratégique. Elle passe par 3 étapes critiques : 1️⃣ Création par l'Agent (renseignement des détails terrain), 2️⃣ Validation par le Chef de Projet (contrôle budgétaire et planning), 3️⃣ Certification finale par la DG (sceau officiel). Chaque mission génère des indemnités proportionnelles et contribue au score IGPP.",
+    "La mission (OM) est le moteur de votre activité terrain. Elle suit un cycle précis : Création → Validation Chef de Projet → Certification DG. Chaque étape est cruciale pour la traçabilité et le paiement des indemnités.",
   workflow:
     'Le circuit de validation respecte la hiérarchie stricte : 1️⃣ Agent crée la mission et saisit les données terrain, 2️⃣ Chef de Projet valide techniquement et budgétairement, 3️⃣ DG certifie avec son sceau officiel. Chaque étape génère des notifications et des rapports automatiques.',
   finance:
@@ -2212,7 +2236,7 @@ async function runRulesEngine(
   if (intent.funName) {
     return {
       message: pfx(
-        "Je m'appelle **Mission Sage**, l'assistant GEM-MINT.\n\nJe vous aide sur les missions, les normes électriques, les données terrain et le pilotage projet."
+        "Je m'appelle **GAM AI**, l'assistant expert de la plateforme."
       ),
       type: 'info',
       smartReplies: ['Mes missions', 'Normes', 'Menu complet'],
@@ -2553,9 +2577,30 @@ async function runRulesEngine(
       const enrich = buildContextualEnrichment(intent, stats, households);
       const semanticMessage = buildSemanticResponse(intentKey, query, state);
 
+      // Détection spécifique pour l'action de création de mission
+      let actionLabel = undefined;
+      let actionPath = undefined;
+      let suggestions = undefined;
+
+      if (intentKey === 'mission' && /creer|nouveau|nouvelle|creation/.test(q)) {
+        actionLabel = '🚀 Créer une mission';
+        actionPath = '/admin/mission';
+        suggestions = [{
+          id: 'create_mission_now',
+          type: 'action',
+          label: 'Lancer le formulaire de mission',
+          description: 'Ouvre directement la page de création d\'un nouvel ordre de mission.',
+          severity: 'success',
+          action: { type: 'nav', path: '/admin/mission' }
+        }];
+      }
+
       return {
         message: pfx(semanticMessage || msg + enrich),
         type: 'info',
+        actionLabel,
+        actionPath,
+        suggestions,
         smartReplies: getSemanticEntry(intentKey)?.smartReplies || getSmartSuggestions(query),
         _engine: 'RULES',
       };
@@ -2655,7 +2700,7 @@ async function callVisionAI(
   }
 }
 
-async function callClaudeAI(
+async function callPrivateAI(
   query: string,
   user: any,
   state: AIState,
@@ -2674,11 +2719,11 @@ async function callClaudeAI(
   return {
     message: data?.message || "Je n'ai pas pu produire une réponse exploitable.",
     type: data?.type || 'info',
-    _engine: data?._engine || 'CLAUDE',
+    _engine: data?._engine || 'PRIVATE_AI',
   };
 }
 
-async function runClaudeEngine(
+async function runPrivateAIEngine(
   query: string,
   user: any,
   state: AIState,
@@ -2698,28 +2743,28 @@ async function runClaudeEngine(
   }
 
   try {
-    const ans = await callClaudeAI(
+    const ans = await callPrivateAI(
       query,
       user,
       state,
       memory.contextHistory,
-      settings.claudeTimeoutMs
+      settings.timeoutMs
     );
     return {
       ...ans,
       smartReplies: ans.smartReplies?.length ? ans.smartReplies : getSmartSuggestions(query),
-      _engine: ans._engine || 'CLAUDE',
+      _engine: ans._engine || 'PRIVATE_AI',
     };
   } catch (err: unknown) {
-    logger.error('[MissionSageService] [Claude_Engine]', { err, query });
+    logger.error('[MissionSageService] [Private_AI_Engine]', { err, query });
     const errorKey = classifyError(err);
 
     return {
-      message: `${ERROR_MESSAGES[errorKey]}\n\nLe mode local reste actif.`,
+      message: `${ERROR_MESSAGES[errorKey]}\n\nLe mode local (Règles) reste actif.`,
       type: 'error',
       smartReplies:
         errorKey === 'default' ? ['Utiliser les règles uniquement', 'Réessayer'] : ["Contacter l'administrateur"],
-      _engine: 'CLAUDE_FALLBACK',
+      _engine: 'PRIVATE_AI_FALLBACK',
     };
   }
 }
@@ -2754,11 +2799,11 @@ async function orchestrate(
   if (config.mode === 'HYBRID_RULES_FIRST') {
     const res = await runRulesEngine(query, user, state, memory);
     if (res) return res;
-    return await runClaudeEngine(query, user, state, memory, config);
+    return await runPrivateAIEngine(query, user, state, memory, config);
   }
 
-  if (config.mode === 'CLAUDE_ONLY') {
-    return await runClaudeEngine(query, user, state, memory, config);
+  if (config.mode === 'PRIVATE_AI_ONLY') {
+    return await runPrivateAIEngine(query, user, state, memory, config);
   }
 
   // Fallback

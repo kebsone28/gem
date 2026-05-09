@@ -9,7 +9,6 @@ import { usePermissions } from '../../hooks/usePermissions';
 import { useLabels } from '../../contexts/LabelsContext';
 import { missionStatsService } from '../../services/missionStatsService';
 import { useAuth } from '../../contexts/AuthContext';
-import { MissionMentor } from '../../components/ia/MissionMentor';
 import { ConsoleSettings, type ConsoleSettingsConfig } from '../../components/admin/ConsoleSettings';
 import { useConsoleLayout } from '../../hooks/useConsoleLayout';
 
@@ -286,14 +285,6 @@ export default function AdminDashboard() {
         </div>
       </ContentArea>
 
-      {/* AI Sage (Knowledge Integration) */}
-      <MissionMentor
-        stats={missionStats}
-        auditLogs={aiAuditLogs}
-        households={aiHouseholds}
-        teams={aiTeams}
-        regionalSummaries={aiRegionalSummaries}
-      />
     </PageContainer>
 
     {/* Console Settings Panel - Outside PageContainer for fixed positioning */}

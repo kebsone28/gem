@@ -1,32 +1,32 @@
-﻿ 
+ 
 /**
- * ⚙️ AI ENGINE CONFIG SERVICE (V1.0)
+ * ⚙️ AI ENGINE CONFIG SERVICE (V2.0)
  * Gestionnaire de configuration des moteurs IA de GEM-MINT
  * Réservé à l'Admin PROQUELEC — Basculement entre moteurs en temps réel
  */
 
 import logger from '../../utils/logger';
 
-export type AIEngineMode = 'RULES_ONLY' | 'CLAUDE_ONLY' | 'HYBRID_RULES_FIRST' | 'HYBRID_AI_FIRST';
+export type AIEngineMode = 'RULES_ONLY' | 'PRIVATE_AI_ONLY' | 'HYBRID_RULES_FIRST' | 'HYBRID_AI_FIRST';
 
 export type AIProvider = 'CLAUDE_ANTHROPIC' | 'LOCAL_OLLAMA' | 'PUBLIC_POLLINATIONS';
 
 export interface AIEngineSettings {
   mode: AIEngineMode;
-  /** Fournisseur de l'IA (Claude, Ollama local, ou Public gratuit) */
+  /** Fournisseur de l'IA (Ollama local, Claude, ou Public gratuit) */
   provider: AIProvider;
-  /** Clé API Anthropic pour le moteur Claude AI */
-  claudeApiKey: string;
-  /** Activer Claude AI sur les questions techniques (en plus du référentiel) */
-  claudeEnrichTechnical: boolean;
-  /** Activer Claude AI sur les analyses DG/décision */
-  claudeEnrichDecision: boolean;
-  /** Conserver l'historique multi-tours dans le fallback Claude */
+  /** Clé API si nécessaire (ex: Anthropic) */
+  apiKey: string;
+  /** Activer l'IA sur les questions techniques (en plus du référentiel) */
+  enrichTechnical: boolean;
+  /** Activer l'IA sur les analyses DG/décision */
+  enrichDecision: boolean;
+  /** Conserver l'historique multi-tours dans le fallback */
   enableConversationMemory: boolean;
   /** Nombre max d'échanges gardés en mémoire de session */
   maxHistoryTurns: number;
-  /** Timeout de l'appel Claude en ms avant de basculer sur les règles */
-  claudeTimeoutMs: number;
+  /** Timeout de l'appel IA en ms avant de basculer sur les règles */
+  timeoutMs: number;
   /** Dernière modification et auteur */
   lastUpdatedBy?: string;
   lastUpdatedAt?: number;
@@ -35,14 +35,14 @@ export interface AIEngineSettings {
 const CONFIG_KEY = 'gem_mint_ai_engine_config';
 
 const DEFAULT_CONFIG: AIEngineSettings = {
-  mode: 'HYBRID_RULES_FIRST', // Optimisé pour la vitesse et la couverture
-  provider: 'PUBLIC_POLLINATIONS', // Test AI public
-  claudeApiKey: '',
-  claudeEnrichTechnical: true, // Amélioré pour plus de précision technique
-  claudeEnrichDecision: true,
+  mode: 'HYBRID_RULES_FIRST',
+  provider: 'LOCAL_OLLAMA', // Par défaut sur votre moteur privé
+  apiKey: '',
+  enrichTechnical: true,
+  enrichDecision: true,
   enableConversationMemory: true,
-  maxHistoryTurns: 15, // Augmenté pour meilleure mémoire contextuelle
-  claudeTimeoutMs: 5000, // Réduit pour meilleure réactivité
+  maxHistoryTurns: 15,
+  timeoutMs: 8000, // Légèrement augmenté pour Ollama local si CPU chargé
 };
 
 /** Charger la configuration active (avec valeurs par défaut) */
@@ -51,6 +51,8 @@ export function getAIEngineConfig(): AIEngineSettings {
     const raw = localStorage.getItem(CONFIG_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as Partial<AIEngineSettings>;
+      // Map old modes to new ones if necessary
+      if ((parsed as any).mode === 'CLAUDE_ONLY') parsed.mode = 'PRIVATE_AI_ONLY';
       return { ...DEFAULT_CONFIG, ...parsed };
     }
   } catch (e) {
@@ -85,9 +87,9 @@ export function resetAIEngineConfig(adminEmail: string): AIEngineSettings {
 export function getModeLabelFR(mode: AIEngineMode): string {
   const labels: Record<AIEngineMode, string> = {
     RULES_ONLY: 'Règles statiques uniquement',
-    CLAUDE_ONLY: 'Claude AI uniquement',
-    HYBRID_RULES_FIRST: 'Hybride — Règles en priorité (recommandé)',
-    HYBRID_AI_FIRST: 'Hybride — Claude AI en priorité',
+    PRIVATE_AI_ONLY: 'Moteur IA Privé uniquement',
+    HYBRID_RULES_FIRST: 'Hybride — Expert Local en priorité',
+    HYBRID_AI_FIRST: 'Hybride — IA Privée en priorité',
   };
   return labels[mode] ?? mode;
 }
@@ -96,23 +98,23 @@ export function getModeLabelFR(mode: AIEngineMode): string {
 export function getModeDescriptionFR(mode: AIEngineMode): string {
   const desc: Record<AIEngineMode, string> = {
     RULES_ONLY:
-      'Le moteur de règles intègre 100% des réponses. Aucun appel API. Mode hors-ligne recommandé pour les zones à faible connectivité.',
-    CLAUDE_ONLY:
-      'Claude AI répond à toutes les questions. Nécessite une connexion active et consomme le quota API. Privilégier pour les sessions DG/stratégiques.',
+      'Le moteur de règles gère 100% des réponses (Zéro latence). Aucun appel au serveur IA. Idéal pour les zones à très faible connexion.',
+    PRIVATE_AI_ONLY:
+      'Votre IA locale Ollama répond à toutes les questions. Exploite toute la puissance de votre VPS privé.',
     HYBRID_RULES_FIRST:
-      'Les règles métier répondent en priorité (rapide, sans latence). Claude AI prend le relai uniquement si la question dépasse le référentiel. Mode recommandé.',
+      'Les règles métier (Le Coran de l’Électricien) répondent en priorité. L’IA Ollama prend le relai si la question dépasse le référentiel.',
     HYBRID_AI_FIRST:
-      "Claude AI répond en priorité à chaque question. Si l'API est indisponible ou dépasse le timeout, les règles prennent le relai automatiquement.",
+      "L'IA Privée analyse chaque demande en priorité. Si elle est surchargée, les règles statiques assurent la continuité de service.",
   };
   return desc[mode] ?? '';
 }
 
-/** Indicateur : Claude AI est-il actif dans ce mode ? */
-export function isClaudeEnabled(config: AIEngineSettings): boolean {
+/** Indicateur : L'IA est-elle active dans ce mode ? */
+export function isAIEnabled(config: AIEngineSettings): boolean {
   return config.mode !== 'RULES_ONLY';
 }
 
 /** Indicateur : Les règles sont-elles actives dans ce mode ? */
 export function isRulesEnabled(config: AIEngineSettings): boolean {
-  return config.mode !== 'CLAUDE_ONLY';
+  return config.mode !== 'PRIVATE_AI_ONLY';
 }

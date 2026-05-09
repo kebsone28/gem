@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * 🎛️ AIEngineAdminPanel — Panneau de configuration des moteurs IA
  * Réservé à l'Admin PROQUELEC (ADMIN_PROQUELEC / admingem)
@@ -11,7 +11,7 @@ import {
   resetAIEngineConfig,
   getModeLabelFR,
   getModeDescriptionFR,
-  isClaudeEnabled,
+  isAIEnabled,
   isRulesEnabled,
   type AIEngineMode,
   type AIEngineSettings,
@@ -26,21 +26,21 @@ const MODES: AIEngineMode[] = [
   'RULES_ONLY',
   'HYBRID_RULES_FIRST',
   'HYBRID_AI_FIRST',
-  'CLAUDE_ONLY',
+  'PRIVATE_AI_ONLY',
 ];
 
 const MODE_ICONS: Record<AIEngineMode, string> = {
   RULES_ONLY: '⚙️',
-  HYBRID_RULES_FIRST: '🔀',
-  HYBRID_AI_FIRST: '🤖',
-  CLAUDE_ONLY: '✨',
+  HYBRID_RULES_FIRST: '🛡️',
+  HYBRID_AI_FIRST: '🧠',
+  PRIVATE_AI_ONLY: '🚀',
 };
 
 const MODE_COLORS: Record<AIEngineMode, string> = {
   RULES_ONLY: 'border-blue-500 bg-blue-900/20',
-  HYBRID_RULES_FIRST: 'border-green-500 bg-green-900/20',
+  HYBRID_RULES_FIRST: 'border-emerald-500 bg-emerald-900/20',
   HYBRID_AI_FIRST: 'border-purple-500 bg-purple-900/20',
-  CLAUDE_ONLY: 'border-orange-500 bg-orange-900/20',
+  PRIVATE_AI_ONLY: 'border-orange-500 bg-orange-900/20',
 };
 
 import { isMasterAdminEmail } from '../../utils/roleUtils';
@@ -95,7 +95,7 @@ export default function AIEngineAdminPanel({ user, onClose }: Props) {
     setTimeout(() => setSaved(false), 3000);
   }
 
-  const claudeActive = isClaudeEnabled(config);
+  const aiActive = isAIEnabled(config);
   const rulesActive = isRulesEnabled(config);
 
   return (
@@ -109,7 +109,7 @@ export default function AIEngineAdminPanel({ user, onClose }: Props) {
               Configuration Moteur IA
             </h2>
             <p className="text-xs text-gray-500 mt-1 uppercase tracking-widest font-semibold">
-              GEM-MINT v8.0 Dual-Engine
+              GEM-MINT v9.0 Sovereign AI
             </p>
           </div>
           <button
@@ -126,9 +126,9 @@ export default function AIEngineAdminPanel({ user, onClose }: Props) {
               Backend Securise
             </p>
             <p className="mt-2 text-sm leading-relaxed text-cyan-50">
-              Les fournisseurs IA, les secrets API et les appels Vision/Claude sont désormais gérés
+              Les fournisseurs IA et les appels Ollama/Souverains sont désormais gérés
               côté serveur. Cette console pilote seulement le mode d’orchestration local du mentor
-              et sa mémoire de conversation.
+              et sa mémoire de session.
             </p>
           </section>
 
@@ -186,13 +186,13 @@ export default function AIEngineAdminPanel({ user, onClose }: Props) {
               </p>
             </div>
             <div
-              className={`flex-1 rounded-xl p-4 text-center border transition-all ${claudeActive ? 'bg-purple-600/5 border-purple-500/30' : 'bg-gray-900/50 border-gray-800 grayscale opacity-50'}`}
+              className={`flex-1 rounded-xl p-4 text-center border transition-all ${aiActive ? 'bg-purple-600/5 border-purple-500/30' : 'bg-gray-900/50 border-gray-800 grayscale opacity-50'}`}
             >
               <p className="text-[10px] text-purple-400 font-bold uppercase tracking-tighter mb-1">
-                AI Claude (API)
+                IA Privée (Ollama)
               </p>
               <p className="text-xs font-medium text-white">
-                {claudeActive ? '✅ CONNECTÉ' : '⭕ DÉSACTIVÉ'}
+                {aiActive ? '✅ OPÉRATIONNEL' : '⭕ DÉSACTIVÉ'}
               </p>
             </div>
           </section>
@@ -213,7 +213,7 @@ export default function AIEngineAdminPanel({ user, onClose }: Props) {
           </section>
 
           {/* Advanced Settings */}
-          {claudeActive && (
+          {aiActive && (
             <div className="space-y-6 animate-in slide-in-from-top-4 duration-300">
               <h3 className="text-xs font-bold text-purple-400 uppercase tracking-widest">
                 Contexte Local du Mentor

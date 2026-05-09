@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/exhaustive-deps */
+/* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/exhaustive-deps */
 import React, { useState, useRef, useEffect } from 'react';
 import {
   Bot,
@@ -17,6 +17,8 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../contexts/AuthContext';
+import apiClient from '../../api/client';
+import toast from 'react-hot-toast';
 import type { AIResponse, RegionalSummary } from '../../services/ai/MissionSageService';
 import { missionSageService } from '../../services/ai/MissionSageService';
 import { wordReportService } from '../../services/ai/WordReportService';
@@ -225,20 +227,43 @@ export const MissionMentor: React.FC<MissionMentorProps> = ({
 
     recognition.start();
   };
+ 
+  const handleActionExecute = async (suggestion: any) => {
+    const tid = toast.loading(`Exécution : ${suggestion.label}...`);
+    try {
+      const response = await apiClient.post('ai/agent/execute', {
+        action: suggestion.action
+      });
+      
+      if (response.data.success) {
+        toast.success(response.data.message, { id: tid });
+        setHistory(prev => [...prev, { 
+          message: `✅ ${response.data.message}`, 
+          type: 'success',
+          _engine: 'RULES'
+        } as AIResponse]);
+      } else {
+        toast.error(response.data.message || "Échec de l'exécution", { id: tid });
+      }
+    } catch (error) {
+      toast.error("Erreur lors de l'exécution de l'action", { id: tid });
+      logger.error('[MissionMentor] Action execution failed', error);
+    }
+  };
 
   return (
     <>
       {/* FLOATING BUTTON (GEM-MINT) */}
       <div
         className="fixed right-4 bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:bottom-10 sm:right-10 z-[1000] no-print"
-        title="Ouvrir le Mentor GEM-MINT"
+        title="Ouvrir GAM AI"
       >
         <motion.button
           whileHover={{ scale: 1.1, rotate: 5 }}
           whileTap={{ scale: 0.9 }}
           onClick={() => setIsOpen(!isOpen)}
-          title="Assistant GEM-MINT"
-          aria-label="Assistant GEM-MINT"
+          title="Assistant GAM AI"
+          aria-label="Assistant GAM AI"
           className="w-12 h-12 sm:w-16 sm:h-16 bg-slate-900/90 hover:bg-blue-500 rounded-2xl sm:rounded-3xl shadow-2xl shadow-blue-600/25 flex items-center justify-center border border-white/10 group relative overflow-hidden backdrop-blur-xl"
         >
           <div className="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent animate-pulse" />
@@ -272,10 +297,10 @@ export const MissionMentor: React.FC<MissionMentorProps> = ({
                 </div>
                 <div className="min-w-0">
                   <h2 className="text-[10px] sm:text-[11px] font-black tracking-[0.12em] sm:tracking-[0.3em] text-white uppercase italic leading-none truncate">
-                    GEM-MINT
+                    GAM AI
                   </h2>
                   <p className="text-[9px] sm:text-[8px] font-black text-blue-500/60 uppercase tracking-[0.06em] sm:tracking-widest mt-1 truncate">
-                    Mentor Sage PROQUELEC
+                    Assistant Expert Souverain
                   </p>
                 </div>
               </div>
@@ -291,17 +316,18 @@ export const MissionMentor: React.FC<MissionMentorProps> = ({
                   <>
                     <button
                       onClick={() => setIsTrainingStudioOpen(true)}
-                      title="Studio d'apprentissage"
-                      className="text-slate-500 hover:text-emerald-300 transition-colors p-2 rounded-full hover:bg-emerald-500/10"
+                      title="📚 Studio d'apprentissage & Référentiel"
+                      className="group flex items-center justify-center w-10 h-10 rounded-2xl bg-emerald-600/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500 hover:text-white transition-all"
                     >
-                      <BookOpen size={16} />
+                      <BookOpen size={18} className="group-hover:scale-110 transition-transform" />
                     </button>
                     <button
                       onClick={() => setIsAdminPanelOpen(true)}
-                      title="Configuration Moteur IA"
-                      className="text-slate-500 hover:text-blue-400 transition-colors p-2 rounded-full hover:bg-blue-500/10"
+                      title="⚙️ Configuration Moteur IA Privée"
+                      className="group relative flex items-center justify-center w-10 h-10 rounded-2xl bg-blue-600/10 border border-blue-500/20 text-blue-400 hover:bg-blue-500 hover:text-white transition-all shadow-lg shadow-blue-900/20"
                     >
-                      <Bot size={16} />
+                      <Bot size={18} className="group-hover:scale-110 transition-transform" />
+                      <span className="absolute -top-1 -right-1 w-2 h-2 bg-blue-400 rounded-full animate-pulse border border-slate-900"></span>
                     </button>
                   </>
                 )}
@@ -325,6 +351,7 @@ export const MissionMentor: React.FC<MissionMentorProps> = ({
                 setQuery(reply);
                 void handleSend();
               }}
+              onActionExecute={handleActionExecute}
             />
 
             {/* Input Area */}

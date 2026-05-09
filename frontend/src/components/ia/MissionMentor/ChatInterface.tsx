@@ -12,6 +12,7 @@ interface ChatInterfaceProps {
   isThinking: boolean;
   isMaximized: boolean;
   onSmartReply: (reply: string) => void;
+  onActionExecute?: (suggestion: any) => void;
 }
 
 export default function ChatInterface({
@@ -19,6 +20,7 @@ export default function ChatInterface({
   isThinking,
   isMaximized,
   onSmartReply,
+  onActionExecute,
 }: ChatInterfaceProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -83,6 +85,7 @@ export default function ChatInterface({
           key={i}
           response={resp}
           isMaximized={isMaximized}
+          onActionExecute={onActionExecute}
         />
       ))}
 

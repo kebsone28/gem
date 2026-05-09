@@ -21,7 +21,10 @@ import type { AIResponse } from './MissionSageService';
 // ─────────────────────────────────────────────
 
 const DOMAIN_KEYWORDS: Record<DomaineTechnique, string[]> = {
-  projet_mfr: ['mfr', 'ménage', 'faible revenu', '37500', 'eligibilité', 'critère'],
+  mission: ['mission', 'ordre de mission', ' om ', 'certification', 'validation', 'chef de projet'],
+  finance: ['budget', 'indemnité', 'coût', 'dépense', ' argent ', 'fcfa', 'compta'],
+  kobo: ['kobo', 'terrain', 'collecte', 'formulaire', 'sync', 'synchronisation'],
+  projet_mfr: [' mfr ', 'ménage', 'faible revenu', '37500', 'eligibilité', 'critère'],
   installation_interieur: [
     'intérieur',
     'interieur',
@@ -43,13 +46,13 @@ const DOMAIN_KEYWORDS: Record<DomaineTechnique, string[]> = {
   ],
   protection_electrique: [
     'protection',
-    'ddr',
+    ' ddr ',
     'parafoudre',
     'fusible',
     'surtension',
-    'choc',
-    'terre',
-    'pe',
+    ' choc ',
+    ' prise de terre ',
+    ' pe ',
   ],
   anomalies: [
     'anomalie',
@@ -62,17 +65,14 @@ const DOMAIN_KEYWORDS: Record<DomaineTechnique, string[]> = {
   ],
   glossaire: [
     'partie active',
-    'masse',
+    ' masse ',
     'liaison équipotentielle',
     'conducteur pe',
     'section',
     'définition',
   ],
   specifications: ['hauteur', 'profondeur', 'configuration', 'spécification', 'matériel'],
-  normes: ['norme', 'ns 01-001', 'ns 01001', 'bt', 'erp', 'tension'],
-  kobo: ['kobo', 'terrain', 'collecte', 'formulaire', 'sync', 'synchronisation'],
-  finance: ['budget', 'indemnité', 'coût', 'dépense', 'argent'],
-  mission: ['mission', 'om', 'ordre', 'certification', 'validation'],
+  normes: ['norme', 'ns 01-001', 'ns 01001', ' bt ', ' erp ', 'tension'],
 };
 
 // ─────────────────────────────────────────────

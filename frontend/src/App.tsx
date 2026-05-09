@@ -15,8 +15,8 @@ import { CommandPalette } from './components/common/CommandPalette';
 import { LazyRouteErrorBoundary } from './components/LazyRouteErrorBoundary';
 import { Toaster } from 'react-hot-toast';
 import { useWebSockets } from './hooks/useWebSockets';
-import CopilotAssistant from './components/CopilotAssistant';
 import { PERMISSIONS, ROLES, hasPermission, normalizeRole } from './utils/permissions';
+import GlobalMissionMentor from './components/ia/GlobalMissionMentor';
 import { isMasterAdminEmail } from './utils/roleUtils';
 
 function lazyWithRetry<T extends React.ComponentType<Record<string, never>>>(
@@ -506,7 +506,7 @@ function App() {
       <SyncNotification />
       <CommandPalette />
       <Toaster position="bottom-right" reverseOrder={false} />
-      <CopilotAssistant />
+      <GlobalMissionMentor />
     </Router>
   );
 }

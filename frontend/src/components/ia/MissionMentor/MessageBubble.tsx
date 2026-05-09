@@ -5,7 +5,7 @@
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Info, ShieldAlert, X, BookOpen, AlertTriangle, ListOrdered, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { Info, ShieldAlert, X, BookOpen, AlertTriangle, ListOrdered, ThumbsUp, ThumbsDown, Zap, RefreshCw, Sparkles, CheckCircle2 } from 'lucide-react';
 import AIPremiumMessage from '../AIPremiumMessage';
 import type { AIResponse } from '../../../services/ai/MissionSageService';
 import { formatReferences, formatRisks, formatProcedureSteps } from '../../../services/ai/responseEnricher';
@@ -14,9 +14,10 @@ interface MessageBubbleProps {
   response: AIResponse;
   isMaximized?: boolean;
   onFeedback?: (rating: 'positive' | 'negative' | 'neutral', reason?: string) => void;
+  onActionExecute?: (suggestion: any) => void;
 }
 
-export default function MessageBubble({ response, isMaximized = false, onFeedback }: MessageBubbleProps) {
+export default function MessageBubble({ response, isMaximized = false, onFeedback, onActionExecute }: MessageBubbleProps) {
   const [feedbackGiven, setFeedbackGiven] = useState<'positive' | 'negative' | null>(null);
   const [showFeedbackButtons, setShowFeedbackButtons] = useState(false);
   const verdictBadgeClass = (verdict?: AIResponse['verdict']) => {
@@ -385,6 +386,48 @@ export default function MessageBubble({ response, isMaximized = false, onFeedbac
               {sr}
             </button>
           ))}
+        </div>
+      )}
+
+      {/* Suggestions d'actions (ex-Copilote) */}
+      {response.suggestions && response.suggestions.length > 0 && (
+        <div className="mt-6 space-y-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Zap size={12} className="text-blue-400" />
+            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Actions recommandées</p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-1">
+            {response.suggestions.map((s) => (
+              <div key={s.id} className="bg-black/30 border border-white/10 p-4 rounded-[1.25rem] space-y-3 shadow-inner">
+                <div className="flex items-start gap-4">
+                  <div className={`mt-1 p-2 rounded-xl border ${
+                    s.severity === 'success' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' :
+                    s.severity === 'warning' ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' :
+                    'bg-blue-500/10 border-blue-500/20 text-blue-400'
+                  }`}>
+                    {s.id.includes('sync') ? <RefreshCw size={14} className="animate-spin-slow" /> : 
+                     s.id.includes('plan') ? <Zap size={14} /> : 
+                     <Sparkles size={14} />}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-[11px] font-black text-white uppercase tracking-widest">{s.label}</p>
+                    <p className="text-[10px] text-slate-500 mt-1 leading-relaxed">{s.description}</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => onActionExecute?.(s)}
+                  className={`w-full py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg flex items-center justify-center gap-2 ${
+                    s.severity === 'success' ? 'bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600 hover:text-white shadow-emerald-900/10' :
+                    s.severity === 'warning' ? 'bg-amber-600/20 text-amber-400 hover:bg-amber-600 hover:text-white shadow-amber-900/10' :
+                    'bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white shadow-blue-900/10'
+                  }`}
+                >
+                  <CheckCircle2 size={12} />
+                  Approuver et Exécuter
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </motion.div>
