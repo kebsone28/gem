@@ -162,10 +162,12 @@ export function useProjectSelector() {
         return;
       }
 
-      // Mettre à jour la date de dernier accès
-      await db.projectAssignments.update(assignment.id!, {
-        lastAccessed: new Date(),
-      });
+      // Mettre à jour la date de dernier accès si l'assignation existe en base
+      if (assignment.id) {
+        await db.projectAssignments.update(assignment.id, {
+          lastAccessed: new Date(),
+        });
+      }
 
       setSelectedProject(projectId);
       toast.success(`Projet "${projects.find(p => p.id === projectId)?.name}" sélectionné`);
