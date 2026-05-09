@@ -1,87 +1,95 @@
 
 /**
  * 🔐 Moteur de Sécurité & RBAC Enterprise - GEM SAAS
- * Architecture : Namespaced RBAC + Permission Groups + ABAC Ready
+ * Architecture : Tenant-Decoupled / Namespaced RBAC / ABAC Ready
  */
 
-// 1️⃣ RÉFÉRENTIEL DES RÔLES
-export const ROLES = {
-  CLIENT_LSE_SUPERVISEUR: 'CLIENT_LSE_SUPERVISEUR',
-  CLIENT_LSE_TECHNIQUE: 'CLIENT_LSE_TECHNIQUE',
-  PROQUELEC_ADMIN: 'PROQUELEC_ADMIN',
-  PROQUELEC_DG: 'PROQUELEC_DG',
-  PROQUELEC_CHEF_PROJET: 'PROQUELEC_CHEF_PROJET',
-  PROQUELEC_DIRECTION: 'PROQUELEC_DIRECTION',
-  PROQUELEC_COMPTABLE: 'PROQUELEC_COMPTABLE',
-  PROQUELEC_PATRIMOINE: 'PROQUELEC_PATRIMOINE',
-  PROQUELEC_EMPLOYE: 'PROQUELEC_EMPLOYE',
-  SENELEC_SUPERVISEUR: 'SENELEC_SUPERVISEUR',
-  SENELEC_CONTROLEUR: 'SENELEC_CONTROLEUR',
-  SOUS_TRAITANT_DIRECTEUR: 'SOUS_TRAITANT_DIRECTEUR',
-  SOUS_TRAITANT_EMPLOYE: 'SOUS_TRAITANT_EMPLOYE',
+// 1️⃣ RÉFÉRENTIEL DES TENANTS (ORGANISATIONS)
+export const TENANTS = {
+  PROQUELEC: 'proquelec',
+  SENELEC: 'senelec',
+  CLIENT_LSE: 'client_lse',
+  GEM: 'gem', // Interne
 } as const;
 
-export type UserRole = (typeof ROLES)[keyof typeof ROLES];
+export type TenantId = (typeof TENANTS)[keyof typeof TENANTS];
 
+// 2️⃣ RÉFÉRENTIEL DES RÔLES GÉNÉRIQUES (DÉCOUPLÉS)
+export const AppRole = {
+  PLATFORM_ADMIN: 'PLATFORM_ADMIN', // Super Admin GEM
+  ADMIN: 'ADMIN',                 // Admin local d'entreprise
+  DG: 'DG',                       // Direction Générale
+  CHEF_PROJET: 'CHEF_PROJET',     // Responsable opérationnel
+  DIRECTION: 'DIRECTION',         // Management intermédiaire
+  COMPTABLE: 'COMPTABLE',         // Finances & Reporting
+  PATRIMOINE: 'PATRIMOINE',       // Gestion actifs/logistique
+  SUPERVISEUR: 'SUPERVISEUR',     // Supervision externe (Senelec/LSE)
+  CONTROLEUR: 'CONTROLEUR',       // Contrôle terrain
+  EMPLOYE: 'EMPLOYE',             // Utilisateur de base
+} as const;
+
+export type UserRole = (typeof AppRole)[keyof typeof AppRole];
+
+// --- LEGACY ALIASES (Backward Compatibility) ---
+export const ROLES = AppRole;
+
+/**
+ * 👤 Interface Utilisateur Authentifié (Enterprise-Grade)
+ */
+export interface AuthUser {
+  id: string;
+  email: string;
+  tenantId: TenantId | string;
+  role: UserRole | string;
+  isPlatformAdmin?: boolean; // Remplace le check par email
+  permissions?: string[];
+  scopes?: {
+    regions?: string[];
+    projects?: string[];
+    villages?: string[];
+  };
+}
+
+// 3️⃣ ALIAS DE COMPATIBILITÉ (Mappe les anciens rôles vers les nouveaux génériques)
 export const ROLE_ALIASES: Record<string, UserRole> = {
-  CLIENT_LSE: ROLES.CLIENT_LSE_SUPERVISEUR,
-  ADMIN_PROQUELEC: ROLES.PROQUELEC_ADMIN,
-  DG: ROLES.PROQUELEC_DG,
-  CP: ROLES.PROQUELEC_CHEF_PROJET,
-  CHEF_EQUIPE: ROLES.PROQUELEC_DIRECTION,
-  COMPTABLE: ROLES.PROQUELEC_COMPTABLE,
-  PATRIMOINE: ROLES.PROQUELEC_PATRIMOINE,
-  EMPLOYE: ROLES.PROQUELEC_EMPLOYE,
+  // Legacy Proquelec
+  PROQUELEC_ADMIN: AppRole.ADMIN,
+  PROQUELEC_DG: AppRole.DG,
+  PROQUELEC_CHEF_PROJET: AppRole.CHEF_PROJET,
+  PROQUELEC_DIRECTION: AppRole.DIRECTION,
+  PROQUELEC_COMPTABLE: AppRole.COMPTABLE,
+  PROQUELEC_PATRIMOINE: AppRole.PATRIMOINE,
+  PROQUELEC_EMPLOYE: AppRole.EMPLOYE,
+  
+  // Legacy Senelec
+  SENELEC_SUPERVISEUR: AppRole.SUPERVISEUR,
+  SENELEC_CONTROLEUR: AppRole.CONTROLEUR,
+
+  // Legacy LSE
+  CLIENT_LSE_SUPERVISEUR: AppRole.SUPERVISEUR,
+  CLIENT_LSE_TECHNIQUE: AppRole.CONTROLEUR,
+  
+  // Legacy Sous-traitants
+  SOUS_TRAITANT_DIRECTEUR: AppRole.DG,
+  SOUS_TRAITANT_EMPLOYE: AppRole.EMPLOYE,
+
+  // Humain
+  'DIRECTION GÉNÉRALE': AppRole.DG,
+  'CHEF DE PROJET': AppRole.CHEF_PROJET,
 };
 
-// 2️⃣ REGISTRY DES PERMISSIONS (NAMESPACED)
+// 4️⃣ REGISTRY DES PERMISSIONS (NAMESPACED)
 export const PERMISSIONS = {
-  // --- NEW NAMESPACED KEYS ---
+  // --- MISSIONS ---
   MISSIONS_READ: 'missions.read',
   MISSIONS_CREATE: 'missions.create',
   MISSIONS_UPDATE: 'missions.update',
   MISSIONS_DELETE: 'missions.delete',
   MISSIONS_VALIDATE: 'missions.validate',
   MISSIONS_APPROVE: 'missions.approve',
-  MISSIONS_ARCHIVE: 'missions.archive',
   MISSIONS_PLANNING: 'missions.planning',
   
-  // --- LEGACY KEYS (Backward Compatibility) ---
-  VOIR_MISSIONS: 'missions.read',
-  CREER_MISSION: 'missions.create',
-  MODIFIER_MISSION: 'missions.update',
-  VALIDER_MISSION: 'missions.validate',
-  APPROUVER_MISSION: 'missions.approve',
-  SUPPRIMER_MISSION: 'missions.delete',
-  GERER_PLANNING: 'missions.planning',
-  VOIR_FINANCES: 'finance.read',
-  VOIR_PAIEMENTS: 'finance.payments',
-  VOIR_RAPPORTS_TERRAIN: 'terrain.read',
-  VOIR_RAPPORTS_FINANCIERS: 'finance.reports',
-  VOIR_CARTE: 'ui.map',
-  ACCES_CHAT: 'ui.chat',
-  VOIR_ALERTES: 'ui.alerts',
-  VOIR_FORMATIONS: 'ui.training',
-  VOIR_PROJETS: 'ui.projects',
-  VOIR_EQUIPES: 'ui.teams',
-  UTILISER_IA: 'ia.use',
-  VOIR_METRIQUES_IA: 'ia.metrics',
-  VOIR_SIMULATION: 'ia.simulation',
-  VOIR_DOCUMENTS_CONFIDENTIELS: 'docs.confidential',
-  GERER_PV: 'docs.pv',
-  ACCES_TERMINAL_KOBO: 'terrain.terminal',
-  VOIR_LOGISTIQUE: 'logistique.read',
-  GERER_LOGISTIQUE: 'logistique.manage',
-  GERER_UTILISATEURS: 'system.users',
-  GERER_ROLES: 'system.roles',
-  VOIR_AUDIT_LOGS: 'system.audit',
-  VOIR_SYNCHRO: 'system.sync',
-  GERER_PARAMETRES: 'system.config',
-  EXPORTER_DONNEES: 'system.export',
-  DIFFUSER_MESSAGE_SYSTEME: 'system.messages',
-  GERER_MENAGES: 'terrain.menages',
-
-  // --- NEW ATOMIC PERMISSIONS ---
+  // --- TERRAIN & KOBO ---
   TERRAIN_READ: 'terrain.read',
   TERRAIN_WRITE: 'terrain.write',
   TERRAIN_TERMINAL: 'terrain.terminal',
@@ -89,15 +97,18 @@ export const PERMISSIONS = {
   TERRAIN_ZONES: 'terrain.zones',
   TERRAIN_MENAGES: 'terrain.menages',
   
+  // --- FINANCES ---
   FINANCE_READ: 'finance.read',
   FINANCE_MANAGE: 'finance.manage',
   FINANCE_PAYMENTS: 'finance.payments',
   FINANCE_EXPORT: 'finance.export',
   FINANCE_REPORTS: 'finance.reports',
   
+  // --- LOGISTIQUE ---
   LOGISTIQUE_READ: 'logistique.read',
   LOGISTIQUE_MANAGE: 'logistique.manage',
   
+  // --- SYSTÈME & ADMIN ---
   SYSTEM_USERS: 'system.users',
   SYSTEM_ROLES: 'system.roles',
   SYSTEM_AUDIT: 'system.audit',
@@ -106,6 +117,7 @@ export const PERMISSIONS = {
   SYSTEM_EXPORT: 'system.export',
   SYSTEM_MESSAGES: 'system.messages',
   
+  // --- UI & COLLABORATION (SOCLE COMMUN) ---
   UI_MAP: 'ui.map',
   UI_CHAT: 'ui.chat',
   UI_ALERTS: 'ui.alerts',
@@ -114,16 +126,23 @@ export const PERMISSIONS = {
   UI_TEAMS: 'ui.teams',
   UI_DASHBOARD: 'ui.dashboard',
   
+  // --- IA & ANALYTICS ---
   IA_USE: 'ia.use',
   IA_METRICS: 'ia.metrics',
   IA_SIMULATION: 'ia.simulation',
   
+  // --- DOCUMENTS ---
   DOCS_READ: 'docs.read',
   DOCS_CONFIDENTIAL: 'docs.confidential',
   DOCS_PV: 'docs.pv',
 } as const;
 
-// 3️⃣ GROUPES DE PERMISSIONS (PACKS FONCTIONNELS)
+/**
+ * 🚀 ALL_PERMISSIONS : Liste propre sans doublons pour le Super Admin
+ */
+export const ATOMIC_PERMISSIONS = Object.values(PERMISSIONS).filter(p => p.includes('.'));
+
+// 5️⃣ GROUPES DE PERMISSIONS (PACKS FONCTIONNELS)
 export const PERMISSION_GROUPS = {
   SOCLE_COMMUN: [
     PERMISSIONS.UI_MAP,
@@ -142,20 +161,11 @@ export const PERMISSION_GROUPS = {
     PERMISSIONS.MISSIONS_UPDATE,
     PERMISSIONS.MISSIONS_PLANNING,
   ],
-  FINANCE_VIEWER: [
-    PERMISSIONS.FINANCE_READ,
-    PERMISSIONS.FINANCE_REPORTS,
-  ],
   FINANCE_ADMIN: [
     PERMISSIONS.FINANCE_READ,
     PERMISSIONS.FINANCE_MANAGE,
     PERMISSIONS.FINANCE_PAYMENTS,
     PERMISSIONS.FINANCE_EXPORT,
-  ],
-  TERRAIN_OPERATOR: [
-    PERMISSIONS.TERRAIN_READ,
-    PERMISSIONS.TERRAIN_TERMINAL,
-    PERMISSIONS.TERRAIN_MENAGES,
   ],
   SUPERVISOR_PACK: [
     PERMISSIONS.MISSIONS_VALIDATE,
@@ -164,11 +174,13 @@ export const PERMISSION_GROUPS = {
   ],
 };
 
-// 4️⃣ MATRICE DES RÔLES (CLEAN & SCALABLE)
+// 6️⃣ MATRICE DES RÔLES (GÉNÉRIQUE & MULTI-TENANT)
 export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
-  [ROLES.PROQUELEC_ADMIN]: Object.values(PERMISSIONS),
+  [AppRole.PLATFORM_ADMIN]: ATOMIC_PERMISSIONS,
 
-  [ROLES.PROQUELEC_DG]: [
+  [AppRole.ADMIN]: ATOMIC_PERMISSIONS,
+
+  [AppRole.DG]: [
     ...PERMISSION_GROUPS.SOCLE_COMMUN,
     ...PERMISSION_GROUPS.MISSION_MANAGER,
     ...PERMISSION_GROUPS.FINANCE_ADMIN,
@@ -185,7 +197,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     PERMISSIONS.DOCS_CONFIDENTIAL,
   ],
 
-  [ROLES.PROQUELEC_CHEF_PROJET]: [
+  [AppRole.CHEF_PROJET]: [
     ...PERMISSION_GROUPS.SOCLE_COMMUN,
     ...PERMISSION_GROUPS.MISSION_MANAGER,
     PERMISSIONS.TERRAIN_READ,
@@ -194,14 +206,14 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     PERMISSIONS.IA_USE,
   ],
 
-  [ROLES.PROQUELEC_DIRECTION]: [
+  [AppRole.DIRECTION]: [
     ...PERMISSION_GROUPS.SOCLE_COMMUN,
     ...PERMISSION_GROUPS.MISSION_MANAGER,
     PERMISSIONS.MISSIONS_VALIDATE,
     PERMISSIONS.IA_USE,
   ],
 
-  [ROLES.PROQUELEC_COMPTABLE]: [
+  [AppRole.COMPTABLE]: [
     ...PERMISSION_GROUPS.SOCLE_COMMUN,
     ...PERMISSION_GROUPS.MISSION_VIEWER,
     ...PERMISSION_GROUPS.FINANCE_ADMIN,
@@ -209,7 +221,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     PERMISSIONS.SYSTEM_EXPORT,
   ],
 
-  [ROLES.PROQUELEC_PATRIMOINE]: [
+  [AppRole.PATRIMOINE]: [
     ...PERMISSION_GROUPS.SOCLE_COMMUN,
     ...PERMISSION_GROUPS.MISSION_VIEWER,
     PERMISSIONS.TERRAIN_MENAGES,
@@ -217,54 +229,27 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     PERMISSIONS.UI_TEAMS,
   ],
 
-  [ROLES.PROQUELEC_EMPLOYE]: [
+  [AppRole.EMPLOYE]: [
     ...PERMISSION_GROUPS.SOCLE_COMMUN,
     ...PERMISSION_GROUPS.MISSION_VIEWER,
   ],
 
-  [ROLES.SENELEC_SUPERVISEUR]: [
+  [AppRole.SUPERVISEUR]: [
     ...PERMISSION_GROUPS.SOCLE_COMMUN,
     ...PERMISSION_GROUPS.MISSION_VIEWER,
     PERMISSIONS.MISSIONS_VALIDATE,
     PERMISSIONS.SYSTEM_EXPORT,
   ],
 
-  [ROLES.SENELEC_CONTROLEUR]: [
+  [AppRole.CONTROLEUR]: [
     ...PERMISSION_GROUPS.SOCLE_COMMUN,
     ...PERMISSION_GROUPS.MISSION_VIEWER,
     PERMISSIONS.MISSIONS_VALIDATE,
     PERMISSIONS.TERRAIN_REJECT,
   ],
-
-  [ROLES.SOUS_TRAITANT_DIRECTEUR]: [
-    ...PERMISSION_GROUPS.SOCLE_COMMUN,
-    ...PERMISSION_GROUPS.MISSION_VIEWER,
-    PERMISSIONS.TERRAIN_TERMINAL,
-    PERMISSIONS.SYSTEM_SYNC,
-    PERMISSIONS.UI_TEAMS,
-  ],
-
-  [ROLES.SOUS_TRAITANT_EMPLOYE]: [
-    ...PERMISSION_GROUPS.SOCLE_COMMUN,
-    ...PERMISSION_GROUPS.TERRAIN_OPERATOR,
-  ],
-
-  [ROLES.CLIENT_LSE_SUPERVISEUR]: [
-    ...PERMISSION_GROUPS.SOCLE_COMMUN,
-    ...PERMISSION_GROUPS.MISSION_VIEWER,
-    PERMISSIONS.MISSIONS_VALIDATE,
-    PERMISSIONS.FINANCE_VIEWER,
-    PERMISSIONS.SYSTEM_EXPORT,
-  ],
-
-  [ROLES.CLIENT_LSE_TECHNIQUE]: [
-    ...PERMISSION_GROUPS.SOCLE_COMMUN,
-    ...PERMISSION_GROUPS.MISSION_VIEWER,
-    PERMISSIONS.MISSIONS_VALIDATE,
-  ],
 };
 
-// 5️⃣ PONT DE MIGRATION (LEGACY COMPATIBILITY)
+// 7️⃣ PONT DE MIGRATION & REVERSE MAPPING (OPTIMISÉ O(1))
 export const LEGACY_MAPPING: Record<string, string> = {
   'voir_missions': PERMISSIONS.MISSIONS_READ,
   'creer_mission': PERMISSIONS.MISSIONS_CREATE,
@@ -282,77 +267,56 @@ export const LEGACY_MAPPING: Record<string, string> = {
   'utiliser_ia': PERMISSIONS.IA_USE,
 };
 
-// 6️⃣ LABELS UI COMPLET
-export const PERMISSION_LABELS: Record<string, string> = {
-  [PERMISSIONS.SYSTEM_USERS]: 'Gestion des Comptes',
-  [PERMISSIONS.SYSTEM_CONFIG]: 'Paramètres Système',
-  [PERMISSIONS.SYSTEM_AUDIT]: 'Historique (Audit Logs)',
-  [PERMISSIONS.SYSTEM_MESSAGES]: 'Diffuser Message Global',
-  [PERMISSIONS.SYSTEM_EXPORT]: 'Exports Système Massifs',
-  [PERMISSIONS.MISSIONS_READ]: 'Voir Registre Missions',
-  [PERMISSIONS.MISSIONS_CREATE]: 'Créer Missions',
-  [PERMISSIONS.MISSIONS_UPDATE]: 'Modifier Missions',
-  [PERMISSIONS.MISSIONS_VALIDATE]: 'Validation Opérationnelle',
-  [PERMISSIONS.MISSIONS_APPROVE]: 'Approbation Finale (DG)',
-  [PERMISSIONS.MISSIONS_DELETE]: 'Supprimer Missions',
-  [PERMISSIONS.MISSIONS_PLANNING]: 'Planning (Gantt)',
-  [PERMISSIONS.UI_TEAMS]: 'Voir & Gérer les Équipes',
-  [PERMISSIONS.FINANCE_READ]: 'Tableau de bord Finances',
-  [PERMISSIONS.FINANCE_MANAGE]: 'Gestion des Budgets',
-  [PERMISSIONS.FINANCE_PAYMENTS]: 'Suivi des Paiements',
-  [PERMISSIONS.FINANCE_COMPTABILITE]: 'Exports Comptables',
-  [PERMISSIONS.FINANCE_REPORTS]: 'Rapports Financiers',
-  [PERMISSIONS.UI_MAP]: 'Carte Interactive',
-  [PERMISSIONS.TERRAIN_ZONES]: 'Gestion Zones/Grappes',
-  [PERMISSIONS.TERRAIN_MENAGES]: 'Gestion des Ménages',
-  [PERMISSIONS.TERRAIN_TERMINAL]: 'Terminal Collecte Kobo',
-  [PERMISSIONS.TERRAIN_REJECT]: 'Rejeter Dossier Kobo',
-  [PERMISSIONS.UI_PROJECTS]: 'Registre des Projets',
-  [PERMISSIONS.UI_DASHBOARD]: 'Personnaliser Dashboard',
-  [PERMISSIONS.LOGISTIQUE_READ]: 'État des Stocks',
-  [PERMISSIONS.LOGISTIQUE_MANAGE]: 'Mouvements & Logistique',
-  [PERMISSIONS.DOCS_PV]: 'Génération des PV',
-  [PERMISSIONS.DOCS_CONFIDENTIAL]: 'Voir Docs Confidentiels',
-  [PERMISSIONS.UI_TRAINING]: 'Accès Sessions Formation',
-  [PERMISSIONS.UI_CHAT]: 'Utiliser la Messagerie',
-  [PERMISSIONS.UI_ALERTS]: 'Consulter les Alertes',
-  [PERMISSIONS.SYSTEM_SYNC]: 'Logs de Synchronisation',
-  [PERMISSIONS.IA_USE]: 'Assistant Wanekoo',
-  [PERMISSIONS.IA_METRICS]: 'Consommation & Coûts IA',
-  [PERMISSIONS.IA_SIMULATION]: 'Scénarios de Simulation',
-};
+// Reverse Mapping pour optimisation O(1)
+export const REVERSE_LEGACY_MAPPING: Record<string, string> = Object.entries(LEGACY_MAPPING).reduce((acc, [key, val]) => {
+  acc[val] = key;
+  return acc;
+}, {} as Record<string, string>);
 
-// 7️⃣ HELPERS & POLICY ENGINE
+// 8️⃣ HELPERS & POLICY ENGINE
 export const normalizeRole = (role?: string): UserRole | null => {
   if (!role) return null;
   const upper = role.trim().toUpperCase();
-  if (Object.values(ROLES).includes(upper as any)) return upper as UserRole;
+  if (Object.values(AppRole).includes(upper as any)) return upper as UserRole;
   return ROLE_ALIASES[upper] || null;
 };
 
-export const isMasterAdmin = (user: any): boolean => {
+export const isPlatformAdmin = (user: AuthUser): boolean => {
   if (!user) return false;
-  const nRole = normalizeRole(user.role);
-  return nRole === ROLES.PROQUELEC_ADMIN || user.email === 'admingem' || user.email === 'admin@proquelec.com';
+  return user.isPlatformAdmin === true || normalizeRole(user.role) === AppRole.PLATFORM_ADMIN;
 };
 
-export const hasPermission = (user: any, permission: string | string[]): boolean => {
+// --- LEGACY ALIAS ---
+export const isMasterAdmin = isPlatformAdmin;
+
+/**
+ * ⚡ Moteur de vérification de permissions Tenant-Aware & ABAC-Ready
+ */
+export const hasPermission = (user: AuthUser, permission: string | string[]): boolean => {
   if (!user) return false;
   
-  const nRole = normalizeRole(user.role);
-  if (nRole === ROLES.PROQUELEC_ADMIN || user.email === 'admingem') return true;
+  // Platform Admin Bypass
+  if (isPlatformAdmin(user)) return true;
 
+  const nRole = normalizeRole(user.role);
   const userPerms = new Set(user.permissions || []);
   
+  // Résolution automatique par rôle si pas de perms granulaires
   if (userPerms.size === 0 && nRole) {
     (ROLE_PERMISSIONS[nRole] || []).forEach(p => userPerms.add(p));
   }
 
   const check = (p: string) => {
+    // 1. Check direct (Nouveau format)
     if (userPerms.has(p)) return true;
-    const legacyKey = Object.keys(LEGACY_MAPPING).find(key => LEGACY_MAPPING[key] === p);
+    
+    // 2. Check via Reverse Legacy (Si l'user a l'ancien nom en DB)
+    const legacyKey = REVERSE_LEGACY_MAPPING[p];
     if (legacyKey && userPerms.has(legacyKey)) return true;
+    
+    // 3. Check via Legacy Mapping (Si l'app demande l'ancien nom)
     if (LEGACY_MAPPING[p] && userPerms.has(LEGACY_MAPPING[p])) return true;
+
     return false;
   };
 
@@ -360,4 +324,69 @@ export const hasPermission = (user: any, permission: string | string[]): boolean
     return permission.some(p => check(p));
   }
   return check(permission);
+};
+
+// 9️⃣ LABELS UI COMPLET
+export const PERMISSION_LABELS: Record<string, string> = {
+  // Administration
+  [PERMISSIONS.SYSTEM_USERS]: 'Gestion des Comptes',
+  [PERMISSIONS.SYSTEM_CONFIG]: 'Paramètres Système',
+  [PERMISSIONS.SYSTEM_AUDIT]: 'Historique (Audit Logs)',
+  [PERMISSIONS.SYSTEM_MESSAGES]: 'Diffuser Message Global',
+  [PERMISSIONS.SYSTEM_EXPORT]: 'Exports Système Massifs',
+
+  // Missions
+  [PERMISSIONS.MISSIONS_READ]: 'Voir Registre Missions',
+  [PERMISSIONS.MISSIONS_CREATE]: 'Créer Missions',
+  [PERMISSIONS.MISSIONS_UPDATE]: 'Modifier Missions',
+  [PERMISSIONS.MISSIONS_VALIDATE]: 'Validation Opérationnelle',
+  [PERMISSIONS.MISSIONS_APPROVE]: 'Approbation Finale (DG)',
+  [PERMISSIONS.MISSIONS_DELETE]: 'Supprimer Missions',
+  [PERMISSIONS.MISSIONS_PLANNING]: 'Planning (Gantt)',
+
+  // Équipes
+  [PERMISSIONS.UI_TEAMS]: 'Voir & Gérer les Équipes',
+
+  // Finances
+  [PERMISSIONS.FINANCE_READ]: 'Tableau de bord Finances',
+  [PERMISSIONS.FINANCE_MANAGE]: 'Gestion des Budgets',
+  [PERMISSIONS.FINANCE_PAYMENTS]: 'Suivi des Paiements',
+  [PERMISSIONS.FINANCE_EXPORT]: 'Exports de Données',
+  [PERMISSIONS.FINANCE_REPORTS]: 'Rapports Financiers',
+
+  // Terrain
+  [PERMISSIONS.UI_MAP]: 'Carte Interactive',
+  [PERMISSIONS.TERRAIN_ZONES]: 'Gestion Zones/Grappes',
+  [PERMISSIONS.TERRAIN_MENAGES]: 'Gestion des Ménages',
+  [PERMISSIONS.TERRAIN_TERMINAL]: 'Terminal Collecte Kobo',
+  [PERMISSIONS.TERRAIN_REJECT]: 'Rejeter Dossier Kobo',
+
+  // Projets
+  [PERMISSIONS.UI_PROJECTS]: 'Registre des Projets',
+  [PERMISSIONS.UI_DASHBOARD]: 'Personnaliser Dashboard',
+
+  // Logistique
+  [PERMISSIONS.LOGISTIQUE_READ]: 'État des Stocks',
+  [PERMISSIONS.LOGISTIQUE_MANAGE]: 'Mouvements & Logistique',
+
+  // Documents
+  [PERMISSIONS.DOCS_PV]: 'Génération des PV',
+  [PERMISSIONS.DOCS_CONFIDENTIAL]: 'Voir Docs Confidentiels',
+
+  // Formations
+  [PERMISSIONS.UI_TRAINING]: 'Accès Sessions Formation',
+
+  // Communication
+  [PERMISSIONS.UI_CHAT]: 'Utiliser la Messagerie',
+
+  // Alertes
+  [PERMISSIONS.UI_ALERTS]: 'Consulter les Alertes',
+
+  // Synchro
+  [PERMISSIONS.SYSTEM_SYNC]: 'Logs de Synchronisation',
+
+  // IA
+  [PERMISSIONS.IA_USE]: 'Assistant Wanekoo',
+  [PERMISSIONS.IA_METRICS]: 'Consommation & Coûts IA',
+  [PERMISSIONS.IA_SIMULATION]: 'Scénarios de Simulation',
 };
